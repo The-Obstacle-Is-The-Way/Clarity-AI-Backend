@@ -51,7 +51,7 @@ from app.presentation.api.v1.endpoints.biometric_alerts import (
     get_alert_repository,
     get_rule_repository as get_rule_repo_from_endpoint, # Alias to avoid conflict
     get_event_processor,
-    get_clinical_rule_engine
+    get_rule_engine
 ) 
 
 # Mock the rule endpoints instead of importing them directly
@@ -127,6 +127,9 @@ from app.domain.entities.biometric_alert import BiometricAlert
 from app.domain.entities.biometric_alert import AlertStatusEnum
 # Removed faulty import
 # from app.domain.repositories import BaseRepository 
+
+# Import the main FastAPI app instance
+from app.main import app
 
 @pytest.fixture
 def mock_biometric_event_processor() -> AsyncMock:
@@ -366,7 +369,7 @@ class TestBiometricAlertsEndpoints:
         """Test creating an alert rule from a template."""
         # Arrange
         app.dependency_overrides[get_rule_repo_from_endpoint] = lambda: mock_rule_repository
-        app.dependency_overrides[get_clinical_rule_engine] = lambda: mock_clinical_rule_engine
+        app.dependency_overrides[get_rule_engine] = lambda: mock_clinical_rule_engine
         app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
         
         template_id = "high_heart_rate"
@@ -722,8 +725,8 @@ class TestBiometricAlertsEndpoints:
     @pytest.mark.asyncio
     async def test_get_rule_templates(self, client: TestClient, mock_clinical_rule_engine: AsyncMock):
         """Test retrieving available rule templates."""
-        # Arrange 
-        app.dependency_overrides[get_clinical_rule_engine] = lambda: mock_clinical_rule_engine
+        # Arrange
+        app.dependency_overrides[get_rule_engine] = lambda: mock_clinical_rule_engine
         # Mock engine is already configured in the fixture to return templates
         expected_templates = mock_clinical_rule_engine.get_rule_templates()
 

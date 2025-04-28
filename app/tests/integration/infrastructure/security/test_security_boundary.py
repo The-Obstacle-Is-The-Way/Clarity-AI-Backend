@@ -45,7 +45,6 @@ def mock_settings() -> Settings:
     settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
     settings.JWT_ISSUER = "test_issuer"
     settings.JWT_AUDIENCE = "test_audience"
-    settings.SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY
     settings.JWT_SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY
     return settings
 

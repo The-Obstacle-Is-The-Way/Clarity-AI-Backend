@@ -96,20 +96,26 @@ async def test_patient_creation_encrypts_phi(patient_repository, encryption_serv
     db_session.commit.return_value = None
     db_session.refresh.return_value = None # Mock refresh if used
     
-    # Act
-    # Patch the encryption service's encrypt method used by the repository instance
-    with patch.object(encryption_service, 'encrypt', wraps=lambda x: f"ENC({x})" if x else x) as mock_encrypt_call:
+    # Configure the mock encrypt method on the injected fixture instance
+    original_encrypt = encryption_service.encrypt
+    encryption_service.encrypt = MagicMock(wraps=lambda x: f"ENC({x})" if x else x)
+
+    try:
+        # Act
         # Pass the dictionary directly
         created_patient_dict = await patient_repository.create(patient_data, user=mock_user)
         
         # Assert encryption was called for sensitive fields
-        mock_encrypt_call.assert_called() 
+        encryption_service.encrypt.assert_called() 
         # Check calls based on sensitive fields defined in PatientRepository
         # (Assuming ssn, email, phone, address, medical_record_number are encrypted)
-        assert mock_encrypt_call.call_count >= 5, "Expected at least 5 PHI fields to be encrypted"
+        assert encryption_service.encrypt.call_count >= 5, "Expected at least 5 PHI fields to be encrypted"
         # Remove DB interaction verification as repo doesn't call add/commit
         # db_session.add.assert_called_once() # Verify DB interaction
         # db_session.commit.assert_called_once()
+    finally:
+        # Restore the original method
+        encryption_service.encrypt = original_encrypt
 
 @pytest.mark.asyncio # Mark as async test
 async def test_patient_retrieval_decrypts_phi(patient_repository, encryption_service, db_session):
@@ -134,19 +140,23 @@ async def test_patient_retrieval_decrypts_phi(patient_repository, encryption_ser
     # Define mock user context with ID
     mock_user = {"id": "user123", "role": "admin"}
 
+    # Configure the mock decrypt method on the injected fixture instance
+    original_decrypt = encryption_service.decrypt
+    encryption_service.decrypt = MagicMock(wraps=lambda x: x[4:-1] if x and x.startswith("ENC(") else x)
+
     # Mock the internal _get_mock_patient to return our specific test data
+    # (Using patch here as it's modifying the *repository* instance)
     with patch.object(patient_repository, '_get_mock_patient', return_value=encrypted_patient_data) as mock_get_internal:
-        # Patch the encryption service's decrypt method
-        with patch.object(encryption_service, 'decrypt', wraps=lambda x: x[4:-1] if x and x.startswith("ENC(") else x) as mock_decrypt_call:
-            # Call the actual get_by_id method
+        try:
+            # Act: Call the actual get_by_id method
             retrieved_patient_dict = await patient_repository.get_by_id(patient_id, user=mock_user)
             
             # Assert internal mock was called
             mock_get_internal.assert_called_once_with(patient_id)
             # Assert decryption was called for sensitive fields
-            mock_decrypt_call.assert_called() 
+            encryption_service.decrypt.assert_called() 
             # Check calls based on fields defined in repo.sensitive_fields
-            assert mock_decrypt_call.call_count >= 6, "Expected decryption calls for defined sensitive fields"
+            assert encryption_service.decrypt.call_count >= 6, "Expected decryption calls for defined sensitive fields"
             # Check decrypted values
             assert retrieved_patient_dict is not None
             assert retrieved_patient_dict.get('ssn') == "123-45-6789"
@@ -157,6 +167,9 @@ async def test_patient_retrieval_decrypts_phi(patient_repository, encryption_ser
             assert retrieved_patient_dict.get('diagnosis') == "DIAG123"
             # Check non-sensitive fields were returned as is (assuming they weren't encrypted)
             assert retrieved_patient_dict.get('first_name') == "ENC(John)" # Example, adjust based on actual repo
+        finally:
+            # Restore the original decrypt method
+            encryption_service.decrypt = original_decrypt
 
 @pytest.mark.asyncio # Mark as async test
 async def test_audit_logging_on_patient_changes(patient_repository, encryption_service, db_session):

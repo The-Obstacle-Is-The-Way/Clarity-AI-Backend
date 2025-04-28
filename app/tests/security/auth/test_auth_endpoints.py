@@ -90,23 +90,23 @@ def override_dependencies(mock_auth_service):
     
     try:
         # Override the dependency
-        from app.presentation.api.v1.endpoints.auth import get_auth_service
-        original_get_auth_service = get_auth_service
+        from app.presentation.api.dependencies.auth_service import get_auth_service_provider
+        original_get_auth_service = get_auth_service_provider
         
         def mock_get_auth_service(*args, **kwargs):
             return mock_auth_service
             
         # Override the dependency
-        from app.presentation.api.v1.endpoints import auth
-        auth.get_auth_service = mock_get_auth_service
+        from app.presentation.api.dependencies import auth_service
+        auth_service.get_auth_service_provider = mock_get_auth_service
         
         # Run the test
         yield
     finally:
         # Restore the dependency if it was saved
         if original_get_auth_service:
-            from app.presentation.api.v1.endpoints import auth
-            auth.get_auth_service = original_get_auth_service
+            from app.presentation.api.dependencies import auth_service
+            auth_service.get_auth_service_provider = original_get_auth_service
 
 # --- Tests ---
 

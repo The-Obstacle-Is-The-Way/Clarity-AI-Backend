@@ -24,7 +24,7 @@ class TestXGBoostSymptomModel:
     def model(self):
         """Create a XGBoostSymptomModel with mocked internals."""
         # Mock the xgboost library
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb', autospec=True):
+        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb') as mock_xgb:
             # Correct instantiation
             model = XGBoostSymptomModel(
                 model_path="test_model_path",
@@ -101,7 +101,7 @@ class TestXGBoostSymptomModel:
         horizon = 3
 
         # Mock the internal dmatrix and predict function
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix', autospec=True) as mock_dmatrix:
+        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb.DMatrix') as mock_dmatrix:
             # Setup the mock prediction
             # Correct np.array definition
             model.models["depression_score"].predict.return_value = np.array([4.2, 3.8, 4.5])
@@ -169,7 +169,7 @@ class TestXGBoostSymptomModel:
         y_train = np.array([4.2, 3.8, 4.5])
 
         # Mock the internal training
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb', autospec=True) as mock_xgb:
+        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb') as mock_xgb:
             mock_xgb.DMatrix.return_value = MagicMock()
             mock_train_result = MagicMock()
             mock_xgb.train.return_value = mock_train_result

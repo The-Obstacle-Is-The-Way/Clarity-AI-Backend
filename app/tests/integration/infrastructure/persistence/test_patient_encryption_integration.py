@@ -12,7 +12,7 @@ import pytest_asyncio
 import asyncio
 from datetime import date
 from typing import AsyncGenerator
-from sqlalchemy import text
+from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.domain.entities.patient import Patient
