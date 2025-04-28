@@ -9,9 +9,6 @@ import importlib
 from typing import Dict, Callable, Any
 from fastapi import APIRouter
 
-# Create main API router for the presentation layer
-api_router = APIRouter()
-
 # Lazy router loading to prevent FastAPI from analyzing dependencies during import
 def get_router(module_name: str) -> APIRouter:
     """
@@ -51,19 +48,30 @@ def get_v1_router(module_name: str) -> APIRouter:
     module_path = f"app.presentation.api.v1.endpoints.{module_name}"
     try:
         module = importlib.import_module(module_path)
-        return module.router
+        # Attempt to get 'router' first, then 'auth_router' as a fallback for auth specifically
+        if hasattr(module, 'router'):
+            return module.router
+        elif module_name == 'auth' and hasattr(module, 'auth_router'):
+             print(f"Note: Using 'auth_router' from {module_path}")
+             return module.auth_router # Handle specific case for auth naming
+        else:
+            raise AttributeError(f"Could not find a suitable router attribute in {module_path}")
+
     except ModuleNotFoundError:
         # Optionally log this or raise a more specific configuration error
         print(f"Error: Could not find router module at {module_path}")
         raise
-    except AttributeError:
+    except AttributeError as e:
         # Optionally log this or raise a more specific configuration error
-        print(f"Error: Module {module_path} does not have a 'router' attribute.")
+        print(f"Error: {e}")
         raise
 
 # Include routers at runtime instead of import time
-def setup_routers() -> None:
-    """Set up all API routers with appropriate prefixes and tags."""
+def setup_routers() -> APIRouter:
+    """Set up all API routers and return the configured main router."""
+    
+    # Create a new router instance for this setup
+    main_api_router = APIRouter()
     
     # Patient router
     # Patients endpoints are mounted under /api/v1 already by the main router
@@ -71,28 +79,28 @@ def setup_routers() -> None:
     # a duplicate `/v1` segment (e.g. /api/v1/v1/patients) which is exactly
     # what the failing integration tests are hitting. Use `/patients` so that
     # the final path becomes `/api/v1/patients`, matching the contract.
-    api_router.include_router(
+    main_api_router.include_router(
         get_router("patients"),  # Use the endpoint module name
         prefix="/patients",
         tags=["Patients"]
     )
     
     # Digital Twin router
-    api_router.include_router(
+    main_api_router.include_router(
         get_router("digital_twins"), # Use the endpoint module name
-        prefix="/v1/digital-twins", # Add v1 prefix
+        prefix="/digital-twins", # Remove v1 prefix
         tags=["Digital Twins"]
     )
     
     # Temporal Neurotransmitter router
-    api_router.include_router(
+    main_api_router.include_router(
         get_router("temporal_neurotransmitter"),
         prefix="/temporal-neurotransmitter",  # Mount under /api/v1/temporal-neurotransmitter
         tags=["Temporal Neurotransmitter System"]
     )
     
     # Actigraphy router
-    api_router.include_router(
+    main_api_router.include_router(
         get_router("actigraphy"),
         prefix="/actigraphy",  # Mount actigraphy endpoints under /api/v1/actigraphy
         tags=["Actigraphy Analysis"]
@@ -101,9 +109,9 @@ def setup_routers() -> None:
     # --- Add New Routers ---
     # Appointments router
     # try:
-    #     api_router.include_router(
+    #     main_api_router.include_router(
     #         get_router("appointments"),
-    #         prefix="/v1/appointments",
+    #         prefix="/appointments", # Remove v1 prefix
     #         tags=["Appointments"]
     #     )
     # except (ModuleNotFoundError, AttributeError):
@@ -111,9 +119,9 @@ def setup_routers() -> None:
 
     # Clinical Sessions router
     # try:
-    #     api_router.include_router(
+    #     main_api_router.include_router(
     #         get_router("clinical_sessions"),
-    #         prefix="/v1/sessions", # Using /sessions for brevity
+    #         prefix="/sessions", # Remove v1 prefix
     #         tags=["Clinical Sessions"]
     #     )
     # except (ModuleNotFoundError, AttributeError):
@@ -121,9 +129,9 @@ def setup_routers() -> None:
 
     # Symptom Assessments router
     # try:
-    #     api_router.include_router(
+    #     main_api_router.include_router(
     #         get_router("symptom_assessments"),
-    #         prefix="/v1/assessments", # Using /assessments
+    #         prefix="/assessments", # Remove v1 prefix
     #         tags=["Symptom Assessments"]
     #     )
     # except (ModuleNotFoundError, AttributeError):
@@ -134,9 +142,9 @@ def setup_routers() -> None:
     # Analytics router
     # Temporarily comment out problematic legacy endpoints to fix collection errors
     try:
-        api_router.include_router(
+        main_api_router.include_router(
             get_v1_router("analytics_endpoints"), # Use the filename
-            prefix="/v1/analytics", # Example prefix
+            prefix="/analytics", # Remove v1 prefix
             tags=["Analytics"]
         )
     except (ModuleNotFoundError, AttributeError):
@@ -144,7 +152,7 @@ def setup_routers() -> None:
         
     # Biometric Alerts router
     try:
-        api_router.include_router(
+        main_api_router.include_router(
             get_router("biometric_alerts"),
             prefix="/biometric-alerts", # Remove v1 prefix to match test expectations
             tags=["Biometric Alerts"]
@@ -154,9 +162,9 @@ def setup_routers() -> None:
         
     # Biometric Alert Rules router
     try:
-        api_router.include_router(
+        main_api_router.include_router(
             get_router("biometric_alert_rules"),
-            prefix="/biometric-alerts", # Changed to align with test expectations
+            prefix="/biometric-alerts/rules", # Changed to nest under alerts
             tags=["Biometric Alert Rules"]
         )
     except (ModuleNotFoundError, AttributeError):
@@ -165,17 +173,21 @@ def setup_routers() -> None:
 
     # Auth router 
     try:
-        api_router.include_router(
-            get_router("auth"),
-            prefix="/v1/auth",
+        # Use get_v1_router which now handles the 'auth_router' attribute name
+        auth_ep_router = get_v1_router("auth") 
+        main_api_router.include_router(
+            auth_ep_router,
+            prefix="/auth", # Remove v1 prefix
             tags=["Authentication"]
         )
-    except (ModuleNotFoundError, AttributeError):
-        print("Auth router not found or setup incorrectly, skipping.")
+        print(f"Successfully included auth router. Routes: {[route.path for route in auth_ep_router.routes]}")
+
+    except (ModuleNotFoundError, AttributeError) as e:
+        print(f"Auth router not found or setup incorrectly, skipping. Error: {e}")
 
     # XGBoost router
     try:
-        api_router.include_router(
+        main_api_router.include_router(
             get_router("xgboost"),
             prefix="/ml/xgboost",
             tags=["XGBoost ML Services"]
@@ -184,13 +196,16 @@ def setup_routers() -> None:
         print("XGBoost router not found or setup incorrectly, skipping.")
     # MentaLLaMA router
     try:
-        api_router.include_router(
+        main_api_router.include_router(
             get_router("mentallama"),
             prefix="/mentallama",
             tags=["MentaLLaMA"]
         )
     except (ModuleNotFoundError, AttributeError):
         print("MentaLLaMA router not found or setup incorrectly, skipping.")
+
+    # Return the newly configured router
+    return main_api_router 
 
 # This function should be called by the main application (e.g., main.py)
 # after the FastAPI app instance is created.

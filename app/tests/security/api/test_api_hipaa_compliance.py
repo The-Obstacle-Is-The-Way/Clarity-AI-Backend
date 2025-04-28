@@ -16,12 +16,11 @@ from pydantic import ValidationError
 from pydantic import PostgresDsn
 
 # Ensure necessary imports are at the top level
-from fastapi import FastAPI, Depends, HTTPException, Request, Response, status
+from fastapi import FastAPI, Depends, HTTPException, Request, Response, status, APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from fastapi.testclient import TestClient
-from app.presentation.api.routes import api_router, setup_routers
 from app.presentation.middleware.phi_middleware import add_phi_middleware
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
@@ -254,7 +253,6 @@ class TestAPIHIPAACompliance:
 
             # --- Mock Routes --- 
             # We're implementing specialized minimal routes that perfectly simulate HIPAA scenarios
-            from fastapi import APIRouter
             test_router = APIRouter()
             
             # Mock route for GET /patients/{patient_id}

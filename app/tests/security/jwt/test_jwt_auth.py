@@ -22,7 +22,7 @@ import uuid
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, Tuple
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock, PropertyMock
 
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
@@ -33,6 +33,7 @@ from fastapi import status, HTTPException
 from fastapi.testclient import TestClient
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 from pydantic import SecretStr
+from pydantic_core import SecretStr # Import SecretStr
 
 # Mock data for testing
 TEST_USERS = {
@@ -116,20 +117,30 @@ def admin_user():
 
 # Fixtures using mock_settings
 @pytest.fixture
-def mock_settings() -> MagicMock:
-    settings = MagicMock() 
-    settings.JWT_SECRET_KEY = "test-secret-key-for-auth-test-32+"
-    settings.JWT_ALGORITHM = "HS256"
-    settings.ACCESS_TOKEN_EXPIRE_MINUTES = 15
-    settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
-    settings.JWT_ISSUER = "test_issuer"
-    settings.JWT_AUDIENCE = "test_audience"
-    settings.JWT_SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY
-    return settings
+def mock_settings(monkeypatch) -> MagicMock:
+    settings_mock = MagicMock()
+    # Set other settings as needed
+    settings_mock.JWT_ALGORITHM = "HS256"
+    settings_mock.ACCESS_TOKEN_EXPIRE_MINUTES = 15
+    settings_mock.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
+    settings_mock.JWT_ISSUER = "test_issuer"
+    settings_mock.JWT_AUDIENCE = "test_audience"
+
+    # Correctly mock JWT_SECRET_KEY as a SecretStr
+    raw_secret = "test-secret-key-for-auth-test-32+"
+    mock_secret_str = MagicMock(spec=SecretStr)
+    mock_secret_str.get_secret_value.return_value = raw_secret
+
+    # Use monkeypatch to set the attribute on the *mock* settings object
+    # We are mocking the settings object itself, not the global settings module here
+    settings_mock.JWT_SECRET_KEY = mock_secret_str
+
+    return settings_mock
 
 @pytest.fixture
 def jwt_service(mock_settings: MagicMock) -> JWTService:
-    return JWTService(settings=mock_settings, user_repository=None)
+    # Pass the mocked settings object
+    return JWTService(settings=mock_settings, user_repository=None) # Assuming user_repository isn't needed or is mocked elsewhere
 
 @pytest.fixture
 def token_factory(jwt_service: JWTService):

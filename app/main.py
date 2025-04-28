@@ -34,7 +34,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config.settings import get_settings
             
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance, get_db_session
-from app.presentation.api.routes import api_router, setup_routers  # Import from the new location
+from app.presentation.api.routes import setup_routers 
 
 # Import Middleware and Services
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
@@ -219,13 +219,15 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
         return response
     
     # --- Setup Routers ---
-    setup_routers() # Initialize API routers
+    # Fetch the configured router instance from the setup function
+    configured_api_router = setup_routers()
     
     api_prefix = settings.API_V1_STR
     if api_prefix.endswith('/'):
         api_prefix = api_prefix[:-1]
     
-    app.include_router(api_router, prefix=api_prefix)
+    # Include the configured router instance
+    app.include_router(configured_api_router, prefix=api_prefix)
     
     # --- Static Files (Optional) ---
     static_dir = getattr(settings, 'STATIC_DIR', None)

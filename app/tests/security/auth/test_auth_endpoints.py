@@ -13,6 +13,7 @@ from app.infrastructure.security.auth.authentication_service import Authenticati
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
 from app.presentation.api.dependencies.auth_service import get_auth_service_provider
+from app.presentation.api.routes import setup_routers
 
 # Create a test client
 @pytest.fixture
@@ -27,6 +28,10 @@ def client(mock_auth_service):
     app = create_application(dependency_overrides={
         get_auth_service_provider: override_get_auth_service
     })
+    
+    # Explicitly call setup_routers AFTER creating the app instance
+    # This ensures routers are added to the specific app instance used by TestClient
+    # setup_routers() # REMOVED - create_application should handle this now
     
     with TestClient(app) as test_client:
         yield test_client
