@@ -109,12 +109,14 @@ def mock_auth_service():
 @pytest.fixture
 def auth_middleware(app, mock_jwt_service, mock_auth_service, auth_config):
     """Create an authentication middleware instance for testing."""
-    # Create using the actual constructor signature with dependency injection
+    # Create using the actual constructor signature
+    # Remove incorrect auth_service and jwt_service arguments
     middleware = AuthMiddleware(
         app=app,
-        auth_service=mock_auth_service,
-        jwt_service=mock_jwt_service,
-        public_paths=set(auth_config.exempt_paths)
+        # auth_service=mock_auth_service, # REMOVED
+        # jwt_service=mock_jwt_service,   # REMOVED
+        public_paths=list(auth_config.exempt_paths) # Pass as list
+        # Optionally pass settings or regex if needed by tests using this fixture
     )
     return middleware
 

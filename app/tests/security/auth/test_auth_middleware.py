@@ -50,8 +50,6 @@ def app(mock_auth_service, mock_jwt_service):
     app = FastAPI()
     app.add_middleware(
         AuthenticationMiddleware,
-        auth_service=mock_auth_service,
-        jwt_service=mock_jwt_service,
         public_paths=["/public"]
     )
     

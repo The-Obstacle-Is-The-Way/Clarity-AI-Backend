@@ -259,11 +259,28 @@ async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_ser
         # XGBoostInterface: lambda: mock_xgboost_service, 
     }
 
-    for service, factory in services_to_override.items():
-        if container.is_registered(service):
-            original_providers[service] = container.get_registration(service)
-        container.register(service, factory, scope=Scope.SINGLETON) # Or appropriate scope
-        logger.debug(f"Applied override for {service.__name__}")
+    # Get overrides from marker, if present
+    marker = request.node.get_closest_marker("override_services")
+    if marker:
+        services_to_override = marker.args[0]
+        # --- Start Replacement ---
+        for service, mock_factory in services_to_override.items():
+            service_name = getattr(service, '__name__', str(service))
+            mock_factory_name = getattr(mock_factory, '__name__', str(mock_factory))
+
+            # Override only if the service was originally registered
+            # This prevents errors if a test tries to override something
+            # that wouldn't normally be in the container.
+            try:
+                # Attempt to resolve to see if it's registered.
+                container.resolve(service)
+                # If resolve succeeds, it means it was registered, so override.
+                container.override(service, mock_factory)
+                logger.debug(f"Overrode service {service_name} with mock factory {mock_factory_name}")
+            except TypeError:
+                # If resolve fails with TypeError, it wasn't registered. Log and skip override.
+                logger.debug(f"Service {service_name} not originally registered, skipping override.")
+        # --- End Replacement ---
 
     try:
         # --- Create Application (will use overridden container) ---

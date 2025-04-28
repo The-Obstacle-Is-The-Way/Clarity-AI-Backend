@@ -197,7 +197,6 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     
     app.add_middleware(
         AuthenticationMiddleware,
-        auth_service=auth_service,
         public_paths={
             "/openapi.json",
             "/docs",
