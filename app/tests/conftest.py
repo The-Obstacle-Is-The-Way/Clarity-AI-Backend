@@ -284,8 +284,11 @@ async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_ser
         logger.info("Applying container overrides for async_client fixture...")
         container.override(Settings, get_test_settings)
         logger.debug("Overridden Settings")
+        # Override JWTService and its interface for authentication
         container.override(IJwtService, lambda: test_jwt_service)
-        logger.debug("Overridden IJwtService")
+        logger.debug("Overridden IJwtService interface mapping")
+        container.override(JWTService, lambda: test_jwt_service)
+        logger.debug("Overridden JWTService concrete mapping")
         container.override(UserRepository, get_mock_user_repository)
         logger.debug("Overridden UserRepository")
         container.override(XGBoostInterface, lambda: mock_xgboost_service)

@@ -121,8 +121,8 @@ class AuthenticationService:
                 try:
                     user_uuid = uuid.UUID(user_id)
                 except ValueError:
-                    logger.warning(f"Invalid UUID format provided for user_id: {user_id}")
-                    raise ValueError(f"Invalid user ID format: {user_id}")
+                    logger.warning(f"Invalid UUID format for user_id: {user_id}, using raw string")
+                    user_uuid = user_id
             
             # Get user from repository
             user_model = await self.user_repository.get_by_id(user_uuid)

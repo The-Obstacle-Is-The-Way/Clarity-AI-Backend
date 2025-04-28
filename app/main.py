@@ -235,7 +235,10 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
         api_prefix = api_prefix[:-1]
     
     # Include the configured router instance
+    # Mount API router under versioned prefix
     app.include_router(configured_api_router, prefix=api_prefix)
+    # Also mount API router at root for legacy/integration tests that expect unprefixed paths
+    app.include_router(configured_api_router)
     
     # --- Static Files (Optional) ---
     static_dir = getattr(settings, 'STATIC_DIR', None)
