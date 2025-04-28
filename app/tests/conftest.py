@@ -307,6 +307,8 @@ async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_ser
 
             # Create the AsyncClient 
             async with AsyncClient(transport=ASGITransport(app=test_app_instance), base_url="http://testserver") as client_instance:
+                # Attach the FastAPI app instance to the client for fixture access
+                setattr(client_instance, 'app', test_app_instance)
                 yield client_instance
                 
     finally:
@@ -790,6 +792,12 @@ def client(async_client):
     """Provides the httpx.AsyncClient configured globally."""
     # This now correctly returns the AsyncClient instance, not TestClient.
     return async_client
+    
+@pytest.fixture
+def app(client):
+    """Provide the FastAPI application instance used by the AsyncClient fixture."""
+    # The AsyncClient fixture stores the FastAPI app reference
+    return getattr(client, 'app', None)
 
 
 @pytest.fixture

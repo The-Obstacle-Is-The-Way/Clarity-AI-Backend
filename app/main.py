@@ -20,8 +20,12 @@ try:
     class AsyncClient(_AsyncClient):
         def __init__(self, *args, app=None, **kwargs):
             if app is not None:
+                # Use ASGI transport for FastAPI app
                 kwargs['transport'] = ASGITransport(app=app)
             super().__init__(*args, **kwargs)
+            # Store reference to FastAPI app for fixture access
+            if app is not None:
+                self.app = app
     httpx.AsyncClient = AsyncClient
 except ImportError:
     pass
