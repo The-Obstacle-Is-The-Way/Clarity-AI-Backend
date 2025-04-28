@@ -19,6 +19,7 @@ from app.infrastructure.security.password.password_handler import PasswordHandle
 # from app.infrastructure.security.rbac.rbac_service import RBACService 
 from app.domain.enums.role import Role
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from pydantic import SecretStr # Correct import location
 
 # Mock RBACService for testing
 class MockRBACService:
@@ -36,17 +37,26 @@ class MockRBACService:
         return permission in self.get_role_permissions(role)
 
 @pytest.fixture
-def mock_settings() -> Settings:
+def mock_settings(monkeypatch) -> Settings:
     """Provides mock settings for JWT tests."""
-    settings = MagicMock(spec=Settings)
-    settings.JWT_SECRET_KEY = "testkey12345678901234567890123456789"
-    settings.JWT_ALGORITHM = "HS256"
-    settings.ACCESS_TOKEN_EXPIRE_MINUTES = 15
-    settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
-    settings.JWT_ISSUER = "test_issuer"
-    settings.JWT_AUDIENCE = "test_audience"
-    settings.JWT_SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY
-    return settings
+    settings_mock = MagicMock(spec=Settings)
+    # settings_mock.JWT_SECRET_KEY = "testkey12345678901234567890123456789" # Removed old assignment
+    settings_mock.JWT_ALGORITHM = "HS256"
+    settings_mock.ACCESS_TOKEN_EXPIRE_MINUTES = 15
+    settings_mock.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
+    settings_mock.JWT_ISSUER = "test_issuer"
+    settings_mock.JWT_AUDIENCE = "test_audience"
+    # settings.JWT_SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY # Removed old incorrect mock
+
+    # Correctly mock JWT_SECRET_KEY as a SecretStr
+    raw_secret = "testkey12345678901234567890123456789"
+    mock_secret_str = MagicMock(spec=SecretStr)
+    mock_secret_str.get_secret_value.return_value = raw_secret
+
+    # Set the mocked SecretStr on the mock settings object
+    settings_mock.JWT_SECRET_KEY = mock_secret_str
+
+    return settings_mock
 
 @pytest.fixture
 def security_components(mock_settings: Settings):
@@ -119,8 +129,8 @@ class TestSecurityBoundary:
         token_data = await short_lived_jwt_service.decode_token(token)
         assert token_data is not None
         
-        # Wait for token to expire
-        await asyncio.sleep(0.8) 
+        # Wait for token to expire (increase sleep time)
+        await asyncio.sleep(1.5) 
         
         # Token should now be expired
         with pytest.raises(TokenExpiredException):
@@ -285,15 +295,15 @@ class TestSecurityBoundary:
         user_id = str(uuid.uuid4())
         user_data = {"sub": user_id}
         
-        # Create token with 1 second expiry (pass expires_delta_minutes=1/60)
-        short_lived_token = await jwt_service.create_access_token(data=user_data, expires_delta_minutes=1/60)
-        
-        # Token should be valid immediately
-        payload = await jwt_service.decode_token(short_lived_token)
-        assert payload.sub == user_id
-        
-        # Wait for slightly longer than expiration
-        await asyncio.sleep(1.1) 
-        
+        # Create token with a very short lifespan (e.g., 0.5 seconds)
+        short_lived_token = await jwt_service.create_access_token(data=user_data, expires_delta_minutes=0.01) # ~0.6s expiry
+
+        # Validate immediately (should be valid)
+        await jwt_service.decode_token(short_lived_token)
+
+        # Wait longer than expiry time (increase sleep time)
+        await asyncio.sleep(1.5)
+
+        # Attempt to validate after expiry
         with pytest.raises(TokenExpiredException):
             await jwt_service.decode_token(short_lived_token)

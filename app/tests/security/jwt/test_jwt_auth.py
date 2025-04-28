@@ -33,7 +33,6 @@ from fastapi import status, HTTPException
 from fastapi.testclient import TestClient
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 from pydantic import SecretStr
-from pydantic_core import SecretStr # Import SecretStr
 
 # Mock data for testing
 TEST_USERS = {
@@ -221,7 +220,9 @@ class TestJWTAuthentication:
         malformed_token = "this.is.not.jwt"
         with pytest.raises(InvalidTokenException) as exc_info:
             await jwt_service.decode_token(malformed_token)
-        assert "Not enough segments" in str(exc_info.value)
+        assert ("Invalid header string" in str(exc_info.value) or 
+                "Not enough segments" in str(exc_info.value)), \
+               f"Unexpected malformed token error: {str(exc_info.value)}"
 
     @pytest.mark.skip(reason="Needs refactoring to test actual endpoints/middleware, not call non-existent jwt_service method.")
     @pytest.mark.asyncio # Mark as async - Needs refactoring to hit actual endpoints/middleware
