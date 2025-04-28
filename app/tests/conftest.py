@@ -251,9 +251,6 @@ def mock_problematic_imports():
         if sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
             del sys.modules["app.infrastructure.persistence.db"]
 
-class MockSettings:
-    # ... (implementation as before)
-    pass
 
 @pytest_asyncio.fixture(scope="session")
 async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_service: JWTService) -> AsyncGenerator[AsyncClient, None]:
