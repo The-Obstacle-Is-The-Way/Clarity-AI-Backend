@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     API_TITLE: str = "Novamind API"
     API_DESCRIPTION: str = "The Novamind Mental Health Digital Twin API"
     API_VERSION: str = "1.0.0"
+    API_V1_STR: str = "/api/v1"
     
     # Security Settings
     JWT_SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(64))

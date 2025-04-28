@@ -138,7 +138,7 @@ def client(test_app) -> AsyncClient:
     # Create AsyncClient for proper async testing
     return AsyncClient(app=test_app, base_url="http://test")
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_xgboost_service() -> MockXGBoostService:
     """Create a mock XGBoost service implementation."""
     return MockXGBoostService()
