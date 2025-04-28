@@ -189,7 +189,7 @@ def setup_routers() -> APIRouter:
     try:
         main_api_router.include_router(
             get_router("xgboost"),
-            prefix="/ml/xgboost",
+            prefix="/xgboost",
             tags=["XGBoost ML Services"]
         )
     except (ModuleNotFoundError, AttributeError):

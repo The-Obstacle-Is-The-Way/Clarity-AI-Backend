@@ -249,50 +249,45 @@ async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_ser
         """Return test settings for DI injection."""
         return MockSettings()
 
-    # Removed custom JWTService factory in favor of using the test_jwt_service fixture
+    def override_get_settings():
+        return get_test_settings()
 
+    def override_get_jwt_service() -> IJwtService:
+        # Ensure the app uses the SAME JWT service instance used for test token generation
+        return test_jwt_service
 
-    # --- Store Original Container Registrations for Cleanup ---
-    original_registrations = container._registrations.copy()
+    # --- Apply Overrides to Global Container ---
+    # This ensures the app created by create_application picks up these mocks/configs
+    container.settings.override(override_get_settings)
+    container.jwt_service.override(override_get_jwt_service) 
+    # container.user_repository.override(get_mock_user_repository) # Use a mock repo if needed
+    container.analytics_service.override(mock_analytics_service)
+    # container.xgboost_service.override(mock_xgboost_service) # Override XGBoost service globally if consistent
+    # Override other necessary services globally... 
 
-    # --- Override Services in Global Container BEFORE App Creation ---
-    try:
-        logger.info("Applying container overrides for async_client fixture...")
-        container.override(Settings, get_test_settings)
-        logger.debug("Overridden Settings")
-        # Override JWTService and its interface for authentication
-        container.override(IJwtService, lambda: test_jwt_service)
-        logger.debug("Overridden IJwtService interface mapping")
-        container.override(JWTService, lambda: test_jwt_service)
-        logger.debug("Overridden JWTService concrete mapping")
-        container.override(UserRepository, get_mock_user_repository)
-        logger.debug("Overridden UserRepository")
-        container.override(XGBoostInterface, lambda: mock_xgboost_service)
-        logger.debug("Overridden XGBoostInterface")
-        container.override(AnalyticsService, lambda: mock_analytics_service)
-        logger.debug("Overridden AnalyticsService")
-        logger.info("Container overrides applied.")
+    # --- Create Application ---
+    app_instance = create_application()
+    
+    # --- Override Dependencies Specific to the Test Client App Instance (if needed) ---
+    # Example: If a dependency isn't handled by the global container or needs specific mock per test scope
+    # Note: Overriding the global container BEFORE app creation is generally preferred.
+    # app_instance.dependency_overrides[some_dependency] = some_mock_factory
+    app_instance.dependency_overrides[get_settings] = override_get_settings # Also override FastAPI-level setting getter
+    # Ensure the correct JWT service is used by authentication dependencies
+    app_instance.dependency_overrides[IJwtService] = override_get_jwt_service 
+    # Override XGBoost if not handled globally
+    # from app.presentation.api.v1.endpoints.xgboost import get_xgboost_service
+    # app_instance.dependency_overrides[get_xgboost_service] = lambda: mock_xgboost_service
 
-        # --- Apply Patches and Create App ---
-        mock_rate_limiter_instance = AsyncMock()
-        mock_rate_limiter_instance.process_request.return_value = (False, {})
-        mock_rate_limiter_instance.apply_rate_limit_headers.return_value = None
-
-        with patch('app.presentation.middleware.rate_limiting_middleware.get_rate_limiter', return_value=mock_rate_limiter_instance), \
-             patch.object(Database, 'dispose', new_callable=AsyncMock):
-
-            # Create the app using the factory - it will now use the globally overridden container
-            test_app_instance = create_application()
-
-            # Create the AsyncClient 
-            async with AsyncClient(transport=ASGITransport(app=test_app_instance), base_url="http://testserver") as client_instance:
-                # Attach the FastAPI app instance to the client for fixture access
-                setattr(client_instance, 'app', test_app_instance)
-                yield client_instance
-                
-    finally:
-        # --- Cleanup: Restore Original Container Registrations ---
-        container._registrations = original_registrations
+    # --- Create and Yield Test Client ---
+    async with AsyncClient(app=app_instance, base_url="http://test") as client:
+        yield client
+    
+    # --- Cleanup --- 
+    # Reset global container overrides after the test session finishes
+    container.reset_overrides() 
+    # Clear any app-specific overrides
+    app_instance.dependency_overrides.clear()
 
 # Fixtures for generating tokens using the *correct* test secret
 # Moved from integration/conftest.py for potential wider use, or keep it there if preferred.

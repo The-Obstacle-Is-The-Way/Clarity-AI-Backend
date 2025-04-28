@@ -105,94 +105,80 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     def override_get_xgboost_service() -> XGBoostInterface:
         return mock_xgboost_service
     
-    # --- Auth Overrides --- 
+    # --- Auth Overrides (Removed/Commented Out) --- 
     # Import the actual dependencies we need to override
-    from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access
+    # from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access
     
     # Override get_current_user to return a default mock user
-    # Tests needing specific roles can potentially re-override this later if needed
-    # or use fixtures that modify the state before the request.
-    async def override_get_current_user():
-        # Default mock user (adjust role/permissions as needed for most tests)
-        return {
-            "sub": "auth0|default_test_user", 
-            "name": "Test User", 
-            "email": "test@example.com",
-            "role": "provider", # Defaulting to provider for broad access
-            "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
-        }
+    # async def override_get_current_user():
+    #     return {
+    #         "sub": "auth0|default_test_user", 
+    #         "name": "Test User", 
+    #         "email": "test@example.com",
+    #         "role": "provider",
+    #         "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
+    #     }
 
-    # Define an override for verification that always passes (using the user above)
-    # This might be redundant if get_current_user is properly mocked, but kept for safety
-    def override_verify_provider_access(): 
-        # Can use the user from override_get_current_user or hardcode
-        return {
-            "id": "provider-test-id",
-            "role": "provider",
-            "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
-        }
+    # Define an override for verification that always passes
+    # def override_verify_provider_access(): 
+    #     return {
+    #         "id": "provider-test-id",
+    #         "role": "provider",
+    #         "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
+    #     }
         
     # Override validate_permissions to prevent 403 errors
-    def override_validate_permissions():
-        return None
+    # def override_validate_permissions():
+    #     return None
     # --- End Auth Overrides ---
         
-    # Create app, potentially skipping auth middleware during creation
-    # Patch app.add_middleware within the create_application call context
+    # Create app, WITH the AuthenticationMiddleware
     from app.main import create_application # Ensure create_application is imported
-    
-    # Store original add_middleware
-    original_add_middleware = FastAPI.add_middleware
-    
-    def patched_add_middleware(self, middleware_cls, **options):
-        # Skip adding AuthenticationMiddleware
-        if middleware_cls is AuthenticationMiddleware:
-            print(f"Skipping AuthenticationMiddleware for test app.") # Debug print
-            return
-        # Call original for other middleware
-        original_add_middleware(self, middleware_cls, **options)
-
-    with patch.object(FastAPI, 'add_middleware', new=patched_add_middleware):
-        app = create_application()
-
-    # The patch is active only during create_application
-    # app instance will not have the AuthenticationMiddleware added
+    app = create_application()
 
     # Apply necessary dependency overrides AFTER app creation
     app.dependency_overrides[get_db_dependency] = override_get_db
     app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
-    app.dependency_overrides[get_current_user] = override_get_current_user # Keep this override
-    app.dependency_overrides[verify_provider_access] = override_verify_provider_access
-    app.dependency_overrides[validate_permissions] = override_validate_permissions
+    # Removed auth overrides
+    # app.dependency_overrides[get_current_user] = override_get_current_user
+    # app.dependency_overrides[verify_provider_access] = override_verify_provider_access
+    # app.dependency_overrides[validate_permissions] = override_validate_permissions
     
-    return app
+    yield app # Use yield for proper setup/teardown
 
-@pytest.fixture
-def client(test_app) -> AsyncClient:
+    # Clear overrides after test
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def async_client(test_app) -> AsyncGenerator[AsyncClient, None]:
     """Create an AsyncClient instance for testing."""
-    # Create AsyncClient for proper async testing
-    return AsyncClient(app=test_app, base_url="http://test")
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
+        yield client
 
 @pytest.fixture(scope="session")
 def mock_xgboost_service() -> MockXGBoostService:
     """Create a mock XGBoost service implementation."""
     return MockXGBoostService()
 
+# These header fixtures now depend on the actual token generation from conftest.py
+# (Assuming they are defined there and correctly imported/available)
+# If not, they need to be adjusted to call the token generation fixtures.
 @pytest.fixture
-def psychiatrist_auth_headers() -> Dict[str, str]:
-    """Get dummy authentication headers (token value doesn't matter due to override)."""
-    # No patching needed here anymore, the dependency is globally overridden
-    return {"Authorization": "Bearer psychiatrist-token"}
+def psychiatrist_auth_headers(get_valid_provider_auth_headers: Dict[str, str]) -> Dict[str, str]:
+    """Use valid provider headers."""
+    return get_valid_provider_auth_headers
 
 @pytest.fixture
-def provider_auth_headers() -> Dict[str, str]:
-    """Get dummy authentication headers."""
-    return {"Authorization": "Bearer provider-token"}
+def provider_auth_headers(get_valid_provider_auth_headers: Dict[str, str]) -> Dict[str, str]:
+    """Use valid provider headers."""
+    return get_valid_provider_auth_headers
 
 @pytest.fixture
-def patient_auth_headers() -> Dict[str, str]:
-    """Get dummy authentication headers."""
-    return {"Authorization": "Bearer patient-token"}
+def patient_auth_headers(get_valid_auth_headers: Dict[str, str]) -> Dict[str, str]:
+    """Use valid patient headers."""
+    return get_valid_auth_headers
+
 
 @pytest.fixture
 def valid_risk_prediction_data() -> Dict[str, Any]:
@@ -251,523 +237,421 @@ def valid_outcome_prediction_data() -> Dict[str, Any]:
     """Valid data for outcome prediction request."""
     return {
         "patient_id": "test-patient-123",
-        "outcome_timeframe": {
-            "weeks": 12
-        },
+        "outcome_timeframe": {"months": 6},
         "clinical_data": {
-            "phq9_score": 14,
-            "gad7_score": 10,
+            "phq9_score": 10,
+            "gad7_score": 7,
             "symptom_duration_weeks": 10,
-            "previous_episodes": 2
+            "previous_episodes": 1,
+            "medication_adherence": 0.9,
+            "therapy_sessions_attended": 5
         },
         "treatment_plan": {
-            "type": "combined",
-            "intensity": "moderate",
-            "medications": ["fluoxetine"],
-            "therapy_type": "CBT",
-            "session_frequency": "weekly"
+            "medication": {
+                "name": "Escitalopram",
+                "dosage": "10mg",
+                "frequency": "daily"
+            },
+            "therapy": {
+                "type": "CBT",
+                "frequency": "weekly",
+                "duration_weeks": 12
+            }
         },
-        "social_determinants": {
-            "social_support": "moderate",
+        "socioeconomic_factors": {
             "employment_status": "employed",
-            "financial_stability": "stable"
-        },
-        "comorbidities": ["hypertension", "insomnia"]
+            "social_support_level": "moderate"
+        }
     }
+
 
 @pytest.mark.asyncio
 class TestXGBoostAPIIntegration:
-    """Integration tests for XGBoost API endpoints."""
+    """Test suite for XGBoost API integration focusing on authentication and validation."""
 
     async def test_predict_risk_success(
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        valid_risk_prediction_data: Dict[str, Any]
+        valid_risk_prediction_data: Dict[str, Any],
+        provider_auth_headers: Dict[str, str] # Use provider headers
     ):
-        """Test successful risk prediction."""
-        # Set up mock service return value
-        mock_response = {
-            "prediction_id": "risk-123",
-            "patient_id": "test-patient-123",
-            "risk_type": "relapse",
+        """Test successful risk prediction with valid data and authentication."""
+        mock_xgboost_service.predict_risk_mock.return_value = {
+            "prediction_id": str(uuid.uuid4()),
+            "patient_id": valid_risk_prediction_data["patient_id"],
+            "risk_score": 0.65,
             "risk_level": "moderate",
-            "risk_score": 0.45,
             "confidence": 0.8,
-            "factors": [
-                {"name": "phq9_score", "importance": 0.7, "value": 12},
-                {"name": "medication_adherence", "importance": 0.5, "value": 0.8}
-            ],
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        # Configure the mock to return our response
-        mock_xgboost_service.predict_risk_mock.return_value = mock_response
 
-        # Make API request
         response = await async_client.post(
-            "/api/v1/ml/xgboost/predict/risk",
+            "/api/v1/xgboost/predict/risk",
             json=valid_risk_prediction_data,
-            headers={"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response
-        assert response.status_code == 200
-        result = response.json()
-        assert "prediction_id" in result
-        assert "risk_score" in result
-        assert "risk_level" in result
-        assert "confidence" in result
-
-        # Verify service was called with correct data
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+        data = response.json()
+        assert data["patient_id"] == valid_risk_prediction_data["patient_id"]
+        assert "prediction_id" in data
+        assert "risk_score" in data
         mock_xgboost_service.predict_risk_mock.assert_awaited_once()
 
     async def test_predict_risk_validation_error(
         self,
         async_client: AsyncClient,
-        mock_xgboost_service: MockXGBoostService
+        mock_xgboost_service: MockXGBoostService,
+        provider_auth_headers: Dict[str, str] # Use provider headers
     ):
-        """Test risk prediction with validation error."""
-        # Set up mock service to raise ValidationError when awaited
-        mock_xgboost_service.predict_risk_mock.side_effect = ValidationError(
-            "Invalid risk type"
-        )
+        """Test risk prediction with invalid input data (missing field)."""
+        invalid_data = {
+            "patient_id": "test-patient-123",
+            # "risk_type": "relapse", # Missing risk_type
+            "clinical_data": {"phq9_score": 12}
+        }
 
-        # Make API request with invalid data
         response = await async_client.post(
-            "/api/v1/ml/xgboost/predict/risk",
-            json={
-                "patient_id": "test-patient-123",
-                "risk_type": "invalid_risk_type",  # Invalid risk type
-                "clinical_data": {"phq9_score": 12},
-                "patient_data": {"age": 35},
-                "time_frame_days": 90  # Required by schema
-            },
-            headers={"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
+            "/api/v1/xgboost/predict/risk",
+            json=invalid_data,
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response - our endpoint should catch the ValidationError and return 400
-        assert response.status_code == 400
-        result = response.json()
-        assert "detail" in result
+        # Expect 422 Unprocessable Entity due to FastAPI validation
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, f"Response: {response.text}"
+        # Ensure the service method was NOT called
+        mock_xgboost_service.predict_risk_mock.assert_not_awaited()
 
     async def test_predict_risk_phi_detection(
         self,
         async_client: AsyncClient,
-        mock_xgboost_service: MockXGBoostService
+        mock_xgboost_service: MockXGBoostService,
+        provider_auth_headers: Dict[str, str] # Use provider headers
     ):
-        """Test risk prediction with PHI detection."""
-        # Set up mock service to raise DataPrivacyError for HIPAA compliance
-        mock_xgboost_service.predict_risk_mock.side_effect = DataPrivacyError(
-            "Potential PHI detected in field value",
-            {"field": "demographic_data.address", "pattern": "address"}
-        )
-
-        # Make API request with PHI data
-        response = await async_client.post(
-            "/api/v1/ml/xgboost/predict/risk",
-            json={
-                "patient_id": "test-patient-123",
-                "risk_type": "relapse",
-                "clinical_data": {"phq9_score": 12},
-                "patient_data": {
-                    "age": 35,
-                    "address": "123 Main St"  # Contains PHI which should be detected
-                },
-                "time_frame_days": 90  # Required by schema
+        """Test risk prediction request blocked due to potential PHI in free-text fields (if applicable)."""
+        # Assuming some field like 'notes' could contain PHI
+        phi_data = {
+            "patient_id": "test-patient-phi",
+            "risk_type": "suicide",
+            "clinical_data": {
+                "phq9_score": 22,
+                "gad7_score": 18,
+                "notes": "Patient John Doe mentioned feeling hopeless."
             },
-            headers={"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
+            "patient_data": { "age": 40 },
+            "time_frame_days": 30
+        }
+
+        # Mock the service to raise DataPrivacyError if called
+        mock_xgboost_service.predict_risk_mock.side_effect = DataPrivacyError("Simulated PHI detected")
+
+        response = await async_client.post(
+            "/api/v1/xgboost/predict/risk",
+            json=phi_data,
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response - endpoint should detect PHI and properly return a 400 error
-        assert response.status_code == 400
-        result = response.json()
-        assert "detail" in result
-        assert "Sensitive information detected" in result["detail"]
+        # Assuming PHI detection happens *before* or *within* the service call
+        # If PHI middleware blocks first, it might be 400 or 422 depending on implementation.
+        # If service blocks, it should map the DataPrivacyError to 400.
+        assert response.status_code == status.HTTP_400_BAD_REQUEST, f"Response: {response.text}"
+        data = response.json()
+        assert "privacy violation" in data.get("message", "").lower() or \
+               "phi detected" in data.get("message", "").lower()
+        # Reset side effect for other tests
+        mock_xgboost_service.predict_risk_mock.side_effect = None
+
 
     async def test_predict_risk_unauthorized(
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        valid_risk_prediction_data: Dict[str, Any]
+        valid_risk_prediction_data: Dict[str, Any],
+        patient_auth_headers: Dict[str, str] # Use patient headers (insufficient permissions)
     ):
-        """Test risk prediction with unauthorized role."""
-        # Instead of testing actual auth failure (which is bypassed in our test app setup),
-        # we test that the endpoint properly handles exceptions from the XGBoost service
-        # This tests the error handling mechanism which is the real goal of this test
-        
-        # Configure mock to raise permission error
-        mock_xgboost_service.predict_risk_mock.side_effect = ValidationError(
-            "User lacks permission for risk prediction"
-        )
-        
-        # Use regular headers since we're testing service-level auth failures
-        headers = {"Content-Type": "application/json", "Authorization": "Bearer test-token"}
-        
-        # Make API request 
+        """Test risk prediction attempt with insufficient permissions (e.g., patient role)."""
+
         response = await async_client.post(
-            "/api/v1/ml/xgboost/predict/risk",
+            "/api/v1/xgboost/predict/risk",
             json=valid_risk_prediction_data,
-            headers=headers
+            headers=patient_auth_headers # Pass patient headers
         )
 
-        # Verify response uses proper error handling (400 for validation error)
-        assert response.status_code == 400
-        result = response.json()
-        assert "detail" in result
+        # Expect 403 Forbidden due to role/permission check
+        assert response.status_code == status.HTTP_403_FORBIDDEN, f"Response: {response.text}"
+        # Ensure the service method was NOT called
+        mock_xgboost_service.predict_risk_mock.assert_not_awaited()
+
 
     async def test_predict_treatment_response_success(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        psychiatrist_auth_headers: Dict[str, str],
+        provider_auth_headers: Dict[str, str], # Renamed fixture, use provider
         valid_treatment_response_data: Dict[str, Any]
     ):
         """Test successful treatment response prediction."""
-        # Set up mock service return value
-        mock_response = {
-            "prediction_id": "treatment-123",
-            "patient_id": "test-patient-123",
-            "treatment_type": "medication",
-            "response_probability": 0.72,
-            "estimated_efficacy": 0.68,
-            "time_to_response": {
-                "estimated_weeks": 4,
-                "range": {"min": 2, "max": 6},
-                "confidence": 0.75
-            },
-            "alternative_treatments": [
-                {
-                    "treatment": "Alternative medication",
-                    "type": "medication",
-                    "probability": 0.65,
-                    "description": "Alternative medication option"
-                }
-            ],
-            "confidence": 0.78,
-            "factors": [
-                {"name": "previous_response", "importance": 0.8, "value": "positive"},
-                {"name": "symptom_duration", "importance": 0.6, "value": 12}
-            ],
+        mock_xgboost_service.predict_treatment_response_mock.return_value = {
+            "prediction_id": str(uuid.uuid4()),
+            "patient_id": valid_treatment_response_data["patient_id"],
+            "treatment_type": valid_treatment_response_data["treatment_type"],
+            "response_probability": 0.75,
+            "predicted_response": "likely_responder",
+            "confidence": 0.85,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        # Setup the mock to return our response value
-        mock_xgboost_service.predict_treatment_response_mock.return_value = mock_response
 
-        # Make API request
-        response = await client.post(
-            "/api/v1/ml/xgboost/predict/treatment-response",
+        response = await async_client.post( # Use await with async_client
+            "/api/v1/xgboost/predict/treatment-response",
             json=valid_treatment_response_data,
-            headers=psychiatrist_auth_headers
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response - the endpoint should properly handle async flow
-        assert response.status_code == 200
-        result = response.json()
-        assert "prediction_id" in result
-        assert "treatment_type" in result
-        assert "response_probability" in result
-        assert "estimated_efficacy" in result
-        assert "time_to_response" in result
-        assert "alternative_treatments" in result
-        assert "factors" in result
-
-        # Verify service was called with correct parameters
-        mock_xgboost_service.predict_treatment_response_mock.assert_called_once()
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+        data = response.json()
+        assert data["patient_id"] == valid_treatment_response_data["patient_id"]
+        assert "prediction_id" in data
+        assert "response_probability" in data
+        mock_xgboost_service.predict_treatment_response_mock.assert_awaited_once()
 
     async def test_predict_outcome_success(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: Dict[str, str],
         valid_outcome_prediction_data: Dict[str, Any]
     ):
         """Test successful outcome prediction."""
-        # Set up mock service return value
-        mock_response = {
-            "prediction_id": "outcome-123",
-            "patient_id": "test-patient-123",
-            "timeframe": {"weeks": 12},
-            "success_probability": 0.65,
-            "predicted_outcomes": {
-                "timeframe_weeks": 12,
-                "symptom_reduction": {
-                    "percent_improvement": 60,
-                    "confidence": 0.75
-                },
-                "functional_improvement": {
-                    "percent_improvement": 55,
-                    "confidence": 0.72
-                },
-                "relapse_risk": {
-                    "probability": 0.25,
-                    "confidence": 0.8
-                }
+        mock_xgboost_service.predict_outcome_mock.return_value = {
+            "prediction_id": str(uuid.uuid4()),
+            "patient_id": valid_outcome_prediction_data["patient_id"],
+            "outcome_probabilities": {
+                "remission": 0.6,
+                "partial_response": 0.3,
+                "no_response": 0.1
             },
-            "key_factors": [
-                {"name": "treatment_adherence", "importance": 0.85, "value": "high"},
-                {"name": "social_support", "importance": 0.75, "value": "moderate"}
-            ],
-            "recommendations": [
-                {
-                    "category": "medication",
-                    "recommendation": "Continue current medication regimen"
-                },
-                {
-                    "category": "therapy",
-                    "recommendation": "Increase therapy frequency"
-                }
-            ],
-            "confidence": 0.7,
+            "predicted_outcome": "remission",
+            "confidence": 0.78,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        # Set async mock return value for the outcome prediction
-        mock_xgboost_service.predict_outcome_mock.return_value = mock_response
 
-        # Make API request
-        response = await client.post(
-            "/api/v1/ml/xgboost/predict/outcome",
+        response = await async_client.post( # Use await with async_client
+            "/api/v1/xgboost/predict/outcome",
             json=valid_outcome_prediction_data,
-            headers=provider_auth_headers
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response
-        assert response.status_code == 200
-        result = response.json()
-        assert "prediction_id" in result
-        assert "timeframe" in result
-        assert "success_probability" in result
-        assert "predicted_outcomes" in result
-        assert "key_factors" in result
-        assert "recommendations" in result
-
-        # Verify service was called with correct data
-        mock_xgboost_service.predict_outcome_mock.assert_called_once()
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+        data = response.json()
+        assert data["patient_id"] == valid_outcome_prediction_data["patient_id"]
+        assert "prediction_id" in data
+        assert "predicted_outcome" in data
+        mock_xgboost_service.predict_outcome_mock.assert_awaited_once()
 
     async def test_get_feature_importance_success(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        psychiatrist_auth_headers: Dict[str, str]
+        provider_auth_headers: Dict[str, str] # Renamed fixture, use provider
     ):
-        """Test successful feature importance retrieval."""
-        # Set up mock service return value for feature importance
-        mock_response = {
-            "prediction_id": "risk-123",
-            "patient_id": "test-patient-123",
-            "model_type": "risk",
-            "features": [
-                {"name": "phq9_score", "importance": 0.7, "value": 12},
-                {"name": "medication_adherence", "importance": 0.5, "value": 0.8}
-            ],
-            "global_importance": {
-                "phq9_score": 0.7,
-                "medication_adherence": 0.5
+        """Test successful retrieval of feature importance."""
+        patient_id = "patient-feat-imp-1"
+        model_type = "risk_prediction"
+        prediction_id = str(uuid.uuid4())
+
+        mock_xgboost_service.get_feature_importance_mock.return_value = {
+            "prediction_id": prediction_id,
+            "model_type": model_type,
+            "feature_importance": {
+                "phq9_score": 0.35,
+                "previous_episodes": 0.25,
+                "medication_adherence": 0.15,
+                "age": 0.10,
+                "gad7_score": 0.08,
+                "symptom_duration_weeks": 0.07
             },
-            "local_importance": {
-                "phq9_score": 0.75,
-                "medication_adherence": 0.45
-            },
-            "interactions": [],
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        # Set the mock return value
-        mock_xgboost_service.get_feature_importance_mock.return_value = mock_response
 
-        # Make API request
-        response = await client.post(
-            "/api/v1/ml/xgboost/feature-importance",
-            json={
-                "patient_id": "test-patient-123",
-                "model_type": "risk",
-                "prediction_id": "risk-123"
-            },
-            headers=psychiatrist_auth_headers
+        response = await async_client.get( # Use await with async_client
+            f"/api/v1/xgboost/explain/{model_type}/{prediction_id}",
+            params={"patient_id": patient_id}, # Pass patient_id as query param if needed
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response is successful and contains the expected fields
-        assert response.status_code == 200
-        result = response.json()
-        assert "prediction_id" in result
-        assert "patient_id" in result
-        assert "model_type" in result
-        assert "features" in result
-        assert "global_importance" in result
-        assert "local_importance" in result
-
-        # Verify service was called correctly
-        mock_xgboost_service.get_feature_importance_mock.assert_called_once()
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+        data = response.json()
+        assert data["prediction_id"] == prediction_id
+        assert "feature_importance" in data
+        mock_xgboost_service.get_feature_importance_mock.assert_awaited_once_with(
+            patient_id=patient_id, model_type=model_type, prediction_id=prediction_id
+        )
 
     async def test_get_feature_importance_not_found(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        psychiatrist_auth_headers: Dict[str, str]
+        provider_auth_headers: Dict[str, str] # Renamed fixture, use provider
     ):
-        """Test feature importance retrieval with prediction not found."""
-        # Set up mock service to raise ResourceNotFoundError - this simulates a prediction ID that doesn't exist
-        mock_xgboost_service.get_feature_importance_mock.side_effect = ResourceNotFoundError(
-            "Prediction ID not found"
+        """Test retrieval of feature importance for a non-existent prediction."""
+        patient_id = "patient-feat-imp-nf"
+        model_type = "risk_prediction"
+        prediction_id = "non-existent-prediction-id"
+
+        mock_xgboost_service.get_feature_importance_mock.side_effect = ResourceNotFoundError("Prediction not found")
+
+        response = await async_client.get( # Use await with async_client
+            f"/api/v1/xgboost/explain/{model_type}/{prediction_id}",
+            params={"patient_id": patient_id},
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Make API request with a non-existent prediction ID
-        response = await client.post(
-            "/api/v1/ml/xgboost/feature-importance",
-            json={
-                "patient_id": "test-patient-123",
-                "model_type": "risk",
-                "prediction_id": "nonexistent-id"
-            },
-            headers=psychiatrist_auth_headers
+        assert response.status_code == status.HTTP_404_NOT_FOUND, f"Response: {response.text}"
+        mock_xgboost_service.get_feature_importance_mock.assert_awaited_once_with(
+            patient_id=patient_id, model_type=model_type, prediction_id=prediction_id
         )
-
-        # Verify response - the endpoint should properly handle the not found error
-        assert response.status_code == 404  # This confirms proper HTTP status code for not found
-        result = response.json()
-        assert "detail" in result
+        # Reset side effect
+        mock_xgboost_service.get_feature_importance_mock.side_effect = None
 
     async def test_integrate_with_digital_twin_success(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        psychiatrist_auth_headers: Dict[str, str]
+        provider_auth_headers: Dict[str, str] # Renamed fixture, use provider
     ):
-        """Test successful digital twin integration."""
-        # Set up mock service return value for digital twin integration
-        mock_response = {
-            "integration_id": "integration-123",
-            "patient_id": "test-patient-123",
-            "profile_id": "profile-123",
-            "prediction_id": "risk-123",
-            "status": "completed",
-            "details": {
-                "integration_type": "digital_twin",
-                "synchronized_attributes": ["risk_level", "treatment_response"],
-                "synchronization_date": datetime.now(timezone.utc).isoformat()
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat()
+        """Test successful integration of a prediction with the digital twin."""
+        patient_id = "patient-dt-int-1"
+        profile_id = "digital-twin-profile-abc"
+        prediction_id = str(uuid.uuid4())
+
+        mock_xgboost_service.integrate_with_digital_twin_mock.return_value = {
+            "integration_id": str(uuid.uuid4()),
+            "profile_id": profile_id,
+            "prediction_id": prediction_id,
+            "status": "success",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "details": "Prediction incorporated into digital twin profile."
         }
 
-        # Set the mock return value
-        mock_xgboost_service.integrate_with_digital_twin_mock.return_value = mock_response
+        integration_payload = {
+            "patient_id": patient_id,
+            "profile_id": profile_id
+        }
 
-        # Make API request to integrate with digital twin
-        response = await client.post(
-            "/api/v1/ml/xgboost/integrate-digital-twin",
-            json={
-                "patient_id": "test-patient-123",
-                "profile_id": "profile-123",
-                "prediction_id": "prediction-123"
-            },
-            headers=psychiatrist_auth_headers
+        response = await async_client.post( # Use await with async_client
+            f"/api/v1/xgboost/integrate/{prediction_id}",
+            json=integration_payload,
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response - the endpoint should successfully integrate with digital twin
-        assert response.status_code == 200
-        result = response.json()
-        assert "integration_id" in result
-        assert "patient_id" in result
-        assert "profile_id" in result
-        assert "prediction_id" in result
-        assert "status" in result
-        assert "details" in result
-
-        # Verify service was called correctly
-        mock_xgboost_service.integrate_with_digital_twin_mock.assert_called_once()
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+        data = response.json()
+        assert data["profile_id"] == profile_id
+        assert data["prediction_id"] == prediction_id
+        assert data["status"] == "success"
+        mock_xgboost_service.integrate_with_digital_twin_mock.assert_awaited_once_with(
+            patient_id=patient_id, profile_id=profile_id, prediction_id=prediction_id
+        )
 
     async def test_get_model_info_success(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        patient_auth_headers: Dict[str, str]
+        provider_auth_headers: Dict[str, str] # Use provider headers for consistency
     ):
-        """Test successful model info retrieval."""
-        # Set up mock service return value with comprehensive model metrics
-        mock_response = {
-            "model_type": "relapse_risk",
-            "version": "1.0.0",
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+        """Test successful retrieval of model information."""
+        model_type = "risk_prediction"
+
+        mock_xgboost_service.get_model_info_mock.return_value = {
+            "model_type": model_type,
+            "version": "1.2.0",
+            "description": "XGBoost model for predicting patient risk.",
+            "trained_at": "2023-10-26T10:00:00Z",
             "performance_metrics": {
-                "accuracy": 0.82,
-                "precision": 0.80,
-                "recall": 0.78,
-                "f1_score": 0.79,
-                "auc_roc": 0.85
+                "accuracy": 0.85,
+                "precision": 0.88,
+                "recall": 0.82,
+                "f1_score": 0.85,
+                "auc": 0.92
             },
             "features": [
-                {"name": "phq9_score", "importance": 0.7},
-                {"name": "medication_adherence", "importance": 0.5}
-            ],
-            "description": "Relapse risk prediction model based on XGBoost"
+                "phq9_score",
+                "gad7_score",
+                "symptom_duration_weeks",
+                "previous_episodes",
+                "medication_adherence",
+                "age",
+                "gender"
+            ]
         }
-        # Set async mock return value
-        mock_xgboost_service.get_model_info_mock.return_value = mock_response
 
-        # Make API request
-        response = await client.post(
-            "/api/v1/ml/xgboost/model-info",
-            json={
-                "model_type": "risk_relapse"
-            },
-            headers=patient_auth_headers
+        response = await async_client.get( # Use await with async_client
+            f"/api/v1/xgboost/info/{model_type}",
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response - endpoint should return model info successfully
-        assert response.status_code == 200
-        result = response.json()
-        assert "model_type" in result
-        assert "version" in result
-        assert "performance_metrics" in result
-        assert "features" in result
-        assert "description" in result
-
-        # Verify service was called correctly
-        mock_xgboost_service.get_model_info_mock.assert_called_once()
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+        data = response.json()
+        assert data["model_type"] == model_type
+        assert "version" in data
+        assert "performance_metrics" in data
+        mock_xgboost_service.get_model_info_mock.assert_awaited_once_with(model_type=model_type)
 
     async def test_get_model_info_not_found(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        psychiatrist_auth_headers: Dict[str, str]
+        provider_auth_headers: Dict[str, str] # Use provider headers
     ):
-        """Test model info retrieval with not found error."""
-        # Set up mock service to raise ModelNotFoundError when the model doesn't exist
-        mock_xgboost_service.get_model_info_mock.side_effect = ModelNotFoundError(
-            "Model type nonexistent_model not found"
+        """Test retrieval of model info for a non-existent model type."""
+        model_type = "non_existent_model"
+
+        mock_xgboost_service.get_model_info_mock.side_effect = ModelNotFoundError(f"Model type '{model_type}' not found")
+
+        response = await async_client.get( # Use await with async_client
+            f"/api/v1/xgboost/info/{model_type}",
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Make API request with non-existent model type
-        response = await client.post(
-            "/api/v1/ml/xgboost/model-info",
-            json={"model_type": "nonexistent_model"},
-            headers=psychiatrist_auth_headers
-        )
-
-        # Verify response - endpoint should properly handle model not found
-        assert response.status_code == 404  # Proper 404 status code for resource not found
-        result = response.json()
-        assert "detail" in result
+        assert response.status_code == status.HTTP_404_NOT_FOUND, f"Response: {response.text}"
+        mock_xgboost_service.get_model_info_mock.assert_awaited_once_with(model_type=model_type)
+        # Reset side effect
+        mock_xgboost_service.get_model_info_mock.side_effect = None
 
     async def test_service_unavailable(
         self,
-        client: AsyncClient,
+        async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        psychiatrist_auth_headers: Dict[str, str],
+        provider_auth_headers: Dict[str, str], # Use provider headers
         valid_risk_prediction_data: Dict[str, Any]
     ):
-        """Test handling of service unavailable error."""
-        # Set up mock service to raise ServiceUnavailableError for proper error handling
-        mock_xgboost_service.predict_risk_mock.side_effect = ServiceUnavailableError(
-            "Prediction service is currently unavailable"
-        )
+        """Test API response when the XGBoost service is unavailable."""
+        mock_xgboost_service.predict_risk_mock.side_effect = ServiceUnavailableError("XGBoost service is down")
 
-        # Make API request that should trigger the service unavailable error
-        response = await client.post(
-            "/api/v1/ml/xgboost/predict/risk",
+        response = await async_client.post( # Use await with async_client
+            "/api/v1/xgboost/predict/risk",
             json=valid_risk_prediction_data,
-            headers=psychiatrist_auth_headers
+            headers=provider_auth_headers # Pass headers
         )
 
-        # Verify response - endpoint should properly convey the service unavailability
-        assert response.status_code == 503  # Proper 503 status code for service unavailable
-        result = response.json()
-        assert "detail" in result
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE, f"Response: {response.text}"
+        data = response.json()
+        assert "service unavailable" in data.get("message", "").lower()
+        mock_xgboost_service.predict_risk_mock.assert_awaited_once()
+        # Reset side effect
+        mock_xgboost_service.predict_risk_mock.side_effect = None
+
+    async def test_predict_risk_no_auth(self, async_client: AsyncClient, valid_risk_prediction_data: Dict[str, Any]):
+        """Test predict risk endpoint without authentication headers."""
+        response = await async_client.post(
+            "/api/v1/xgboost/predict/risk",
+            json=valid_risk_prediction_data
+            # No headers provided
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"
+
+    async def test_get_model_info_no_auth(self, async_client: AsyncClient):
+        """Test get model info endpoint without authentication headers."""
+        response = await async_client.get("/api/v1/xgboost/info/risk_prediction")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"

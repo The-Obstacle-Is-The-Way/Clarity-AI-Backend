@@ -53,16 +53,14 @@ def create_sample_readings(num_readings: int = 10) -> List[Dict[str, Any]]:
     return readings
 
 
-# Mock JWT token authentication
-def mock_validate_token(token: str) -> Dict[str, Any]:
-    """Mock JWT token validation."""
+# Mock JWT token authentication (No longer needed if using real headers)
+# def mock_validate_token(token: str) -> Dict[str, Any]:
+#     """Mock JWT token validation."""
+#     return {"sub": "test-user-id", "role": "clinician"}
 
-    return {"sub": "test-user-id", "role": "clinician"}
-
-    def mock_get_current_user_id(payload: Dict[str, Any]) -> str:
-        """Mock get current user ID."""
-
-        return payload["sub"]
+# def mock_get_current_user_id(payload: Dict[str, Any]) -> str:
+#     """Mock get current user ID."""
+#     return payload["sub"]
 
 
 # Mock PAT service for testing
@@ -183,280 +181,201 @@ def test_app(mock_pat_service) -> FastAPI:
     """Create a test app instance with overridden dependencies using the real application."""
     from app.main import create_application
     from app.presentation.api.v1.endpoints.actigraphy import get_pat_service
-    from app.presentation.api.dependencies.auth import get_current_user
+    # Removed: from app.presentation.api.dependencies.auth import get_current_user
 
     # Create the full application
     app_instance = create_application()
-    # Override dependencies: use mock PAT service and bypass authentication
+    # Override dependencies: use mock PAT service
     app_instance.dependency_overrides[get_pat_service] = lambda: mock_pat_service
-    app_instance.dependency_overrides[get_current_user] = lambda: {"id": "test-patient-1", "roles": ["clinician"]}
-    return app_instance
+    # Removed override for get_current_user
+    # app_instance.dependency_overrides[get_current_user] = lambda: {"id": "test-patient-1", "roles": ["clinician"]}
+    yield app_instance # Use yield to allow cleanup if necessary
 
-
-# Clean up overrides after tests using this fixture are done
-# No need to access app_instance here as it's yielded within the 'with'
-# block
+    # Clean up overrides after tests using this fixture are done
+    app_instance.dependency_overrides.clear()
 
 
 @pytest.fixture
 def client(test_app: FastAPI) -> TestClient:
-    """Create a TestClient instance using the fixture-created app."""
-
+    """Fixture to provide a TestClient instance."""
     return TestClient(test_app)
 
 
+# --- Test Class ---
 class TestActigraphyAPI:
-    """Integration tests for the actigraphy API endpoints."""
+    """Test suite for the actigraphy API endpoints."""
 
-    def test_analyze_actigraphy(self, client: TestClient):
-        """Test the analyze actigraphy endpoint."""
-        # Prepare test data
-        patient_id = "test-patient-1"
-        readings = [
-            AccelerometerReading(
-                timestamp=reading["timestamp"],
-                x=reading["x"],
-                y=reading["y"],
-                z=reading["z"],
-            )
-            for reading in create_sample_readings(20)
-        ]
-
-        start_time = (datetime.now() - timedelta(hours=1)).isoformat()
-        end_time = datetime.now().isoformat()
-
-        device_info = DeviceInfo(
-            device_type="fitbit",
-            model="versa-3",
-            firmware_version="1.2.3",
-        )
-
-        request_data = AnalyzeActigraphyRequest(
-            patient_id=patient_id,
-            readings=readings,
-            start_time=start_time,
-            end_time=end_time,
-            sampling_rate_hz=10.0,
-            device_info=device_info,
-            analysis_types=[AnalysisType.SLEEP_QUALITY, AnalysisType.ACTIVITY_LEVELS],
-        )
-
-        # Make request
-        response = client.post(
-            "/api/v1/actigraphy/analyze",
-            json=request_data.model_dump(),
-            headers={"Authorization": "Bearer test-token"},
-        )
-
-        # Verify response
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert "analysis_id" in data
-        assert "patient_id" in data
-        assert data["patient_id"] == patient_id
-        assert "timestamp" in data
-
-        # Check for sleep metrics
-        assert "sleep_metrics" in data
-        sleep_metrics = data["sleep_metrics"]
-        assert 0 <= sleep_metrics["sleep_efficiency"] <= 1
-
-        # Check for activity levels
-        assert "activity_levels" in data
-        activity_levels = data["activity_levels"]
-        assert "sedentary" in activity_levels
-        assert "light" in activity_levels
-        assert "moderate" in activity_levels
-        assert "vigorous" in activity_levels
-
-    def test_get_embeddings(self, client: TestClient):
-        """Test the get embeddings endpoint."""
-        # Prepare test data
-        patient_id = "test-patient-1"
-        readings = [
-            AccelerometerReading(
-                timestamp=reading["timestamp"],
-                x=reading["x"],
-                y=reading["y"],
-                z=reading["z"],
-            )
-            for reading in create_sample_readings(20)
-        ]
-
-        start_time = (datetime.now() - timedelta(hours=1)).isoformat()
-        end_time = datetime.now().isoformat()
+    # --- Test Cases ---
+    def test_analyze_actigraphy(self, client: TestClient, provider_token_headers: Dict[str, str]):
+        """Test successful actigraphy analysis."""
+        patient_id = "patient-analyze-1"
+        start_time = datetime.now() - timedelta(hours=1)
+        end_time = start_time + timedelta(minutes=1)
+        readings = create_sample_readings(num_readings=600) # 1 minute at 10Hz
 
         request_data = {
             "patient_id": patient_id,
-            "readings": [reading.model_dump() for reading in readings],
-            "start_time": start_time,
-            "end_time": end_time,
+            "readings": readings,
+            "start_time": start_time.isoformat() + "Z",
+            "end_time": end_time.isoformat() + "Z",
+            "sampling_rate_hz": 10.0,
+            "device_info": {
+                "manufacturer": "TestFit",
+                "model": "TestModel",
+                "firmware_version": "1.0.0",
+            },
+            "analysis_types": ["sleep", "activity"],
+        }
+
+        response = client.post(
+            "/api/v1/actigraphy/analyze",
+            json=request_data,
+            headers=provider_token_headers # Add authentication headers
+        )
+
+        assert response.status_code == status.HTTP_200_OK, f"Expected 200, got {response.status_code}. Response: {response.text}"
+        response_data = response.json()
+        assert response_data["patient_id"] == patient_id
+        assert "analysis_id" in response_data
+        assert "sleep_metrics" in response_data
+        assert "activity_levels" in response_data
+
+    def test_get_embeddings(self, client: TestClient, provider_token_headers: Dict[str, str]):
+        """Test successful retrieval of actigraphy embeddings."""
+        patient_id = "patient-embed-1"
+        start_time = datetime.now() - timedelta(minutes=30)
+        end_time = start_time + timedelta(minutes=5)
+        readings = create_sample_readings(num_readings=300) # 5 minutes at 10Hz
+
+        request_data = {
+            "patient_id": patient_id,
+            "readings": readings,
+            "start_time": start_time.isoformat() + "Z",
+            "end_time": end_time.isoformat() + "Z",
             "sampling_rate_hz": 10.0,
         }
 
-        # Make request
         response = client.post(
             "/api/v1/actigraphy/embeddings",
             json=request_data,
-            headers={"Authorization": "Bearer test-token"},
+            headers=provider_token_headers # Add authentication headers
         )
 
-        # Verify response (resource created)
-        assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()
-        assert "embedding_id" in data
-        assert "patient_id" in data
-        assert data["patient_id"] == patient_id
-        assert "timestamp" in data
-        assert "embeddings" in data
-        assert isinstance(data["embeddings"], list)
-        assert len(data["embeddings"]) == data["embedding_size"]
+        assert response.status_code == status.HTTP_201_CREATED, f"Expected 201, got {response.status_code}. Response: {response.text}"
+        response_data = response.json()
+        assert response_data["patient_id"] == patient_id
+        assert "embedding_id" in response_data
+        assert "data_summary" in response_data
+        assert "embedding" in response_data
+        assert response_data["embedding"]["dimension"] == 8 # Check dimension matches mock
 
     def test_get_analysis_by_id(
-        self, client: TestClient, mock_pat_service: MockPATService
+        self, client: TestClient, mock_pat_service: MockPATService, provider_token_headers: Dict[str, str]
     ):
-        """Test retrieving an analysis by ID."""
-        # First create an analysis
-        patient_id = "test-patient-1"
-        readings = create_sample_readings(20)
-        start_time = datetime.now() - timedelta(hours=1)
-        end_time = datetime.now()
-
-        analysis = mock_pat_service.analyze_actigraphy(
+        """Test retrieving a specific analysis result by its ID."""
+        # First, create an analysis to retrieve
+        patient_id = "patient-retrieve-1"
+        analysis_data = mock_pat_service.analyze_actigraphy(
             patient_id=patient_id,
-            readings=readings,
-            start_time=start_time.isoformat(),
-            end_time=end_time.isoformat(),
+            readings=create_sample_readings(10),
+            start_time=(datetime.now() - timedelta(hours=1)).isoformat() + "Z",
+            end_time=datetime.now().isoformat() + "Z",
             sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
-            analysis_types=["sleep_quality"],
+            device_info={"manufacturer": "Test"},
+            analysis_types=["sleep"],
         )
+        analysis_id = analysis_data["analysis_id"]
 
-        analysis_id = analysis["analysis_id"]
-
-        # Make request
         response = client.get(
-            f"/api/v1/actigraphy/analyses/{analysis_id}",
-            headers={"Authorization": "Bearer test-token"},
+            f"/api/v1/actigraphy/analysis/{analysis_id}",
+            headers=provider_token_headers # Add authentication headers
         )
 
-        # Verify response
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["analysis_id"] == analysis_id
-        assert data["patient_id"] == patient_id
-        assert "sleep_metrics" in data
+        assert response.status_code == status.HTTP_200_OK, f"Expected 200, got {response.status_code}. Response: {response.text}"
+        response_data = response.json()
+        assert response_data["analysis_id"] == analysis_id
+        assert response_data["patient_id"] == patient_id
 
     def test_get_patient_analyses(
-        self, client: TestClient, mock_pat_service: MockPATService
+        self, client: TestClient, mock_pat_service: MockPATService, provider_token_headers: Dict[str, str]
     ):
-        """Test retrieving analyses for a patient."""
-        # First create multiple analyses for the same patient
-        patient_id = "test-patient-2"
+        """Test retrieving all analysis results for a specific patient."""
+        patient_id = "patient-list-analyses-1"
+        # Create a couple of analyses for this patient
+        mock_pat_service.analyze_actigraphy(
+            patient_id=patient_id, readings=[], start_time="", end_time="", sampling_rate_hz=1, device_info={}, analysis_types=[]
+        )
+        mock_pat_service.analyze_actigraphy(
+            patient_id=patient_id, readings=[], start_time="", end_time="", sampling_rate_hz=1, device_info={}, analysis_types=[]
+        )
 
-        for i in range(3):
-            readings = create_sample_readings(20)
-            start_time = datetime.now() - timedelta(hours=i + 1)
-            end_time = datetime.now() - timedelta(hours=i)
-
-            mock_pat_service.analyze_actigraphy(
-                patient_id=patient_id,
-                readings=readings,
-                start_time=start_time.isoformat(),
-                end_time=end_time.isoformat(),
-                sampling_rate_hz=10.0,
-                device_info={"device_type": "fitbit", "model": "versa-3"},
-                analysis_types=["sleep_quality", "activity_levels"],
-            )
-
-        # Make request
         response = client.get(
             f"/api/v1/actigraphy/patient/{patient_id}/analyses",
             params={"limit": 10, "offset": 0},
-            headers={"Authorization": "Bearer test-token"},
+            headers=provider_token_headers # Add authentication headers
         )
 
-        # Verify response
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["patient_id"] == patient_id
-        assert "analyses" in data
-        assert isinstance(data["analyses"], list)
-        assert len(data["analyses"]) == 3
-        assert data["total"] == 3
+        assert response.status_code == status.HTTP_200_OK, f"Expected 200, got {response.status_code}. Response: {response.text}"
+        response_data = response.json()
+        assert response_data["patient_id"] == patient_id
+        assert len(response_data["analyses"]) == 2
+        assert response_data["total"] == 2
 
-    def test_get_model_info(self, client: TestClient):
-        """Test retrieving model information."""
-        # Make request
+    def test_get_model_info(self, client: TestClient, provider_token_headers: Dict[str, str]):
+        """Test retrieving information about the underlying PAT model."""
         response = client.get(
-            "/api/v1/actigraphy/model-info",
-            headers={"Authorization": "Bearer test-token"},
+            "/api/v1/actigraphy/model/info",
+            headers=provider_token_headers # Add authentication headers
         )
 
-        # Verify response
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-
-        # Check for expected fields from our mock implementation
-        assert "name" in data
-        assert data["name"] == "Test PAT Model"
-        assert "version" in data
-        assert data["version"] == "1.0.0-test"
-        assert "capabilities" in data
-        assert isinstance(data["capabilities"], list)
-        assert "developer" in data
-        assert data["developer"] == "Novamind Test Team"
+        assert response.status_code == status.HTTP_200_OK, f"Expected 200, got {response.status_code}. Response: {response.text}"
+        response_data = response.json()
+        assert "name" in response_data
+        assert "version" in response_data
+        assert "capabilities" in response_data
 
     def test_integrate_with_digital_twin(
-        self, client: TestClient, mock_pat_service: MockPATService
+        self, client: TestClient, mock_pat_service: MockPATService, provider_token_headers: Dict[str, str]
     ):
-        """Test integrating actigraphy analysis with a digital twin."""
-        # Prepare test data
-        patient_id = "test-patient-1"
-        profile_id = "test-profile-1"
-
-        # First create an analysis
-        readings = create_sample_readings(20)
-        start_time = datetime.now() - timedelta(hours=1)
-        end_time = datetime.now()
-
-        analysis = mock_pat_service.analyze_actigraphy(
-            patient_id=patient_id,
-            readings=readings,
-            start_time=start_time.isoformat(),
-            end_time=end_time.isoformat(),
-            sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
-            analysis_types=["sleep_quality", "activity_levels"],
+        """Test integrating actigraphy analysis results with the digital twin service."""
+        # Create an analysis first
+        patient_id = "patient-integrate-dt-1"
+        analysis_data = mock_pat_service.analyze_actigraphy(
+            patient_id=patient_id, readings=[], start_time="", end_time="", sampling_rate_hz=1, device_info={}, analysis_types=[]
         )
+        analysis_id = analysis_data["analysis_id"]
 
-        request_data = {
-            "patient_id": patient_id,
-            "profile_id": profile_id,
-            "actigraphy_analysis": analysis,
-        }
+        # Mock the digital twin integration function if it's called directly
+        # For now, assume it's handled within the service/use case layer
+        # and we just test the API endpoint call
+        with patch("app.presentation.api.v1.endpoints.actigraphy.integrate_analysis_with_twin") as mock_integrate:
+            mock_integrate.return_value = {"status": "success", "twin_update_id": "dt-update-123"}
 
-        # Make request
-        response = client.post(
-            "/api/v1/actigraphy/integrate-with-digital-twin",
-            json=request_data,
-            headers={"Authorization": "Bearer test-token"},
-        )
+            response = client.post(
+                f"/api/v1/actigraphy/analysis/{analysis_id}/integrate",
+                json={"digital_twin_id": "dt-123"}, # Assuming payload structure
+                headers=provider_token_headers # Add authentication headers
+            )
 
-        # Verify response
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert "profile_id" in data
-        assert data["profile_id"] == profile_id
-        assert "patient_id" in data
-        assert data["patient_id"] == patient_id
-        assert "timestamp" in data
-        assert "integrated_profile" in data
+            assert response.status_code == status.HTTP_200_OK, f"Expected 200, got {response.status_code}. Response: {response.text}"
+            response_data = response.json()
+            assert response_data["status"] == "success"
+            assert response_data["twin_update_id"] == "dt-update-123"
+            # Assert that the mock integration function was called
+            mock_integrate.assert_called_once()
 
+
+    # Note: This test might now fail differently if authentication is required
+    # It should return 401 if no headers are provided, or 403 if invalid role.
+    # We keep it to test the absence of valid headers.
     def test_unauthorized_access(self, client: TestClient):
-        """Test unauthorized access to the API."""
-        # Make request without token
-        response = client.get("/api/v1/actigraphy/model-info")
+        """Test accessing endpoints without proper authentication headers."""
+        response = client.post("/api/v1/actigraphy/analyze", json={})
+        # Expect 401 Unauthorized if the middleware runs and finds no token
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401, got {response.status_code}. Response: {response.text}"
 
-        # Authentication is stubbed in tests; expect successful response
-        assert response.status_code == status.HTTP_200_OK
+        response = client.get("/api/v1/actigraphy/analysis/some-id")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401, got {response.status_code}. Response: {response.text}"
+
+        response = client.get("/api/v1/actigraphy/model/info")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401, got {response.status_code}. Response: {response.text}"

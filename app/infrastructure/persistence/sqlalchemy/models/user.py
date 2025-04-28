@@ -164,7 +164,8 @@ class User(Base):
     patients = relationship(
         "Patient",
         back_populates="user",
-        primaryjoin="User.id == Patient.user_id"
+        foreign_keys='Patient.user_id',
+        primaryjoin='User.id == Patient.user_id'
     )
     
     # Audit logging
