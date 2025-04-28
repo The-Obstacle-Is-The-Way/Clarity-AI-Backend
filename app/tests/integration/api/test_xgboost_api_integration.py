@@ -104,14 +104,37 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     def override_get_xgboost_service() -> XGBoostInterface:
         return mock_xgboost_service
     
-    # Define an override for verification that always passes
-    def override_verify_provider_access():
-        # Return mock user with provider access
+    # --- Auth Overrides --- 
+    # Import the actual dependencies we need to override
+    from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access
+    
+    # Override get_current_user to return a default mock user
+    # Tests needing specific roles can potentially re-override this later if needed
+    # or use fixtures that modify the state before the request.
+    async def override_get_current_user():
+        # Default mock user (adjust role/permissions as needed for most tests)
         return {
-            "id": "psychiatrist-123",
-            "role": "psychiatrist",
+            "sub": "auth0|default_test_user", 
+            "name": "Test User", 
+            "email": "test@example.com",
+            "role": "provider", # Defaulting to provider for broad access
             "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
         }
+
+    # Define an override for verification that always passes (using the user above)
+    # This might be redundant if get_current_user is properly mocked, but kept for safety
+    def override_verify_provider_access(): 
+        # Can use the user from override_get_current_user or hardcode
+        return {
+            "id": "provider-test-id",
+            "role": "provider",
+            "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
+        }
+        
+    # Override validate_permissions to prevent 403 errors
+    def override_validate_permissions():
+        return None
+    # --- End Auth Overrides ---
         
     # Create app with all necessary overrides
     app = create_application()
@@ -119,15 +142,8 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Apply all dependency overrides
     app.dependency_overrides[get_db_dependency] = override_get_db
     app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
-    
-    # Import the correct path for verify_provider_access
-    from app.presentation.api.dependencies.auth import verify_provider_access
+    app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[verify_provider_access] = override_verify_provider_access
-    
-    # Also override validate_permissions to prevent 403 errors
-    def override_validate_permissions():
-        return None
-    
     app.dependency_overrides[validate_permissions] = override_validate_permissions
     
     return app
@@ -145,39 +161,19 @@ def mock_xgboost_service() -> MockXGBoostService:
 
 @pytest.fixture
 def psychiatrist_auth_headers() -> Dict[str, str]:
-    """Get authentication headers for a psychiatrist role."""
-    with patch("app.presentation.api.dependencies.auth.get_current_user") as mock_auth:
-        mock_auth.return_value = {
-            "sub": "auth0|psychiatrist123",
-            "name": "Dr. Smith",
-            "email": "dr.smith@example.com",
-            "role": "psychiatrist"
-        }
-        return {"Authorization": "Bearer psychiatrist-token"}
+    """Get dummy authentication headers (token value doesn't matter due to override)."""
+    # No patching needed here anymore, the dependency is globally overridden
+    return {"Authorization": "Bearer psychiatrist-token"}
 
 @pytest.fixture
 def provider_auth_headers() -> Dict[str, str]:
-    """Get authentication headers for a provider role."""
-    with patch("app.presentation.api.dependencies.auth.get_current_user") as mock_auth:
-        mock_auth.return_value = {
-            "sub": "auth0|provider123",
-            "name": "Provider Name",
-            "email": "provider@example.com",
-            "role": "provider"
-        }
-        return {"Authorization": "Bearer provider-token"}
+    """Get dummy authentication headers."""
+    return {"Authorization": "Bearer provider-token"}
 
 @pytest.fixture
 def patient_auth_headers() -> Dict[str, str]:
-    """Get authentication headers for a patient role."""
-    with patch("app.presentation.api.dependencies.auth.get_current_user") as mock_auth:
-        mock_auth.return_value = {
-            "sub": "auth0|patient123",
-            "name": "Patient Name",
-            "email": "patient@example.com",
-            "role": "patient"
-        }
-        return {"Authorization": "Bearer patient-token"}
+    """Get dummy authentication headers."""
+    return {"Authorization": "Bearer patient-token"}
 
 @pytest.fixture
 def valid_risk_prediction_data() -> Dict[str, Any]:

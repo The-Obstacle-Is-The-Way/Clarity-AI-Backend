@@ -93,7 +93,12 @@ class Patient(Base):
     # Add insurance_info field expected by the test
     _insurance_info = Column("insurance_info", Text, nullable=True) # Uncommenting for proper access
 
-    user = relationship("User", back_populates="patients", foreign_keys=[user_id]) # Explicitly specify foreign_keys
+    user = relationship(
+        "User", 
+        back_populates="patients", 
+        foreign_keys=[user_id],
+        primaryjoin="Patient.user_id == User.id" # Explicitly define the join condition
+    ) 
     # --- Relationships ---
     # Complete unified relationship graph with proper cascades for referential integrity
     appointments = relationship(
