@@ -101,6 +101,7 @@ class Patient(Base):
     ) 
     # --- Relationships ---
     # Complete unified relationship graph with proper cascades for referential integrity
+    # Restore relationships
     appointments = relationship(
         "AppointmentModel",
         back_populates="patient",

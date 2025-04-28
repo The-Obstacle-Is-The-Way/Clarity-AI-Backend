@@ -80,6 +80,7 @@ def get_alert_repository(db: Session = Depends(get_db_session)) -> BiometricAler
     Returns:
         BiometricAlertRepository instance
     """
+    # Always return the real implementation; tests should use overrides
     return SQLAlchemyBiometricAlertRepository(db)
 
 
@@ -93,23 +94,7 @@ def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricAlert
     Returns:
         BiometricAlertRuleRepository instance
     """
-    # Test environment detection
-    import sys
-    is_test = any('pytest' in arg for arg in sys.argv) or any('test_' in arg for arg in sys.argv)
-    
-    # Don't instantiate concrete implementation in test environment
-    if is_test:
-        # Return a mock or placeholder that will be overridden in tests
-        mock = AsyncMock()
-        # Add any necessary mock methods expected by tests
-        mock.get_rules = AsyncMock()
-        mock.get_rule_by_id = AsyncMock()
-        mock.create_rule = AsyncMock()
-        mock.update_rule = AsyncMock()
-        mock.delete_rule = AsyncMock()
-        return mock
-    
-    # In production, return the concrete implementation
+    # Always return the real implementation; tests should use overrides
     return SQLAlchemyBiometricAlertRuleRepository(db)
 
 
@@ -120,20 +105,7 @@ def get_event_processor() -> BiometricEventProcessor:
     Returns:
         BiometricEventProcessor instance
     """
-    # Test environment detection
-    import sys
-    is_test = any('pytest' in arg for arg in sys.argv) or any('test_' in arg for arg in sys.argv)
-    
-    # Don't use service container in test environment
-    if is_test:
-        # Return a mock that will be overridden in tests
-        from unittest.mock import MagicMock
-        mock = MagicMock(spec=BiometricEventProcessor)
-        mock.add_rule = MagicMock()
-        mock.remove_rule = MagicMock()
-        return mock
-    
-    # In production, use the service container
+    # Always resolve from container; tests should override via container/app
     return get_service(BiometricEventProcessor)
 
 
@@ -144,20 +116,7 @@ def get_rule_engine() -> ClinicalRuleEngine:
     Returns:
         ClinicalRuleEngine instance
     """
-    # Test environment detection
-    import sys
-    is_test = any('pytest' in arg for arg in sys.argv) or any('test_' in arg for arg in sys.argv)
-    
-    # Don't use service container in test environment
-    if is_test:
-        # Return a mock that will be overridden in tests
-        from unittest.mock import AsyncMock, MagicMock
-        mock = AsyncMock(spec=ClinicalRuleEngine)
-        mock.get_rule_templates = AsyncMock()
-        mock.create_rule_from_template = AsyncMock()
-        return mock
-    
-    # In production, use the service container
+    # Always resolve from container; tests should override via container/app
     return get_service(ClinicalRuleEngine)
 
 
@@ -171,19 +130,7 @@ def get_template_repository(db: Session = Depends(get_db_session)) -> BiometricA
     Returns:
         BiometricAlertTemplateRepository instance
     """
-    # Test environment detection
-    import sys
-    is_test = any('pytest' in arg for arg in sys.argv) or any('test_' in arg for arg in sys.argv)
-    
-    # Don't instantiate concrete implementation in test environment
-    if is_test:
-        # Return a mock or placeholder that will be overridden in tests
-        mock = AsyncMock()
-        # Add any necessary mock methods expected by tests
-        mock.get_all = AsyncMock()
-        return mock
-    
-    # In production, return the concrete implementation
+    # Always return the real implementation; tests should use overrides
     return SQLAlchemyBiometricAlertTemplateRepository(db)
 
 
