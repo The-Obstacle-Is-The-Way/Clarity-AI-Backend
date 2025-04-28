@@ -191,6 +191,26 @@ def sample_insights_response(sample_patient_id):
         ]
     }
 
+# Fixture for PersonalizedInsightResponse
+@pytest.fixture
+def sample_personalized_insight_response(sample_patient_id):
+    """Create a sample response conforming to PersonalizedInsightResponse."""
+    now = datetime.now(UTC)
+    return {
+        "insight_id": str(uuid4()),
+        "digital_twin_id": str(sample_patient_id), # Use patient_id as twin_id for simplicity
+        "query": "Summarize recent mood changes.",
+        "insight_type": "clinical",
+        "insight": "Patient mood shows slight improvement over the past week, but anxiety spikes remain.",
+        "key_points": [
+            "Slight mood improvement noted.",
+            "Anxiety spikes persist.",
+            "Correlation with sleep patterns observed."
+        ],
+        "confidence": 0.88,
+        "timestamp": now.isoformat() # Use ISO format string for JSON compatibility
+    }
+
 # Fixtures for other response types (forecast, correlation, pgx) can be added if needed
 # ...
 
@@ -220,17 +240,19 @@ class TestDigitalTwinsEndpoints:
         assert "not found" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_get_comprehensive_insights(self, client, mock_digital_twin_service, sample_patient_id, sample_insights_response):
+    async def test_get_comprehensive_insights(self, client, mock_digital_twin_service, sample_patient_id, sample_personalized_insight_response):
         """Test GET /digital-twins/{patient_id}/insights"""
-        mock_digital_twin_service.generate_comprehensive_patient_insights.return_value = sample_insights_response
+        mock_digital_twin_service.generate_comprehensive_patient_insights.return_value = sample_personalized_insight_response
         
         response = await client.get(f"/digital-twins/{sample_patient_id}/insights")
         
         assert response.status_code == status.HTTP_200_OK
-        # Validate response against Pydantic schema if desired
-        parsed_response = PersonalizedInsightResponse.parse_obj(response.json())
-        assert parsed_response.patient_id == str(sample_patient_id)
-        assert len(parsed_response.symptom_forecasting.trending_symptoms) > 0 # Example check
+        # Validate response against Pydantic schema
+        parsed_response = PersonalizedInsightResponse.model_validate(response.json())
+        assert parsed_response.digital_twin_id == str(sample_patient_id)
+        assert parsed_response.insight_id == sample_personalized_insight_response["insight_id"]
+        assert parsed_response.query == sample_personalized_insight_response["query"]
+        assert parsed_response.timestamp.isoformat() == sample_personalized_insight_response["timestamp"]
         
         mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(sample_patient_id)
 
@@ -262,7 +284,7 @@ class TestDigitalTwinsEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         # Validate response against Pydantic schema if desired
-        parsed_response = ClinicalTextAnalysisResponse.parse_obj(response.json())
+        parsed_response = ClinicalTextAnalysisResponse.model_validate(response.json())
         assert parsed_response.result == mock_response_data["result"]
         
         mock_digital_twin_service.analyze_clinical_text_mentallama.assert_called_once_with(
