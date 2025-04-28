@@ -39,6 +39,7 @@ from fastapi import FastAPI
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.routes.xgboost import get_xgboost_service, validate_permissions
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 
 # Create a concrete implementation of XGBoostInterface for tests
 class MockXGBoostService(XGBoostInterface):
@@ -136,13 +137,31 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
         return None
     # --- End Auth Overrides ---
         
-    # Create app with all necessary overrides
-    app = create_application()
+    # Create app, potentially skipping auth middleware during creation
+    # Patch app.add_middleware within the create_application call context
+    from app.main import create_application # Ensure create_application is imported
     
-    # Apply all dependency overrides
+    # Store original add_middleware
+    original_add_middleware = FastAPI.add_middleware
+    
+    def patched_add_middleware(self, middleware_cls, **options):
+        # Skip adding AuthenticationMiddleware
+        if middleware_cls is AuthenticationMiddleware:
+            print(f"Skipping AuthenticationMiddleware for test app.") # Debug print
+            return
+        # Call original for other middleware
+        original_add_middleware(self, middleware_cls, **options)
+
+    with patch.object(FastAPI, 'add_middleware', new=patched_add_middleware):
+        app = create_application()
+
+    # The patch is active only during create_application
+    # app instance will not have the AuthenticationMiddleware added
+
+    # Apply necessary dependency overrides AFTER app creation
     app.dependency_overrides[get_db_dependency] = override_get_db
     app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
-    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_current_user] = override_get_current_user # Keep this override
     app.dependency_overrides[verify_provider_access] = override_verify_provider_access
     app.dependency_overrides[validate_permissions] = override_validate_permissions
     

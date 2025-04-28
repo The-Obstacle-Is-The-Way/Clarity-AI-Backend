@@ -95,7 +95,7 @@ class Patient(Base):
 
     user = relationship(
         "User", 
-        back_populates="patients", 
+        back_populates="patients",
         foreign_keys=[user_id],
         primaryjoin="Patient.user_id == User.id" # Explicitly define the join condition
     ) 
