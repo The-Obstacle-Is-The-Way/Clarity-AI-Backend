@@ -10,7 +10,7 @@ import os
 import pytest
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, AsyncGenerator, Generator, Callable
+from typing import Dict, Any, List, Optional, AsyncGenerator, Generator, Callable, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, ASGITransport
 from fastapi import Depends, FastAPI
@@ -48,6 +48,9 @@ from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limi
 from app.main import create_application # Import create_application
 from app.domain.services.analytics_service import AnalyticsService # Import AnalyticsService
 from app.infrastructure.di.container import get_container # Import get_container
+from app.domain.entities.user import User # Import User
+from app.domain.enums.role import Role # Import Role
+from app.domain.repositories.user_repository import UserRepository # Ensure imported
 
 # --- Conditional Import for Pydantic Settings ---
 _HAS_PYDANTIC_SETTINGS = False
@@ -160,9 +163,100 @@ class MockSettings:
     else:
         _BaseSettingsRef = V1BaseSettings
 
+# --- Helper Functions / Mock Factories (Module Level) ---
+
+# Factory for Mock User Repository (Moved to Module Level)
+def get_mock_user_repository() -> UserRepository:
+    mock_repo = AsyncMock(spec=UserRepository)
+    async def mock_get_by_id(user_id: uuid.UUID) -> Optional[MagicMock]:
+        # Return a mock user based on common test IDs used in token generation
+        user_id_str = str(user_id)
+        mock_user = MagicMock(spec=User) # Using User domain entity spec
+        mock_user.id = user_id
+        mock_user.is_active = True
+        mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
+
+        if user_id_str == "test-integration-user": # From get_valid_auth_headers token 'sub'
+             mock_user.username = "testuser"
+             mock_user.email = "test@example.com"
+             mock_user.roles = [Role.PATIENT] # Use Role enum
+             logger.debug(f"MockUserRepository: Found user {user_id_str}")
+             return mock_user
+        elif user_id_str == "test-provider-user": # From get_valid_provider_auth_headers token 'sub'
+             mock_user.username = "testprovider"
+             mock_user.email = "provider@example.com"
+             mock_user.roles = [Role.PROVIDER, Role.CLINICIAN] # Use Role enum
+             logger.debug(f"MockUserRepository: Found user {user_id_str}")
+             return mock_user
+        logger.warning(f"MockUserRepository: User ID {user_id_str} not found in mock setup.")
+        return None # Simulate user not found for unexpected IDs
+
+    mock_repo.get_by_id = mock_get_by_id
+
+    async def mock_get_by_username(username: str) -> Optional[MagicMock]:
+         if username == "testuser":
+             mock_user = MagicMock(spec=User)
+             mock_user.id = uuid.UUID("test-integration-user") # Use consistent ID
+             mock_user.username = username
+             mock_user.is_active = True
+             mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
+             mock_user.roles = [Role.PATIENT]
+             logger.debug(f"MockUserRepository: Found user by username {username}")
+             return mock_user
+         elif username == "test_provider": # Match username used in test_auth_endpoints
+             mock_user = MagicMock(spec=User)
+             mock_user.id = uuid.UUID("test-provider-user") # Use consistent ID
+             mock_user.username = username
+             mock_user.is_active = True
+             mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
+             mock_user.roles = [Role.PROVIDER, Role.CLINICIAN]
+             logger.debug(f"MockUserRepository: Found user by username {username}")
+             return mock_user
+         logger.warning(f"MockUserRepository: User username {username} not found in mock setup.")
+         return None
+    mock_repo.get_by_username = mock_get_by_username
+
+    return mock_repo
+
+# --- Fixtures --- 
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_problematic_imports():
+    """
+    Mock problematic imports to prevent collection errors. Applied automatically.
+    """
+    patches = []
+    # Patch the FastAPI app instance in app.main to avoid initializing routes/startup during import
+    main_patch = patch("app.main.app")
+    mock_app = main_patch.start()
+    mock_app.dependency_overrides = {}
+    patches.append(main_patch)
+    # Patch get_db_session to use a mock session for collection
+    from app.tests.mocks.persistence_db_mock import get_db_session as mock_get_db_session
+    db_session_patch = patch(
+        "app.infrastructure.persistence.sqlalchemy.config.database.get_db_session",
+        mock_get_db_session
+    )
+    db_session_patch.start()
+    patches.append(db_session_patch)
+    # Ensure persistence.db module is mocked
+    import sys
+    if "app.infrastructure.persistence.db" not in sys.modules:
+        import app.tests.mocks.persistence_db_mock as db_mock
+        sys.modules["app.infrastructure.persistence.db"] = db_mock
+    yield
+    for p in patches:
+        p.stop()
+    if "app.infrastructure.persistence.db" in sys.modules:
+        if sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
+            del sys.modules["app.infrastructure.persistence.db"]
+
+class MockSettings:
+    # ... (implementation as before)
+    pass
 
 @pytest_asyncio.fixture(scope="session")
-async def async_client(event_loop, mock_xgboost_service: AsyncMock) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_service: JWTService) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an asynchronous test client using the main application factory.
     Applies necessary overrides DIRECTLY TO THE GLOBAL CONTAINER before app creation.
@@ -176,52 +270,29 @@ async def async_client(event_loop, mock_xgboost_service: AsyncMock) -> AsyncGene
     
     # Define test settings and services factories (as before)
     def get_test_settings() -> Settings:
-        # ... existing implementation ...
-        TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-        TEST_SECRET = "test-secret-key-for-testing-only"
-        return Settings(
-            TESTING=True,
-            DATABASE_URL=TEST_DATABASE_URL,
-            JWT_SECRET_KEY=SecretStr(TEST_SECRET),
-            SECRET_KEY=SecretStr(TEST_SECRET),
-            JWT_ALGORITHM="HS256",
-            ACCESS_TOKEN_EXPIRE_MINUTES=15,
-            JWT_REFRESH_TOKEN_EXPIRE_DAYS=7,
-            JWT_ISSUER="test-issuer",
-            JWT_AUDIENCE="test-audience",
-            BACKEND_CORS_ORIGINS=["http://localhost:3000", "http://testserver"],
-        )
+        """Return test settings for DI injection."""
+        return MockSettings()
 
-    def get_test_jwt_service() -> IJwtService:
-        # Note: Doesn't need settings injected if we override get_settings globally
-        return JWTService(settings=get_test_settings(), user_repository=None)
+    # Removed custom JWTService factory in favor of using the test_jwt_service fixture
 
-    def get_mock_authentication_service() -> AuthenticationService:
-        mock_auth_service = AsyncMock(spec=AuthenticationService)
-        async def mock_validate_token(token: str) -> tuple[MagicMock, list[str]] | None:
-            if token and token != "invalid-token":
-                mock_user = MagicMock(spec=User)
-                mock_user.id = "test-user-id"
-                mock_user.username = "testuser"
-                mock_user.email = "test@example.com"
-                roles = ["patient"]
-                if "PROVIDER_TOKEN" in token:
-                    roles = ["provider", "clinician"]
-                return (mock_user, roles)
-            return None
-        mock_auth_service.validate_token = mock_validate_token
-        return mock_auth_service
 
     # --- Store Original Container Registrations for Cleanup ---
     original_registrations = container._registrations.copy()
 
     # --- Override Services in Global Container BEFORE App Creation ---
     try:
+        logger.info("Applying container overrides for async_client fixture...")
         container.override(Settings, get_test_settings)
-        container.override(IJwtService, get_test_jwt_service)
-        container.override(AuthenticationService, get_mock_authentication_service)
+        logger.debug("Overridden Settings")
+        container.override(IJwtService, lambda: test_jwt_service)
+        logger.debug("Overridden IJwtService")
+        container.override(UserRepository, get_mock_user_repository)
+        logger.debug("Overridden UserRepository")
         container.override(XGBoostInterface, lambda: mock_xgboost_service)
+        logger.debug("Overridden XGBoostInterface")
         container.override(AnalyticsService, lambda: mock_analytics_service)
+        logger.debug("Overridden AnalyticsService")
+        logger.info("Container overrides applied.")
 
         # --- Apply Patches and Create App ---
         mock_rate_limiter_instance = AsyncMock()
@@ -244,7 +315,7 @@ async def async_client(event_loop, mock_xgboost_service: AsyncMock) -> AsyncGene
 
 # Fixtures for generating tokens using the *correct* test secret
 # Moved from integration/conftest.py for potential wider use, or keep it there if preferred.
-_TEST_SECRET_KEY_FOR_FIXTURES = "testsecret" # Ensure this matches the override
+_TEST_SECRET_KEY_FOR_FIXTURES = "test-secret-key-for-testing-only" # Ensure this matches the override
 
 @pytest.fixture(scope="session")
 def test_settings_for_token_gen() -> Settings:

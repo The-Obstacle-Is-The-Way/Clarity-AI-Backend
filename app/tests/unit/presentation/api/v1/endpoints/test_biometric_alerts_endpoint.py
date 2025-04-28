@@ -46,6 +46,7 @@ from app.domain.entities.biometric_alert import BiometricAlert, AlertStatusEnum 
 from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
+from app.domain.repositories.user_repository import UserRepository
 from app.presentation.api.v1.endpoints.biometric_alerts import (
     router as alerts_router,
     get_alert_repository,

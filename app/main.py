@@ -156,13 +156,21 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     
     # Get service instances directly from the container or create them
     try:
-        auth_service = container.resolve(get_authentication_service)()
-        jwt_service = container.resolve(get_jwt_service)() 
-    except Exception as e:
-        logger.warning(f"Could not resolve services from container: {e}. Using direct instantiation.")
-        # Fallback to direct instantiation
+        # Resolve the service type directly, letting the container handle overrides
         from app.infrastructure.security.auth.authentication_service import AuthenticationService
-        from app.infrastructure.security.jwt.jwt_service import JWTService
+        from app.core.interfaces.services.jwt_service import IJwtService
+        
+        auth_service = container.resolve(AuthenticationService) 
+        jwt_service = container.resolve(IJwtService)
+        # auth_service = container.resolve(get_authentication_service)() # OLD: Resolve factory and call
+        # jwt_service = container.resolve(get_jwt_service)() # OLD: Resolve factory and call
+    except Exception as e:
+        import traceback # Add import
+        logger.warning(f"Could not resolve services from container. Exception Type: {type(e).__name__}, Message: {e}. Using direct instantiation.")
+        logger.warning(f"Traceback:\n{traceback.format_exc()}") # Log traceback
+        # Fallback to direct instantiation
+        from app.infrastructure.security.auth.authentication_service import AuthenticationService # Keep this for the fallback
+        from app.infrastructure.security.jwt.jwt_service import JWTService # <-- Add this missing import
         from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
         from app.infrastructure.security.password.password_handler import PasswordHandler
         from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
