@@ -10,9 +10,10 @@ import os
 import pytest
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, AsyncGenerator
+from typing import Dict, Any, List, Optional, AsyncGenerator, Generator, Callable
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
+from fastapi import Depends
 
 # CRITICAL FIX: Prevent XGBoost namespace collision
 # This ensures the test collection mechanism doesn't confuse our test directory
@@ -30,12 +31,16 @@ import uuid
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 # Updated import path to match codebase structure
 from app.config.settings import Settings, get_settings
 from pydantic import SecretStr, Field
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.interfaces.services.jwt_service import IJwtService
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.presentation.api.dependencies.auth import get_authentication_service
+from app.infrastructure.database.models import Base
 
 # --- Conditional Import for Pydantic Settings ---
 _HAS_PYDANTIC_SETTINGS = False
@@ -56,7 +61,7 @@ except ImportError:
 os.environ["TESTING"] = "true"
 os.environ["MOCK_DI_CONTAINERS"] = "true"
 os.environ["NOVAMIND_SKIP_APP_INIT"] = "true"
-os.environ["APP_ENV"] = "test"
+os.environ["ENVIRONMENT"] = "test"
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -183,26 +188,12 @@ class MockSettings:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    """Create an httpx test client for the FastAPI app."""
-    # mock_problematic_imports is now autouse=True, no need for explicit context manager
-    
-    # Dynamically create the app instance
-    from app.main import create_application
-    # Correct the import path for get_settings to the canonical location
-    # from app.config.settings import get_settings # Already imported above
-    
-    # Import entities using the correct Core path
-    from app.core.domain.entities.user import User, UserRole # Import User entities
-    from app.core.domain.entities.patient import Patient # Import Patient entities
-
+async def async_client(event_loop) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Provides an asynchronous test client for the FastAPI application.
+    Configures test-specific settings and overrides dependencies like JWTService.
+    """
     # --- Define Test Settings ---
-    # Assuming TEST_DATABASE_URL is defined globally or accessible
-    # If not, define it here or ensure it's available
-    global TEST_DATABASE_URL
-    TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
-    TEST_SECRET = "testsecret" # Use a consistent test secret
-
     def get_test_settings() -> Settings:
          # Return a Settings instance configured for tests
          # Ensure necessary imports (Settings, SecretStr) are available
@@ -221,28 +212,59 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
         )
 
     # --- Define Test JWT Service ---
-    # NOTE: Assuming the dependency key used in the app is IJwtService
-    # If it uses JWTService directly or another key, adjust the override below.
     def get_test_jwt_service(settings: Settings = Depends(get_test_settings)) -> IJwtService:
         # Initialize JWTService with the test settings
-        # Pass None for user_repository if it's not needed or mock it
-        return JWTService(settings=settings, user_repository=None)
+        # Pass None for user_repository as it's likely not needed for basic token ops in tests
+        # If user repo IS needed by JWT service logic you intend to test via this mock,
+        # provide a mock repository instead of None.
+        return JWTService(settings=settings, user_repository=None) # Use None or a mock repo
+
+    # --- Define Test Authentication Service Mock ---
+    def get_mock_authentication_service() -> AuthenticationService:
+        mock_auth_service = AsyncMock(spec=AuthenticationService)
+
+        # Configure the mock validate_token method
+        async def mock_validate_token(token: str) -> tuple[User, list[str]] | None:
+            # Basic validation logic for tests:
+            # If token is "valid-token", return a mock user and roles.
+            # Otherwise, return None (or raise specific exceptions if needed).
+            # You can customize this based on test needs.
+            if token and token != "invalid-token": # Check for non-empty token
+                 # Create a mock User object or use a simple dictionary/dataclass
+                 mock_user = MagicMock(spec=User)
+                 mock_user.id = "test-user-id"
+                 mock_user.username = "testuser"
+                 mock_user.email = "test@example.com"
+                 # Add other essential User attributes as needed by your application logic
+                 
+                 # Define roles based on token or test context
+                 # This might need adjustment based on how your actual validate_token works
+                 roles = ["patient"] # Default role for testing
+                 if token == "provider-token": # Example for different role
+                     roles = ["provider", "clinician"]
+                 return (mock_user, roles)
+            return None # Token is invalid or missing
+
+        mock_auth_service.validate_token = mock_validate_token
+        # Mock other AuthenticationService methods if they are called during the request lifecycle
+        # Example: mock_auth_service.get_user_by_id = AsyncMock(return_value=...)
+
+        return mock_auth_service
+
 
     # --- Define Dependency Overrides ---
     dependency_overrides = {
         get_settings: get_test_settings,
-        # Override the dependency that provides the JWT service in the app
-        # Replace IJwtService with the actual dependency key if different
-        IJwtService: get_test_jwt_service
+        IJwtService: get_test_jwt_service,
+        get_authentication_service: get_mock_authentication_service
     }
+    
+    from app.main import create_application
     
     app = create_application(dependency_overrides=dependency_overrides)
 
-    # Remove the unused mock JWT functions below this point
-    # async def default_decode_token... etc. are no longer needed here
-    # as we are injecting a real, test-configured JWTService.
-
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    # Correct initialization using ASGITransport
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         yield client
 
 # Fixtures for generating tokens using the *correct* test secret

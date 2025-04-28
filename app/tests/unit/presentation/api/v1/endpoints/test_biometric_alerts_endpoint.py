@@ -364,18 +364,17 @@ def sample_alert(sample_rule, sample_data_point):
     """Create a sample biometric alert."""
 
     return BiometricAlert(
-        alert_id=uuid4(),  
+        alert_id=uuid4(),
         patient_id=sample_data_point.patient_id,
-        rule_id=sample_rule["rule_id"],
+        rule_id=uuid4(),
         rule_name=sample_rule["name"],
-        # Use the domain Enum member directly
         priority=AlertPriority.HIGH,
         data_point=sample_data_point,
         message="Heart rate 120.0 exceeds threshold of 100.0",
         context={},
-        created_at=datetime.now(UTC),  
-        updated_at=datetime.now(UTC),  
-        status=AlertStatus.NEW,  
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        status=AlertStatus.NEW,
     )
 
 @pytest.mark.db_required()  

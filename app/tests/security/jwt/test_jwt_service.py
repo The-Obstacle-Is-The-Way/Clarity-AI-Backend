@@ -6,8 +6,10 @@ import pytest
 import uuid 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 from typing import Any, Dict
+
+from pydantic import SecretStr # Import SecretStr
 
 from app.config.settings import Settings # Import Settings
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
@@ -17,14 +19,18 @@ from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
 def mock_settings() -> MagicMock:
     """Provides mock settings for JWT service tests."""
     settings = MagicMock(spec=Settings)
-    settings.JWT_SECRET_KEY = "test-secret-for-service-test-32-bytes"
+    
+    # Mock JWT_SECRET_KEY to behave like SecretStr
+    mock_jwt_secret = MagicMock(spec=SecretStr)
+    mock_jwt_secret.get_secret_value.return_value = "test-secret-for-service-test-32-bytes"
+    type(settings).JWT_SECRET_KEY = PropertyMock(return_value=mock_jwt_secret) # Use PropertyMock
+
     settings.JWT_ALGORITHM = "HS256"
     settings.ACCESS_TOKEN_EXPIRE_MINUTES = 15
     settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
     settings.JWT_ISSUER = "test_issuer_service"
     settings.JWT_AUDIENCE = "test_audience_service"
-    settings.SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY
-    settings.JWT_SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY
+    
     return settings
 
 @pytest.fixture

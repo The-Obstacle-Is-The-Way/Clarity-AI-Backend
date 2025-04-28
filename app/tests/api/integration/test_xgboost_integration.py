@@ -8,8 +8,9 @@ the entire API flow functions as expected.
 
 import json
 import pytest
+import pytest_asyncio
 from datetime import datetime
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock
 from fastapi import status, FastAPI
 
@@ -26,12 +27,9 @@ from app.presentation.api.v1.schemas.xgboost_schemas import (
     RiskPredictionRequest, TreatmentResponseRequest
 )
 
-# --- Authentication Mocking (Keep as is or adapt to project structure) ---
-# Assuming a simple bearer token check for these tests
-# In a real scenario, use a more robust mock matching your auth system
+# Mock the dependency
 async def mock_verify_provider_access():
-    """Mock dependency to bypass actual auth checks."""
-    return {"sub": "test-clinician", "role": "clinician"} # Example user payload
+    return {"sub": "test_provider", "scopes": ["xgboost:predict"]}
 
 # Fixture for the mock service instance
 @pytest.fixture
@@ -41,8 +39,8 @@ def mock_service():
     return MockXGBoostService()
 
 # Refactored test client fixture
-@pytest.fixture
-def client(mock_service: MockXGBoostService) -> AsyncClient:
+@pytest_asyncio.fixture
+async def client(mock_service: MockXGBoostService) -> AsyncClient:
     """Create a test client for making HTTP requests."""
     app = FastAPI()
 
@@ -60,8 +58,10 @@ def client(mock_service: MockXGBoostService) -> AsyncClient:
     # Include the router
     app.include_router(xgboost_router, prefix="/api/v1/xgboost")
 
-    # Create and return the AsyncClient - direct return for simpler test structure
-    return AsyncClient(app=app, base_url="http://test")
+    # Return the AsyncClient directly for the test to use
+    # async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client_instance:
+    #     yield client_instance # Incorrect pattern for this use case
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
 @pytest.mark.integration
