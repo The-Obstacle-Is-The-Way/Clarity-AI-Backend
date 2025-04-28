@@ -25,8 +25,6 @@ from app.domain.exceptions import (
     PermissionDeniedError
 )
 from app.domain.entities.user import User
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.config.settings import Settings, settings  
 from app.infrastructure.logging.logger import get_logger
 
@@ -34,55 +32,55 @@ logger = get_logger(__name__)
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """
-    Middleware that extracts and validates JWT tokens from the request headers.
-    It also handles authentication-related errors and public path access.
+    Middleware checks if a path is public. Authentication and user loading
+    are handled by FastAPI dependencies injected into route handlers
+    (e.g., `Depends(get_current_user)`).
     """
     
     def __init__(
-        self, 
+        self,
         app: FastAPI,
-        auth_service: AuthenticationService,
         settings: Settings = None,
         public_paths: Optional[Union[List[str], Set[str]]] = None,
         public_path_regex: Optional[List[str]] = None,
     ):
         """
         Initialize the authentication middleware.
-        
+
         Args:
             app: FastAPI application
-            auth_service: Authentication service (expected to have correct jwt_service injected)
             settings: Application settings
-            public_paths: List or set of paths that don't require authentication
-            public_path_regex: List of regex patterns for paths that don't require authentication
+            public_paths: List or set of paths that don't require authentication checks by this middleware.
+            public_path_regex: List of regex patterns for public paths.
         """
         super().__init__(app)
-        self.auth_service = auth_service
-        # Use global settings if none provided
         self.settings = settings or Settings()
-        
+
         # Initialize public paths - convert to list if it's a set
         self.public_paths: List[str] = list(public_paths) if public_paths else []
-        
-        # Add default public paths
+
+        # Add default public paths (ensure consistency)
         default_public_paths = [
-            "/",
+            "/", # Root path often public
             "/docs",
             "/redoc",
             "/openapi.json",
             "/health",
-            "/metrics",
-            "/api/auth/login",
-            "/api/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/register",
+            "/metrics", # Prometheus metrics often public
+            # Consider if login/register should be handled by route logic instead
+            # "/api/auth/login",
+            # "/api/auth/register",
+            f"{self.settings.API_V1_STR}/auth/login",
+            f"{self.settings.API_V1_STR}/auth/refresh", # Refresh token endpoint needs specific handling maybe
+            f"{self.settings.API_V1_STR}/auth/register",
         ]
-        
-        # Add default paths that aren't already in public_paths
+
+        # Add default paths that aren't already explicitly listed
         for path in default_public_paths:
-            if path not in self.public_paths:
+            normalized_path = path.rstrip('/') # Normalize trailing slashes for comparison
+            if normalized_path not in [p.rstrip('/') for p in self.public_paths]:
                 self.public_paths.append(path)
-        
+
         # Compile regex patterns for faster matching
         self.public_path_patterns: List[re.Pattern] = []
         if public_path_regex:
@@ -91,200 +89,107 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     self.public_path_patterns.append(re.compile(pattern))
                 except re.error as e:
                     logger.warning(f"Invalid regex pattern for public path: {pattern}, error: {e}")
-                
-        # Ensure all public paths start with "/"
-        for i, path in enumerate(self.public_paths):
-            if not path.startswith("/"):
-                self.public_paths[i] = f"/{path}"
-                
-        logger.info(f"AuthenticationMiddleware initialized with {len(self.public_paths)} public paths")
+
+        # Ensure all public paths start with "/" for consistency
+        self.public_paths = [f"/{path.lstrip('/')}" for path in self.public_paths]
+
+        logger.info(f"AuthenticationMiddleware initialized. Public paths: {self.public_paths}")
+        if self.public_path_patterns:
+             logger.info(f"Public path regex patterns: {[p.pattern for p in self.public_path_patterns]}")
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process the request, extract and validate JWT token, and attach user to request state.
-        
+        Processes the request. If the path is not public, it proceeds to the next handler.
+        Actual authentication and user loading are deferred to FastAPI dependencies
+        applied at the route level.
+
         Args:
-            request: The incoming request
-            call_next: The next middleware to call
-            
+            request: The incoming request.
+            call_next: The next middleware or route handler.
+
         Returns:
-            The response from the route handler
+            The response from the next handler in the chain.
         """
-        # Log request (without PHI) for audit trail
         path = request.url.path
         method = request.method
         client_host = request.client.host if request.client else "unknown"
-        logger.debug(f"Request: {method} {path} from {client_host}")
-        
-        # Skip authentication for public paths
+        # Use DEBUG level for potentially high-volume path logging
+        logger.debug(f"Request received: {method} {path} from {client_host}")
+
+        # Check if the path is considered public by this middleware's rules
         if await self._is_public_path(path):
-            logger.debug(f"Skipping authentication for public path: {path}")
-            return await call_next(request)
-        # Skip authentication for MentaLLaMA endpoints (open API for ML)
+            logger.debug(f"Path is public: {path}. Skipping middleware auth checks.")
+            # Proceed without attaching user or validating token here
+            response = await call_next(request)
+            return response
+
+        # Check for MentaLLaMA endpoints (assuming specific logic)
         ml_prefix = f"{self.settings.API_V1_STR}/mentallama"
         if path.startswith(ml_prefix):
-            logger.debug(f"Skipping authentication for ML path: {path}")
-            return await call_next(request)
-        # Allow a predefined stub token for certain tests
+            logger.debug(f"Path is ML endpoint: {path}. Skipping middleware auth checks.")
+            response = await call_next(request)
+            return response
+
+        # If the path is not public according to middleware rules,
+        # proceed to the next handler. Authentication will be enforced
+        # by route-level dependencies (e.g., Depends(get_current_user)) if applied.
+        logger.debug(f"Path is not public: {path}. Proceeding to next handler/route dependency checks.")
+
+        # --- Removed Authentication Logic ---
+        # The try/except block handling token extraction, validation,
+        # and setting request.state.user/permissions is removed.
+        # FastAPI's dependency injection will handle this for protected routes.
+        # --- End Removed Authentication Logic ---
+        
+        # >>> Allow VALID_PATIENT_TOKEN stub through for tests, potentially handled by get_current_user later <<<
         auth_header = request.headers.get("Authorization")
         if auth_header:
             parts = auth_header.split()
-            # parts[0] should be 'Bearer', parts[1] the token
             if len(parts) == 2 and parts[1] == "VALID_PATIENT_TOKEN":
-                # Attach dummy user and permissions for stub token
-                request.state.user = None
-                request.state.permissions = []
-                request.state.token = parts[1]
-                return await call_next(request)
-            
+                logger.info("Detected VALID_PATIENT_TOKEN stub. Proceeding for dependency check.")
+                # No need to set request.state here; let the dependency handle it if needed.
+
+        # Proceed to the actual route handler or next middleware
         try:
-            # Extract token from Authorization header
-            token = await self._extract_token(request)
-            if not token:
-                raise MissingTokenError("Authentication token is missing")
-                
-            # Validate token and get user
-            user, permissions = await self.auth_service.validate_token(token)
-            
-            # Attach user and permissions to request state
-            request.state.user = user
-            request.state.permissions = permissions
-            request.state.token = token  # Store token for potential use in handlers
-            
-            # Process the request
-            response = await call_next(request)
-            return response
-            
-        except MissingTokenError as e:
-            # Authentication required but token is missing
-            logger.warning(f"Authentication failed: {str(e)}")
-            return self._create_error_response(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Authentication required",
-                error_code="AUTHENTICATION_REQUIRED"
-            )
-            
-        except TokenExpiredError as e:
-            # Token has expired
-            logger.info(f"Authentication failed: Token expired for request to {path}")
-            return self._create_error_response(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Authentication token has expired",
-                error_code="TOKEN_EXPIRED"
-            )
-            
-        except InvalidTokenError as e:
-            # Token is invalid
-            logger.warning(f"Authentication failed: Invalid token for request to {path}")
-            return self._create_error_response(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication token",
-                error_code="INVALID_TOKEN"
-            )
-            
-        except AuthenticationError as e:
-            # General authentication error
-            logger.warning(f"Authentication failed: {str(e)}")
-            return self._create_error_response(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed",
-                error_code="AUTHENTICATION_FAILED"
-            )
-            
-        except PermissionDeniedError as e:
-            # User doesn't have necessary permissions
-            logger.warning(f"Permission denied: {str(e)}")
-            return self._create_error_response(
-                status_code=HTTP_403_FORBIDDEN,
-                detail="Permission denied",
-                error_code="PERMISSION_DENIED"
-            )
-            
+             response = await call_next(request)
         except Exception as e:
-            # Unexpected error
-            logger.error(f"Unexpected error during authentication: {str(e)}", exc_info=True)
-            return self._create_error_response(
-                status_code=HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed due to an unexpected error",
-                error_code="AUTHENTICATION_ERROR"
-            )
+             # Catch potential downstream exceptions for logging, but re-raise
+             # unless specific middleware error handling is intended here.
+             # This simple version focuses on the public path check.
+             logger.error(f"Error during downstream processing for {method} {path}: {e}", exc_info=True)
+             # Re-raise the original exception unless specific handling is needed
+             raise e 
+        
+        return response
 
     async def _is_public_path(self, path: str) -> bool:
         """
-        Check if the path is public (doesn't require authentication).
-        
+        Check if the path is public based on exact matches or regex patterns.
+
         Args:
-            path: The request path
-            
+            path: The request path.
+
         Returns:
-            True if the path is public, False otherwise
+            True if the path is considered public, False otherwise.
         """
-        # Check exact path matches
-        if path in self.public_paths:
+        normalized_path = path.rstrip('/') # Normalize trailing slash for matching
+
+        # Check exact path matches (case-sensitive, normalized)
+        if normalized_path in [p.rstrip('/') for p in self.public_paths]:
+            logger.debug(f"Path matched public list (normalized): {path}")
             return True
-            
-        # Check OpenAPI paths
+
+        # Check standard FastAPI UI paths explicitly
+        # (Ensure these are covered even if not in configured list)
         if path in ["/docs", "/redoc", "/openapi.json"] or path.startswith("/static/"):
-            return True
-            
-        # Check regex patterns
+             logger.debug(f"Path matched standard UI/static path: {path}")
+             return True
+        
+        # Check regex patterns against the original path
         for pattern in self.public_path_patterns:
             if pattern.match(path):
+                logger.debug(f"Path matched public regex pattern '{pattern.pattern}': {path}")
                 return True
-                
+
+        logger.debug(f"Path did not match any public criteria: {path}")
         return False
-
-    async def _extract_token(self, request: Request) -> Optional[str]:
-        """
-        Extract the JWT token from the Authorization header.
-        
-        Args:
-            request: The incoming request
-            
-        Returns:
-            The JWT token if found, None otherwise
-        """
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return None
-            
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            return None
-            
-        token = parts[1]
-        return token
-
-    def _create_error_response(
-        self, 
-        status_code: int, 
-        detail: str, 
-        error_code: str
-    ) -> JSONResponse:
-        """
-        Create a standardized error response.
-        
-        Args:
-            status_code: HTTP status code
-            detail: Error detail message
-            error_code: Error code for client reference
-            
-        Returns:
-            JSONResponse with error details
-        """
-        content = {
-            "status": "error",
-            "code": error_code,
-            "message": detail,
-        }
-        
-        response = JSONResponse(
-            status_code=status_code,
-            content=content
-        )
-        
-        # Add WWW-Authenticate header for 401 responses
-        if status_code == HTTP_401_UNAUTHORIZED:
-            response.headers["WWW-Authenticate"] = f'Bearer realm="{self.settings.API_TITLE}", error="{error_code}"'
-            
-        return response

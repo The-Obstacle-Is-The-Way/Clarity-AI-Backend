@@ -6,40 +6,37 @@ Authentication related dependencies.
 import logging
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 
 # Domain/Infrastructure Services & Repositories
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.jwt.exceptions import TokenExpiredError, InvalidTokenError
+from app.infrastructure.security.auth.exceptions import AuthenticationError
 from app.infrastructure.security.password.password_handler import PasswordHandler
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SqlAlchemyUserRepository
 from app.domain.repositories.user_repository import UserRepository
 from app.core.config import settings # Added for JWT settings
 from app.core.domain.entities.user import User # Added for get_current_user
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.infrastructure.database.session import get_db # Assuming get_db provides AsyncSession
 
 logger = logging.getLogger(__name__)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 # Dependency provider for PasswordHandler (assuming simple instantiation)
 def get_password_handler() -> PasswordHandler:
     """Provides a PasswordHandler instance."""
+    logger.debug("Resolving PasswordHandler dependency.")
     return PasswordHandler()
 
 # Placeholder provider for UserRepository
 # This should be replaced with a real provider that yields an actual implementation
 # possibly depending on a database session (e.g., Depends(get_db_session))
-async def get_user_repository() -> UserRepository:
-    """Placeholder dependency provider for UserRepository."""
-    # In a real application, this would return an instance of UserRepositoryImpl
-    # For now, raise error or return a mock if needed outside tests.
-    # Tests should override this provider.
-    logger.warning("Using placeholder get_user_repository provider.")
-    # Option 1: Raise error if called outside test override
-    raise NotImplementedError("UserRepository implementation/provider not fully configured.")
-    # Option 2: Return a basic mock (less safe, might hide issues)
-    # from unittest.mock import AsyncMock
-    # return AsyncMock(spec=UserRepository)
+async def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    """Provides an instance of SqlAlchemyUserRepository bound to the request's DB session."""
+    logger.debug("Resolving UserRepository dependency (SqlAlchemy).")
+    return SqlAlchemyUserRepository(session=db)
 
 # Moved get_jwt_service definition BEFORE get_authentication_service and get_current_user
 def get_jwt_service() -> JWTService:
@@ -72,49 +69,89 @@ def get_authentication_service(
 
 # Dependency to get the current user from token (depends on get_jwt_service)
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    jwt_service: JWTService = Depends(get_jwt_service), # Now defined above
-    user_repo: UserRepository = Depends(get_user_repository)
+    token: str = Depends(get_token_from_header), # Use new extractor
+    auth_service: AuthenticationService = Depends(get_authentication_service)
 ) -> User:
     """
-    Dependency to get the current user based on the provided JWT token.
-    Verifies the token and fetches the user from the repository.
+    Dependency to get the current authenticated user based on the token.
+    Uses AuthenticationService to validate the token and retrieve the user.
+    Handles authentication errors by raising appropriate HTTPExceptions.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
-        logger.debug("Attempting to decode token.")
-        payload = jwt_service.decode_token(token)
-        username: Optional[str] = payload.get("sub")
-        if username is None:
-            logger.warning("Token payload missing 'sub' (username).")
-            raise credentials_exception
-        logger.info(f"Token decoded successfully for user: {username}")
-
-    except Exception as e: # Catching generic Exception as decode_token might raise various JWT errors
-        logger.error(f"Token decoding failed: {e}")
-        raise credentials_exception from e
-
-    # In a real application using an ORM or DB session:
-    # user = await user_repo.get_by_username(username=username)
-    # For now, using placeholder logic - this WILL fail if get_user_repository isn't overridden
-    try:
-        logger.debug(f"Attempting to fetch user '{username}' from repository.")
-        user = await user_repo.get_by_username(username=username) # Assumes get_by_username exists
+        logger.debug("Attempting to validate token and retrieve user.")
+        # Validate token and get user using the service
+        user, _ = await auth_service.validate_token(token) # Ignoring permissions for now
         if user is None:
-            logger.warning(f"User '{username}' not found in repository.")
-            raise credentials_exception
-        logger.info(f"Successfully retrieved user '{username}' from repository.")
+            # Should not happen if validate_token raises exceptions properly
+            logger.error("validate_token returned None user without raising error.")
+            raise AuthenticationError("User not found after token validation")
+        
+        logger.info(f"Token validated successfully for user ID: {user.id}")
         return user
-    except NotImplementedError:
-         logger.error("get_user_repository was not overridden, cannot fetch user.")
-         raise credentials_exception # Or a 500 error, as this is a config issue
+    except TokenExpiredError:
+        logger.info("Authentication failed: Token has expired.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token has expired",
+            headers={'WWW-Authenticate': 'Bearer error="invalid_token", error_description="The token has expired."'}
+        )
+    except InvalidTokenError as e:
+        logger.warning(f"Authentication failed: Invalid token. Reason: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid authentication token: {e}",
+            headers={'WWW-Authenticate': 'Bearer error="invalid_token", error_description="The token is invalid."'}
+        )
+    except AuthenticationError as e:
+        # Includes cases like user not found, user inactive, etc., from AuthenticationService
+        logger.warning(f"Authentication failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication failed: {e}",
+            headers={'WWW-Authenticate': 'Bearer error="invalid_grant", error_description="Authentication failed."'} # Consider error type
+        )
     except Exception as e:
-        logger.error(f"Error fetching user '{username}' from repository: {e}")
-        raise credentials_exception
+        # Catch unexpected errors during validation
+        logger.error(f"Unexpected error during token validation/user retrieval: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal error occurred during authentication.",
+        )
+
+# Note: get_jwt_service is likely already defined in jwt_service.py
+# Note: get_user_repository needs to be defined, potentially in a repositories dependency file.
+# For now, assume get_user_repository exists or will be mocked/overridden in tests. 
+
+# Dependency to require admin privileges (using the factory)
+require_admin = require_role("admin")
+
+# Dependency to extract token from header
+async def get_token_from_header(request: Request) -> str:
+    """
+    Extracts the Bearer token from the Authorization header.
+    Raises HTTPException 401 if the header is missing or malformed.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        logger.debug("Authorization header missing.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: Authorization header missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    parts = auth_header.split()
+    if parts[0].lower() != "bearer" or len(parts) != 2:
+        logger.debug(f"Malformed Authorization header: {auth_header}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials: Malformed Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = parts[1]
+    logger.debug("Bearer token extracted successfully.")
+    return token
 
 # Note: get_jwt_service is likely already defined in jwt_service.py
 # Note: get_user_repository needs to be defined, potentially in a repositories dependency file.
