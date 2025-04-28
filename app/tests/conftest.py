@@ -432,37 +432,37 @@ def generate_token(jwt_service):
 
 @pytest.fixture
 def sample_rule():
-    """Create a sample biometric alert rule for testing.
-    
-    This fixture provides a properly structured AlertRule object for use
-    in biometric alert endpoint tests.
-    
-    Returns:
-        AlertRule: A sample alert rule
-    """
-    from app.domain.services.biometric_event_processor import AlertRule, AlertPriority
-    from datetime import datetime, timezone
-    
-    # Create with proper structure following domain entity requirements
-    rule = AlertRule(
-        id=str(uuid.uuid4()),
-        name="Test Heart Rate Alert",
-        description="Alert when heart rate exceeds threshold",
-        patient_id=str(uuid.uuid4()),
-        provider_id=str(uuid.uuid4()),
-        condition="heart_rate > 100",
-        priority=AlertPriority.MEDIUM,
-        is_active=True,
-        notification_channels=["email", "sms"],
-        created_at=datetime.now(timezone.utc).isoformat(),
-        updated_at=datetime.now(timezone.utc).isoformat(),
-        triggered_count=0,
-        last_triggered=None,
-        min_interval_minutes=15
-    )
-    
-    return rule
+    """Provides a sample rule dictionary for testing."""
+    rule_id = str(uuid.uuid4())
+    patient_id = str(uuid.uuid4())  # Using a new UUID for patient_id
+    timestamp = datetime.now(timezone.utc)
 
+    return {
+        "rule_id": rule_id,
+        "name": "Test High Heart Rate Rule",
+        "description": "Alert when heart rate exceeds 120 bpm for 5 mins",
+        "patient_id": patient_id,
+        "priority": "warning",  # Corrected: Use valid enum string value
+        "conditions": [
+            {
+                "metric": "heart_rate",
+                "operator": "GREATER_THAN", # Should match ComparatorOperatorEnum
+                "threshold": 120.0,
+                "duration_minutes": 5
+            }
+        ],
+        "logical_operator": "AND", # Should match LogicalOperatorEnum
+        "is_active": True,
+        "created_by": "test_user_1",
+        "updated_by": "test_user_1",
+        "created_at": timestamp.isoformat(),
+        "updated_at": timestamp.isoformat()
+    }
+
+@pytest.fixture
+def sample_patient_id() -> uuid.UUID:
+    """Provides a sample patient UUID for testing."""
+    return uuid.uuid4()
 
 @pytest.fixture
 def mock_biometric_event_processor():
