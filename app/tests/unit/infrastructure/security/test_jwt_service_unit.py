@@ -156,19 +156,15 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_token_expired(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
         """Test validation of an expired token."""
-        # Create a token that expires immediately
+        # Create a token that is already expired
         expired_token = await jwt_service.create_access_token(
             data=user_claims,
-            expires_delta_minutes=0 # Expire almost immediately
+            expires_delta_minutes=-1 # Ensure it's expired relative to frozen time
         )
 
-        # Wait a bit to ensure it's expired
-        time.sleep(0.1) 
-        
-        # Fast-forward time past expiry
-        with freeze_time("2025-03-27 12:00:05"):
-            with pytest.raises(TokenExpiredException):
-                await jwt_service.decode_token(expired_token)
+        # No need to sleep or fast-forward time, decode should fail immediately
+        with pytest.raises(TokenExpiredException):
+            await jwt_service.decode_token(expired_token)
 
 
     @pytest.mark.asyncio
@@ -191,7 +187,7 @@ class TestJWTService:
 
         with pytest.raises(InvalidTokenException) as exc_info:
             await jwt_service.decode_token(invalid_token)
-        assert "Not enough segments" in str(exc_info.value) or "Invalid token format" in str(exc_info.value)
+        assert "Invalid header string" in str(exc_info.value) or "Not enough segments" in str(exc_info.value)
 
 
     @freeze_time("2025-03-27 12:00:00")
@@ -200,14 +196,14 @@ class TestJWTService:
         """Test that the token expiry time matches the expected duration."""
         token = await jwt_service.create_access_token(data=user_claims)
         
+        # Decode the token to check expiry
         payload = await jwt_service.decode_token(token)
         
-        # Check that expiry is correct
-        expected_expiry_ts = (datetime.now(UTC) + datetime.timedelta(minutes=TEST_ACCESS_EXPIRE_MINUTES)).timestamp()
-        actual_expiry_ts = payload.exp
+        # Calculate expected expiry timestamp
+        expected_expiry_ts = (datetime.datetime.now(UTC) + datetime.timedelta(minutes=TEST_ACCESS_EXPIRE_MINUTES)).timestamp()
         
-        # Allow 1 second tolerance for test execution time
-        assert abs(expected_expiry_ts - actual_expiry_ts) < 2 # Increased tolerance slightly
+        # Allow for a small delta (e.g., 1 second) due to processing time
+        assert payload.exp == pytest.approx(expected_expiry_ts, abs=1)
 
 
     @pytest.mark.asyncio
@@ -229,7 +225,26 @@ class TestJWTService:
             await jwt_service.decode_token(token_wrong_aud) 
         assert "Invalid audience" in str(exc_info.value)
 
-    # Add more tests as needed, e.g., for issuer validation, blacklisting, etc.
+    @pytest.mark.asyncio
+    async def test_token_issuer_validation(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+        """Test token issuer validation."""
+        # Test with correct issuer
+        token_correct_iss = await jwt_service.create_access_token(data=user_claims)
+        payload_correct = await jwt_service.decode_token(token_correct_iss) # Should succeed
+        assert payload_correct.iss == TEST_ISSUER
+
+        # Test with incorrect issuer by temporarily changing settings
+        original_issuer = jwt_service.issuer
+        jwt_service.issuer = "wrong_issuer"
+        token_wrong_iss = await jwt_service.create_access_token(data=user_claims)
+        jwt_service.issuer = original_issuer # Restore
+
+        with pytest.raises(InvalidTokenException) as exc_info:
+             # Decode with original service settings (expecting TEST_ISSUER)
+            await jwt_service.decode_token(token_wrong_iss) 
+        assert "Invalid issuer" in str(exc_info.value)
+
+    # Add more tests as needed, e.g., for blacklisting, etc.
 
     # @pytest.mark.skip(reason="Refresh token family tracking not implemented directly in JWTService")
     # @pytest.mark.asyncio
