@@ -1,0 +1,1139 @@
+openapi: 3.1.0
+info:
+  title: NOVAMIND API
+  description: |
+    HIPAA-compliant API for the NOVAMIND concierge psychiatric platform with Digital Twin technology.
+    
+    This API provides secure access to patient data, clinical assessments, digital twin functionality, 
+    and administrative features while maintaining strict HIPAA compliance and data security.
+  version: 1.0.0
+  contact:
+    name: NOVAMIND Support
+    email: support@novamind.example.com
+  license:
+    name: Proprietary
+    url: https://novamind.example.com/license
+
+servers:
+  - url: https://api.novamind.example.com/v1
+    description: Production API Server
+  - url: https://staging-api.novamind.example.com/v1
+    description: Staging API Server
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+
+tags:
+  - name: Authentication
+    description: Authentication and authorization endpoints
+  - name: Patients
+    description: Patient management endpoints
+  - name: Providers
+    description: Provider management endpoints
+  - name: Digital Twin
+    description: Digital Twin functionality endpoints
+  - name: Appointments
+    description: Appointment scheduling endpoints
+  - name: Assessments
+    description: Clinical assessment endpoints
+  - name: Medications
+    description: Medication management endpoints
+  - name: Admin
+    description: Administrative endpoints
+
+paths:
+  /auth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Obtain JWT access token
+      description: Authenticate user and obtain JWT access token
+      operationId: createToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecureP@ssw0rd
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Obtain new access token using refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+
+  /patients:
+    get:
+      tags:
+        - Patients
+      summary: List patients
+      description: Get a paginated list of patients
+      operationId: listPatients
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: search
+          in: query
+          description: Search term for patient name or ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PatientSummary'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  pages:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+        - staff
+
+    post:
+      tags:
+        - Patients
+      summary: Create patient
+      description: Create a new patient record
+      operationId: createPatient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientCreate'
+      responses:
+        '201':
+          description: Patient created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+
+  /patients/{patientId}:
+    get:
+      tags:
+        - Patients
+      summary: Get patient
+      description: Get detailed patient information
+      operationId: getPatient
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+        - staff
+        - patient
+
+    put:
+      tags:
+        - Patients
+      summary: Update patient
+      description: Update patient information
+      operationId: updatePatient
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientUpdate'
+      responses:
+        '200':
+          description: Patient updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+
+  /digital-twin/{patientId}:
+    get:
+      tags:
+        - Digital Twin
+      summary: Get digital twin
+      description: Get patient's digital twin data
+      operationId: getDigitalTwin
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigitalTwin'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+        - patient
+
+  /digital-twin/{patientId}/symptom-forecast:
+    get:
+      tags:
+        - Digital Twin
+      summary: Get symptom forecast
+      description: Get patient's symptom forecast from digital twin
+      operationId: getSymptomForecast
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: days
+          in: query
+          description: Number of days to forecast
+          required: false
+          schema:
+            type: integer
+            default: 14
+            minimum: 1
+            maximum: 90
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymptomForecast'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+        - patient
+
+  /digital-twin/{patientId}/biometric-correlations:
+    get:
+      tags:
+        - Digital Twin
+      summary: Get biometric correlations
+      description: Get patient's biometric correlations with mental health indicators
+      operationId: getBiometricCorrelations
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricCorrelations'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+        - patient
+
+  /digital-twin/{patientId}/pharmacogenomics:
+    get:
+      tags:
+        - Digital Twin
+      summary: Get pharmacogenomics data
+      description: Get patient's pharmacogenomics data and medication recommendations
+      operationId: getPharmacogenomics
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pharmacogenomics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+        - patient
+
+  /digital-twin/{patientId}/refresh:
+    post:
+      tags:
+        - Digital Twin
+      summary: Refresh digital twin
+      description: Refresh patient's digital twin with latest data
+      operationId: refreshDigitalTwin
+      parameters:
+        - name: patientId
+          in: path
+          description: ID of the patient
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Digital twin refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+      x-roles-allowed:
+        - admin
+        - provider
+
+components:
+  schemas:
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserSummary'
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum:
+              - admin
+              - provider
+              - patient
+              - staff
+              - researcher
+
+    PatientSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        mrn:
+          type: string
+          description: Medical Record Number
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          type: string
+        primary_diagnosis:
+          type: string
+        provider_id:
+          type: string
+          format: uuid
+        provider_name:
+          type: string
+        last_visit_date:
+          type: string
+          format: date-time
+        next_appointment:
+          type: string
+          format: date-time
+
+    PatientCreate:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - date_of_birth
+        - gender
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        middle_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+            - male
+            - female
+            - non-binary
+            - other
+            - prefer not to say
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address_line1:
+          type: string
+        address_line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip_code:
+          type: string
+        country:
+          type: string
+          default: USA
+        primary_diagnosis:
+          type: string
+        provider_id:
+          type: string
+          format: uuid
+        insurance_provider:
+          type: string
+        insurance_id:
+          type: string
+        emergency_contact_name:
+          type: string
+        emergency_contact_phone:
+          type: string
+        emergency_contact_relationship:
+          type: string
+
+    PatientUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        middle_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address_line1:
+          type: string
+        address_line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip_code:
+          type: string
+        country:
+          type: string
+        primary_diagnosis:
+          type: string
+        provider_id:
+          type: string
+          format: uuid
+        insurance_provider:
+          type: string
+        insurance_id:
+          type: string
+        emergency_contact_name:
+          type: string
+        emergency_contact_phone:
+          type: string
+        emergency_contact_relationship:
+          type: string
+
+    PatientDetail:
+      allOf:
+        - $ref: '#/components/schemas/PatientSummary'
+        - type: object
+          properties:
+            middle_name:
+              type: string
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+            address_line1:
+              type: string
+            address_line2:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            zip_code:
+              type: string
+            country:
+              type: string
+            insurance_provider:
+              type: string
+            insurance_id:
+              type: string
+            emergency_contact_name:
+              type: string
+            emergency_contact_phone:
+              type: string
+            emergency_contact_relationship:
+              type: string
+            medications:
+              type: array
+              items:
+                $ref: '#/components/schemas/MedicationSummary'
+            diagnoses:
+              type: array
+              items:
+                $ref: '#/components/schemas/DiagnosisSummary'
+            allergies:
+              type: array
+              items:
+                type: string
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    MedicationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        dosage:
+          type: string
+        frequency:
+          type: string
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        prescriber_id:
+          type: string
+          format: uuid
+        prescriber_name:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - discontinued
+            - completed
+
+    DiagnosisSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: ICD-10 code
+        description:
+          type: string
+        date_diagnosed:
+          type: string
+          format: date
+        diagnosing_provider_id:
+          type: string
+          format: uuid
+        diagnosing_provider_name:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - resolved
+            - in_remission
+
+    DigitalTwin:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patient_id:
+          type: string
+          format: uuid
+        symptom_forecast_accuracy:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        biometric_correlation_strength:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        pharmacogenomic_match:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        clinical_assessments_count:
+          type: integer
+        biometric_readings_count:
+          type: integer
+        medication_events_count:
+          type: integer
+        genetic_markers_count:
+          type: integer
+        cognitive_assessments_count:
+          type: integer
+        clinical_insights:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalInsight'
+        treatment_recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreatmentRecommendation'
+        symptom_severity_scores:
+          type: array
+          items:
+            type: number
+            format: float
+        functional_improvement_scores:
+          type: array
+          items:
+            type: number
+            format: float
+        treatment_response_dates:
+          type: array
+          items:
+            type: string
+            format: date
+        last_updated:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ClinicalInsight:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+        date:
+          type: string
+          format: date
+        source:
+          type: string
+          enum:
+            - symptom_forecast
+            - biometric_correlation
+            - pharmacogenomic
+            - clinical_assessment
+
+    TreatmentRecommendation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        category:
+          type: string
+          enum:
+            - medication
+            - therapy
+            - lifestyle
+            - monitoring
+        evidence_level:
+          type: string
+          enum:
+            - high
+            - moderate
+            - low
+        references:
+          type: array
+          items:
+            type: string
+
+    SymptomForecast:
+      type: object
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+        forecast_date:
+          type: string
+          format: date-time
+        forecast_days:
+          type: integer
+        symptoms:
+          type: array
+          items:
+            $ref: '#/components/schemas/SymptomPrediction'
+        accuracy:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        confidence_interval:
+          type: array
+          items:
+            type: number
+            format: float
+        factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/PredictionFactor'
+
+    SymptomPrediction:
+      type: object
+      properties:
+        symptom:
+          type: string
+        dates:
+          type: array
+          items:
+            type: string
+            format: date
+        severity_scores:
+          type: array
+          items:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 10
+        trend:
+          type: string
+          enum:
+            - improving
+            - worsening
+            - stable
+            - fluctuating
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+
+    PredictionFactor:
+      type: object
+      properties:
+        name:
+          type: string
+        weight:
+          type: number
+          format: float
+        description:
+          type: string
+
+    BiometricCorrelations:
+      type: object
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+        analysis_date:
+          type: string
+          format: date-time
+        correlations:
+          type: array
+          items:
+            $ref: '#/components/schemas/BiometricCorrelation'
+        summary:
+          type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    BiometricCorrelation:
+      type: object
+      properties:
+        biometric:
+          type: string
+        mental_health_indicator:
+          type: string
+        correlation_coefficient:
+          type: number
+          format: float
+          minimum: -1
+          maximum: 1
+        p_value:
+          type: number
+          format: float
+        lag_days:
+          type: integer
+        direction:
+          type: string
+          enum:
+            - positive
+            - negative
+        strength:
+          type: string
+          enum:
+            - strong
+            - moderate
+            - weak
+        description:
+          type: string
+
+    Pharmacogenomics:
+      type: object
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+        analysis_date:
+          type: string
+          format: date-time
+        genetic_markers:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeneticMarker'
+        medication_interactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationInteraction'
+        summary:
+          type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    GeneticMarker:
+      type: object
+      properties:
+        gene:
+          type: string
+        variant:
+          type: string
+        phenotype:
+          type: string
+        clinical_significance:
+          type: string
+          enum:
+            - high
+            - moderate
+            - low
+            - unknown
+        description:
+          type: string
+
+    MedicationInteraction:
+      type: object
+      properties:
+        medication:
+          type: string
+        gene:
+          type: string
+        interaction_type:
+          type: string
+          enum:
+            - efficacy
+            - metabolism
+            - side_effect
+            - contraindication
+        effect:
+          type: string
+          enum:
+            - increased
+            - decreased
+            - normal
+            - unknown
+        severity:
+          type: string
+          enum:
+            - high
+            - moderate
+            - low
+        recommendation:
+          type: string
+        evidence_level:
+          type: string
+          enum:
+            - high
+            - moderate
+            - low
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Number of items per page
+      required: false
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

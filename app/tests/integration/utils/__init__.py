@@ -1,0 +1,29 @@
+"""
+Integration Test Utilities
+
+This package provides a clean, standardized approach to database initialization
+and utilities for integration testing in the Novamind platform.
+
+All database testing infrastructure is centralized in test_db_initializer.py,
+which serves as the single source of truth for test database sessions.
+"""
+
+# Import and expose the standardized test database initializer
+from app.tests.integration.utils.test_db_initializer import (
+    # Database session
+    get_test_db_session,
+    
+    # Test models
+    TestBase,
+    TestUser,
+    TestPatient,
+    
+    # Test data constants
+    TEST_USER_ID,
+    TEST_CLINICIAN_ID,
+    
+    # Helper functions
+    create_test_patient,
+    create_test_users,
+    verify_table_exists
+)

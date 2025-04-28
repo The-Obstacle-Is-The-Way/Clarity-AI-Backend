@@ -1,0 +1,305 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Digital Twin Overview - NOVAMIND{% endblock %}
+
+{% block additional_styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/digital_twin.css') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="digital-twin-container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold">Digital Twin Overview</h1>
+            <p class="lead">Comprehensive psychiatric digital model for {{ patient.first_name }} {{ patient.last_name }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" id="refreshTwinBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="exportReportBtn">
+                    <i class="fas fa-file-export"></i> Export Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Patient Summary Card -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Patient Summary</h5>
+                    <div class="patient-avatar text-center mb-3">
+                        <i class="fas fa-user-circle fa-5x text-primary"></i>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Age:</span>
+                            <strong>{{ patient.age }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Primary Diagnosis:</span>
+                            <strong>{{ patient.primary_diagnosis }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Treatment Duration:</span>
+                            <strong>{{ patient.treatment_duration }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Current Medications:</span>
+                            <strong>{{ patient.medications|length }}</strong>
+                        </li>
+                    </ul>
+                    <div class="mt-3">
+                        <a href="{{ url_for('patients.view', id=patient.id) }}" class="btn btn-sm btn-outline-secondary w-100">
+                            View Full Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Digital Twin Status Card -->
+        <div class="col-md-8 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Digital Twin Status</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="twin-status-item mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Symptom Forecast Accuracy</span>
+                                    <span class="badge bg-success">{{ digital_twin.symptom_forecast_accuracy }}%</span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ digital_twin.symptom_forecast_accuracy }}%" aria-valuenow="{{ digital_twin.symptom_forecast_accuracy }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            <div class="twin-status-item mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Biometric Correlation Strength</span>
+                                    <span class="badge bg-primary">{{ digital_twin.biometric_correlation_strength }}%</span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ digital_twin.biometric_correlation_strength }}%" aria-valuenow="{{ digital_twin.biometric_correlation_strength }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            <div class="twin-status-item">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Pharmacogenomic Match</span>
+                                    <span class="badge bg-info">{{ digital_twin.pharmacogenomic_match }}%</span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ digital_twin.pharmacogenomic_match }}%" aria-valuenow="{{ digital_twin.pharmacogenomic_match }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="twin-data-summary">
+                                <h6 class="text-muted mb-3">Data Points</h6>
+                                <div class="data-point-item d-flex justify-content-between mb-2">
+                                    <span><i class="fas fa-calendar-check text-success"></i> Clinical Assessments</span>
+                                    <strong>{{ digital_twin.clinical_assessments_count }}</strong>
+                                </div>
+                                <div class="data-point-item d-flex justify-content-between mb-2">
+                                    <span><i class="fas fa-heartbeat text-danger"></i> Biometric Readings</span>
+                                    <strong>{{ digital_twin.biometric_readings_count }}</strong>
+                                </div>
+                                <div class="data-point-item d-flex justify-content-between mb-2">
+                                    <span><i class="fas fa-pills text-warning"></i> Medication Events</span>
+                                    <strong>{{ digital_twin.medication_events_count }}</strong>
+                                </div>
+                                <div class="data-point-item d-flex justify-content-between mb-2">
+                                    <span><i class="fas fa-dna text-info"></i> Genetic Markers</span>
+                                    <strong>{{ digital_twin.genetic_markers_count }}</strong>
+                                </div>
+                                <div class="data-point-item d-flex justify-content-between">
+                                    <span><i class="fas fa-brain text-primary"></i> Cognitive Assessments</span>
+                                    <strong>{{ digital_twin.cognitive_assessments_count }}</strong>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <p class="text-muted mb-1">Last Updated</p>
+                                <p class="mb-0"><strong>{{ digital_twin.last_updated }}</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="{{ url_for('digital_twin.symptom_forecast', id=patient.id) }}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-chart-line"></i> Symptom Forecast
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('digital_twin.biometrics', id=patient.id) }}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-heartbeat"></i> Biometrics
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('digital_twin.pharmacogenomics', id=patient.id) }}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-dna"></i> Pharmacogenomics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Clinical Insights Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">Clinical Insights</h5>
+                </div>
+                <div class="card-body">
+                    <div class="clinical-insights">
+                        {% for insight in digital_twin.clinical_insights %}
+                        <div class="insight-item mb-3 p-3 rounded {% if insight.severity == 'high' %}bg-danger-subtle{% elif insight.severity == 'medium' %}bg-warning-subtle{% else %}bg-info-subtle{% endif %}">
+                            <div class="d-flex align-items-start">
+                                <div class="insight-icon me-3">
+                                    {% if insight.severity == 'high' %}
+                                    <i class="fas fa-exclamation-triangle text-danger fa-lg"></i>
+                                    {% elif insight.severity == 'medium' %}
+                                    <i class="fas fa-exclamation-circle text-warning fa-lg"></i>
+                                    {% else %}
+                                    <i class="fas fa-info-circle text-info fa-lg"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="insight-content">
+                                    <h6 class="mb-1">{{ insight.title }}</h6>
+                                    <p class="mb-1">{{ insight.description }}</p>
+                                    <div class="insight-meta d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">{{ insight.date }}</small>
+                                        <span class="badge {% if insight.severity == 'high' %}bg-danger{% elif insight.severity == 'medium' %}bg-warning{% else %}bg-info{% endif %}">
+                                            {{ insight.severity|capitalize }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treatment Response Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">Treatment Response</h5>
+                </div>
+                <div class="card-body">
+                    <div class="treatment-response-chart mb-4">
+                        <canvas id="treatmentResponseChart" height="200"></canvas>
+                    </div>
+                    <div class="treatment-recommendations">
+                        <h6 class="mb-3">Recommendations</h6>
+                        <ul class="list-group list-group-flush">
+                            {% for recommendation in digital_twin.treatment_recommendations %}
+                            <li class="list-group-item px-0">
+                                <div class="d-flex">
+                                    <div class="recommendation-icon me-3">
+                                        <i class="fas fa-lightbulb text-warning"></i>
+                                    </div>
+                                    <div>
+                                        <p class="mb-1">{{ recommendation.description }}</p>
+                                        <small class="text-muted">Confidence: {{ recommendation.confidence }}%</small>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+// Treatment Response Chart
+const treatmentResponseCtx = document.getElementById('treatmentResponseChart').getContext('2d');
+const treatmentResponseChart = new Chart(treatmentResponseCtx, {
+    type: 'line',
+    data: {
+        labels: {{ digital_twin.treatment_response_dates|tojson }},
+        datasets: [{
+            label: 'Symptom Severity',
+            data: {{ digital_twin.symptom_severity_scores|tojson }},
+            borderColor: 'rgba(220, 53, 69, 1)',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Functional Improvement',
+            data: {{ digital_twin.functional_improvement_scores|tojson }},
+            borderColor: 'rgba(25, 135, 84, 1)',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false
+            }
+        },
+        scales: {
+            y: {
+                min: 0,
+                max: 100,
+                ticks: {
+                    stepSize: 20
+                }
+            }
+        }
+    }
+});
+
+// Refresh Digital Twin data
+document.getElementById('refreshTwinBtn').addEventListener('click', function() {
+    fetch("{{ url_for('api.refresh_digital_twin', id=patient.id) }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error refreshing Digital Twin: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while refreshing the Digital Twin.');
+    });
+});
+
+// Export Report
+document.getElementById('exportReportBtn').addEventListener('click', function() {
+    window.location.href = "{{ url_for('digital_twin.export_report', id=patient.id) }}";
+});
+</script>
+{% endblock %}

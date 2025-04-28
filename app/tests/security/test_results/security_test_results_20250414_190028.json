@@ -1,0 +1,2386 @@
+{
+  "timestamp": "2025-04-14T19:00:28.739678",
+  "summary": {
+    "total": 288,
+    "passed": 150,
+    "failed": 64,
+    "skipped": 5,
+    "errors": 0
+  },
+  "categories": {
+    "Core Encryption": {
+      "files_found": 2,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/encryption/test_ml_encryption.py",
+          "summary": {
+            "total": 7,
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/encryption/test_encryption.py",
+          "summary": {
+            "total": 8,
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        }
+      ],
+      "tests": {
+        "total": 15,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "PHI Handling": {
+      "files_found": 13,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_ml_phi_security.py",
+          "summary": {
+            "total": 10,
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_log_sanitization.py",
+          "summary": {
+            "total": 9,
+            "passed": 1,
+            "failed": 8,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x10452ad50>\n\n    def test_sanitizer_initialization(self):\n        \"\"\"Test that the PHI sanitizer properly initializes patterns.\"\"\"\n        sanitizer = PHISanitizer()\n>       assert hasattr(sanitizer, 'patterns')\nE       AssertionError: assert False\nE        +  where False = hasattr(<app.core.security.phi_sanitizer.PHISanitizer object at 0x104705550>, 'patterns')\n\nphi/test_log_sanitization.py:56: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x10452b110>\n\n    def test_ssn_sanitization(self):\n        \"\"\"Test that SSNs are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient SSN is 123-45-6789\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"123-45-6789\" not in sanitized\n>       assert \"[REDACTED-SSN]\" in sanitized\nE       AssertionError: assert '[REDACTED-SSN]' in 'Patient SSN is [REDACTED SSN]'\n\nphi/test_log_sanitization.py:65: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1047389d0>\n\n    def test_email_sanitization(self):\n        \"\"\"Test that email addresses are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient email is patient@example.com\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"patient@example.com\" not in sanitized\n>       assert \"[REDACTED-EMAIL]\" in sanitized\nE       AssertionError: assert '[REDACTED-EMAIL]' in 'Patient email is [REDACTED EMAIL]'\n\nphi/test_log_sanitization.py:73: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x104738c30>\n\n    def test_phone_sanitization(self):\n        \"\"\"Test that phone numbers are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient phone is (555) 123-4567\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"(555) 123-4567\" not in sanitized\n>       assert \"[REDACTED-PHONE]\" in sanitized\nE       AssertionError: assert '[REDACTED-PHONE]' in 'Patient phone is ([REDACTED PHONE]'\n\nphi/test_log_sanitization.py:81: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x104723ad0>\n\n    def test_name_sanitization(self):\n        \"\"\"Test that names are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient name is John Smith\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"John Smith\" not in sanitized\n>       assert \"[REDACTED-NAME]\" in sanitized\nE       AssertionError: assert '[REDACTED-NAME]' in 'Patient name is [REDACTED NAME]'\n\nphi/test_log_sanitization.py:89: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1045d9480>\n\n    def test_multiple_phi_sanitization(self):\n        \"\"\"Test that multiple PHI elements in the same log are all sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient John Smith (SSN: 123-45-6789) can be reached at (555) 123-4567 or john.smith@example.com\"\n        sanitized = sanitizer.sanitize(test_log)\n    \n        assert \"John Smith\" not in sanitized\n        assert \"123-45-6789\" not in sanitized\n        assert \"(555) 123-4567\" not in sanitized\n        assert \"john.smith@example.com\" not in sanitized\n    \n>       assert \"[REDACTED-NAME]\" in sanitized\nE       AssertionError: assert '[REDACTED-NAME]' in '[REDACTED NAME] (SSN: [REDACTED SSN]) can be reached at ([REDACTED PHONE] or [REDACTED EMAIL]'\n\nphi/test_log_sanitization.py:102: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1045d96a0>\nlogger_setup = (<Logger test_phi_logger (DEBUG)>, '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmpgoyf1m_y.log')\n\n    def test_sanitizer_integration_with_logger(self, logger_setup):\n        \"\"\"Test the sanitizer's integration with the logging system.\"\"\"\n        logger, log_file = logger_setup\n    \n        # Mock the sanitizer to check it's being called\n        mock_sanitizer = MagicMock()\n        mock_sanitizer.sanitize.return_value = \"SANITIZED LOG MESSAGE\"\n    \n        # Patch the sanitizer in the logging system\n        with patch('app.core.security.phi_sanitizer.PHISanitizer', return_value=mock_sanitizer):\n            # Create a log message with PHI\n            logger.info(\"Patient John Doe with SSN 123-45-6789 has updated their contact info to john.doe@example.com\")\n    \n            # Check that the sanitizer was called\n>           assert mock_sanitizer.sanitize.called\nE           AssertionError: assert False\nE            +  where False = <MagicMock name='mock.sanitize' id='4369442736'>.called\nE            +    where <MagicMock name='mock.sanitize' id='4369442736'> = <MagicMock id='4369438032'>.sanitize\n\nphi/test_log_sanitization.py:121: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "obj = <module 'app.core.security.phi_sanitizer' from '/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/core/security/phi_sanitizer.py'>\nname = 'get_sanitizer', ann = 'app.core.security.phi_sanitizer'\n\n    def annotated_getattr(obj: object, name: str, ann: str) -> object:\n        try:\n>           obj = getattr(obj, name)\nE           AttributeError: module 'app.core.security.phi_sanitizer' has no attribute 'get_sanitizer'. Did you mean: 'PHISanitizer'?\n\n../../../../venv_py313/lib/python3.13/site-packages/_pytest/monkeypatch.py:90: AttributeError\n\nThe above exception was the direct cause of the following exception:\n\nself = <test_log_sanitization.TestLogSanitization object at 0x1045c2850>\nlogger_setup = (<Logger test_phi_logger (DEBUG)>, '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmpwh9e61iu.log')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x104739cd0>\n\n    def test_phi_never_reaches_logs(self, logger_setup, monkeypatch):\n        \"\"\"End-to-end test ensuring PHI doesn't make it to logs.\"\"\"\n        # Set up a real sanitizer that will be used by the logging system\n        real_sanitizer = PHISanitizer()\n    \n        # Patch the system to use our real sanitizer\n>       monkeypatch.setattr(\n            'app.core.security.phi_sanitizer.get_sanitizer',\n            lambda: real_sanitizer\n        )\n\nphi/test_log_sanitization.py:134: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n../../../../venv_py313/lib/python3.13/site-packages/_pytest/monkeypatch.py:104: in derive_importpath\n    annotated_getattr(target, attr, ann=module)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nobj = <module 'app.core.security.phi_sanitizer' from '/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/core/security/phi_sanitizer.py'>\nname = 'get_sanitizer', ann = 'app.core.security.phi_sanitizer'\n\n    def annotated_getattr(obj: object, name: str, ann: str) -> object:\n        try:\n            obj = getattr(obj, name)\n        except AttributeError as e:\n>           raise AttributeError(\n                f\"{type(obj).__name__!r} object at {ann} has no attribute {name!r}\"\n            ) from e\nE           AttributeError: 'module' object at app.core.security.phi_sanitizer has no attribute 'get_sanitizer'\n\n../../../../venv_py313/lib/python3.13/site-packages/_pytest/monkeypatch.py:92: AttributeError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_middleware.py",
+          "summary": {
+            "total": 8,
+            "passed": 5,
+            "failed": 3,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_middleware.TestPHIMiddleware object at 0x1075863f0>\n\n    @pytest.mark.asyncio\n    async def test_sanitize_response_with_phi(self):\n        \"\"\"Test that responses with PHI are sanitized.\"\"\"\n        # Mock request\n        request = self._create_mock_request(\"/api/patients\")\n    \n        # Mock response with PHI\n        phi_response = {\n            \"patient\": {\"name\": \"John Doe\", \"ssn\": \"123-45-6789\"},\n            \"appointment\": {\"date\": \"2023-04-15\"}\n        }\n        response_body = json.dumps(phi_response).encode('utf-8')\n        response = Response(\n            content=response_body,\n            status_code=200,\n            headers={\"content-type\": \"application/json\"}\n        )\n    \n        # Mock call_next to return the response\n        call_next = AsyncMock()\n        call_next.return_value = response\n    \n        # Process the request and get sanitized response\n        sanitized_response = await self.middleware.dispatch(request, call_next)\n    \n        # Check that response body was sanitized\n        sanitized_body = sanitized_response.body.decode('utf-8')\n        sanitized_data = json.loads(sanitized_body)\n    \n        # Verify PHI was redacted\n        assert \"[REDACTED]\" in sanitized_body\n        assert sanitized_data[\"patient\"][\"name\"] == \"[REDACTED]\"\n        assert sanitized_data[\"patient\"][\"ssn\"] == \"[REDACTED]\"\n        # Non-PHI data should remain untouched\n>       assert sanitized_data[\"appointment\"][\"date\"] == \"2023-04-15\"\nE       AssertionError: assert '[REDACTED]' == '2023-04-15'\nE         \nE         - 2023-04-15\nE         + [REDACTED]\n\nphi/test_phi_middleware.py:114: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_middleware.TestPHIMiddleware object at 0x107586650>\n\n    @pytest.mark.asyncio\n    async def test_whitelist_patterns(self):\n        \"\"\"Test that whitelisted patterns are not sanitized.\"\"\"\n        # Create middleware with whitelist\n        middleware = PHIMiddleware(\n            self.app,\n            phi_detector=self.phi_detector,\n            whitelist_patterns={\n                \"/api/allowed\": [\"name\"],\n                \"/api/allowed/*\": [\"ssn\"]\n            }\n        )\n    \n        # Mock request\n        request = self._create_mock_request(\"/api/allowed/123\")\n    \n        # Mock response with PHI in whitelisted fields\n        phi_response = {\n            \"name\": \"John Doe\",  # Should not be sanitized (whitelisted)\n            \"ssn\": \"123-45-6789\",  # Should not be sanitized (whitelisted)\n            \"address\": \"123 Main St, Springfield\"  # Should be sanitized\n        }\n        response_body = json.dumps(phi_response).encode('utf-8')\n        response = Response(\n            content=response_body,\n            status_code=200,\n            headers={\"content-type\": \"application/json\"}\n        )\n    \n        # Mock call_next\n        call_next = AsyncMock()\n        call_next.return_value = response\n    \n        # Process the request\n        sanitized_response = await middleware.dispatch(request, call_next)\n    \n        # Check response body\n        sanitized_body = sanitized_response.body.decode('utf-8')\n        sanitized_data = json.loads(sanitized_body)\n    \n        # Verify whitelisted fields were not sanitized\n>       assert sanitized_data[\"name\"] == \"John Doe\"\nE       AssertionError: assert '[REDACTED]' == 'John Doe'\nE         \nE         - John Doe\nE         + [REDACTED]\n\nphi/test_phi_middleware.py:157: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_middleware.TestPHIMiddleware object at 0x1075c68b0>\n\n    @pytest.mark.asyncio\n    async def test_sanitize_nested_json(self):\n        \"\"\"Test that deeply nested JSON is properly sanitized.\"\"\"\n        # Mock request\n        request = self._create_mock_request(\"/api/patients\")\n    \n        # Mock deeply nested response with PHI\n        phi_response = {\n            \"data\": {\n                \"patients\": [\n                    {\n                        \"profile\": {\n                            \"personal\": {\n                                \"name\": \"John Doe\",\n                                \"contact\": {\n                                    \"email\": \"john.doe@example.com\",\n                                    \"phone\": \"555-123-4567\"\n                                }\n                            }\n                        },\n                        \"medical\": {\n                            \"ssn\": \"123-45-6789\",\n                            \"insurance\": {\n                                \"policy\": \"12345\",\n                                \"provider\": \"Health Co\"\n                            }\n                        }\n                    }\n                ]\n            }\n        }\n        response_body = json.dumps(phi_response).encode('utf-8')\n        response = Response(\n            content=response_body,\n            status_code=200,\n            headers={\"content-type\": \"application/json\"}\n        )\n    \n        # Mock call_next\n        call_next = AsyncMock()\n        call_next.return_value = response\n    \n        # Process the request\n        sanitized_response = await self.middleware.dispatch(request, call_next)\n    \n        # Check response body\n        sanitized_body = sanitized_response.body.decode('utf-8')\n        sanitized_data = json.loads(sanitized_body)\n    \n        # Verify nested PHI was sanitized\n        patient = sanitized_data[\"data\"][\"patients\"][0]\n        assert patient[\"profile\"][\"personal\"][\"name\"] == \"[REDACTED]\"\n        assert patient[\"profile\"][\"personal\"][\"contact\"][\"email\"] == \"[REDACTED]\"\n        assert patient[\"profile\"][\"personal\"][\"contact\"][\"phone\"] == \"[REDACTED]\"\n        assert patient[\"medical\"][\"ssn\"] == \"[REDACTED]\"\n        # Non-PHI data should be unchanged\n        assert patient[\"medical\"][\"insurance\"][\"policy\"] == \"12345\"\n>       assert patient[\"medical\"][\"insurance\"][\"provider\"] == \"Health Co\"\nE       AssertionError: assert '[REDACTED]' == 'Health Co'\nE         \nE         - Health Co\nE         + [REDACTED]\n\nphi/test_phi_middleware.py:283: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_protection.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_mock_phi_detection.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_log_sanitizer.py",
+          "summary": {
+            "total": 11,
+            "passed": 1,
+            "failed": 10,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_case_insensitive_sanitization>\n\n    def test_case_insensitive_sanitization(self):\n        \"\"\"Test that sanitization works regardless of case.\"\"\"\n        log_key = \"mixed_case\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'PATIENT JOHN SMITH has email [REDACTED:email]' != 'PATIENT [REDACTED_NAME] has email [REDACTED_EMAIL]'\nE       - PATIENT JOHN SMITH has email [REDACTED:email]\nE       + PATIENT [REDACTED_NAME] has email [REDACTED_EMAIL]\n\nphi/test_log_sanitizer.py:114: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_hipaa_compliance>\n\n    def test_hipaa_compliance(self):\n        \"\"\"Verify compliance with HIPAA requirements for log sanitization.\"\"\"\n        log_key = \"multiple_phi\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n    \n        # HIPAA requires that PHI is not visible in logs\n        self.assertNotIn(\"John Smith\", sanitized)\n        self.assertNotIn(\"01/15/1980\", sanitized)\n        self.assertNotIn(\"123-45-6789\", sanitized)\n        self.assertNotIn(\"123 Main St\", sanitized)\n    \n        # Verify that sanitized log contains redaction markers\n>       self.assertIn(\"[REDACTED_NAME]\", sanitized)\nE       AssertionError: '[REDACTED_NAME]' not found in '[REDACTED:name] Smith, DOB [REDACTED:dob], SSN [REDACTED:ssn] lives at 123 [REDACTED:name]'\n\nphi/test_log_sanitizer.py:130: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_addresses>\n\n    def test_sanitize_addresses(self):\n        \"\"\"Test sanitization of physical addresses.\"\"\"\n        log_key = \"patient_address\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient lives at [REDACTED:address]' != 'Patient lives at [REDACTED_ADDRESS]'\nE       - Patient lives at [REDACTED:address]\nE       ?                           ^^^^^^^^\nE       + Patient lives at [REDACTED_ADDRESS]\nE       ?                           ^^^^^^^^\n\nphi/test_log_sanitizer.py:69: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_dob>\n\n    def test_sanitize_dob(self):\n        \"\"\"Test sanitization of Dates of Birth.\"\"\"\n        log_key = \"patient_dob\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient DOB is [REDACTED:dob]' != 'Patient DOB is [REDACTED_DOB]'\nE       - Patient DOB is [REDACTED:dob]\nE       ?                         ^^^^\nE       + Patient DOB is [REDACTED_DOB]\nE       ?                         ^^^^\n\nphi/test_log_sanitizer.py:90: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_email_addresses>\n\n    def test_sanitize_email_addresses(self):\n        \"\"\"Test sanitization of email addresses.\"\"\"\n        log_key = \"patient_email\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Contact patient at [REDACTED:email] for follow-up' != 'Contact patient at [REDACTED_EMAIL] for follow-up'\nE       - Contact patient at [REDACTED:email] for follow-up\nE       ?                             ^^^^^^\nE       + Contact patient at [REDACTED_EMAIL] for follow-up\nE       ?                             ^^^^^^\n\nphi/test_log_sanitizer.py:55: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_mrn>\n\n    def test_sanitize_mrn(self):\n        \"\"\"Test sanitization of Medical Record Numbers.\"\"\"\n        log_key = \"patient_mrn\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient MRN#987654 admitted to ward' != 'Patient MRN#[REDACTED_MRN] admitted to ward'\nE       - Patient MRN#987654 admitted to ward\nE       ?             ^^^^^^\nE       + Patient MRN#[REDACTED_MRN] admitted to ward\nE       ?             ^^^^^^^^^^^^^^\n\nphi/test_log_sanitizer.py:83: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_multiple_phi>\n\n    def test_sanitize_multiple_phi(self):\n        \"\"\"Test sanitization of logs with multiple PHI elements.\"\"\"\n        log_key = \"multiple_phi\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: '[REDACTED:name] Smith, DOB [REDACTED:dob][45 chars]ame]' != 'Patient [REDACTED_NAME], DOB [REDACTED_DO[46 chars]ESS]'\nE       - [REDACTED:name] Smith, DOB [REDACTED:dob], SSN [REDACTED:ssn] lives at 123 [REDACTED:name]\nE       + Patient [REDACTED_NAME], DOB [REDACTED_DOB], SSN [REDACTED_SSN] lives at [REDACTED_ADDRESS]\n\nphi/test_log_sanitizer.py:97: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_patient_names>\n\n    def test_sanitize_patient_names(self):\n        \"\"\"Test sanitization of patient names.\"\"\"\n        log_key = \"patient_name\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: '[REDACTED:name] Smith visited on 2023-01-01' != 'Patient [REDACTED_NAME] visited on 2023-01-01'\nE       - [REDACTED:name] Smith visited on 2023-01-01\nE       + Patient [REDACTED_NAME] visited on 2023-01-01\n\nphi/test_log_sanitizer.py:48: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_phone_numbers>\n\n    def test_sanitize_phone_numbers(self):\n        \"\"\"Test sanitization of phone numbers.\"\"\"\n        log_key = \"patient_phone\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient phone number is [REDACTED:phone]' != 'Patient phone number is [REDACTED_PHONE]'\nE       - Patient phone number is [REDACTED:phone]\nE       ?                                  ^^^^^^\nE       + Patient phone number is [REDACTED_PHONE]\nE       ?                                  ^^^^^^\n\nphi/test_log_sanitizer.py:62: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_ssn>\n\n    def test_sanitize_ssn(self):\n        \"\"\"Test sanitization of Social Security Numbers.\"\"\"\n        log_key = \"patient_ssn\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient SSN is [REDACTED:ssn]' != 'Patient SSN is [REDACTED_SSN]'\nE       - Patient SSN is [REDACTED:ssn]\nE       ?                         ^^^^\nE       + Patient SSN is [REDACTED_SSN]\nE       ?                         ^^^^\n\nphi/test_log_sanitizer.py:76: AssertionError"
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_mock_phi.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_sanitizer_phi.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_audit_logic.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_detection.py",
+          "summary": {
+            "total": 6,
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_code_patterns.py",
+          "summary": {
+            "total": 12,
+            "passed": 8,
+            "failed": 4,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInCodePatterns object at 0x1045a1260>\ndetector = <app.core.utils.validation.PHIDetector object at 0x1045d29f0>\n\n    def test_phi_in_complex_code(self, detector):\n        \"\"\"Test detection of PHI in more complex, realistic code samples.\"\"\"\n        complex_code = \"\"\"\n    \n                    def process_patient_data(patient_data):\n    \n    \n            \\\"\\\"\\\"Process patient data and store in database.\\\"\\\"\\\"\n            # Validate SSN format\n                        if not is_valid_ssn(patient_data.get('ssn')):\n            # Example of invalid SSN: 123-456-7890 (too many digits)\n            logger.error(f\"Invalid SSN format for patient: {patient_data.get('name')}\")\n            raise ValueError(f\"Invalid SSN: {patient_data.get('ssn')}\")\n    \n            # Process patient data\n                try:\n                    # TODO: Remove hardcoded test data before production\n                        if patient_data.get('ssn') == '123-45-6789':\n                    # This is our test patient (John Smith)\n                    #     return {'status': 'success', 'test_mode': True} # FIXME: return outside function\n    \n                    result = db.patients.insert_one({)\n                    'name': patient_data.get('name'),\n                    'ssn_hash': hash_ssn(patient_data.get('ssn')),\n                    'dob': patient_data.get('dob')\n                    (    })\n    \n                    #     return {'status': 'success', 'id': str(result.inserted_id)} # FIXME: return outside function\n                        except Exception as e:\n            # Try with backup database\n            # Example: If inserting patient John Smith (SSN: 123-45-6789) fails\n            logger.error(f\"Database error: {str(e)}\")\n            #     return {'status': 'error', 'message': str(e)} # FIXME: return outside function\n            \"\"\"\n    \n        # Verify PHI is detected in complex code\n        assert detector.contains_phi(complex_code)\n    \n        # Verify specific PHI instances are detected\n        matches = detector.detect_phi(complex_code)\n        ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n        name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n    \n>       assert len(ssn_matches) >= 4  # At least 4 instances of SSN\nE       assert 2 >= 4\nE        +  where 2 = len([PHIMatch(type=SSN, value=[REDACTED], position=641), PHIMatch(type=SSN, value=[REDACTED], position=1343)])\n\nphi/test_phi_code_patterns.py:239: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInSourceFiles object at 0x1044f2fd0>\ndetector = <app.core.utils.validation.PHIDetector object at 0x10458a750>\n\n        def test_python_file_with_phi(self, detector):\n            \"\"\"Test detection of PHI in Python source files.\"\"\"\n            python_code = \"\"\"\n                        #!/usr/bin/env python3\n                        # Test file with PHI data\n    \n                            def get_test_patient():\n    \n    \n                        \\\"\\\"\\\"Return test patient data.\\\"\\\"\\\"\n    #                             return {\n    \"name\": \"John Smith\",\n    \"ssn\": \"123-45-6789\",\n    \"dob\": \"01/02/1980\"\n    }\n    \n    # TODO: Remove hardcoded SSN before production\n        DEFAULT_SSN = \"123-45-6789\"class Patient:\n            def __init__(self, name=\"John Smith\", ssn=\"123-45-6789\"):\n    \n                self.name = name\n                self.ssn = ssn\n    \n                        if __name__ == \"__main__\":\n                # Test code\n                patient = Patient()\n                print(f\"Patient: {patient.name}, SSN: {patient.ssn}\")\n                \"\"\"\n    \n            path = self._create_temp_file(python_code)\n            try:\n                # Read the file\n                with open(path, 'r') as f:\n                    file_content = f.read()\n    \n                # Verify PHI is detected\n                assert detector.contains_phi(file_content)\n    \n                # Check specific patterns\n                matches = detector.detect_phi(file_content)\n                ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n                name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n    \n>               assert len(ssn_matches) >= 4  # At least 4 instances of SSN\nE               assert 3 >= 4\nE                +  where 3 = len([PHIMatch(type=SSN, value=[REDACTED], position=259), PHIMatch(type=SSN, value=[REDACTED], position=358), PHIMatch(type=SSN, value=[REDACTED], position=438)])\n\nphi/test_phi_code_patterns.py:412: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInSourceFiles object at 0x1044f3250>\ndetector = <app.core.utils.validation.PHIDetector object at 0x10459ac60>\n\n    def test_js_file_with_phi(self, detector):\n        \"\"\"Test detection of PHI in JavaScript source files.\"\"\"\n        js_code = \"\"\"\n                        // Test file with PHI data\n    \n                        function getTestPatient() {\n                        /**\n                        * Return test patient data\n                        * @returns {Object} Patient data\n                        */\n                        #             return { # FIXME: return outside function\n                        name: \"John Smith\",\n                        ssn: \"123-45-6789\",\n                        dob: \"01/02/1980\"\n            };\n        }\n    \n        // TODO: Remove hardcoded SSN before production\n        const DEFAULT_SSN = \"123-45-6789\";class Patient {:\n            constructor(name = \"John Smith\", ssn = \"123-45-6789\") {\n            this.name = name;\n            this.ssn = ssn;\n            }\n        }\n    \n        // Test code\n        const patient = new Patient();\n        console.log(`Patient: ${patient.name}, SSN: ${patient.ssn}`);\n        \"\"\"\n    \n        path = self._create_temp_file(js_code, \".js\")\n        try:\n            # Read the file\n            with open(path, 'r') as f:\n                file_content = f.read()\n    \n            # Verify PHI is detected\n            assert detector.contains_phi(file_content)\n    \n            # Check specific patterns\n            matches = detector.detect_phi(file_content)\n            ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n            name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n    \n>           assert len(ssn_matches) >= 4\nE           assert 3 >= 4\nE            +  where 3 = len([PHIMatch(type=SSN, value=[REDACTED], position=416), PHIMatch(type=SSN, value=[REDACTED], position=582), PHIMatch(type=SSN, value=[REDACTED], position=664)])\n\nphi/test_phi_code_patterns.py:462: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInSourceFiles object at 0x1045e0770>\ndetector = <app.core.utils.validation.PHIDetector object at 0x10459b4d0>\n\n    def test_config_file_with_phi(self, detector):\n        \"\"\"Test detection of PHI in configuration files.\"\"\"\n        config_content = \"\"\"\n                        [database]\n                        host = localhost\n                        port = 5432\n                        username = admin\n                        password = password123\n    \n                        [test_data]\n                        # Test patient data for integration tests\n                        patient_name = John Smith\n                        patient_ssn = 123-45-6789\n                        patient_dob = 01/02/1980\n                        \"\"\"\n    \n        path = self._create_temp_file(config_content, \".ini\")\n        try:\n            # Read the file\n            with open(path, 'r') as f:\n                file_content = f.read()\n    \n            # Verify PHI is detected\n            assert detector.contains_phi(file_content)\n    \n            # Check specific patterns\n            matches = detector.detect_phi(file_content)\n            ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n            name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n            dob_matches = [m for m in matches if m.phi_type == \"DATE\"]\n    \n            assert len(ssn_matches) >= 1\n            assert len(name_matches) >= 1\n>           assert len(dob_matches) >= 1\nE           assert 0 >= 1\nE            +  where 0 = len([])\n\nphi/test_phi_code_patterns.py:501: AssertionError"
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_sanitizer.py",
+          "summary": {
+            "total": 13,
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_patient_phi_security.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        }
+      ],
+      "tests": {
+        "total": 69,
+        "passed": 43,
+        "failed": 25,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "JWT Authentication": {
+      "files_found": 2,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/jwt/test_jwt_service.py",
+          "summary": {
+            "total": 11,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/jwt/test_jwt_auth.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        }
+      ],
+      "tests": {
+        "total": 11,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "HIPAA Compliance": {
+      "files_found": 1,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/hipaa/test_hipaa_compliance.py",
+          "summary": {
+            "total": 18,
+            "passed": 8,
+            "failed": 7,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestPHIEncryption object at 0x1065c3750>\ntest_phi_data = {'diagnosis': 'Test Diagnosis', 'dob': '1990-01-01', 'first_name': 'Test', 'last_name': 'Patient', ...}\n\n    def test_encrypt_decrypt_phi(self, test_phi_data):\n        \"\"\"Test that PHI can be encrypted and decrypted correctly.\"\"\"\n        # Encrypt the data\n        encrypted_data = encrypt_phi(test_phi_data)\n    \n        # Verify the encrypted data is not the same as the original\n        assert encrypted_data != test_phi_data\n        assert isinstance(encrypted_data, str)\n    \n        # Decrypt the data\n        decrypted_data = decrypt_phi(encrypted_data)\n    \n        # Verify the decrypted data matches the original\n>       assert decrypted_data == test_phi_data\nE       AssertionError: assert 'decrypted_data' == {'diagnosis': 'Test Diagnosis', 'dob': '1990-01-01', 'first_name': 'Test', 'last_name': 'Patient', ...}\n\nhipaa/test_hipaa_compliance.py:193: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestPHIEncryption object at 0x1065c3b10>\n\n    def test_encrypt_field_sensitive_data(self):\n        \"\"\"Test that specific fields can be encrypted individually.\"\"\"\n        ssn = \"123-45-6789\"\n        encrypted_ssn = encrypt_field(ssn)\n    \n        # Verify the encrypted field is not the same as the original\n        assert encrypted_ssn != ssn\n        assert isinstance(encrypted_ssn, str)\n    \n        # Decrypt the field\n        decrypted_ssn = decrypt_field(encrypted_ssn)\n    \n        # Verify the decrypted field matches the original\n>       assert decrypted_ssn == ssn\nE       AssertionError: assert 'decrypted_field' == '123-45-6789'\nE         \nE         - 123-45-6789\nE         + decrypted_field\n\nhipaa/test_hipaa_compliance.py:208: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestPHIEncryption object at 0x1064ffe10>\n\n    def test_encryption_key_requirements(self):\n        \"\"\"Test that encryption key meets strength requirements.\"\"\"\n        # Generate a new key\n        key = generate_phi_key()\n    \n        # Verify the key meets strength requirements\n        assert isinstance(key, str)\n>       assert len(key) >= 32, \"Encryption key must be at least 32 characters\"\nE       AssertionError: Encryption key must be at least 32 characters\nE       assert 13 >= 32\nE        +  where 13 = len('generated_key')\n\nhipaa/test_hipaa_compliance.py:217: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestAuthentication object at 0x1065c3c50>\ntest_jwt_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfN2M3ZmFlMzQiLCJpZCI6ImNkYTc4ZmNlLTY2YWYtNGZjNS1hY2ViLTZh...MiOlsicmVhZDpvd25fZGF0YSIsInVwZGF0ZTpvd25fZGF0YSJdLCJleHAiOjE3NDQ2NzM0MzN9.dUTlQQF_EUyIrZL-lSIYTpQfaelgKgx3yfxSuBXks68'\ntest_user = {'email': 'test_77391bd0@example.com', 'id': 'cda78fce-66af-4fc5-aceb-6adbf15bb1dd', 'permissions': ['read:own_data', 'update:own_data'], 'role': 'patient', ...}\n\n    def test_decode_access_token(self, test_jwt_token, test_user):\n        \"\"\"Test that access tokens can be decoded correctly.\"\"\"\n        decoded = decode_token(test_jwt_token)\n    \n        # Verify the decoded token contains the expected data\n>       assert decoded[\"sub\"] == test_user[\"username\"]\nE       AssertionError: assert 'test_user' == 'test_user_7c7fae34'\nE         \nE         - test_user_7c7fae34\nE         + test_user\n\nhipaa/test_hipaa_compliance.py:236: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestAuthentication object at 0x1067d8050>\n\n    def test_expired_token_rejection(self):\n        \"\"\"Test that expired tokens are rejected.\"\"\"\n        # Create an expired token\n        expired_data = {\n            \"sub\": \"test_user\",\n            \"exp\": datetime.now(UTC) - timedelta(minutes=30),\n        }\n        expired_token = jwt.encode(expired_data, settings.JWT_SECRET_KEY, algorithm=\"HS256\")\n    \n        # Verify the expired token is rejected\n>       with pytest.raises((jwt.JWTError, AuthenticationError)):\nE       Failed: DID NOT RAISE (<class 'jose.exceptions.JWTError'>, <class 'test_hipaa_compliance.AuthenticationError'>)\n\nhipaa/test_hipaa_compliance.py:249: Failed"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestAuthentication object at 0x1067d8180>\n\n    def test_invalid_token_rejection(self):\n        \"\"\"Test that invalid tokens are rejected.\"\"\"\n        # Create an invalid token\n        invalid_token = \"invalid.token.format\"\n    \n        # Verify the invalid token is rejected\n>       with pytest.raises((jwt.JWTError, AuthenticationError)):\nE       Failed: DID NOT RAISE (<class 'jose.exceptions.JWTError'>, <class 'test_hipaa_compliance.AuthenticationError'>)\n\nhipaa/test_hipaa_compliance.py:258: Failed"
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_hipaa_compliance.TestHIPAACompliance object at 0x1067e0550>\ntest_phi_data = {'diagnosis': 'Test Diagnosis', 'dob': '1990-01-01', 'first_name': 'Test', 'last_name': 'Patient', ...}\n\n    def test_field_level_encryption(self, test_phi_data):\n        \"\"\"Test that field-level encryption is available for PHI.\"\"\"\n        for field in [\"ssn\", \"diagnosis\", \"medication\"]:\n            if field in test_phi_data:\n                value = test_phi_data[field]\n                encrypted = encrypt_field(value)\n                decrypted = decrypt_field(encrypted)\n    \n                # Verify encryption and decryption work\n                assert encrypted != value\n>               assert decrypted == value\nE               AssertionError: assert 'decrypted_field' == '123-45-6789'\nE                 \nE                 - 123-45-6789\nE                 + decrypted_field\n\nhipaa/test_hipaa_compliance.py:374: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        }
+      ],
+      "tests": {
+        "total": 18,
+        "passed": 8,
+        "failed": 7,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "PHI Protection": {
+      "files_found": 13,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_ml_phi_security.py",
+          "summary": {
+            "total": 10,
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_log_sanitization.py",
+          "summary": {
+            "total": 9,
+            "passed": 1,
+            "failed": 8,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1048dad50>\n\n    def test_sanitizer_initialization(self):\n        \"\"\"Test that the PHI sanitizer properly initializes patterns.\"\"\"\n        sanitizer = PHISanitizer()\n>       assert hasattr(sanitizer, 'patterns')\nE       AssertionError: assert False\nE        +  where False = hasattr(<app.core.security.phi_sanitizer.PHISanitizer object at 0x104995550>, 'patterns')\n\nphi/test_log_sanitization.py:56: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1048db110>\n\n    def test_ssn_sanitization(self):\n        \"\"\"Test that SSNs are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient SSN is 123-45-6789\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"123-45-6789\" not in sanitized\n>       assert \"[REDACTED-SSN]\" in sanitized\nE       AssertionError: assert '[REDACTED-SSN]' in 'Patient SSN is [REDACTED SSN]'\n\nphi/test_log_sanitization.py:65: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1049c89d0>\n\n    def test_email_sanitization(self):\n        \"\"\"Test that email addresses are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient email is patient@example.com\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"patient@example.com\" not in sanitized\n>       assert \"[REDACTED-EMAIL]\" in sanitized\nE       AssertionError: assert '[REDACTED-EMAIL]' in 'Patient email is [REDACTED EMAIL]'\n\nphi/test_log_sanitization.py:73: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1049c8c30>\n\n    def test_phone_sanitization(self):\n        \"\"\"Test that phone numbers are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient phone is (555) 123-4567\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"(555) 123-4567\" not in sanitized\n>       assert \"[REDACTED-PHONE]\" in sanitized\nE       AssertionError: assert '[REDACTED-PHONE]' in 'Patient phone is ([REDACTED PHONE]'\n\nphi/test_log_sanitization.py:81: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1049b3ad0>\n\n    def test_name_sanitization(self):\n        \"\"\"Test that names are properly sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient name is John Smith\"\n        sanitized = sanitizer.sanitize(test_log)\n        assert \"John Smith\" not in sanitized\n>       assert \"[REDACTED-NAME]\" in sanitized\nE       AssertionError: assert '[REDACTED-NAME]' in 'Patient name is [REDACTED NAME]'\n\nphi/test_log_sanitization.py:89: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x104989480>\n\n    def test_multiple_phi_sanitization(self):\n        \"\"\"Test that multiple PHI elements in the same log are all sanitized.\"\"\"\n        sanitizer = PHISanitizer()\n        test_log = \"Patient John Smith (SSN: 123-45-6789) can be reached at (555) 123-4567 or john.smith@example.com\"\n        sanitized = sanitizer.sanitize(test_log)\n    \n        assert \"John Smith\" not in sanitized\n        assert \"123-45-6789\" not in sanitized\n        assert \"(555) 123-4567\" not in sanitized\n        assert \"john.smith@example.com\" not in sanitized\n    \n>       assert \"[REDACTED-NAME]\" in sanitized\nE       AssertionError: assert '[REDACTED-NAME]' in '[REDACTED NAME] (SSN: [REDACTED SSN]) can be reached at ([REDACTED PHONE] or [REDACTED EMAIL]'\n\nphi/test_log_sanitization.py:102: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitization.TestLogSanitization object at 0x1049896a0>\nlogger_setup = (<Logger test_phi_logger (DEBUG)>, '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmpiy5tpsgb.log')\n\n    def test_sanitizer_integration_with_logger(self, logger_setup):\n        \"\"\"Test the sanitizer's integration with the logging system.\"\"\"\n        logger, log_file = logger_setup\n    \n        # Mock the sanitizer to check it's being called\n        mock_sanitizer = MagicMock()\n        mock_sanitizer.sanitize.return_value = \"SANITIZED LOG MESSAGE\"\n    \n        # Patch the sanitizer in the logging system\n        with patch('app.core.security.phi_sanitizer.PHISanitizer', return_value=mock_sanitizer):\n            # Create a log message with PHI\n            logger.info(\"Patient John Doe with SSN 123-45-6789 has updated their contact info to john.doe@example.com\")\n    \n            # Check that the sanitizer was called\n>           assert mock_sanitizer.sanitize.called\nE           AssertionError: assert False\nE            +  where False = <MagicMock name='mock.sanitize' id='4372129712'>.called\nE            +    where <MagicMock name='mock.sanitize' id='4372129712'> = <MagicMock id='4372125008'>.sanitize\n\nphi/test_log_sanitization.py:121: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "obj = <module 'app.core.security.phi_sanitizer' from '/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/core/security/phi_sanitizer.py'>\nname = 'get_sanitizer', ann = 'app.core.security.phi_sanitizer'\n\n    def annotated_getattr(obj: object, name: str, ann: str) -> object:\n        try:\n>           obj = getattr(obj, name)\nE           AttributeError: module 'app.core.security.phi_sanitizer' has no attribute 'get_sanitizer'. Did you mean: 'PHISanitizer'?\n\n../../../../venv_py313/lib/python3.13/site-packages/_pytest/monkeypatch.py:90: AttributeError\n\nThe above exception was the direct cause of the following exception:\n\nself = <test_log_sanitization.TestLogSanitization object at 0x104972850>\nlogger_setup = (<Logger test_phi_logger (DEBUG)>, '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmpdl0emajr.log')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1049c9cd0>\n\n    def test_phi_never_reaches_logs(self, logger_setup, monkeypatch):\n        \"\"\"End-to-end test ensuring PHI doesn't make it to logs.\"\"\"\n        # Set up a real sanitizer that will be used by the logging system\n        real_sanitizer = PHISanitizer()\n    \n        # Patch the system to use our real sanitizer\n>       monkeypatch.setattr(\n            'app.core.security.phi_sanitizer.get_sanitizer',\n            lambda: real_sanitizer\n        )\n\nphi/test_log_sanitization.py:134: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n../../../../venv_py313/lib/python3.13/site-packages/_pytest/monkeypatch.py:104: in derive_importpath\n    annotated_getattr(target, attr, ann=module)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nobj = <module 'app.core.security.phi_sanitizer' from '/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/core/security/phi_sanitizer.py'>\nname = 'get_sanitizer', ann = 'app.core.security.phi_sanitizer'\n\n    def annotated_getattr(obj: object, name: str, ann: str) -> object:\n        try:\n            obj = getattr(obj, name)\n        except AttributeError as e:\n>           raise AttributeError(\n                f\"{type(obj).__name__!r} object at {ann} has no attribute {name!r}\"\n            ) from e\nE           AttributeError: 'module' object at app.core.security.phi_sanitizer has no attribute 'get_sanitizer'\n\n../../../../venv_py313/lib/python3.13/site-packages/_pytest/monkeypatch.py:92: AttributeError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_middleware.py",
+          "summary": {
+            "total": 8,
+            "passed": 5,
+            "failed": 3,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_middleware.TestPHIMiddleware object at 0x106f863f0>\n\n    @pytest.mark.asyncio\n    async def test_sanitize_response_with_phi(self):\n        \"\"\"Test that responses with PHI are sanitized.\"\"\"\n        # Mock request\n        request = self._create_mock_request(\"/api/patients\")\n    \n        # Mock response with PHI\n        phi_response = {\n            \"patient\": {\"name\": \"John Doe\", \"ssn\": \"123-45-6789\"},\n            \"appointment\": {\"date\": \"2023-04-15\"}\n        }\n        response_body = json.dumps(phi_response).encode('utf-8')\n        response = Response(\n            content=response_body,\n            status_code=200,\n            headers={\"content-type\": \"application/json\"}\n        )\n    \n        # Mock call_next to return the response\n        call_next = AsyncMock()\n        call_next.return_value = response\n    \n        # Process the request and get sanitized response\n        sanitized_response = await self.middleware.dispatch(request, call_next)\n    \n        # Check that response body was sanitized\n        sanitized_body = sanitized_response.body.decode('utf-8')\n        sanitized_data = json.loads(sanitized_body)\n    \n        # Verify PHI was redacted\n        assert \"[REDACTED]\" in sanitized_body\n        assert sanitized_data[\"patient\"][\"name\"] == \"[REDACTED]\"\n        assert sanitized_data[\"patient\"][\"ssn\"] == \"[REDACTED]\"\n        # Non-PHI data should remain untouched\n>       assert sanitized_data[\"appointment\"][\"date\"] == \"2023-04-15\"\nE       AssertionError: assert '[REDACTED]' == '2023-04-15'\nE         \nE         - 2023-04-15\nE         + [REDACTED]\n\nphi/test_phi_middleware.py:114: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_middleware.TestPHIMiddleware object at 0x106f86650>\n\n    @pytest.mark.asyncio\n    async def test_whitelist_patterns(self):\n        \"\"\"Test that whitelisted patterns are not sanitized.\"\"\"\n        # Create middleware with whitelist\n        middleware = PHIMiddleware(\n            self.app,\n            phi_detector=self.phi_detector,\n            whitelist_patterns={\n                \"/api/allowed\": [\"name\"],\n                \"/api/allowed/*\": [\"ssn\"]\n            }\n        )\n    \n        # Mock request\n        request = self._create_mock_request(\"/api/allowed/123\")\n    \n        # Mock response with PHI in whitelisted fields\n        phi_response = {\n            \"name\": \"John Doe\",  # Should not be sanitized (whitelisted)\n            \"ssn\": \"123-45-6789\",  # Should not be sanitized (whitelisted)\n            \"address\": \"123 Main St, Springfield\"  # Should be sanitized\n        }\n        response_body = json.dumps(phi_response).encode('utf-8')\n        response = Response(\n            content=response_body,\n            status_code=200,\n            headers={\"content-type\": \"application/json\"}\n        )\n    \n        # Mock call_next\n        call_next = AsyncMock()\n        call_next.return_value = response\n    \n        # Process the request\n        sanitized_response = await middleware.dispatch(request, call_next)\n    \n        # Check response body\n        sanitized_body = sanitized_response.body.decode('utf-8')\n        sanitized_data = json.loads(sanitized_body)\n    \n        # Verify whitelisted fields were not sanitized\n>       assert sanitized_data[\"name\"] == \"John Doe\"\nE       AssertionError: assert '[REDACTED]' == 'John Doe'\nE         \nE         - John Doe\nE         + [REDACTED]\n\nphi/test_phi_middleware.py:157: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_middleware.TestPHIMiddleware object at 0x106fc68b0>\n\n    @pytest.mark.asyncio\n    async def test_sanitize_nested_json(self):\n        \"\"\"Test that deeply nested JSON is properly sanitized.\"\"\"\n        # Mock request\n        request = self._create_mock_request(\"/api/patients\")\n    \n        # Mock deeply nested response with PHI\n        phi_response = {\n            \"data\": {\n                \"patients\": [\n                    {\n                        \"profile\": {\n                            \"personal\": {\n                                \"name\": \"John Doe\",\n                                \"contact\": {\n                                    \"email\": \"john.doe@example.com\",\n                                    \"phone\": \"555-123-4567\"\n                                }\n                            }\n                        },\n                        \"medical\": {\n                            \"ssn\": \"123-45-6789\",\n                            \"insurance\": {\n                                \"policy\": \"12345\",\n                                \"provider\": \"Health Co\"\n                            }\n                        }\n                    }\n                ]\n            }\n        }\n        response_body = json.dumps(phi_response).encode('utf-8')\n        response = Response(\n            content=response_body,\n            status_code=200,\n            headers={\"content-type\": \"application/json\"}\n        )\n    \n        # Mock call_next\n        call_next = AsyncMock()\n        call_next.return_value = response\n    \n        # Process the request\n        sanitized_response = await self.middleware.dispatch(request, call_next)\n    \n        # Check response body\n        sanitized_body = sanitized_response.body.decode('utf-8')\n        sanitized_data = json.loads(sanitized_body)\n    \n        # Verify nested PHI was sanitized\n        patient = sanitized_data[\"data\"][\"patients\"][0]\n        assert patient[\"profile\"][\"personal\"][\"name\"] == \"[REDACTED]\"\n        assert patient[\"profile\"][\"personal\"][\"contact\"][\"email\"] == \"[REDACTED]\"\n        assert patient[\"profile\"][\"personal\"][\"contact\"][\"phone\"] == \"[REDACTED]\"\n        assert patient[\"medical\"][\"ssn\"] == \"[REDACTED]\"\n        # Non-PHI data should be unchanged\n        assert patient[\"medical\"][\"insurance\"][\"policy\"] == \"12345\"\n>       assert patient[\"medical\"][\"insurance\"][\"provider\"] == \"Health Co\"\nE       AssertionError: assert '[REDACTED]' == 'Health Co'\nE         \nE         - Health Co\nE         + [REDACTED]\n\nphi/test_phi_middleware.py:283: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_protection.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_mock_phi_detection.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_log_sanitizer.py",
+          "summary": {
+            "total": 11,
+            "passed": 1,
+            "failed": 10,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_case_insensitive_sanitization>\n\n    def test_case_insensitive_sanitization(self):\n        \"\"\"Test that sanitization works regardless of case.\"\"\"\n        log_key = \"mixed_case\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'PATIENT JOHN SMITH has email [REDACTED:email]' != 'PATIENT [REDACTED_NAME] has email [REDACTED_EMAIL]'\nE       - PATIENT JOHN SMITH has email [REDACTED:email]\nE       + PATIENT [REDACTED_NAME] has email [REDACTED_EMAIL]\n\nphi/test_log_sanitizer.py:114: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_hipaa_compliance>\n\n    def test_hipaa_compliance(self):\n        \"\"\"Verify compliance with HIPAA requirements for log sanitization.\"\"\"\n        log_key = \"multiple_phi\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n    \n        # HIPAA requires that PHI is not visible in logs\n        self.assertNotIn(\"John Smith\", sanitized)\n        self.assertNotIn(\"01/15/1980\", sanitized)\n        self.assertNotIn(\"123-45-6789\", sanitized)\n        self.assertNotIn(\"123 Main St\", sanitized)\n    \n        # Verify that sanitized log contains redaction markers\n>       self.assertIn(\"[REDACTED_NAME]\", sanitized)\nE       AssertionError: '[REDACTED_NAME]' not found in '[REDACTED:name] Smith, DOB [REDACTED:dob], SSN [REDACTED:ssn] lives at 123 [REDACTED:name]'\n\nphi/test_log_sanitizer.py:130: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_addresses>\n\n    def test_sanitize_addresses(self):\n        \"\"\"Test sanitization of physical addresses.\"\"\"\n        log_key = \"patient_address\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient lives at [REDACTED:address]' != 'Patient lives at [REDACTED_ADDRESS]'\nE       - Patient lives at [REDACTED:address]\nE       ?                           ^^^^^^^^\nE       + Patient lives at [REDACTED_ADDRESS]\nE       ?                           ^^^^^^^^\n\nphi/test_log_sanitizer.py:69: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_dob>\n\n    def test_sanitize_dob(self):\n        \"\"\"Test sanitization of Dates of Birth.\"\"\"\n        log_key = \"patient_dob\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient DOB is [REDACTED:dob]' != 'Patient DOB is [REDACTED_DOB]'\nE       - Patient DOB is [REDACTED:dob]\nE       ?                         ^^^^\nE       + Patient DOB is [REDACTED_DOB]\nE       ?                         ^^^^\n\nphi/test_log_sanitizer.py:90: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_email_addresses>\n\n    def test_sanitize_email_addresses(self):\n        \"\"\"Test sanitization of email addresses.\"\"\"\n        log_key = \"patient_email\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Contact patient at [REDACTED:email] for follow-up' != 'Contact patient at [REDACTED_EMAIL] for follow-up'\nE       - Contact patient at [REDACTED:email] for follow-up\nE       ?                             ^^^^^^\nE       + Contact patient at [REDACTED_EMAIL] for follow-up\nE       ?                             ^^^^^^\n\nphi/test_log_sanitizer.py:55: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_mrn>\n\n    def test_sanitize_mrn(self):\n        \"\"\"Test sanitization of Medical Record Numbers.\"\"\"\n        log_key = \"patient_mrn\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient MRN#987654 admitted to ward' != 'Patient MRN#[REDACTED_MRN] admitted to ward'\nE       - Patient MRN#987654 admitted to ward\nE       ?             ^^^^^^\nE       + Patient MRN#[REDACTED_MRN] admitted to ward\nE       ?             ^^^^^^^^^^^^^^\n\nphi/test_log_sanitizer.py:83: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_multiple_phi>\n\n    def test_sanitize_multiple_phi(self):\n        \"\"\"Test sanitization of logs with multiple PHI elements.\"\"\"\n        log_key = \"multiple_phi\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: '[REDACTED:name] Smith, DOB [REDACTED:dob][45 chars]ame]' != 'Patient [REDACTED_NAME], DOB [REDACTED_DO[46 chars]ESS]'\nE       - [REDACTED:name] Smith, DOB [REDACTED:dob], SSN [REDACTED:ssn] lives at 123 [REDACTED:name]\nE       + Patient [REDACTED_NAME], DOB [REDACTED_DOB], SSN [REDACTED_SSN] lives at [REDACTED_ADDRESS]\n\nphi/test_log_sanitizer.py:97: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_patient_names>\n\n    def test_sanitize_patient_names(self):\n        \"\"\"Test sanitization of patient names.\"\"\"\n        log_key = \"patient_name\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: '[REDACTED:name] Smith visited on 2023-01-01' != 'Patient [REDACTED_NAME] visited on 2023-01-01'\nE       - [REDACTED:name] Smith visited on 2023-01-01\nE       + Patient [REDACTED_NAME] visited on 2023-01-01\n\nphi/test_log_sanitizer.py:48: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_phone_numbers>\n\n    def test_sanitize_phone_numbers(self):\n        \"\"\"Test sanitization of phone numbers.\"\"\"\n        log_key = \"patient_phone\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient phone number is [REDACTED:phone]' != 'Patient phone number is [REDACTED_PHONE]'\nE       - Patient phone number is [REDACTED:phone]\nE       ?                                  ^^^^^^\nE       + Patient phone number is [REDACTED_PHONE]\nE       ?                                  ^^^^^^\n\nphi/test_log_sanitizer.py:62: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_log_sanitizer.TestLogSanitizer testMethod=test_sanitize_ssn>\n\n    def test_sanitize_ssn(self):\n        \"\"\"Test sanitization of Social Security Numbers.\"\"\"\n        log_key = \"patient_ssn\"\n        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])\n>       self.assertEqual(sanitized, self.expected_patterns[log_key])\nE       AssertionError: 'Patient SSN is [REDACTED:ssn]' != 'Patient SSN is [REDACTED_SSN]'\nE       - Patient SSN is [REDACTED:ssn]\nE       ?                         ^^^^\nE       + Patient SSN is [REDACTED_SSN]\nE       ?                         ^^^^\n\nphi/test_log_sanitizer.py:76: AssertionError"
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_mock_phi.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_sanitizer_phi.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_audit_logic.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_detection.py",
+          "summary": {
+            "total": 6,
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_code_patterns.py",
+          "summary": {
+            "total": 12,
+            "passed": 8,
+            "failed": 4,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInCodePatterns object at 0x107ad9260>\ndetector = <app.core.utils.validation.PHIDetector object at 0x107b0a9f0>\n\n    def test_phi_in_complex_code(self, detector):\n        \"\"\"Test detection of PHI in more complex, realistic code samples.\"\"\"\n        complex_code = \"\"\"\n    \n                    def process_patient_data(patient_data):\n    \n    \n            \\\"\\\"\\\"Process patient data and store in database.\\\"\\\"\\\"\n            # Validate SSN format\n                        if not is_valid_ssn(patient_data.get('ssn')):\n            # Example of invalid SSN: 123-456-7890 (too many digits)\n            logger.error(f\"Invalid SSN format for patient: {patient_data.get('name')}\")\n            raise ValueError(f\"Invalid SSN: {patient_data.get('ssn')}\")\n    \n            # Process patient data\n                try:\n                    # TODO: Remove hardcoded test data before production\n                        if patient_data.get('ssn') == '123-45-6789':\n                    # This is our test patient (John Smith)\n                    #     return {'status': 'success', 'test_mode': True} # FIXME: return outside function\n    \n                    result = db.patients.insert_one({)\n                    'name': patient_data.get('name'),\n                    'ssn_hash': hash_ssn(patient_data.get('ssn')),\n                    'dob': patient_data.get('dob')\n                    (    })\n    \n                    #     return {'status': 'success', 'id': str(result.inserted_id)} # FIXME: return outside function\n                        except Exception as e:\n            # Try with backup database\n            # Example: If inserting patient John Smith (SSN: 123-45-6789) fails\n            logger.error(f\"Database error: {str(e)}\")\n            #     return {'status': 'error', 'message': str(e)} # FIXME: return outside function\n            \"\"\"\n    \n        # Verify PHI is detected in complex code\n        assert detector.contains_phi(complex_code)\n    \n        # Verify specific PHI instances are detected\n        matches = detector.detect_phi(complex_code)\n        ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n        name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n    \n>       assert len(ssn_matches) >= 4  # At least 4 instances of SSN\nE       assert 2 >= 4\nE        +  where 2 = len([PHIMatch(type=SSN, value=[REDACTED], position=641), PHIMatch(type=SSN, value=[REDACTED], position=1343)])\n\nphi/test_phi_code_patterns.py:239: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInSourceFiles object at 0x107a2afd0>\ndetector = <app.core.utils.validation.PHIDetector object at 0x107ac2750>\n\n        def test_python_file_with_phi(self, detector):\n            \"\"\"Test detection of PHI in Python source files.\"\"\"\n            python_code = \"\"\"\n                        #!/usr/bin/env python3\n                        # Test file with PHI data\n    \n                            def get_test_patient():\n    \n    \n                        \\\"\\\"\\\"Return test patient data.\\\"\\\"\\\"\n    #                             return {\n    \"name\": \"John Smith\",\n    \"ssn\": \"123-45-6789\",\n    \"dob\": \"01/02/1980\"\n    }\n    \n    # TODO: Remove hardcoded SSN before production\n        DEFAULT_SSN = \"123-45-6789\"class Patient:\n            def __init__(self, name=\"John Smith\", ssn=\"123-45-6789\"):\n    \n                self.name = name\n                self.ssn = ssn\n    \n                        if __name__ == \"__main__\":\n                # Test code\n                patient = Patient()\n                print(f\"Patient: {patient.name}, SSN: {patient.ssn}\")\n                \"\"\"\n    \n            path = self._create_temp_file(python_code)\n            try:\n                # Read the file\n                with open(path, 'r') as f:\n                    file_content = f.read()\n    \n                # Verify PHI is detected\n                assert detector.contains_phi(file_content)\n    \n                # Check specific patterns\n                matches = detector.detect_phi(file_content)\n                ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n                name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n    \n>               assert len(ssn_matches) >= 4  # At least 4 instances of SSN\nE               assert 3 >= 4\nE                +  where 3 = len([PHIMatch(type=SSN, value=[REDACTED], position=259), PHIMatch(type=SSN, value=[REDACTED], position=358), PHIMatch(type=SSN, value=[REDACTED], position=438)])\n\nphi/test_phi_code_patterns.py:412: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInSourceFiles object at 0x107a2b250>\ndetector = <app.core.utils.validation.PHIDetector object at 0x107ad2c60>\n\n    def test_js_file_with_phi(self, detector):\n        \"\"\"Test detection of PHI in JavaScript source files.\"\"\"\n        js_code = \"\"\"\n                        // Test file with PHI data\n    \n                        function getTestPatient() {\n                        /**\n                        * Return test patient data\n                        * @returns {Object} Patient data\n                        */\n                        #             return { # FIXME: return outside function\n                        name: \"John Smith\",\n                        ssn: \"123-45-6789\",\n                        dob: \"01/02/1980\"\n            };\n        }\n    \n        // TODO: Remove hardcoded SSN before production\n        const DEFAULT_SSN = \"123-45-6789\";class Patient {:\n            constructor(name = \"John Smith\", ssn = \"123-45-6789\") {\n            this.name = name;\n            this.ssn = ssn;\n            }\n        }\n    \n        // Test code\n        const patient = new Patient();\n        console.log(`Patient: ${patient.name}, SSN: ${patient.ssn}`);\n        \"\"\"\n    \n        path = self._create_temp_file(js_code, \".js\")\n        try:\n            # Read the file\n            with open(path, 'r') as f:\n                file_content = f.read()\n    \n            # Verify PHI is detected\n            assert detector.contains_phi(file_content)\n    \n            # Check specific patterns\n            matches = detector.detect_phi(file_content)\n            ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n            name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n    \n>           assert len(ssn_matches) >= 4\nE           assert 3 >= 4\nE            +  where 3 = len([PHIMatch(type=SSN, value=[REDACTED], position=416), PHIMatch(type=SSN, value=[REDACTED], position=582), PHIMatch(type=SSN, value=[REDACTED], position=664)])\n\nphi/test_phi_code_patterns.py:462: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_code_patterns.TestPHIInSourceFiles object at 0x107b18770>\ndetector = <app.core.utils.validation.PHIDetector object at 0x107ad34d0>\n\n    def test_config_file_with_phi(self, detector):\n        \"\"\"Test detection of PHI in configuration files.\"\"\"\n        config_content = \"\"\"\n                        [database]\n                        host = localhost\n                        port = 5432\n                        username = admin\n                        password = password123\n    \n                        [test_data]\n                        # Test patient data for integration tests\n                        patient_name = John Smith\n                        patient_ssn = 123-45-6789\n                        patient_dob = 01/02/1980\n                        \"\"\"\n    \n        path = self._create_temp_file(config_content, \".ini\")\n        try:\n            # Read the file\n            with open(path, 'r') as f:\n                file_content = f.read()\n    \n            # Verify PHI is detected\n            assert detector.contains_phi(file_content)\n    \n            # Check specific patterns\n            matches = detector.detect_phi(file_content)\n            ssn_matches = [m for m in matches if m.phi_type == \"SSN\"]\n            name_matches = [m for m in matches if m.phi_type == \"NAME\"]\n            dob_matches = [m for m in matches if m.phi_type == \"DATE\"]\n    \n            assert len(ssn_matches) >= 1\n            assert len(name_matches) >= 1\n>           assert len(dob_matches) >= 1\nE           assert 0 >= 1\nE            +  where 0 = len([])\n\nphi/test_phi_code_patterns.py:501: AssertionError"
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_phi_sanitizer.py",
+          "summary": {
+            "total": 13,
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_patient_phi_security.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        }
+      ],
+      "tests": {
+        "total": 69,
+        "passed": 43,
+        "failed": 25,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "Security Patterns": {
+      "files_found": 6,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/utils/test_base_security_test.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/db/test_repository_security.py",
+          "summary": {
+            "total": 10,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/db/test_database_security.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/api/test_api_security.py",
+          "summary": {
+            "total": 16,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_ml_phi_security.py",
+          "summary": {
+            "total": 10,
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/phi/test_patient_phi_security.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        }
+      ],
+      "tests": {
+        "total": 36,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "Audit Logging": {
+      "files_found": 3,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/audit/test_audit_logging.py",
+          "summary": {
+            "total": 5,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 5,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "skipped",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "skipped",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "skipped",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "skipped",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "skipped",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/audit/test_phi_audit.py",
+          "summary": {
+            "total": 11,
+            "passed": 8,
+            "failed": 3,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "args = (<test_phi_audit.TestPHIAudit object at 0x1073e2350>,)\nkeywargs = {'temp_dir': '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmpmbettqa4'}\n\n    @wraps(func)\n    def patched(*args, **keywargs):\n>       with self.decoration_helper(patched,\n                                    args,\n                                    keywargs) as (newargs, newkeywargs):\n\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1421: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1403: in decoration_helper\n    arg = exit_stack.enter_context(patching)\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:530: in enter_context\n    result = _enter(cm)\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1479: in __enter__\n    self.target = self.getter()\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pkgutil.py:513: in resolve_name\n    mod = importlib.import_module(modname)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nname = 'backend', package = None\n\n    def import_module(name, package=None):\n        \"\"\"Import a module.\n    \n        The 'package' argument is required when performing a relative import. It\n        specifies the package to use as the anchor point from which to resolve the\n        relative import to an absolute import.\n    \n        \"\"\"\n        level = 0\n        if name.startswith('.'):\n            if not package:\n                raise TypeError(\"the 'package' argument is required to perform a \"\n                                f\"relative import for {name!r}\")\n            for character in name:\n                if character != '.':\n                    break\n                level += 1\n>       return _bootstrap._gcd_import(name[level:], package, level)\nE       ModuleNotFoundError: No module named 'backend'\n\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: ModuleNotFoundError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_phi_audit.TestPHIAudit object at 0x1073e2650>\ntemp_dir = '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmpxe628sh1'\n\n        def test_audit_with_clean_files(self, temp_dir):\n            \"\"\"Test that the audit passes when given clean files (no PHI).\"\"\"\n            # Create a directory structure with clean files\n            clean_dir = os.path.join(temp_dir, \"clean_app_no_phi\")\n            os.makedirs(os.path.join(clean_dir, \"domain\"))\n            os.makedirs(os.path.join(clean_dir, \"infrastructure\", \"security\"))\n    \n            # Create sample files with no PHI\n            files_to_create = {\n                os.path.join(clean_dir, \"domain\", \"user.py\"): '''class User:\n        \"\"\"User entity without PHI.\"\"\"\n    \n        def __init__(self, user_id, role):\n            self.user_id = user_id  # UUID like \"550e8400-e29b-41d4-a716-446655440000\"\n            self.role = role        # \"admin\" or \"patient\"\n    ''',\n                os.path.join(clean_dir, \"infrastructure\", \"security\", \"sanitizer.py\"): '''\n    import re\n    import logging\n    class Sanitizer:\n        \"\"\"Sanitizes sensitive data from log messages.\"\"\"\n    \n        def sanitize(self, message):\n            # Proper sanitization\n            return message.replace(\"sensitive\", \"[REDACTED]\")\n    '''\n            }\n    \n            # Write files\n            for file_path, content in files_to_create.items():\n                os.makedirs(os.path.dirname(file_path), exist_ok=True)\n                with open(file_path, \"w\") as f:\n                    f.write(content)\n    \n            # Run the audit on the clean directory\n            auditor = PHIAuditor(app_dir=clean_dir)\n            result = auditor.run_audit()\n    \n            # Verify the audit passes with clean files\n            assert result is True, \"Audit should pass for directories with clean files\"\n    \n            # Check if findings are empty or minimal\n            assert len(auditor.findings.get(\"code_phi\", [])) == 0, \"Should not find PHI in clean files\"\n    \n            # Verify summary contains correct counts\n>           assert auditor._count_total_issues() == 0\nE           assert 4 == 0\nE            +  where 4 = _count_total_issues()\nE            +    where _count_total_issues = <scripts.test.security.run_hipaa_phi_audit.PHIAuditor object at 0x1073fae00>._count_total_issues\n\naudit/test_phi_audit.py:308: AssertionError"
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "args = (<test_phi_audit.TestPHIAudit object at 0x1073f1b80>,)\nkeywargs = {'temp_dir': '/var/folders/3p/t86zsht91l3gsdpddkqg_kfh0000gn/T/tmp9hf006k2'}\n\n    @wraps(func)\n    def patched(*args, **keywargs):\n>       with self.decoration_helper(patched,\n                                    args,\n                                    keywargs) as (newargs, newkeywargs):\n\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1421: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:141: in __enter__\n    return next(self.gen)\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1403: in decoration_helper\n    arg = exit_stack.enter_context(patching)\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py:530: in enter_context\n    result = _enter(cm)\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:1479: in __enter__\n    self.target = self.getter()\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pkgutil.py:513: in resolve_name\n    mod = importlib.import_module(modname)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nname = 'backend', package = None\n\n    def import_module(name, package=None):\n        \"\"\"Import a module.\n    \n        The 'package' argument is required when performing a relative import. It\n        specifies the package to use as the anchor point from which to resolve the\n        relative import to an absolute import.\n    \n        \"\"\"\n        level = 0\n        if name.startswith('.'):\n            if not package:\n                raise TypeError(\"the 'package' argument is required to perform a \"\n                                f\"relative import for {name!r}\")\n            for character in name:\n                if character != '.':\n                    break\n                level += 1\n>       return _bootstrap._gcd_import(name[level:], package, level)\nE       ModuleNotFoundError: No module named 'backend'\n\n/opt/homebrew/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: ModuleNotFoundError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/audit/test_phi_audit_fixed.py",
+          "summary": {
+            "total": 5,
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        }
+      ],
+      "tests": {
+        "total": 21,
+        "passed": 13,
+        "failed": 3,
+        "skipped": 5,
+        "errors": 0
+      }
+    },
+    "API Security": {
+      "files_found": 2,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/api/test_api_hipaa_compliance.py",
+          "summary": {
+            "total": 10,
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/api/test_api_security.py",
+          "summary": {
+            "total": 16,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        }
+      ],
+      "tests": {
+        "total": 26,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "Database Security": {
+      "files_found": 4,
+      "files": [
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/db/test_unit_of_work.py",
+          "summary": {
+            "total": 6,
+            "passed": 3,
+            "failed": 3,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_unit_of_work.TestSQLAlchemyUnitOfWork object at 0x102d68050>\nunit_of_work = <app.infrastructure.persistence.sqlalchemy.unit_of_work.SQLAlchemyUnitOfWork object at 0x102cda120>\nmock_session_factory = (<MagicMock id='4341997520'>, <MagicMock id='4341997184'>)\n\n    def test_successful_transaction(self, unit_of_work, mock_session_factory):\n        \"\"\"Test that a successful transaction commits all changes.\"\"\"\n        # Arrange\n        _, mock_session = mock_session_factory\n    \n        # Act\n        with unit_of_work:\n            # Simulate repository operations\n            # In real usage, this would be something like:\n            # unit_of_work.patients.add(patient)\n            pass\n    \n        # Complete the transaction\n>       unit_of_work.commit()\n\ndb/test_unit_of_work.py:55: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <app.infrastructure.persistence.sqlalchemy.unit_of_work.SQLAlchemyUnitOfWork object at 0x102cda120>\n\n    def commit(self) -> None:\n        \"\"\"\n        Commit the current transaction.\n    \n        Raises:\n            RepositoryError: If the transaction is read-only or no session is active\n        \"\"\"\n        if self._is_read_only:\n            self._session.rollback()\n            raise RepositoryError(\"Cannot commit changes in a read-only transaction\")\n    \n        if self._session is None:\n>           raise RepositoryError(\"No active transaction to commit\")\nE           app.domain.exceptions.RepositoryError: No active transaction to commit\n\n../../infrastructure/persistence/sqlalchemy/unit_of_work.py:130: RepositoryError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_unit_of_work.TestSQLAlchemyUnitOfWork object at 0x102c335c0>\nunit_of_work = <app.infrastructure.persistence.sqlalchemy.unit_of_work.SQLAlchemyUnitOfWork object at 0x102d691d0>\nmock_session_factory = (<MagicMock id='4342005248'>, <MagicMock id='4342003232'>)\n\n    def test_nested_transaction_support(self, unit_of_work, mock_session_factory):\n        \"\"\"Test that nested transactions are handled correctly.\n    \n        This is important for complex PHI operations that span multiple repositories.\n        \"\"\"\n        # Arrange\n        _, mock_session = mock_session_factory\n        mock_session.begin.return_value = MagicMock()\n    \n        # Act\n        with unit_of_work:\n            # Outer transaction\n            with unit_of_work.nested():\n                # Inner transaction\n                pass\n    \n>       unit_of_work.commit()\n\ndb/test_unit_of_work.py:98: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <app.infrastructure.persistence.sqlalchemy.unit_of_work.SQLAlchemyUnitOfWork object at 0x102d691d0>\n\n    def commit(self) -> None:\n        \"\"\"\n        Commit the current transaction.\n    \n        Raises:\n            RepositoryError: If the transaction is read-only or no session is active\n        \"\"\"\n        if self._is_read_only:\n            self._session.rollback()\n            raise RepositoryError(\"Cannot commit changes in a read-only transaction\")\n    \n        if self._session is None:\n>           raise RepositoryError(\"No active transaction to commit\")\nE           app.domain.exceptions.RepositoryError: No active transaction to commit\n\n../../infrastructure/persistence/sqlalchemy/unit_of_work.py:130: RepositoryError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_unit_of_work.TestSQLAlchemyUnitOfWork object at 0x102c9aad0>\nunit_of_work = <app.infrastructure.persistence.sqlalchemy.unit_of_work.SQLAlchemyUnitOfWork object at 0x102d17650>\nmock_session_factory = (<MagicMock id='4343009296'>, <MagicMock id='4343008960'>)\n\n    def test_transaction_metadata_for_audit(self, unit_of_work, mock_session_factory):\n        \"\"\"Test that transaction metadata is captured for HIPAA audit purposes.\"\"\"\n        # Arrange\n        _, mock_session = mock_session_factory\n    \n        # Act\n        with patch(\"app.infrastructure.logging.audit_logger.AuditLogger.log_transaction\") as mock_audit:\n            with unit_of_work:\n                # Set transaction metadata\n                unit_of_work.set_metadata({\n                    \"user_id\": \"provider123\",\n                    \"action\": \"update_patient_record\",\n                    \"patient_id\": \"patient456\",\n                })\n    \n>           unit_of_work.commit()\n\ndb/test_unit_of_work.py:153: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = <app.infrastructure.persistence.sqlalchemy.unit_of_work.SQLAlchemyUnitOfWork object at 0x102d17650>\n\n    def commit(self) -> None:\n        \"\"\"\n        Commit the current transaction.\n    \n        Raises:\n            RepositoryError: If the transaction is read-only or no session is active\n        \"\"\"\n        if self._is_read_only:\n            self._session.rollback()\n            raise RepositoryError(\"Cannot commit changes in a read-only transaction\")\n    \n        if self._session is None:\n>           raise RepositoryError(\"No active transaction to commit\")\nE           app.domain.exceptions.RepositoryError: No active transaction to commit\n\n../../infrastructure/persistence/sqlalchemy/unit_of_work.py:130: RepositoryError"
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/db/test_repository_security.py",
+          "summary": {
+            "total": 10,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "error",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/db/test_db_phi_protection.py",
+          "summary": {
+            "total": 7,
+            "passed": 6,
+            "failed": 1,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": [
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "failed",
+              "duration": 0,
+              "message": "self = <test_db_phi_protection.TestDBPHIProtection object at 0x112c4deb0>\ndb = <test_db_phi_protection.Database object at 0x11292d810>\n\n    def test_phi_filtering_by_role(self, db):\n        \"\"\"Test that PHI fields are filtered based on user role.\"\"\"\n        admin_repo = PatientRepository(db.get_session(), user_context={\"role\": \"admin\", \"user_id\": \"A12345\"})\n        doctor_repo = PatientRepository(db.get_session(), user_context={\"role\": \"doctor\", \"user_id\": \"D12345\"})\n        nurse_repo = PatientRepository(db.get_session(), user_context={\"role\": \"nurse\", \"user_id\": \"N12345\"})\n        patient_repo = PatientRepository(db.get_session(), user_context={\"role\": \"patient\", \"user_id\": \"P12345\"})\n        guest_repo = PatientRepository(db.get_session(), user_context={\"role\": \"guest\", \"user_id\": None})\n    \n        # Admin and Doctor should see all decrypted PHI\n        admin_patient = admin_repo.get_by_id(\"P12345\")\n        doctor_patient = doctor_repo.get_by_id(\"P12345\")\n        assert admin_patient.ssn == \"123-45-6789\"\n        assert doctor_patient.ssn == \"123-45-6789\"\n        assert admin_patient.email == \"john.doe@example.com\"\n        assert doctor_patient.email == \"john.doe@example.com\"\n    \n        # Nurse should see most PHI, but SSN redacted\n        nurse_patient = nurse_repo.get_by_id(\"P12345\")\n        assert nurse_patient.ssn == \"XXX-XX-XXXX\"\n        assert nurse_patient.email == \"john.doe@example.com\"\n        assert nurse_patient.phone == \"555-123-4567\"\n    \n        # Patient should see their own decrypted PHI\n        patient_patient = patient_repo.get_by_id(\"P12345\")\n        assert patient_patient.ssn == \"123-45-6789\"\n        assert patient_patient.email == \"john.doe@example.com\"\n    \n        # Guest should see redacted fields\n        guest_patient = guest_repo.get_by_id(\"P12345\")\n>       assert guest_patient.first_name == \"[REDACTED]\"\nE       AttributeError: 'NoneType' object has no attribute 'first_name'\n\ndb/test_db_phi_protection.py:530: AttributeError"
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            },
+            {
+              "name": "",
+              "outcome": "passed",
+              "duration": 0,
+              "message": ""
+            }
+          ]
+        },
+        {
+          "file": "/Users/ray/Desktop/GITHUB/Novamind-Backend-ONLY-TWINS/backend/app/tests/security/db/test_database_security.py",
+          "summary": {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0
+          },
+          "tests": []
+        }
+      ],
+      "tests": {
+        "total": 23,
+        "passed": 9,
+        "failed": 4,
+        "skipped": 0,
+        "errors": 0
+      }
+    }
+  },
+  "start_time": "2025-04-14T19:00:28.739703",
+  "end_time": "2025-04-14T19:00:44.292025",
+  "duration": 15.552322
+}

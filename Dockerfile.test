@@ -1,0 +1,67 @@
+# Dockerfile for Novamind Digital Twin Quantum Neural Architecture
+# Following clean architecture principles with mathematical precision
+FROM python:3.12-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables for neural pathway testing 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    TESTING=1 \
+    TEST_MODE=1 \
+    ENVIRONMENT=test \
+    PYTHON_WARNINGS=ignore::DeprecationWarning \
+    LOG_LEVEL=DEBUG
+
+# Install system dependencies with minimal footprint (clean architecture)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    libpq-dev \
+    postgresql-client \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only the requirements files first to leverage Docker cache (layer optimization)
+COPY requirements*.txt ./
+
+# Install Python dependencies with proper caching and version pinning
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir -r requirements-test.txt \
+    && pip install --no-cache-dir -r requirements-dev.txt
+
+# Create necessary directories for testing
+RUN mkdir -p /app/test-results /app/logs /app/backup
+
+# Copy the neural pathway architecture files with mathematical precision
+COPY app/tests/setup.py ./app/tests/
+
+# Create the neural directory structure
+RUN mkdir -p /app/scripts/core /app/scripts/fixers /app/scripts/deploy /app/scripts/utils /app/scripts/neurotransmitters
+
+# Copy the quantum neural test runner file directly
+COPY scripts/core/quantum_runner.py ./scripts/core/
+
+# Set up proper permissions for neural pathways
+RUN chmod +x ./scripts/core/quantum_runner.py
+
+# Copy the rest of the application with proper file permissions
+COPY . .
+
+# Ensure Python modules are recognized
+RUN touch app/__init__.py \
+    && touch app/tests/__init__.py \
+    && touch scripts/__init__.py \
+    && touch scripts/test/__init__.py 
+
+# Validate setup is complete
+RUN echo "Novamind Digital Twin Test Container Ready" \
+    && python -c "import sys; print(f'Python {sys.version}')" \
+    && python -c "import sqlalchemy; print(f'SQLAlchemy {sqlalchemy.__version__}')" \
+    && python -c "import pytest; print(f'Pytest {pytest.__version__}')"
+
+# Default command with quantum-level neural architecture test orchestration
+CMD ["python", "-m", "scripts.core.docker_test_runner", "all"]

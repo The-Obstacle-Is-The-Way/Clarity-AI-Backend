@@ -1,0 +1,19 @@
+# Development Dependencies
+-r requirements.in
+
+# Linters & Formatters
+black==23.9.1
+ruff==0.3.5
+mypy==1.6.1
+
+# Pre-commit Hooks
+pre-commit==3.5.0
+
+# Test Utilities (may overlap with test.in but useful during dev)
+hypothesis==6.88.1
+freezegun
+qrcode[pil]>=7.4.2
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==1.3.0 

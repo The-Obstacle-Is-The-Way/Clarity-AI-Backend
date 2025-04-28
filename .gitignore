@@ -1,0 +1,130 @@
+# -------------------
+# Python build / cache
+# -------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# -------------------
+# Editor / tool rules
+# -------------------
+.clinerules
+.cursorrules
+.roorules
+.windsurfrules
+.cursor/
+
+# -------------------
+# IDE settings
+# -------------------
+# PyCharm
+.idea/
+# VS Code
+.vscode/
+*.code-workspace
+
+# -------------------
+# Environment / venvs
+# -------------------
+.env
+.env.*
+.venv
+env/
+venv/
+venv_py313/
+ENV/
+env.bak/
+venv.bak/
+**/venv/
+**/.venv/
+
+# -------------------
+# Coverage reports
+# -------------------
+htmlcov/
+coverage_html/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+coverage.json
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# -------------------
+# Pytest run outputs
+# -------------------
+pytest-*/
+pytest-of-*/
+
+# -------------------
+# Logs
+# -------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -------------------
+# System files
+# -------------------
+.DS_Store
+Thumbs.db
+
+# -------------------
+# Databases
+# -------------------
+*.sqlite
+*.sqlite3
+*.db
+
+# -------------------
+# Docker
+# -------------------
+.docker/
+
+# -------------------
+# Jupyter
+# -------------------
+.ipynb_checkpoints
+
+# -------------------
+# Alembic migrations
+# -------------------
+alembic/versions/*.py
+
+# -------------------
+# Temp security reports
+# -------------------
+security-reports/temp*.json
+security-reports/temp*.txt
+security-reports/temp*.html
+
+# -------------------
+# Test‐result directories
+# -------------------
+test-results/
+report.json

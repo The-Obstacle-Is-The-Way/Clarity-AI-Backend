@@ -1,0 +1,18 @@
+# Security Analysis & Testing Dependencies
+
+# Code Security Analysis
+bandit>=1.7.5
+
+# Dependency Vulnerability Scanning
+pip-audit>=2.6.1
+safety>=2.3.5
+
+# Specific Security Libs (potentially also used in tests)
+pyjwt>=2.7.0
+pyotp>=2.6.0
+
+# Test Reporting
+pytest-html>=3.2.0 # For HTML reports from security tests
+tabulate>=0.9.0
+rich>=13.4.2
+colorama>=0.4.6 # Optional: Windows color support 

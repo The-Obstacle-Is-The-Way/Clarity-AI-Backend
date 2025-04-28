@@ -1,0 +1,90 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('index') }}">
+            <img src="{{ url_for('static', filename='images/novamind-logo.svg') }}" alt="NOVAMIND" height="30">
+            NOVAMIND
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">
+                            <i class="fas fa-chart-line"></i> Dashboard
+                        </a>
+                    </li>
+                    
+                    {% if current_user.has_role('provider') or current_user.has_role('admin') %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="patientsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-users"></i> Patients
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="patientsDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('patients.list') }}">All Patients</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('patients.create') }}">New Patient</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('patients.search') }}">Search</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="digitalTwinDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-brain"></i> Digital Twin
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="digitalTwinDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('digital_twin.overview') }}">Overview</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('digital_twin.symptom_forecast') }}">Symptom Forecast</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('digital_twin.biometrics') }}">Biometric Correlations</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('digital_twin.pharmacogenomics') }}">Pharmacogenomics</a></li>
+                        </ul>
+                    </li>
+                    
+                    {% if current_user.has_role('provider') or current_user.has_role('admin') %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('appointments.calendar') }}">
+                            <i class="fas fa-calendar-alt"></i> Appointments
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if current_user.has_role('admin') %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-cogs"></i> Administration
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.users') }}">User Management</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.audit_logs') }}">Audit Logs</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.settings') }}">System Settings</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                {% endif %}
+            </ul>
+            
+            <ul class="navbar-nav ms-auto">
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle"></i> {{ current_user.name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}">Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('settings') }}">Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        </ul>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

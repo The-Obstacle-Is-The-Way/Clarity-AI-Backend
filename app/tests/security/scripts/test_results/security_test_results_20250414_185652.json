@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-04-14T18:56:52.527273",
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+  },
+  "categories": {
+    "Core Encryption": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "PHI Handling": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "JWT Authentication": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "HIPAA Compliance": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "PHI Protection": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "Security Patterns": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "Audit Logging": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "API Security": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    },
+    "Database Security": {
+      "files_found": 0,
+      "files": [],
+      "tests": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      }
+    }
+  },
+  "start_time": "2025-04-14T18:56:52.527306",
+  "end_time": "2025-04-14T18:56:52.528827",
+  "duration": 0.001521
+}
