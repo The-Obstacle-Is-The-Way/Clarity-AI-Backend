@@ -287,6 +287,9 @@ class ClinicalTextAnalysisResponse(BaseModel):
     timestamp: Optional[datetime] = Field(None, description="Timestamp when analysis was performed")
     phi_detected: Optional[bool] = Field(None, description="Whether PHI was detected in the text")
 
+# Ensure the model is fully defined, especially for Union types
+ClinicalTextAnalysisResponse.model_rebuild()
+
 
 class PersonalizedInsightResponse(BaseModel):
     """Response schema for personalized insight."""
