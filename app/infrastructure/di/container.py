@@ -29,6 +29,30 @@ from app.domain.interfaces.ml_service_interface import (
 # from app.domain.repositories.digital_twin_repository import IDigitalTwinRepository
 # from app.domain.repositories.patient_repository import IPatientRepository
 
+# Ensure AnalyticsService is importable here
+from app.domain.services.analytics_service import AnalyticsService
+# Placeholder for where AnalyticsService implementation might be
+# from app.infrastructure.services.analytics_service_impl import AnalyticsServiceImpl # Example
+
+# Import Settings class
+from app.config.settings import Settings, get_settings
+
+# Import EventRepository and potentially its implementation/mock
+from app.domain.repositories.temporal_repository import EventRepository
+# from app.infrastructure.repositories.temporal.timescale_repository import TimescaleEventRepository # Example Impl
+
+# Import Appointment Repository interface
+from app.domain.repositories.appointment_repository import IAppointmentRepository
+from unittest.mock import AsyncMock
+
+# Import Clinical Note Repository interface/type
+from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
+# Import Medication Repository type
+from app.domain.repositories.medication_repository import MedicationRepository
+# Import Patient Repository type
+from app.domain.repositories.patient_repository import PatientRepository
+# Import Digital Twin Repository type
+from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
 
 # Initialize logger using the utility function
 logger = get_logger(__name__)
@@ -345,15 +369,11 @@ class Container(DIContainer):
 
 def get_container():
     """Singleton function to access the DI container."""
-    # Use the global container
     global container
-    
-    # If container is already initialized, return it
     if container is not None:
         return container
     
     import os
-    # If we're in a test environment with MOCK_DI_CONTAINERS=true, return a test container
     if os.environ.get("MOCK_DI_CONTAINERS") == "true":
         from unittest.mock import MagicMock, AsyncMock
         
@@ -374,16 +394,93 @@ def get_container():
         container = mock_container
         return container
     
-    # Normal container initialization
+    # Normal container initialization WITH registrations
     try:
-        # Import here to avoid circular imports
-        # Just create a basic DIContainer for tests - don't try to import problematic modules
-        container = DIContainer()
+        from unittest.mock import AsyncMock
+        
+        logger.info("Initializing REAL DI container and registering services.")
+        container = Container() 
+
+        # --- Register Core Services --- 
+        # Settings is now imported
+        container.register(Settings, get_settings)
+
+        # Example: JWT Service
+        from app.core.interfaces.services.jwt_service import IJwtService
+        from app.infrastructure.security.jwt.jwt_service import JWTService
+        # Assuming JWTService needs settings; the container will resolve it
+        container.register_scoped(IJwtService, JWTService)
+
+        # Example: Password Handler (Singleton)
+        from app.infrastructure.security.password.password_handler import PasswordHandler
+        container.register_instance(PasswordHandler, PasswordHandler())
+
+        # Example: User Repository
+        from app.domain.repositories.user_repository import UserRepository
+        from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
+        # Assuming SqlAlchemyUserRepository needs an AsyncSession; 
+        # this might require session management integration or a factory
+        # For now, let's register the type (scoped)
+        container.register_scoped(UserRepository, SqlAlchemyUserRepository)
+
+        # Example: Authentication Service
+        from app.infrastructure.security.auth.authentication_service import AuthenticationService
+        # Container will inject registered dependencies (UserRepo, PW Handler, JWT Service)
+        container.register_scoped(AuthenticationService, AuthenticationService)
+        
+        # --- ADD EventRepository Registration (Mock) ---
+        mock_event_repo = AsyncMock(spec=EventRepository)
+        container.register(EventRepository, lambda: mock_event_repo)
+        logger.info(f"Registered MOCK {EventRepository.__name__} in DI container.")
+
+        # --- ADD AppointmentRepository Registration (Mock) ---
+        mock_appt_repo = AsyncMock(spec=IAppointmentRepository)
+        container.register(IAppointmentRepository, lambda: mock_appt_repo)
+        logger.info(f"Registered MOCK {IAppointmentRepository.__name__} in DI container.")
+
+        # --- ADD ClinicalNoteRepository Registration (Mock) ---
+        # TODO: Replace with actual implementation registration later if needed
+        mock_cnote_repo = AsyncMock(spec=ClinicalNoteRepository)
+        container.register(ClinicalNoteRepository, lambda: mock_cnote_repo)
+        logger.info(f"Registered MOCK {ClinicalNoteRepository.__name__} in DI container.")
+
+        # --- ADD MedicationRepository Registration (Mock) ---
+        # TODO: Replace with actual implementation registration later if needed
+        mock_med_repo = AsyncMock(spec=MedicationRepository)
+        container.register(MedicationRepository, lambda: mock_med_repo)
+        logger.info(f"Registered MOCK {MedicationRepository.__name__} in DI container.")
+
+        # --- ADD PatientRepository Registration (Mock) ---
+        # Assuming AnalyticsService uses PatientRepository type hint
+        # TODO: Replace with actual implementation registration later if needed
+        mock_patient_repo = AsyncMock(spec=PatientRepository)
+        container.register(PatientRepository, lambda: mock_patient_repo)
+        logger.info(f"Registered MOCK {PatientRepository.__name__} in DI container.")
+
+        # --- ADD DigitalTwinRepository Registration (Mock) ---
+        # TODO: Replace with actual implementation registration later if needed
+        mock_dt_repo = AsyncMock(spec=DigitalTwinRepository)
+        container.register(DigitalTwinRepository, lambda: mock_dt_repo)
+        logger.info(f"Registered MOCK {DigitalTwinRepository.__name__} in DI container.")
+
+        # --- Register AnalyticsService (depends on EventRepo, ApptRepo, CNoteRepo) --- 
+        container.register_scoped(AnalyticsService, AnalyticsService) 
+        logger.info(f"Registered {AnalyticsService.__name__} in DI container.")
+
+        # --- ADD XGBoost Registration (Example) ---
+        # Replace XGBoostServiceImpl with the actual implementation
+        # from app.infrastructure.services.xgboost_service_impl import XGBoostServiceImpl # Example
+        # Assume for now AnalyticsService acts as placeholder 
+        # container.register_scoped(XGBoostInterface, XGBoostServiceImpl) 
+
+        # ... register other necessary services/repositories ...
+
+        logger.info("DI Container initialized with REAL service registrations.")
         return container
+        
     except Exception as e:
-        logger.error(f"Error registering services in DI container: {e}")
-        # If container initialization failed in a non-test environment, provide a mock container 
-        # that will at least allow imports to succeed
+        logger.error(f"Error registering real services in DI container: {e}", exc_info=True)
+        # Fallback to empty container on error during real init
         container = DIContainer()
         return container
 

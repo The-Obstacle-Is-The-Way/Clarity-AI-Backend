@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional, AsyncGenerator, Generator, Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, ASGITransport
-from fastapi import Depends
+from fastapi import Depends, FastAPI
 
 # CRITICAL FIX: Prevent XGBoost namespace collision
 # This ensures the test collection mechanism doesn't confuse our test directory
@@ -41,6 +41,13 @@ from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.presentation.api.dependencies.auth import get_authentication_service
 from app.infrastructure.database.models import Base
+from app.core.services.ml.xgboost.interface import XGBoostInterface, ModelType
+from app.infrastructure.persistence.sqlalchemy.config.database import Database
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
+from app.main import create_application # Import create_application
+from app.domain.services.analytics_service import AnalyticsService # Import AnalyticsService
+from app.infrastructure.di.container import get_container # Import get_container
 
 # --- Conditional Import for Pydantic Settings ---
 _HAS_PYDANTIC_SETTINGS = False
@@ -59,7 +66,6 @@ except ImportError:
 
 # Set test environment variables early
 os.environ["TESTING"] = "true"
-os.environ["MOCK_DI_CONTAINERS"] = "true"
 os.environ["NOVAMIND_SKIP_APP_INIT"] = "true"
 os.environ["ENVIRONMENT"] = "test"
 
@@ -73,65 +79,33 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope="session", autouse=True)
 def mock_problematic_imports():
     """Mock problematic imports to prevent collection errors. Applied automatically.
-    
-    NOTE: Using autouse=True and session scope. Ensure this is appropriate.
-    If mocks need to be function-scoped or applied differently, adjust scope/autouse.
+    REMOVED broad container mocking. Focus on specific problematic imports.
+    REMOVED AnalyticsService class patch.
     """
-    # First, import the container module without actually using it
-    # This ensures the module is loaded before we try to patch it
-    import app.infrastructure.di.container
-    
-    # Now create patches for problematic modules
     patches = []
     
-    # Directly patch the get_container function to return our mock
-    mock_container = MagicMock()
-    
-    # Configure the mock container to return mock objects for any requested service
-    def resolve_mock(*args, **kwargs):
-        mock_service = MagicMock()
-        # Make any async methods return AsyncMock
-        mock_service.__call__ = AsyncMock(return_value=mock_service)
-        return mock_service
-    
-    mock_container.resolve.side_effect = resolve_mock
-    mock_container.get.side_effect = resolve_mock
-    
-    # Add a patch for the get_container function
-    container_func_patch = patch("app.infrastructure.di.container.get_container", return_value=mock_container)
-    container_func_patch.start()
-    patches.append(container_func_patch)
-    
-    # Add a patch for the module-level container variable
-    container_var_patch = patch("app.infrastructure.di.container.container", mock_container)
-    container_var_patch.start()
-    patches.append(container_var_patch)
-    
-    # Mock app.main to prevent it from initializing real services
+    # Keep app.main.app patch if needed for collection?
     main_patch = patch("app.main.app")
     mock_app = main_patch.start()
     mock_app.dependency_overrides = {}
     patches.append(main_patch)
     
-    # Import our mock DB module
+    # Keep DB session mock for collection
     from app.tests.mocks.persistence_db_mock import AsyncSession, get_db_session as mock_get_db_session
-    
-    # Mock database session using our custom mock implementation
     db_session_patch = patch("app.infrastructure.persistence.sqlalchemy.config.database.get_db_session", mock_get_db_session)
     db_session_patch.start()
     patches.append(db_session_patch)
     
-    # Mock persistence.db module import
-    # Create a sys.modules entry for the missing module
+    # Keep persistence.db mock for collection
     import sys
     if "app.infrastructure.persistence.db" not in sys.modules:
         import app.tests.mocks.persistence_db_mock as db_mock
         sys.modules["app.infrastructure.persistence.db"] = db_mock
     
-    # Mock analytics service that's causing collection issues
-    analytics_patch = patch("app.domain.services.analytics_service.AnalyticsService")
-    analytics_patch.start()
-    patches.append(analytics_patch)
+    # REMOVED: AnalyticsService class patch
+    # analytics_patch = patch("app.domain.services.analytics_service.AnalyticsService")
+    # analytics_patch.start()
+    # patches.append(analytics_patch)
     
     yield # Yield control to the test/fixture using this fixture
     
@@ -188,84 +162,85 @@ class MockSettings:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def async_client(event_loop) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(event_loop, mock_xgboost_service: AsyncMock) -> AsyncGenerator[AsyncClient, None]:
     """
-    Provides an asynchronous test client for the FastAPI application.
-    Configures test-specific settings and overrides dependencies like JWTService.
+    Provides an asynchronous test client using the main application factory.
+    Applies necessary overrides DIRECTLY TO THE GLOBAL CONTAINER before app creation.
+    Applies necessary patches during app creation.
     """
-    # --- Define Test Settings ---
+    # --- Get Global Container ---
+    container = get_container()
+
+    # --- Define Mocks and Test Services ---
+    mock_analytics_service = AsyncMock(spec=AnalyticsService)
+    
+    # Define test settings and services factories (as before)
     def get_test_settings() -> Settings:
-         # Return a Settings instance configured for tests
-         # Ensure necessary imports (Settings, SecretStr) are available
-         return Settings(
+        # ... existing implementation ...
+        TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+        TEST_SECRET = "test-secret-key-for-testing-only"
+        return Settings(
             TESTING=True,
             DATABASE_URL=TEST_DATABASE_URL,
-            JWT_SECRET_KEY=SecretStr(TEST_SECRET), # Use consistent secret
-            SECRET_KEY=SecretStr(TEST_SECRET), # Also set fallback secret key
+            JWT_SECRET_KEY=SecretStr(TEST_SECRET),
+            SECRET_KEY=SecretStr(TEST_SECRET),
             JWT_ALGORITHM="HS256",
             ACCESS_TOKEN_EXPIRE_MINUTES=15,
             JWT_REFRESH_TOKEN_EXPIRE_DAYS=7,
             JWT_ISSUER="test-issuer",
             JWT_AUDIENCE="test-audience",
             BACKEND_CORS_ORIGINS=["http://localhost:3000", "http://testserver"],
-            # Add other necessary test settings if required
         )
 
-    # --- Define Test JWT Service ---
-    def get_test_jwt_service(settings: Settings = Depends(get_test_settings)) -> IJwtService:
-        # Initialize JWTService with the test settings
-        # Pass None for user_repository as it's likely not needed for basic token ops in tests
-        # If user repo IS needed by JWT service logic you intend to test via this mock,
-        # provide a mock repository instead of None.
-        return JWTService(settings=settings, user_repository=None) # Use None or a mock repo
+    def get_test_jwt_service() -> IJwtService:
+        # Note: Doesn't need settings injected if we override get_settings globally
+        return JWTService(settings=get_test_settings(), user_repository=None)
 
-    # --- Define Test Authentication Service Mock ---
     def get_mock_authentication_service() -> AuthenticationService:
         mock_auth_service = AsyncMock(spec=AuthenticationService)
-
-        # Configure the mock validate_token method
-        async def mock_validate_token(token: str) -> tuple[User, list[str]] | None:
-            # Basic validation logic for tests:
-            # If token is "valid-token", return a mock user and roles.
-            # Otherwise, return None (or raise specific exceptions if needed).
-            # You can customize this based on test needs.
-            if token and token != "invalid-token": # Check for non-empty token
-                 # Create a mock User object or use a simple dictionary/dataclass
-                 mock_user = MagicMock(spec=User)
-                 mock_user.id = "test-user-id"
-                 mock_user.username = "testuser"
-                 mock_user.email = "test@example.com"
-                 # Add other essential User attributes as needed by your application logic
-                 
-                 # Define roles based on token or test context
-                 # This might need adjustment based on how your actual validate_token works
-                 roles = ["patient"] # Default role for testing
-                 if token == "provider-token": # Example for different role
-                     roles = ["provider", "clinician"]
-                 return (mock_user, roles)
-            return None # Token is invalid or missing
-
+        async def mock_validate_token(token: str) -> tuple[MagicMock, list[str]] | None:
+            if token and token != "invalid-token":
+                mock_user = MagicMock(spec=User)
+                mock_user.id = "test-user-id"
+                mock_user.username = "testuser"
+                mock_user.email = "test@example.com"
+                roles = ["patient"]
+                if "PROVIDER_TOKEN" in token:
+                    roles = ["provider", "clinician"]
+                return (mock_user, roles)
+            return None
         mock_auth_service.validate_token = mock_validate_token
-        # Mock other AuthenticationService methods if they are called during the request lifecycle
-        # Example: mock_auth_service.get_user_by_id = AsyncMock(return_value=...)
-
         return mock_auth_service
 
+    # --- Store Original Container Registrations for Cleanup ---
+    original_registrations = container._registrations.copy()
 
-    # --- Define Dependency Overrides ---
-    dependency_overrides = {
-        get_settings: get_test_settings,
-        IJwtService: get_test_jwt_service,
-        get_authentication_service: get_mock_authentication_service
-    }
-    
-    from app.main import create_application
-    
-    app = create_application(dependency_overrides=dependency_overrides)
+    # --- Override Services in Global Container BEFORE App Creation ---
+    try:
+        container.override(Settings, get_test_settings)
+        container.override(IJwtService, get_test_jwt_service)
+        container.override(AuthenticationService, get_mock_authentication_service)
+        container.override(XGBoostInterface, lambda: mock_xgboost_service)
+        container.override(AnalyticsService, lambda: mock_analytics_service)
 
-    # Correct initialization using ASGITransport
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-        yield client
+        # --- Apply Patches and Create App ---
+        mock_rate_limiter_instance = AsyncMock()
+        mock_rate_limiter_instance.process_request.return_value = (False, {})
+        mock_rate_limiter_instance.apply_rate_limit_headers.return_value = None
+
+        with patch('app.presentation.middleware.rate_limiting_middleware.get_rate_limiter', return_value=mock_rate_limiter_instance), \
+             patch.object(Database, 'dispose', new_callable=AsyncMock):
+
+            # Create the app using the factory - it will now use the globally overridden container
+            test_app_instance = create_application()
+
+            # Create the AsyncClient 
+            async with AsyncClient(transport=ASGITransport(app=test_app_instance), base_url="http://testserver") as client_instance:
+                yield client_instance
+                
+    finally:
+        # --- Cleanup: Restore Original Container Registrations ---
+        container._registrations = original_registrations
 
 # Fixtures for generating tokens using the *correct* test secret
 # Moved from integration/conftest.py for potential wider use, or keep it there if preferred.
@@ -736,15 +711,8 @@ def event_loop():
 
 @pytest.fixture
 def client(async_client):
-    """Create a TestClient instance for API security tests.
-    
-    This fixture provides a standard client name expected by the security tests.
-    It wraps the async_client fixture to maintain compatibility with test modules
-    that use the 'client' fixture name.
-    
-    Returns:
-        AsyncClient: An async client for testing
-    """
+    """Provides the httpx.AsyncClient configured globally."""
+    # This now correctly returns the AsyncClient instance, not TestClient.
     return async_client
 
 
@@ -892,3 +860,18 @@ def mock_encryption_service():
     service.is_hipaa_compliant = True
     
     return service
+
+# --- XGBoost Mock Service Fixture (Moved from integration test) ---
+@pytest.fixture(scope="session") # Use session scope consistent with async_client
+def mock_xgboost_service():
+    """Fixture for a session-scoped AsyncMock XGBoost service interface."""
+    mock_service = AsyncMock(spec=XGBoostInterface)
+    # Configure mock return values
+    mock_service.predict_risk.return_value = {"prediction_id": "risk-pred-123", "risk_score": 0.75, "confidence": 0.9, "risk_level": "high"}
+    mock_service.predict_treatment_response.return_value = {"prediction_id": "treat-pred-456", "response_probability": 0.8, "confidence": 0.85}
+    mock_service.predict_outcome.return_value = {"prediction_id": "outcome-pred-789", "outcome_prediction": "stable", "confidence": 0.92}
+    mock_service.get_model_info.return_value = {"model_type": ModelType.RISK_RELAPSE.value, "version": "1.0", "description": "Mock Relapse Model", "features": ["feat1", "feat2"]}
+    mock_service.get_feature_importance.return_value = {"prediction_id": "pred123", "feature_importance": {"feat1": 0.6, "feat2": 0.4}}
+    mock_service.get_available_models.return_value = [{"model_type": ModelType.RISK_RELAPSE.value, "version": "1.0"}]
+    mock_service.is_initialized = True
+    return mock_service

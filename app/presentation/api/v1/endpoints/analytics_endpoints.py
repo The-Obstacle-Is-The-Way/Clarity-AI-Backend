@@ -43,20 +43,20 @@ CACHE_TTL = {
     "patient_risk_stratification": 60 * 10,  # 10 minutes
 }
 
-# Define the dependency using get_service directly
-# We CANNOT import AnalyticsService here at module level
-AnalyticsServiceDep = Depends(get_service("app.domain.services.analytics_service.AnalyticsService"))
-
-# Modification: Modify get_service in container.py to accept string paths if it doesn't already
-# For now, assume it works or adjust later.
+# Define a dependency function that calls get_service
+def get_analytics_service_dependency():
+    """Dependency function to resolve AnalyticsService via get_service."""
+    # Import service type locally ONLY for type hinting if absolutely needed, otherwise omit
+    # from app.domain.services.analytics_service import AnalyticsService # Example type hint import
+    return get_service("app.domain.services.analytics_service.AnalyticsService")
 
 @_v1_router.get("/patient/{patient_id}/treatment-outcomes", response_model=Dict[str, Any])
 async def get_patient_treatment_outcomes(
     patient_id: UUID,
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=90)),
     end_date: Optional[datetime] = Query(default=None),
-    # Use Any for type hint to prevent collection-time resolution
-    analytics_service: Any = AnalyticsServiceDep,
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
@@ -193,8 +193,8 @@ async def get_practice_metrics(
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=30)),
     end_date: Optional[datetime] = Query(default=None),
     provider_id: Optional[UUID] = Query(default=None),
-    # Use Any for type hint
-    analytics_service: Any = AnalyticsServiceDep,
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
@@ -298,8 +298,8 @@ async def get_diagnosis_distribution(
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
     provider_id: Optional[UUID] = Query(default=None),
-    # Use Any for type hint
-    analytics_service: Any = AnalyticsServiceDep,
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
 ) -> List[Dict[str, Any]]:
     """
@@ -349,8 +349,8 @@ async def get_medication_effectiveness(
     diagnosis_code: Optional[str] = Query(default=None),
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
-    # Use Any for type hint
-    analytics_service: Any = AnalyticsServiceDep,
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
@@ -464,8 +464,8 @@ async def get_treatment_comparison(
     treatments: List[str] = Query(...),
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
-    # Use Any for type hint
-    analytics_service: Any = AnalyticsServiceDep,
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
@@ -574,8 +574,8 @@ async def _process_treatment_comparison(
 
 @_v1_router.get("/patient-risk-stratification", response_model=List[Dict[str, Any]])
 async def get_patient_risk_stratification(
-    # Use Any for type hint
-    analytics_service: Any = AnalyticsServiceDep,
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
 ) -> List[Dict[str, Any]]:
     """
@@ -622,8 +622,8 @@ async def record_analytics_event(
     event_data: Dict[str, Any],
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    # Use string path to avoid circular import
-    analytics_service: Any = Depends(get_service("app.domain.services.analytics_service.AnalyticsService")),
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
 ) -> Dict[str, str]:
     """
     Record an analytics event.
@@ -680,8 +680,8 @@ async def record_analytics_batch(
     batch_data: Dict[str, List[Dict[str, Any]]],
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    # Use string path to avoid circular import
-    analytics_service: Any = Depends(get_service("app.domain.services.analytics_service.AnalyticsService")),
+    # Use the new dependency function
+    analytics_service: Any = Depends(get_analytics_service_dependency),
 ) -> Dict[str, str]:
     """
     Record a batch of analytics events.
