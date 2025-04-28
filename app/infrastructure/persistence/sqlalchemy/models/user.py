@@ -140,9 +140,6 @@ class User(Base):
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
     last_login = Column(DateTime, nullable=True)
     
-    # Relationships - critical for maintaining referential integrity
-    provider = relationship("ProviderModel", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    
     # Security-related fields
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     account_locked_until = Column(DateTime, nullable=True)
@@ -161,11 +158,16 @@ class User(Base):
     preferences = Column(JSONType, nullable=True)  # User preferences (UI settings, etc.)
     
     # Relationships
+    provider = relationship(
+        "ProviderModel",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     patients = relationship(
         "Patient",
         back_populates="user",
-        foreign_keys='Patient.user_id',
-        primaryjoin='User.id == Patient.user_id'
+        cascade="all, delete-orphan",
     )
     
     # Audit logging

@@ -138,7 +138,7 @@ class TestActigraphyEndpoints:
         assert response.status_code == 401
         # Check detail message based on actual implementation (might differ from "Not authenticated")
         assert "detail" in response.json()
-        assert "required" in response.json()["detail"] # Example check
+        assert "Not authenticated" in response.json()["detail"]
 
     @pytest.fixture
     async def test_authorized_access(self, async_client: AsyncClient, patient_token: str) -> None:
@@ -373,78 +373,94 @@ TEST_USER_ID = str(uuid.uuid4()) # Use a consistent test user ID
 @pytest.mark.asyncio
 async def test_upload_actigraphy_data(
     async_client: AsyncClient, 
-    get_valid_auth_headers: dict # Use the new fixture
+    provider_token: str, # Assume provider uploads data
+    sample_readings: List[Dict[str, Any]],
+    sample_device_info: Dict[str, Any]
 ):
     """Test uploading actigraphy data successfully."""
-    test_data = {
-        "metadata": {"patient_id": TEST_USER_ID, "device_id": "device-123"},
-        "readings": [{"timestamp": "2023-01-01T12:00:00Z", "x": 0.1, "y": 0.2, "z": 0.9}]
+    patient_id = f"patient-{uuid.uuid4()}"
+    upload_data = {
+        "patient_id": patient_id,
+        "readings": sample_readings,
+        "start_time": "2024-01-01T10:00:00Z",
+        "end_time": "2024-01-01T10:00:02Z",
+        "sampling_rate_hz": 1.0,
+        "device_info": sample_device_info,
+        "analysis_types": ["sleep_quality", "activity_levels"]
     }
+
+    # Use async_client instead of request
     response = await async_client.post(
-        f"/actigraphy/upload/{TEST_USER_ID}", 
-        json=test_data, 
-        headers=get_valid_auth_headers # Pass the valid headers
+        "/api/v1/actigraphy/analyze",
+        json=upload_data,
+        headers={"Authorization": f"Bearer {provider_token}"}
     )
-    assert response.status_code == 200 # Expect 200 OK for successful upload
+
+    assert response.status_code == 200 # Assuming 200 for successful analysis start
     response_data = response.json()
-    assert "message" in response_data
-    assert response_data["message"] == "Actigraphy data uploaded successfully."
-    assert "analysis_id" in response_data 
+    assert "analysis_id" in response_data
+    # Add more assertions based on expected response structure
+    assert response_data.get("status") == "processing" # Or completed, depending on mock
 
 @pytest.mark.asyncio
 async def test_get_actigraphy_data_summary(
     async_client: AsyncClient, 
-    get_valid_auth_headers: dict # Use the new fixture
+    provider_token: str, # Assume provider access
 ):
-    """Test retrieving actigraphy data summary."""
-    # First, ensure some data exists (e.g., by calling upload or mocking)
-    # For simplicity, we assume data might exist from previous tests or setup
+    """Test retrieving actigraphy data summary successfully."""
+    patient_id = "test-patient-summary" # Use a known or test-specific patient ID
+    # Ensure some analysis exists for this patient via setup or previous tests if needed
+
+    # Use async_client instead of request
     response = await async_client.get(
-        f"/actigraphy/summary/{TEST_USER_ID}", 
-        headers=get_valid_auth_headers # Pass the valid headers
-    )
-    # Check for success or potentially 404 if no data exists yet
-    # For this example, let's assume success if authorized
-    assert response.status_code == 200 
-    response_data = response.json()
-    assert "summary" in response_data
-    # Add more specific assertions about the summary content if needed
-
-@pytest.mark.asyncio
-async def test_get_specific_actigraphy_data(
-    async_client: AsyncClient, # Use global async_client
-    # Removed mock_pat_service fixture dependency
-    # mock_pat_service: MockPATService,
-    sample_actigraphy_data: Dict[str, Any], # Assuming this fixture is still needed
-) -> None:
-    """Test getting specific actigraphy data.
-
-    Args:
-        async_client: Async test client.
-        # Removed mock_pat_service parameter
-        # mock_pat_service: Mock PAT service instance.
-        sample_actigraphy_data: Sample actigraphy data dictionary.
-    """
-    # Use hardcoded token
-    headers = {"Authorization": "Bearer VALID_PATIENT_TOKEN"}
-    user_id = "test_user_specific"
-    record_id = "test_record_123"
-
-    # Optionally, set up expected data if the endpoint retrieves something
-    # For example, if a specific record is expected based on record_id
-    # expected_data = sample_actigraphy_data  # Adjust as needed
-
-    response = await async_client.get(
-        f"/actigraphy/{user_id}/{record_id}", # Ensure this matches the actual endpoint URL
-        headers=headers,
+        f"/api/v1/actigraphy/patient/{patient_id}/analyses",
+        headers={"Authorization": f"Bearer {provider_token}"}
     )
 
     assert response.status_code == 200
-    # Add assertions to verify the retrieved data matches expectations
-    # Example assertion (adjust based on actual API response):
     response_data = response.json()
-    assert "record_id" in response_data # Placeholder assertion
-    # assert response_data == expected_data # More specific assertion if applicable
+    assert "analyses" in response_data
+    assert isinstance(response_data["analyses"], list)
+    # assert "total" in response_data # If pagination is implemented
 
-    # Assertions related to mock_pat_service interactions are removed
-    # If needed, verify interactions with dependencies mocked elsewhere.
+@pytest.mark.asyncio
+async def test_get_specific_actigraphy_data(
+    async_client: AsyncClient, 
+    provider_token: str, # Assume provider access
+    sample_readings: List[Dict[str, Any]],
+    sample_device_info: Dict[str, Any]
+    # Removed mock_pat_service fixture dependency as client handles service interaction
+) -> None:
+    """Test retrieving specific actigraphy analysis data successfully."""
+    patient_id = f"patient-{uuid.uuid4()}"
+    # 1. Create an analysis first to get an ID
+    analysis_request = {
+        "patient_id": patient_id,
+        "readings": sample_readings,
+        "start_time": "2024-01-01T11:00:00Z",
+        "end_time": "2024-01-01T11:00:02Z",
+        "sampling_rate_hz": 1.0,
+        "device_info": sample_device_info,
+        "analysis_types": ["sleep_quality"]
+    }
+    create_response = await async_client.post(
+        "/api/v1/actigraphy/analyze",
+        json=analysis_request,
+        headers={"Authorization": f"Bearer {provider_token}"}
+    )
+    assert create_response.status_code == 200
+    analysis_id = create_response.json().get("analysis_id")
+    assert analysis_id
+
+    # 2. Use async_client to get the specific analysis
+    response = await async_client.get(
+        f"/api/v1/actigraphy/analysis/{analysis_id}",
+        headers={"Authorization": f"Bearer {provider_token}"}
+    )
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["analysis_id"] == analysis_id
+    assert "results" in response_data # Check for expected analysis results
+    # Add more assertions based on the expected structure of a single analysis result
+    assert "sleep_quality" in response_data["results"]

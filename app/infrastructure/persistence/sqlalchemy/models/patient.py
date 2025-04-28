@@ -51,7 +51,8 @@ class Patient(Base):
     # external_id could be from an EMR or other system
     external_id = Column(String(64), unique=True, index=True, nullable=True)
     # Foreign key to the associated user account (if applicable)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", use_alter=True), nullable=True, index=True)
+    # Use string reference "users.id" in ForeignKey
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
@@ -93,25 +94,41 @@ class Patient(Base):
     # Add insurance_info field expected by the test
     _insurance_info = Column("insurance_info", Text, nullable=True) # Uncommenting for proper access
 
-    user = relationship(
-        "User", 
-        back_populates="patients",
-        foreign_keys='Patient.user_id', # Use string definition
-        primaryjoin='User.id == Patient.user_id' # Use string definition
-    ) 
     # --- Relationships ---
-    # Complete unified relationship graph with proper cascades for referential integrity
-    # Restore relationships
-    appointments = relationship(
-        "AppointmentModel",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-        foreign_keys="[AppointmentModel.patient_id]" # Explicitly define the foreign key
-    )
-    clinical_notes = relationship("ClinicalNoteModel", back_populates="patient", cascade="all, delete-orphan", remote_side="ClinicalNoteModel.patient_id")
-    # Rename relationship to avoid conflict
-    medication_records = relationship("MedicationModel", back_populates="patient", cascade="all, delete-orphan", remote_side="MedicationModel.patient_id")
-    
+    # Simplify relationship definitions to use direct references where possible
+
+    # user = relationship(
+    #     "User", 
+    #     back_populates="patients",
+    #     # foreign_keys='Patient.user_id', # Use string definition - Try removing explicit foreign_keys if SQLAlchemy can infer
+    #     primaryjoin='User.id == Patient.user_id' # Use string definition - Try removing explicit primaryjoin
+    # ) 
+    # Let SQLAlchemy infer the join condition based on ForeignKey
+    user = relationship("User", back_populates="patients") 
+
+    # appointments = relationship(
+    #     "AppointmentModel",
+    #     back_populates="patient",
+    #     cascade="all, delete-orphan",
+    #     foreign_keys="[AppointmentModel.patient_id]" # Explicitly define the foreign key - Simplify this
+    # )
+    # Assuming AppointmentModel has a patient_id ForeignKey backref defined
+    # Import AppointmentModel at the top if not already imported
+    # from .appointment import AppointmentModel # Example import
+    appointments = relationship("AppointmentModel", back_populates="patient", cascade="all, delete-orphan")
+
+    # clinical_notes = relationship("ClinicalNoteModel", back_populates="patient", cascade="all, delete-orphan", remote_side="ClinicalNoteModel.patient_id")
+    # Assuming ClinicalNoteModel has patient_id ForeignKey and backref
+    # from .clinical_note import ClinicalNoteModel # Example import
+    clinical_notes = relationship("ClinicalNoteModel", back_populates="patient", cascade="all, delete-orphan")
+
+    # medication_records = relationship("MedicationModel", back_populates="patient", cascade="all, delete-orphan", remote_side="MedicationModel.patient_id")
+    # Assuming MedicationModel has patient_id ForeignKey and backref
+    # from .medication import MedicationModel # Example import
+    medication_records = relationship("MedicationModel", back_populates="patient", cascade="all, delete-orphan")
+
+    # --- END Relationship Simplification ---
+
     # Digital twin relationships
     biometric_twin_id = Column(UUID(as_uuid=True), nullable=True)
 

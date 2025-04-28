@@ -5,9 +5,11 @@ Imports all models to ensure they are registered with the Base metadata
 before being used, preventing relationship configuration errors.
 """
 from .base import Base
+# Import Patient *before* User to resolve relationship dependency
+from .patient import Patient
 from .user import User, UserRole
 from .provider import ProviderModel
-from .patient import Patient
+# Other models can follow
 from .appointment import AppointmentModel
 from .medication import MedicationModel
 from .clinical_note import ClinicalNoteModel
