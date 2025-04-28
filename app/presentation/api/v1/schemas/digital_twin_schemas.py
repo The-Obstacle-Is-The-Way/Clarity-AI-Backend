@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from app.domain.utils.datetime_utils import now_utc, UTC
 from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union as _Union
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
@@ -279,7 +279,6 @@ class ClinicalTextAnalysisResponse(BaseModel):
     analysis_id: Optional[str] = Field(None, description="Unique ID for analysis")
     digital_twin_id: Optional[str] = Field(None, description="ID of associated digital twin")
     analysis_type: str = Field(..., description="Type of analysis performed")
-    from typing import Union as _Union  # local alias to avoid forward refs
 
     result: _Union[Dict[str, Any], str] = Field(..., description="Analysis result")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")

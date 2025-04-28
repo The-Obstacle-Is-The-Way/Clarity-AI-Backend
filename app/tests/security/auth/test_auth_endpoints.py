@@ -8,17 +8,28 @@ import pytest
 import json
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.main import app as application
+from app.main import app as application, create_application
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
+from app.presentation.api.dependencies.auth_service import get_auth_service_provider
 
 # Create a test client
 @pytest.fixture
-def client():
-    """Create a FastAPI test client."""
-    with TestClient(application) as client:
-        yield client
+def client(mock_auth_service):
+    """Create a FastAPI test client with overridden dependencies."""
+    
+    # Define the override function
+    def override_get_auth_service():
+        return mock_auth_service
+        
+    # Create the app with the override
+    app = create_application(dependency_overrides={
+        get_auth_service_provider: override_get_auth_service
+    })
+    
+    with TestClient(app) as test_client:
+        yield test_client
 
 @pytest.fixture
 def mock_auth_service():
@@ -80,33 +91,6 @@ def mock_auth_service():
     mock.logout.side_effect = mock_logout
     
     return mock
-
-# Use alternative dependency override approach since patching the whole app doesn't work in the test setup
-@pytest.fixture(autouse=True)
-def override_dependencies(mock_auth_service):
-    """Override the dependencies for testing."""
-    # Store original dependencies
-    original_get_auth_service = None
-    
-    try:
-        # Override the dependency
-        from app.presentation.api.dependencies.auth_service import get_auth_service_provider
-        original_get_auth_service = get_auth_service_provider
-        
-        def mock_get_auth_service(*args, **kwargs):
-            return mock_auth_service
-            
-        # Override the dependency
-        from app.presentation.api.dependencies import auth_service
-        auth_service.get_auth_service_provider = mock_get_auth_service
-        
-        # Run the test
-        yield
-    finally:
-        # Restore the dependency if it was saved
-        if original_get_auth_service:
-            from app.presentation.api.dependencies import auth_service
-            auth_service.get_auth_service_provider = original_get_auth_service
 
 # --- Tests ---
 
