@@ -81,45 +81,29 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_problematic_imports():
-    """Mock problematic imports to prevent collection errors. Applied automatically.
-    REMOVED broad container mocking. Focus on specific problematic imports.
-    REMOVED AnalyticsService class patch.
-    """
+    """Mock problematic imports to prevent collection errors. Applied automatically."""
     patches = []
-    
-    # Keep app.main.app patch if needed for collection?
-    main_patch = patch("app.main.app")
-    mock_app = main_patch.start()
-    mock_app.dependency_overrides = {}
-    patches.append(main_patch)
-    
-    # Keep DB session mock for collection
+    # Mock database session getter for collection
     from app.tests.mocks.persistence_db_mock import AsyncSession, get_db_session as mock_get_db_session
-    db_session_patch = patch("app.infrastructure.persistence.sqlalchemy.config.database.get_db_session", mock_get_db_session)
+    db_session_patch = patch(
+        "app.infrastructure.persistence.sqlalchemy.config.database.get_db_session",
+        mock_get_db_session
+    )
     db_session_patch.start()
     patches.append(db_session_patch)
-    
-    # Keep persistence.db mock for collection
+    # Ensure persistence.db module is mocked for collection
     import sys
     if "app.infrastructure.persistence.db" not in sys.modules:
         import app.tests.mocks.persistence_db_mock as db_mock
         sys.modules["app.infrastructure.persistence.db"] = db_mock
-    
-    # REMOVED: AnalyticsService class patch
-    # analytics_patch = patch("app.domain.services.analytics_service.AnalyticsService")
-    # analytics_patch.start()
-    # patches.append(analytics_patch)
-    
-    yield # Yield control to the test/fixture using this fixture
-    
-    # Clean up all patches
+    yield
+    # Clean up patches
     for p in patches:
         p.stop()
-    
-    # Remove our mock module from sys.modules
-    if "app.infrastructure.persistence.db" in sys.modules:
-        if sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
-            del sys.modules["app.infrastructure.persistence.db"]
+    # Remove mock module if present
+    if "app.infrastructure.persistence.db" in sys.modules and \
+       sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
+        del sys.modules["app.infrastructure.persistence.db"]
 
 # Add a MockSettings class for tests that need to mock application settings
 class MockSettings:
@@ -222,15 +206,8 @@ def get_mock_user_repository() -> UserRepository:
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_problematic_imports():
-    """
-    Mock problematic imports to prevent collection errors. Applied automatically.
-    """
+    """Mock problematic imports to prevent collection errors. Applied automatically."""
     patches = []
-    # Patch the FastAPI app instance in app.main to avoid initializing routes/startup during import
-    main_patch = patch("app.main.app")
-    mock_app = main_patch.start()
-    mock_app.dependency_overrides = {}
-    patches.append(main_patch)
     # Patch get_db_session to use a mock session for collection
     from app.tests.mocks.persistence_db_mock import get_db_session as mock_get_db_session
     db_session_patch = patch(
@@ -239,17 +216,19 @@ def mock_problematic_imports():
     )
     db_session_patch.start()
     patches.append(db_session_patch)
-    # Ensure persistence.db module is mocked
+    # Ensure persistence.db module is mocked for collection
     import sys
     if "app.infrastructure.persistence.db" not in sys.modules:
         import app.tests.mocks.persistence_db_mock as db_mock
         sys.modules["app.infrastructure.persistence.db"] = db_mock
     yield
+    # Clean up patches
     for p in patches:
         p.stop()
-    if "app.infrastructure.persistence.db" in sys.modules:
-        if sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
-            del sys.modules["app.infrastructure.persistence.db"]
+    # Remove mock module if present
+    if "app.infrastructure.persistence.db" in sys.modules and \
+       sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
+        del sys.modules["app.infrastructure.persistence.db"]
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -8,7 +8,7 @@ generation, and integration with digital twins.
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Body, HTTPException, Query, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
 
@@ -739,7 +739,10 @@ async def integrate_with_digital_twin(
     
 # --- Legacy-style upload and retrieval endpoints for integration tests ---
 @router.post("/upload/{patient_id}", status_code=status.HTTP_200_OK)
-async def upload_actigraphy_data(patient_id: str, payload: Dict[str, Any]):
+async def upload_actigraphy_data(
+    patient_id: str,
+    payload: Dict[str, Any] = Body(...)
+):
     """
     Upload actigraphy data for a patient and return an analysis ID.
     """

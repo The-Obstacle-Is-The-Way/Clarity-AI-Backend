@@ -252,13 +252,8 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     return app
 
 # Create the main FastAPI application instance using the factory function
-if os.environ.get("NOVAMIND_SKIP_APP_INIT") == "true":
-    # Create a minimal app for testing without full initialization
-    from fastapi import FastAPI
-    app = FastAPI(title="NOVAMIND TEST APP")
-else:
-    # Normal application initialization
-    app = create_application()
+# Always initialize the full application regardless of skip flag
+app = create_application()
 
 # Entry point for running the application directly (e.g., with `python app/main.py`)
 # This is typically used for local development/debugging.
