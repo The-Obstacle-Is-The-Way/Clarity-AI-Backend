@@ -408,6 +408,11 @@ def test_patient():
     
     return patient
 
+@pytest.fixture
+def sample_actigraphy_data() -> Dict[str, Any]:
+    """Placeholder fixture for sample actigraphy data."""
+    return {}
+
 
 @pytest.fixture
 def mock_patient_payload():

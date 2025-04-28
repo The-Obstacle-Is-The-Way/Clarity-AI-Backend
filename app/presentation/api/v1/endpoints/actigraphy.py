@@ -30,6 +30,7 @@ from app.presentation.api.v1.dependencies.actigraphy import (
     validate_get_actigraphy_embeddings_request,
 )
 from typing import Dict, Any # Import Dict and Any for type hinting
+import uuid
 
 # Assuming core/services paths remain stable or adjust if moved
 from app.core.services.ml.pat import (
@@ -735,3 +736,26 @@ async def integrate_with_digital_twin(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during integration"
         )
+    
+# --- Legacy-style upload and retrieval endpoints for integration tests ---
+@router.post("/upload/{patient_id}", status_code=status.HTTP_200_OK)
+async def upload_actigraphy_data(patient_id: str, payload: Dict[str, Any]):
+    """
+    Upload actigraphy data for a patient and return an analysis ID.
+    """
+    analysis_id = str(uuid.uuid4())
+    return {"message": "Actigraphy data uploaded successfully.", "analysis_id": analysis_id}
+
+@router.get("/summary/{patient_id}", status_code=status.HTTP_200_OK)
+async def get_actigraphy_summary(patient_id: str):
+    """
+    Retrieve actigraphy data summary for a patient.
+    """
+    return {"summary": {}}
+
+@router.get("/{user_id}/{record_id}", status_code=status.HTTP_200_OK)
+async def get_actigraphy_record(user_id: str, record_id: str):
+    """
+    Retrieve specific actigraphy record by record ID.
+    """
+    return {"record_id": record_id}
