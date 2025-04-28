@@ -18,14 +18,18 @@ from sqlalchemy import update, delete, and_, or_, func
 
 from app.domain.entities.user import User as UserDomain
 from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
-from app.domain.repositories.user_repository import IUserRepository
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
+from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+from app.domain.repositories.user_repository import UserRepository
+from app.domain.entities.user import User as DomainUser
+from app.domain.enums.role import Role
 from app.domain.utils.datetime_utils import now_utc
 
 
 logger = logging.getLogger(__name__)
 
 
-class UserRepository(IUserRepository):
+class UserRepository(UserRepository):
     """
     SQLAlchemy implementation of the UserRepository interface.
     

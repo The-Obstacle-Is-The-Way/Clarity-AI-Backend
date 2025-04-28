@@ -12,13 +12,17 @@ from fastapi.security import OAuth2PasswordBearer
 # Domain/Infrastructure Services & Repositories
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.infrastructure.security.jwt.exceptions import TokenExpiredError, InvalidTokenError
-from app.infrastructure.security.auth.exceptions import AuthenticationError
+from app.domain.exceptions import (
+    AuthenticationError, 
+    TokenExpiredError, 
+    InvalidTokenError,
+    # Add other relevant exceptions from this module if needed
+)
 from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SqlAlchemyUserRepository
-from app.domain.repositories.user_repository import UserRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import UserRepository as SqlAlchemyUserRepositoryImpl
+from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
 from app.core.config import settings # Added for JWT settings
-from app.core.domain.entities.user import User # Added for get_current_user
+from app.domain.entities.user import User as DomainUser
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database.session import get_db # Assuming get_db provides AsyncSession
 
@@ -33,10 +37,11 @@ def get_password_handler() -> PasswordHandler:
 # Placeholder provider for UserRepository
 # This should be replaced with a real provider that yields an actual implementation
 # possibly depending on a database session (e.g., Depends(get_db_session))
-async def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
-    """Provides an instance of SqlAlchemyUserRepository bound to the request's DB session."""
+async def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepositoryInterface:
+    """Provides an instance of the SQLAlchemy UserRepository implementation."""
     logger.debug("Resolving UserRepository dependency (SqlAlchemy).")
-    return SqlAlchemyUserRepository(session=db)
+    # Return the imported implementation class
+    return SqlAlchemyUserRepositoryImpl(session=db)
 
 # Moved get_jwt_service definition BEFORE get_authentication_service and get_current_user
 def get_jwt_service() -> JWTService:
@@ -55,7 +60,7 @@ def get_jwt_service() -> JWTService:
 # Dependency provider for AuthenticationService (depends on get_jwt_service)
 def get_authentication_service(
     # Declare dependencies using Depends
-    user_repo: UserRepository = Depends(get_user_repository), 
+    user_repo: UserRepositoryInterface = Depends(get_user_repository), # Use interface hint
     password_handler: PasswordHandler = Depends(get_password_handler),
     jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthenticationService:
@@ -67,11 +72,39 @@ def get_authentication_service(
         jwt_service=jwt_service
     )
 
+# Dependency to extract token from header
+async def get_token_from_header(request: Request) -> str:
+    """
+    Extracts the Bearer token from the Authorization header.
+    Raises HTTPException 401 if the header is missing or malformed.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        logger.debug("Authorization header missing.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: Authorization header missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    parts = auth_header.split()
+    if parts[0].lower() != "bearer" or len(parts) != 2:
+        logger.debug(f"Malformed Authorization header: {auth_header}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials: Malformed Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = parts[1]
+    logger.debug("Bearer token extracted successfully.")
+    return token
+
 # Dependency to get the current user from token (depends on get_jwt_service)
 async def get_current_user(
     token: str = Depends(get_token_from_header), # Use new extractor
     auth_service: AuthenticationService = Depends(get_authentication_service)
-) -> User:
+) -> DomainUser: # Return DomainUser type
     """
     Dependency to get the current authenticated user based on the token.
     Uses AuthenticationService to validate the token and retrieve the user.
@@ -118,40 +151,34 @@ async def get_current_user(
             detail="An internal error occurred during authentication.",
         )
 
+# --- Moved Role Requirement Dependencies Earlier --- 
+def require_role(required_role: str): # Use simple string role for this version
+    """Factory function to create a dependency that requires a specific user role."""
+    async def role_checker(current_user: DomainUser = Depends(get_current_user)) -> DomainUser:
+        # Adapt logic if current_user.roles is the primary source
+        user_roles = getattr(current_user, 'roles', [])
+        if not user_roles:
+            # Fallback to primary role if roles list is empty or missing
+            user_roles = [getattr(current_user, 'role', None)]
+            
+        if required_role not in user_roles:
+            logger.warning(f"User {current_user.id} with roles {user_roles} tried accessing resource requiring {required_role}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Operation not permitted. Requires {required_role} role."
+            )
+        return current_user
+    return role_checker
+
+# Specific role requirement dependencies (defined after factory)
+require_clinician = require_role("clinician")
+require_admin = require_role("admin")
+require_patient = require_role("patient")
+# --- End Moved Role Requirement Dependencies --- 
+
 # Note: get_jwt_service is likely already defined in jwt_service.py
 # Note: get_user_repository needs to be defined, potentially in a repositories dependency file.
 # For now, assume get_user_repository exists or will be mocked/overridden in tests. 
-
-# Dependency to require admin privileges (using the factory)
-require_admin = require_role("admin")
-
-# Dependency to extract token from header
-async def get_token_from_header(request: Request) -> str:
-    """
-    Extracts the Bearer token from the Authorization header.
-    Raises HTTPException 401 if the header is missing or malformed.
-    """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
-        logger.debug("Authorization header missing.")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required: Authorization header missing",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    parts = auth_header.split()
-    if parts[0].lower() != "bearer" or len(parts) != 2:
-        logger.debug(f"Malformed Authorization header: {auth_header}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials: Malformed Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = parts[1]
-    logger.debug("Bearer token extracted successfully.")
-    return token
 
 # Note: get_jwt_service is likely already defined in jwt_service.py
 # Note: get_user_repository needs to be defined, potentially in a repositories dependency file.
