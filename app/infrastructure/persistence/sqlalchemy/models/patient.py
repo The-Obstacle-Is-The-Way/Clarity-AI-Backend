@@ -51,7 +51,7 @@ class Patient(Base):
     # external_id could be from an EMR or other system
     external_id = Column(String(64), unique=True, index=True, nullable=True)
     # Foreign key to the associated user account (if applicable)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", use_alter=True), nullable=True, index=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)

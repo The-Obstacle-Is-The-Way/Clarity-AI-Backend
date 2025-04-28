@@ -42,7 +42,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self, 
         app: FastAPI,
         auth_service: AuthenticationService,
-        jwt_service: JWTService,
         settings: Settings = None,
         public_paths: Optional[Union[List[str], Set[str]]] = None,
         public_path_regex: Optional[List[str]] = None,
@@ -52,15 +51,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         Args:
             app: FastAPI application
-            auth_service: Authentication service
-            jwt_service: JWT service
+            auth_service: Authentication service (expected to have correct jwt_service injected)
             settings: Application settings
             public_paths: List or set of paths that don't require authentication
             public_path_regex: List of regex patterns for paths that don't require authentication
         """
         super().__init__(app)
         self.auth_service = auth_service
-        self.jwt_service = jwt_service
         # Use global settings if none provided
         self.settings = settings or Settings()
         
