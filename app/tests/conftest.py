@@ -231,89 +231,14 @@ def mock_problematic_imports():
         del sys.modules["app.infrastructure.persistence.db"]
 
 
-@pytest_asyncio.fixture(scope="function")
-async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_service: JWTService) -> AsyncGenerator[AsyncClient, None]:
+@pytest_asyncio.fixture(scope="session")
+async def async_client(event_loop, initialized_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """
-    Provides an asynchronous test client using the main application factory.
-    Temporarily overrides dependencies in the global container for the test session.
+    Create a new FastAPI TestClient that uses the `db_session` fixture to override
+    the app's database dependency with a test database session.
     """
-    # --- Get Global Container ---
-    container = get_container()
-
-    # --- Define Mocks and Test Services/Overrides ---
-    mock_analytics_service = AsyncMock(spec=AnalyticsService)
-    def get_test_settings() -> Settings:
-        return MockSettings()
-    def override_get_jwt_service() -> IJwtService:
-        return test_jwt_service # Use the fixture-provided JWT service
-
-    # --- Store Original Registrations ---
-    # Use a dictionary to store original providers/factories
-    original_providers = {}
-    services_to_override = {
-        Settings: get_test_settings, 
-        IJwtService: override_get_jwt_service,
-        AnalyticsService: lambda: mock_analytics_service,
-        # Add other global mocks if needed, e.g.:
-        # UserRepository: get_mock_user_repository, 
-        # XGBoostInterface: lambda: mock_xgboost_service, 
-    }
-
-    # Get overrides from marker, if present
-    marker = request.node.get_closest_marker("override_services")
-    if marker:
-        services_to_override = marker.args[0]
-        # --- Start Replacement ---
-        for service, mock_factory in services_to_override.items():
-            service_name = getattr(service, '__name__', str(service))
-            mock_factory_name = getattr(mock_factory, '__name__', str(mock_factory))
-
-            # Override only if the service was originally registered
-            # This prevents errors if a test tries to override something
-            # that wouldn't normally be in the container.
-            try:
-                # Attempt to resolve to see if it's registered.
-                container.resolve(service)
-                # If resolve succeeds, it means it was registered, so override.
-                container.override(service, mock_factory)
-                logger.debug(f"Overrode service {service_name} with mock factory {mock_factory_name}")
-            except TypeError:
-                # If resolve fails with TypeError, it wasn't registered. Log and skip override.
-                logger.debug(f"Service {service_name} not originally registered, skipping override.")
-        # --- End Replacement ---
-
-    try:
-        # --- Create Application (will use overridden container) ---
-        app_instance = create_application()
-        
-        # --- Apply App-Specific Overrides (If necessary beyond container) ---
-        # Example: Override FastAPI's dependency getter if needed
-        app_instance.dependency_overrides[get_settings] = get_test_settings
-        # Override XGBoost service specifically for the app instance IF NOT handled globally
-        from app.presentation.api.v1.endpoints.xgboost import get_xgboost_service 
-        app_instance.dependency_overrides[get_xgboost_service] = lambda: mock_xgboost_service
-
-        # --- Create and Yield Test Client ---
-        async with AsyncClient(transport=ASGITransport(app=app_instance), base_url="http://test") as client:
-            setattr(client, 'app', app_instance)
-            yield client
-            
-    finally:
-        # --- Cleanup: Restore Original Container Registrations ---
-        logger.debug("Resetting container overrides...")
-        for service, original_provider in original_providers.items():
-            # Reregister the original provider
-            container.register(service, original_provider.factory, scope=original_provider.scope)
-            logger.debug(f"Restored original provider for {service.__name__}")
-        # Clear services that were added only for override
-        for service in services_to_override:
-            if service not in original_providers:
-                container.unregister(service)
-                logger.debug(f"Unregistered temporary override for {service.__name__}")
-        # Clear app-specific overrides        
-        if 'app_instance' in locals() and hasattr(app_instance, 'dependency_overrides'):
-            app_instance.dependency_overrides.clear()
-        logger.debug("Container overrides reset.")
+    async with AsyncClient(app=initialized_app, base_url="http://test") as client:
+        yield client
 
 
 # Fixtures for generating tokens using the *correct* test secret

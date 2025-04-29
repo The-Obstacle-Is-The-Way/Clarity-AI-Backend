@@ -452,9 +452,9 @@ class PatientRepository:
             
             # Handle name attributes
             if hasattr(patient_entity, 'first_name') and patient_entity.first_name:
-                patient_model._first_name = await self.encryption_service.encrypt(patient_entity.first_name)
+                patient_model._first_name = self.encryption_service.encrypt(patient_entity.first_name)
             if hasattr(patient_entity, 'last_name') and patient_entity.last_name:
-                patient_model._last_name = await self.encryption_service.encrypt(patient_entity.last_name)
+                patient_model._last_name = self.encryption_service.encrypt(patient_entity.last_name)
                 
             # Handle contact info - extract from either contact_info dict or direct attributes
             email = None
@@ -475,30 +475,30 @@ class PatientRepository:
                 
             # Encrypt and store contact info
             if email:
-                patient_model._email = await self.encryption_service.encrypt(str(email))
+                patient_model._email = self.encryption_service.encrypt(str(email))
             if phone:
-                patient_model._phone = await self.encryption_service.encrypt(str(phone))
+                patient_model._phone = self.encryption_service.encrypt(str(phone))
                 
             # Handle date_of_birth
             if hasattr(patient_entity, 'date_of_birth') and patient_entity.date_of_birth:
                 dob_str = patient_entity.date_of_birth
                 if not isinstance(dob_str, str):
                     dob_str = str(dob_str)
-                patient_model._dob = await self.encryption_service.encrypt(dob_str)
+                patient_model._dob = self.encryption_service.encrypt(dob_str)
                 
             # Handle address
             if hasattr(patient_entity, 'address') and patient_entity.address:
                 address = patient_entity.address
                 # Handle Address object or string
                 if hasattr(address, 'line1'):
-                    patient_model._address_line1 = await self.encryption_service.encrypt(address.line1 or '')
-                    patient_model._address_line2 = await self.encryption_service.encrypt(address.line2 or '')
-                    patient_model._city = await self.encryption_service.encrypt(address.city or '')
-                    patient_model._state = await self.encryption_service.encrypt(address.state or '')
-                    patient_model._postal_code = await self.encryption_service.encrypt(address.zip_code or '')
-                    patient_model._country = await self.encryption_service.encrypt(address.country or '')
+                    patient_model._address_line1 = self.encryption_service.encrypt(address.line1 or '')
+                    patient_model._address_line2 = self.encryption_service.encrypt(address.line2 or '')
+                    patient_model._city = self.encryption_service.encrypt(address.city or '')
+                    patient_model._state = self.encryption_service.encrypt(address.state or '')
+                    patient_model._postal_code = self.encryption_service.encrypt(address.zip_code or '')
+                    patient_model._country = self.encryption_service.encrypt(address.country or '')
                 elif isinstance(address, str):
-                    patient_model._address_line1 = await self.encryption_service.encrypt(address)
+                    patient_model._address_line1 = self.encryption_service.encrypt(address)
                     
             # Handle basic attributes
             patient_model.is_active = getattr(patient_entity, 'active', True)

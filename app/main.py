@@ -155,48 +155,22 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     # app.add_middleware(SecurityHeadersMiddleware)
 
     # 4. Authentication Middleware 
-    # Fix: Create proper service instances instead of using Depends() directly
-    from app.infrastructure.di.container import container
+    # REMOVE the problematic container resolution block below
+    # from app.infrastructure.di.container import container
+    # try:
+    #     from app.infrastructure.security.auth.authentication_service import AuthenticationService
+    #     from app.core.interfaces.services.jwt_service import IJwtService
+    #     logger.info("[create_application] Attempting to resolve services from container...")
+    #     auth_service = container.resolve(AuthenticationService) 
+    #     jwt_service = container.resolve(IJwtService)
+    #     logger.info("[create_application] Successfully resolved services from container.")
+    # except Exception as e:
+    #     import traceback 
+    #     logger.warning(f"[create_application] Could not resolve services from container. Exception Type: {type(e).__name__}, Message: {e}. Using direct instantiation.") 
+    #     logger.warning(f"[create_application] Traceback:\n{traceback.format_exc()}")
+    #     # Fallback logic removed...
     
-    # Get service instances directly from the container or create them
-    try:
-        # Resolve the service type directly, letting the container handle overrides
-        from app.infrastructure.security.auth.authentication_service import AuthenticationService
-        from app.core.interfaces.services.jwt_service import IJwtService
-        
-        logger.info("[create_application] Attempting to resolve services from container...")
-        auth_service = container.resolve(AuthenticationService) 
-        jwt_service = container.resolve(IJwtService)
-        logger.info("[create_application] Successfully resolved services from container.")
-        # auth_service = container.resolve(get_authentication_service)() # OLD: Resolve factory and call
-        # jwt_service = container.resolve(get_jwt_service)() # OLD: Resolve factory and call
-    except Exception as e:
-        import traceback # Add import
-        logger.warning(f"[create_application] Could not resolve services from container. Exception Type: {type(e).__name__}, Message: {e}. Using direct instantiation.") # <<< MODIFY LOG
-        logger.warning(f"[create_application] Traceback:\n{traceback.format_exc()}") # <<< MODIFY LOG
-        # Fallback to direct instantiation
-        from app.infrastructure.security.auth.authentication_service import AuthenticationService # Keep this for the fallback
-        from app.infrastructure.security.jwt.jwt_service import JWTService # <-- Add this missing import
-        from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
-        from app.infrastructure.security.password.password_handler import PasswordHandler
-        from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-        
-        # Create instances directly
-        # Create a session for the repository to use
-        from sqlalchemy.ext.asyncio import AsyncSession
-        
-        # Create a mock session (no actual DB connections will be made during test collection)
-        mock_session = AsyncSession(bind=None)
-        user_repo = SqlAlchemyUserRepository(session=mock_session)
-        
-        password_handler = PasswordHandler()
-        jwt_service = JWTService(settings=settings)
-        auth_service = AuthenticationService(
-            user_repository=user_repo,
-            password_handler=password_handler,
-            jwt_service=jwt_service
-        )
-    
+    # AuthenticationMiddleware itself should handle its dependencies via FastAPI's Depends
     app.add_middleware(
         AuthenticationMiddleware,
         public_paths={
