@@ -79,12 +79,13 @@ class PHICodeAnalyzer:
     while delegating to the consolidated PHI sanitization system.
     """
     
-    def __init__(self, sanitizer: Optional[PHISanitizer] = None):
+    def __init__(self, sanitizer: Optional[PHISanitizer] = None, phi_service=None):
         """
         Initialize the PHI code analyzer.
         
         Args:
             sanitizer: Optional PHI sanitizer to use (creates a new one if None)
+            phi_service: Optional PHI service for backward compatibility (ignored in favor of sanitizer)
         """
         self.sanitizer = sanitizer or PHISanitizer()
         # Patterns for code analysis

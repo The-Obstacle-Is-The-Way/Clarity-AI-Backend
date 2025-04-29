@@ -6,12 +6,12 @@ delegating to the primary PHISanitizer implementation to maintain a single sourc
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union, Callable
+import json
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from app.infrastructure.security.phi.sanitizer import (
     PHISanitizer, 
     SanitizedLogger,
-    PatternRepository,
     get_sanitized_logger
 )
 
@@ -149,6 +149,18 @@ class LogSanitizer:
             Sanitized logger instance
         """
         return self._logger
+    
+    def sanitize(self, message: Union[str, Dict, List, Any]) -> Any:
+        """
+        Sanitize a log message or any data format.
+        
+        Args:
+            message: Message to sanitize
+            
+        Returns:
+            Sanitized message with PHI redacted
+        """
+        return self.sanitizer.sanitize(message)
     
     def sanitize_log_message(self, message: Union[str, Dict, List, Any]) -> Any:
         """

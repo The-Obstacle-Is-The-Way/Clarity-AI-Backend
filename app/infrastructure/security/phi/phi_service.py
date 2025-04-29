@@ -34,17 +34,30 @@ class PHIService:
         """Initialize with the consolidated PHI sanitizer."""
         self._sanitizer = PHISanitizer()
     
-    def sanitize(self, data: Any) -> Any:
+    def sanitize(self, data: Any, sensitivity: Optional[str] = None) -> Any:
         """
         Sanitize any data type by redacting PHI.
         
         Args:
             data: Data to sanitize (string, dict, list, etc.)
+            sensitivity: Optional sensitivity level (ignored, for backward compatibility)
             
         Returns:
             Sanitized data with PHI redacted
         """
         return self._sanitizer.sanitize(data)
+    
+    def sanitize_text(self, text: str) -> str:
+        """
+        Sanitize a string by redacting PHI.
+        
+        Args:
+            text: Text to sanitize
+            
+        Returns:
+            Sanitized text with PHI redacted
+        """
+        return self._sanitizer.sanitize_text(text)
     
     def sanitize_string(self, text: str) -> str:
         """
