@@ -30,7 +30,8 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request as FastapiRequest
+from starlette.requests import Request as StarletteRequest
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -214,8 +215,8 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     # 7. Security Headers Middleware (Adds headers to the final response using decorator style)
     @app.middleware("http")
     async def security_headers_middleware(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]]
+        request: FastapiRequest,
+        call_next: Callable[[FastapiRequest], Awaitable[Response]]
     ) -> Response:
         """Add basic security headers to all responses."""
         logger.info(f"---> SecurityHeadersMiddleware: Executing for path: {request.url.path}") # DEBUG log
@@ -251,7 +252,7 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     import traceback
 
     @app.exception_handler(Exception)
-    async def generic_exception_handler(request: Request, exc: Exception):
+    async def generic_exception_handler(request: StarletteRequest, exc: Exception):
         # Log the full error internally
         logger.error(f"Unhandled exception caught for request {request.method} {request.url.path}: {exc}", exc_info=True)
         # Return a generic 500 response to the client
