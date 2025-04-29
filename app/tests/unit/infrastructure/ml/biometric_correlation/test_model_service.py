@@ -142,7 +142,7 @@ class TestBiometricCorrelationService:
         return str(uuid4())
 
     @pytest.mark.asyncio
-    async def test_analyze_correlations_success( # Added async
+    async def test_analyze_correlations_success(
         self,
         service,
         mock_lstm_model,

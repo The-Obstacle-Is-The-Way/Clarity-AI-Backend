@@ -289,18 +289,17 @@ def mock_problematic_imports():
 
 # --- Application Fixture with Overrides ---
 
-@pytest.fixture(scope="function") # Changed back to function scope
+@pytest.fixture(scope="session") # Changed to session scope to match event_loop
 def initialized_app(
-    db_session: AsyncSession, # Depend on function-scoped db_session
-    mock_xgboost_service: XGBoostInterface # Depend on mock XGBoost service
+    mock_xgboost_service: XGBoostInterface # Only depend on session-scoped services
 ) -> FastAPI:
     """Creates a FastAPI app instance for testing with overridden dependencies."""
     
     # Define dependency overrides for the test session
     dependency_overrides = {
-        # Override database session with specific implementations
-        get_db_session: lambda: db_session,
-        get_core_db_session: lambda: db_session,
+        # Override database session with mocks instead of real sessions
+        get_db_session: lambda: AsyncMock(spec=AsyncSession),
+        get_core_db_session: lambda: AsyncMock(spec=AsyncSession),
         
         # Override Authentication Service dependencies
         # Provide a mock user repository to the AuthenticationService via JWTService
@@ -309,8 +308,8 @@ def initialized_app(
         # Override XGBoost ML service with a mock
         XGBoostInterface: lambda: mock_xgboost_service,
         
-        # Mock Rate Limiter if necessary (optional, depends on test needs)
-        # get_rate_limiter: lambda: MagicMock(),
+        # Mock Rate Limiter if necessary
+        get_rate_limiter: lambda: MagicMock(),
     }
     
     # Create the application instance with overrides
@@ -319,13 +318,14 @@ def initialized_app(
 
 # --- Async Client Fixture --- 
 
-@pytest_asyncio.fixture(scope="function") # Changed back to function scope
+@pytest_asyncio.fixture(scope="session") # Changed to session scope to match event_loop
 async def async_client(
     initialized_app: FastAPI, # Depend on the initialized app with overrides
 ) -> AsyncGenerator[AsyncClient, None]:
     """
-    Create a new httpx AsyncClient instance for each test function.
+    Create a new httpx AsyncClient instance for tests.
     Uses the `initialized_app` fixture which includes dependency overrides.
+    Using session scope to match event_loop and prevent ScopeMismatch errors.
     """
     # Use ASGITransport to interact with the FastAPI app in-memory
     transport = ASGITransport(app=initialized_app)
@@ -800,16 +800,18 @@ def sample_alert(sample_rule, sample_data_point):
 
 # pytest.mark.usefixtures("mock_db_session") # Apply mock session if needed globally
 
-# Override the default function-scoped event_loop fixture with module scope
-@pytest_asyncio.fixture(scope="module")
+# Override the default function-scoped event_loop fixture with session scope
+@pytest_asyncio.fixture(scope="session")
 def event_loop():
     """
-    Create a module-scoped event loop for pytest-asyncio.
+    Create a session-scoped event loop for pytest-asyncio.
     
-    This prevents ScopeMismatch errors when using module or session scoped fixtures
-    that depend on event_loop fixtures.
+    This prevents ScopeMismatch errors when using session scoped fixtures
+    that depend on event_loop fixtures. Using session scope ensures all
+    async fixtures can share the same event loop regardless of their scope.
     """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
@@ -979,16 +981,39 @@ def mock_xgboost_service():
     # Create a MagicMock specifying the interface methods
     mock_service = AsyncMock(spec=XGBoostInterface)
     
-    # Define mock implementations for required methods
+    # Define comprehensive mock implementations for required methods
     mock_service.predict = AsyncMock(return_value={"prediction": "mock_result", "confidence": 0.95})
-    # Add predict_risk as it seems widely expected by tests, even if not strictly in current interface.py
-    # This might indicate an interface inconsistency or specific test needs.
-    mock_service.predict_risk = AsyncMock(return_value={"risk_level": "low", "score": 0.2})
-    mock_service.get_model_info = AsyncMock(return_value={"name": "mock_model", "version": "1.0"})
-    mock_service.healthcheck = AsyncMock(return_value={"status": "ok", "dependencies": "mocked"})
+    mock_service.predict_risk = AsyncMock(return_value={"risk_level": "low", "score": 0.2, "patient_id": "test-patient-id"})
+    mock_service.predict_treatment_response = AsyncMock(return_value={"response": "positive", "probability": 0.8})
+    mock_service.predict_outcome = AsyncMock(return_value={"outcome": "remission", "probability": 0.75})
     
-    # Add other methods from the interface if needed
-    # Example: mock_service.some_other_method = AsyncMock(return_value=...)
+    # Service information and metadata methods
+    mock_service.get_model_info = AsyncMock(return_value={
+        "name": "mock_model", 
+        "version": "1.0",
+        "training_date": "2025-01-15",
+        "metrics": {"accuracy": 0.92, "f1": 0.89},
+        "record_id": "info"
+    })
+    
+    # Feature importance and explainability methods
+    mock_service.get_feature_importance = AsyncMock(return_value={
+        "feature_importance": [
+            {"feature": "age", "importance": 0.25},
+            {"feature": "medication_history", "importance": 0.32},
+            {"feature": "symptom_duration", "importance": 0.18}
+        ]
+    })
+    
+    # Integration methods
+    mock_service.integrate_with_digital_twin = AsyncMock(return_value={
+        "status": "success",
+        "twin_id": "dt-12345",
+        "integration_timestamp": "2025-04-15T12:30:00Z"
+    })
+    
+    # Health and monitoring
+    mock_service.healthcheck = AsyncMock(return_value={"status": "ok", "dependencies": "mocked"})
     
     logger.info("Created mock XGBoost service fixture.") # Add log
     return mock_service
