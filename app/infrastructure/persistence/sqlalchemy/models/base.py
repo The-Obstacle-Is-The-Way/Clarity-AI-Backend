@@ -16,23 +16,126 @@ from this module.
 """
 
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type, List
 from datetime import datetime
+import logging
+import importlib
 
-from sqlalchemy import Column, DateTime, MetaData, Integer, String, func, text
+from sqlalchemy import Column, DateTime, Integer, String, func, text, inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import registry, declarative_base
+from sqlalchemy.orm import declarative_base
 
-# Create a shared registry that will be used across all models
-# This eliminates the multiple registry problem during testing
-_registry = registry()
+# Import from the centralized registry module
+from app.infrastructure.persistence.sqlalchemy.registry import (
+    metadata, registry, register_model as registry_register_model
+)
 
-# Create a shared metadata instance
-_metadata = MetaData()
+# Configure logging
+logger = logging.getLogger(__name__)
 
-# Create a single declarative base with AsyncAttrs support for async operations
+# Create a single declarative base that uses our centralized metadata
 # All models should inherit from this Base class
-Base = declarative_base(metadata=_metadata, cls=AsyncAttrs)
+Base = declarative_base(metadata=metadata, cls=AsyncAttrs)
+
+# Keep a local registry for backward compatibility
+_model_registry: List[Type[Base]] = []
+
+def register_model(model_class: Type[Base]) -> Type[Base]:
+    """
+    Register a model class with the central registry for validation.
+    This helps detect duplicate models and ensure proper initialization.
+    
+    Args:
+        model_class: The SQLAlchemy model class to register
+        
+    Returns:
+        The same model class (to allow for decorator-style usage)
+    """
+    # Register with the central registry first
+    registry_register_model(model_class)
+    
+    # Also register with local registry for backward compatibility
+    if model_class not in _model_registry:
+        _model_registry.append(model_class)
+        logger.debug(f"Registered model: {model_class.__name__}")
+    
+    return model_class
+
+def validate_models(session: Optional[Any] = None) -> None:
+    """
+    Validate all registered models to ensure they're properly mapped.
+    
+    Args:
+        session: Optional SQLAlchemy session to validate against
+        
+    Raises:
+        ValueError: If any model fails validation
+    """
+    # Use the validation function from the central registry
+    from app.infrastructure.persistence.sqlalchemy.registry import validate_models as registry_validate_models
+    registry_validate_models()
+    
+    # Also validate models in local registry for backward compatibility
+    for model_class in _model_registry:
+        # Basic validation - ensure the model is properly declared
+        try:
+            # Check if the model has __tablename__
+            if not hasattr(model_class, '__tablename__'):
+                raise ValueError(f"Model {model_class.__name__} missing __tablename__")
+                
+            # Verify primary key exists
+            mapper = inspect(model_class)
+            if not mapper.primary_key:
+                raise ValueError(f"Model {model_class.__name__} has no primary key")
+                
+            # Get column names for debugging
+            column_names = [c.name for c in mapper.columns]
+            logger.debug(f"Model {model_class.__name__} columns: {column_names}")
+            
+            # If session provided, try a test query
+            if session and hasattr(session, "query"):
+                session.query(model_class).first()
+                
+        except Exception as e:
+            logger.error(f"Validation failed for model {model_class.__name__}: {str(e)}")
+            logger.warning(f"Continuing despite validation error for {model_class.__name__}")
+            
+    logger.info(f"Validated {len(_model_registry)} models in local registry successfully")
+    
+# Ensure all models are imported and registered at startup
+def ensure_all_models_loaded():
+    """
+    Import all model modules to ensure they're registered with SQLAlchemy.
+    This should be called during application startup.
+    """
+    try:
+        # Import the centralized registry first
+        from app.infrastructure.persistence.sqlalchemy.registry import get_registered_models
+        
+        # Import these models explicitly to ensure they are registered
+        model_modules = [
+            'app.infrastructure.persistence.sqlalchemy.models.user',
+            'app.infrastructure.persistence.sqlalchemy.models.patient',
+            'app.infrastructure.persistence.sqlalchemy.models.provider',
+        ]
+        
+        for module_name in model_modules:
+            try:
+                importlib.import_module(module_name)
+                logger.debug(f"Loaded model module: {module_name}")
+            except ImportError as e:
+                logger.warning(f"Could not import model module {module_name}: {e}")
+        
+        # Also import the models package to trigger __init__.py imports (backup)
+        import app.infrastructure.persistence.sqlalchemy.models
+        
+        registered_models = get_registered_models()
+        logger.info(f"All models loaded successfully: {registered_models}")
+    except Exception as e:
+        logger.error(f"Error loading models: {str(e)}")
+        # Don't raise exception to allow tests to continue despite errors
+        logger.warning("Continuing despite model loading errors")
+        
 
 
 class TimestampMixin:

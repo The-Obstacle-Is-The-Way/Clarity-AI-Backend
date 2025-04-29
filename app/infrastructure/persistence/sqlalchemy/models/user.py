@@ -24,8 +24,9 @@ from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB
 from sqlalchemy.types import TypeDecorator, TEXT
 from sqlalchemy.orm import relationship
 
-# Import the canonical Base class
+# Import the canonical Base and registry
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.infrastructure.persistence.sqlalchemy.registry import register_model
 
 from app.domain.utils.datetime_utils import now_utc, UTC
 
@@ -69,41 +70,28 @@ class JSONType(TypeDecorator):
             return None
             
 
+# Simplified, robust UUID type implementation for SQLAlchemy 
 class UUIDType(TypeDecorator):
     """
-    Platform-independent UUID type.
+    Platform-independent UUID type that works consistently across databases.
     
-    Uses PostgreSQL's UUID type when available, otherwise
-    uses STRING type for SQLite compatibility.
+    This implementation prioritizes stability and correct mapping over flexibility.
     """
-    impl = sa.String(36)
+    impl = String(36)
     cache_ok = True
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
-            # Use native UUID for PostgreSQL
-            return dialect.type_descriptor(PostgresUUID())
-        else:
-            # Use String for SQLite and others
-            return dialect.type_descriptor(sa.String(36))
 
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        elif isinstance(value, str):
-            return value
-        else:
-            return str(value)
+        return str(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        if not isinstance(value, uuid.UUID):
-            try:
-                return uuid.UUID(value)
-            except (ValueError, TypeError):
-                return None
-        return value
+        try:
+            return uuid.UUID(value) if isinstance(value, str) else value
+        except (ValueError, TypeError):
+            return value
 
 
 class UserRole(enum.Enum):
@@ -115,6 +103,9 @@ class UserRole(enum.Enum):
     SUPPORT = "support"
 
 
+# Register the User model with our central registry to ensure proper mapping
+# Define the canonical User model with proper SQLAlchemy mapping
+@register_model
 class User(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for user data.
@@ -128,12 +119,21 @@ class User(Base, TimestampMixin, AuditMixin):
     
     __tablename__ = "users"
     __table_args__ = {
-        'extend_existing': True,
+        'extend_existing': True,  # This allows mapping to an existing table which may be defined elsewhere
         'comment': 'User accounts with authentication and authorization information'
     }
     
     # --- Core Identification and Metadata ---
-    id = Column(UUIDType, primary_key=True, default=uuid.uuid4, comment="Unique user identifier")
+    # Using stable, clearly mapped String type with explicit configuration and robust UUID generation
+    # This approach avoids custom type descriptors which can cause mapping issues while maintaining type semantics
+    id = Column(
+        String(36), 
+        primary_key=True, 
+        index=True,  # Add index for performance
+        nullable=False,
+        default=lambda: str(uuid.uuid4()),  # Safe UUID generation
+        comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
+    )
     username = Column(String(64), unique=True, nullable=False, comment="Username for login")
     email = Column(String(255), unique=True, nullable=False, index=True, comment="Email address for user contact")
     
@@ -153,7 +153,8 @@ class User(Base, TimestampMixin, AuditMixin):
     role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT, comment="Primary user role")
     
     # Roles are stored as a JSON array for more flexible role management
-    roles = Column(JSONType, default=list, nullable=False, comment="List of all user roles")
+    # Use standard SQLAlchemy JSON type instead of custom JSONType for better compatibility
+    roles = Column(JSON, default=list, nullable=False, comment="List of all user roles")
     
     # Additional audit fields beyond the mixin
     last_login = Column(DateTime, nullable=True, comment="When user last logged in")
@@ -170,15 +171,16 @@ class User(Base, TimestampMixin, AuditMixin):
     
     # Additional data
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
-    preferences = Column(JSONType, nullable=True, comment="User UI and system preferences")  
+    preferences = Column(JSON, nullable=True, comment="User UI and system preferences")  
     
-    # Relationships
+    # Relationships - using string references to avoid circular imports
     provider = relationship(
         "ProviderModel",
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
     )
+    # Use string reference for Patient to break circular dependency
     patients = relationship(
         "Patient",
         back_populates="user",
@@ -186,7 +188,7 @@ class User(Base, TimestampMixin, AuditMixin):
     )
     
     # Audit logging
-    access_logs = Column(JSONType, nullable=True)  # Stores recent access logs
+    access_logs = Column(JSON, nullable=True)  # Stores recent access logs
     
     def __repr__(self):
         """String representation of the user."""

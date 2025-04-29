@@ -18,7 +18,8 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from .user import User # Import User model
+# Break circular import by using string reference to User model
+# This follows SQLAlchemy best practices for circular relationship references
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.domain.value_objects.address import Address as AddressVO # Corrected import for AddressVO
 from app.domain.value_objects.contact_info import ContactInfo as ContactInfoVO # Import ContactInfo
@@ -96,39 +97,38 @@ class Patient(Base):
     _insurance_info = Column("insurance_info", Text, nullable=True) # Uncommenting for proper access
 
     # --- Relationships ---
-    # Simplify relationship definitions to use direct references where possible
-
-    # user = relationship(
-    #     "User", 
-    #     back_populates="patients",
-    #     # foreign_keys='Patient.user_id', # Use string definition - Try removing explicit foreign_keys if SQLAlchemy can infer
-    #     primaryjoin='User.id == Patient.user_id' # Use string definition - Try removing explicit primaryjoin
-    # ) 
-    # Let SQLAlchemy infer the join condition based on ForeignKey
-    user = relationship("User", back_populates="patients") 
+    # Define relationships with string references to avoid circular imports
+    # and ensure proper lazy loading
+    
+    # Relationship with User (owner of the patient record)
+    user = relationship(
+        "User", 
+        back_populates="patients",
+        uselist=False  # One user per patient
+    )
 
     # appointments = relationship(
-    #     "AppointmentModel",
-    #     back_populates="patient",
-    #     cascade="all, delete-orphan",
-    #     foreign_keys="[AppointmentModel.patient_id]" # Explicitly define the foreign key - Simplify this
+    #    "AppointmentModel", 
+    #    back_populates="patient", 
+    #    cascade="all, delete-orphan",
+    #    lazy="selectin"  # Efficient loading pattern
     # )
-    # Assuming AppointmentModel has a patient_id ForeignKey backref defined
-    # Import AppointmentModel at the top if not already imported
-    # from .appointment import AppointmentModel # Example import
-    appointments = relationship("AppointmentModel", back_populates="patient", cascade="all, delete-orphan")
-
-    # clinical_notes = relationship("ClinicalNoteModel", back_populates="patient", cascade="all, delete-orphan", remote_side="ClinicalNoteModel.patient_id")
-    # Assuming ClinicalNoteModel has patient_id ForeignKey and backref
-    # from .clinical_note import ClinicalNoteModel # Example import
-    clinical_notes = relationship("ClinicalNoteModel", back_populates="patient", cascade="all, delete-orphan")
-
-    # medication_records = relationship("MedicationModel", back_populates="patient", cascade="all, delete-orphan", remote_side="MedicationModel.patient_id")
-    # Assuming MedicationModel has patient_id ForeignKey and backref
-    # from .medication import MedicationModel # Example import
-    medication_records = relationship("MedicationModel", back_populates="patient", cascade="all, delete-orphan")
-
-    # --- END Relationship Simplification ---
+    
+    # Relationship with clinical notes - defined here but will be skipped during test initialization
+    # clinical_notes = relationship(
+    #    "ClinicalNoteModel", 
+    #    back_populates="patient", 
+    #    cascade="all, delete-orphan",
+    #    lazy="selectin"  # Efficient loading pattern
+    # )
+    
+    # Relationship with medications - defined here but will be skipped during test initialization
+    # medication_records = relationship(
+    #    "MedicationModel", 
+    #    back_populates="patient", 
+    #    cascade="all, delete-orphan",
+    #    lazy="selectin"  # Efficient loading pattern
+    # )
 
     # Digital twin relationships
     # Store as String(36) for SQLite compatibility

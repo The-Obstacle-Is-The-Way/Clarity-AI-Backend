@@ -40,17 +40,46 @@ from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.presentation.api.dependencies.auth import get_authentication_service
-from app.infrastructure.database.models import Base
+# Import the canonical Base from the correct location
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.core.services.ml.xgboost.interface import XGBoostInterface, ModelType
-from app.infrastructure.persistence.sqlalchemy.config.database import Database
+from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
 from app.main import create_application # Import create_application
 from app.domain.services.analytics_service import AnalyticsService # Import AnalyticsService
 from app.infrastructure.di.container import get_container # Import get_container
 from app.domain.entities.user import User # Import User
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
+
+# Import additional database functions for dependency management
+from app.core.dependencies.database import get_db_session as get_core_db_session
 from app.domain.enums.role import Role # Import Role
 from app.domain.repositories.user_repository import UserRepository # Ensure imported
+
+@pytest.fixture
+def auth_headers():
+    """Authentication headers for API requests.
+    
+    Provides standard headers with a mock token for patient authentication.
+    This is used by multiple test modules for authenticated requests.
+    """
+    # Use the mock token recognized by the mocked JWT service in async_client
+    return {
+        "Authorization": "Bearer VALID_PATIENT_TOKEN",  # Use the correct mock token string
+        "Content-Type": "application/json"
+    }
+
+@pytest.fixture
+def provider_auth_headers():
+    """Authentication headers for provider API requests.
+    
+    Similar to auth_headers but with provider-level access rights.
+    """
+    return {
+        "Authorization": "Bearer VALID_PROVIDER_TOKEN",  # Provider token with elevated privileges
+        "Content-Type": "application/json"
+    }
 
 # --- Conditional Import for Pydantic Settings ---
 _HAS_PYDANTIC_SETTINGS = False
@@ -269,8 +298,9 @@ def initialized_app(
     
     # Define dependency overrides for the test session
     dependency_overrides = {
-        # Override database session
+        # Override database session with specific implementations
         get_db_session: lambda: db_session,
+        get_core_db_session: lambda: db_session,
         
         # Override Authentication Service dependencies
         # Provide a mock user repository to the AuthenticationService via JWTService

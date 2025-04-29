@@ -7,21 +7,24 @@ the database and decrypted when retrieved, according to HIPAA requirements.
 """
 
 import uuid
+import json
 import pytest
 import pytest_asyncio
 import asyncio
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import AsyncGenerator
 from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-from app.domain.entities.patient import Patient
+# Import domain entities with clear namespace
+from app.core.domain.entities.patient import Patient as DomainPatient
 from app.domain.value_objects.address import Address
 from app.domain.value_objects.emergency_contact import EmergencyContact
-# Removed import of non-existent Insurance value object
-from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
-from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
+
+# Import SQLAlchemy models with clear namespace
+from app.infrastructure.persistence.sqlalchemy.models import User as UserModel
+from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
+from app.infrastructure.persistence.sqlalchemy.models import UserRole, Base
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 
 import logging
@@ -60,27 +63,62 @@ async def integration_db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.run_sync(Base.metadata.create_all)
         logger.info("[Integration Fixture] Created all tables using real Base metadata.")
 
-    # Create a session and add the necessary test user
+    # Create a session and add the necessary test user using direct SQL
+    # This bypasses ORM mapping issues that might occur during testing
     async with async_session_factory() as session:
         try:
-            # Check if test user exists (necessary for patient.user_id foreign key)
-            result = await session.execute(select(UserModel).where(UserModel.id == TEST_USER_ID))
-            if not result.scalar_one_or_none():
-                test_user = UserModel(
-                    id=TEST_USER_ID,
-                    username="integration_testuser",
-                    email="integration.test@novamind.ai",
-                    password_hash="hashed_password", # Placeholder
-                    role=UserRole.PATIENT, # Example role
-                    is_active=True,
-                    is_verified=True,
-                    email_verified=True
-                )
-                session.add(test_user)
+            # Use direct SQL to check if user exists and create if needed
+            check_user_sql = text(f"SELECT id FROM users WHERE id = :user_id")
+            result = await session.execute(check_user_sql, {"user_id": str(TEST_USER_ID)})
+            user_exists = result.scalar_one_or_none()
+            
+            if not user_exists:
+                # Use direct SQL insertion to avoid ORM mapping issues
+                insert_user_sql = text("""
+                INSERT INTO users 
+                (id, username, email, password_hash, role, roles, is_active, is_verified, email_verified, 
+                 created_at, updated_at, failed_login_attempts, password_changed_at, first_name, last_name,
+                 audit_id, created_by, updated_by) 
+                VALUES 
+                (:id, :username, :email, :password_hash, :role, :roles, :is_active, :is_verified, :email_verified, 
+                 :created_at, :updated_at, :failed_login_attempts, :password_changed_at, :first_name, :last_name,
+                 :audit_id, :created_by, :updated_by)
+                """)
+                
+                # Generate a UUID for audit_id
+                audit_id = str(uuid.uuid4())
+                
+                # Create roles JSON array as string
+                roles_json = json.dumps([UserRole.PATIENT.value])
+                
+                # Current timestamp for created_at and updated_at
+                current_time = datetime.now(timezone.utc).isoformat()
+                
+                await session.execute(insert_user_sql, {
+                    "id": str(TEST_USER_ID),
+                    "username": "integration_testuser",
+                    "email": "integration.test@novamind.ai",
+                    "password_hash": "hashed_password",  # Placeholder
+                    "role": UserRole.PATIENT.value,  # Use string value of enum
+                    "roles": roles_json,  # JSON array as string
+                    "is_active": True,
+                    "is_verified": True,
+                    "email_verified": True,
+                    "created_at": current_time,
+                    "updated_at": current_time,
+                    "failed_login_attempts": 0,  # Default value for required field
+                    "password_changed_at": current_time,  # Set to current time
+                    "first_name": "Test",  # Add sample first name
+                    "last_name": "User",  # Add sample last name
+                    "audit_id": audit_id,  # Add audit ID for HIPAA compliance
+                    "created_by": None,  # No user created this (system-generated)
+                    "updated_by": None   # No user updated this (system-generated)
+                })
+                
                 await session.commit()
-                logger.info(f"[Integration Fixture] Created necessary test user: {TEST_USER_ID}")
+                logger.info(f"[Integration Fixture] Created necessary test user using direct SQL: {TEST_USER_ID}")
             else:
-                 logger.info(f"[Integration Fixture] Test user {TEST_USER_ID} already exists.")
+                logger.info(f"[Integration Fixture] Test user {TEST_USER_ID} already exists.")
 
             # Yield the session for the test
             yield session
@@ -95,12 +133,18 @@ async def integration_db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest.mark.db_required()
 class TestPatientEncryptionIntegration:
     """Integration test suite for Patient model encryption with database."""
-
+    
+    @pytest.fixture
+    @staticmethod
+    def encryption_service():
+        """Fixture for encryption service used in tests."""
+        return BaseEncryptionService()
+    
     @pytest.fixture
     @staticmethod
     def sample_patient():
         """Fixture for a valid sample Patient domain entity."""
-        return Patient(
+        return DomainPatient(
             id=uuid.uuid4(),
             first_name="Jane",
             last_name="Smith",
@@ -131,35 +175,44 @@ class TestPatientEncryptionIntegration:
 
     @pytest.mark.asyncio
     async def test_phi_encrypted_in_database(
-            self, integration_db_session: AsyncSession, sample_patient):
+            self, integration_db_session: AsyncSession, sample_patient, encryption_service):
         """Test that PHI is stored encrypted in the database."""
         # Use the provided integration_db_session fixture
-        db_session = integration_db_session 
+        db_session = integration_db_session
         
         # Convert domain entity to model and save to database
+        # The conversion happens through the from_domain method
+        # This ensures all fields are properly encrypted and mapped to the correct database columns
+        
+        # Use the from_domain method to properly convert domain entity to SQLAlchemy model with encrypted fields
         patient_model = await PatientModel.from_domain(sample_patient, encryption_service)
+        
+        # Save to database
         db_session.add(patient_model)
         await db_session.commit()
-        await db_session.refresh(patient_model) # Refresh after commit
+        await db_session.refresh(patient_model)  # Refresh after commit to get generated values
 
         # Verify patient was saved
         assert patient_model.id is not None
 
         # Get raw database data to verify encryption
+        # Access raw SQL data from the database (no underscore in column names)
         query = text(
-            "SELECT _first_name, _last_name, _dob, _email, _phone, _address_line1 "
+            "SELECT first_name, last_name, date_of_birth, email, phone, address_line1 "
             "FROM patients WHERE id = :id"
         )
         result = await db_session.execute(query, {"id": patient_model.id})
         row = result.fetchone()
 
         # Verify PHI data is stored encrypted (check that it doesn't match plaintext)
-        decrypted_first_name = encryption_service.decrypt(row._first_name)
-        decrypted_last_name = encryption_service.decrypt(row._last_name)
-        decrypted_dob_str = encryption_service.decrypt(row._dob)
-        decrypted_email = encryption_service.decrypt(row._email)
-        decrypted_phone = encryption_service.decrypt(row._phone)
-        decrypted_addr1 = encryption_service.decrypt(row._address_line1)
+        # Note: The column names in the result don't have underscores because they're from the database
+        # but the data is still encrypted and needs to be decrypted
+        decrypted_first_name = encryption_service.decrypt(row.first_name)
+        decrypted_last_name = encryption_service.decrypt(row.last_name)
+        decrypted_dob_str = encryption_service.decrypt(row.dob)
+        decrypted_email = encryption_service.decrypt(row.email)
+        decrypted_phone = encryption_service.decrypt(row.phone)
+        decrypted_addr1 = encryption_service.decrypt(row.address_line1)
 
         assert decrypted_first_name == sample_patient.first_name
         assert decrypted_last_name == sample_patient.last_name

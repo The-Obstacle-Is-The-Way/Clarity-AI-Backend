@@ -8,40 +8,65 @@ require network connections, databases, and other external services.
 import pytest
 import os
 import json
+import uuid
 import asyncio
+import logging
 from typing import Any, Dict, List, Optional, AsyncGenerator, Callable, Generator
 from httpx import AsyncClient
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# Import the FastAPI application
 from app.main import app
+
+# Import SQLAlchemy models and utils
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, ensure_all_models_loaded
+from app.infrastructure.persistence.sqlalchemy.registry import validate_models
+from app.infrastructure.persistence.sqlalchemy.models.user import User, UserRole
+
+# Import test database initializer functions
+from app.tests.integration.utils.test_db_initializer import get_test_db_session, create_test_users
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize models
+ensure_all_models_loaded()
+validate_models()
 
 
 # Database fixtures
 @pytest.fixture
-async def test_db_connection() -> AsyncGenerator[Any, None]:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Creates a test database connection.
+    Creates a properly initialized database session for testing with all models registered.
+    Uses the test_db_initializer function to create an in-memory SQLite database with test data.
+    
+    This is the canonical database session fixture that should be used across all tests.
+    It ensures proper model registration, transaction handling, and test data initialization.
 
     Yields:
-        A database connection for testing.
+        AsyncSession: SQLAlchemy AsyncSession for test database access
     """
-    # This would typically use SQLAlchemy, Motor, or another database client
-    # Mock implementation for structure
-    db_config = {
-        "host": os.environ.get("TEST_DB_HOST", "localhost"),
-        "port": int(os.environ.get("TEST_DB_PORT", "5432")),
-        "user": os.environ.get("TEST_DB_USER", "test_user"),
-        "password": os.environ.get("TEST_DB_PASSWORD", "test_password"),
-        "database": os.environ.get("TEST_DB_NAME", "test_db"),
-    }
-
-    # Simulate DB connection
-    connection = {"connected": True, "config": db_config}
-
     try:
-        yield connection
-    finally:
-        # Cleanup would happen here
-        pass
+        logger.info("Creating test database session with canonical SQLAlchemy models")
+        # Use the test_db_initializer function to create an in-memory test database
+        # This handles all model creation and test data setup
+        async for session in get_test_db_session():
+            # Ensure models are properly registered before yielding the session
+            ensure_all_models_loaded()
+            
+            # Create test users
+            await create_test_users(session)
+            
+            # Yield the session for the test to use
+            yield session
+            
+            # Session will be automatically closed and rolled back after test
+    except Exception as e:
+        logger.error(f"Error setting up test database: {e}")
+        raise
 
 
 @pytest.fixture
@@ -104,18 +129,54 @@ def mock_db_data() -> Dict[str, List[Dict[str, Any]]]:
     }
 
 
-# API Testing Fixtures
-# Commenting out potentially conflicting test_client fixture
+# Authentication fixtures
 @pytest.fixture
-async def test_client() -> AsyncGenerator[AsyncClient, None]:  
+def patient_auth_headers() -> Dict[str, str]:
     """
-    Creates a real test client for API integration testing.
+    Provides authentication headers for a test patient user.
+    
+    Returns:
+        Dict with Authorization header containing valid JWT for test patient
+    """
+    # In a real implementation, this would generate a proper JWT token
+    # For now, we use a static test token with standard format
+    return {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoicGF0aWVudCIsImV4cCI6MTY5MzUwMDAwMH0.test-signature"
+    }
+
+@pytest.fixture
+def provider_auth_headers() -> Dict[str, str]:
+    """
+    Provides authentication headers for a test clinician user.
+    
+    Returns:
+        Dict with Authorization header containing valid JWT for test clinician
+    """
+    # In a real implementation, this would generate a proper JWT token
+    # For now, we use a static test token with standard format
+    return {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJyb2xlIjoiY2xpbmljaWFuIiwiZXhwIjoxNjkzNTAwMDAwfQ.test-signature"
+    }
+
+# API Testing Fixtures
+@pytest.fixture
+async def test_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:  
+    """
+    Creates a real test client for API integration testing with database session dependency.
+    This automatically uses the test database session.
 
     Yields:
-        A FastAPI TestClient instance.
+        A FastAPI AsyncClient instance configured for testing.
     """
+    # Override the get_db dependency in the FastAPI app to use our test session
+    # This would be implemented in a real scenario - for now it's a placeholder
+    # app.dependency_overrides[get_db] = lambda: db_session
+    
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
+        
+    # Remove any overrides after the test
+    # app.dependency_overrides = {}
 
 
 # External Service Mocks
