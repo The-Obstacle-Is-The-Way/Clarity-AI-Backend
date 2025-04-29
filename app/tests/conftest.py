@@ -231,7 +231,7 @@ def mock_problematic_imports():
         del sys.modules["app.infrastructure.persistence.db"]
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_client(event_loop, mock_xgboost_service: AsyncMock, test_jwt_service: JWTService) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an asynchronous test client using the main application factory.
