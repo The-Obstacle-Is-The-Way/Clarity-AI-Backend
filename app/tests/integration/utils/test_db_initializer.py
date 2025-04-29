@@ -79,15 +79,20 @@ async def create_test_users(session: AsyncSession) -> None:
             patient_insert = text("""
                 INSERT INTO users (
                     id, username, email, password_hash, is_active, is_verified, email_verified,
-                    role, roles, first_name, last_name, created_at, updated_at, password_changed_at
+                    role, roles, first_name, last_name, created_at, updated_at, password_changed_at,
+                    failed_login_attempts, audit_id
                 ) VALUES (
                     :id, :username, :email, :password_hash, :is_active, :is_verified, :email_verified,
-                    :role, :roles, :first_name, :last_name, :created_at, :updated_at, :password_changed_at
+                    :role, :roles, :first_name, :last_name, :created_at, :updated_at, :password_changed_at,
+                    :failed_login_attempts, :audit_id
                 )
             """)
             
             # Create a JSON array with the patient role for the roles column
             patient_roles = json.dumps([UserRole.PATIENT.value])
+            
+            # Generate a UUID for audit tracking
+            audit_id = str(uuid.uuid4())
             
             await session.execute(patient_insert, {
                 "id": str(TEST_USER_ID),
@@ -99,6 +104,8 @@ async def create_test_users(session: AsyncSession) -> None:
                 "email_verified": True,
                 "role": UserRole.PATIENT.value,  # Use the string value of enum
                 "roles": patient_roles,  # Add JSON array of roles
+                "failed_login_attempts": 0,  # Add required failed_login_attempts field
+                "audit_id": audit_id,  # Add required audit_id field
                 "first_name": "Test",
                 "last_name": "User",
                 "created_at": current_time,
@@ -112,15 +119,20 @@ async def create_test_users(session: AsyncSession) -> None:
             clinician_insert = text("""
                 INSERT INTO users (
                     id, username, email, password_hash, is_active, is_verified, email_verified,
-                    role, roles, first_name, last_name, created_at, updated_at, password_changed_at
+                    role, roles, first_name, last_name, created_at, updated_at, password_changed_at,
+                    failed_login_attempts, audit_id
                 ) VALUES (
                     :id, :username, :email, :password_hash, :is_active, :is_verified, :email_verified,
-                    :role, :roles, :first_name, :last_name, :created_at, :updated_at, :password_changed_at
+                    :role, :roles, :first_name, :last_name, :created_at, :updated_at, :password_changed_at,
+                    :failed_login_attempts, :audit_id
                 )
             """)
             
             # Create a JSON array with the clinician role for the roles column
             clinician_roles = json.dumps([UserRole.CLINICIAN.value])
+            
+            # Generate a UUID for audit tracking - unique for this clinician
+            clinician_audit_id = str(uuid.uuid4())
             
             await session.execute(clinician_insert, {
                 "id": str(TEST_CLINICIAN_ID),
@@ -132,6 +144,8 @@ async def create_test_users(session: AsyncSession) -> None:
                 "email_verified": True,
                 "role": UserRole.CLINICIAN.value,  # Use the string value of enum
                 "roles": clinician_roles,  # Add JSON array of roles
+                "failed_login_attempts": 0,  # Add required failed_login_attempts field
+                "audit_id": clinician_audit_id,  # Add required audit_id field
                 "first_name": "Test",
                 "last_name": "Clinician",
                 "created_at": current_time,

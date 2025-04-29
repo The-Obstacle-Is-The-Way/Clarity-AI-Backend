@@ -6,6 +6,7 @@ require network connections, databases, and other external services.
 """
 
 import pytest
+import pytest_asyncio
 import os
 import json
 import uuid
@@ -14,6 +15,9 @@ import logging
 from typing import Any, Dict, List, Optional, AsyncGenerator, Callable, Generator
 from httpx import AsyncClient
 from fastapi import FastAPI
+
+# Import JWT service interface
+from app.core.interfaces.services.jwt_service import IJwtService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import the FastAPI application
@@ -37,7 +41,7 @@ validate_models()
 
 
 # Database fixtures
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Creates a properly initialized database session for testing with all models registered.
@@ -129,54 +133,130 @@ def mock_db_data() -> Dict[str, List[Dict[str, Any]]]:
     }
 
 
-# Authentication fixtures
+# Authentication fixtures and JWT service for proper token generation
 @pytest.fixture
-def patient_auth_headers() -> Dict[str, str]:
+def test_config() -> Dict[str, Any]:
+    """
+    Provides a standard test configuration for JWT and other services.
+    
+    Returns:
+        Dict with test configuration values
+    """
+    return {
+        "SECRET_KEY": "test-secret-key-for-testing-purposes-only",
+        "ALGORITHM": "HS256",
+        "ACCESS_TOKEN_EXPIRE_MINUTES": 30,
+        "TOKEN_ISSUER": "clarity-ai-test"
+    }
+
+@pytest.fixture
+def jwt_service(test_config) -> IJwtService:
+    """
+    Provides a properly configured JWT service for test token generation.
+    
+    This ensures tokens are generated using the same secret key that the
+    authentication middleware will use for validation.
+    
+    Returns:
+        IJwtService: Configured JWT service instance
+    """
+    from app.infrastructure.security.jwt.jwt_service import JWTService
+    return JWTService(
+        secret_key=test_config["SECRET_KEY"], 
+        algorithm=test_config["ALGORITHM"],
+        token_issuer=test_config["TOKEN_ISSUER"],
+        access_token_expire_minutes=test_config["ACCESS_TOKEN_EXPIRE_MINUTES"]
+    )
+
+@pytest.fixture
+def patient_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
     """
     Provides authentication headers for a test patient user.
     
     Returns:
         Dict with Authorization header containing valid JWT for test patient
     """
-    # In a real implementation, this would generate a proper JWT token
-    # For now, we use a static test token with standard format
+    # Use our properly configured JWT service to generate a valid token
+    # with standard test patient ID and roles
+    token_data = {
+        "sub": "00000000-0000-0000-0000-000000000001",  # TEST_USER_ID
+        "roles": ["patient"],
+        "jti": str(uuid.uuid4())
+    }
+    
+    token = jwt_service.create_access_token(data=token_data)
+    
     return {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoicGF0aWVudCIsImV4cCI6MTY5MzUwMDAwMH0.test-signature"
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
 
 @pytest.fixture
-def provider_auth_headers() -> Dict[str, str]:
+def provider_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
     """
     Provides authentication headers for a test clinician user.
     
     Returns:
         Dict with Authorization header containing valid JWT for test clinician
     """
-    # In a real implementation, this would generate a proper JWT token
-    # For now, we use a static test token with standard format
+    # Use our properly configured JWT service to generate a valid token
+    # with standard test clinician ID and roles
+    token_data = {
+        "sub": "00000000-0000-0000-0000-000000000002",  # TEST_CLINICIAN_ID
+        "roles": ["clinician", "provider"],
+        "jti": str(uuid.uuid4())
+    }
+    
+    token = jwt_service.create_access_token(data=token_data)
+    
     return {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJyb2xlIjoiY2xpbmljaWFuIiwiZXhwIjoxNjkzNTAwMDAwfQ.test-signature"
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
 
 # API Testing Fixtures
 @pytest.fixture
-async def test_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:  
+def test_app(db_session: AsyncSession, jwt_service: IJwtService) -> FastAPI:
     """
-    Creates a real test client for API integration testing with database session dependency.
-    This automatically uses the test database session.
+    Creates a properly configured FastAPI application for testing with the
+    correct dependencies injected.
+    
+    This ensures all tests use consistent authentication and database handling.
+    
+    Returns:
+        FastAPI: Configured test application
+    """
+    # Import main app factory function
+    from app.main import create_application
+    
+    # Create dependency overrides dict
+    dependency_overrides = {}
+    
+    # Override database session
+    from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
+    dependency_overrides[get_db_session] = lambda: db_session
+    
+    # Override JWT service
+    from app.core.interfaces.services.jwt_service import IJwtService
+    dependency_overrides[IJwtService] = lambda: jwt_service
+    
+    # Create app with injected dependencies
+    test_app = create_application(dependency_overrides=dependency_overrides)
+    
+    # Return the configured test app
+    return test_app
+
+@pytest_asyncio.fixture
+async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
+    """
+    Creates a real test client for API integration testing with properly configured
+    test application with all required dependencies injected.
 
     Yields:
         A FastAPI AsyncClient instance configured for testing.
     """
-    # Override the get_db dependency in the FastAPI app to use our test session
-    # This would be implemented in a real scenario - for now it's a placeholder
-    # app.dependency_overrides[get_db] = lambda: db_session
-    
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
         yield client
-        
-    # Remove any overrides after the test
-    # app.dependency_overrides = {}
 
 
 # External Service Mocks
