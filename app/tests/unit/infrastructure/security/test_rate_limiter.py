@@ -48,6 +48,26 @@ def mock_redis():
     mock.zcount.return_value = 0
     return mock
 
+
+@pytest.fixture
+async def async_mock_patch():
+    """Handle non-awaited coroutines in tests by patching AsyncMock."""
+    # Create a helper for safely awaiting coroutines
+    async def safe_await(coro_or_value):
+        if asyncio.iscoroutine(coro_or_value):
+            return await coro_or_value
+        return coro_or_value
+    
+    # Patch AsyncMock.__call__ to handle both awaited and non-awaited calls
+    original_call = AsyncMock.__call__
+    
+    async def patched_call(self, *args, **kwargs):
+        result = original_call(self, *args, **kwargs)
+        return await safe_await(result)
+    
+    with patch.object(AsyncMock, '__call__', patched_call):
+        yield
+
 @pytest.fixture
 def redis_rate_limiter(mock_redis):
     """Create a Redis rate limiter with mocked Redis client."""
@@ -410,7 +430,7 @@ async def test_check_rate_limit_redis_unavailable(distributed_rate_limiter: Redi
     # Optionally assert logs captured the warning/error if logging is implemented in the except block
 
 @pytest.mark.asyncio
-async def test_check_rate_limit_redis_with_user_id(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock):
+async def test_check_rate_limit_redis_with_user_id(distributed_rate_limiter: RedisRateLimiter, mock_redis_client: AsyncMock, async_mock_patch):
     """Test check_rate_limit with a specific user ID using a different limit type."""
     identifier = "ip:192.168.1.6"
     user_id = "user_123"
