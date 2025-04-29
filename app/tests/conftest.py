@@ -231,13 +231,77 @@ def mock_problematic_imports():
         del sys.modules["app.infrastructure.persistence.db"]
 
 
-@pytest_asyncio.fixture(scope="session")
-async def async_client(event_loop, initialized_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+@pytest.fixture(scope="session", autouse=True)
+def mock_problematic_imports():
+    """Mock problematic imports to prevent collection errors. Applied automatically."""
+    patches = []
+    # Patch get_db_session to use a mock session for collection
+    from app.tests.mocks.persistence_db_mock import get_db_session as mock_get_db_session
+    db_session_patch = patch(
+        "app.infrastructure.persistence.sqlalchemy.config.database.get_db_session",
+        mock_get_db_session
+    )
+    db_session_patch.start()
+    patches.append(db_session_patch)
+    # Ensure persistence.db module is mocked for collection
+    import sys
+    if "app.infrastructure.persistence.db" not in sys.modules:
+        import app.tests.mocks.persistence_db_mock as db_mock
+        sys.modules["app.infrastructure.persistence.db"] = db_mock
+    yield
+    # Clean up patches
+    for p in patches:
+        p.stop()
+    # Remove mock module if present
+    if "app.infrastructure.persistence.db" in sys.modules and \
+       sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
+        del sys.modules["app.infrastructure.persistence.db"]
+
+
+# --- Application Fixture with Overrides ---
+
+@pytest.fixture(scope="function") # Changed back to function scope
+def initialized_app(
+    db_session: AsyncSession, # Depend on function-scoped db_session
+    mock_xgboost_service: XGBoostInterface # Depend on mock XGBoost service
+) -> FastAPI:
+    """Creates a FastAPI app instance for testing with overridden dependencies."""
+    
+    # Define dependency overrides for the test session
+    dependency_overrides = {
+        # Override database session
+        get_db_session: lambda: db_session,
+        
+        # Override Authentication Service dependencies
+        # Provide a mock user repository to the AuthenticationService via JWTService
+        UserRepository: get_mock_user_repository, 
+        
+        # Override XGBoost ML service with a mock
+        XGBoostInterface: lambda: mock_xgboost_service,
+        
+        # Mock Rate Limiter if necessary (optional, depends on test needs)
+        # get_rate_limiter: lambda: MagicMock(),
+    }
+    
+    # Create the application instance with overrides
+    app = create_application(dependency_overrides=dependency_overrides)
+    return app
+
+# --- Async Client Fixture --- 
+
+@pytest_asyncio.fixture(scope="function") # Changed back to function scope
+async def async_client(
+    initialized_app: FastAPI, # Depend on the initialized app with overrides
+) -> AsyncGenerator[AsyncClient, None]:
     """
-    Create a new FastAPI TestClient that uses the `db_session` fixture to override
-    the app's database dependency with a test database session.
+    Create a new httpx AsyncClient instance for each test function.
+    Uses the `initialized_app` fixture which includes dependency overrides.
     """
-    async with AsyncClient(app=initialized_app, base_url="http://test") as client:
+    # Use ASGITransport to interact with the FastAPI app in-memory
+    transport = ASGITransport(app=initialized_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Attach app reference for potential inspection in tests (optional)
+        client.app = initialized_app 
         yield client
 
 
