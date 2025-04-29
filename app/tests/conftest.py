@@ -770,13 +770,18 @@ def sample_alert(sample_rule, sample_data_point):
 
 # pytest.mark.usefixtures("mock_db_session") # Apply mock session if needed globally
 
-# Comment out or remove the potentially problematic event_loop fixture
-# @pytest.fixture(scope="session")
-# def event_loop(request):
-#     """Create an instance of the default event loop for each test case."""
-#     loop = asyncio.get_event_loop_policy().new_event_loop()
-#     yield loop
-#     loop.close()
+# Override the default function-scoped event_loop fixture with module scope
+@pytest_asyncio.fixture(scope="module")
+def event_loop():
+    """
+    Create a module-scoped event loop for pytest-asyncio.
+    
+    This prevents ScopeMismatch errors when using module or session scoped fixtures
+    that depend on event_loop fixtures.
+    """
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 @pytest.fixture(scope='session')
 # @pytest.mark.usefixtures("event_loop") # No longer needed
