@@ -3,7 +3,13 @@
 SQLAlchemy models for user data.
 
 This module defines the User SQLAlchemy model that follows HIPAA compliance
-and clean architecture principles.
+and clean architecture principles. This is the CANONICAL SQLAlchemy model for User
+and should be the only SQLAlchemy User model used throughout the application.
+
+Architectural Note:
+- This module implements the PERSISTENCE model for User entities
+- The DOMAIN entity is in app.domain.entities.user
+- Repository classes should handle conversion between domain and persistence models
 """
 
 import uuid
@@ -18,7 +24,8 @@ from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB
 from sqlalchemy.types import TypeDecorator, TEXT
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
+# Import the canonical Base class
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 
 from app.domain.utils.datetime_utils import now_utc, UTC
 
@@ -108,54 +115,62 @@ class UserRole(enum.Enum):
     SUPPORT = "support"
 
 
-class User(Base):
+class User(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for user data.
     
     Represents the structure of the 'users' table.
     Following HIPAA compliance with restricted PII.
+    
+    NOTE: This is the canonical SQLAlchemy User model and should be the only
+    SQLAlchemy User model used in the application.
     """
     
     __tablename__ = "users"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {
+        'extend_existing': True,
+        'comment': 'User accounts with authentication and authorization information'
+    }
     
     # --- Core Identification and Metadata ---
-    id = Column(UUIDType, primary_key=True, default=uuid.uuid4)
-    username = Column(String(64), unique=True, nullable=False)
-    email = Column(String(255), unique=True, nullable=False)
+    id = Column(UUIDType, primary_key=True, default=uuid.uuid4, comment="Unique user identifier")
+    username = Column(String(64), unique=True, nullable=False, comment="Username for login")
+    email = Column(String(255), unique=True, nullable=False, index=True, comment="Email address for user contact")
+    
+    # Personal information - minimal necessary for function
+    first_name = Column(String(100), nullable=True, comment="User's first name")
+    last_name = Column(String(100), nullable=True, comment="User's last name")
     
     # Password hash - never store plaintext passwords
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False, comment="Securely hashed password")
     
     # User account status
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_verified = Column(Boolean, default=False, nullable=False)
-    email_verified = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, comment="Whether account is active")
+    is_verified = Column(Boolean, default=False, nullable=False, comment="Whether account is verified")
+    email_verified = Column(Boolean, default=False, nullable=False, comment="Whether email address is verified")
     
-    # User role
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT)
+    # User role - using enum to enforce valid values
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT, comment="Primary user role")
     
-    # Audit fields
-    created_at = Column(DateTime, default=now_utc, nullable=False)
-    updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
-    last_login = Column(DateTime, nullable=True)
+    # Roles are stored as a JSON array for more flexible role management
+    roles = Column(JSONType, default=list, nullable=False, comment="List of all user roles")
+    
+    # Additional audit fields beyond the mixin
+    last_login = Column(DateTime, nullable=True, comment="When user last logged in")
     
     # Security-related fields
-    failed_login_attempts = Column(Integer, default=0, nullable=False)
-    account_locked_until = Column(DateTime, nullable=True)
-    password_changed_at = Column(DateTime, default=now_utc, nullable=False)
+    failed_login_attempts = Column(Integer, default=0, nullable=False, comment="Number of consecutive failed login attempts")
+    account_locked_until = Column(DateTime, nullable=True, comment="When account lockout expires")
+    password_changed_at = Column(DateTime, default=now_utc, nullable=False, comment="When password was last changed")
     
     # Token-related fields for password reset, account verification
-    reset_token = Column(String(255), nullable=True)
-    reset_token_expires_at = Column(DateTime, nullable=True)
-    verification_token = Column(String(255), nullable=True)
+    reset_token = Column(String(255), nullable=True, comment="Password reset token")
+    reset_token_expires_at = Column(DateTime, nullable=True, comment="When reset token expires")
+    verification_token = Column(String(255), nullable=True, comment="Account verification token")
     
-    # Optional profile data - not PHI/PII
-    first_name = Column(String(64), nullable=True)
-    last_name = Column(String(64), nullable=True)
-    
-    # JSON fields for extensibility - using our custom cross-db JSONType
-    preferences = Column(JSONType, nullable=True)  # User preferences (UI settings, etc.)
+    # Additional data
+    bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
+    preferences = Column(JSONType, nullable=True, comment="User UI and system preferences")  
     
     # Relationships
     provider = relationship(
@@ -173,15 +188,33 @@ class User(Base):
     # Audit logging
     access_logs = Column(JSONType, nullable=True)  # Stores recent access logs
     
-    def __repr__(self) -> str:
-        """Provide a non-PHI representation useful for debugging."""
-        return f"<User(id={self.id}, username={self.username}, role={self.role}, created_at={self.created_at})>"
+    def __repr__(self):
+        """String representation of the user."""
+        return f"<User {self.username} ({self.id})>"
     
     def is_account_locked(self) -> bool:
-        """Check if account is currently locked."""
+        """Check if the account is locked due to failed logins."""
         if not self.account_locked_until:
             return False
         return self.account_locked_until > now_utc()
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert user to dictionary representation suitable for API responses."""
+        return {
+            "id": str(self.id),
+            "username": self.username,
+            "email": self.email,
+            "is_active": self.is_active,
+            "is_verified": self.is_verified,
+            "role": self.role.value if self.role else None,
+            "roles": self.roles if isinstance(self.roles, list) else [],
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "phone_number": self.phone_number
+        }
     
     def increment_failed_login(self) -> None:
         """Increment failed login counter and maybe lock account."""

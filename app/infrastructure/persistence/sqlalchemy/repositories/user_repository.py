@@ -2,8 +2,11 @@
 """
 User repository implementation using SQLAlchemy.
 
-This module implements the UserRepository class for persisting and retrieving
-User entities using SQLAlchemy ORM.
+This module implements the UserRepository interface for persisting and retrieving
+User entities using SQLAlchemy ORM, following clean architecture principles.
+
+ARCHITECTURAL NOTE: This is the canonical SQLAlchemy implementation of the UserRepository.
+All other implementations should be considered deprecated.
 """
 
 import uuid
@@ -16,24 +19,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy import update, delete, and_, or_, func
 
-from app.domain.entities.user import User as UserDomain
-from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.domain.repositories.user_repository import UserRepository
+# Domain imports
 from app.domain.entities.user import User as DomainUser
+from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
 from app.domain.enums.role import Role
 from app.domain.utils.datetime_utils import now_utc
 
+# Infrastructure imports
+from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
+from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
 
 logger = logging.getLogger(__name__)
 
 
-class UserRepository(UserRepository):
+class SQLAlchemyUserRepository(UserRepositoryInterface):
     """
     SQLAlchemy implementation of the UserRepository interface.
     
     This class bridges between the domain User entity and the SQLAlchemy User model.
+    It follows the Repository pattern from Domain-Driven Design, providing a collection-like
+    interface for domain entities while abstracting the persistence details.
     """
     
     def __init__(self, db_session: AsyncSession):
@@ -45,7 +50,7 @@ class UserRepository(UserRepository):
         """
         self._db_session = db_session
     
-    async def create(self, user: UserDomain) -> UserDomain:
+    async def create(self, user: DomainUser) -> DomainUser:
         """
         Create a new user in the database.
         
@@ -60,9 +65,12 @@ class UserRepository(UserRepository):
             IntegrityError: If there's a constraint violation (e.g., duplicate username or email)
         """
         try:
-            # Convert domain entity to model
-            user_model = await self._to_model(user)
-            user_model.created_at = now_utc()
+            # Convert domain entity to model using the mapper
+            user_model = UserMapper.to_persistence(user)
+            
+            # Set audit timestamps if not already set
+            if not user_model.created_at:
+                user_model.created_at = now_utc()
             user_model.updated_at = now_utc()
             
             # Persist to database
@@ -70,8 +78,8 @@ class UserRepository(UserRepository):
             await self._db_session.flush()
             await self._db_session.refresh(user_model)
             
-            # Convert back to domain entity
-            return await self._to_domain(user_model)
+            # Convert back to domain entity using the mapper
+            return UserMapper.to_domain(user_model)
         except IntegrityError as e:
             logger.error(f"Integrity error when creating user: {e}")
             await self._db_session.rollback()
@@ -81,7 +89,7 @@ class UserRepository(UserRepository):
             await self._db_session.rollback()
             raise
     
-    async def get_by_id(self, user_id: Union[str, uuid.UUID]) -> Optional[UserDomain]:
+    async def get_by_id(self, user_id: Union[str, uuid.UUID]) -> Optional[DomainUser]:
         """
         Retrieve a user by their ID.
         
@@ -99,46 +107,44 @@ class UserRepository(UserRepository):
             # Query the database
             user_model = await self._db_session.get(UserModel, user_id)
             
-            if not user_model:
-                return None
-            
-            return await self._to_domain(user_model)
-        except SQLAlchemyError as e:
-            logger.error(f"Database error when retrieving user by ID {user_id}: {e}")
+            # Convert to domain entity using the mapper
+            if user_model:
+                return UserMapper.to_domain(user_model)
+            return None
+        except (SQLAlchemyError, ValueError) as e:
+            logger.error(f"Error retrieving user by ID {user_id}: {e}")
             raise
     
-    async def get_by_username(self, username: str) -> Optional[UserDomain]:
+    async def get_by_username(self, username: str) -> Optional[DomainUser]:
         """
         Retrieve a user by their username.
         
         Args:
-            username: The username of the user to retrieve
+            username: The username to look up
             
         Returns:
             The User domain entity, or None if not found
         """
         try:
-            # Prepare query
-            query = select(UserModel).where(UserModel.username == username)
-            
-            # Execute query
-            result = await self._db_session.execute(query)
+            # Create and execute query
+            stmt = select(UserModel).where(UserModel.username == username)
+            result = await self._db_session.execute(stmt)
             user_model = result.scalars().first()
             
-            if not user_model:
-                return None
-            
-            return await self._to_domain(user_model)
+            # Convert to domain entity using the mapper
+            if user_model:
+                return UserMapper.to_domain(user_model)
+            return None
         except SQLAlchemyError as e:
             logger.error(f"Database error when retrieving user by username {username}: {e}")
             raise
     
-    async def get_by_email(self, email: str) -> Optional[UserDomain]:
+    async def get_by_email(self, email: str) -> Optional[DomainUser]:
         """
         Retrieve a user by their email address.
         
         Args:
-            email: The email of the user to retrieve
+            email: The email address to look up
             
         Returns:
             The User domain entity, or None if not found
@@ -151,15 +157,15 @@ class UserRepository(UserRepository):
             result = await self._db_session.execute(query)
             user_model = result.scalars().first()
             
-            if not user_model:
-                return None
-            
-            return await self._to_domain(user_model)
+            # Convert to domain entity using the mapper
+            if user_model:
+                return UserMapper.to_domain(user_model)
+            return None
         except SQLAlchemyError as e:
             logger.error(f"Database error when retrieving user by email {email}: {e}")
             raise
     
-    async def update(self, user: UserDomain) -> UserDomain:
+    async def update(self, user: DomainUser) -> DomainUser:
         """
         Update an existing user in the database.
         
@@ -171,29 +177,29 @@ class UserRepository(UserRepository):
             
         Raises:
             SQLAlchemyError: If there's an error during database operations
-            IntegrityError: If there's a constraint violation (e.g., duplicate username or email)
+            IntegrityError: If there's a constraint violation
+            ValueError: If the user doesn't exist
         """
         try:
-            # Retrieve existing user model
+            # Get existing model to update
             user_id = user.id
             if isinstance(user_id, str):
                 user_id = uuid.UUID(user_id)
+                
+            existing_model = await self._db_session.get(UserModel, user_id)
+            if not existing_model:
+                raise ValueError(f"User with ID {user.id} not found")
             
-            user_model = await self._db_session.get(UserModel, user_id)
-            
-            if not user_model:
-                raise ValueError(f"User with ID {user_id} not found")
-            
-            # Update model with domain entity data
-            updated_model = await self._update_model_from_domain(user_model, user)
+            # Apply updates using the mapper's update method
+            updated_model = UserMapper.update_persistence_model(existing_model, user)
             updated_model.updated_at = now_utc()
             
             # Persist changes
             await self._db_session.flush()
             await self._db_session.refresh(updated_model)
             
-            # Convert back to domain entity
-            return await self._to_domain(updated_model)
+            # Convert back to domain entity using the mapper
+            return UserMapper.to_domain(updated_model)
         except IntegrityError as e:
             logger.error(f"Integrity error when updating user: {e}")
             await self._db_session.rollback()
@@ -212,29 +218,31 @@ class UserRepository(UserRepository):
             
         Returns:
             True if the user was deleted, False if not found
+            
+        Raises:
+            SQLAlchemyError: If there's an error during database operations
         """
         try:
             # Convert string ID to UUID if necessary
             if isinstance(user_id, str):
                 user_id = uuid.UUID(user_id)
             
-            # Query the database
+            # Check if user exists
             user_model = await self._db_session.get(UserModel, user_id)
-            
             if not user_model:
                 return False
             
-            # Delete the user
+            # Delete user
             await self._db_session.delete(user_model)
             await self._db_session.flush()
             
             return True
         except SQLAlchemyError as e:
-            logger.error(f"Database error when deleting user {user_id}: {e}")
+            logger.error(f"Database error when deleting user: {e}")
             await self._db_session.rollback()
             raise
     
-    async def list_users(self, skip: int = 0, limit: int = 100) -> List[UserDomain]:
+    async def list_users(self, skip: int = 0, limit: int = 100) -> List[DomainUser]:
         """
         Retrieve a list of users from the database.
         
@@ -253,13 +261,13 @@ class UserRepository(UserRepository):
             result = await self._db_session.execute(query)
             user_models = result.scalars().all()
             
-            # Convert to domain entities
-            return [await self._to_domain(model) for model in user_models]
+            # Convert models to domain entities using the mapper
+            return [UserMapper.to_domain(model) for model in user_models]
         except SQLAlchemyError as e:
             logger.error(f"Database error when listing users: {e}")
             raise
             
-    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[UserDomain]:
+    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[DomainUser]:
         """
         Get users by role.
         
@@ -292,7 +300,7 @@ class UserRepository(UserRepository):
             logger.error(f"Database error when retrieving users by role {role}: {e}")
             raise
     
-    async def _to_model(self, user: UserDomain) -> UserModel:
+    async def _to_model(self, user: DomainUser) -> UserModel:
         """
         Convert a User domain entity to a User model.
         
@@ -362,7 +370,7 @@ class UserRepository(UserRepository):
             
         return user_model
     
-    async def _update_model_from_domain(self, model: UserModel, user: UserDomain) -> UserModel:
+    async def _update_model_from_domain(self, model: UserModel, user: DomainUser) -> UserModel:
         """
         Update an existing User model with data from a domain entity.
         
@@ -430,7 +438,7 @@ class UserRepository(UserRepository):
             
         return model
     
-    async def _to_domain(self, model: UserModel) -> UserDomain:
+    async def _to_domain(self, model: UserModel) -> DomainUser:
         """
         Convert a User model to a User domain entity.
         
@@ -467,4 +475,9 @@ class UserRepository(UserRepository):
         }
         
         # Create and return domain entity
-        return UserDomain(**user_data)
+        return DomainUser(**user_data)
+
+
+# For backward compatibility - provide the old name as an alias
+# This allows existing code to continue working with our refactored implementation
+UserRepository = SQLAlchemyUserRepository
