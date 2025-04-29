@@ -48,10 +48,36 @@ class PHIType(str, Enum):
     ACCOUNT_NUMBER = "ACCOUNT_NUMBER"
     CREDIT_CARD = "CREDIT_CARD"
 
+# PHI Service
+from .phi_service import (
+    PHIService,
+    RedactionMode,
+    sanitize_phi,
+    contains_phi,
+    get_phi_service
+)
+
+# PHI Auditing
+from .phi_auditor import PHIAuditHandler
+
+# PHI Code Analysis
+from .code_analyzer import PHICodeAnalyzer, CodeSeverity
+
 __all__ = [
     # Core components
     'PHISanitizer',
     'SanitizedLogger',
+    # Service
+    'PHIService',
+    'RedactionMode',
+    'sanitize_phi',
+    'contains_phi',
+    'get_phi_service',
+    # Audit and analysis
+    'PHIAuditHandler',
+    'PHICodeAnalyzer',
+    'CodeSeverity',
+    # Utility functions
     'get_sanitized_logger',
     'RedactionStrategy',
     'PatternRepository',

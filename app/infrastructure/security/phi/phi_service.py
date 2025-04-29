@@ -157,7 +157,3 @@ def get_phi_service() -> PHIService:
         PHIService instance
     """
     return PHIService()
-            # Not valid JSON, sanitize as string
-            return self.sanitize_string(json_str)
-    
-
