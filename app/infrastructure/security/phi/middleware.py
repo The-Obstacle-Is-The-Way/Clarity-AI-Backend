@@ -15,8 +15,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from .phi_service import PHIService
-from .log_sanitizer import LogSanitizer, get_sanitized_logger
+# Import from consolidated sanitizer implementation
+from .sanitizer import PHISanitizer, get_sanitized_logger
 
 # Create a sanitized logger
 logger = get_sanitized_logger(__name__)
@@ -36,7 +36,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        phi_service: Optional[PHIService] = None,
+        phi_sanitizer: Optional[PHISanitizer] = None,
         audit_mode: bool = False,
         exclude_paths: Optional[List[str]] = None,
         whitelist_patterns: Optional[List[str]] = None
@@ -52,7 +52,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             whitelist_patterns: Optional list of patterns to exclude from sanitization
         """
         super().__init__(app)
-        self.phi_service = phi_service or PHIService()
+        self.phi_sanitizer = phi_sanitizer or PHISanitizer()
         self.audit_mode = audit_mode
         self.exclude_paths = exclude_paths or []
         self.whitelist_patterns = whitelist_patterns or []
@@ -181,7 +181,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     sanitized_body = body_json
                 else:
                     # Sanitize the response body
-                    sanitized_body = self.phi_service.sanitize_dict(body_json)
+                    sanitized_body = self.phi_sanitizer.sanitize(body_json)
                     logger.info(
                         "PHI sanitized in response to %s %s",
                         request.method,
@@ -269,7 +269,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     sanitized_body = body_json
                 else:
                     # Sanitize the body for logging
-                    sanitized_body = self.phi_service.sanitize_dict(body_json)
+                    sanitized_body = self.phi_sanitizer.sanitize(body_json)
                     logger.info(
                         "PHI sanitized in request logging for %s %s",
                         request.method,
@@ -307,7 +307,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             # Skip whitelisted patterns
             if self.is_whitelisted(data):
                 return False
-            return self.phi_service.contains_phi(data)
+            return self.phi_sanitizer.contains_phi(data)
         elif isinstance(data, dict):
             # Check each value in the dictionary
             for key, value in data.items():
@@ -334,7 +334,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
 
 # Dependency for FastAPI routes
 def get_phi_middleware(
-    phi_service: Optional[PHIService] = None,
+    phi_sanitizer: Optional[PHISanitizer] = None,
     audit_mode: bool = False,
     exclude_paths: Optional[List[str]] = None,
     whitelist_patterns: Optional[List[str]] = None
@@ -353,7 +353,7 @@ def get_phi_middleware(
     """
     return PHIMiddleware(
         app=None,  # Will be set by FastAPI
-        phi_service=phi_service,
+        phi_sanitizer=phi_sanitizer,
         audit_mode=audit_mode,
         exclude_paths=exclude_paths,
         whitelist_patterns=whitelist_patterns
@@ -362,7 +362,7 @@ def get_phi_middleware(
 
 def add_phi_middleware(
     app: FastAPI,
-    phi_service: Optional[PHIService] = None,
+    phi_sanitizer: Optional[PHISanitizer] = None,
     audit_mode: bool = False,
     exclude_paths: Optional[List[str]] = None,
     whitelist_patterns: Optional[List[str]] = None
@@ -379,7 +379,7 @@ def add_phi_middleware(
     """
     middleware = PHIMiddleware(
         app=app,
-        phi_service=phi_service,
+        phi_sanitizer=phi_sanitizer,
         audit_mode=audit_mode,
         exclude_paths=exclude_paths,
         whitelist_patterns=whitelist_patterns
