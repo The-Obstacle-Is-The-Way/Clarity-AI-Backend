@@ -949,14 +949,20 @@ def mock_encryption_service():
 # --- XGBoost Mock Service Fixture (Moved from integration test) ---
 @pytest.fixture(scope="session") # Use session scope consistent with async_client
 def mock_xgboost_service():
-    """Fixture for a session-scoped AsyncMock XGBoost service interface."""
+    """Provides a mock XGBoost service conforming to the interface."""
+    # Create a MagicMock specifying the interface methods
     mock_service = AsyncMock(spec=XGBoostInterface)
-    # Configure mock return values
-    mock_service.predict_risk.return_value = {"prediction_id": "risk-pred-123", "risk_score": 0.75, "confidence": 0.9, "risk_level": "high"}
-    mock_service.predict_treatment_response.return_value = {"prediction_id": "treat-pred-456", "response_probability": 0.8, "confidence": 0.85}
-    mock_service.predict_outcome.return_value = {"prediction_id": "outcome-pred-789", "outcome_prediction": "stable", "confidence": 0.92}
-    mock_service.get_model_info.return_value = {"model_type": ModelType.RISK_RELAPSE.value, "version": "1.0", "description": "Mock Relapse Model", "features": ["feat1", "feat2"]}
-    mock_service.get_feature_importance.return_value = {"prediction_id": "pred123", "feature_importance": {"feat1": 0.6, "feat2": 0.4}}
-    mock_service.get_available_models.return_value = [{"model_type": ModelType.RISK_RELAPSE.value, "version": "1.0"}]
-    mock_service.is_initialized = True
+    
+    # Define mock implementations for required methods
+    mock_service.predict = AsyncMock(return_value={"prediction": "mock_result", "confidence": 0.95})
+    # Add predict_risk as it seems widely expected by tests, even if not strictly in current interface.py
+    # This might indicate an interface inconsistency or specific test needs.
+    mock_service.predict_risk = AsyncMock(return_value={"risk_level": "low", "score": 0.2})
+    mock_service.get_model_info = AsyncMock(return_value={"name": "mock_model", "version": "1.0"})
+    mock_service.healthcheck = AsyncMock(return_value={"status": "ok", "dependencies": "mocked"})
+    
+    # Add other methods from the interface if needed
+    # Example: mock_service.some_other_method = AsyncMock(return_value=...)
+    
+    logger.info("Created mock XGBoost service fixture.") # Add log
     return mock_service

@@ -30,7 +30,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -46,7 +46,6 @@ from app.presentation.middleware.rate_limiting_middleware import setup_rate_limi
 from app.presentation.middleware.phi_middleware import PHIMiddleware  # PHI middleware (disabled in setup)
 
 # Import necessary types for middleware
-from starlette.requests import Request
 from starlette.responses import Response
 from typing import Callable, Awaitable
 
@@ -247,6 +246,20 @@ def create_application(dependency_overrides: Optional[Dict[Callable, Callable]] 
     if static_dir:
         app.mount("/static", StaticFiles(directory=static_dir), name="static")
     
+    # --- Add Custom Exception Handlers ---
+    from fastapi.responses import JSONResponse
+    import traceback
+
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception):
+        # Log the full error internally
+        logger.error(f"Unhandled exception caught for request {request.method} {request.url.path}: {exc}", exc_info=True)
+        # Return a generic 500 response to the client
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            content={"detail": "Internal server error"}
+        )
+
     return app
 
 # Create the main FastAPI application instance using the factory function
