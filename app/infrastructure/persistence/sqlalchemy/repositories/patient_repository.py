@@ -451,6 +451,23 @@ class PatientRepository:
                 self.logger.debug(f"Adding patient model {patient_model.id} to session.")
                 session.add(patient_model)
                 
+                # --- DEBUGGING: Check if user exists right before flush ---
+                try:
+                    from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel # Local import
+                    from sqlalchemy.future import select # Local import
+                    user_id_to_check = patient_model.user_id
+                    self.logger.info(f"DEBUG: Checking for user ID {user_id_to_check} existence before patient flush.")
+                    user_check_stmt = select(UserModel).where(UserModel.id == user_id_to_check)
+                    user_result = await session.execute(user_check_stmt)
+                    existing_user = user_result.scalar_one_or_none()
+                    if existing_user:
+                        self.logger.info(f"DEBUG: User {user_id_to_check} FOUND in session before patient flush.")
+                    else:
+                        self.logger.warning(f"DEBUG: User {user_id_to_check} NOT FOUND in session before patient flush!")
+                except Exception as debug_e:
+                    self.logger.error(f"DEBUG: Error during pre-flush user check: {debug_e}")
+                # --- END DEBUGGING ---
+
                 # Flush to send the insert to the DB and potentially get generated values
                 self.logger.debug(f"Flushing session for patient {patient_model.id}.")
                 await session.flush() 

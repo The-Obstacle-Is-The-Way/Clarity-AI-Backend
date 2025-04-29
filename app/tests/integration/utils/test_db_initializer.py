@@ -101,12 +101,17 @@ async def create_test_users(session: AsyncSession) -> None:
         )
         session.add(test_clinician)
 
-    try:
-        await session.commit() # Commit changes if users were added
-        logger.info(f"Test users initialized with IDs: {TEST_USER_ID}, {TEST_CLINICIAN_ID}")
-    except Exception as e:
-        logger.error(f"Error committing test users: {e}")
-        await session.rollback()
+    if TEST_USER_ID not in existing_ids or TEST_CLINICIAN_ID not in existing_ids:
+        try:
+            # Restore commit to ensure users are definitely in DB before test transaction
+            await session.commit() 
+            logger.info(f"Committed test users: {[TEST_USER_ID, TEST_CLINICIAN_ID]}")
+        except Exception as e:
+            logger.error(f"Error committing test users: {e}")
+            await session.rollback() # Rollback if commit fails
+            raise # Re-raise the commit error
+    else:
+         logger.info("Test users already exist in session or DB.")
 
 
 async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -138,13 +143,19 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
     # Create a new session
     async with TestSessionLocal() as session:
         try:
+            # Enable foreign keys specifically for this session (important for SQLite)
+            await session.execute(text("PRAGMA foreign_keys=ON;"))
+                
             # Create test users within the session context
             await create_test_users(session)
 
-            # Begin transaction for the test
-            await session.begin()
+            # The 'async with TestSessionLocal()' context manager handles the transaction.
+            # Remove the explicit session.begin() call.
+            # await session.begin()
             yield session
-            # Rollback transaction after test completes
+            # Rollback transaction after test completes to ensure isolation
+            # This might be redundant if the context manager handles rollback on exit,
+            # but explicit rollback provides clearer intent for test isolation.
             await session.rollback()
         except Exception as e:
             logger.error(f"Error during test database session setup/teardown: {e}")

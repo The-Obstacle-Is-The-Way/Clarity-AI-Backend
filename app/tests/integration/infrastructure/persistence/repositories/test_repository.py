@@ -357,7 +357,8 @@ class TestPatientRepositoryIntegration:
                 phone="9876543210"
             ),
             gender="Other",
-            created_by=uuid.uuid4(), # Assume a user exists or handle accordingly
+            # Use a valid, pre-seeded user ID from test_db_initializer
+            created_by=uuid.UUID('00000000-0000-0000-0000-000000000001'), 
             # Add other required fields if any
         )
 
