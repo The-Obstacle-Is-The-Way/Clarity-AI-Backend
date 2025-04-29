@@ -17,9 +17,6 @@ from typing import Dict, Any, Optional
 from app.core.services.ml.xgboost.interface import (
     XGBoostInterface,
     ModelType,
-    EventType,
-    Observer,
-    PrivacyLevel
 )
 
 # Import enums for type information
@@ -44,8 +41,7 @@ from app.core.services.ml.xgboost.exceptions import (
 
 # Re-export factory functions
 from app.core.services.ml.xgboost.factory import (
-    create_xgboost_service,
-    register_implementation
+    get_xgboost_service,
 )
 
 # Re-export implementations for direct access if needed
@@ -103,7 +99,7 @@ def create_xgboost_service_from_env() -> XGBoostInterface:
             )
         
         # Create service instance
-        service = create_xgboost_service(implementation_name=implementation)
+        service = get_xgboost_service(implementation_name=implementation)
         
         # Initialize with implementation-specific configuration
         if implementation == "aws":

@@ -1,3 +1,5 @@
+from sqlalchemy import Column
+from sqlalchemy.types import Text
 """
 Test Database Initializer
 
@@ -80,30 +82,38 @@ class TestPatient(TestBase):
     __table_args__ = {'extend_existing': True}
     
     # Core patient identity
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Status fields
     is_active = Column(Boolean, default=True, nullable=False)
     
     # User reference (created_by)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
-    user = relationship("TestUser", back_populates="patients")
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    user = relationship("UserTestModel", back_populates="patients")
     
     # Timestamps
-    created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat(), onupdate=lambda: datetime.now(timezone.utc).isoformat())
+    created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
+    updated_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), onupdate=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
     version = Column(Integer, default=1)
     
-    # Basic info fields (encrypted)
-    first_name = Column(String(255))
-    last_name = Column(String(255))
-    date_of_birth = Column(String(50), nullable=True)  # Use string for dates in SQLite
-    gender = Column(String(50), nullable=True)
+    # Encrypted PHI fields (matching production model)
+    _first_name = Column("first_name", Text, nullable=True)
+    _last_name = Column("last_name", Text, nullable=True)
+    _dob = Column("date_of_birth", Text, nullable=True)
+    _email = Column("email", Text, nullable=True)
+    _phone = Column("phone", Text, nullable=True)
+    _medical_record_number = Column("medical_record_number", Text, nullable=True)
+    _ssn = Column("ssn", Text, nullable=True)
+    _gender = Column("_gender", Text, nullable=True)
+    gender = Column("gender", String(50), nullable=True)
     
-    # Contact info (encrypted)
-    email = Column(String(255), nullable=True)
-    phone = Column(String(50), nullable=True)
-    address = Column(String(1024), nullable=True)  # JSON address object
+    # Address fields (encrypted in production)
+    _address_line1 = Column("_address_line1", Text, nullable=True)
+    _address_line2 = Column("_address_line2", Text, nullable=True)
+    _city = Column("_city", Text, nullable=True)
+    _state = Column("_state", Text, nullable=True)
+    _postal_code = Column("_postal_code", Text, nullable=True)
+    _country = Column("_country", Text, nullable=True)
     
     # Address components (for backward compatibility)
     address_line1 = Column(String(255), nullable=True)
@@ -114,10 +124,14 @@ class TestPatient(TestBase):
     zip_code = Column(String(20), nullable=True)     # Both needed for compatibility
     country = Column(String(100), nullable=True)
     
-    # Medical identifiers (encrypted)
-    medical_record_number = Column(String(100), nullable=True)
-    insurance_number = Column(String(100), nullable=True)
-    ssn = Column(String(15), nullable=True)
+    # Emergency contact and additional data
+    _emergency_contact = Column("_emergency_contact", Text, nullable=True)
+    _insurance_number = Column("_insurance_number", Text, nullable=True)
+    _medical_history = Column("_medical_history", Text, nullable=True)
+    _medications = Column("_medications_data", Text, nullable=True)
+    _allergies = Column("_allergies", Text, nullable=True)
+    _treatment_notes = Column("_treatment_notes", Text, nullable=True)
+    _extra_data = Column("_extra_data", Text, nullable=True)
     
     # Medical info (encrypted)
     emergency_contact = Column(String(1024), nullable=True)  # JSON emergency contact
@@ -262,29 +276,31 @@ async def create_test_patient(
     """
     # Create patient object with all required fields
     patient = TestPatient(
-        id=str(uuid.uuid4()),
-        user_id=str(user_id) if user_id else None,
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        phone=phone,
-        ssn=ssn,
+        id=uuid.uuid4(),
+        user_id=user_id,
         is_active=True,
         version=1,
     )
     
+    # Set encrypted PHI fields
+    patient._first_name = first_name
+    patient._last_name = last_name
+    patient._email = email
+    patient._phone = phone
+    patient._ssn = ssn
+    
     # Set date of birth if provided
     if date_of_birth:
         if isinstance(date_of_birth, date):
-            patient.date_of_birth = date_of_birth.isoformat()
+            patient._dob = date_of_birth.isoformat()
         else:
-            patient.date_of_birth = str(date_of_birth)
+            patient._dob = str(date_of_birth)
     else:
         # Default to a sensible date of birth
-        patient.date_of_birth = "1980-01-01"
+        patient._dob = "1980-01-01"
     
     # Add gender and additional fields for completeness
-    patient.gender = "male" if random.randint(0, 1) else "female"
+    patient._gender = "male" if random.randint(0, 1) else "female"
     
     # Prepare address data in JSON format
     address_data = {
@@ -296,15 +312,13 @@ async def create_test_patient(
         "country": "USA"
     }
     
-    # Set address fields as both JSON and individual fields for compatibility
-    patient.address = json.dumps(address_data)
-    patient.address_line1 = address_data["line1"]
-    patient.address_line2 = address_data["line2"]
-    patient.city = address_data["city"]
-    patient.state = address_data["state"]
-    patient.zip_code = address_data["zip_code"]
-    patient.postal_code = address_data["zip_code"]
-    patient.country = address_data["country"]
+    # Set encrypted address fields
+    patient._address_line1 = json.dumps(address_data)  # Store as encrypted JSON
+    patient._address_line2 = None
+    patient._city = None
+    patient._state = None
+    patient._postal_code = None
+    patient._country = None
     
     # Add emergency contact info
     emergency_data = {
@@ -312,7 +326,7 @@ async def create_test_patient(
         "relationship": "Family",
         "phone": "5559876543"
     }
-    patient.emergency_contact = json.dumps(emergency_data)
+    patient._emergency_contact = json.dumps(emergency_data)  # Store as encrypted field
     
     # Add to the session
     session.add(patient)

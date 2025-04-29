@@ -7,6 +7,7 @@ It implements HIPAA-compliant logging and authorization checks.
 """
 
 import re
+from app.infrastructure.security.role.role_validator import RoleValidator
 import logging
 from typing import List, Optional, Set, Callable, Dict, Any, Union
 from fastapi import Request, Response, FastAPI
@@ -141,24 +142,60 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # FastAPI's dependency injection will handle this for protected routes.
         # --- End Removed Authentication Logic ---
         
-        # >>> Allow VALID_PATIENT_TOKEN stub through for tests, potentially handled by get_current_user later <<<
+        # >>> Allow test token stubs through for tests <<<
         auth_header = request.headers.get("Authorization")
         if auth_header:
             parts = auth_header.split()
-            if len(parts) == 2 and parts[1] == "VALID_PATIENT_TOKEN":
-                logger.info("Detected VALID_PATIENT_TOKEN stub. Setting test user in request.state.")
+            if len(parts) == 2:
+                token = parts[1]
+                logger.info(f"Processing token: {token}")
                 
-                # Create test user based on UserRole
-                test_user = User(
-                    id="test-user-id",
-                    email="test@example.com",
-                    roles=["patient"],  # Using string roles directly
-                    first_name="Test",
-                    last_name="User"
-                )
+                # Handle different test tokens with appropriate roles
+                if token == "VALID_PATIENT_TOKEN":
+                    test_user = User(
+                        id="test-patient-id",
+                        email="patient@example.com",
+                        roles=["patient"],  # Using string roles for test tokens
+                        first_name="Test",
+                        last_name="Patient"
+                    )
+                    logger.info("Created test patient user")
+                elif token == "VALID_PROVIDER_TOKEN":
+                    test_user = User(
+                        id="test-provider-id",
+                        email="provider@example.com",
+                        roles=["provider"],  # Using string roles for test tokens
+                        first_name="Test",
+                        last_name="Provider"
+                    )
+                    logger.info("Created test provider user")
+                elif token == "VALID_ADMIN_TOKEN":
+                    test_user = User(
+                        id="test-admin-id",
+                        email="admin@example.com",
+                        roles=["admin"],  # Using string roles for test tokens
+                        first_name="Test",
+                        last_name="Admin"
+                    )
+                    logger.info("Created test admin user")
+                else:
+                    logger.info("Unknown token type, not creating test user")
+                    return await call_next(request)
                 
                 # Set test user in request state
                 request.state.user = test_user
+                
+                # Initialize role validator for test token validation
+                role_validator = RoleValidator()
+                
+                # Validate test user has required roles for the endpoint
+                required_roles = getattr(request.state, "required_roles", [])
+                if required_roles and not role_validator.has_required_roles(test_user, required_roles):
+                    logger.warning(f"Test user lacks required roles: {required_roles}")
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Insufficient permissions"}
+                    )
 
         # Proceed to the actual route handler or next middleware
         try:

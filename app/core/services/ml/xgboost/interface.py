@@ -1,292 +1,86 @@
 """
-Interface definition for the XGBoost service.
-
-This module defines the abstract base class, enums, and observer pattern
-for the XGBoost service.
+XGBoost ML Service Interface.
 """
 
-import abc
-from abc import ABC, abstractmethod
-from enum import Enum, auto
-from typing import Dict, List, Any, Optional, Set, Union
-
+from app.domain.interfaces.ml_service_interface import MLServiceInterface
+from typing import Any, Dict, Optional, List
+from uuid import UUID
+from enum import Enum
+from pydantic import BaseModel
 
 class ModelType(str, Enum):
-    """Types of XGBoost models available in the service."""
+    """Enumeration of available XGBoost model types for mental health predictions."""
+    DEPRESSION = "depression"
+    ANXIETY = "anxiety"
+    BIPOLAR = "bipolar"
+    PTSD = "ptsd"
+    ADHD = "adhd"
+    OCD = "ocd"
+    SCHIZOPHRENIA = "schizophrenia"
+    AUTISM = "autism"
+    EATING_DISORDER = "eating_disorder"
+    SLEEP_DISORDER = "sleep_disorder"
+
+class XGBoostInterface(MLServiceInterface):
+    """Interface for XGBoost ML Service implementation."""
     
-    RISK = "risk"
-    RISK_RELAPSE = "risk_relapse"
-    RISK_SUICIDE = "risk_suicide"
-    RISK_HOSPITALIZATION = "risk_hospitalization"
-    # Generic alias for medication treatment response (used in tests)
-    TREATMENT_RESPONSE_MEDICATION = "treatment_response_medication"
-    TREATMENT_MEDICATION_SSRI = "medication_ssri-response"
-    TREATMENT_MEDICATION_SNRI = "medication_snri-response"
-    TREATMENT_MEDICATION_ATYPICAL = "medication_atypical-response"
-    TREATMENT_THERAPY_CBT = "therapy_cbt-response"
-    TREATMENT_THERAPY_DBT = "therapy_dbt-response"
-    TREATMENT_THERAPY_IPT = "therapy_ipt-response"
-    TREATMENT_THERAPY_PSYCHODYNAMIC = "therapy_psychodynamic-response"
-    OUTCOME_SYMPTOM = "symptom-outcome"
-    OUTCOME_FUNCTIONAL = "functional-outcome"
-    OUTCOME_QUALITY_OF_LIFE = "quality_of_life-outcome"
+    async def predict(self, patient_id: UUID, features: Dict[str, Any], model_type: ModelType, **kwargs) -> Dict[str, Any]:
+        """
+        Execute prediction using XGBoost model.
+        
+        Args:
+            patient_id: Unique identifier for the patient
+            features: Dictionary of input features for prediction
+            model_type: Type of XGBoost model to use
+            **kwargs: Additional model-specific parameters
+            
+        Returns:
+            Dictionary containing prediction results and confidence scores
+        """
+        pass
+    
+    async def get_model_info(self, model_type: ModelType) -> Dict[str, Any]:
+        """
+        Get information about available XGBoost models.
+        
+        Args:
+            model_type: Type of model to get info for
+            
+        Returns:
+            Dictionary containing model metadata and capabilities
+        """
+        pass
+    
+    async def healthcheck(self) -> Dict[str, Any]:
+        """
+        Check health status of XGBoost service.
+        
+        Returns:
+            Dictionary containing service health status and dependencies
+        """
+        pass
 
+class ModelMetadata(BaseModel):
+    """Metadata structure for XGBoost models."""
+    name: str
+    version: str
+    description: str
+    input_features: List[str]
+    output_types: List[str]
+    performance_metrics: Dict[str, float]
 
+# Dummy definitions to satisfy imports elsewhere
 class EventType(str, Enum):
-    """Types of events emitted by the XGBoost service."""
-    
     INITIALIZATION = "initialization"
-    PREDICTION = "prediction"
-    INTEGRATION = "integration"
+    PREDICTION_START = "prediction_start"
+    PREDICTION_COMPLETE = "prediction_complete"
     ERROR = "error"
 
-
-class PrivacyLevel(Enum):
-    """Privacy level for PHI detection and handling."""
-    
-    STANDARD = 1  # Basic PHI detection (SSNs, MRNs, names)
-    ENHANCED = 2  # Enhanced detection (includes contact info)
-    MAXIMUM = 3   # Maximum detection (includes demographic info)
-    STRICT = 4    # Strictest detection (legacy/test compatibility)
-
-
-class Observer(ABC):
-    """Observer interface for the Observer pattern."""
-    
-    @abstractmethod
-    def update(self, event_type: EventType, data: Dict[str, Any]) -> None:
-        """
-        Receive an update from the observed subject.
-        
-        Args:
-            event_type: Type of event
-            data: Event data
-        """
+class Observer:
+    async def update(self, event_type: EventType, data: Dict[str, Any]) -> None:
         pass
 
-
-class XGBoostInterface(ABC):
-    """
-    Abstract interface for the XGBoost service.
-    
-    This interface defines the contract that all XGBoost service
-    implementations must follow.
-    """
-    
-    def __init__(self):
-        """Initialize a new XGBoost service interface."""
-        self._initialized = False
-    
-    @abstractmethod
-    async def initialize(self, config: Dict[str, Any]) -> None:
-        """
-        Initialize the XGBoost service with configuration.
-        
-        Args:
-            config: Configuration dictionary
-            
-        Raises:
-            ConfigurationError: If configuration is invalid
-        """
-        pass
-    
-    @abstractmethod
-    async def register_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
-        """
-        Register an observer for a specific event type.
-        
-        Args:
-            event_type: Type of event to observe, or "*" for all events
-            observer: Observer to register
-        """
-        pass
-    
-    @abstractmethod
-    async def unregister_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
-        """
-        Unregister an observer for a specific event type.
-        
-        Args:
-            event_type: Type of event to stop observing
-            observer: Observer to unregister
-        """
-        pass
-    
-    @abstractmethod
-    async def predict_risk(
-        self,
-        patient_id: str,
-        risk_type: str,
-        clinical_data: Dict[str, Any],
-        **kwargs
-    ) -> Dict[str, Any]:
-        """
-        Predict risk level using a risk model.
-        
-        Args:
-            patient_id: Patient identifier
-            risk_type: Type of risk to predict
-            clinical_data: Clinical data for prediction
-            **kwargs: Additional prediction parameters
-            
-        Returns:
-            Risk prediction result
-            
-        Raises:
-            ValidationError: If parameters are invalid
-            DataPrivacyError: If PHI is detected in data
-            PredictionError: If prediction fails
-        """
-        pass
-    
-    @abstractmethod
-    async def predict_treatment_response(
-        self,
-        patient_id: str,
-        treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
-        **kwargs
-    ) -> Dict[str, Any]:
-        """
-        Predict response to a psychiatric treatment.
-        
-        Args:
-            patient_id: Patient identifier
-            treatment_type: Type of treatment (e.g., medication_ssri)
-            treatment_details: Treatment details
-            clinical_data: Clinical data for prediction
-            **kwargs: Additional prediction parameters
-            
-        Returns:
-            Treatment response prediction result
-            
-        Raises:
-            ValidationError: If parameters are invalid
-            DataPrivacyError: If PHI is detected in data
-            PredictionError: If prediction fails
-        """
-        pass
-    
-    @abstractmethod
-    async def predict_outcome(
-        self,
-        patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
-        **kwargs
-    ) -> Dict[str, Any]:
-        """
-        Predict clinical outcomes based on treatment plan.
-        
-        Args:
-            patient_id: Patient identifier
-            outcome_timeframe: Timeframe for outcome prediction
-            clinical_data: Clinical data for prediction
-            treatment_plan: Treatment plan details
-            **kwargs: Additional prediction parameters
-            
-        Returns:
-            Outcome prediction result
-            
-        Raises:
-            ValidationError: If parameters are invalid
-            DataPrivacyError: If PHI is detected in data
-            PredictionError: If prediction fails
-        """
-        pass
-    
-    @abstractmethod
-    async def get_feature_importance(
-        self,
-        patient_id: str,
-        model_type: str,
-        prediction_id: str
-    ) -> Dict[str, Any]:
-        """
-        Get feature importance for a prediction.
-        
-        Args:
-            patient_id: Patient identifier
-            model_type: Type of model
-            prediction_id: Prediction identifier
-            
-        Returns:
-            Feature importance data
-            
-        Raises:
-            ResourceNotFoundError: If prediction not found
-            ValidationError: If parameters are invalid
-        """
-        pass
-    
-    @abstractmethod
-    async def integrate_with_digital_twin(
-        self,
-        patient_id: str,
-        profile_id: str,
-        prediction_id: str
-    ) -> Dict[str, Any]:
-        """
-        Integrate prediction with digital twin profile.
-        
-        Args:
-            patient_id: Patient identifier
-            profile_id: Digital twin profile identifier
-            prediction_id: Prediction identifier
-            
-        Returns:
-            Integration result
-            
-        Raises:
-            ResourceNotFoundError: If prediction not found
-            ValidationError: If parameters are invalid
-        """
-        pass
-    
-    @abstractmethod
-    async def get_model_info(self, model_type: str) -> Dict[str, Any]:
-        """
-        Get information about a model.
-        
-        Args:
-            model_type: Type of model
-            
-        Returns:
-            Model information
-            
-        Raises:
-            ResourceNotFoundError: If model not found
-            ValidationError: If parameters are invalid
-        """
-        pass
-    
-    @abstractmethod
-    async def get_available_models(self) -> List[Dict[str, Any]]:
-        """
-        Get a list of available models.
-
-        Returns:
-            List of available models with basic info
-        """
-        pass
-    
-    def _ensure_initialized(self) -> None:
-        """
-        Ensure the service is initialized before use.
-        
-        Raises:
-            ConfigurationError: If service is not initialized
-        """
-        if not self._initialized:
-            from app.core.services.ml.xgboost.exceptions import ConfigurationError
-            raise ConfigurationError(
-                "XGBoost service not initialized. Call initialize() first."
-            )
-
-    @property
-    @abstractmethod
-    def is_initialized(self) -> bool:
-        """Check if the service is initialized."""
-        pass
+class PrivacyLevel(str, Enum):
+    STANDARD = "standard"
+    ENHANCED = "enhanced"
+    MAXIMUM = "maximum"
