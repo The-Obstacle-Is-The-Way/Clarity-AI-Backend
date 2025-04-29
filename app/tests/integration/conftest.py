@@ -142,12 +142,11 @@ def test_config() -> Dict[str, Any]:
     Returns:
         Dict with test configuration values
     """
-    return {
-        "SECRET_KEY": "test-secret-key-for-testing-purposes-only",
-        "ALGORITHM": "HS256",
-        "ACCESS_TOKEN_EXPIRE_MINUTES": 30,
-        "TOKEN_ISSUER": "clarity-ai-test"
-    }
+    # Import the centralized test configuration to ensure consistency
+    from app.tests.integration.utils.test_config import get_test_settings_override
+    
+    # Use the standardized test settings from the utility function
+    return get_test_settings_override()
 
 @pytest.fixture
 def jwt_service(test_config) -> IJwtService:
@@ -161,30 +160,37 @@ def jwt_service(test_config) -> IJwtService:
         IJwtService: Configured JWT service instance
     """
     from app.infrastructure.security.jwt.jwt_service import JWTService
-    return JWTService(
-        secret_key=test_config["SECRET_KEY"], 
-        algorithm=test_config["ALGORITHM"],
-        token_issuer=test_config["TOKEN_ISSUER"],
-        access_token_expire_minutes=test_config["ACCESS_TOKEN_EXPIRE_MINUTES"]
-    )
+    # Create a Settings-like object for the JWT service to use
+    class TestSettings:
+        def __init__(self, config):
+            for key, value in config.items():
+                setattr(self, key, value)
+    
+    # Initialize the JWT service with our test settings to match application expectations
+    settings = TestSettings(test_config)
+    return JWTService(settings=settings)
 
 @pytest.fixture
-def patient_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
+async def patient_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
     """
-    Provides authentication headers for a test patient user.
+    Creates authentication headers with a JWT token for patient test user.
     
     Returns:
-        Dict with Authorization header containing valid JWT for test patient
+        Dict with Authorization header containing Bearer token
     """
-    # Use our properly configured JWT service to generate a valid token
-    # with standard test patient ID and roles
+    # Comprehensive token data that matches the full JWT payload structure expected by the auth middleware
     token_data = {
         "sub": "00000000-0000-0000-0000-000000000001",  # TEST_USER_ID
-        "roles": ["patient"],
+        "username": "testuser",
+        "email": "test.user@novamind.ai",
+        "role": "PATIENT",
+        "roles": ["PATIENT"],
+        "verified": True,
+        "active": True,
         "jti": str(uuid.uuid4())
     }
-    
-    token = jwt_service.create_access_token(data=token_data)
+    # Create the access token asynchronously since the method is defined as async
+    token = await jwt_service.create_access_token(token_data)
     
     return {
         "Authorization": f"Bearer {token}",
@@ -192,22 +198,27 @@ def patient_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
     }
 
 @pytest.fixture
-def provider_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
+async def provider_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
     """
     Provides authentication headers for a test clinician user.
     
     Returns:
         Dict with Authorization header containing valid JWT for test clinician
     """
-    # Use our properly configured JWT service to generate a valid token
-    # with standard test clinician ID and roles
+    # Comprehensive token data that matches the full JWT payload structure
     token_data = {
         "sub": "00000000-0000-0000-0000-000000000002",  # TEST_CLINICIAN_ID
-        "roles": ["clinician", "provider"],
+        "username": "testclinician",
+        "email": "test.clinician@novamind.ai",
+        "role": "CLINICIAN",
+        "roles": ["CLINICIAN", "PROVIDER"],
+        "verified": True,
+        "active": True,
         "jti": str(uuid.uuid4())
     }
     
-    token = jwt_service.create_access_token(data=token_data)
+    # Create the access token asynchronously
+    token = await jwt_service.create_access_token(token_data)
     
     return {
         "Authorization": f"Bearer {token}",

@@ -95,8 +95,12 @@ class MockXGBoostService(XGBoostInterface):
         return await self.post_model_info_mock(model_data)
 
 @pytest.fixture
-def test_app(mock_xgboost_service, db_session) -> FastAPI:
+def test_app(mock_xgboost_service, db_session, test_config) -> FastAPI:
     """Create a FastAPI application instance with xgboost mocks for testing."""
+    # Configure test environment with standardized settings
+    from app.tests.integration.utils.test_config import setup_test_environment
+    setup_test_environment()  # Set environment variables for consistent JWT validation
+    
     # Define the override function for database
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
@@ -104,45 +108,30 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Define the override function for XGBoost service
     def override_get_xgboost_service() -> XGBoostInterface:
         return mock_xgboost_service
-    
-    # --- Auth Overrides (Removed/Commented Out) --- 
-    # Import the actual dependencies we need to override
-    # from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access
-    
-    # Override get_current_user to return a default mock user
-    # async def override_get_current_user():
-    #     return {
-    #         "sub": "auth0|default_test_user", 
-    #         "name": "Test User", 
-    #         "email": "test@example.com",
-    #         "role": "provider",
-    #         "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
-    #     }
-
-    # Define an override for verification that always passes
-    # def override_verify_provider_access(): 
-    #     return {
-    #         "id": "provider-test-id",
-    #         "role": "provider",
-    #         "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
-    #     }
         
-    # Override validate_permissions to prevent 403 errors
-    # def override_validate_permissions():
-    #     return None
-    # --- End Auth Overrides ---
-        
-    # Create app, WITH the AuthenticationMiddleware
-    from app.main import create_application # Ensure create_application is imported
+    # Create app with consistent environment settings
+    from app.main import create_application 
     app = create_application()
-
-    # Apply necessary dependency overrides AFTER app creation
+    
+    # Import JWT service to override with test implementation
+    from app.presentation.api.dependencies.auth import get_jwt_service
+    from app.infrastructure.security.jwt.jwt_service import JWTService
+    
+    # Create a test JWT service with the same configuration used for token generation
+    class TestSettings:
+        def __init__(self, config):
+            for key, value in config.items():
+                setattr(self, key, value)
+    
+    # Override JWT service with one that uses our test configuration
+    def override_get_jwt_service():
+        test_settings = TestSettings(test_config)
+        return JWTService(settings=test_settings)
+    
+    # Apply all necessary dependency overrides
     app.dependency_overrides[get_db_dependency] = override_get_db
     app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
-    # Removed auth overrides
-    # app.dependency_overrides[get_current_user] = override_get_current_user
-    # app.dependency_overrides[verify_provider_access] = override_verify_provider_access
-    # app.dependency_overrides[validate_permissions] = override_validate_permissions
+    app.dependency_overrides[get_jwt_service] = override_get_jwt_service
     
     yield app # Use yield for proper setup/teardown
 
@@ -161,23 +150,16 @@ def mock_xgboost_service() -> MockXGBoostService:
     """Create a mock XGBoost service implementation."""
     return MockXGBoostService()
 
-# These header fixtures now depend on the actual token generation from conftest.py
-# (Assuming they are defined there and correctly imported/available)
-# If not, they need to be adjusted to call the token generation fixtures.
+# Use the standardized authentication fixtures from the root conftest.py
+# This ensures consistent authentication across all tests
 @pytest.fixture
-def psychiatrist_auth_headers(get_valid_provider_auth_headers: Dict[str, str]) -> Dict[str, str]:
-    """Use valid provider headers."""
-    return get_valid_provider_auth_headers
+async def psychiatrist_auth_headers(provider_auth_headers: Dict[str, str]) -> Dict[str, str]:
+    """Use valid provider headers for psychiatrist role."""
+    return provider_auth_headers
 
-@pytest.fixture
-def provider_auth_headers(get_valid_provider_auth_headers: Dict[str, str]) -> Dict[str, str]:
-    """Use valid provider headers."""
-    return get_valid_provider_auth_headers
+# No need to redefine provider_auth_headers - use it directly from conftest.py
 
-@pytest.fixture
-def patient_auth_headers(get_valid_auth_headers: Dict[str, str]) -> Dict[str, str]:
-    """Use valid patient headers."""
-    return get_valid_auth_headers
+# No need to redefine patient_auth_headers - use it directly from conftest.py
 
 
 @pytest.fixture
