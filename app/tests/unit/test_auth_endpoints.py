@@ -39,6 +39,11 @@ from app.domain.enums.role import Role
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 
+# Import dependencies that we need to override
+from app.presentation.api.dependencies.auth_service import get_auth_service_provider
+from app.presentation.api.dependencies.user_repository import get_user_repository_provider
+from app.presentation.api.dependencies.auth import get_current_user, get_optional_user
+
 
 # Create fixed test user IDs for consistent reference
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
@@ -94,6 +99,7 @@ def mock_auth_service():
     mock.settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7 # Corrected attribute name
     mock.settings.JWT_ISSUER = "test-issuer"
     mock.settings.JWT_AUDIENCE = "test-audience"
+    mock.settings.REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
 
     # Configure the authenticate_user method to use our fixed test user IDs
     async def mock_authenticate(username, password):
@@ -118,10 +124,11 @@ def mock_auth_service():
     mock.authenticate_user.side_effect = mock_authenticate
     
     # Configure the create_token_pair method
-    async def mock_create_token_pair(user):
+    async def mock_create_token_pair(user, remember_me=False):
         return {
             "access_token": f"test_access_token_{user.id}",
-            "refresh_token": f"test_refresh_token_{user.id}"
+            "refresh_token": f"test_refresh_token_{user.id}",
+            "expires_in": 900  # 15 minutes in seconds
         }
     
     mock.create_token_pair.side_effect = mock_create_token_pair
@@ -205,21 +212,21 @@ def mock_user_repository():
 def mock_dependencies(app, mock_auth_service, mock_user_repository):
     """Override the endpoint dependencies."""
     # Override the endpoint dependencies
-    app.dependency_overrides = {
-        # Use mocks for both auth service and user repository
-        "app.presentation.api.v1.endpoints.auth.get_auth_service_provider": lambda: mock_auth_service,
-        "app.presentation.api.v1.endpoints.auth.get_user_repository_provider": lambda: mock_user_repository,
-        "app.presentation.api.v1.endpoints.auth.get_current_user": lambda: {
-            "sub": TEST_USER_ID,
-            "roles": ["provider"],
-            "permissions": ["read:patients"]
-        },
-        "app.presentation.api.v1.endpoints.auth.get_optional_user": lambda: {
-            "sub": TEST_USER_ID,
-            "roles": ["provider"],
-            "permissions": ["read:patients"],
-            "exp": 1619900000
-        }
+    app.dependency_overrides = {}
+    
+    # Update specific auth dependencies
+    app.dependency_overrides[get_auth_service_provider] = lambda: mock_auth_service
+    app.dependency_overrides[get_user_repository_provider] = lambda: mock_user_repository
+    app.dependency_overrides[get_current_user] = lambda: {
+        "sub": TEST_USER_ID,
+        "roles": ["provider"],
+        "permissions": ["read:patients"]
+    }
+    app.dependency_overrides[get_optional_user] = lambda: {
+        "sub": TEST_USER_ID,
+        "roles": ["provider"],
+        "permissions": ["read:patients"],
+        "exp": 1619900000
     }
     
     yield app.dependency_overrides

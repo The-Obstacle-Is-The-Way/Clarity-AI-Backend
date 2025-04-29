@@ -415,7 +415,7 @@ class BiometricIntegrationService:
         except Exception as e:
             raise DomainError(f"Failed to connect device: {e!s}")
     
-    def disconnect_device(
+    async def disconnect_device(
         self,
         patient_id: UUID,
         device_id: str,
@@ -436,15 +436,16 @@ class BiometricIntegrationService:
             DomainError: If there's an error disconnecting the device
         """
         try:
-            twin = self.biometric_twin_repository.get_by_patient_id(patient_id)
+            # Properly await the async repository method
+            twin = await self.biometric_twin_repository.get_by_patient_id(patient_id)
             if not twin:
                 return False
             
             # Disconnect the device
             twin.disconnect_device(device_id)
             
-            # Add a disconnection event data point
-            self.add_biometric_data(
+            # Add a disconnection event data point - await the async method
+            await self.add_biometric_data(
                 patient_id=patient_id,
                 data_type="device_disconnection",
                 value=device_id,
@@ -452,8 +453,8 @@ class BiometricIntegrationService:
                 metadata={"reason": reason or "user_initiated"}
             )
             
-            # Save the updated twin
-            self.biometric_twin_repository.save(twin)
+            # Save the updated twin - await the async method
+            await self.biometric_twin_repository.save(twin)
             
             return True
         except Exception as e:
