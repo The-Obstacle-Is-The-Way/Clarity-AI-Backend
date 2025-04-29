@@ -25,7 +25,8 @@ from app.domain.value_objects.address import Address as AddressVO # Corrected im
 from app.domain.value_objects.contact_info import ContactInfo as ContactInfoVO # Import ContactInfo
 from app.domain.value_objects.name import Name as NameVO # Import Name
 from app.domain.value_objects.emergency_contact import EmergencyContact # Import EmergencyContact
-from app.domain.entities.patient import Patient as DomainPatient # Re-add this import
+# Use the core domain model, which has phone_number attribute
+from app.core.domain.entities.patient import Patient as DomainPatient
 
 import logging
 logger = logging.getLogger(__name__)
@@ -302,7 +303,8 @@ class Patient(Base):
         model._dob = _encrypt(dob_iso_str, '_dob')
         
         model._email = _encrypt(getattr(patient, 'email', None), '_email')
-        model._phone = _encrypt(getattr(patient, 'phone', None), '_phone')
+        # Updated to use phone_number from domain model instead of phone
+        model._phone = _encrypt(getattr(patient, 'phone_number', None), '_phone')
         model._ssn = _encrypt(getattr(patient, 'ssn', None), '_ssn')
         model._medical_record_number = _encrypt(getattr(patient, 'medical_record_number', None), '_medical_record_number')
         model._gender = _encrypt(getattr(patient, 'gender', None), '_gender')
@@ -462,37 +464,48 @@ class Patient(Base):
         # QUANTUM FIX: Decrypt insurance_info
         decrypted_insurance_info = await _decrypt(self._insurance_info) # Assuming dict
 
-        # Build domain Patient using correct types expected by the dataclass
-        patient = DomainPatient(
-            id=self.id,
-            external_id=self.external_id,
-            created_by=self.user_id,
-            active=self.is_active,
-            # Assign name components
-            first_name=first_name,
-            last_name=last_name,
-            date_of_birth=date_of_birth, # Use the parsed date object
-            # Assign contact components
-            email=email,
-            phone=phone,
-            ssn=ssn,
-            medical_record_number=medical_record_number,
-            gender=gender,
-            insurance_number=insurance_number,
-            # Assign the decrypted address string
-            address=decrypted_address_str, 
-            emergency_contact=emergency_contact_obj,
-            medical_history=decrypted_medical_history or [], # Default to empty list
-            medications=decrypted_medications or [],
-            allergies=decrypted_allergies or [],
-            treatment_notes=decrypted_treatment_notes or [],
-            extra_data=decrypted_extra_data or {}, # Default to empty dict
-            biometric_twin_id=self.biometric_twin_id,
-            created_at=self.created_at.replace(tzinfo=UTC) if self.created_at else None,
-            updated_at=self.updated_at.replace(tzinfo=UTC) if self.updated_at else None,
-            insurance_info=decrypted_insurance_info,
-            # name and contact_info handled by __post_init__ or descriptor
-        )
+        # Build domain Patient using only the fields that exist in the domain entity
+        # Check app.core.domain.entities.patient.Patient for the correct attributes
+        patient_args = {
+            'id': uuid.UUID(self.id) if self.id else uuid.uuid4(),
+            'created_at': self.created_at.replace(tzinfo=UTC) if self.created_at else datetime.now(),
+            'updated_at': self.updated_at.replace(tzinfo=UTC) if self.updated_at else datetime.now(),
+            'first_name': first_name,
+            'last_name': last_name,
+            'date_of_birth': date_of_birth, # Use the parsed date object
+            'email': email,
+            'phone_number': phone,  # Note: using phone_number to match domain entity
+        }
+        
+        # Only include fields that have values to avoid None issues
+        if self.is_active is not None:
+            patient_args['active'] = self.is_active
+            
+        if emergency_contact_obj is not None:
+            patient_args['emergency_contact'] = emergency_contact_obj
+            
+        if decrypted_insurance_info is not None:
+            try:
+                insurance_info = json.loads(decrypted_insurance_info) if isinstance(decrypted_insurance_info, str) else decrypted_insurance_info
+                patient_args['insurance_info'] = insurance_info
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(f"Could not parse insurance_info for patient {self.id}")
+        
+        # Add address if it exists and can be parsed
+        if decrypted_address_str is not None:
+            try:
+                # If address is stored as a JSON string, parse it
+                if decrypted_address_str.startswith('{'): 
+                    address_dict = json.loads(decrypted_address_str)
+                    patient_args['address'] = Address(**address_dict)
+                else:
+                    # Otherwise use it as is
+                    patient_args['address'] = Address(line1=decrypted_address_str, line2="", city="", state="", postal_code="", country="")
+            except (json.JSONDecodeError, TypeError, ValueError):
+                logger.warning(f"Could not parse address for patient {self.id}")
+        
+        # Create the patient entity with only the fields it supports
+        patient = DomainPatient(**patient_args)
         logger.debug(f"[to_domain] Completed conversion for patient ID: {patient.id}")
         return patient
 
