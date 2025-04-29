@@ -155,9 +155,9 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
     # Dispose of the engine after the session is done
-    # Note: For in-memory SQLite, disposing might not be strictly necessary,
-    # but it's good practice for other database types.
-    await engine.dispose()
+    # Note: For in-memory SQLite with function scope, disposing might discard the DB state prematurely.
+    # Let's comment this out.
+    # await engine.dispose()
 
 
 # Optional: Keep helper function to create test patients if needed,

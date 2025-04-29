@@ -28,9 +28,6 @@ from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.core.exceptions.base_exceptions import ResourceNotFoundError
 
-# Import the test models
-from app.tests.integration.infrastructure.persistence.test_models import TestPatient
-
 logger = logging.getLogger(__name__)
 
 # Define the TestPatientRepository class that's expected by test_patient_repository_int.py
@@ -67,7 +64,7 @@ class TestPatientRepository:
         """Get a patient by ID."""
         try:
             result = await self.db_session.execute(
-                select(TestPatient).where(TestPatient.id == patient_id)
+                select(PatientModel).where(PatientModel.id == patient_id)
             )
             patient_model = result.scalars().first()
             
@@ -84,7 +81,7 @@ class TestPatientRepository:
         try:
             # Check if patient exists
             result = await self.db_session.execute(
-                select(TestPatient).where(TestPatient.id == patient.id)
+                select(PatientModel).where(PatientModel.id == patient.id)
             )
             patient_model = result.scalars().first()
             
@@ -110,7 +107,7 @@ class TestPatientRepository:
         try:
             # Check if patient exists
             result = await self.db_session.execute(
-                delete(TestPatient).where(TestPatient.id == patient_id)
+                delete(PatientModel).where(PatientModel.id == patient_id)
             )
             await self.db_session.commit()
             
@@ -124,7 +121,7 @@ class TestPatientRepository:
     async def get_all(self) -> List[PatientDomain]:
         """Get all patients."""
         try:
-            result = await self.db_session.execute(select(TestPatient))
+            result = await self.db_session.execute(select(PatientModel))
             patient_models = result.scalars().all()
             
             return [await self._to_domain(model) for model in patient_models]
@@ -132,7 +129,7 @@ class TestPatientRepository:
             logger.error(f"Error retrieving all patients: {str(e)}")
             raise
     
-    async def _to_model(self, patient: PatientDomain, existing_model: Optional[TestPatient] = None) -> TestPatient:
+    async def _to_model(self, patient: PatientDomain, existing_model: Optional[PatientModel] = None) -> PatientModel:
         """Convert a domain entity to a database model.
         
         Handles Patient domain entity structure with value objects:
@@ -143,7 +140,7 @@ class TestPatientRepository:
         if existing_model:
             model = existing_model
         else:
-            model = TestPatient(id=patient.id)
+            model = PatientModel(id=patient.id)
         
         # Helper function to encrypt and handle both bytes and string returns
         def safe_encrypt(value):
@@ -220,7 +217,7 @@ class TestPatientRepository:
         
         return model
     
-    async def _to_domain(self, model: TestPatient) -> PatientDomain:
+    async def _to_domain(self, model: PatientModel) -> PatientDomain:
         """Convert a database model to a domain entity.
         
         Creates the proper domain entity structure using value objects:

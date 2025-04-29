@@ -13,11 +13,11 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import time
 import asyncio
-from typing import Callable, Dict, Any, Coroutine
+from typing import Callable, Dict, Any, Coroutine, Optional
 from datetime import datetime, timedelta
 
 from httpx import AsyncClient
-from fastapi import status, HTTPException, Depends
+from fastapi import status, HTTPException, Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.testclient import TestClient
 
@@ -32,273 +32,387 @@ from app.domain.entities.patient import Patient
 from app.domain.exceptions.patient_exceptions import PatientNotFoundError
 
 # Import necessary modules for testing API security
-# These seem specific to this test module's setup
-from app.tests.security.utils.test_mocks import MockAuthService, MockRBACService, MockAuditLogger
-# Base class for security tests, likely provides common setup/methods
-from app.tests.security.utils.base_security_test import BaseSecurityTest
+# REMOVE Mocks specific to BaseSecurityTest if not needed directly
+# from app.tests.security.utils.test_mocks import MockAuthService, MockRBACService, MockAuditLogger
+# REMOVE Base class import
+# from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 # Dependency and interface imports for potential direct mocking
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.presentation.api.dependencies.auth import get_jwt_service
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.presentation.api.dependencies.database import get_repository
+# Import Role enum if needed for token generation/verification
+from app.domain.enums.role import Role
+from app.domain.entities.user import User # Ensure User is imported for type hints
 
 # Global test patient ID for consistency
 TEST_PATIENT_ID = str(uuid.uuid4())
 OTHER_PATIENT_ID = str(uuid.uuid4())
 
-@pytest.mark.db_required()
-class TestAuthentication(BaseSecurityTest):
-    """Test authentication mechanisms using the async_client fixture with mocked auth."""
+# Remove class inheritance and usefixtures marker
+# @pytest.mark.usefixtures("client")
+@pytest.mark.db_required() # Keep db_required if needed for underlying deps
+class TestAuthentication:
+    """Test authentication mechanisms using the application fixtures."""
 
     @pytest.mark.asyncio
     async def test_missing_token(self, client: AsyncClient):
         """Test that requests without tokens are rejected."""
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        # The default mock in async_client fixture handles None token -> 401
+        # The middleware handles missing tokens
 
     @pytest.mark.asyncio
     async def test_invalid_token_format(self, client: AsyncClient):
-        """Test that structurally invalid tokens are rejected (by jose.jwt)."""
+        """Test that structurally invalid tokens are rejected."""
         headers = {"Authorization": "Bearer invalid.token.format"}
-        # The real get_current_user calls jwt_service.get_user_from_token, which calls decode_token.
-        # decode_token raises AuthenticationError for JWTError.
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "Invalid token" in response.json().get("detail", "").lower()
+        # FastAPI/Starlette auth middleware or jose.jwt should catch this
+        # Check detail message if provided by the framework
+        assert "Not authenticated" in response.json().get("detail", "") or \
+               "Invalid token" in response.json().get("detail", "")
 
     @pytest.mark.asyncio
-    async def test_expired_token(self, client: AsyncClient):
+    async def test_expired_token(self, client: AsyncClient, test_jwt_service: JWTService):
         """Test that expired tokens are rejected."""
-        headers = {"Authorization": "Bearer EXPIRED_TOKEN"}
-        # Mock configured in async_client fixture raises AuthenticationError("Token has expired.")
+        # Create an expired token using the test JWT service
+        user_data = {"sub": "test-user-expired", "roles": ["patient"]}
+        # Create token with negative expiry
+        expired_token = await test_jwt_service.create_access_token(data=user_data, expires_delta=timedelta(minutes=-5))
+        headers = {"Authorization": f"Bearer {expired_token}"}
+
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "expired" in response.json().get("detail", "").lower()
+        # The JWTService or middleware should raise an exception caught by handler
+        assert "Could not validate credentials" in response.json().get("detail", "") or \
+               "Token has expired" in response.json().get("detail", "")
 
     @pytest.mark.asyncio
-    async def test_tampered_token(self, client: AsyncClient):
+    async def test_tampered_token(self, client: AsyncClient, test_jwt_service: JWTService):
         """Test that tokens with invalid signatures are rejected."""
-        headers = {"Authorization": "Bearer INVALID_SIGNATURE_TOKEN"}
-        # Mock configured in async_client fixture raises AuthenticationError
+        # Create a valid token first
+        user_data = {"sub": "test-user-tampered", "roles": ["patient"]}
+        valid_token = await test_jwt_service.create_access_token(data=user_data)
+        # Tamper with the token (e.g., change a character in the payload/signature)
+        parts = valid_token.split('.')
+        tampered_token = f"{parts[0]}.{parts[1]}.invalidSignaturePart"
+        headers = {"Authorization": f"Bearer {tampered_token}"}
+
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "invalid token" in response.json().get("detail", "").lower() # Check specific error if mock raises it
+        assert "Could not validate credentials" in response.json().get("detail", "") # Standard FastAPI error
 
     @pytest.mark.asyncio
-    async def test_valid_token_access(self, client: AsyncClient):
-        """Test that a valid token grants access."""
-        headers = {"Authorization": "Bearer VALID_PATIENT_TOKEN"}
-        # Mock configured in async_client returns a valid User object
-        # Assuming /api/v1/patients/{id} requires patient role or higher and exists
-        # We need to ensure the ID matches the mock user potentially, or mock the repo
-        # Let's assume for now the endpoint allows access if authenticated, focusing on authN
-        response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
-        # This might fail with 403 if TEST_PATIENT_ID doesn't match the mocked user ID from the token
-        # Or 404 if the endpoint requires the patient to exist and repo isn't mocked
-        # For now, let's assert 200, assuming the simplest case for auth middleware
-        assert response.status_code == status.HTTP_200_OK # Adjust if endpoint requires specific patient ID match or existence
+    async def test_valid_token_access(
+        self, 
+        client: AsyncClient, 
+        get_valid_auth_headers: Dict[str, str], # Use the fixture from conftest
+        app: FastAPI # Get app fixture to potentially override repo
+    ):
+        """Test that a valid token grants access (mocking repo)."""
+        headers = get_valid_auth_headers # Use the generated valid headers
+        
+        # Mock the repository to return a valid patient for this ID
+        # Note: get_valid_auth_headers uses 'test-integration-user' as sub
+        # We need the get_by_id to succeed for this user/patient ID
+        mock_patient_repo = AsyncMock(spec=IPatientRepository)
+        mock_user_id = uuid.UUID("test-integration-user") # ID from get_valid_auth_headers
+        
+        async def mock_get_patient(patient_id: uuid.UUID) -> Optional[User]:
+            if patient_id == mock_user_id:
+                # Return a mock Patient domain entity matching the authenticated user
+                # Ensure the returned object structure matches what the endpoint expects
+                mock_patient = MagicMock(spec=Patient)
+                mock_patient.id = patient_id
+                mock_patient.user_id = mock_user_id # Link to user
+                # Add other necessary attributes the endpoint might access
+                return mock_patient
+            return None
+            
+        mock_patient_repo.get_by_id = mock_get_patient
+        app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
 
+        # Make the request - use the mock user ID for the patient endpoint
+        response = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
+        
+        # Clean up override afterwards
+        if get_repository(IPatientRepository) in app.dependency_overrides:
+             del app.dependency_overrides[get_repository(IPatientRepository)]
 
-class TestAuthorization(BaseSecurityTest):
+        # Assert successful access
+        assert response.status_code == status.HTTP_200_OK
+        mock_patient_repo.get_by_id.assert_awaited_once_with(mock_user_id)
+
+# Remove class inheritance and usefixtures marker
+# @pytest.mark.usefixtures("client")
+class TestAuthorization: # Removed BaseSecurityTest inheritance
     """Test authorization logic (role-based access, resource ownership)."""
 
     @pytest.mark.asyncio
-    async def test_patient_accessing_own_data(self, client: AsyncClient):
+    async def test_patient_accessing_own_data(
+        self, 
+        client: AsyncClient, 
+        get_valid_auth_headers: Dict[str, str], # Use patient headers fixture
+        app: FastAPI # Use app fixture to override repo
+    ):
         """Patient with valid token can access their own resource."""
-        # We need the ID returned by the mock for VALID_PATIENT_TOKEN
-        # This is tricky as the mock generates a random UUID. 
-        # Option 1: Patch the mock *within the test* to return a specific ID.
-        # Option 2: Make the test endpoint return the user ID from the token.
-        # Option 3: Modify the mock in conftest to use a predictable ID for VALID_PATIENT_TOKEN.
-        # Let's try Option 2 for now, assuming a test endpoint exists or can be added.
+        headers = get_valid_auth_headers
         
-        # Assume endpoint /api/v1/me returns current user details
-        headers = {"Authorization": "Bearer VALID_PATIENT_TOKEN"}
-        response_me = await client.get("/api/v1/users/me", headers=headers) # Assuming this endpoint exists
-        assert response_me.status_code == status.HTTP_200_OK
-        my_user_id = response_me.json().get("id")
-        assert my_user_id is not None
+        # Mock repo needed because endpoint likely tries to fetch the patient
+        mock_patient_repo = AsyncMock(spec=IPatientRepository)
+        # The user ID from get_valid_auth_headers is 'test-integration-user'
+        mock_user_id = uuid.UUID("test-integration-user") 
 
-        # Now access the patient-specific endpoint with the correct ID
-        response_patient = await client.get(f"/api/v1/patients/{my_user_id}", headers=headers)
+        async def mock_get_patient(patient_id: uuid.UUID) -> Optional[User]:
+            if patient_id == mock_user_id:
+                mock_patient = MagicMock(spec=Patient)
+                mock_patient.id = patient_id
+                mock_patient.user_id = mock_user_id
+                # Add other necessary attributes
+                return mock_patient
+            return None
+        mock_patient_repo.get_by_id = mock_get_patient
+        app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
+
+        # Access the patient-specific endpoint with the correct ID
+        response_patient = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
+        
+        # Clean up override
+        if get_repository(IPatientRepository) in app.dependency_overrides:
+            del app.dependency_overrides[get_repository(IPatientRepository)]
+
         assert response_patient.status_code == status.HTTP_200_OK
+        # Add assertion for response content if needed
+        assert response_patient.json().get("id") == str(mock_user_id)
 
     @pytest.mark.asyncio
-    async def test_patient_accessing_other_patient_data(self, client: AsyncClient):
+    async def test_patient_accessing_other_patient_data(
+        self, 
+        client: AsyncClient, 
+        get_valid_auth_headers: Dict[str, str] # Use patient headers fixture
+    ):
         """Patient with valid token CANNOT access another patient's resource."""
-        headers = {"Authorization": "Bearer VALID_PATIENT_TOKEN"}
-        # Accessing a different patient ID should be forbidden by get_patient_id dependency
+        headers = get_valid_auth_headers
+        # Accessing a different patient ID should be forbidden by authorization logic
+        # No repo mock needed as authorization should happen before repo access attempt
         response = await client.get(f"/api/v1/patients/{OTHER_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @pytest.mark.asyncio
-    async def test_provider_accessing_patient_data(self, client: AsyncClient):
+    async def test_provider_accessing_patient_data(
+        self, 
+        client: AsyncClient, 
+        get_valid_provider_auth_headers: Dict[str, str], # Use provider headers fixture
+        app: FastAPI # Use app fixture to override repo
+    ):
         """Provider with valid token CAN access any patient's resource."""
-        headers = {"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
-        # Provider should be able to access any patient ID via get_patient_id dependency
+        headers = get_valid_provider_auth_headers
+        
+        # Mock repo to simulate patient existence
+        mock_patient_repo = AsyncMock(spec=IPatientRepository)
+        mock_patient_id_to_access = uuid.UUID(TEST_PATIENT_ID) # ID defined globally
+        
+        async def mock_get_patient(patient_id: uuid.UUID) -> Optional[User]:
+             if patient_id == mock_patient_id_to_access:
+                 mock_patient = MagicMock(spec=Patient)
+                 mock_patient.id = patient_id
+                 # Provider doesn't need user_id match
+                 # Add other necessary attributes
+                 return mock_patient
+             return None
+        mock_patient_repo.get_by_id = mock_get_patient
+        app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
+
+        # Provider should be able to access this patient ID
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
-        # Expect 200 OK or 404 (if patient doesn't exist and endpoint requires it)
-        assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
+        
+        # Clean up override
+        if get_repository(IPatientRepository) in app.dependency_overrides:
+             del app.dependency_overrides[get_repository(IPatientRepository)]
+
+        # Expect 200 OK because provider has access and mock repo returns patient
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json().get("id") == TEST_PATIENT_ID
 
     @pytest.mark.asyncio
-    async def test_role_specific_endpoint_access(self, client: AsyncClient):
+    async def test_role_specific_endpoint_access(
+        self, 
+        client: AsyncClient, 
+        get_valid_auth_headers: Dict[str, str], 
+        get_valid_provider_auth_headers: Dict[str, str],
+        test_jwt_service: JWTService # Needed to create admin token
+    ):
         """Test access to endpoints protected by role dependencies."""
         # Assuming an endpoint like /api/v1/admin/users requires admin role
         admin_endpoint = "/api/v1/admin/users" # Placeholder - replace with actual endpoint
 
         # Test with patient token (should be forbidden)
-        patient_headers = {"Authorization": "Bearer VALID_PATIENT_TOKEN"}
+        patient_headers = get_valid_auth_headers
         response_patient = await client.get(admin_endpoint, headers=patient_headers)
+        # Expect 403 Forbidden or 404 Not Found if endpoint doesn't exist
         assert response_patient.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
 
         # Test with provider token (should be forbidden)
-        provider_headers = {"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
+        provider_headers = get_valid_provider_auth_headers
         response_provider = await client.get(admin_endpoint, headers=provider_headers)
         assert response_provider.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]
 
         # Test with admin token (should be allowed or 404)
-        admin_headers = {"Authorization": "Bearer VALID_ADMIN_TOKEN"}
+        # Create admin token
+        admin_user_data = {"sub": "test-admin-user", "roles": ["admin"]}
+        admin_token = await test_jwt_service.create_access_token(data=admin_user_data)
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        
         response_admin = await client.get(admin_endpoint, headers=admin_headers)
+        # Assume endpoint exists for admin, but might not be implemented -> 404
+        # Or returns data -> 200
         assert response_admin.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
 
 
 # TestRateLimiting class removed previously
 
-
-@pytest.mark.db_required()
-class TestInputValidation(BaseSecurityTest):
+# Remove class inheritance and usefixtures marker
+# @pytest.mark.usefixtures("client")
+@pytest.mark.db_required() # Keep if validation might interact with DB constraints indirectly
+class TestInputValidation:
     """Test input validation using Pydantic models and FastAPI."""
 
     @pytest.mark.asyncio
-    async def test_invalid_input_format_rejected(self, client: AsyncClient):
+    async def test_invalid_input_format_rejected(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
         """FastAPI should return 422 for missing/invalid fields."""
-        headers = {"Authorization": "Bearer VALID_PROVIDER_TOKEN"} # Need auth for POST
+        headers = get_valid_provider_auth_headers # Use provider token for POST
         # Assuming POST /api/v1/patients requires certain fields per PatientCreateSchema
-        invalid_payload = {"name": "Test Patient Only"} # Missing required fields
+        # Payload missing required fields like date_of_birth, gender, contact_info
+        invalid_payload = {"name": {"first_name": "Test", "last_name": "PatientOnly"}} 
 
         response = await client.post("/api/v1/patients", headers=headers, json=invalid_payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
-    async def test_input_sanitization_handling(self, client: AsyncClient):
+    async def test_input_sanitization_handling(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
         """Test how potentially malicious input is handled (framework/model validation)."""
-        headers = {"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
-        # Input that might contain XSS attempt - Pydantic/FastAPI should handle basic validation
-        # More advanced sanitization might require specific middleware/logic to test.
+        headers = get_valid_provider_auth_headers
         malicious_input = {
-            # Assuming schema requires name, dob, etc.
-            "name": "Valid Name<script>alert('XSS attempt')</script>",
+            # Assuming schema defined in PatientCreate (or similar)
+            "name": {"first_name": "Valid<script>alert('XSS')</script>", "last_name": "Name"},
             "date_of_birth": "2000-01-01",
             "gender": "other",
-            "contact_info": {"email": "test@example.com"}
+            "contact_info": {"email": "test<script>@example.com", "phone": "555-1234"}
         }
         response = await client.post("/api/v1/patients", headers=headers, json=malicious_input)
-        # Expect 422 if Pydantic validation catches the script tag in a standard string field,
-        # or 201/200 if it passes validation but is hopefully sanitized before storage/reflection.
-        # For this test, let's assume basic validation passes or fails with 422.
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY # Adjust if validation allows it
+        # Expect 422 if Pydantic validation catches common invalid patterns
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
-    async def test_input_length_limits_enforced(self, client: AsyncClient):
+    async def test_input_length_limits_enforced(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
         """Test Pydantic model length constraints."""
-        headers = {"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
-        # Assuming PatientCreateSchema has max_length on name
-        long_name = "a" * 500 # Assume max length is less than 500
+        headers = get_valid_provider_auth_headers
+        # Assuming PatientCreateSchema has max_length=50 on first_name (example)
+        long_name = "a" * 100 
         payload = {
-            "name": long_name,
+            "name": {"first_name": long_name, "last_name": "LastName"},
             "date_of_birth": "2000-01-01",
             "gender": "other",
-            "contact_info": {"email": "test@example.com"}
+            "contact_info": {"email": "test@example.com", "phone": "555-1234"}
         }
         response = await client.post("/api/v1/patients", headers=headers, json=payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-
-@pytest.mark.db_required()
-class TestSecureHeaders(BaseSecurityTest):
+# Remove class inheritance and usefixtures marker
+# @pytest.mark.usefixtures("client")
+@pytest.mark.db_required() # Keep if health check might ping db
+class TestSecureHeaders:
     """Test presence and configuration of security-related HTTP headers."""
 
     @pytest.mark.asyncio
     async def test_required_security_headers_present(self, client: AsyncClient):
         """Check for headers like Strict-Transport-Security, X-Content-Type-Options etc."""
-        # Make request to any endpoint, e.g., /health (usually doesn't require auth)
-        response = await client.get("/health")
+        response = await client.get("/health") # Use a typically unsecured endpoint
         assert response.status_code == status.HTTP_200_OK
-        # Check for common security headers (exact headers depend on middleware config)
-        assert "Strict-Transport-Security" in response.headers
-        assert "X-Content-Type-Options" in response.headers
-        assert "nosniff" in response.headers["X-Content-Type-Options"].lower()
-        # Add checks for other headers like X-Frame-Options, Content-Security-Policy if configured
+        # Check for common security headers (exact headers depend on app's middleware config)
+        assert "strict-transport-security" in response.headers
+        assert "x-content-type-options" in response.headers
+        assert "nosniff" in response.headers["x-content-type-options"].lower()
+        # Add checks for X-Frame-Options, Content-Security-Policy if configured
+        assert "x-frame-options" in response.headers
+        assert "content-security-policy" in response.headers
 
     @pytest.mark.asyncio
-    async def test_cors_headers_configuration(self, client: AsyncClient):
+    async def test_cors_headers_configuration(self, client: AsyncClient, app: FastAPI):
         """Verify CORS headers for allowed origins."""
-        # Test with an allowed origin from settings
-        allowed_origin = "http://localhost:3000" # Assumes this is in BACKEND_CORS_ORIGINS
+        # Get allowed origins from settings used by the app fixture
+        settings = get_settings() # Assuming get_settings() works in test context or is mocked
+        # If settings isn't easily accessible, use a known allowed origin from config
+        allowed_origin = settings.BACKEND_CORS_ORIGINS[0] if settings.BACKEND_CORS_ORIGINS else "http://testallowed.com"
+        
         headers = {"Origin": allowed_origin}
-        response = await client.options("/health", headers=headers) # OPTIONS request for CORS preflight
+        response = await client.options("/health", headers=headers) # Use OPTIONS for preflight
         assert response.status_code == status.HTTP_200_OK
         assert response.headers.get("access-control-allow-origin") == allowed_origin
         assert "GET" in response.headers.get("access-control-allow-methods", "")
 
         # Test with a disallowed origin
-        disallowed_origin = "http://malicious.com"
+        disallowed_origin = "http://malicious-site.com"
         headers = {"Origin": disallowed_origin}
         response = await client.options("/health", headers=headers)
-        # Expect no CORS headers for disallowed origin (or specific denial)
-        assert "access-control-allow-origin" not in response.headers # Common behavior
+        # CORS middleware should not return allow headers for disallowed origins
+        assert "access-control-allow-origin" not in response.headers
 
-
-@pytest.mark.db_required()
-class TestErrorHandling(BaseSecurityTest):
+# Remove class inheritance and usefixtures marker
+# @pytest.mark.usefixtures("client")
+@pytest.mark.db_required() # Keep if error handling might involve db lookups
+class TestErrorHandling:
     """Test secure handling of application errors (no PHI leakage)."""
 
     @pytest.mark.asyncio
-    async def test_not_found_error_generic(self, client: AsyncClient):
+    async def test_not_found_error_generic(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
         """Test that 404 errors return a generic message."""
-        headers = {"Authorization": "Bearer VALID_PROVIDER_TOKEN"}
-        response = await client.get("/api/v1/non_existent_endpoint", headers=headers)
+        headers = get_valid_provider_auth_headers # Need auth to try accessing non-existent resource
+        response = await client.get("/api/v1/non_existent_endpoint/123", headers=headers)
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "detail" in response.json()
         assert "not found" in response.json()["detail"].lower()
-        # Ensure no sensitive info like internal paths are leaked
+        # Ensure no stack trace or internal paths are leaked
 
     @pytest.mark.asyncio
     async def test_internal_server_error_masked(
-        self, client: AsyncClient # No longer need app fixture here
+        self, 
+        client: AsyncClient, 
+        get_valid_provider_auth_headers: Dict[str, str],
+        app: FastAPI # Use app to override dependency
     ):
         """Test that unexpected errors result in a generic 500 response."""
-        headers = {"Authorization": "Bearer VALID_ADMIN_TOKEN"} # Use a token likely to pass initial checks
+        headers = get_valid_provider_auth_headers 
 
-        # Patch the specific repository method that the endpoint likely calls
-        # Adjust the target path based on where find_by_id is actually located/imported
-        # Assuming it's within an instance obtained via a dependency
-        # We target the *source* of the dependency function if possible
-        target_repo_path = "app.presentation.api.dependencies.database.get_repository" # Or specific repo path if known
-        # More likely, we patch the *method* on the repository class itself if that's easier
-        target_method_path = "app.infrastructure.persistence.sqlalchemy.repositories.patient_repository.PatientRepository.find_by_id"
+        # Target the repository dependency used by the endpoint
+        target_repo_interface = IPatientRepository # Assuming endpoint uses this interface
+        original_repo_dep = app.dependency_overrides.get(get_repository(target_repo_interface))
 
-        with patch(target_method_path, new_callable=AsyncMock) as mock_find_by_id:
-            # Configure the mock to raise an unexpected error
-            mock_find_by_id.side_effect = Exception("Simulated unexpected DB error")
+        # Mock the repository method to raise an unexpected error
+        mock_repo_instance = AsyncMock(spec=target_repo_interface)
+        mock_repo_instance.get_by_id.side_effect = Exception("Simulated unexpected internal error")
+        app.dependency_overrides[get_repository(target_repo_interface)] = lambda: mock_repo_instance
 
-            # Make the request
+        try:
+            # Make the request to an endpoint that uses the mocked repo method
             response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
-
+            
             # Assert that the response is 500 Internal Server Error
             assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
             # Assert that the detailed error message is masked
             response_json = response.json()
             assert "detail" in response_json
-            assert "Internal server error" in response_json["detail"] # Check for generic message
-            assert "Simulated unexpected DB error" not in response_json["detail"] # Ensure specific error isn't leaked
-
-        # Clean up dependency overrides if they were set elsewhere (less critical now)
-        # if hasattr(app, 'dependency_overrides') and get_repository(Patient) in app.dependency_overrides:
-        #     del app.dependency_overrides[get_repository(Patient)]
-
+            # Check for generic message (FastAPI default or custom one)
+            assert "Internal server error" in response_json["detail"] 
+            assert "Simulated unexpected internal error" not in response_json["detail"]
+        finally:
+            # Clean up the dependency override
+            if original_repo_dep:
+                 app.dependency_overrides[get_repository(target_repo_interface)] = original_repo_dep
+            elif get_repository(target_repo_interface) in app.dependency_overrides:
+                 del app.dependency_overrides[get_repository(target_repo_interface)]
 
 # --- Standalone Tests (Potentially move to specific endpoint test files) ---
 
