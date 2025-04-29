@@ -405,4 +405,233 @@ class TestBiometricAlertsEndpoints:
         response = await client.post("/api/v1/alerts/rules/from-condition", headers=headers, json=invalid_payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    # ... continue refactoring other tests in the class ...
+    # --- Start Refactoring Remaining Tests ---
+
+    async def test_get_alert_rule(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str], sample_rule_id: UUID):
+        """Test retrieving a specific alert rule by ID."""
+        # Assuming mock repo is overridden in app fixture
+        headers = get_valid_provider_auth_headers
+        rule_id_str = str(sample_rule_id)
+
+        response = await client.get(f"/api/v1/alerts/rules/{rule_id_str}", headers=headers)
+
+        # Assuming mock repo returns a valid rule
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["rule_id"] == rule_id_str
+        # Add more assertions based on expected mock repo response
+
+    async def test_get_alert_rule_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+        """Test retrieving a non-existent alert rule."""
+        # Assuming mock repo get_by_id returns None for this ID (via app fixture override)
+        headers = get_valid_provider_auth_headers
+        non_existent_rule_id = str(uuid4())
+
+        response = await client.get(f"/api/v1/alerts/rules/{non_existent_rule_id}", headers=headers)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_update_alert_rule(
+        self,
+        client: AsyncClient,
+        get_valid_provider_auth_headers: Dict[str, str],
+        sample_rule_id: UUID
+    ):
+        """Test updating an existing alert rule."""
+        # Assuming mocks (repo, event processor) are handled via app fixture override
+        headers = get_valid_provider_auth_headers
+        rule_id_str = str(sample_rule_id)
+        update_payload = {
+            "name": "Updated Sample Rule",
+            "description": "Description updated",
+            "priority": "high", # Use schema enum value
+            "is_active": False,
+            "conditions": [
+                {
+                    "metric_name": "heart_rate",
+                    "comparator_operator": "less_than", # Use schema enum value
+                    "threshold_value": 60.0,
+                    "duration_minutes": 15
+                }
+            ],
+            "logical_operator": "or" # Use schema enum value
+        }
+
+        response = await client.put(f"/api/v1/alerts/rules/{rule_id_str}", headers=headers, json=update_payload)
+
+        # Assuming mock repo returns the updated rule
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["rule_id"] == rule_id_str
+        assert response_data["name"] == update_payload["name"]
+        assert response_data["is_active"] == update_payload["is_active"]
+        # Add more checks for updated fields and mock calls (processor remove/add)
+
+    async def test_delete_alert_rule(
+        self,
+        client: AsyncClient,
+        get_valid_provider_auth_headers: Dict[str, str],
+        sample_rule_id: UUID
+    ):
+        """Test deleting an alert rule."""
+        # Assuming mocks (repo, event processor) are handled via app fixture override
+        headers = get_valid_provider_auth_headers
+        rule_id_str = str(sample_rule_id)
+
+        response = await client.delete(f"/api/v1/alerts/rules/{rule_id_str}", headers=headers)
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        # Add checks for mock calls (repo delete, processor remove)
+
+    async def test_get_rule_templates(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+        """Test retrieving available rule templates."""
+        # Assuming mock rule engine is overridden in app fixture
+        headers = get_valid_provider_auth_headers
+        response = await client.get("/api/v1/alerts/rules/templates", headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert "templates" in response_data
+        assert "total" in response_data
+        # Assert based on mock engine's get_rule_templates return value
+        assert len(response_data["templates"]) > 0 # Check based on fixture mock
+
+    # === Alert Endpoint Tests ===
+
+    async def test_get_alerts(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+        """Test retrieving biometric alerts."""
+        # Assuming mock alert repo is overridden in app fixture
+        headers = get_valid_provider_auth_headers
+        response = await client.get("/api/v1/alerts/", headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert "alerts" in response_data
+        assert "total" in response_data
+        # Add assertions based on mock alert repo's get_alerts return
+
+    async def test_get_alerts_with_filters(
+        self,
+        client: AsyncClient,
+        get_valid_provider_auth_headers: Dict[str, str],
+        sample_patient_id: UUID
+    ):
+        """Test retrieving biometric alerts with filters."""
+        # Assuming mock alert repo is overridden in app fixture
+        headers = get_valid_provider_auth_headers
+        patient_id_str = str(sample_patient_id)
+        status_filter = "triggered" # Use schema enum value
+        priority_filter = "warning" # Use schema enum value
+        start_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+        end_time = datetime.now(UTC).isoformat()
+
+        params = {
+            "patient_id": patient_id_str,
+            "status": status_filter,
+            "priority": priority_filter,
+            "start_time": start_time,
+            "end_time": end_time,
+            "page": 2,
+            "page_size": 5
+        }
+        response = await client.get("/api/v1/alerts/", headers=headers, params=params)
+
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        # Add assertions verifying filtering based on mock repo behavior
+        # Example: check if mock repo's get_alerts was called with correct filter values
+
+    async def test_update_alert_status_acknowledge(
+        self,
+        client: AsyncClient,
+        get_valid_provider_auth_headers: Dict[str, str], # Provider/Clinician typically acknowledges
+        sample_alert_id: UUID
+    ):
+        """Test acknowledging a biometric alert by updating its status."""
+        # Assuming mock alert repo & get_current_user are handled by app fixture
+        headers = get_valid_provider_auth_headers
+        alert_id_str = str(sample_alert_id)
+        update_payload = {
+            "status": "acknowledged", # Use schema enum value
+            "resolution_notes": None
+        }
+
+        response = await client.patch(f"/api/v1/alerts/{alert_id_str}/status", headers=headers, json=update_payload)
+
+        # Assuming mock repo returns the updated alert
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["alert_id"] == alert_id_str
+        assert response_data["status"] == "acknowledged"
+        assert response_data["acknowledged_by"] is not None
+        assert response_data["acknowledged_at"] is not None
+        # Add checks for mock repo calls (get_by_id, update)
+
+    async def test_update_alert_status_resolve(
+        self,
+        client: AsyncClient,
+        get_valid_provider_auth_headers: Dict[str, str],
+        sample_alert_id: UUID
+    ):
+        """Test resolving a biometric alert by updating its status."""
+        # Assuming mocks are handled by app fixture
+        headers = get_valid_provider_auth_headers
+        alert_id_str = str(sample_alert_id)
+        resolution_notes = "Patient condition stabilized after intervention."
+        update_payload = {
+            "status": "resolved", # Use schema enum value
+            "resolution_notes": resolution_notes
+        }
+
+        response = await client.patch(f"/api/v1/alerts/{alert_id_str}/status", headers=headers, json=update_payload)
+
+        # Assuming mock repo returns the updated alert
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["alert_id"] == alert_id_str
+        assert response_data["status"] == "resolved"
+        assert response_data["resolved_by"] is not None
+        assert response_data["resolved_at"] is not None
+        assert response_data["resolution_notes"] == resolution_notes
+        # Add checks for mock repo calls
+
+    async def test_update_alert_status_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+        """Test updating status of a non-existent alert."""
+        # Assuming mock repo get_alert_by_id returns None (via app fixture)
+        headers = get_valid_provider_auth_headers
+        non_existent_alert_id = str(uuid4())
+        update_payload = {"status": "acknowledged"}
+
+        response = await client.patch(f"/api/v1/alerts/{non_existent_alert_id}/status", headers=headers, json=update_payload)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        # Add check that mock repo update was not called
+
+    async def test_get_patient_alert_summary(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str], sample_patient_id: UUID):
+        """Test retrieving the alert summary for a specific patient."""
+        # Assuming mock alert repo is handled by app fixture
+        headers = get_valid_provider_auth_headers
+        patient_id_str = str(sample_patient_id)
+
+        response = await client.get(f"/api/v1/alerts/summary/patient/{patient_id_str}", headers=headers)
+
+        # Assuming mock repo returns a valid summary dict
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["patient_id"] == patient_id_str
+        assert "total_alerts" in response_data
+        assert "active_alerts" in response_data
+        # Add more assertions based on mock repo's get_patient_alert_summary return
+
+    async def test_get_patient_alert_summary_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+        """Test retrieving summary for a patient with no alerts (or patient not found scenario handled by repo)."""
+        # Assuming mock repo returns None or raises EntityNotFound (handled by app fixture)
+        headers = get_valid_provider_auth_headers
+        non_existent_patient_id = str(uuid4())
+
+        response = await client.get(f"/api/v1/alerts/summary/patient/{non_existent_patient_id}", headers=headers)
+
+        # Expect 404 based on how endpoint/mock repo handles not found
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # --- End Refactored Tests ---

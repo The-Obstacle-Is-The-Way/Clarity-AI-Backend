@@ -440,85 +440,46 @@ class PatientRepository:
             raise RuntimeError("No database session or factory available")
 
     async def create(self, patient_entity: PatientEntity) -> Optional[PatientEntity]:
-        """Create a new patient record in the database with robust contact_info handling."""
-        async def _create_operation(session):
-            # Make sure we have a UUID for the ID
-            if not patient_entity.id:
-                patient_entity.id = uuid.uuid4()
-                self.logger.debug(f"Generated UUID for new patient: {patient_entity.id}")
+        """Create a new patient record using PatientModel.from_domain for conversion."""
+        async def _create_operation(session: AsyncSession) -> Optional[PatientEntity]: # Ensure session type hint
+            try:
+                # Use the model's from_domain classmethod for conversion and encryption
+                self.logger.debug(f"Converting PatientEntity {patient_entity.id} to PatientModel using from_domain.")
+                patient_model = await PatientModel.from_domain(patient_entity, self.encryption_service)
                 
-            # Create a new model instance
-            patient_model = PatientModel(id=patient_entity.id)
-            
-            # Handle name attributes
-            if hasattr(patient_entity, 'first_name') and patient_entity.first_name:
-                patient_model._first_name = self.encryption_service.encrypt(patient_entity.first_name)
-            if hasattr(patient_entity, 'last_name') and patient_entity.last_name:
-                patient_model._last_name = self.encryption_service.encrypt(patient_entity.last_name)
+                # Add the converted model to the session
+                self.logger.debug(f"Adding patient model {patient_model.id} to session.")
+                session.add(patient_model)
                 
-            # Handle contact info - extract from either contact_info dict or direct attributes
-            email = None
-            phone = None
-            
-            # Try to get contact info from the contact_info dict if it exists
-            if hasattr(patient_entity, 'contact_info'):
-                contact_info = patient_entity.contact_info
-                if isinstance(contact_info, dict):
-                    email = contact_info.get('email')
-                    phone = contact_info.get('phone')
-            
-            # Fallback to direct attributes
-            if not email and hasattr(patient_entity, 'email'):
-                email = patient_entity.email
-            if not phone and hasattr(patient_entity, 'phone'):
-                phone = patient_entity.phone
+                # Flush to send the insert to the DB and potentially get generated values
+                self.logger.debug(f"Flushing session for patient {patient_model.id}.")
+                await session.flush() 
+                self.logger.debug(f"Flush successful for patient {patient_model.id}.")
                 
-            # Encrypt and store contact info
-            if email:
-                patient_model._email = self.encryption_service.encrypt(str(email))
-            if phone:
-                patient_model._phone = self.encryption_service.encrypt(str(phone))
+                # Refresh the instance to load any DB defaults or triggers
+                # (like created_at, updated_at if managed by DB)
+                self.logger.debug(f"Refreshing patient model {patient_model.id}.")
+                await session.refresh(patient_model)
+                self.logger.debug(f"Refresh successful for patient {patient_model.id}.")
+
+                # Convert the persisted model back to a domain entity to return
+                self.logger.debug(f"Converting refreshed PatientModel {patient_model.id} back to domain entity.")
+                # Use the model's to_domain instance method
+                created_entity = await patient_model.to_domain(self.encryption_service) 
+                self.logger.info(f"Successfully created and retrieved patient: {created_entity.id}")
+                return created_entity
                 
-            # Handle date_of_birth
-            if hasattr(patient_entity, 'date_of_birth') and patient_entity.date_of_birth:
-                dob_str = patient_entity.date_of_birth
-                if not isinstance(dob_str, str):
-                    dob_str = str(dob_str)
-                patient_model._dob = self.encryption_service.encrypt(dob_str)
-                
-            # Handle address
-            if hasattr(patient_entity, 'address') and patient_entity.address:
-                address = patient_entity.address
-                # Handle Address object or string
-                if hasattr(address, 'line1'):
-                    patient_model._address_line1 = self.encryption_service.encrypt(address.line1 or '')
-                    patient_model._address_line2 = self.encryption_service.encrypt(address.line2 or '')
-                    patient_model._city = self.encryption_service.encrypt(address.city or '')
-                    patient_model._state = self.encryption_service.encrypt(address.state or '')
-                    patient_model._postal_code = self.encryption_service.encrypt(address.zip_code or '')
-                    patient_model._country = self.encryption_service.encrypt(address.country or '')
-                elif isinstance(address, str):
-                    patient_model._address_line1 = self.encryption_service.encrypt(address)
-                    
-            # Handle basic attributes
-            patient_model.is_active = getattr(patient_entity, 'active', True)
-            patient_model.created_at = datetime.now(UTC)
-            patient_model.updated_at = datetime.now(UTC)
-            
-            # Handle user_id as foreign key
-            if hasattr(patient_entity, 'created_by') and patient_entity.created_by:
-                patient_model.user_id = patient_entity.created_by
-                
-            # Add to session and flush
-            self.logger.debug(f"Adding patient model to session: {patient_model.id}")
-            session.add(patient_model)
-            await session.flush()
-            
-            # Add refresh operation expected by the test
-            await session.refresh(patient_model)
-            
-            # Return the original domain entity with any updates
-            return patient_entity
+            except SQLAlchemyError as e:
+                # Log the specific SQLAlchemy error before raising PersistenceError
+                self.logger.error(f"SQLAlchemyError during patient creation: {e}", exc_info=True)
+                # Rollback is handled by _with_session wrapper
+                raise PersistenceError(f"Failed to create patient due to database error.") from e
+            except Exception as e:
+                # Catch any other unexpected errors during conversion or session ops
+                self.logger.error(f"Unexpected error during patient creation: {e}", exc_info=True)
+                raise PersistenceError(f"An unexpected error occurred while creating the patient.") from e
+
+        # Execute the operation within the session context manager
         return await self._with_session(_create_operation)
 
     async def get_by_id(self, patient_id: Union[str, UUID]) -> Optional[PatientEntity]:

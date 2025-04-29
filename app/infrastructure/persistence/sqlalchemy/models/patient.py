@@ -173,113 +173,199 @@ class Patient(Base):
 
         # Core metadata
         model.external_id = getattr(patient, "external_id", None)
-        model.user_id = patient.created_by
-        model.is_active = patient.active
-        logger.debug(f"[from_domain] Mapped core metadata for {patient.id}")
+        # Ensure created_by is UUID or None
+        created_by_id = getattr(patient, 'created_by', None)
+        model.user_id = UUID(str(created_by_id)) if created_by_id else None 
+        model.is_active = getattr(patient, 'active', True) # Use getattr for safety
+        logger.debug(f"[from_domain] Mapped core metadata for {getattr(patient, 'id', 'NO_ID_YET')}")
 
         # --- Encryption Helpers ---
-        def _encrypt(value: Optional[str]) -> Optional[bytes]:
-            """Encrypts a string value, returns bytes or None."""
+        def _encrypt(value: Optional[Any], field_name: str) -> Optional[bytes]: # Added field_name for logging
+            """Encrypts a value (assumed stringifiable), returns bytes or None."""
             if value is None:
+                # logger.debug(f"_encrypt: Value for '{field_name}' is None, returning None.")
                 return None
             try:
                 value_str = str(value) # Ensure it's a string
-                # Ensure encryption_service is available and encrypt is synchronous
-                if hasattr(encryption_service, 'encrypt') and callable(encryption_service.encrypt):
-                    encrypted = encryption_service.encrypt(value_str.encode('utf-8'))
-                    logger.debug(f"_encrypt: Successfully encrypted value starting with '{value_str[:10]}...'. Encrypted type: {type(encrypted)} len: {len(encrypted) if encrypted else 0}")
+                logger.debug(f"_encrypt: Attempting to encrypt '{field_name}': '{value_str[:50]}...'") # Log value before encryption
+                # Ensure encryption_service is available and encrypt is synchronous or async
+                if hasattr(encryption_service, 'encrypt'):
+                    encrypted_result = encryption_service.encrypt(value_str.encode('utf-8'))
+                    # Handle potential awaitable
+                    if inspect.isawaitable(encrypted_result):
+                         # This helper shouldn't be called with async encrypt, use _encrypt_serializable or direct await
+                         logger.error(f"_encrypt: Called with async encryption service for '{field_name}'. Use await directly.")
+                         return None # Or raise error
+                    encrypted = encrypted_result
+                    
+                    if not isinstance(encrypted, bytes):
+                        logger.warning(f"_encrypt: Encryption service did not return bytes for '{field_name}'. Type: {type(encrypted)}. Attempting encode.")
+                        # Attempt to encode if it's string-like, otherwise log error
+                        try:
+                             encrypted = str(encrypted).encode('utf-8')
+                        except Exception:
+                             logger.error(f"_encrypt: Failed to encode non-bytes encryption result for '{field_name}'.")
+                             return None
+                             
+                    logger.debug(f"_encrypt: Successfully encrypted '{field_name}'.")
                     return encrypted
                 else:
-                    logger.error("_encrypt: encryption_service.encrypt is not available or not callable.")
+                    logger.error(f"_encrypt: encryption_service has no 'encrypt' method for field '{field_name}'.")
                     return None # Or raise an error
             except Exception as e:
-                logger.error(f"_encrypt: Failed to encrypt value starting with '{str(value)[:10]}...': {e}", exc_info=True)
+                logger.error(f"_encrypt: Failed to encrypt '{field_name}' ('{str(value)[:50]}...'): {e}", exc_info=True)
                 return None # Return None or re-raise specific exception
 
-        async def _encrypt_serializable(data: Optional[Any]) -> Optional[bytes]:
+        async def _encrypt_serializable(data: Optional[Any], field_name: str) -> Optional[bytes]: # Added field_name
             """Serializes data to JSON string then encrypts, returns bytes or None."""
             if data is None:
+                # logger.debug(f"_encrypt_serializable: Data for '{field_name}' is None, returning None.")
                 return None
             try:
-                # Handle Pydantic models, dataclasses, dicts, lists, primitives
-                if hasattr(data, 'model_dump'): # Pydantic V2+
-                    data_dict = data.model_dump()
-                elif dataclasses.is_dataclass(data) and not isinstance(data, type):
-                    data_dict = dataclasses.asdict(data)
-                elif isinstance(data, (dict, list)):
-                     data_dict = data # Already serializable
-                elif isinstance(data, (str, int, float, bool)):
-                     data_dict = data # Primitives are serializable
-                else:
-                    # Attempt to convert others to string as a fallback
-                    logger.warning(f"Attempting string conversion for non-standard type {type(data)} before JSON serialization.")
-                    data_dict = str(data) 
-
-                json_str = json.dumps(data_dict)
-                # Call the service's encrypt method with the JSON string (sync or async)
-                result = encryption_service.encrypt(json_str)
-                if inspect.isawaitable(result):
-                    encrypted_bytes = await result
-                else:
-                    encrypted_bytes = result
-                return encrypted_bytes
+                 # Handle Pydantic models, dataclasses, dicts, lists, primitives
+                 if hasattr(data, 'model_dump'): # Pydantic V2+
+                     data_dict = data.model_dump()
+                 elif dataclasses.is_dataclass(data) and not isinstance(data, type):
+                     data_dict = dataclasses.asdict(data)
+                 elif isinstance(data, (dict, list)):
+                      data_dict = data # Already serializable
+                 elif isinstance(data, (str, int, float, bool)):
+                      data_dict = data # Primitives are serializable
+                 else:
+                     # Attempt to convert others to string as a fallback
+                     logger.warning(f"Attempting string conversion for non-standard type {type(data)} before JSON serialization for field '{field_name}'.")
+                     data_dict = str(data)
+                
+                 json_str = json.dumps(data_dict)
+                 logger.debug(f"_encrypt_serializable: Attempting to encrypt '{field_name}': JSON='{json_str[:100]}...'") # Log JSON before encrypt
+                 # Call the service's encrypt method with the JSON string (sync or async)
+                 result = encryption_service.encrypt(json_str)
+                 if inspect.isawaitable(result):
+                     encrypted_bytes = await result
+                 else:
+                     encrypted_bytes = result
+                
+                 if not isinstance(encrypted_bytes, bytes):
+                      logger.warning(f"_encrypt_serializable: Encryption service did not return bytes for '{field_name}'. Type: {type(encrypted_bytes)}. Attempting encode.")
+                      try:
+                           encrypted_bytes = str(encrypted_bytes).encode('utf-8')
+                      except Exception:
+                           logger.error(f"_encrypt_serializable: Failed to encode non-bytes encryption result for '{field_name}'.")
+                           return None
+                          
+                 logger.debug(f"_encrypt_serializable: Successfully encrypted '{field_name}'.")
+                 return encrypted_bytes
             except TypeError as e:
-                logger.error(f"Failed to serialize/encrypt data: {e} (Data type: {type(data)})", exc_info=True)
+                logger.error(f"Failed to serialize/encrypt '{field_name}': {e} (Data type: {type(data)})", exc_info=True)
                 return None
         # --- End Encryption Helpers ---
 
         from datetime import date, datetime
-        # Assign values to prefixed fields
-        model._first_name = _encrypt(patient.first_name)
-        model._last_name = _encrypt(patient.last_name)
+        # Assign values to prefixed fields, passing field name for logging
+        model._first_name = _encrypt(getattr(patient, 'first_name', None), '_first_name')
+        model._last_name = _encrypt(getattr(patient, 'last_name', None), '_last_name')
         
         # Handle date_of_birth (convert date/datetime to isoformat string first)
-        dob_value = None
-        if isinstance(patient.date_of_birth, (date, datetime)):
-             dob_value = patient.date_of_birth.isoformat()
-        elif isinstance(patient.date_of_birth, str):
-             dob_value = patient.date_of_birth # Assume already string
-        model._dob = _encrypt(dob_value)
+        dob_value = getattr(patient, 'date_of_birth', None)
+        dob_iso_str = None
+        if isinstance(dob_value, (date, datetime)):
+             dob_iso_str = dob_value.isoformat()
+        elif isinstance(dob_value, str):
+             # Attempt to parse string to validate and normalize format, fallback to original string
+             try:
+                 dob_iso_str = parser.parse(dob_value).date().isoformat()
+             except (ValueError, TypeError):
+                 logger.warning(f"Could not parse date_of_birth string '{dob_value}' for patient {getattr(patient, 'id', 'N/A')}. Storing as is.")
+                 dob_iso_str = dob_value # Keep original string if parsing fails
+        model._dob = _encrypt(dob_iso_str, '_dob')
         
-        model._email = _encrypt(patient.email)
-        model._phone = _encrypt(patient.phone)
-        model._ssn = _encrypt(patient.ssn)
-        model._medical_record_number = _encrypt(patient.medical_record_number)
-        model._gender = _encrypt(patient.gender)
-        model._insurance_number = _encrypt(patient.insurance_number)
-        logger.debug(f"[from_domain] Encrypted direct PII/PHI strings for {patient.id}")
+        model._email = _encrypt(getattr(patient, 'email', None), '_email')
+        model._phone = _encrypt(getattr(patient, 'phone', None), '_phone')
+        model._ssn = _encrypt(getattr(patient, 'ssn', None), '_ssn')
+        model._medical_record_number = _encrypt(getattr(patient, 'medical_record_number', None), '_medical_record_number')
+        model._gender = _encrypt(getattr(patient, 'gender', None), '_gender')
+        model._insurance_number = _encrypt(getattr(patient, 'insurance_number', None), '_insurance_number')
+        logger.debug(f"[from_domain] Encrypted direct PII/PHI strings for {getattr(patient, 'id', 'N/A')}")
 
-        # Encrypt address component fields
-        model._address_line1 = _encrypt(patient.address)
-        # Nullify other address components as they are not in the domain model
-        model._address_line2 = None
+        # --- Handle Address (Domain likely has Address object, Model stores string) ---
+        address_obj = getattr(patient, 'address', None) # Renamed for clarity
+        if isinstance(address_obj, str): # Handle legacy string case if necessary
+             logger.warning(f"Received raw string for address: '{address_obj[:50]}...'. Using directly.")
+             full_address_string = address_obj
+             model._address_line1 = _encrypt(full_address_string, '_address_line1')
+        elif address_obj and hasattr(address_obj, 'street'): # Check if it's likely an Address object
+            # Construct the full address string from components - adapt attributes as needed
+            # Ensure components exist before concatenating
+            street = getattr(address_obj, 'street', '')
+            city = getattr(address_obj, 'city', '')
+            state = getattr(address_obj, 'state', '')
+            zip_code = getattr(address_obj, 'zip_code', '')
+            country = getattr(address_obj, 'country', '') # Assuming country might exist
+            
+            # Basic concatenation, improve formatting as needed
+            parts = [street, city, state, zip_code, country]
+            full_address_string = ", ".join(filter(None, parts)) # Join non-empty parts
+            
+            if full_address_string:
+                 logger.debug(f"[from_domain] Encrypting constructed address string '{full_address_string[:50]}...' into _address_line1 for {getattr(patient, 'id', 'N/A')}")
+                 model._address_line1 = _encrypt(full_address_string, '_address_line1')
+            else:
+                 logger.debug(f"[from_domain] Address object provided but resulted in empty string for {getattr(patient, 'id', 'N/A')}")
+                 model._address_line1 = None
+        else:
+            # logger.debug(f"[from_domain] No address object or string provided for {getattr(patient, 'id', 'N/A')}")
+            model._address_line1 = None
+        
+        # Ensure other address components in model are explicitly None if not handled above
+        # These might be populated if the Address object has corresponding fields and logic is added
+        model._address_line2 = None 
         model._city = None
         model._state = None
         model._postal_code = None
         model._country = None
-        logger.debug(f"[from_domain] Encrypted address string for {patient.id}")
+        # --- End Address Handling ---\
+        
+        # Encrypt serializable complex fields
+        logger.debug(f"[from_domain] Encrypting complex fields for {getattr(patient, 'id', 'N/A')}")
+        # Use await for async helper function, pass field name for logging
+        model._emergency_contact = await _encrypt_serializable(getattr(patient, 'emergency_contact', None), '_emergency_contact')
+        model._medical_history = await _encrypt_serializable(getattr(patient, 'medical_history', []), '_medical_history') # Use getattr with default
+        model._medications = await _encrypt_serializable(getattr(patient, 'medications', []), '_medications') 
+        model._allergies = await _encrypt_serializable(getattr(patient, 'allergies', []), '_allergies')
+        model._treatment_notes = await _encrypt_serializable(getattr(patient, 'treatment_notes', []), '_treatment_notes')
+        model._extra_data = await _encrypt_serializable(getattr(patient, 'extra_data', {}), '_extra_data') 
+        model._insurance_info = await _encrypt_serializable(getattr(patient, 'insurance_info', None), '_insurance_info') 
 
-        model._emergency_contact = await _encrypt_serializable(patient.emergency_contact)
-        model._medical_history = await _encrypt_serializable(patient.medical_history)
-        model._medications = await _encrypt_serializable(patient.medications)
-        model._allergies = await _encrypt_serializable(patient.allergies)
-        model._treatment_notes = await _encrypt_serializable(patient.treatment_notes)
-        model._extra_data = await _encrypt_serializable(patient.extra_data if hasattr(patient, 'extra_data') else None)
-        logger.debug(f"[from_domain] Encrypted complex/JSON fields for {patient.id}")
+        # Assign remaining non-encrypted fields
+        model.biometric_twin_id = getattr(patient, 'biometric_twin_id', None)
 
-        logger.debug(f"[from_domain] Conversion complete for {patient.id}. Returning model.")
+        # Set id only if it exists on the domain object (for updates)
+        patient_id = getattr(patient, 'id', None)
+        if patient_id:
+            model.id = UUID(str(patient_id)) # Ensure UUID type
+            logger.debug(f"[from_domain] Assigned existing ID {model.id}")
+        else:
+            # If no ID, it's a new patient, UUID default in model will handle it
+            # model.id will be set by default=uuid.uuid4 in Column definition
+            logger.debug("[from_domain] New patient, ID will be generated by DB default.")
+
+        # Assign timestamps - let DB handle defaults/onupdate if possible
+        # model.created_at = patient.created_at or now_utc()
+        # model.updated_at = now_utc()
+
+        logger.debug(f"[from_domain] Completed conversion for patient ID: {getattr(model, 'id', 'NO_ID_YET')}")
         return model
 
     async def to_domain(self, encryption_service: BaseEncryptionService) -> DomainPatient:
         """
-        Convert a Patient model instance to a domain Patient entity,
-        decrypting PHI fields.
+        Convert this Patient model instance to a domain Patient entity,
+        decrypting PHI fields using the provided encryption service.
         """
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
-
-        # Helper for decryption
-        async def _decrypt(encrypted_value: Optional[str]) -> Optional[str]:
-            """Decrypt a value, handling sync or async decrypt methods."""
+        
+        # --- Decryption Helpers ---
+        async def _decrypt(encrypted_value: Optional[bytes]) -> Optional[str]:
+            """Decrypts bytes value, returns string or None."""
             if encrypted_value is None:
                 return None
             try:
@@ -293,130 +379,85 @@ class Patient(Base):
                 # Return None on decryption failure
                 return None
 
-        # Helper for decryption and JSON parsing with type validation
-        async def _decrypt_and_parse_json(
-            attr_name: str, 
-            expected_type: type # Expect list or dict
-        ) -> Optional[Union[dict, list]]:
-            decrypted_json_str = await _decrypt(getattr(self, attr_name, None))
-            if not decrypted_json_str:
-                # logger.debug(f"[to_domain:_decrypt_and_parse_json] No encrypted data for {attr_name} for patient {self.id}")
-                return None  # Return None if no encrypted data
-            
-            try:
-                parsed_data = json.loads(decrypted_json_str)
-                # Validate type
-                if isinstance(parsed_data, expected_type):
-                    # logger.debug(f"[to_domain:_decrypt_and_parse_json] Parsed {attr_name} for patient {self.id} as expected type {expected_type}")
-                    return parsed_data
-                else:
-                    logger.warning(
-                        f"Parsed JSON for {attr_name} patient {self.id} is not of expected type {expected_type}. Got {type(parsed_data)}. Returning default."
-                    )
-                    # Return None, let the caller handle default (e.g., `or []`)
-                    return None 
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(f"Failed to parse decrypted JSON for {attr_name} patient {self.id}: {e}", exc_info=True)
-                # Return None on parsing failure
-                return None
-
-        try:
-            # Decrypt necessary fields
-            first_name = await _decrypt(self._first_name)
-            last_name = await _decrypt(self._last_name)
-            from datetime import date, datetime
-            # Decrypt and parse date_of_birth
-            if self._dob:
-                decrypted_dob_str = await _decrypt(self._dob)
-                if decrypted_dob_str:
-                    try:
-                        # Use dateutil.parser for robust parsing
-                        parsed_dob_dt = parser.parse(decrypted_dob_str)
-                        date_of_birth = parsed_dob_dt.date()  # Extract date part
-                    except (ValueError, TypeError) as e:
-                        logger.error(f"Failed to parse decrypted date_of_birth '{decrypted_dob_str}': {e}")
-                        date_of_birth = None
-                else:
+        # Decrypt necessary fields
+        first_name = await _decrypt(self._first_name)
+        last_name = await _decrypt(self._last_name)
+        from datetime import date, datetime
+        # Decrypt and parse date_of_birth
+        if self._dob:
+            decrypted_dob_str = await _decrypt(self._dob)
+            if decrypted_dob_str:
+                try:
+                    # Use dateutil.parser for robust parsing
+                    parsed_dob_dt = parser.parse(decrypted_dob_str)
+                    date_of_birth = parsed_dob_dt.date()  # Extract date part
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Failed to parse decrypted date_of_birth '{decrypted_dob_str}': {e}")
                     date_of_birth = None
             else:
                 date_of_birth = None
-            email = await _decrypt(self._email)
-            phone = await _decrypt(self._phone)
-            ssn = await _decrypt(self._ssn)
-            medical_record_number = await _decrypt(self._medical_record_number)
-            gender = await _decrypt(self._gender)
-            insurance_number = await _decrypt(self._insurance_number)
+        else:
+            date_of_birth = None
+        email = await _decrypt(self._email)
+        phone = await _decrypt(self._phone)
+        ssn = await _decrypt(self._ssn)
+        medical_record_number = await _decrypt(self._medical_record_number)
+        gender = await _decrypt(self._gender)
+        insurance_number = await _decrypt(self._insurance_number)
 
-            logger.debug(f"[to_domain] Decrypted simple PII for {self.id}")
+        logger.debug(f"[to_domain] Decrypted simple PII for {self.id}")
 
-            # --- Updated Address Handling --- 
-            # Decrypt only the address string stored in _address_line1
-            address_str = await _decrypt(self._address_line1)
-            logger.debug(f"[to_domain] Decrypted address string for {self.id}: {address_str}")
+        # Decrypt only the address string stored in _address_line1
+        decrypted_address_str = await _decrypt(self._address_line1)
+        logger.debug(f"[to_domain] Decrypted address string for {self.id}: {decrypted_address_str[:50] if decrypted_address_str else 'None'}...")
 
-            # Decrypt and reconstruct EmergencyContact
-            emergency_contact_json_str = await _decrypt(self._emergency_contact)
-            emergency_contact_obj: Optional[EmergencyContact] = None
-            if emergency_contact_json_str:
-                try:
-                    emergency_contact_dict = json.loads(emergency_contact_json_str)
-                    emergency_contact_obj = EmergencyContact(**emergency_contact_dict)
-                    logger.debug(f"[to_domain] Reconstructed EmergencyContact for {self.id}: {emergency_contact_obj}")
-                except (json.JSONDecodeError, TypeError) as e:
-                    logger.warning(f"Failed to parse or instantiate EmergencyContact for patient {self.id}: {e}", exc_info=True)
-            else:
-                logger.debug(f"[to_domain] No emergency contact data found or decrypted for {self.id}")
+        # Decrypt complex fields using the appropriate helper
+        logger.debug(f"[to_domain] Decrypting complex fields for {self.id}")
+        decrypted_emergency_contact = await _decrypt(self._emergency_contact)
+        emergency_contact_obj = EmergencyContact(**json.loads(decrypted_emergency_contact)) if decrypted_emergency_contact else None
+        
+        decrypted_medical_history = await _decrypt(self._medical_history)
+        decrypted_medications = await _decrypt(self._medications)
+        decrypted_allergies = await _decrypt(self._allergies)
+        decrypted_treatment_notes = await _decrypt(self._treatment_notes)
+        decrypted_extra_data = await _decrypt(self._extra_data)
+        
+        # QUANTUM FIX: Decrypt insurance_info
+        decrypted_insurance_info = await _decrypt(self._insurance_info) # Assuming dict
 
-            # Decrypt and parse JSON list/dict fields, ensuring correct type
-            medical_history = await _decrypt_and_parse_json('_medical_history', expected_type=list)
-            medications = await _decrypt_and_parse_json('_medications', expected_type=list)
-            allergies = await _decrypt_and_parse_json('_allergies', expected_type=list)
-            treatment_notes = await _decrypt_and_parse_json('_treatment_notes', expected_type=list) # Expecting list[dict]
-
-            logger.debug(f"[to_domain] Decrypted complex fields for {self.id}")
-
-            # Prepare contact_info dictionary
-            contact_info_dict = {}
-            if email: contact_info_dict['email'] = email
-            if phone: contact_info_dict['phone'] = phone
-
-            # Build domain Patient using correct types expected by the dataclass
-            patient = DomainPatient(
-                id=self.id,
-                date_of_birth=date_of_birth, # Type: date | None
-                gender=gender,               # Type: str | None
-                # Pass individual name components, __post_init__ handles full name
-                first_name=first_name,       # Type: str | None
-                last_name=last_name,         # Type: str | None
-                # Pass contact dict and individual components, __post_init__ handles consolidation
-                contact_info=contact_info_dict, # Type: dict[str, Any]
-                email=email,                 # Type: str | None
-                phone=phone,                 # Type: str | None
-                # Pass formatted address string
-                address=address_str,         # Type: str | None
-                insurance_number=insurance_number, # Type: str | None
-                ssn=ssn,                     # Type: str | None
-                medical_record_number=medical_record_number, # Type: str | None
-                emergency_contact=emergency_contact_obj, # Type: EmergencyContact | None
-                # insurance=None, # Let default factory handle
-                insurance_info=None, # Pass None explicitly
-                active=self.is_active,       # Type: bool
-                created_by=self.user_id,     # Type: Any
-                # diagnoses=None, # Let default factory handle
-                medications=medications or [], # Type: list[str]
-                allergies=allergies or [],     # Type: list[str]
-                medical_history=medical_history or [], # Type: list[str]
-                treatment_notes=treatment_notes or [], # Type: list[dict[str, Any]]
-                created_at=self.created_at,  # Type: datetime | None
-                updated_at=self.updated_at   # Type: datetime | None
-                # NOTE: 'name' field is deliberately omitted, handled by __post_init__
-            )
-            logger.debug(f"[to_domain] Successfully created DomainPatient for {self.id}")
-            return patient
-
-        except Exception as e:
-            logger.error(f"Error converting Patient model {self.id} to domain: {e}", exc_info=True)
-            raise  # Re-raise the error to be handled by the caller (repository)
+        # Build domain Patient using correct types expected by the dataclass
+        patient = DomainPatient(
+            id=self.id,
+            external_id=self.external_id,
+            created_by=self.user_id,
+            active=self.is_active,
+            # Assign name components
+            first_name=first_name,
+            last_name=last_name,
+            date_of_birth=date_of_birth, # Use the parsed date object
+            # Assign contact components
+            email=email,
+            phone=phone,
+            ssn=ssn,
+            medical_record_number=medical_record_number,
+            gender=gender,
+            insurance_number=insurance_number,
+            # Assign the decrypted address string
+            address=decrypted_address_str, 
+            emergency_contact=emergency_contact_obj,
+            medical_history=decrypted_medical_history or [], # Default to empty list
+            medications=decrypted_medications or [],
+            allergies=decrypted_allergies or [],
+            treatment_notes=decrypted_treatment_notes or [],
+            extra_data=decrypted_extra_data or {}, # Default to empty dict
+            biometric_twin_id=self.biometric_twin_id,
+            created_at=self.created_at.replace(tzinfo=UTC) if self.created_at else None,
+            updated_at=self.updated_at.replace(tzinfo=UTC) if self.updated_at else None,
+            insurance_info=decrypted_insurance_info,
+            # name and contact_info handled by __post_init__ or descriptor
+        )
+        logger.debug(f"[to_domain] Completed conversion for patient ID: {patient.id}")
+        return patient
 
 # Example comment outside class
 # Add columns like _ethnicity, _preferred_language, etc. following the pattern above.
