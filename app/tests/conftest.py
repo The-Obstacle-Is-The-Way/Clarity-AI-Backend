@@ -779,16 +779,18 @@ def sample_alert(sample_rule, sample_data_point):
     
     return alert
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for each test session."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
+# pytest.mark.usefixtures("mock_db_session") # Apply mock session if needed globally
 
+# Comment out or remove the potentially problematic event_loop fixture
+# @pytest.fixture(scope="session")
+# def event_loop(request):
+#     """Create an instance of the default event loop for each test case."""
+#     loop = asyncio.get_event_loop_policy().new_event_loop()
+#     yield loop
+#     loop.close()
 
-@pytest.fixture
+@pytest.fixture(scope='session')
+# @pytest.mark.usefixtures("event_loop") # No longer needed
 def client(async_client):
     """Provides the httpx.AsyncClient configured globally."""
     # This now correctly returns the AsyncClient instance, not TestClient.

@@ -136,7 +136,7 @@ async def test_get_model_info_success(client: AsyncClient, mock_xgboost_service:
     model_type = ModelType.RISK_RELAPSE.value
     expected_response_data = mock_xgboost_service.get_model_info.return_value
     # Use real auth headers from fixture
-    response = await client.get(f"/api/v1/xgboost/models/{model_type}/info", headers=provider_auth_headers)
+    response = await client.get(f"/api/v1/xgboost/model-info/{model_type}", headers=provider_auth_headers)
 
     assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
     assert response.json() == expected_response_data
