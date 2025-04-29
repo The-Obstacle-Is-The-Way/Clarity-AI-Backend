@@ -246,7 +246,8 @@ async def create_mock_patient_model(
 class TestPatientRepository:
     """Test suite for the SQLAlchemy implementation of PatientRepository."""
     
-    def test_init(self, patient_repository, mock_encryption_service): 
+    @pytest.mark.asyncio
+    async def test_init(self, patient_repository, mock_encryption_service): 
         """Test repository initialization."""
         assert patient_repository is not None
         assert hasattr(patient_repository, "db_session_factory")

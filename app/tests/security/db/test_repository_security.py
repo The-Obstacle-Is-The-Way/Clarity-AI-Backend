@@ -199,7 +199,13 @@ async def test_audit_logging_on_patient_changes(patient_repository, encryption_s
     # Mock query/get for update
     mock_existing_patient = MagicMock(spec=Patient, **patient_data)
     db_session.get.return_value = mock_existing_patient 
-    db_session.query().get.return_value = mock_existing_patient # Mock for potential query().get usage
+    # Properly mock the query chain
+    query_mock = MagicMock()
+    filter_mock = MagicMock()
+    first_mock = MagicMock(return_value=mock_existing_patient)
+    filter_mock.first = first_mock
+    query_mock.filter = MagicMock(return_value=filter_mock)
+    db_session.query = MagicMock(return_value=query_mock)
 
     # Act & Assert for create logging
     with patch('app.infrastructure.persistence.sqlalchemy.patient_repository.logger') as mock_logger:
@@ -233,7 +239,13 @@ async def test_authorization_check_before_operations(patient_repository, db_sess
     db_session.commit.return_value = None
     db_session.refresh.return_value = None
     mock_db_patient = MagicMock(spec=Patient, **patient_create_data)
-    db_session.query().filter().first.return_value = mock_db_patient
+    # Properly mock the query chain
+    query_mock = MagicMock()
+    filter_mock = MagicMock()
+    first_mock = MagicMock(return_value=mock_db_patient)
+    filter_mock.first = first_mock
+    query_mock.filter = MagicMock(return_value=filter_mock)
+    db_session.query = MagicMock(return_value=query_mock)
     db_session.get.return_value = mock_db_patient
     db_session.delete.return_value = None
 
@@ -319,7 +331,13 @@ async def test_phi_never_appears_in_exceptions(patient_repository, db_session):
     # Arrange
     patient_id = str(uuid.uuid4())
     # Simulate error after auth check
-    db_session.query().filter().first.side_effect = Exception("Database error")
+    # Properly mock the query chain with side effect
+    query_mock = MagicMock()
+    filter_mock = MagicMock()
+    first_mock = MagicMock(side_effect=Exception("Database error"))
+    filter_mock.first = first_mock
+    query_mock.filter = MagicMock(return_value=filter_mock)
+    db_session.query = MagicMock(return_value=query_mock)
     
     # Define mock user context
     mock_user = {"role": "admin"}

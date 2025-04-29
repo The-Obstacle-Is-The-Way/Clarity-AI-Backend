@@ -343,6 +343,7 @@ class TestBiometricIntegrationService:
         )
 
         # Assert
+        await service.get_biometric_data.assert_awaited_once()
         assert result["status"] == "insufficient_data"
         assert result["data_type"] == "heart_rate"
         assert result["message"] == "Not enough data points to analyze trends"
@@ -440,8 +441,8 @@ class TestBiometricIntegrationService:
         mock_twin.disconnect_device = MagicMock()  # Mock the method
         mock_repository.get_by_patient_id.return_value = mock_twin
 
-        # Mock the add_biometric_data method
-        service.add_biometric_data = AsyncMock()
+        # Mock the add_biometric_data method as AsyncMock since it's an async method
+        service.add_biometric_data = AsyncMock(return_value=None)
 
         # Act
         result = await service.disconnect_device(
@@ -453,7 +454,7 @@ class TestBiometricIntegrationService:
         # Assert
         assert result is True
         mock_twin.disconnect_device.assert_called_once_with("smartwatch-123")
-        service.add_biometric_data.assert_called_once()  # Check if event was logged
+        await service.add_biometric_data.assert_awaited_once()  # Use assert_awaited for async mocks
         mock_repository.save.assert_called_once_with(mock_twin)
 
     @pytest.mark.asyncio

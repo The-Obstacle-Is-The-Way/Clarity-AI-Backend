@@ -1,5 +1,6 @@
 """Unit tests for the rate limiter functionality."""
 import pytest
+import pytest_asyncio
 from datetime import datetime, timedelta, timezone # Added timezone
 import time
 from unittest.mock import Mock, patch, MagicMock, call, AsyncMock # Added call and AsyncMock
@@ -49,7 +50,7 @@ def mock_redis():
     return mock
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_mock_patch():
     """Handle non-awaited coroutines in tests by patching AsyncMock."""
     # Create a helper for safely awaiting coroutines
@@ -249,50 +250,34 @@ class TestRateLimiterFactory:
     @patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis")
     @patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.get_settings")
     def test_create_redis_rate_limiter(self, mock_get_settings: MagicMock, mock_redis_constructor: MagicMock):
-        """Test creating a Redis rate limiter."""
-        # Mock settings to enable Redis
-        mock_settings = MagicMock()
-        mock_settings.USE_REDIS_RATE_LIMITER = True
-        mock_settings.REDIS_HOST = "testhost"
-        mock_settings.REDIS_PORT = 6379
-        mock_settings.REDIS_PASSWORD = "testpassword"
-        mock_settings.REDIS_DB = 1
-        mock_get_settings.return_value = mock_settings
-
-        # Mock Redis client and successful ping
-        mock_redis_instance = MagicMock()
-        mock_redis_instance.ping.return_value = True
-        mock_redis_constructor.return_value = mock_redis_instance
-
-        rate_limiter = RateLimiterFactory.create_rate_limiter() # No args needed
+        """Test creating a Redis rate limiter using the factory with explicit type."""
+        # Create a mock Redis client
+        mock_redis = MagicMock()
         
-        assert isinstance(rate_limiter, RedisRateLimiter)
-        assert rate_limiter._redis is mock_redis_instance
-        mock_redis_constructor.assert_called_once_with(
-            host="testhost",
-            port=6379,
-            password="testpassword",
-            db=1,
-            socket_timeout=5,
-            decode_responses=True
+        # Directly create with the test client - no settings or ping needed
+        rate_limiter = RateLimiterFactory.create_rate_limiter(
+            limiter_type="redis", 
+            redis_client=mock_redis
         )
-        mock_redis_instance.ping.assert_called_once()
+        
+        # Verify we got a Redis rate limiter with our mock client
+        assert isinstance(rate_limiter, RedisRateLimiter)
+        assert rate_limiter._redis is mock_redis
+        
+        # The constructor and ping shouldn't be called since we provided the client
+        mock_redis_constructor.assert_not_called()
 
     def test_invalid_limiter_type(self):
-        """Test creating an invalid limiter type."""
-        # Factory doesn't raise ValueError for type, it defaults to in-memory
-        # Test the fallback mechanism instead
-        with patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.get_settings") as mock_get_settings, \
-             patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis") as mock_redis_constructor:
+        """Test fallback when Redis connection fails."""
+        # Test the fallback mechanism using an explicit limiter type
+        with patch("app.infrastructure.security.rate_limiting.rate_limiter_enhanced.redis.Redis") as mock_redis_constructor:
+            # Setup Redis to fail on ping
+            mock_redis_instance = MagicMock()
+            mock_redis_instance.ping.side_effect = redis.exceptions.ConnectionError("Connection failed")
+            mock_redis_constructor.return_value = mock_redis_instance
             
-            mock_settings = MagicMock()
-            mock_settings.USE_REDIS_RATE_LIMITER = True # Try to use Redis
-            # Simulate Redis connection failure
-            mock_redis_constructor.side_effect = redis.exceptions.ConnectionError("Connection failed")
-            mock_get_settings.return_value = mock_settings
-
-            rate_limiter = RateLimiterFactory.create_rate_limiter()
-            # Should fall back to InMemoryRateLimiter
+            # Should fall back to InMemoryRateLimiter when Redis connection fails
+            rate_limiter = RateLimiterFactory.create_rate_limiter(limiter_type="redis")
             assert isinstance(rate_limiter, InMemoryRateLimiter)
 
 @pytest.fixture

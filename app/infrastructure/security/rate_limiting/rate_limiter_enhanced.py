@@ -6,8 +6,9 @@ It supports both in-memory and Redis-based rate limiting with configurable thres
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+import sys
 import logging
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Any, cast
 
 import redis
@@ -320,13 +321,13 @@ class RedisRateLimiter(RateLimiter):
             async with self._redis.pipeline() as pipe:
                 # Remove expired entries
                 expired_cutoff = now - config.period_seconds
-                pipe.zremrangebyscore(combined_key, 0, expired_cutoff)
+                await pipe.zremrangebyscore(combined_key, 0, expired_cutoff)
                 # Add current request
-                pipe.zadd(combined_key, {str(now): now})
+                await pipe.zadd(combined_key, {str(now): now})
                 # Count total requests
-                pipe.zcard(combined_key)
+                await pipe.zcard(combined_key)
                 # Get TTL for reset calculation
-                pipe.pttl(combined_key)
+                await pipe.pttl(combined_key)
                 results = await pipe.execute()
             # Extract count and TTL
             count = results[2]
@@ -372,27 +373,34 @@ class RateLimiterFactory:
     """
     
     @staticmethod
-    def create_rate_limiter() -> RateLimiter:
+    def create_rate_limiter(limiter_type: str = None, redis_client: redis.Redis = None) -> RateLimiter:
         """
-        Create a rate limiter based on configuration.
+        Create a rate limiter based on configuration or explicit parameters.
         
+        Args:
+            limiter_type: Optional explicit limiter type to create ('redis' or 'memory')
+            redis_client: Optional pre-configured Redis client to use
+            
         Returns:
             An appropriate RateLimiter implementation
         """
-        # Use Redis limiter if configured
-        app_settings = get_settings()
-        if app_settings.USE_REDIS_RATE_LIMITER:
+        # Use explicit type if provided (for testing)
+        if limiter_type == "redis" or (limiter_type is None and get_settings().USE_REDIS_RATE_LIMITER):
             try:
-                redis_client = redis.Redis(
-                    host=app_settings.REDIS_HOST,
-                    port=app_settings.REDIS_PORT,
-                    password=app_settings.REDIS_PASSWORD,
-                    db=app_settings.REDIS_DB,
-                    socket_timeout=5,
-                    decode_responses=True
-                )
-                # Test connection
-                redis_client.ping()
+                # Use provided client or create one
+                if redis_client is None:
+                    app_settings = get_settings()
+                    redis_client = redis.Redis(
+                        host=app_settings.REDIS_HOST,
+                        port=app_settings.REDIS_PORT,
+                        password=app_settings.REDIS_PASSWORD,
+                        db=app_settings.REDIS_DB,
+                        socket_timeout=5,
+                        decode_responses=True
+                    )
+                    # Test the connection
+                    redis_client.ping()
+                
                 logger.info("Using Redis-based rate limiter")
                 return RedisRateLimiter(redis_client)
             except Exception as e:
