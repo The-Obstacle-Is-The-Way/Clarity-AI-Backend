@@ -1,5 +1,5 @@
-from sqlalchemy import Column
-from sqlalchemy.types import Text
+from sqlalchemy import Column, Enum
+from sqlalchemy.types import Text, DateTime
 """
 Test Database Initializer
 
@@ -9,7 +9,7 @@ regardless of the actual database schema state.
 
 Features:
 1. In-memory SQLite database with foreign keys enabled for fast test execution
-2. Complete test schema based on domain models
+2. Complete test schema based on *actual* application models
 3. Predefined test user accounts with consistent UUIDs for reliable foreign keys
 4. Proper transaction handling and rollback after each test
 5. Helper functions for creating test data
@@ -23,342 +23,220 @@ import random
 from datetime import datetime, timezone, date
 from typing import AsyncGenerator, List, Dict, Any, Optional, Union
 
+# Import REAL application models and Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
+from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
+
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PostgresUUID # Use Postgres UUID for type hint consistency if needed
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.future import select
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create a base class for our models
-TestBase = declarative_base()
+# REMOVE TestBase definition
+# TestBase = declarative_base()
 
 # Define standard test user IDs for consistent foreign keys
 TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 TEST_CLINICIAN_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
-# Test User Model
-class TestUser(TestBase):
-    """User model for testing database initialization."""
-    
-    __tablename__ = "users"
-    __table_args__ = {'extend_existing': True}
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    username = Column(String(100), nullable=False, unique=True)
-    email = Column(String(255), nullable=False, unique=True)
-    password_hash = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_verified = Column(Boolean, default=False, nullable=False)
-    email_verified = Column(Boolean, default=False, nullable=False)
-    role = Column(String(50), nullable=False)
-    created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
-    updated_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
-    last_login = Column(String, nullable=True)
-    failed_login_attempts = Column(Integer, default=0)
-    account_locked_until = Column(String, nullable=True)
-    password_changed_at = Column(String, nullable=True)
-    reset_token = Column(String(255), nullable=True)
-    reset_token_expires_at = Column(String, nullable=True)
-    verification_token = Column(String(255), nullable=True)
-    first_name = Column(String(100), nullable=True)
-    last_name = Column(String(100), nullable=True)
-    
-    # Relationships
-    patients = relationship("TestPatient", back_populates="user", cascade="all, delete-orphan")
+# REMOVE Test User Model definition
+# class TestUser(TestBase): ...
 
-# Test Patient Model
-class TestPatient(TestBase):
-    """Patient model for testing database initialization.
-    
-    This comprehensive model includes all fields needed for integration tests,
-    ensuring proper handling of foreign keys, value objects, and encryption.
-    """
-    
-    __tablename__ = "patients"
-    __table_args__ = {'extend_existing': True}
-    
-    # Core patient identity
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
-    # Status fields
-    is_active = Column(Boolean, default=True, nullable=False)
-    
-    # User reference (created_by)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    user = relationship("UserTestModel", back_populates="patients")
-    
-    # Timestamps
-    created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
-    updated_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat(), onupdate=lambda: datetime.now(timezone.utc).isoformat(), nullable=False)
-    version = Column(Integer, default=1)
-    
-    # Encrypted PHI fields (matching production model)
-    _first_name = Column("first_name", Text, nullable=True)
-    _last_name = Column("last_name", Text, nullable=True)
-    _dob = Column("date_of_birth", Text, nullable=True)
-    _email = Column("email", Text, nullable=True)
-    _phone = Column("phone", Text, nullable=True)
-    _medical_record_number = Column("medical_record_number", Text, nullable=True)
-    _ssn = Column("ssn", Text, nullable=True)
-    _gender = Column("_gender", Text, nullable=True)
-    gender = Column("gender", String(50), nullable=True)
-    
-    # Address fields (encrypted in production)
-    _address_line1 = Column("_address_line1", Text, nullable=True)
-    _address_line2 = Column("_address_line2", Text, nullable=True)
-    _city = Column("_city", Text, nullable=True)
-    _state = Column("_state", Text, nullable=True)
-    _postal_code = Column("_postal_code", Text, nullable=True)
-    _country = Column("_country", Text, nullable=True)
-    
-    # Address components (for backward compatibility)
-    address_line1 = Column(String(255), nullable=True)
-    address_line2 = Column(String(255), nullable=True)
-    city = Column(String(100), nullable=True)
-    state = Column(String(100), nullable=True)
-    postal_code = Column(String(20), nullable=True)  # Also zip_code in some places
-    zip_code = Column(String(20), nullable=True)     # Both needed for compatibility
-    country = Column(String(100), nullable=True)
-    
-    # Emergency contact and additional data
-    _emergency_contact = Column("_emergency_contact", Text, nullable=True)
-    _insurance_number = Column("_insurance_number", Text, nullable=True)
-    _medical_history = Column("_medical_history", Text, nullable=True)
-    _medications = Column("_medications_data", Text, nullable=True)
-    _allergies = Column("_allergies", Text, nullable=True)
-    _treatment_notes = Column("_treatment_notes", Text, nullable=True)
-    _extra_data = Column("_extra_data", Text, nullable=True)
-    
-    # Medical info (encrypted)
-    emergency_contact = Column(String(1024), nullable=True)  # JSON emergency contact
-    medications_data = Column(String(2048), nullable=True)  # JSON medications data
-    allergies = Column(String(1024), nullable=True)
-    medications = Column(String(2048), nullable=True)
-    medical_history = Column(String(4096), nullable=True)
-    treatment_notes = Column(String(4096), nullable=True)
-    
-    # Extra data storage
-    extra_data = Column(String(4096), nullable=True)  # For flexible JSON data
-    biometric_twin_id = Column(String(100), nullable=True)
-    external_id = Column(String(64), nullable=True)
-    
-    # Relationships
-    user = relationship("TestUser", back_populates="patients")
+# REMOVE Test Patient Model definition
+# class TestPatient(TestBase): ...
+
 
 async def create_test_users(session: AsyncSession) -> None:
     """Create standard test users in the database if they don't already exist."""
-    
-    # Check if test users exist
-    result = await session.execute(select(TestUser).where(
-        TestUser.id.in_([TEST_USER_ID, TEST_CLINICIAN_ID])
+
+    # Check if test users exist using the real UserModel
+    result = await session.execute(select(UserModel).where(
+        UserModel.id.in_([TEST_USER_ID, TEST_CLINICIAN_ID])
     ))
     existing_users = result.scalars().all()
-    existing_ids = [user.id for user in existing_users]
-    
-    # Create test patient user if not exists
+    existing_ids = {user.id for user in existing_users} # Use a set for faster lookups
+
+    # Create test patient user if not exists using the real UserModel
     if TEST_USER_ID not in existing_ids:
-        test_user = TestUser(
+        test_user = UserModel(
             id=TEST_USER_ID,
             username="testuser",
             email="test.user@novamind.ai",
-            password_hash="hashed_password_for_testing_only",
+            password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC", # Example hash for 'password'
             is_active=True,
             is_verified=True,
             email_verified=True,
-            role="PATIENT",
+            role=UserRole.PATIENT, # Use the actual Enum
             first_name="Test",
-            last_name="User"
+            last_name="User",
+            created_at=datetime.now(timezone.utc), # Use datetime objects
+            updated_at=datetime.now(timezone.utc),
+            password_changed_at=datetime.now(timezone.utc)
         )
         session.add(test_user)
-    
-    # Create test clinician user if not exists
+
+    # Create test clinician user if not exists using the real UserModel
     if TEST_CLINICIAN_ID not in existing_ids:
-        test_clinician = TestUser(
+        test_clinician = UserModel(
             id=TEST_CLINICIAN_ID,
             username="testclinician",
             email="test.clinician@novamind.ai",
-            password_hash="hashed_password_for_testing_only",
+            password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC", # Example hash for 'password'
             is_active=True,
             is_verified=True,
             email_verified=True,
-            role="PROVIDER",
+            role=UserRole.CLINICIAN, # Use the actual Enum
             first_name="Test",
-            last_name="Clinician"
+            last_name="Clinician",
+            created_at=datetime.now(timezone.utc), # Use datetime objects
+            updated_at=datetime.now(timezone.utc),
+            password_changed_at=datetime.now(timezone.utc)
         )
         session.add(test_clinician)
-    
-    await session.commit()
-    logger.info(f"Test users initialized with IDs: {TEST_USER_ID}, {TEST_CLINICIAN_ID}")
+
+    try:
+        await session.commit() # Commit changes if users were added
+        logger.info(f"Test users initialized with IDs: {TEST_USER_ID}, {TEST_CLINICIAN_ID}")
+    except Exception as e:
+        logger.error(f"Error committing test users: {e}")
+        await session.rollback()
+
 
 async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Create a test database session with all tables created and test users inserted.
-    
-    This function:
-    1. Creates an in-memory SQLite database with foreign keys enabled
-    2. Creates all tables defined in the TestBase metadata
-    3. Creates test users for foreign key relationships
-    4. Yields a session for test use
-    5. Rolls back and closes the session after test
-    
-    Yields:
-        AsyncSession: SQLAlchemy async session with test users created
-    """
-    # Use in-memory SQLite for fastest tests with no file conflicts
-    db_url = "sqlite+aiosqlite:///:memory:"
-    
-    logger.info(f"Setting up test database with URL: {db_url}")
-    
-    # Create engine with foreign keys enabled
-    engine = create_async_engine(
-        db_url,
-        echo=False,
-        connect_args={"check_same_thread": False}
-    )
-    
-    # Create session factory
-    async_session = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-        class_=AsyncSession
-    )
-    
-    # Create all tables
-    async with engine.begin() as conn:
-        # Enable foreign keys in SQLite
-        await conn.execute(text("PRAGMA foreign_keys=ON"))
-        
-        # Create all tables
-        await conn.run_sync(TestBase.metadata.create_all)
-        logger.info("Created all tables in test database")
-    
-    # Create a session
-    async with async_session() as session:
-        # Create test users
-        await create_test_users(session)
-        
-        # Yield the session for test use
-        yield session
-        
-        # Rollback any changes made during the test
-        await session.rollback()
-        logger.info("Rolled back test database session")
+    Create a test database session with all tables created using REAL models
+    and test users inserted.
 
-async def create_test_patient(
-    session: AsyncSession, 
+    This provides an isolated transactional session for each test.
+    """
+    # Use an in-memory SQLite database for testing
+    DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    engine = create_async_engine(DATABASE_URL, echo=False, future=True)
+
+    # Use the metadata from the *real* Base
+    async with engine.begin() as conn:
+        # Enable foreign key support for SQLite
+        await conn.execute(text("PRAGMA foreign_keys=ON;"))
+        # Create tables based on the real application models
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Create a sessionmaker
+    TestSessionLocal = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    # Create a new session
+    async with TestSessionLocal() as session:
+        try:
+            # Create test users within the session context
+            await create_test_users(session)
+
+            # Begin transaction for the test
+            await session.begin()
+            yield session
+            # Rollback transaction after test completes
+            await session.rollback()
+        except Exception as e:
+            logger.error(f"Error during test database session setup/teardown: {e}")
+            await session.rollback() # Ensure rollback on error
+            raise # Re-raise the exception
+        finally:
+            # Ensure the session is closed
+            await session.close()
+
+    # Dispose of the engine after the session is done
+    # Note: For in-memory SQLite, disposing might not be strictly necessary,
+    # but it's good practice for other database types.
+    await engine.dispose()
+
+
+# Optional: Keep helper function to create test patients if needed,
+# but ensure it uses the real PatientModel or PatientDomain entity
+# This example assumes PatientDomain is used for consistency
+from app.domain.entities.patient import Patient as PatientDomain
+from app.domain.value_objects.name import Name
+from app.domain.value_objects.contact_info import ContactInfo
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository # Import real repo if needed for creation logic
+from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService # Import if needed
+
+
+async def create_test_patient_domain(
     user_id: Optional[uuid.UUID] = None,
     first_name: str = "Test",
     last_name: str = "Patient",
-    email: str = "testpatient@example.com",
-    phone: str = "5551234567",  # Ensure 10 digits with no separators
+    email: str = f"testpatient.{uuid.uuid4().hex[:6]}@example.com", # Ensure unique email
+    phone: str = f"555{random.randint(1000000, 9999999)}", # Ensure unique phone
     ssn: Optional[str] = None,
-    date_of_birth: Optional[Union[str, date]] = None
-) -> TestPatient:
+    date_of_birth: Optional[Union[str, date]] = None,
+    patient_id: Optional[uuid.UUID] = None,
+) -> PatientDomain:
     """
-    Create a test patient in the database with all required fields.
-    
-    Args:
-        session: SQLAlchemy async session
-        user_id: UUID of the user to associate with the patient (default: None)
-        first_name: First name of the patient (default: "Test")
-        last_name: Last name of the patient (default: "Patient")
-        email: Email of the patient (default: "testpatient@example.com")
-        phone: Phone number of the patient (default: "5551234567")
-        ssn: Social Security Number (default: None)
-        date_of_birth: Date of birth (default: None)
-        
-    Returns:
-        TestPatient: The created patient with all required fields
+    Creates a Patient DOMAIN entity with default test data.
+    Uses domain value objects directly.
     """
-    # Create patient object with all required fields
-    patient = TestPatient(
-        id=uuid.uuid4(),
-        user_id=user_id,
-        is_active=True,
-        version=1,
-    )
-    
-    # Set encrypted PHI fields
-    patient._first_name = first_name
-    patient._last_name = last_name
-    patient._email = email
-    patient._phone = phone
-    patient._ssn = ssn
-    
-    # Set date of birth if provided
-    if date_of_birth:
-        if isinstance(date_of_birth, date):
-            patient._dob = date_of_birth.isoformat()
-        else:
-            patient._dob = str(date_of_birth)
-    else:
-        # Default to a sensible date of birth
-        patient._dob = "1980-01-01"
-    
-    # Add gender and additional fields for completeness
-    patient._gender = "male" if random.randint(0, 1) else "female"
-    
-    # Prepare address data in JSON format
-    address_data = {
-        "line1": "123 Test St",
-        "line2": "Apt B",
-        "city": "Test City",
-        "state": "TS",
-        "zip_code": "12345",
-        "country": "USA"
-    }
-    
-    # Set encrypted address fields
-    patient._address_line1 = json.dumps(address_data)  # Store as encrypted JSON
-    patient._address_line2 = None
-    patient._city = None
-    patient._state = None
-    patient._postal_code = None
-    patient._country = None
-    
-    # Add emergency contact info
-    emergency_data = {
-        "name": "Emergency Contact",
-        "relationship": "Family",
-        "phone": "5559876543"
-    }
-    patient._emergency_contact = json.dumps(emergency_data)  # Store as encrypted field
-    
-    # Add to the session
-    session.add(patient)
-    await session.flush()
-    
-    return patient
+    if not patient_id:
+        patient_id = uuid.uuid4()
 
+    if date_of_birth is None:
+        date_of_birth = date(1980, 1, 1)
+    elif isinstance(date_of_birth, str):
+        try:
+            date_of_birth = date.fromisoformat(date_of_birth)
+        except ValueError:
+            logger.warning(f"Invalid date string '{date_of_birth}', using default.")
+            date_of_birth = date(1980, 1, 1)
+
+    # Generate SSN if not provided
+    if ssn is None:
+        ssn = f"{random.randint(100,999)}-{random.randint(10,99)}-{random.randint(1000,9999)}"
+
+    patient_entity = PatientDomain(
+        id=patient_id,
+        name=Name(first_name=first_name, last_name=last_name),
+        contact_info=ContactInfo(email=email, phone=phone),
+        date_of_birth=date_of_birth,
+        medical_record_number=f"MRN-TEST-{uuid.uuid4().hex[:8].upper()}",
+        ssn=ssn,
+        created_by=user_id or TEST_USER_ID, # Default to test user if not specified
+        active=True,
+        # Add other required fields with defaults if necessary
+        gender="Prefer not to say",
+        address=None, # Explicitly set complex types if needed
+        emergency_contact=None,
+        insurance_provider=None,
+        medical_history=[],
+        medications=[],
+        allergies=[],
+        treatment_notes=[],
+        extra_data={},
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        version=1,
+        insurance_number=None,
+        biometric_twin_id=None,
+        external_id=None
+    )
+    return patient_entity
+
+# Function to verify table existence (useful for debugging setup)
 async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
-    """
-    Verify that a table exists in the database.
-    
-    Args:
-        session: SQLAlchemy async session
-        table_name: Name of the table to check
-        
-    Returns:
-        bool: True if table exists with columns, False otherwise
-    """
+    """Check if a table exists in the test database."""
     try:
-        result = await session.execute(text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"))
-        exists = result.scalar() is not None
-        
-        if exists:
-            # Also verify table has data structure by counting columns
-            result = await session.execute(text(f"PRAGMA table_info({table_name})"))
-            columns = result.fetchall()
-            column_names = [col[1] for col in columns]
-            logger.info(f"Table {table_name} exists with {len(columns)} columns: {column_names}")
-            return len(columns) > 0
-        
-        logger.error(f"Table {table_name} does not exist")
-        return False
+        # Using a simple query that depends on the table existing
+        await session.execute(text(f"SELECT 1 FROM {table_name} LIMIT 1;"))
+        logger.info(f"Table '{table_name}' exists.")
+        return True
     except Exception as e:
-        logger.error(f"Error verifying table {table_name}: {e}")
+        # Catching broad exception as specific DB errors vary (e.g., NoSuchTableError, OperationalError)
+        logger.warning(f"Table '{table_name}' does not seem to exist or query failed: {e}")
         return False

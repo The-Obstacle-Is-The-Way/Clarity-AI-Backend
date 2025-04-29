@@ -49,8 +49,8 @@ class AppointmentModel(Base):
     )
 
     # Relationships - aligned to match the actual database schema and foreign keys
-    patient = relationship("Patient", back_populates="appointments", foreign_keys=[patient_id])
-    provider = relationship("ProviderModel", back_populates="appointments", foreign_keys=[provider_id])
+    patient = relationship("Patient", back_populates="appointments")
+    provider = relationship("ProviderModel", back_populates="appointments")
     clinical_notes = relationship("ClinicalNoteModel", back_populates="appointment", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:

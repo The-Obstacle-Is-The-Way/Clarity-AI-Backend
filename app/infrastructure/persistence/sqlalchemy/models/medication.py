@@ -48,7 +48,7 @@ class MedicationModel(Base):
     )
 
     # Relationships with correct model references
-    patient = relationship("Patient", back_populates="medication_records", foreign_keys=[patient_id])
+    patient = relationship("Patient", back_populates="medication_records")
     provider = relationship("ProviderModel", back_populates="medications")
 
     def __repr__(self) -> str:

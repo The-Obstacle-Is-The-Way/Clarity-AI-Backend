@@ -9,9 +9,11 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text, Column, String, Integer
 
+# Import REAL application Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+
 # Import standardized test database components
 from app.tests.integration.utils.test_db_initializer import (
-    TestBase,
     get_test_db_session,
     verify_table_exists
 )
@@ -41,7 +43,7 @@ async def test_table_creation(db_session: AsyncSession):
 
 
 # Test model for custom table creation tests
-class TestCustomModel(TestBase):
+class TestCustomModel(Base):
     __tablename__ = "test_custom_models"
     __table_args__ = {"extend_existing": True}
 

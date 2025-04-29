@@ -13,17 +13,17 @@ from app.tests.integration.utils.test_db_initializer import (
     # Database session
     get_test_db_session,
     
-    # Test models
-    TestBase,
-    TestUser,
-    TestPatient,
+    # Test models (REMOVED - Use real models now)
+    # TestBase, 
+    # TestUser,
+    # TestPatient,
     
     # Test data constants
     TEST_USER_ID,
     TEST_CLINICIAN_ID,
     
     # Helper functions
-    create_test_patient,
+    create_test_patient_domain,
     create_test_users,
     verify_table_exists
 )

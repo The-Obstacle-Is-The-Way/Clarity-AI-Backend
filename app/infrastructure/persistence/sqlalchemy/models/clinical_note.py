@@ -48,7 +48,7 @@ class ClinicalNoteModel(Base):
     version = Column(Integer, default=1, nullable=False)
 
     # Relationships with correct model references
-    patient = relationship("Patient", back_populates="clinical_notes", foreign_keys=[patient_id])
+    patient = relationship("Patient", back_populates="clinical_notes")
     provider = relationship("ProviderModel", back_populates="clinical_notes")
     appointment = relationship("AppointmentModel", back_populates="clinical_notes")
 
