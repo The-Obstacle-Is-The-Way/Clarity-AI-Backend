@@ -8,6 +8,7 @@ patient data in accordance with HIPAA and other security requirements.
 
 import asyncio
 import pytest
+import pytest_asyncio
 import json
 import uuid
 import types
@@ -49,7 +50,7 @@ def sample_patient_data(sample_patient_id: str) -> Dict[str, Any]:
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_mock_patch():
     """Handle non-awaited coroutines in tests by patching AsyncMock."""
     # Create a helper for safely awaiting coroutines

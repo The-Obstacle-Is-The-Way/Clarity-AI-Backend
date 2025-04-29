@@ -8,9 +8,14 @@ in isolation from the full application.
 import pytest
 import asyncio
 import uuid
+import warnings
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
+
+# Suppress datetime binary incompatibility warning
+warnings.filterwarnings("ignore", message="datetime.datetime size changed")
+
 
 # Import SQLAlchemy components for table creation
 from sqlalchemy import text
