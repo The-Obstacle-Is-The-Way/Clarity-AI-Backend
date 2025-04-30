@@ -236,7 +236,7 @@ def client():
         )
     ]
 )
-@pytest.mark.asyncio
+
 def test_xgboost_endpoints_return_200(client, endpoint, request_model, response_model):
     """Test that XGBoost endpoints return 200 status code."""
     # Configure the mock to return the expected response
@@ -246,17 +246,17 @@ def test_xgboost_endpoints_return_200(client, endpoint, request_model, response_
     mock_xgboost_service.get_model_info.return_value = response_model
     
     # Send request to the endpoint
-    response = client.post(endpoint, json=request_model.dict())
+    response = client.post(endpoint, json=request_model.model_dump())
     
     # Assert response status code
     assert response.status_code == status.HTTP_200_OK, f"Endpoint {endpoint} returned {response.status_code} instead of 200"
     
     # Assert response content matches the expected model
     response_data = response.json()
-    assert response_data == response_model.dict(), f"Response data for {endpoint} does not match expected response model"
+    assert response_data == response_model.model_dump(), f"Response data for {endpoint} does not match expected response model"
 
 
-@pytest.mark.asyncio
+
 def test_xgboost_risk_prediction_with_invalid_data(client):
     """Test that risk prediction endpoint validates input data."""
     # Invalid data - missing required fields
