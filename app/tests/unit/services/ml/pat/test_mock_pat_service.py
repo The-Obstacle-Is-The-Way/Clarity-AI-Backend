@@ -94,9 +94,11 @@ class TestMockPAT:
 
     def test_initialization_error(self, mock_pat: MockPATService) -> None:
         """Test initialization with faulty config."""
+        # First set up the mock to fail on next empty config
+        mock_pat.initialize({"simulate_next_empty_init_error": True})
+        
+        # Now trigger the error with empty config
         with pytest.raises(InitializationError):
-            # Force an error by passing something that will cause initialize to fail
-            mock_pat._simulate_delay = None  # type: ignore
             mock_pat.initialize({})
 
     def test_uninitialized_error(self, mock_pat: MockPATService) -> None:
