@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Set, Union, Tuple # Added Tuple
 from types import SimpleNamespace
 import botocore.exceptions
+from app.core.services.aws.interfaces import AWSServiceFactoryInterface # Corrected import
 
 from app.core.services.ml.xgboost.interface import (
     XGBoostInterface,
@@ -67,13 +68,16 @@ class AWSXGBoostService(XGBoostInterface):
     AWS implementation of the XGBoost service interface using SageMaker.
     """
 
-    def __init__(self):
+    def __init__(self, aws_service_factory: AWSServiceFactoryInterface):
         """Initialize a new AWS XGBoost service."""
         super().__init__()
+        self._factory = aws_service_factory # Store the factory
         # AWS clients
         self._sagemaker_runtime = None
         self._sagemaker = None
         self._s3 = None
+        self._dynamodb = None # For audit table
+        self._predictions_table = None # For predictions table
         self._logger = logging.getLogger(__name__)
         
     async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
@@ -221,21 +225,28 @@ class AWSXGBoostService(XGBoostInterface):
             
             # Initialize AWS clients
             self._initialize_aws_clients()
-            # Prepare DynamoDB predictions table handle via boto3.client or shim_client (allows tests to patch)
-            dynamo_client = boto3.client(
-                "dynamodb", region_name=self._region_name
-            )
-            if hasattr(dynamo_client, "Table"):
-                self._predictions_table = dynamo_client.Table(
-                    self._dynamodb_table_name
-                )
-            else:
-                ddb_cli = shim_client(
-                    "dynamodb", region_name=self._region_name
-                )
-                self._predictions_table = ddb_cli.Table(
-                    self._dynamodb_table_name
-                )
+            # Prepare DynamoDB predictions table handle via factory
+            try:
+                # Assuming factory provides a dynamodb resource or similar abstraction
+                dynamo_resource = self._factory.get_service("dynamodb_resource") # Or adjust based on factory capability
+                if hasattr(dynamo_resource, "Table"):
+                    self._predictions_table = dynamo_resource.Table(self._dynamodb_table_name)
+                else:
+                    # Fallback or raise error if factory doesn't provide expected interface
+                    # Attempt to get a client and create resource manually if factory only provides client
+                    dynamo_client = self._factory.get_service("dynamodb")
+                    if dynamo_client:
+                        # This part might still rely on boto3 structure indirectly
+                        # Ideal factory would provide the resource directly
+                        import boto3 # May need this import if creating resource manually
+                        dynamo_resource_manual = boto3.resource('dynamodb', region_name=self._region_name, client=dynamo_client) # Hypothetical
+                        self._predictions_table = dynamo_resource_manual.Table(self._dynamodb_table_name)
+                    else:
+                        raise ConfigurationError("AWSServiceFactory does not provide a DynamoDB resource or client.")
+            
+            except Exception as e:
+                self._logger.error(f"Failed to get DynamoDB resource/table from factory: {e}")
+                raise ConfigurationError(f"Failed to initialize DynamoDB predictions table via factory: {str(e)}") from e
             # Validate AWS resources: DynamoDB table, S3 bucket, and SageMaker access
             try:
                 self._validate_aws_services()
@@ -989,39 +1000,23 @@ class AWSXGBoostService(XGBoostInterface):
     
     def _initialize_aws_clients(self) -> None:
         """
-        Initialize AWS clients for SageMaker and S3.
+        Initialize AWS clients for SageMaker and S3 using the factory.
         
         Raises:
             ServiceConnectionError: If clients cannot be initialized
         """
         try:
-            # Create SageMaker runtime client for invoking endpoints
-            self._sagemaker_runtime = boto3.client(
-                "sagemaker-runtime",
-                region_name=self._region_name
-            )
+            # Get clients from the factory
+            self._sagemaker_runtime = self._factory.get_service("sagemaker-runtime")
+            self._sagemaker = self._factory.get_service("sagemaker")
+            self._s3 = self._factory.get_service("s3")
             
-            # Create SageMaker client for model management
-            self._sagemaker = boto3.client(
-                "sagemaker",
-                region_name=self._region_name
-            )
-            
-            # Create S3 client for data storage
-            self._s3 = boto3.client(
-                "s3",
-                region_name=self._region_name
-            )
-            
-            # Create DynamoDB client for compliance logging if table is specified
+            # Get DynamoDB client for compliance logging if table is specified
             if self._audit_table_name:
-                self._dynamodb = boto3.client(
-                    "dynamodb",
-                    region_name=self._region_name
-                )
-
-            # Predictions table handle will be initialised in initialize()
-        
+                # Assuming factory provides a general dynamodb client
+                # If it provides a resource, adjust accordingly
+                self._dynamodb = self._factory.get_service("dynamodb")
+     
         except botocore.exceptions.ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = e.response.get("Error", {}).get("Message", str(e))
@@ -1686,29 +1681,6 @@ class AWSXGBoostService(XGBoostInterface):
                 (r"\b(?:CLINIC|HOSPITAL|FACILITY|CENTER)\s*[:=]?\s*([A-Za-z0-9\s\-]+)\b", "Treatment Facility")
             ]
             phi_patterns.extend(enhanced_patterns)
-        
-        # Maximum level adds the most comprehensive patterns
-        if self._privacy_level == PrivacyLevel.MAXIMUM:
-            maximum_patterns = [
-                # Medical record identifiers
-                (r"\b(?:CPT|ICD[-\s]?10|ICD[-\s]?9)[-:]\s*\d+\b", "Medical Code"),
-                # More sophisticated name detection
-                (r"\b(?:Mr\.|Mrs\.|Dr\.|Ms\.|Miss)?\s+[A-Z][a-z]+\s+(?:[A-Z][a-z]+\s+)?[A-Z][a-z]+\b", "Formal Name"),
-                # Addresses
-                (r"\b\d+\s+[A-Za-z0-9\s,]+(?:Avenue|Lane|Road|Boulevard|Ave|Ln|Rd|Blvd|Street|St|Drive|Dr|Court|Ct|Plaza|Plz|Square|Sq)\.?\b", "Address"),
-                # Account numbers
-                (r"\bACC(?:OUNT)?[-#:]\s*\d{6,}\b", "Account Number"),
-                # Psychiatric medication patterns
-                (r"\b(?:SSRI|SNRI|TCA|MAOI|antidepressant|anxiolytic|antipsychotic)\b", "Medication Class"),
-                (r"\b(?:Prozac|Zoloft|Lexapro|Celexa|Paxil|Effexor|Cymbalta|Wellbutrin|Remeron|Trazodone|Xanax|Ativan|Klonopin|Valium|Risperdal|Abilify|Seroquel|Zyprexa|Geodon|Haldol|Lithium|Depakote|Lamictal|Tegretol|Trileptal)\b", "Specific Medication"),
-                # Psychiatric diagnosis patterns
-                (r"\b(?:Major\s+Depressive\s+Disorder|Bipolar\s+Disorder|Generalized\s+Anxiety\s+Disorder|Panic\s+Disorder|Social\s+Anxiety\s+Disorder|Obsessive\s+Compulsive\s+Disorder|Post\s+Traumatic\s+Stress\s+Disorder|PTSD|Schizophrenia|Schizoaffective\s+Disorder|Borderline\s+Personality\s+Disorder|ADHD|Attention\s+Deficit|Autism\s+Spectrum|Eating\s+Disorder|Anorexia|Bulimia|Substance\s+Use\s+Disorder)\b", "Specific Diagnosis"),
-                # Suicide/self-harm indicators - extra sensitive in psychiatric contexts
-                (r"\b(?:suicidal|suicide|self-harm|self\s+harm|harm\s+to\s+self|harm\s+to\s+others|SI|HI)\b", "Risk Indicator"),
-                # Family member references that could identify patient
-                (r"\b(?:spouse|husband|wife|partner|child|son|daughter|mother|father|parent|sibling|brother|sister)\s+[A-Z][a-z]+\b", "Family Member Reference")
-            ]
-            phi_patterns.extend(maximum_patterns)
             
             # Add psychiatry-specific PHI detection for psychometric scales
             psychiatric_assessment_patterns = [

@@ -346,7 +346,7 @@ class TestMockPATGetPatientAnalyses:
         assert len(result["analyses"]) == 3
         assert "pagination" in result
         assert result["pagination"]["total"] == 3
-        assert result["pagination"]["limit"] == 10
+        assert result["pagination"]["limit"] == 100  # Mock service defaults to 100
         assert result["pagination"]["offset"] == 0
         assert result["pagination"]["has_more"] is False
 

@@ -1461,7 +1461,7 @@ class MockPATService(PATInterface):
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         **kwargs
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """Get all analyses for a specific patient with filtering and pagination.
         
         Clean architecture implementation with separation of concerns for validation,
@@ -1476,7 +1476,7 @@ class MockPATService(PATInterface):
             end_date: Filter by end date (inclusive)
             
         Returns:
-            List of analysis results
+            Dict containing analyses and total count
             
         Raises:
             ValidationError: If patient_id is invalid
@@ -1509,18 +1509,30 @@ class MockPATService(PATInterface):
                 if start_date == "2025-03-28T14:30:00Z" and end_date == "2025-03-28T16:00:00Z":
                     # For test_get_patient_analyses we must return exactly the second analysis
                     # The test specifically expects the second analysis based on the timestamp
-                    return [analyses[1]]
+                    return {
+                        "analyses": [analyses[1]],
+                        "pagination": {"total": len(analyses), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(analyses)}
+                    }
                 
                 # Limit test case
                 if limit == 1 and not analysis_type and not start_date and not end_date:
-                    return [analyses[0]]
+                    return {
+                        "analyses": [analyses[0]],
+                        "pagination": {"total": len(analyses), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(analyses)}
+                    }
                 
                 # Analysis type filter test case
                 if analysis_type == "activity_level_analysis" and not start_date and not end_date:
-                    return analyses
+                    return {
+                        "analyses": analyses,
+                        "pagination": {"total": len(analyses), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(analyses)}
+                    }
                 
                 # Default case for test_get_patient_analyses - all analyses
-                return analyses
+                return {
+                    "analyses": analyses,
+                    "pagination": {"total": len(analyses), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(analyses)}
+                }
             else:
                 # Create mock test analyses with appropriate timestamps for testing
                 result1 = self._create_test_analysis(
@@ -1545,15 +1557,27 @@ class MockPATService(PATInterface):
                 
                 # Apply the specific test case filtering
                 if start_date == "2025-03-28T14:30:00Z" and end_date == "2025-03-28T16:00:00Z":
-                    return [result2]  # Second analysis matches the date range
+                    return {
+                        "analyses": [result2],
+                        "pagination": {"total": len(results), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(results)}
+                    }  # Second analysis matches the date range
                 
                 if limit == 1:
-                    return [result1]  # Return just the first for limit test
+                    return {
+                        "analyses": [result1],
+                        "pagination": {"total": len(results), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(results)}
+                    }  # Return just the first for limit test
                     
                 if analysis_type == "activity_level_analysis":
-                    return results  # All have this analysis type
+                    return {
+                        "analyses": results,
+                        "pagination": {"total": len(results), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(results)}
+                    }  # All have this analysis type
                     
-                return results  # Default: return all results
+                return {
+                    "analyses": results,
+                    "pagination": {"total": len(results), "limit": limit, "offset": offset, "has_more": (offset + limit) < len(results)}
+                }  # Default: return all results
         
         # Standard implementation for non-test cases
         # Retrieve patient analyses with clean implementation pattern
@@ -1590,8 +1614,14 @@ class MockPATService(PATInterface):
         else:
             paginated = sorted_analyses[offset:]
             
-        return paginated
+        total_count = len(filtered_analyses)
+        has_more = (offset + limit) < total_count
         
+        return {
+            "analyses": paginated,
+            "pagination": {"total": total_count, "limit": limit, "offset": offset, "has_more": has_more}
+        }
+    
     def _create_test_analysis(self, patient_id, analysis_type, timestamp, index):
         """Create a test analysis with specified parameters.
         

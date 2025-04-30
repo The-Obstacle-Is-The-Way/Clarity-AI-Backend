@@ -10,9 +10,9 @@ import json
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
 import asyncio
+from app.core.services.aws.interfaces import AWSServiceFactoryInterface
 
 from app.core.interfaces.aws_service_interface import (
-    AWSServiceFactory,
     DynamoDBServiceInterface,
     S3ServiceInterface,
     SageMakerServiceInterface,
@@ -412,7 +412,7 @@ class MockAWSSessionService(AWSSessionServiceInterface):
         return "us-east-1"
 
 
-class MockAWSServiceFactory(AWSServiceFactory):
+class MockAWSServiceFactory(AWSServiceFactoryInterface):
     """Mock AWS service factory for testing."""
     
     def __init__(
@@ -445,37 +445,29 @@ class MockAWSServiceFactory(AWSServiceFactory):
         self.raise_on_missing_endpoint = raise_on_missing_endpoint
         self.validate_resources = validate_resources
     
-    def get_dynamodb_service(self) -> DynamoDBServiceInterface:
-        """Get the DynamoDB service implementation."""
-        return self.dynamodb_service
-    
-    def get_s3_service(self) -> S3ServiceInterface:
-        """Get the S3 service implementation."""
-        return self.s3_service
-    
-    def get_sagemaker_service(self) -> SageMakerServiceInterface:
-        """Get the SageMaker service implementation."""
-        return self.sagemaker_service
-    
-    def get_sagemaker_runtime_service(self) -> SageMakerRuntimeServiceInterface:
-        """Get the SageMaker runtime service implementation."""
-        return self.sagemaker_runtime_service
-    
-    def get_comprehend_medical_service(self) -> ComprehendMedicalServiceInterface:
-        """Get the Comprehend Medical service implementation."""
-        return self.comprehend_medical_service
-    
-    def get_bedrock_service(self) -> BedrockServiceInterface:
-        """Get the Bedrock service implementation."""
-        return self.bedrock_service
-    
-    def get_bedrock_runtime_service(self) -> BedrockRuntimeServiceInterface:
-        """Get the Bedrock runtime service implementation."""
-        return self.bedrock_runtime_service
-    
-    def get_session_service(self) -> AWSSessionServiceInterface:
-        """Get the AWS session service implementation."""
-        return self.session_service
+    def get_service(self, service_name: str) -> Any:
+        """Retrieves a mock AWS service client or resource."""
+        if service_name == "dynamodb":
+            return self.dynamodb_service
+        elif service_name == "dynamodb_resource":
+            # Mock factory returns the service instance, assuming it has Table method
+            return self.dynamodb_service
+        elif service_name == "s3":
+            return self.s3_service
+        elif service_name == "sagemaker":
+            return self.sagemaker_service
+        elif service_name == "sagemaker-runtime":
+            return self.sagemaker_runtime_service
+        elif service_name == "comprehendmedical":
+            return self.comprehend_medical_service
+        elif service_name == "bedrock":
+            return self.bedrock_service
+        elif service_name == "bedrock-runtime":
+            return self.bedrock_runtime_service
+        elif service_name == "session":
+            return self.session_service
+        else:
+            raise ValueError(f"Unknown service name requested from mock factory: {service_name}")
 
 
 class AsyncMock:
