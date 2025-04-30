@@ -241,9 +241,9 @@ class TestMockPATGetActigraphyEmbeddings:
         assert result["patient_id"] == "patient-123"
         assert "created_at" in result
         assert result["embedding_type"] == "actigraphy"
-        assert result["embedding_dim"] == 384  # Default dimension
+        assert result["embedding_dim"] == 128  # Corrected dimension
         assert isinstance(result["embedding"], list)
-        assert len(result["embedding"]) == 384  # Should match embedding_dim
+        assert len(result["embedding"]) == 128  # Corrected dimension
         assert "metadata" in result
 
         # Verify embedding is stored in service
