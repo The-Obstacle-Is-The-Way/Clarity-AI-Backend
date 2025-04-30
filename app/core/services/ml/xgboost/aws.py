@@ -74,6 +74,64 @@ class AWSXGBoostService(XGBoostInterface):
         self._sagemaker_runtime = None
         self._sagemaker = None
         self._s3 = None
+        self._logger = logging.getLogger(__name__)
+        
+    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+        """Generic prediction method required by MLServiceInterface.
+        
+        Args:
+            patient_id: ID of the patient
+            features: Dictionary of features for prediction
+            model_type: Type of model to use for prediction
+            **kwargs: Additional arguments for prediction
+            
+        Returns:
+            Dictionary with prediction results
+        """
+        # Choose the appropriate specialized prediction method based on model_type
+        if model_type.lower() == "risk":
+            risk_type = kwargs.get("risk_type", "general")
+            clinical_data = features
+            time_frame_days = kwargs.get("time_frame_days", 30)
+            
+            return await self.predict_risk(
+                patient_id=patient_id,
+                risk_type=risk_type,
+                clinical_data=clinical_data,
+                time_frame_days=time_frame_days
+            )
+            
+        elif model_type.lower() == "treatment_response":
+            treatment_type = kwargs.get("treatment_type", "medication")
+            treatment_details = kwargs.get("treatment_details", {})
+            clinical_data = features
+            
+            return await self.predict_treatment_response(
+                patient_id=patient_id,
+                treatment_type=treatment_type,
+                treatment_details=treatment_details,
+                clinical_data=clinical_data
+            )
+            
+        elif model_type.lower() == "outcome":
+            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe": "short_term"})
+            clinical_data = features
+            treatment_plan = kwargs.get("treatment_plan", {})
+            social_determinants = kwargs.get("social_determinants")
+            comorbidities = kwargs.get("comorbidities")
+            
+            return await self.predict_outcome(
+                patient_id=patient_id,
+                outcome_timeframe=outcome_timeframe,
+                clinical_data=clinical_data,
+                treatment_plan=treatment_plan,
+                social_determinants=social_determinants,
+                comorbidities=comorbidities
+            )
+            
+        else:
+            # Generic fallback prediction - in a real implementation, this would invoke the appropriate AWS endpoint
+            raise NotImplementedError(f"Prediction for model type '{model_type}' is not implemented")
         self._dynamodb = None
         # Configuration
         self._region_name = None
