@@ -95,46 +95,76 @@ class MockXGBoostService(XGBoostInterface):
         return await self.post_model_info_mock(model_data)
 
 @pytest.fixture
-def test_app(mock_xgboost_service, db_session, test_config) -> FastAPI:
-    """Create a FastAPI application instance with xgboost mocks for testing."""
+def test_app(mock_xgboost_service, db_session) -> FastAPI:
+    """Create a FastAPI application instance with xgboost mocks for testing.
+    
+    This implements a clean architecture approach with dependency injection for tests,
+    removing the need for complex middleware authentication in the test environment.
+    """
     # Configure test environment with standardized settings
     from app.tests.integration.utils.test_config import setup_test_environment
-    setup_test_environment()  # Set environment variables for consistent JWT validation
+    setup_test_environment()
     
-    # Define the override function for database
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        yield db_session
-
-    # Define the override function for XGBoost service
-    def override_get_xgboost_service() -> XGBoostInterface:
-        return mock_xgboost_service
-        
-    # Create app with consistent environment settings
-    from app.main import create_application 
+    # Create a base application with standard configuration
+    from app.main import create_application
     app = create_application()
     
-    # Import JWT service to override with test implementation
-    from app.presentation.api.dependencies.auth import get_jwt_service
-    from app.infrastructure.security.jwt.jwt_service import JWTService
+    # Override database dependency
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+        
+    # Override XGBoost service dependency
+    def override_get_xgboost_service() -> XGBoostInterface:
+        return mock_xgboost_service
     
-    # Create a test JWT service with the same configuration used for token generation
-    class TestSettings:
-        def __init__(self, config):
-            for key, value in config.items():
-                setattr(self, key, value)
+    # Import all auth dependencies we need to override
+    from app.presentation.api.dependencies.auth import (
+        get_current_user, 
+        verify_provider_access,
+        verify_admin_access,
+        get_jwt_service,
+        get_patient_id
+    )
     
-    # Override JWT service with one that uses our test configuration
-    def override_get_jwt_service():
-        test_settings = TestSettings(test_config)
-        return JWTService(settings=test_settings)
+    # Create test user with provider/clinician role
+    from app.domain.entities.user import User
+    from app.domain.enums.role import Role as UserRole
     
-    # Apply all necessary dependency overrides
-    app.dependency_overrides[get_db_dependency] = override_get_db
-    app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
-    app.dependency_overrides[get_jwt_service] = override_get_jwt_service
+    # Create a mock auth override that directly returns a user without JWT validation
+    async def override_get_current_user(*args, **kwargs):
+        return User(
+            id="00000000-0000-0000-0000-000000000002",
+            username="test_provider",
+            email="test.provider@novamind.ai",
+            role=UserRole.CLINICIAN.value,  # Use string value
+            roles=[UserRole.CLINICIAN.value, UserRole.PROVIDER.value],  # Use string values
+            is_active=True,
+            is_verified=True,
+            email_verified=True
+        )
     
-    yield app # Use yield for proper setup/teardown
-
+    # Create additional auth overrides
+    async def override_verify_provider_access(*args, **kwargs):
+        return None  # Provider access check always succeeds
+        
+    async def override_verify_admin_access(*args, **kwargs):
+        return None  # Admin access check always succeeds
+        
+    async def override_get_patient_id(*args, **kwargs):
+        return "00000000-0000-0000-0000-000000000001"  # Always return the test patient ID
+    
+    # Apply all dependency overrides
+    app.dependency_overrides.update({
+        get_db_dependency: override_get_db,
+        get_xgboost_service: override_get_xgboost_service,
+        get_current_user: override_get_current_user,
+        verify_provider_access: override_verify_provider_access,
+        verify_admin_access: override_verify_admin_access,
+        get_patient_id: override_get_patient_id
+    })
+    
+    yield app
+    
     # Clear overrides after test
     app.dependency_overrides.clear()
 
@@ -150,16 +180,23 @@ def mock_xgboost_service() -> MockXGBoostService:
     """Create a mock XGBoost service implementation."""
     return MockXGBoostService()
 
-# Use the standardized authentication fixtures from the root conftest.py
-# This ensures consistent authentication across all tests
+# Define auth headers using our test authentication bypass for clean testing architecture
+from app.tests.integration.utils.test_authentication import create_test_headers_for_role
+
 @pytest.fixture
-async def psychiatrist_auth_headers(provider_auth_headers: Dict[str, str]) -> Dict[str, str]:
-    """Use valid provider headers for psychiatrist role."""
-    return provider_auth_headers
+def psychiatrist_auth_headers() -> Dict[str, str]:
+    """Create authentication headers for test psychiatrist user via test bypass."""
+    return create_test_headers_for_role("CLINICIAN")
 
-# No need to redefine provider_auth_headers - use it directly from conftest.py
+@pytest.fixture
+def provider_auth_headers() -> Dict[str, str]:
+    """Create authentication headers for test provider user via test bypass."""
+    return create_test_headers_for_role("PROVIDER")
 
-# No need to redefine patient_auth_headers - use it directly from conftest.py
+@pytest.fixture
+def patient_auth_headers() -> Dict[str, str]:
+    """Create authentication headers for test patient user via test bypass."""
+    return create_test_headers_for_role("PATIENT")
 
 
 @pytest.fixture
