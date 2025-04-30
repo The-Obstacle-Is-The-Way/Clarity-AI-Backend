@@ -2,54 +2,211 @@
 Mock implementation of XGBoostService for testing.
 Provides synthetic predictions without requiring the actual XGBoost model.
 """
+import random
+import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple, Union, Optional, Any
 from uuid import UUID
 
-import random
-from unittest.mock import AsyncMock
-
-from app.domain.entities.digital_twin import BrainRegion, DigitalTwinState
-from app.domain.services.xgboost_service import XGBoostInterface
+from app.core.domain.entities.patient import Patient
+from app.core.domain.entities.user import User
+from app.core.services.ml.xgboost.interface import XGBoostInterface
 
 
 class MockXGBoostService(XGBoostInterface):
     """Mock implementation of the XGBoost service for testing.
     
-    This class is designed with clean architecture principles to ensure
-    separation of concerns and testability. It automatically wires
-    the actual interface methods to call their mock counterparts for testing.
+    This implementation provides synthetic predictions without requiring
+    the actual XGBoost model or AWS infrastructure.
     """
-
-    def __init__(self):
-        # Create mock methods for testing that will be callable from tests
-        self.predict_treatment_response_mock = AsyncMock()
-        self.forecast_symptom_progression_mock = AsyncMock()
-        self.identify_risk_factors_mock = AsyncMock()
+    
+    async def predict(self, patient_id: UUID, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+        """Generic prediction method required by MLServiceInterface.
         
-        # Set default return values for mocks if needed
-        self.predict_treatment_response_mock.return_value = self._generate_treatment_response()
-        self.forecast_symptom_progression_mock.return_value = self._generate_symptom_progression()
-        self.identify_risk_factors_mock.return_value = self._generate_risk_factors()
-        
-        # For testing in a clean architecture, we want to log service activities
-        self.call_log = []
-
-    async def predict_treatment_response(
+        Args:
+            patient_id: UUID of the patient
+            features: Dictionary of features for prediction
+            model_type: Type of model to use for prediction
+            **kwargs: Additional arguments for prediction
+            
+        Returns:
+            Dictionary with prediction results
+        """
+        # Choose the appropriate specialized prediction method based on model_type
+        if model_type.lower() == "risk":
+            risk_type = kwargs.get("risk_type", "general")
+            time_horizon = kwargs.get("time_horizon", "short_term")
+            digital_twin_state_id = kwargs.get("digital_twin_state_id", uuid.uuid4())
+            risk_factors = kwargs.get("risk_factors", ["relapse", "hospitalization"])
+            
+            return await self.predict_risk(
+                patient_id=patient_id,
+                digital_twin_state_id=digital_twin_state_id,
+                risk_factors=risk_factors,
+                time_horizon=time_horizon
+            )
+            
+        elif model_type.lower() == "treatment_response":
+            treatment_options = kwargs.get("treatment_options", [])
+            time_horizon = kwargs.get("time_horizon", "short_term")
+            digital_twin_state_id = kwargs.get("digital_twin_state_id", uuid.uuid4())
+            
+            return await self.predict_treatment_response(
+                patient_id=patient_id,
+                digital_twin_state_id=digital_twin_state_id,
+                treatment_options=treatment_options,
+                time_horizon=time_horizon
+            )
+            
+        elif model_type.lower() == "outcome":
+            outcomes = kwargs.get("outcomes", ["remission", "relapse"])
+            time_horizon = kwargs.get("time_horizon", "medium_term")
+            digital_twin_state_id = kwargs.get("digital_twin_state_id", uuid.uuid4())
+            with_treatment = kwargs.get("with_treatment")
+            
+            return await self.predict_outcomes(
+                patient_id=patient_id,
+                digital_twin_state_id=digital_twin_state_id,
+                outcomes=outcomes,
+                time_horizon=time_horizon,
+                with_treatment=with_treatment
+            )
+            
+        elif model_type.lower() == "symptom_progression":
+            symptoms = kwargs.get("symptoms", ["depression", "anxiety"])
+            time_points = kwargs.get("time_points", [7, 14, 30, 90])
+            digital_twin_state_id = kwargs.get("digital_twin_state_id", uuid.uuid4())
+            with_treatment = kwargs.get("with_treatment")
+            
+            return await self.forecast_symptom_progression(
+                patient_id=patient_id,
+                digital_twin_state_id=digital_twin_state_id,
+                symptoms=symptoms,
+                time_points=time_points,
+                with_treatment=with_treatment
+            )
+            
+        else:
+            # Generic fallback prediction
+            return {
+                "patient_id": str(patient_id),
+                "model_type": model_type,
+                "prediction_timestamp": datetime.now().isoformat(),
+                "predictions": {
+                    "value": round(random.uniform(0.1, 0.9), 2),
+                    "confidence": round(random.uniform(0.6, 0.9), 2)
+                },
+                "model_version": "mock-xgboost-v1.0"
+            }
+    
+    def __init__(self, seed: int = None):
+        if seed is not None:
+            random.seed(seed)
+    
+    async def predict_risk(
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        treatment_options: List[Dict],
-        time_horizon: str = "short_term"  # "short_term", "medium_term", "long_term"
+        risk_factors: List[str],
+        time_horizon: str
     ) -> Dict:
-        self.call_log.append("predict_treatment_response")
-        return await self.predict_treatment_response_mock(
-            patient_id,
-            digital_twin_state_id,
-            treatment_options,
-            time_horizon
-        )
-
+        """Generate mock risk predictions.
+        
+        Args:
+            patient_id: UUID of the patient
+            digital_twin_state_id: UUID of the current Digital Twin state
+            risk_factors: List of risk factors to predict
+            time_horizon: Time horizon for prediction (short_term, medium_term, long_term)
+            
+        Returns:
+            Dictionary with risk predictions
+        """
+        # Initialize response structure
+        response = {
+            "patient_id": str(patient_id),
+            "digital_twin_state_id": str(digital_twin_state_id),
+            "prediction_timestamp": datetime.now().isoformat(),
+            "time_horizon": time_horizon,
+            "risk_predictions": [],
+            "model_version": "mock-xgboost-v1.0",
+            "confidence_adjustment": 0.9 if time_horizon == "short_term" else 
+                                    0.7 if time_horizon == "medium_term" else 0.5
+        }
+        
+        # Generate synthetic predictions for each risk factor
+        for risk_factor in risk_factors:
+            risk_factor_lower = risk_factor.lower()
+            
+            # Initialize base risk and confidence
+            base_risk = random.uniform(0.2, 0.8)
+            confidence = random.uniform(0.6, 0.9)
+            
+            # Adjust based on time horizon
+            if time_horizon == "medium_term":
+                base_risk = min(base_risk * random.uniform(1.1, 1.3), 0.95)
+                confidence *= 0.9
+            elif time_horizon == "long_term":
+                base_risk = min(base_risk * random.uniform(1.2, 1.5), 0.95)
+                confidence *= 0.8
+            
+            # Create prediction entry
+            prediction = {
+                "risk_factor": risk_factor,
+                "probability": round(base_risk, 2),
+                "confidence": round(confidence, 2),
+                "contributing_factors": self._generate_contributing_factors(risk_factor_lower)
+            }
+            
+            response["risk_predictions"].append(prediction)
+        
+        return response
+        
+    def _generate_contributing_factors(self, risk_factor: str) -> List[Dict]:
+        """Generate mock contributing factors for a risk factor.
+        
+        Args:
+            risk_factor: The risk factor to generate contributing factors for
+            
+        Returns:
+            List of contributing factors
+        """
+        factors = []
+        
+        if "suicide" in risk_factor or "self_harm" in risk_factor:
+            factors = [
+                {"factor": "Previous suicide attempt", "contribution": round(random.uniform(0.3, 0.7), 2)},
+                {"factor": "Depression severity", "contribution": round(random.uniform(0.2, 0.5), 2)},
+                {"factor": "Social isolation", "contribution": round(random.uniform(0.1, 0.4), 2)},
+                {"factor": "Substance use", "contribution": round(random.uniform(0.1, 0.3), 2)},
+            ]
+        elif "relapse" in risk_factor or "recurrence" in risk_factor:
+            factors = [
+                {"factor": "Treatment adherence", "contribution": round(random.uniform(0.3, 0.6), 2)},
+                {"factor": "Stress level", "contribution": round(random.uniform(0.2, 0.5), 2)},
+                {"factor": "Sleep pattern", "contribution": round(random.uniform(0.1, 0.4), 2)},
+                {"factor": "Social support", "contribution": round(random.uniform(0.1, 0.3), 2)},
+            ]
+        elif "hospitalization" in risk_factor or "readmission" in risk_factor:
+            factors = [
+                {"factor": "Symptom severity", "contribution": round(random.uniform(0.3, 0.6), 2)},
+                {"factor": "Medication adherence", "contribution": round(random.uniform(0.2, 0.5), 2)},
+                {"factor": "Previous hospitalizations", "contribution": round(random.uniform(0.2, 0.4), 2)},
+                {"factor": "Outpatient follow-up", "contribution": round(random.uniform(0.1, 0.3), 2)},
+            ]
+        else:
+            # Generic factors
+            factors = [
+                {"factor": "Symptom severity", "contribution": round(random.uniform(0.2, 0.5), 2)},
+                {"factor": "Treatment engagement", "contribution": round(random.uniform(0.1, 0.4), 2)},
+                {"factor": "Support system", "contribution": round(random.uniform(0.1, 0.3), 2)},
+            ]
+        
+        # Randomize a bit to avoid same numbers every time
+        for factor in factors:
+            factor["contribution"] = round(factor["contribution"] * random.uniform(0.9, 1.1), 2)
+        
+        return factors
+    
     async def forecast_symptom_progression(
         self,
         patient_id: UUID,
@@ -58,29 +215,118 @@ class MockXGBoostService(XGBoostInterface):
         time_points: List[int],  # days into the future
         with_treatment: Optional[Dict] = None
     ) -> Dict:
-        self.call_log.append("forecast_symptom_progression")
-        return await self.forecast_symptom_progression_mock(
-            patient_id,
-            digital_twin_state_id,
-            symptoms,
-            time_points,
-            with_treatment
-        )
-
-    async def identify_risk_factors(
+        """Forecast symptom progression over time with or without treatment.
+        
+        Args:
+            patient_id: UUID of the patient
+            digital_twin_state_id: UUID of the current Digital Twin state
+            symptoms: List of symptoms to forecast
+            time_points: List of time points (in days) for forecasting
+            with_treatment: Optional treatment to consider in forecast
+            
+        Returns:
+            Dictionary with symptom trajectories and confidence intervals
+        """
+        # Initialize response structure
+        response = {
+            "patient_id": str(patient_id),
+            "digital_twin_state_id": str(digital_twin_state_id),
+            "prediction_timestamp": datetime.now().isoformat(),
+            "forecast_days": max(time_points),
+            "symptom_trajectories": [],
+            "model_version": "mock-xgboost-v1.0"
+        }
+        
+        has_treatment = with_treatment is not None
+        treatment_type = with_treatment.get("type", "unknown") if has_treatment else None
+        treatment_name = with_treatment.get("name", "Unknown Treatment") if has_treatment else None
+        
+        # Generate trajectories for each symptom
+        for symptom in symptoms:
+            symptom_lower = symptom.lower()
+            
+            # Start with current severity (between 0.5-0.9)
+            current_severity = random.uniform(0.5, 0.9)
+            
+            # Determine if treatment helps this symptom
+            treatment_effect = 0.0
+            if has_treatment:
+                if treatment_type == "medication":
+                    # Medications have stronger effect on mood/anxiety, less on cognitive symptoms
+                    if "mood" in symptom_lower or "depress" in symptom_lower or "anxiety" in symptom_lower:
+                        treatment_effect = random.uniform(0.3, 0.5)
+                    else:
+                        treatment_effect = random.uniform(0.1, 0.3)
+                elif treatment_type == "therapy":
+                    # Therapy has balanced effects across symptoms
+                    treatment_effect = random.uniform(0.2, 0.4)
+                else:
+                    # Generic treatment
+                    treatment_effect = random.uniform(0.1, 0.3)
+            
+            # Generate trajectory points
+            trajectory = []
+            for day in time_points:
+                # Natural symptom progression (slightly worsening without treatment)
+                if not has_treatment:
+                    # Symptoms generally worsen slightly over time without treatment
+                    natural_change = day * random.uniform(0.001, 0.003)
+                    severity = min(current_severity + natural_change, 1.0)
+                else:
+                    # Treatment gradually improves symptoms
+                    # Most treatments take 2-4 weeks to show effect
+                    if day < 14:
+                        effect_ratio = day / 14.0  # Gradual increase in effect
+                    else:
+                        effect_ratio = 1.0  # Full effect after 2 weeks
+                    
+                    treatment_impact = treatment_effect * effect_ratio
+                    severity = max(current_severity - treatment_impact, 0.1)
+                
+                # Add some noise to make it realistic
+                severity = max(0.1, min(1.0, severity + random.uniform(-0.05, 0.05)))
+                
+                # Calculate confidence interval (wider as we go further in time)
+                ci_width = 0.05 + (day / max(time_points)) * 0.15
+                
+                trajectory.append({
+                    "day": day,
+                    "severity": round(severity, 2),
+                    "confidence_interval": [
+                        round(max(0.0, severity - ci_width), 2),
+                        round(min(1.0, severity + ci_width), 2)
+                    ]
+                })
+            
+            # Create trajectory entry
+            symptom_trajectory = {
+                "symptom": symptom,
+                "with_treatment": has_treatment,
+                "treatment_details": with_treatment if has_treatment else None,
+                "trajectory": trajectory
+            }
+            
+            response["symptom_trajectories"].append(symptom_trajectory)
+        
+        return response
+    
+    async def predict_treatment_response(
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        target_outcome: str
-    ) -> List[Dict]:
-        self.call_log.append("identify_risk_factors")
-        return await self.identify_risk_factors_mock(
-            patient_id,
-            digital_twin_state_id,
-            target_outcome
-        )
-
-    def _generate_treatment_response(self):
+        treatment_options: List[Dict],
+        time_horizon: str
+    ) -> Dict:
+        """Predict response to different treatment options.
+        
+        Args:
+            patient_id: UUID of the patient
+            digital_twin_state_id: UUID of the current Digital Twin state
+            treatment_options: List of treatment options to consider
+            time_horizon: Time horizon for prediction (short_term, medium_term, long_term)
+            
+        Returns:
+            Dictionary with treatment response predictions
         """
         # Initialize response structure
         response = {
@@ -147,298 +393,102 @@ class MockXGBoostService(XGBoostInterface):
         
         return response
     
-    async def forecast_symptom_progression(
+    async def predict_outcomes(
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        symptoms: List[str],
-        time_points: List[int],  # days into the future
+        outcomes: List[str],
+        time_horizon: str,
         with_treatment: Optional[Dict] = None
     ) -> Dict:
-        """
-        Forecast symptom progression over time with or without treatment.
+        """Predict clinical outcomes with or without treatment.
         
         Args:
             patient_id: UUID of the patient
             digital_twin_state_id: UUID of the current Digital Twin state
-            symptoms: List of symptoms to forecast
-            time_points: List of time points (in days) for forecasting
-            with_treatment: Optional treatment to consider in forecast
+            outcomes: List of outcomes to predict
+            time_horizon: Time horizon for prediction
+            with_treatment: Optional treatment to include in prediction
             
         Returns:
-            Dictionary with symptom trajectories and confidence intervals
+            Dictionary with outcome predictions
         """
         # Initialize response structure
         response = {
             "patient_id": str(patient_id),
             "digital_twin_state_id": str(digital_twin_state_id),
-            "forecast_timestamp": datetime.now().isoformat(),
-            "time_points": time_points,
-            "with_treatment": with_treatment is not None,
-            "treatment_details": with_treatment if with_treatment else None,
-            "symptom_trajectories": [],
+            "prediction_timestamp": datetime.now().isoformat(),
+            "time_horizon": time_horizon,
+            "outcome_predictions": [],
             "model_version": "mock-xgboost-v1.0"
         }
         
-        # Generate trajectories for each symptom
-        for symptom in symptoms:
-            # Random starting severity (0-10 scale)
-            current_severity = random.uniform(5.0, 8.0)
+        has_treatment = with_treatment is not None
+        treatment_type = with_treatment.get("type", "unknown") if has_treatment else None
+        treatment_name = with_treatment.get("name", "Unknown Treatment") if has_treatment else None
+        
+        # Time horizon affects base probabilities
+        if time_horizon == "short_term":  # 1-3 months
+            base_modifier = 0.3
+            confidence = random.uniform(0.7, 0.9)
+        elif time_horizon == "medium_term":  # 3-6 months
+            base_modifier = 0.5
+            confidence = random.uniform(0.6, 0.8)
+        else:  # long term: 6-12 months
+            base_modifier = 0.7
+            confidence = random.uniform(0.5, 0.7)
+        
+        # Generate predictions for each outcome
+        for outcome in outcomes:
+            outcome_lower = outcome.lower()
             
-            # Treatment effect modifier
-            treatment_effect = 0
-            if with_treatment:
-                treatment_type = with_treatment.get("type", "")
-                if "medication" in treatment_type:
-                    treatment_effect = -0.1  # Medications reduce severity faster
-                elif "therapy" in treatment_type:
-                    treatment_effect = -0.05  # Therapy reduces severity more gradually
+            # Base probability depends on the outcome type
+            if "remission" in outcome_lower or "recovery" in outcome_lower:
+                # Treatment improves chance of remission
+                base_prob = random.uniform(0.3, 0.5) if has_treatment else random.uniform(0.1, 0.3)
+                base_prob += base_modifier * 0.3  # More likely over time
+            elif "relapse" in outcome_lower or "recurrence" in outcome_lower:
+                # Treatment reduces chance of relapse
+                base_prob = random.uniform(0.2, 0.4) if has_treatment else random.uniform(0.4, 0.7)
+                base_prob += base_modifier * 0.2  # More likely over time
+            elif "hospitalization" in outcome_lower or "admission" in outcome_lower:
+                # Treatment reduces chance of hospitalization
+                base_prob = random.uniform(0.05, 0.2) if has_treatment else random.uniform(0.15, 0.35)
+                base_prob += base_modifier * 0.1  # Slightly more likely over time
+            elif "functional" in outcome_lower or "recovery" in outcome_lower:
+                # Treatment improves functional recovery
+                base_prob = random.uniform(0.4, 0.7) if has_treatment else random.uniform(0.2, 0.4)
+                base_prob += base_modifier * 0.3  # Much more likely over time
+            else:
+                # Generic outcome
+                base_prob = random.uniform(0.3, 0.6) if has_treatment else random.uniform(0.2, 0.4)
+                base_prob += base_modifier * 0.2  # More likely over time
             
-            # Generate forecast points
-            forecast_points = []
-            confidence_intervals = []
+            # Ensure probability is in valid range
+            probability = min(max(base_prob, 0.05), 0.95)
             
-            for day in time_points:
-                # Calculate expected severity change
-                # Without treatment: slight natural improvement over time
-                # With treatment: faster improvement
-                natural_change = -0.02 * day
-                treatment_change = treatment_effect * day if with_treatment else 0
-                
-                # Add some randomness to make it realistic
-                random_factor = random.uniform(-0.5, 0.5)
-                
-                # Calculate forecast severity, ensuring it stays in 0-10 range
-                forecast_severity = max(0, min(10, current_severity + natural_change + treatment_change + random_factor))
-                
-                # Wider confidence intervals for later predictions
-                ci_width = 0.5 + (day / 30) * 1.5
-                lower_bound = max(0, forecast_severity - ci_width)
-                upper_bound = min(10, forecast_severity + ci_width)
-                
-                # Add to forecast points
-                forecast_points.append({
-                    "day": day,
-                    "severity": round(forecast_severity, 2)
-                })
-                
-                confidence_intervals.append({
-                    "day": day,
-                    "lower_bound": round(lower_bound, 2),
-                    "upper_bound": round(upper_bound, 2),
-                    "confidence_level": 0.9
-                })
+            # Generate prediction
+            prediction = {
+                "outcome": outcome,
+                "probability": round(probability, 2),
+                "confidence": round(confidence, 2),
+                "with_treatment": has_treatment,
+                "treatment_details": with_treatment if has_treatment else None,
+                "contributing_factors": self._generate_contributing_factors(outcome_lower)
+            }
             
-            # Add symptom trajectory to response
-            response["symptom_trajectories"].append({
-                "symptom": symptom,
-                "forecast_points": forecast_points,
-                "confidence_intervals": confidence_intervals
-            })
+            response["outcome_predictions"].append(prediction)
         
         return response
     
-    async def identify_risk_factors(
-        self,
-        patient_id: UUID,
-        digital_twin_state_id: UUID,
-        target_outcome: str
-    ) -> List[Dict]:
-        """
-        Identify risk factors for a specific outcome based on the Digital Twin state.
-        
-        Args:
-            patient_id: UUID of the patient
-            digital_twin_state_id: UUID of the current Digital Twin state
-            target_outcome: Specific outcome to analyze risk factors for
-            
-        Returns:
-            List of risk factors with importance scores and confidence levels
-        """
-        # Generate synthetic risk factors based on target outcome
-        risk_factors = []
-        
-        if "depression" in target_outcome.lower() or "mood" in target_outcome.lower():
-            risk_factors = [
-                {
-                    "factor": "Sleep Disruption",
-                    "importance_score": round(random.uniform(0.7, 0.9), 2),
-                    "confidence": round(random.uniform(0.75, 0.9), 2),
-                    "description": "Irregular sleep patterns contribute significantly to mood disorders.",
-                    "actionable": True,
-                    "related_brain_regions": ["HYPOTHALAMUS", "PREFRONTAL_CORTEX"]
-                },
-                {
-                    "factor": "Social Isolation",
-                    "importance_score": round(random.uniform(0.6, 0.85), 2),
-                    "confidence": round(random.uniform(0.7, 0.85), 2),
-                    "description": "Reduced social interaction is associated with increased depressive symptoms.",
-                    "actionable": True,
-                    "related_brain_regions": ["INSULA", "ANTERIOR_CINGULATE"]
-                },
-                {
-                    "factor": "Physical Inactivity",
-                    "importance_score": round(random.uniform(0.5, 0.8), 2),
-                    "confidence": round(random.uniform(0.7, 0.85), 2),
-                    "description": "Low levels of physical activity correlate with higher depression risk.",
-                    "actionable": True,
-                    "related_brain_regions": ["HIPPOCAMPUS"]
-                }
-            ]
-        elif "anxiety" in target_outcome.lower():
-            risk_factors = [
-                {
-                    "factor": "Catastrophic Thinking",
-                    "importance_score": round(random.uniform(0.7, 0.9), 2),
-                    "confidence": round(random.uniform(0.75, 0.9), 2),
-                    "description": "Tendency to assume worst outcomes contributes to anxiety.",
-                    "actionable": True,
-                    "related_brain_regions": ["AMYGDALA", "PREFRONTAL_CORTEX"]
-                },
-                {
-                    "factor": "Avoidance Behaviors",
-                    "importance_score": round(random.uniform(0.65, 0.85), 2),
-                    "confidence": round(random.uniform(0.7, 0.85), 2),
-                    "description": "Avoidance of anxiety-provoking situations reinforces anxiety patterns.",
-                    "actionable": True,
-                    "related_brain_regions": ["AMYGDALA", "ANTERIOR_CINGULATE"]
-                },
-                {
-                    "factor": "Irregular Breathing Patterns",
-                    "importance_score": round(random.uniform(0.5, 0.7), 2),
-                    "confidence": round(random.uniform(0.6, 0.8), 2),
-                    "description": "Shallow, irregular breathing can trigger or worsen anxiety symptoms.",
-                    "actionable": True,
-                    "related_brain_regions": ["INSULA"]
-                }
-            ]
-        else:
-            # Generic risk factors
-            risk_factors = [
-                {
-                    "factor": "Stress Levels",
-                    "importance_score": round(random.uniform(0.6, 0.85), 2),
-                    "confidence": round(random.uniform(0.7, 0.85), 2),
-                    "description": "Elevated stress levels impact multiple health outcomes.",
-                    "actionable": True,
-                    "related_brain_regions": ["AMYGDALA", "PREFRONTAL_CORTEX"]
-                },
-                {
-                    "factor": "Sleep Quality",
-                    "importance_score": round(random.uniform(0.55, 0.8), 2),
-                    "confidence": round(random.uniform(0.7, 0.85), 2),
-                    "description": "Sleep quality affects cognitive function and emotional regulation.",
-                    "actionable": True,
-                    "related_brain_regions": ["HYPOTHALAMUS", "PREFRONTAL_CORTEX"]
-                }
-            ]
-        
-        return risk_factors
-    
-    async def calculate_feature_importance(
-        self,
-        patient_id: UUID,
-        digital_twin_state_id: UUID,
-        prediction_type: str
-    ) -> List[Dict]:
-        """
-        Calculate feature importance for a specific prediction type.
-        
-        Args:
-            patient_id: UUID of the patient
-            digital_twin_state_id: UUID of the current Digital Twin state
-            prediction_type: Type of prediction to explain
-            
-        Returns:
-            List of features with importance scores using SHAP values
-        """
-        # Generate synthetic feature importance scores
-        feature_importance = []
-        
-        base_features = [
-            "Sleep Quality",
-            "Physical Activity Level",
-            "Social Interaction Frequency",
-            "Medication Adherence",
-            "Stress Level",
-            "Cognitive Function",
-            "Emotional Regulation",
-            "Nutritional Status"
-        ]
-        
-        # Assign random importance scores
-        total_importance = 0
-        raw_scores = []
-        
-        for feature in base_features:
-            # Random score between 0 and 1
-            score = random.uniform(0.1, 1.0)
-            raw_scores.append((feature, score))
-            total_importance += score
-        
-        # Normalize scores to sum to 1
-        for feature, score in raw_scores:
-            normalized_score = score / total_importance
-            
-            feature_importance.append({
-                "feature_name": feature,
-                "importance_score": round(normalized_score, 3),
-                "direction": "positive" if random.random() > 0.3 else "negative",
-                "confidence": round(random.uniform(0.7, 0.9), 2),
-                "description": f"Impact of {feature.lower()} on {prediction_type}."
-            })
-        
-        # Sort by importance (descending)
-        feature_importance.sort(key=lambda x: x["importance_score"], reverse=True)
-        
-        return feature_importance
-    
-    async def generate_brain_region_activations(
-        self,
-        patient_id: UUID,
-        digital_twin_state_id: UUID
-    ) -> Dict[BrainRegion, float]:
-        """
-        Generate activation levels for brain regions based on the Digital Twin state.
-        
-        Args:
-            patient_id: UUID of the patient
-            digital_twin_state_id: UUID of the current Digital Twin state
-            
-        Returns:
-            Dictionary mapping brain regions to activation levels (0.0 to 1.0)
-        """
-        # Generate synthetic activation levels for all brain regions
-        activations = {}
-        
-        for region in BrainRegion:
-            # Generate random activation level between 0.3 and 0.9
-            activation_level = random.uniform(0.3, 0.9)
-            activations[region] = round(activation_level, 2)
-        
-        # Increase some correlations that would make neurological sense
-        # (e.g., if amygdala is highly active, anterior cingulate might be too)
-        if activations[BrainRegion.AMYGDALA] > 0.7:
-            activations[BrainRegion.ANTERIOR_CINGULATE] = min(
-                0.9, activations[BrainRegion.ANTERIOR_CINGULATE] + 0.2
-            )
-        
-        if activations[BrainRegion.PREFRONTAL_CORTEX] < 0.5:
-            activations[BrainRegion.AMYGDALA] = min(
-                0.9, activations[BrainRegion.AMYGDALA] + 0.15
-            )
-        
-        return activations
-    
-    async def compare_treatment_options(
+    async def compare_treatments(
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
         treatment_options: List[Dict],
         evaluation_metrics: List[str]
     ) -> List[Tuple[Dict, Dict]]:
-        """
-        Compare multiple treatment options based on predicted outcomes.
+        """Compare multiple treatment options based on predicted outcomes.
         
         Args:
             patient_id: UUID of the patient
@@ -449,6 +499,7 @@ class MockXGBoostService(XGBoostInterface):
         Returns:
             List of tuples with treatment option and evaluation results
         """
+        # Initialize results
         results = []
         
         for treatment in treatment_options:

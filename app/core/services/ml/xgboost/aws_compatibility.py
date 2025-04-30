@@ -39,6 +39,21 @@ class AWSXGBoostService(XGBoostInterface):
     def __init__(self):
         """Initialize the compatibility layer to use the definitive implementation."""
         super().__init__()
+        
+    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+        """Generic prediction method required by MLServiceInterface.
+        
+        Args:
+            patient_id: ID of the patient
+            features: Dictionary of features for prediction
+            model_type: Type of model to use for prediction
+            **kwargs: Additional arguments for prediction
+            
+        Returns:
+            Dictionary with prediction results
+        """
+        # Delegate to the canonical implementation
+        return await get_service_instance().predict(patient_id, features, model_type, **kwargs)
         self._impl = get_service_instance()
         self._initialized = self._impl.is_initialized
         logger.info("AWS XGBoost compatibility layer initialized, using definitive implementation")

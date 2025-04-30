@@ -197,6 +197,87 @@ class MockXGBoostService(XGBoostInterface):
                 del self._observers[event_key]
             self._logger.debug(f"Observer unregistered for event type {event_type}")
     
+    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+        """
+        Generic prediction method required by MLServiceInterface.
+        
+        Args:
+            patient_id: ID of the patient
+            features: Dictionary of features for prediction
+            model_type: Type of model to use for prediction
+            **kwargs: Additional arguments for prediction
+            
+        Returns:
+            Dictionary with prediction results
+        """
+        # Choose the appropriate specialized prediction method based on model_type
+        if model_type.lower() == "risk":
+            risk_type = kwargs.get("risk_type", "general")
+            clinical_data = features
+            time_frame_days = kwargs.get("time_frame_days", 30)
+            
+            return await self.predict_risk(
+                patient_id=patient_id,
+                risk_type=risk_type,
+                clinical_data=clinical_data,
+                time_frame_days=time_frame_days
+            )
+            
+        elif model_type.lower() == "treatment_response":
+            treatment_type = kwargs.get("treatment_type", "medication")
+            treatment_details = kwargs.get("treatment_details", {})
+            clinical_data = features
+            
+            return await self.predict_treatment_response(
+                patient_id=patient_id,
+                treatment_type=treatment_type,
+                treatment_details=treatment_details,
+                clinical_data=clinical_data
+            )
+            
+        elif model_type.lower() == "outcome":
+            outcome_timeframe = kwargs.get("outcome_timeframe", {"timeframe": "short_term"})
+            clinical_data = features
+            treatment_plan = kwargs.get("treatment_plan", {})
+            social_determinants = kwargs.get("social_determinants")
+            comorbidities = kwargs.get("comorbidities")
+            
+            return await self.predict_outcome(
+                patient_id=patient_id,
+                outcome_timeframe=outcome_timeframe,
+                clinical_data=clinical_data,
+                treatment_plan=treatment_plan,
+                social_determinants=social_determinants,
+                comorbidities=comorbidities
+            )
+            
+        else:
+            # Generic fallback prediction
+            self._simulate_processing_delay()
+            prediction_id = str(uuid.uuid4())
+            
+            result = {
+                "prediction_id": prediction_id,
+                "patient_id": patient_id,
+                "model_type": model_type,
+                "timestamp": datetime.now().isoformat(),
+                "result": {
+                    "score": round(random.uniform(0.1, 0.9), 2),
+                    "confidence": round(random.uniform(0.6, 0.9), 2),
+                    "explanation": f"Generic mock prediction for model type: {model_type}"
+                },
+                "model_info": {
+                    "name": f"mock_{model_type.lower()}_model",
+                    "version": "1.0.0",
+                    "last_updated": datetime.now().isoformat()
+                }
+            }
+            
+            # Store the prediction
+            self._predictions[prediction_id] = result
+            
+            return result
+    
     async def predict_risk(
         self,
         patient_id: str,
