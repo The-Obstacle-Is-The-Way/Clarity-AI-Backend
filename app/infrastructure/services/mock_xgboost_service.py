@@ -7,17 +7,34 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import random
+from unittest.mock import AsyncMock
 
 from app.domain.entities.digital_twin import BrainRegion, DigitalTwinState
-from app.domain.services.xgboost_service import XGBoostService
+from app.domain.services.xgboost_service import XGBoostInterface
 
 
-class MockXGBoostService(XGBoostService):
-    """
-    Mock implementation of XGBoostService.
-    Generates synthetic predictions for testing and development.
-    """
+class MockXGBoostService(XGBoostInterface):
+    """Mock implementation of the XGBoost service for testing.
     
+    This class is designed with clean architecture principles to ensure
+    separation of concerns and testability. It automatically wires
+    the actual interface methods to call their mock counterparts for testing.
+    """
+
+    def __init__(self):
+        # Create mock methods for testing that will be callable from tests
+        self.predict_treatment_response_mock = AsyncMock()
+        self.forecast_symptom_progression_mock = AsyncMock()
+        self.identify_risk_factors_mock = AsyncMock()
+        
+        # Set default return values for mocks if needed
+        self.predict_treatment_response_mock.return_value = self._generate_treatment_response()
+        self.forecast_symptom_progression_mock.return_value = self._generate_symptom_progression()
+        self.identify_risk_factors_mock.return_value = self._generate_risk_factors()
+        
+        # For testing in a clean architecture, we want to log service activities
+        self.call_log = []
+
     async def predict_treatment_response(
         self,
         patient_id: UUID,
@@ -25,17 +42,45 @@ class MockXGBoostService(XGBoostService):
         treatment_options: List[Dict],
         time_horizon: str = "short_term"  # "short_term", "medium_term", "long_term"
     ) -> Dict:
-        """
-        Predict response to treatment options based on Digital Twin state.
-        
-        Args:
-            patient_id: UUID of the patient
-            digital_twin_state_id: UUID of the current Digital Twin state
-            treatment_options: List of treatment options to evaluate
-            time_horizon: Time horizon for prediction
-            
-        Returns:
-            Dictionary with treatment response predictions and confidence scores
+        self.call_log.append("predict_treatment_response")
+        return await self.predict_treatment_response_mock(
+            patient_id,
+            digital_twin_state_id,
+            treatment_options,
+            time_horizon
+        )
+
+    async def forecast_symptom_progression(
+        self,
+        patient_id: UUID,
+        digital_twin_state_id: UUID,
+        symptoms: List[str],
+        time_points: List[int],  # days into the future
+        with_treatment: Optional[Dict] = None
+    ) -> Dict:
+        self.call_log.append("forecast_symptom_progression")
+        return await self.forecast_symptom_progression_mock(
+            patient_id,
+            digital_twin_state_id,
+            symptoms,
+            time_points,
+            with_treatment
+        )
+
+    async def identify_risk_factors(
+        self,
+        patient_id: UUID,
+        digital_twin_state_id: UUID,
+        target_outcome: str
+    ) -> List[Dict]:
+        self.call_log.append("identify_risk_factors")
+        return await self.identify_risk_factors_mock(
+            patient_id,
+            digital_twin_state_id,
+            target_outcome
+        )
+
+    def _generate_treatment_response(self):
         """
         # Initialize response structure
         response = {

@@ -28,6 +28,61 @@ class MockXGBoostService(XGBoostInterface):
         self._features = {}  # Store feature importance data
         self._initialized = True
     
+    async def predict(self, patient_id: Any, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+        """
+        Required implementation of the generic predict method from MLServiceInterface.
+        This is a unified entry point that delegates to specific prediction methods based on model_type.
+        
+        Args:
+            patient_id: Patient identifier (can be UUID or string)
+            features: Dictionary of input features for prediction
+            model_type: Type of model to use for prediction
+            **kwargs: Additional model-specific parameters
+            
+        Returns:
+            Dictionary containing prediction results
+        """
+        # Convert UUID to string if needed
+        patient_id_str = str(patient_id) if hasattr(patient_id, 'hex') else patient_id
+        
+        # Map model type to specific prediction method
+        if 'risk' in model_type.lower():
+            return await self.predict_risk(
+                patient_id=patient_id_str,
+                risk_type=model_type,
+                clinical_data=features,
+                **kwargs
+            )
+        elif 'treatment' in model_type.lower():
+            treatment_details = kwargs.get('treatment_details', {})
+            return await self.predict_treatment_response(
+                patient_id=patient_id_str,
+                treatment_type=model_type,
+                treatment_details=treatment_details,
+                clinical_data=features
+            )
+        elif 'outcome' in model_type.lower():
+            treatment_plan = kwargs.get('treatment_plan', {})
+            outcome_timeframe = kwargs.get('outcome_timeframe', {'weeks': 12})
+            return await self.predict_outcome(
+                patient_id=patient_id_str,
+                outcome_timeframe=outcome_timeframe,
+                clinical_data=features,
+                treatment_plan=treatment_plan,
+                social_determinants=kwargs.get('social_determinants'),
+                comorbidities=kwargs.get('comorbidities')
+            )
+        else:
+            # Default fallback for unknown model types
+            return {
+                "prediction_id": f"generic-{uuid.uuid4()}",
+                "patient_id": patient_id_str,
+                "model_type": model_type,
+                "prediction": round(random.uniform(0.1, 0.9), 2),
+                "confidence": round(random.uniform(0.7, 0.95), 2),
+                "timestamp": datetime.now().isoformat()
+            }
+    
     async def predict_risk(
         self, 
         patient_id: str, 
