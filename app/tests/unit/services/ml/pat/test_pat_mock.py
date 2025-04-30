@@ -40,6 +40,7 @@ def valid_device_info():
     return {
         "device_type": "Actigraph wGT3X-BT",
         "manufacturer": "Actigraph",
+        "model": "wGT3X-BT",  # Added missing model key
         "placement": "wrist",
     }
 
@@ -242,8 +243,8 @@ class TestMockPATGetActigraphyEmbeddings:
         assert "created_at" in result
         assert result["embedding_type"] == "actigraphy"
         assert result["embedding_dim"] == 128  # Corrected dimension
-        assert isinstance(result["embedding"], list)
-        assert len(result["embedding"]) == 128  # Corrected dimension
+        assert isinstance(result["embedding_vector"], list) # Check the vector list
+        assert len(result["embedding_vector"]) == 128  # Check the vector list length
         assert "metadata" in result
 
         # Verify embedding is stored in service

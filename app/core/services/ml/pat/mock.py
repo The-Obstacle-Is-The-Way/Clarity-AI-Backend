@@ -975,6 +975,11 @@ class MockPATService(PATInterface):
         if not device_info or not isinstance(device_info, dict):
             raise ValidationError("Device info must be a non-empty dictionary")
             
+        # Check for required keys within device_info
+        required_device_keys = ['manufacturer', 'model']
+        if not all(key in device_info for key in required_device_keys):
+            raise ValidationError(f"Device info must contain required keys: {required_device_keys}")
+            
         # Validation for analysis_types
         if not analysis_types or not isinstance(analysis_types, list) or len(analysis_types) == 0:
             raise ValidationError("At least one analysis type must be specified")
@@ -982,16 +987,15 @@ class MockPATService(PATInterface):
         # Validate analysis types against supported types
         self._validate_analysis_types(analysis_types)
             
-        # Validate readings length
-        if not readings or len(readings) < 10:  # We need at least 10 readings for valid analysis
-            # Use the specific error type from pat.exceptions for test compatibility
-            from app.core.services.ml.pat.exceptions import ValidationError as PATValidationError
-            raise PATValidationError("At least 10 readings are required for analysis")
-            
-        # Validate reading format
+        # Validate readings list is not empty for analysis
+        if not readings:
+            raise ValidationError("Readings list cannot be empty for analysis")
+
+        # Validate reading format (only if list is not empty)
         for reading in readings:
-            if not all(key in reading for key in ['x', 'y', 'z']):
-                raise ValidationError("All readings must contain x, y, and z values")
+            # Ensure reading is a dictionary before checking keys
+            if not isinstance(reading, dict) or not all(key in reading for key in ['x', 'y', 'z']):
+             raise ValidationError("All readings must be dictionaries and contain x, y, and z keys")
                 
     def _validate_analysis_types(self, analysis_types: List[str]) -> None:
         """Validate that analysis types are supported.

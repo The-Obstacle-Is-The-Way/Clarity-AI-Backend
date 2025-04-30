@@ -103,7 +103,7 @@ class TestMockPAT:
             start_time=start_time.isoformat(),
             end_time=end_time.isoformat(),
             sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
+            device_info={"device_type": "fitbit", "manufacturer": "Fitbit", "model": "versa-3"},
             analysis_types=["sleep_quality", "activity_levels"]
         )
 
@@ -168,7 +168,7 @@ class TestMockPAT:
             start_time=start_time.isoformat(),
             end_time=end_time.isoformat(),
             sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
+            device_info={"device_type": "fitbit", "manufacturer": "Fitbit", "model": "versa-3"},
             analysis_types=["sleep_quality"]
         )
 
@@ -199,7 +199,7 @@ class TestMockPAT:
             start_time=start_time1.isoformat(),
             end_time=end_time1.isoformat(),
             sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
+            device_info={"device_type": "fitbit", "manufacturer": "Fitbit", "model": "versa-3"},
             analysis_types=["sleep_quality"]
         )
 
@@ -209,7 +209,7 @@ class TestMockPAT:
             start_time=start_time2.isoformat(),
             end_time=end_time2.isoformat(),
             sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
+            device_info={"device_type": "fitbit", "manufacturer": "Fitbit", "model": "versa-3"},
             analysis_types=["activity_levels"]
         )
 
@@ -292,7 +292,7 @@ class TestBedrockPAT:
             start_time=start_time.isoformat(),
             end_time=end_time.isoformat(),
             sampling_rate_hz=10.0,
-            device_info={"device_type": "fitbit", "model": "versa-3"},
+            device_info={"device_type": "fitbit", "manufacturer": "Fitbit", "model": "versa-3"},
             analysis_types=["sleep_quality"]
         )
 
