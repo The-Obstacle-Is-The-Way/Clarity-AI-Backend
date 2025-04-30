@@ -197,12 +197,22 @@ def setup_routers() -> APIRouter:
         if is_testing:
             # In test mode, use the test-specific router that matches test expectations
             try:
+                import sys
+                import os
+                # Debug the import path to help troubleshoot
+                print(f"Python path during import: {sys.path}")
+                print(f"Current directory: {os.getcwd()}")
+                print(f"TESTING environment variable: {os.environ.get('TESTING')}")
+                
+                # Use absolute import path for better reliability
                 from app.presentation.api.routers.ml.test_xgboost_router import router as test_xgboost_router
+                
                 # Note: for tests, the router already has the api/v1 prefix built in
                 main_api_router.include_router(test_xgboost_router)
-                print("Using test-specific XGBoost router for testing environment.")
-            except (ModuleNotFoundError, ImportError):
-                print("Test XGBoost router not found, falling back to standard router.")
+                print(f"Successfully included test_xgboost_router with routes: {[route.path for route in test_xgboost_router.routes]}")
+            except (ModuleNotFoundError, ImportError) as import_error:
+                print(f"Test XGBoost router not found, error details: {import_error}")
+                print("Falling back to standard router.")
                 main_api_router.include_router(
                     get_router("xgboost"),
                     prefix="/xgboost",
