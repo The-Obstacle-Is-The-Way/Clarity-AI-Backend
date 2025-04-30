@@ -39,16 +39,22 @@ class MockPATService(PATInterface):
     """
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """Initialize the MockPATService."""
+        # Constructor, following DI principle
         self._initialized = False
-        self._config = config or {}
+        self._config = {}
         self._mock_delay_ms = 0  # Default mock delay
         self._assessments = {}
         self._form_templates = {}
-        self.analyses = {}
-        self._embeddings = {}
-        self._patients_analyses = {}
+        self._analyses = {}  # Private storage for analyses
+        self._patients_analyses = {}  # Add patients_analyses dict for test compatibility
+        self._embeddings = {}  # Add embeddings dict for test compatibility
+        self._profiles = {}  # Add profiles dictionary for digital twin tests
         self._integrations = {}  # Add _integrations dictionary to store integration results
+        
+        # Public properties for tests to access
+        self.analyses = self._analyses
+        self.embeddings = self._embeddings
+        self.profiles = self._profiles
         
         # Setup default templates for testing
         self._setup_mock_templates()
@@ -795,19 +801,69 @@ class MockPATService(PATInterface):
         
         return result
         
-            raise ValidationError("Sampling rate must be positive")
+    def _validate_actigraphy_inputs(self, patient_id, readings, sampling_rate_hz, device_info, analysis_types):
+        """Validate all input parameters for actigraphy analysis.
+        
+        Args:
+            patient_id: Patient identifier
+            readings: List of actigraphy readings
+            sampling_rate_hz: Sampling rate in Hz
+            device_info: Device information dictionary
+            analysis_types: List of analysis types to perform
             
+        Raises:
+            ValidationError: If any validation fails
+        """
+        # Validation for patient_id
+        if not patient_id:
+            raise ValidationError("Patient ID is required")
+            
+        # Validation for sampling_rate
+        if sampling_rate_hz <= 0:
+            raise ValidationError("Sampling rate must be positive")
+        
+        # Validation for device_info    
         if not device_info or not isinstance(device_info, dict):
             raise ValidationError("Device info must be a non-empty dictionary")
             
-        # More lenient validation for device_info - must have at least one of required fields
-        required_device_fields = ["device_type", "manufacturer", "model"]
-        if not any(field in device_info for field in required_device_fields):
-            raise ValidationError(f"Device info must contain at least one of these fields: {', '.join(required_device_fields)}")
+        # Validation for analysis_types
+        if not analysis_types or not isinstance(analysis_types, list) or len(analysis_types) == 0:
+            raise ValidationError("At least one analysis type must be specified")
             
-        if not analysis_types or not isinstance(analysis_types, list):
-            raise ValidationError("Analysis types must be a non-empty list")
+        # Validate analysis types against supported types
+        self._validate_analysis_types(analysis_types)
             
+        # Validate readings length
+        if not readings or len(readings) < 10:  # We need at least 10 readings for valid analysis
+            # Use the specific error type from pat.exceptions for test compatibility
+            from app.core.services.ml.pat.exceptions import ValidationError as PATValidationError
+            raise PATValidationError("At least 10 readings are required for analysis")
+            
+        # Validate reading format
+        for reading in readings:
+            if not all(key in reading for key in ['x', 'y', 'z']):
+                raise ValidationError("All readings must contain x, y, and z values")
+                
+    def _validate_analysis_types(self, analysis_types: List[str]) -> None:
+        """Validate that analysis types are supported.
+        
+        Args:
+            analysis_types: List of analysis types to validate
+            
+        Raises:
+            ValidationError: If any analysis type is not supported
+        """
+        # Get list of supported analysis types
+        valid_types = self.get_analysis_types()
+        
+        # Check each type against supported types
+        for analysis_type in analysis_types:
+            if analysis_type not in valid_types:
+                supported_types_str = ", ".join(valid_types)
+                raise ValidationError(
+                    f"Invalid analysis type: {analysis_type}. Must be one of: {supported_types_str}"
+                )
+
         # Validate each analysis type
         valid_analysis_types = self.get_analysis_types()
         for analysis_type in analysis_types:
@@ -826,7 +882,7 @@ class MockPATService(PATInterface):
             "awake_time": 30
         }
         
-    def _generate_activity_levels(self) -> Dict[str, float]:
+    def _generate_activity_levels(self) -> Dict[str, Any]:
         """Generate mock activity level metrics.
         
         Returns:
@@ -836,7 +892,10 @@ class MockPATService(PATInterface):
             "sedentary": 65,
             "light": 20,
             "moderate": 10,
-            "vigorous": 5
+            "vigorous": 5,
+            "total_steps": 8500,  # Required by test_analyze_actigraphy_success
+            "distance_km": 6.2,
+            "calories_burned": 420
         }
         
     def _generate_circadian_rhythm(self) -> Dict[str, Any]:
@@ -1032,21 +1091,18 @@ class MockPATService(PATInterface):
         sampling_rate_hz: float,
         **kwargs
     ) -> Dict[str, Any]:
-        """Generate embeddings from actigraphy readings.
-        
-        This method creates vector embeddings from actigraphy data that can be used
-        for machine learning applications like clustering or anomaly detection.
+        """Generate embeddings from actigraphy data.
         
         Args:
-            patient_id: Unique identifier for the patient
-            readings: List of accelerometer readings
-            start_time: ISO-8601 formatted start time
-            end_time: ISO-8601 formatted end time
-            sampling_rate_hz: Sampling rate in Hz
+            patient_id: The patient's unique identifier
+            readings: List of actigraphy readings with x,y,z values
+            start_time: Start time of the readings in ISO format
+            end_time: End time of the readings in ISO format
+            sampling_rate_hz: The rate at which readings were collected
             **kwargs: Additional parameters for future extensibility
             
         Returns:
-            Dictionary containing embedding vector and metadata
+            Dictionary containing embedding information
             
         Raises:
             ValidationError: If input validation fails
@@ -1054,25 +1110,43 @@ class MockPATService(PATInterface):
         """
         self._check_initialized()
         
-        # Use the common validation logic for basic inputs
-        self._validate_embedding_inputs(patient_id, readings, sampling_rate_hz)
+        # Validate core inputs but skip analysis_types validation which isn't needed for embeddings
+        if not patient_id:
+            raise ValidationError("Patient ID is required")
             
-        # Generate a unique ID for this embedding
-        embedding_id = str(uuid.uuid4())
+        if sampling_rate_hz <= 0:
+            raise ValidationError("Sampling rate must be positive")
+            
+        # Validate readings length
+        if not readings or len(readings) < 10:  # We need at least 10 readings for valid analysis
+            from app.core.services.ml.pat.exceptions import ValidationError as PATValidationError
+            raise PATValidationError("At least 10 readings are required for embeddings")
+            
+        # Validate reading format
+        for reading in readings:
+            if not all(key in reading for key in ['x', 'y', 'z']):
+                raise ValidationError("All readings must contain x, y, and z values")
         
-        # Generate mock embedding vector with 128 dimensions to match test expectations
-        embedding_vector = self._generate_mock_embedding_vector(dimensions=128)
+        # Generate unique ID and timestamp
+        embedding_id = str(uuid.uuid4())
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
-        # Data summary for context about the source data
+        # Create embedding vector - MUST BE CONSISTENT FOR TEST COMPARISON
+        # For deterministic results in tests, use a fixed seed based on patient_id
+        # This ensures we get repeatable results for the same inputs
+        seed_value = sum(ord(c) for c in patient_id) if patient_id else 42
+        np.random.seed(seed_value)
+        
+        # Generate exactly 128 dimensions as required by tests
+        dimension = 128
+        embedding_vector = [float(round(x, 6)) for x in np.random.normal(0, 0.1, dimension).tolist()]
+        
+        # Create data summary
         data_summary = {
+            "readings_count": len(readings),
             "start_time": start_time,
             "end_time": end_time,
-            "readings_count": len(readings),
-            "sampling_rate_hz": sampling_rate_hz,
-            "dimensions": 384,
-            "avg_magnitude": 0.7,
-            "max_magnitude": 1.0
+            "sampling_rate_hz": sampling_rate_hz
         }
         
         # Create a structured response that matches test expectations
@@ -1100,11 +1174,11 @@ class MockPATService(PATInterface):
             }
         }
         
-        # Store the embedding for later retrieval
+        # Store the embedding in the embeddings dictionary for later retrieval
         self._embeddings[embedding_id] = result
+        self.embeddings[embedding_id] = result
         
         return result
-        
     def _validate_embedding_inputs(
         self, 
         patient_id: str,
@@ -1330,6 +1404,7 @@ class MockPATService(PATInterface):
             "created_at": "2023-09-01T12:00:00Z",
             "description": "Patient Assessment Tool ML Model",
             "type": "actigraphy_analysis",
+            "provider": "mock",  # Required by test_get_model_info - must be exactly 'mock'
             
             # Capabilities section
             "capabilities": [
@@ -1466,7 +1541,18 @@ class MockPATService(PATInterface):
             "updated_profile": updated_profile,
             "status": "completed",
             "integration_status": "success",  # Field required by test_integrate_with_digital_twin_success
-            "integration_results": integration_results
+            "integration_results": integration_results,
+            "integrated_profile": {  # Required by test_integrate_with_digital_twin_success
+                "id": profile_id,
+                "patient_id": patient_id,
+                "updated_at": timestamp,
+                "activity_level": "moderate",
+                "sleep_quality": "good",
+                "insights": {
+                    "activity": "moderate activity levels detected",
+                    "sleep": "sleep patterns are generally good"
+                }
+            }
         }
         
         # Store the integration for later retrieval
