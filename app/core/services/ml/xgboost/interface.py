@@ -169,3 +169,4 @@ class PrivacyLevel(str, Enum):
     STANDARD = "standard"
     ENHANCED = "enhanced"
     MAXIMUM = "maximum"
+    STRICT = "strict"  # Added for test compatibility

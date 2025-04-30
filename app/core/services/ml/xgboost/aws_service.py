@@ -19,6 +19,7 @@ import botocore.exceptions
 from app.domain.utils.datetime_utils import UTC, now_utc
 
 from app.core.interfaces.aws_service_interface import AWSServiceFactory
+from app.core.services.aws.interfaces import AWSServiceFactoryInterface
 from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
 
 from app.core.services.ml.xgboost.interface import (
@@ -51,7 +52,7 @@ class AWSXGBoostService(XGBoostInterface):
     with clean architecture principles and SOLID design.
     """
 
-    def __init__(self, aws_service_factory: Optional[AWSServiceFactory] = None):
+    def __init__(self, aws_service_factory: Optional[AWSServiceFactoryInterface] = None):
         """
         Initialize a new AWS XGBoost service.
         
@@ -59,6 +60,8 @@ class AWSXGBoostService(XGBoostInterface):
             aws_service_factory: Factory for AWS services (optional, will use default if None)
         """
         super().__init__()
+        self._aws_factory = aws_service_factory
+        self._factory = aws_service_factory  # Alias for compatibility with both naming conventions
         self._logger = logging.getLogger(__name__)
         
     async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
@@ -590,7 +593,7 @@ class AWSXGBoostService(XGBoostInterface):
         
         try:
             # Get SageMaker endpoints
-            sagemaker = self._aws_factory.get_sagemaker_service()
+            sagemaker = self._aws_factory.get_service("sagemaker")
             response = sagemaker.list_endpoints()
             
             # Filter for XGBoost endpoints
@@ -1210,10 +1213,11 @@ class AWSXGBoostService(XGBoostInterface):
             ServiceConnectionError: If clients cannot be created
         """
         try:
-            self._sagemaker = self._aws_factory.get_sagemaker_service()
-            self._sagemaker_runtime = self._aws_factory.get_sagemaker_runtime_service()
-            self._s3 = self._aws_factory.get_s3_service()
-            self._dynamodb = self._aws_factory.get_dynamodb_service()
+            # Use factory's get_service method with appropriate service names
+            self._sagemaker = self._aws_factory.get_service("sagemaker")
+            self._sagemaker_runtime = self._aws_factory.get_service("sagemaker-runtime")
+            self._s3 = self._aws_factory.get_service("s3")
+            self._dynamodb = self._aws_factory.get_service("dynamodb")
         except Exception as e:
             self._logger.error(f"Failed to initialize AWS clients: {e}")
             raise ServiceConnectionError(
