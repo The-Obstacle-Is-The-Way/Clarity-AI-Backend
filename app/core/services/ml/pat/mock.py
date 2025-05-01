@@ -1413,6 +1413,9 @@ class MockPATService(PATInterface):
         limit: Optional[int] = None,
         offset: Optional[int] = None
     ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+        # Set default values for pagination
+        limit = 10 if limit is None else limit
+        offset = 0 if offset is None else offset
         """Get analyses for a specific patient with optional filtering.
         
         Args:
@@ -1569,7 +1572,10 @@ class MockPATService(PATInterface):
         return [result1, result2]
         
     def _prepare_response(self, analyses: List[Dict[str, Any]], total: int, 
-                          limit: int, offset: int) -> Dict[str, Any]:
+                          limit: Optional[int] = None, offset: Optional[int] = None) -> Dict[str, Any]:
+        # Ensure limit and offset have valid values
+        limit = 10 if limit is None else limit
+        offset = 0 if offset is None else offset
         """Prepare a standardized response for analyses list endpoints.
         
         This helper method ensures consistent response format for all

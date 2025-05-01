@@ -27,11 +27,20 @@ def initialized_mock_pat():
 
 @pytest.fixture
 def valid_readings():
-    """Create a list of valid accelerometer readings for testing."""
+    """Create a list of valid accelerometer readings for testing (at least 10 as required)."""
     return [
         {"x": 0.1, "y": 0.2, "z": 0.9},
         {"x": 0.2, "y": 0.3, "z": 0.8},
         {"x": 0.3, "y": 0.4, "z": 0.7},
+        {"x": 0.2, "y": 0.1, "z": 0.6},
+        {"x": 0.3, "y": 0.2, "z": 0.5}, 
+        {"x": 0.4, "y": 0.3, "z": 0.4},
+        {"x": 0.5, "y": 0.4, "z": 0.3},
+        {"x": 0.6, "y": 0.5, "z": 0.2},
+        {"x": 0.7, "y": 0.6, "z": 0.1},
+        {"x": 0.8, "y": 0.7, "z": 0.0},
+        {"x": 0.9, "y": 0.8, "z": 0.1},
+        {"x": 1.0, "y": 0.9, "z": 0.2}
     ]
 
 @pytest.fixture
