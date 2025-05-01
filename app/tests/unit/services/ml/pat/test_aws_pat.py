@@ -102,8 +102,9 @@ def mock_comprehend_medical_client():
                 'BeginOffset': 14, 'EndOffset': 22
             },
             {
+                # Adjusted BeginOffset from 32 to 33 to exclude leading space
                 'Text': '123 Main St.', 'Type': 'ADDRESS', 'Score': 0.98, 
-                'BeginOffset': 32, 'EndOffset': 44
+                'BeginOffset': 33, 'EndOffset': 44 
             }
         ]
     }

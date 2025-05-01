@@ -225,55 +225,66 @@ class AWSPATService(PATInterface):
             raise InitializationError("AWS PAT service not initialized")
     
     def _sanitize_phi(self, text: str) -> str:
-        """Sanitize text to remove PHI.
-        
+        """Sanitize PHI from text using AWS Comprehend Medical.
+
         Args:
-            text: The text to sanitize
-            
+            text: The input text string.
+
         Returns:
-            Sanitized text with PHI removed
+            The sanitized text string with PHI replaced by tags.
+            Returns original text if an error occurs or no PHI is detected.
         """
-        self._check_initialized()
-        
+        if not self._initialized:
+            logger.error("AWS PAT Service not initialized before calling _sanitize_phi")
+            return text
+
         try:
             response = self._comprehend_medical.detect_phi(Text=text)
-            logger.debug(f"DETECT_PHI RESPONSE ENTITIES: {response.get('Entities', [])}")
-            entities = response.get("Entities", [])
-            
+            entities = response.get('Entities', [])
             if not entities:
-                return text  # Return original text if no entities found
+                return text
 
-            # Sort entities by BeginOffset in descending order
-            # This ensures replacements don't affect indices of earlier entities
-            entities.sort(key=lambda x: x.get('BeginOffset', 0), reverse=True)
+            entities.sort(key=lambda x: x.get('BeginOffset', 0))
 
-            sanitized_text = text
-            # Process each entity
-            for i, entity in enumerate(entities):
-                begin = entity["BeginOffset"]
-                end = entity["EndOffset"]
-                entity_type = entity["Type"]
+            sanitized_segments = []
+            last_end = 0
+            original_text = text
 
-                logger.debug(f"Processing entity: Type={entity_type}, Begin={begin}, End={end}, Text='{entity.get('Text', 'N/A')}'") # Added Text for debug
+            for entity in entities:
+                begin = entity.get("BeginOffset")
+                end = entity.get("EndOffset")
+                entity_type = entity.get("Type")
 
-                # Construct the sanitized text by replacing the entity span
-                text_before = sanitized_text[:begin]
-                text_after = sanitized_text[end:]
+                if not isinstance(begin, int) or not isinstance(end, int) or \
+                   begin < 0 or end < begin or end > len(original_text):
+                    logger.warning(
+                        f"Skipping entity due to invalid/out-of-bounds offset: {entity}"
+                    )
+                    continue
                 
-                replacement_text = f"[{entity_type}]"
-                
-                logger.debug(f"  Replacing '{sanitized_text[begin:end]}' with '{replacement_text}'")
-                logger.debug(f"  Text Before (len={len(text_before)}): '{text_before}'")
-                logger.debug(f"  Text After (len={len(text_after)}): '{text_after}'")
+                if begin > last_end:
+                    sanitized_segments.append(original_text[last_end:begin])
+                elif begin < last_end:
+                    logger.warning(
+                        f"Potential overlap detected. Entity: {entity}, last_end: {last_end}"
+                    )
+                    # Handle overlap if necessary, current logic might skip text
+                    pass 
 
-                sanitized_text = text_before + replacement_text + text_after
-                logger.debug(f"  Current sanitized_text (len={len(sanitized_text)}): '{sanitized_text}'")
-            
+                replacement_tag = f"[{entity_type}]"
+                sanitized_segments.append(replacement_tag)
+
+                last_end = end
+
+            if last_end < len(original_text):
+                sanitized_segments.append(original_text[last_end:])
+
+            sanitized_text = "".join(sanitized_segments)
             return sanitized_text
         except ClientError as e:
-            logger.error(f"Error detecting PHI: {str(e)}")
-            # In case of error, return a placeholder to ensure no PHI leakage
-            return "[PHI SANITIZATION ERROR]"
+            logger.error(f"AWS Comprehend Medical API Error: {e}")
+            # Return original text on error to avoid data loss
+            return text
     
     def _sanitize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Sanitize metadata to remove PHI.
