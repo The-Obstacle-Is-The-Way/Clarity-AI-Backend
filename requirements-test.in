@@ -18,6 +18,9 @@ faker>=18.10.1
 freezegun
 httpx
 qrcode
+moto[s3,dynamodb,bedrock,iam,sts,kms,sqs]
+# For one-time password generation in MFA tests
+pyotp
 
 # YAML parsing (used in conftest)
 pyyaml>=6.0

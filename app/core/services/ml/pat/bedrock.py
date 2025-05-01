@@ -8,6 +8,7 @@ from app.domain.utils.datetime_utils import UTC
 from typing import Optional, List, Any, Union, Tuple # Added Tuple here
 from unittest.mock import MagicMock
 from botocore.exceptions import ClientError
+from dateutil.parser import parse # Added missing import
 from app.core.exceptions import (
     InitializationError,
     InvalidConfigurationError,

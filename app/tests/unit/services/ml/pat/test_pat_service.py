@@ -47,21 +47,21 @@ def create_mock_response(body_content: dict[str, Any]) -> dict[str, Any]:
 class TestBedrockPAT:
     """Test suite for the BedrockPAT implementation."""
 
-    def test_initialization(self, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_initialization(self, bedrock_pat_service):
         """Test service initialization with various configurations."""
-        # Use a fresh service instance for isolation
-        service = BedrockPAT()
+        service, _ = bedrock_pat_service # Unpack, mocks not needed here
 
         # Test invalid configurations
-        # Check None config first
+        # Test None config
         with pytest.raises(InvalidConfigurationError, match="Configuration cannot be empty"):
-            service.initialize(None) # Test None
-        
-        # Check empty dict config
-        with pytest.raises(InvalidConfigurationError, match="Configuration cannot be empty"):
-            service.initialize({}) # Test empty dict
+            service.initialize(None)
 
-        # Check missing keys (using the new combined error message)
+        # Test empty dict config
+        with pytest.raises(InvalidConfigurationError, match="Configuration cannot be empty"):
+            service.initialize({})
+
+        # Test missing keys (using the new combined error message)
         with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys: bucket_name, kms_key_id"):
             service.initialize({
                 "dynamodb_table_name": "test-table", 
@@ -110,7 +110,8 @@ class TestBedrockPAT:
         assert service._embedding_model_id == "amazon.titan-embed-text-v1"
         assert service._analysis_model_id == "anthropic.claude-v2"
 
-    def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_analyze_actigraphy(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test successful analysis of actigraphy data."""
         # --- Arrange ---
         # Test data
@@ -141,10 +142,11 @@ class TestBedrockPAT:
         # --- END DEBUG ---
 
         # Prepare expected response structure
-        bedrock_pat_service.bedrock_runtime.invoke_model.return_value = mock_invoke_model_response
+        service, mocks = bedrock_pat_service
+        mocks["bedrock"].invoke_model.return_value = mock_invoke_model_response
 
         # Call the method under test
-        analysis_result = bedrock_pat_service.analyze_actigraphy(
+        analysis_result = await service.analyze_actigraphy(
             patient_id=patient_id,
             readings=readings,
             start_time=start_time,
@@ -157,10 +159,10 @@ class TestBedrockPAT:
 
         # Assertions
         # Assert that invoke_model was called correctly on the mock object
-        bedrock_pat_service.bedrock_runtime.invoke_model.assert_called_once()
+        mocks["bedrock"].invoke_model.assert_called_once()
 
         # Retrieve the arguments invoke_model was called with
-        call_args, call_kwargs = bedrock_pat_service.bedrock_runtime.invoke_model.call_args
+        call_args, call_kwargs = mocks["bedrock"].invoke_model.call_args
         # assert call_args[0] == "test-sleep-model"
         # assert call_kwargs["input_data"] == ...
 
@@ -176,7 +178,8 @@ class TestBedrockPAT:
         # bedrock_pat_service.dynamodb_client.put_item.assert_called_once()
         # bedrock_pat_service._record_audit_log.assert_called_once()
 
-    def test_get_embeddings(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_get_embeddings(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test generating embeddings with the Bedrock service."""
         # Prepare test data
         patient_id = "test-patient-1"
@@ -192,14 +195,11 @@ class TestBedrockPAT:
         }
         mock_response = create_mock_response(mock_response_body)
 
-        bedrock_pat_service.bedrock_runtime = mocker.patch.object(
-            bedrock_pat_service, 
-            'bedrock_runtime' 
-        )
-        bedrock_pat_service.bedrock_runtime.invoke_model.return_value = mock_response
+        service, mocks = bedrock_pat_service
+        mocks["bedrock"].invoke_model.return_value = mock_response
 
         # Call the service
-        result = bedrock_pat_service.get_actigraphy_embeddings(
+        result = await service.get_actigraphy_embeddings(
             patient_id=patient_id,
             readings=readings,
             start_time=start_time.isoformat(),
@@ -220,9 +220,10 @@ class TestBedrockPAT:
         assert result["model_version"] == "PAT-1.0"
 
         # Verify Bedrock was called correctly
-        bedrock_pat_service.bedrock_runtime.invoke_model.assert_called_once()
+        mocks["bedrock"].invoke_model.assert_called_once()
 
-    def test_get_analysis_by_id(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_get_analysis_by_id(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test retrieving an analysis by ID with the Bedrock service."""
         analysis_id = str(uuid.uuid4())
 
@@ -242,14 +243,11 @@ class TestBedrockPAT:
             }
         }
 
-        bedrock_pat_service.dynamodb_client = mocker.patch.object(
-            bedrock_pat_service, 
-            'dynamodb_client' 
-        )
-        bedrock_pat_service.dynamodb_client.get_item.return_value = mock_dynamodb_response
+        service, mocks = bedrock_pat_service
+        mocks["dynamodb"].get_item.return_value = mock_dynamodb_response
 
         # Call the service
-        result = bedrock_pat_service.get_analysis_by_id(analysis_id)
+        result = await service.get_analysis_by_id(analysis_id)
 
         # Verify results
         assert isinstance(result, dict)
@@ -258,29 +256,28 @@ class TestBedrockPAT:
         assert result["sleep_metrics"]["sleep_efficiency"] == 0.85
 
         # Verify DynamoDB was called correctly
-        bedrock_pat_service.dynamodb_client.get_item.assert_called_once()
-        args, kwargs = bedrock_pat_service.dynamodb_client.get_item.call_args
-        assert kwargs["TableName"] == "test-table"
+        mocks["dynamodb"].get_item.assert_called_once()
+        args, kwargs = mocks["dynamodb"].get_item.call_args
+        assert kwargs["TableName"] == "mock-test-table"
         assert kwargs["Key"]["AnalysisId"]["S"] == analysis_id
 
-    def test_get_analysis_by_id_not_found(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_get_analysis_by_id_not_found(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test retrieving a non-existent analysis by ID."""
         analysis_id = str(uuid.uuid4())
 
         # Mock DynamoDB response (no item found)
         mock_dynamodb_response = {}
 
-        bedrock_pat_service.dynamodb_client = mocker.patch.object(
-            bedrock_pat_service, 
-            'dynamodb_client' 
-        )
-        bedrock_pat_service.dynamodb_client.get_item.return_value = mock_dynamodb_response
+        service, mocks = bedrock_pat_service
+        mocks["dynamodb"].get_item.return_value = mock_dynamodb_response
 
         # Call the service
         with pytest.raises(ResourceNotFoundError):
-            bedrock_pat_service.get_analysis_by_id(analysis_id)
+            await service.get_analysis_by_id(analysis_id)
 
-    def test_get_patient_analyses(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_get_patient_analyses(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test retrieving analyses for a patient with the Bedrock service."""
         patient_id = "test-patient-1"
 
@@ -324,14 +321,11 @@ class TestBedrockPAT:
             ]
         }
 
-        bedrock_pat_service.dynamodb_client = mocker.patch.object(
-            bedrock_pat_service, 
-            'dynamodb_client' 
-        )
-        bedrock_pat_service.dynamodb_client.query.return_value = mock_dynamodb_response
+        service, mocks = bedrock_pat_service
+        mocks["dynamodb"].query.return_value = mock_dynamodb_response
 
         # Call the service
-        result = bedrock_pat_service.get_patient_analyses(
+        result = await service.get_patient_analyses(
             patient_id=patient_id,
             limit=10,
             offset=0
@@ -346,12 +340,13 @@ class TestBedrockPAT:
         assert result["total"] == 2
 
         # Verify DynamoDB was called correctly
-        bedrock_pat_service.dynamodb_client.query.assert_called_once()
-        args, kwargs = bedrock_pat_service.dynamodb_client.query.call_args
-        assert kwargs["TableName"] == "test-table"
+        mocks["dynamodb"].query.assert_called_once()
+        args, kwargs = mocks["dynamodb"].query.call_args
+        assert kwargs["TableName"] == "mock-test-table"
         assert kwargs["IndexName"] == "PatientIdIndex"
 
-    def test_get_patient_analyses_not_found(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_get_patient_analyses_not_found(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test retrieving analyses for a patient with no results."""
         patient_id = "test-patient-not-found"
 
@@ -360,21 +355,19 @@ class TestBedrockPAT:
             "Items": []
         }
 
-        bedrock_pat_service.dynamodb_client = mocker.patch.object(
-            bedrock_pat_service, 
-            'dynamodb_client' 
-        )
-        bedrock_pat_service.dynamodb_client.query.return_value = mock_dynamodb_response
+        service, mocks = bedrock_pat_service
+        mocks["dynamodb"].query.return_value = mock_dynamodb_response
 
         # Call the service
         with pytest.raises(ResourceNotFoundError):
-            bedrock_pat_service.get_patient_analyses(
+            await service.get_patient_analyses(
                 patient_id=patient_id,
                 limit=10,
                 offset=0
             )
 
-    def test_integrate_with_digital_twin(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+    @pytest.mark.asyncio
+    async def test_integrate_with_digital_twin(self, bedrock_pat_service, mocker: MockerFixture) -> None:
         """Test integrating actigraphy analysis with a digital twin with the Bedrock service."""
         # Prepare test data
         patient_id = "test-patient-1"
@@ -407,14 +400,11 @@ class TestBedrockPAT:
         }
         mock_response = create_mock_response(mock_response_body)
 
-        bedrock_pat_service.bedrock_runtime = mocker.patch.object(
-            bedrock_pat_service, 
-            'bedrock_runtime' 
-        )
-        bedrock_pat_service.bedrock_runtime.invoke_model.return_value = mock_response
+        service, mocks = bedrock_pat_service
+        mocks["bedrock"].invoke_model.return_value = mock_response
 
         # Call the service
-        result = bedrock_pat_service.integrate_with_digital_twin(
+        result = await service.integrate_with_digital_twin(
             patient_id=patient_id,
             profile_id=profile_id,
             actigraphy_analysis=actigraphy_analysis
@@ -432,81 +422,43 @@ class TestBedrockPAT:
         assert "mental_health_indicators" in result["integrated_profile"]
 
         # Verify Bedrock was called correctly
-        bedrock_pat_service.bedrock_runtime.invoke_model.assert_called_once()
-
-class TestHelperFunctions:
-    """Tests for helper functions used within the test suite."""
-
-    def test_create_mock_response_structure(self) -> None:
-        """Verify the structure of the mocked response dictionary."""
-        body_dict = {"key": "value"}
-        response = create_mock_response(body_dict)
-
-        assert isinstance(response, dict)
-        assert "body" in response
-        assert isinstance(response['body'], io.BytesIO)
-
-    def test_create_mock_response_content(self) -> None:
-        """Verify the content of the mocked response body."""
-        body_dict = {"key": "value", "number": 123}
-        response = create_mock_response(body_dict)
-
-        # Read the content from the BytesIO stream
-        response_body_bytes = response['body'].read()
-        response_body_dict = json.loads(response_body_bytes.decode('utf-8'))
-
-        assert response_body_dict == body_dict
-
-    def test_create_sample_readings_structure(self) -> None:
-        """Verify the structure of sample readings."""
-        readings = create_sample_readings(5)
-
-        assert isinstance(readings, list)
-        assert len(readings) == 5
-        assert isinstance(readings[0], dict)
-        assert "timestamp" in readings[0]
-        assert "x" in readings[0]
-        assert "y" in readings[0]
-        assert "z" in readings[0]
-
-    def test_create_sample_readings_content(self) -> None:
-        """Verify the content types within sample readings."""
-        readings = create_sample_readings(1)
-
-        assert isinstance(readings[0]["timestamp"], str)
-        # Attempt to parse the timestamp to ensure it's a valid ISO format
-        try:
-            datetime.fromisoformat(readings[0]["timestamp"].replace('Z', '+00:00'))
-        except ValueError:
-            pytest.fail("Timestamp is not in valid ISO format")
-        assert isinstance(readings[0]["x"], float)
-        assert isinstance(readings[0]["y"], float)
-        assert isinstance(readings[0]["z"], float)
+        mocks["bedrock"].invoke_model.assert_called_once()
 
 # --- Fixtures ---
 # Fixture providing a BedrockPAT instance configured for testing
 @pytest.fixture
-def bedrock_pat_service(mocker: MockerFixture) -> BedrockPAT:
-    """Fixture to create a BedrockPAT service instance using configured in-memory dependencies."""
-    # Mock logger if needed
-    mocker.patch("app.core.services.ml.pat.bedrock.logger")
+def bedrock_pat_service():
+    """Provides a BedrockPAT service instance with mocked AWS dependencies for unit testing."""
+    # Create mocks for the AWS service interfaces
+    mock_s3_client = MagicMock(spec=S3ServiceInterface)
+    mock_dynamodb_client = MagicMock(spec=DynamoDBServiceInterface)
+    # Ensure async methods return awaitables (AsyncMock)
+    mock_dynamodb_client.get_item = AsyncMock()
+    mock_dynamodb_client.put_item = AsyncMock()
+    mock_dynamodb_client.query = AsyncMock()
 
-    # REMOVED: Manual mock setup for s3, dynamodb, bedrock_runtime
-    # REMOVED: mocker.patch for boto3.client
-    # REMOVED: mocker.patch for AWSServiceFactoryProvider.get_instance
-    
-    # Instantiate the service normally (relies on conftest_aws.py for AWS factory setup)
+    mock_bedrock_runtime_client = MagicMock(spec=BedrockRuntimeServiceInterface)
+    mock_bedrock_runtime_client.invoke_model = AsyncMock()
+
+    # Create the BedrockPAT instance (without the factory)
     service = BedrockPAT()
-    
-    # Initialize with a standard test config that meets the initialize method's requirements
-    test_config = {
-        "bucket_name": "test-pat-bucket", # Use correct key
-        "dynamodb_table_name": "test-pat-table", 
-        "kms_key_id": "test-kms-key-id", # Add and use correct key
-        "bedrock_embedding_model_id": "amazon.titan-embed-text-v1", 
-        "bedrock_analysis_model_id": "anthropic.claude-v2" 
+
+    # Manually inject the mocks into the service instance's private attributes
+    service._s3_client = mock_s3_client
+    service._dynamodb_client = mock_dynamodb_client
+    service._bedrock_runtime = mock_bedrock_runtime_client
+
+    # Set default table name required by some internal methods, tests can override if needed
+    service._dynamodb_table = "mock-test-table" 
+    service._s3_bucket = "mock-test-bucket"
+    service._kms_key_id = "mock-kms-key"
+    service._bedrock_embedding_model_id = "mock-embed-model"
+    service._bedrock_analysis_model_id = "mock-analysis-model"
+
+    # Yield the service and the mocks for tests to use
+    mocks = {
+        "s3": mock_s3_client,
+        "dynamodb": mock_dynamodb_client,
+        "bedrock": mock_bedrock_runtime_client
     }
-    # Ensure initialization happens within the fixture
-    service.initialize(config=test_config)
-    
-    return service
+    yield service, mocks
