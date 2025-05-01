@@ -179,7 +179,6 @@ def test_sanitize_phi(mock_comprehend_medical_client, mock_dynamodb_resource, mo
     sanitized = service._sanitize_phi(text_with_phi)
 
     # Assertions
-    print(f"\nDEBUG: Value before assertion: '{sanitized}'")
     assert sanitized == expected_sanitized_text
     # Assert mock was called correctly
     mock_comprehend_medical_client.detect_phi.assert_called_once_with(Text=text_with_phi)
