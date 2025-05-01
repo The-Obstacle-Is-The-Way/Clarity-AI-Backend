@@ -237,6 +237,7 @@ class AWSPATService(PATInterface):
         
         try:
             response = self._comprehend_medical.detect_phi(Text=text)
+            logger.debug(f"DETECT_PHI RESPONSE ENTITIES: {response.get('Entities', [])}")
             entities = response.get("Entities", [])
             
             sanitized_text = text
