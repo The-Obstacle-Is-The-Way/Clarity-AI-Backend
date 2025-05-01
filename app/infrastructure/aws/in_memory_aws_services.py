@@ -38,11 +38,11 @@ class InMemoryDynamoDBService(DynamoDBServiceInterface):
             self._tables[table_name] = []
         return {"Items": list(self._tables[table_name])}
 
-    def put_item(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
+    def put_item(self, *, TableName: str, Item: Dict[str, Any]) -> Dict[str, Any]:
         """Put an item into a DynamoDB table."""
-        if table_name not in self._tables:
-            self._tables[table_name] = []
-        self._tables[table_name].append(item)
+        if TableName not in self._tables:
+            self._tables[TableName] = []
+        self._tables[TableName].append(Item)
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
         
     def get_item(self, table_name: str, key: Dict[str, Any]) -> Dict[str, Any]:
