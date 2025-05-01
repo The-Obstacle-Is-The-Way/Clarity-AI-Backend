@@ -24,8 +24,8 @@ import tensorflow as tf
 # from app.config.ml_settings import ml_settings
 from app.core.exceptions import (
     ModelNotFoundError,
-    InferenceError,
-    DataPreprocessingError,
+    AnalysisError, 
+    ValidationError, # Replaced DataPreprocessingError
     ServiceUnavailableError
 )
 from app.core.utils.logging import get_logger
@@ -198,7 +198,7 @@ class PATService:
             return data
         except Exception as e:
             logger.error(f"Error preprocessing actigraphy data: {e}")
-            raise DataPreprocessingError(f"Failed to preprocess actigraphy data: {e}")
+            raise ValidationError(f"Failed to preprocess actigraphy data: {e}")
     
     async def analyze(
         self,
@@ -268,7 +268,7 @@ class PATService:
             return results
         except Exception as e:
             logger.error(f"Error during PAT analysis: {e}")
-            raise InferenceError(f"Failed to analyze actigraphy data: {e}")
+            raise AnalysisError(f"Failed to analyze actigraphy data: {e}")
     
     async def _process_predictions(
         self,
