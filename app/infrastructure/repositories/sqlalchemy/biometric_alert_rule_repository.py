@@ -3,6 +3,7 @@ SQLAlchemy implementation of the BiometricAlertRuleRepository.
 """
 from typing import List, Optional
 from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
@@ -10,6 +11,10 @@ from app.domain.repositories.biometric_alert_rule_repository import BiometricAle
 
 class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
     """SQLAlchemy implementation of BiometricAlertRuleRepository."""
+    
+    def __init__(self, db: AsyncSession):
+        """Initialize repository with DB session."""
+        self.db = db
     
     async def get_by_id(self, rule_id: UUID) -> Optional[BiometricAlertRule]:
         """Mock implementation for test collection."""

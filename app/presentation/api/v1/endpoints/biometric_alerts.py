@@ -135,7 +135,6 @@ def get_template_repository(db: Session = Depends(get_db_session)) -> BiometricA
 
 
 router = APIRouter(
-    prefix="/biometric-alerts",
     tags=["biometric-alerts"],
     responses={
         status.HTTP_401_UNAUTHORIZED: {"description": "Unauthorized"},

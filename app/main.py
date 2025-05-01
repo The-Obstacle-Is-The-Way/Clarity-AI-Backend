@@ -30,7 +30,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Depends, Request as FastapiRequest
+from fastapi import FastAPI, Depends, Request as FastapiRequest, status
 from starlette.requests import Request as StarletteRequest
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

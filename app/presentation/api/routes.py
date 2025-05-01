@@ -161,23 +161,12 @@ def setup_routers() -> APIRouter:
     try:
         main_api_router.include_router(
             get_router("biometric_alerts"),
-            prefix="/biometric-alerts", # Remove v1 prefix to match test expectations
+            prefix="/alerts",
             tags=["Biometric Alerts"]
         )
     except (ModuleNotFoundError, AttributeError):
         print("Biometric Alerts router not found or setup incorrectly, skipping.")
         
-    # Biometric Alert Rules router
-    try:
-        main_api_router.include_router(
-            get_router("biometric_alert_rules"),
-            prefix="/biometric-alerts/rules", # Changed to nest under alerts
-            tags=["Biometric Alert Rules"]
-        )
-    except (ModuleNotFoundError, AttributeError):
-        print("Biometric Alert Rules router not found or setup incorrectly, skipping.")
-    # --- End Moved Routers ---
-
     # Auth router 
     try:
         # Use get_v1_router which now handles the 'auth_router' attribute name
