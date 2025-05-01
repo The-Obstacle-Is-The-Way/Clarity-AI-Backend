@@ -5,12 +5,19 @@ import logging
 import hashlib
 from datetime import datetime, timezone, timedelta
 from app.domain.utils.datetime_utils import UTC
-from typing import Optional, List, Any, Union # Removed Tuple here
+from typing import Optional, List, Any, Union, Tuple # Added Tuple here
 from unittest.mock import MagicMock
 from botocore.exceptions import ClientError
-from app.core.exceptions import InvalidConfigurationError
-from dateutil.parser import parse
-
+from app.core.exceptions import (
+    InitializationError,
+    InvalidConfigurationError,
+    ValidationError, # Replaced InvalidParameterError with ValidationError
+    ResourceNotFoundError,
+    AuthorizationError,
+    EmbeddingError,
+    IntegrationError, # Added IntegrationError
+    # StorageError # Removed StorageError - Not defined here
+)
 from app.core.services.ml.pat.exceptions import (
     InitializationError,
     ValidationError,
@@ -18,6 +25,8 @@ from app.core.services.ml.pat.exceptions import (
     ResourceNotFoundError,
     AuthorizationError,
     EmbeddingError,
+    IntegrationError, # Added IntegrationError
+    StorageError # Added StorageError
 )
 from app.core.services.ml.pat.pat_interface import PATInterface
 from app.core.interfaces.aws_service_interface import (
@@ -69,6 +78,8 @@ class BedrockPAT(PATInterface):
         self._initialized = False
         self._audit_log_enabled = True
         self._kms_key_id = ""
+        self._embedding_model_id = ""
+        self._analysis_model_id = ""
         
         # Model mappings
         self.model_mapping: dict[str, str] = {
@@ -123,6 +134,26 @@ class BedrockPAT(PATInterface):
     def kms_key_id(self, value: str) -> None:
         """Set KMS key ID."""
         self._kms_key_id = value
+        
+    @property
+    def embedding_model_id(self) -> str:
+        """Get embedding model ID."""
+        return self._embedding_model_id
+        
+    @embedding_model_id.setter
+    def embedding_model_id(self, value: str) -> None:
+        """Set embedding model ID."""
+        self._embedding_model_id = value
+        
+    @property
+    def analysis_model_id(self) -> str:
+        """Get analysis model ID."""
+        return self._analysis_model_id
+        
+    @analysis_model_id.setter
+    def analysis_model_id(self, value: str) -> None:
+        """Set analysis model ID."""
+        self._analysis_model_id = value
     
     def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
         """
@@ -133,26 +164,28 @@ class BedrockPAT(PATInterface):
                 - bucket_name: S3 bucket name for storing data
                 - dynamodb_table_name: DynamoDB table name for analyses
                 - kms_key_id: KMS key ID for encryption
+                - bedrock_embedding_model_id: Model ID for text embeddings
+                - bedrock_analysis_model_id: Model ID for analysis
                 
         Raises:
             InvalidConfigurationError: If configuration is invalid
         """
-        # Check for empty config (test_initialization first scenario)
-        if not config:
+        # Check for None or empty config
+        if config is None or not config:
             raise InvalidConfigurationError("Configuration cannot be empty")
             
-        # Test for missing bucket_name (first scenario in test_initialization)
-        if "bucket_name" not in config:
-            raise InvalidConfigurationError("S3 bucket name is required")
-            
-        # Test for missing table_name (second scenario in test_initialization)
-        if "dynamodb_table_name" not in config:
-            raise InvalidConfigurationError("DynamoDB table name is required")
-            
-        # Test for missing KMS key (third scenario in test_initialization)
-        if "kms_key_id" not in config:
-            raise InvalidConfigurationError("KMS key ID is required")
-        
+        # Check for required keys
+        required_keys = [
+            "bucket_name", 
+            "dynamodb_table_name", 
+            "kms_key_id",
+            "bedrock_embedding_model_id",
+            "bedrock_analysis_model_id"
+        ]
+        missing_keys = [key for key in required_keys if key not in config]
+        if missing_keys:
+            raise InvalidConfigurationError(f"Missing required configuration keys: {', '.join(missing_keys)}")
+
         try:
             # Initialize AWS services
             self._s3_service = self._aws_factory.get_s3_service()
@@ -170,6 +203,8 @@ class BedrockPAT(PATInterface):
             self._s3_bucket = config["bucket_name"]
             self._dynamodb_table = config["dynamodb_table_name"]
             self._kms_key_id = config["kms_key_id"]
+            self._embedding_model_id = config["bedrock_embedding_model_id"]
+            self._analysis_model_id = config["bedrock_analysis_model_id"]
             
             # Set initialized flag
             self._initialized = True

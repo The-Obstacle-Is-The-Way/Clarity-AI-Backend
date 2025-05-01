@@ -3,14 +3,13 @@
 
 import io
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Any
-from io import BytesIO
 import uuid
-import boto3
+from datetime import datetime, timedelta, timezone, UTC 
+from typing import Any
+from unittest.mock import patch
+from io import BytesIO
 import pytest
 from pytest_mock import MockerFixture
-from unittest.mock import patch
 
 from app.core.services.ml.pat.bedrock import BedrockPAT
 from app.core.services.ml.pat.exceptions import (
@@ -54,33 +53,62 @@ class TestBedrockPAT:
         service = BedrockPAT()
 
         # Test invalid configurations
-        # Check empty config first
+        # Check None config first
         with pytest.raises(InvalidConfigurationError, match="Configuration cannot be empty"):
-            service.initialize(None) # or {} should also work
+            service.initialize(None) # Test None
+        
+        # Check empty dict config
+        with pytest.raises(InvalidConfigurationError, match="Configuration cannot be empty"):
+            service.initialize({}) # Test empty dict
 
-        # Check missing bucket name
-        with pytest.raises(InvalidConfigurationError, match="S3 bucket name is required"):
-            service.initialize({"dynamodb_table_name": "test-table", "kms_key_id": "test-key-id"})
-
-        # Check missing table name
-        with pytest.raises(InvalidConfigurationError, match="DynamoDB table name is required"):
-            service.initialize({"bucket_name": "test-bucket", "kms_key_id": "test-key-id"})
-
-        # Test with missing KMS key
-        with pytest.raises(InvalidConfigurationError, match="KMS key ID is required"):
+        # Check missing keys (using the new combined error message)
+        with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys: bucket_name, kms_key_id"):
             service.initialize({
-                "bucket_name": "test-bucket",
-                "dynamodb_table_name": "test-table"
+                "dynamodb_table_name": "test-table", 
+                "bedrock_embedding_model_id": "embed-id", 
+                "bedrock_analysis_model_id": "analysis-id"
             })
 
+        with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys: dynamodb_table_name"):
+            service.initialize({
+                "bucket_name": "test-bucket", 
+                "kms_key_id": "test-key",
+                "bedrock_embedding_model_id": "embed-id", 
+                "bedrock_analysis_model_id": "analysis-id"
+            })
+    
+        with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys: bedrock_embedding_model_id"):
+            service.initialize({
+                "bucket_name": "test-bucket", 
+                "dynamodb_table_name": "test-table",
+                "kms_key_id": "test-key",
+                "bedrock_analysis_model_id": "analysis-id"
+            })
+
+        with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys: bedrock_analysis_model_id"):
+            service.initialize({
+                "bucket_name": "test-bucket", 
+                "dynamodb_table_name": "test-table",
+                "kms_key_id": "test-key",
+                "bedrock_embedding_model_id": "embed-id"
+            })
+        
         # Test with complete configuration
-        with patch("boto3.client") as mock_boto:
-            valid_config = {"bucket_name": "test-bucket", "dynamodb_table_name": "test-table", "kms_key_id": "test-key-id"}
-            service.initialize(valid_config)
-            assert service.initialized
-            assert service.bucket_name == "test-bucket"
-            assert service.dynamodb_table_name == "test-table"
-            assert service.kms_key_id == "test-key-id"
+        valid_config = {
+            "bucket_name": "test-bucket", # Correct key
+            "dynamodb_table_name": "test-table", 
+            "kms_key_id": "test-key-id", # Correct key
+            "bedrock_embedding_model_id": "amazon.titan-embed-text-v1", 
+            "bedrock_analysis_model_id": "anthropic.claude-v2"
+        }
+        service.initialize(valid_config)
+        assert service.initialized
+        # Use attribute names as defined in initialize
+        assert service._s3_bucket == "test-bucket"
+        assert service._dynamodb_table == "test-table"
+        assert service._kms_key_id == "test-key-id"
+        assert service._embedding_model_id == "amazon.titan-embed-text-v1"
+        assert service._analysis_model_id == "anthropic.claude-v2"
 
     def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test successful analysis of actigraphy data."""
@@ -459,64 +487,26 @@ class TestHelperFunctions:
 # Fixture providing a BedrockPAT instance configured for testing
 @pytest.fixture
 def bedrock_pat_service(mocker: MockerFixture) -> BedrockPAT:
-    """Provides an initialized BedrockPAT service with mocked AWS dependencies using boto3 patching."""
-    # 1. Create mock AWS client instances (no spec needed with direct boto3 patch)
-    mock_bedrock_runtime_client = mocker.MagicMock()
-    mock_dynamodb_client = mocker.MagicMock()
-    mock_s3_client = mocker.MagicMock()
-    mock_bedrock_client = mocker.MagicMock() # For foundation model access if needed
-    # mock_session_client = MagicMock() # Add if session service is used
+    """Fixture to create a BedrockPAT service instance using configured in-memory dependencies."""
+    # Mock logger if needed
+    mocker.patch("app.core.services.ml.pat.bedrock.logger")
 
-    # Mock boto3.client to return the correct mock based on the service name
-    def mock_boto3_client(service_name: str, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> mocker.MagicMock:
-        if service_name == 'bedrock-runtime':
-            return mock_bedrock_runtime_client
-        elif service_name == 'dynamodb':
-            return mock_dynamodb_client
-        elif service_name == 's3':
-            return mock_s3_client
-        elif service_name == 'bedrock':
-            return mock_bedrock_client
-        # Add handling for 'sts' or others if session_service uses them
-        else:
-            print(f"WARN: Unmocked boto3.client requested: {service_name}")
-            return mocker.MagicMock() # Return default mock
-
-    mocker.patch('boto3.client', side_effect=mock_boto3_client)
-
-    # 3. Create BedrockPAT instance (uses default factory, which uses patched boto3)
-    service = BedrockPAT() # No factory injection needed
-
-    # 4. Initialize the service (this uses the patched boto3 via the default factory)
-    # Provide a minimal valid configuration for initialization
-    service.initialize({
-        "bucket_name": "test-bucket", 
-        "dynamodb_table_name": "test-table", 
-        "kms_key_id": "test-key-id"
-    })
-
-    # 5. Assign mocks to attributes that might be checked directly in tests
-    # (Though initialize should handle this internally via the factory)
-    service.bedrock_runtime = mock_bedrock_runtime_client
-    service._dynamodb_service = mock_dynamodb_client # Assuming internal access
-    service._s3_service = mock_s3_client           # Assuming internal access
-
+    # REMOVED: Manual mock setup for s3, dynamodb, bedrock_runtime
+    # REMOVED: mocker.patch for boto3.client
+    # REMOVED: mocker.patch for AWSServiceFactoryProvider.get_instance
+    
+    # Instantiate the service normally (relies on conftest_aws.py for AWS factory setup)
+    service = BedrockPAT()
+    
+    # Initialize with a standard test config that meets the initialize method's requirements
+    test_config = {
+        "bucket_name": "test-pat-bucket", # Use correct key
+        "dynamodb_table_name": "test-pat-table", 
+        "kms_key_id": "test-kms-key-id", # Add and use correct key
+        "bedrock_embedding_model_id": "amazon.titan-embed-text-v1", 
+        "bedrock_analysis_model_id": "anthropic.claude-v2" 
+    }
+    # Ensure initialization happens within the fixture
+    service.initialize(config=test_config)
+    
     return service
-
-@pytest.fixture
-def valid_actigraphy_data() -> tuple:
-    """Provides valid sample data for actigraphy analysis tests."""
-    patient_id = f"patient_{uuid.uuid4()}"
-    start_time = datetime.now(timezone.utc) - timedelta(hours=1)
-    end_time = datetime.now(timezone.utc)
-    readings = create_sample_readings(50) # Use helper to generate readings
-    sampling_rate_hz = 10.0 # Example sampling rate
-    device_info = {"model": "TestDevice", "manufacturer": "TestCorp"}
-    return (
-        patient_id,
-        start_time.isoformat().replace("+00:00", "Z"),
-        end_time.isoformat().replace("+00:00", "Z"),
-        readings,
-        sampling_rate_hz,
-        device_info
-    )
