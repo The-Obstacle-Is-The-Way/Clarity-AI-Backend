@@ -9,7 +9,6 @@ import pytest
 from unittest.mock import Mock
 
 # Third-party imports
-import boto3
 from botocore.exceptions import ClientError
 
 # First-party imports
@@ -30,45 +29,39 @@ def aws_config():
     }
 
 
-@pytest.fixture
-def mock_boto3():
-    """Fixture for mocking boto3."""
-    # Create mock clients without patching boto3 yet
-    sagemaker_runtime = Mock()
-    s3_client = Mock()
-    dynamodb = Mock()
-    comprehend_medical = Mock()
-
-    # Create a table method for dynamodb
-    table = Mock()
-    dynamodb.Table.return_value = table
-
-    # Return the mocks - we'll manage the patching in the fixture that uses these
-    return {
-        "sagemaker-runtime": sagemaker_runtime,
-        "s3": s3_client,
-        "dynamodb_resource": dynamodb,
-        "comprehendmedical": comprehend_medical,
+@pytest.fixture(scope="function", autouse=True)
+def mock_boto3(mocker, request):
+    """Autouse fixture to mock boto3 clients and resources for all tests."""
+    # Mock S3 client
+    mocker.patch("boto3.client", autospec=True).return_value.list_buckets.return_value = {
+        "Buckets": [{"Name": "test-pat-bucket"}]
     }
+
+    # Conditionally mock DynamoDB resource
+    if not request.node.get_closest_marker("no_mock_dynamodb_resource"):
+        mocker.patch("boto3.resource", autospec=True)
+
+    # Mock SageMaker Runtime client
+    mocker.patch("boto3.client", autospec=True)
+
+    # Mock Comprehend Medical client
+    mocker.patch("boto3.client", autospec=True)
+
+    yield
 
 
 @pytest.fixture
 def aws_pat_service(mock_boto3, aws_config):
-    """Fixture for AWS PAT service, injecting mock clients."""
+    """Fixture for AWS PAT service. Relies on autouse mock_boto3 for patching."""
     service = AWSPATService()
 
-    # Inject mock clients directly using the updated initialize method
-    service.initialize(
-        config=aws_config,
-        sagemaker_runtime_client=mock_boto3.get("sagemaker-runtime"),  # Use .get for safety
-        s3_client=mock_boto3.get("s3"),
-        comprehend_medical_client=mock_boto3.get("comprehendmedical"),
-        dynamodb_resource=mock_boto3.get("dynamodb_resource"),
-    )
-
+    # Initialize the service. The autouse mock_boto3 fixture ensures that
+    # calls to boto3.client/resource within initialize() get the mocks.
+    service.initialize(config=aws_config)
     yield service
 
 
+@pytest.mark.no_mock_dynamodb_resource
 class TestAWSPATService:
     """Test the AWS PAT service implementation."""
 
@@ -83,60 +76,44 @@ class TestAWSPATService:
         assert service._analyses_table == aws_config["analyses_table"]
         assert service._embeddings_table == aws_config["embeddings_table"]
         assert service._integrations_table == aws_config["integrations_table"]
-        # Assert that AWS clients were initialized
         assert service._sagemaker_runtime is not None
         assert service._s3_client is not None
         assert service._dynamodb_resource is not None
         assert service._comprehend_medical is not None
 
+    @pytest.mark.no_mock_dynamodb_resource
     def test_initialization_failure(self, aws_config, mocker):
         """Test initialization failure when a client/resource creation fails."""
-        # Store the original boto3.resource factory
-        original_boto3_resource = boto3.resource
+        mock_error_response = {'Error': {'Code': 'ServiceUnavailable', 'Message': 'Mock service error'}}
+        mock_operation_name = 'DescribeTable'
+        client_error = ClientError(mock_error_response, mock_operation_name)
 
-        # Mock boto3.resource to raise an exception ONLY for DynamoDB
-        def mock_resource_factory(*args, **kwargs):
-            service_name = args[0]
-            if service_name == "dynamodb":
-                raise ClientError(
-                    {"Error": {"Code": "ServiceUnavailable", "Message": "Test DynamoDB error"}},
-                    "GetResource",
-                )
-            # For any other service, call the original factory
-            return original_boto3_resource(*args, **kwargs)
-
-        mocker.patch("boto3.resource", side_effect=mock_resource_factory)
+        mock_resource = mocker.patch('app.core.services.ml.pat.aws.boto3.resource')
+        mock_resource.side_effect = client_error
 
         service = AWSPATService()
         with pytest.raises(InitializationError) as excinfo:
-            service.initialize(aws_config)
+            service.initialize(config=aws_config)
 
-        # Assert that the InitializationError contains the expected message and cause
         assert "Error initializing DynamoDB resource" in str(excinfo.value)
-        # Check the __cause__ attribute for the original ClientError
-        assert isinstance(excinfo.value.__cause__, ClientError)
-        assert "Test DynamoDB error" in str(excinfo.value.__cause__)
+        assert "ClientError" in str(excinfo.value)
+        assert "Mock service error" in str(excinfo.value)
 
     def test_sanitize_phi(self, mocker):
         """Test PHI sanitization logic by manually instantiating after patching boto3.client."""
         text = "Patient is John Doe, lives at 123 Main St."
 
-        # 1. Create and configure the mock comprehend client
         mock_comprehend_medical = Mock(spec=["detect_phi"])
         mock_response_dict = {
             "Entities": [
-                # Corrected offsets based on the text
                 {"Type": "NAME", "BeginOffset": 11, "EndOffset": 15, "Score": 0.99},
                 {"Type": "ADDRESS", "BeginOffset": 28, "EndOffset": 38, "Score": 0.95},
             ]
         }
-        # Use configure_mock for potentially more reliable nested configuration
         mock_comprehend_medical.configure_mock(**{"detect_phi.return_value": mock_response_dict})
 
-        # 3. Manually instantiate the service
         service_instance = AWSPATService()
 
-        #    Use a dummy config matching what the fixture provided, with correct keys
         dummy_config = {
             "aws_region": "us-east-1",
             "endpoint_name": "test-pat-endpoint",
@@ -145,43 +122,32 @@ class TestAWSPATService:
             "embeddings_table": "test-pat-embeddings",
             "integrations_table": "test-pat-integrations",
         }
-        #    Inject the mock client directly during initialization
         service_instance.initialize(
             config=dummy_config, comprehend_medical_client=mock_comprehend_medical
         )
 
-        # 4. Call the method under test using the manual instance
         sanitized = service_instance._sanitize_phi(text)
 
-        # 5. Assertions
         mock_comprehend_medical.detect_phi.assert_called_once_with(Text=text)
         expected_sanitized = "Patient is [REDACTED-NAME] Doe, lives a[REDACTED-ADDRESS] St."
         assert sanitized == expected_sanitized
 
     def test_sanitize_phi_error(self, aws_pat_service):
         """Test PHI sanitization when Comprehend Medical returns an error."""
-        # 1. Setup
         text = "Patient is John Smith, a 45-year-old male."
         mock_comprehend_medical = aws_pat_service._comprehend_medical
 
-        # 2. Configure Mock
-        # Configure the mock directly on the service instance attribute
         mock_comprehend_medical.detect_phi.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Test error"}}, "DetectPHI"
         )
 
-        # 3. Execute
         sanitized = aws_pat_service._sanitize_phi(text)
 
-        # 4. Assertions
-        # Verify that the mock was called
         mock_comprehend_medical.detect_phi.assert_called_once_with(Text=text)
-        # Verify that a placeholder is returned to avoid leaking PHI
         assert sanitized == "[PHI SANITIZATION ERROR]"
 
     def test_analyze_actigraphy(self, aws_pat_service):
         """Test actigraphy analysis."""
-        # Mock data
         patient_id = "patient123"
         readings = [{"x": 0.1, "y": 0.2, "z": 0.3, "timestamp": "2025-03-28T12:00:00Z"}]
         start_time = "2025-03-28T12:00:00Z"
@@ -190,7 +156,6 @@ class TestAWSPATService:
         device_info = {"name": "ActiGraph GT9X", "firmware": "1.7.0"}
         analysis_types = ["activity_levels", "sleep_analysis"]
 
-        # Call method (implementation is stubbed)
         result = aws_pat_service.analyze_actigraphy(
             patient_id,
             readings,
@@ -201,7 +166,6 @@ class TestAWSPATService:
             analysis_types,
         )
 
-        # Basic validation of stub implementation
         assert "analysis_id" in result
         assert "patient_id" in result
         assert "timestamp" in result
@@ -211,19 +175,16 @@ class TestAWSPATService:
 
     def test_get_actigraphy_embeddings(self, aws_pat_service):
         """Test actigraphy embeddings generation."""
-        # Mock data
         patient_id = "patient123"
         readings = [{"x": 0.1, "y": 0.2, "z": 0.3, "timestamp": "2025-03-28T12:00:00Z"}]
         start_time = "2025-03-28T12:00:00Z"
         end_time = "2025-03-28T13:00:00Z"
         sampling_rate_hz = 50.0
 
-        # Call method (implementation is stubbed)
         result = aws_pat_service.get_actigraphy_embeddings(
             patient_id, readings, start_time, end_time, sampling_rate_hz
         )
 
-        # Basic validation of stub implementation
         assert "embedding_id" in result
         assert "patient_id" in result
         assert "timestamp" in result
@@ -232,8 +193,6 @@ class TestAWSPATService:
 
     def test_get_analysis_by_id(self, aws_pat_service):
         """Test retrieving analysis by ID."""
-        # This will raise ResourceNotFoundError as the stub implementation
-        # doesn't actually store or retrieve real data
         with pytest.raises(ResourceNotFoundError):
             aws_pat_service.get_analysis_by_id("test-analysis-id")
 
@@ -249,15 +208,12 @@ class TestAWSPATService:
 
     def test_integrate_with_digital_twin(self, aws_pat_service):
         """Test integrating analysis with digital twin."""
-        # Mock data
         patient_id = "patient123"
         profile_id = "profile456"
         analysis_id = "analysis789"
 
-        # Call method (implementation is stubbed)
         result = aws_pat_service.integrate_with_digital_twin(patient_id, profile_id, analysis_id)
 
-        # Basic validation of stub implementation
         assert "integration_id" in result
         assert "patient_id" in result
         assert "profile_id" in result
