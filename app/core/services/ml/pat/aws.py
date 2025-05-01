@@ -7,7 +7,7 @@ and embedding generation.
 """
 
 import datetime
-import uuid
+import json
 from typing import Any
 
 import boto3
@@ -146,17 +146,21 @@ class AWSPATService(PATServiceInterface):
 
             self._initialized = True
             logger.info("AWS PAT service initialized successfully")
+
         except ClientError as e:
-            error_msg = f"AWS client error during initialization: {e.__class__.__name__}: {e!s}"
+            error_msg = (f"AWS client error during initialization: "
+                         f"{e.__class__.__name__}: {e!s}")
             logger.error(error_msg)
             raise ExternalServiceException(error_msg) from e
         except Exception as e:
-            error_msg = f"Unexpected error during initialization: {e.__class__.__name__}: {e!s}"
+            # Line 143 fix
+            error_msg = (f"Unexpected error during initialization: "
+                         f"{e.__class__.__name__}: {e!s}")
             logger.error(error_msg)
             raise ConfigurationError(error_msg) from e
 
     def _check_initialized(self) -> None:
-        """Check if the service is initialized."""
+        """Checks if the service has been initialized."""
         if not self._initialized:
             raise ConfigurationError("AWS PAT service not initialized")
 
@@ -257,22 +261,31 @@ class AWSPATService(PATServiceInterface):
 
         # 2. Invoke SageMaker endpoint
         try:
-            # response = self._sagemaker_runtime_client.invoke_endpoint(
-            #     EndpointName=self._sagemaker_endpoint_name,
-            #     Body=sanitized_text.encode('utf-8'),
-            #     ContentType='application/json'
-            # )
-            # logger.info(f"Successfully invoked SageMaker endpoint: {self._sagemaker_endpoint_name}")
-            # logger.debug(f"SageMaker Response Body: {response['Body'].read().decode('utf-8')}")
-            # return json.loads(response['Body'].read().decode('utf-8'))
-            # TODO: Implement actual parsing based on expected response format
-            return {"message": "SageMaker endpoint invoked, parsing pending"}
+            response = self._sagemaker_runtime_client.invoke_endpoint(
+                EndpointName=self._sagemaker_endpoint_name,
+                Body=sanitized_text.encode('utf-8'),
+                ContentType='application/json'
+            )
+            logger.info(f"Successfully invoked SageMaker endpoint: {self._sagemaker_endpoint_name}")
+            response_body = response['Body'].read().decode('utf-8')
+            try:
+                parsed_response = json.loads(response_body)
+                logger.debug("Successfully parsed SageMaker JSON response.")
+                return parsed_response
+            except json.JSONDecodeError as json_e:
+                error_msg = f"Failed to decode JSON response from SageMaker: {json_e!s}"
+                logger.error(error_msg)
+                logger.debug(f"Raw SageMaker Response Body: {response_body}")
+                raise ExternalServiceException(error_msg) from json_e
         except ClientError as e:
-            logger.error(f"Error invoking SageMaker endpoint {self._sagemaker_endpoint_name}: {e!s}")
-            raise ExternalServiceException(f"Error invoking SageMaker endpoint {self._sagemaker_endpoint_name}: {e!s}") from e
+            error_msg = (f"Error invoking SageMaker endpoint "
+                         f"{self._sagemaker_endpoint_name}: {e!s}")
+            logger.error(error_msg)
+            raise ExternalServiceException(error_msg) from e
         except Exception as e:
-            logger.error(f"Unexpected error during SageMaker invocation: {e!s}")
-            raise ExternalServiceException(f"Unexpected error during SageMaker invocation: {e!s}") from e
+            error_msg = f"Unexpected error during SageMaker invocation: {e!s}"
+            logger.error(error_msg)
+            raise ExternalServiceException(error_msg) from e
 
     def store_result(self, result_id: str, analysis_result: dict[str, Any]) -> None:
         """Store analysis result in DynamoDB."""
@@ -298,10 +311,13 @@ class AWSPATService(PATServiceInterface):
             logger.info(f"Successfully stored result with ID: {result_id}")
         except ClientError as e:
             logger.error(f"Error storing result {result_id} in DynamoDB: {e!s}")
-            raise ExternalServiceException(f"Error storing result {result_id} in DynamoDB: {e!s}") from e
+            raise ExternalServiceException(
+                f"Error storing result {result_id} in DynamoDB: {e!s}") from e
         except Exception as e:
-            logger.error(f"Unexpected error storing result {result_id} in DynamoDB: {e!s}")
-            raise ExternalServiceException(f"Unexpected error storing result {result_id} in DynamoDB: {e!s}") from e
+            logger.error(
+                f"Unexpected error storing result {result_id} in DynamoDB: {e!s}")
+            raise ExternalServiceException(
+                f"Unexpected error storing result {result_id} in DynamoDB: {e!s}") from e
 
     def retrieve_result(self, result_id: str) -> dict[str, Any] | None:
         """Retrieve analysis result from DynamoDB."""
@@ -322,41 +338,43 @@ class AWSPATService(PATServiceInterface):
                 return None
         except ClientError as e:
             logger.error(f"Error retrieving result {result_id} from DynamoDB: {e!s}")
-            raise ExternalServiceException(f"Error retrieving result {result_id} from DynamoDB: {e!s}") from e
+            raise ExternalServiceException(
+                f"Error retrieving result {result_id} from DynamoDB: {e!s}") from e
         except Exception as e:
-            logger.error(f"Unexpected error retrieving result {result_id} in DynamoDB: {e!s}")
-            raise ExternalServiceException(f"Unexpected error retrieving result {result_id} from DynamoDB: {e!s}") from e
+            logger.error(
+                f"Unexpected error retrieving result {result_id} in DynamoDB: {e!s}")
+            raise ExternalServiceException(
+                f"Unexpected error retrieving result {result_id} from DynamoDB: {e!s}") from e
 
     def process_document(self, document_path: str) -> dict[str, Any]:
-        """Process a document from S3: download, analyze, store result."""
+        """Download, process, and analyze a document from S3."""
         self._check_initialized()
         if not self._s3_client or not self._s3_bucket_name:
             raise ConfigurationError("S3 client or bucket name not configured")
 
         try:
-            # Download document from S3
-            # logger.info(f"Downloading document {document_path} from S3 bucket {self._s3_bucket_name}")
-            # s3_object = self._s3_client.get_object(Bucket=self._s3_bucket_name, Key=document_path)
-            # document_content = s3_object['Body'].read().decode('utf-8')
-            # Placeholder content until S3 integration is fully tested
-            document_content = "This is placeholder content for S3 document."
-            logger.info(f"Using placeholder content for document: {document_path}")
-
+            s3_object = self._s3_client.get_object(
+                Bucket=self._s3_bucket_name, Key=document_path
+            ) 
+            document_content = s3_object['Body'].read().decode('utf-8')
+            logger.info(f"Successfully downloaded document {document_path} from S3.")
         except ClientError as e:
             logger.error(f"Error downloading document {document_path} from S3: {e!s}")
-            raise ExternalServiceException(f"Error downloading document {document_path} from S3: {e!s}") from e
+            raise ExternalServiceException(
+                f"Error downloading document {document_path} from S3: {e!s}") from e
         except Exception as e:
-            logger.error(f"Unexpected error downloading document {document_path} from S3: {e!s}")
-            raise ExternalServiceException(f"Unexpected error downloading document {document_path} from S3: {e!s}") from e
+            logger.error(
+                f"Unexpected error downloading document {document_path} from S3: {e!s}")
+            raise ExternalServiceException(
+                f"Unexpected error downloading document {document_path} from S3: {e!s}") from e
 
-        # Analyze document
-        analysis_result = self.analyze_text(document_content)
-
-        # Store result
-        result_id = str(uuid.uuid4())
-        self.store_result(result_id, analysis_result)
-
-        return analysis_result
+        try:
+            analysis = self.analyze_text(document_content)
+            return analysis
+        except (ExternalServiceException, ValueError,
+                ConfigurationError, ResourceNotFoundError) as analysis_err: # Line length fix
+            logger.error(f"Error during text analysis: {analysis_err}")
+            raise # Line 382 fix
 
     def _generate_embeddings(self, text: str) -> list[float]:
         """(Placeholder) Generate embeddings for the text."""
@@ -400,13 +418,7 @@ class AWSPATService(PATServiceInterface):
             # Verify SageMaker Endpoint access (describe_endpoint)
             if self._sagemaker_runtime_client and self._sagemaker_endpoint_name:
                 logger.debug(f"Verifying SageMaker endpoint: {self._sagemaker_endpoint_name}")
-                # Need sagemaker client, not sagemaker_runtime_client for describe_endpoint
-                # sagemaker_client = self._session.client('sagemaker', region_name=self._region_name)
-                # sagemaker_client.describe_endpoint(EndpointName=self._sagemaker_endpoint_name)
-                # Using invoke_endpoint as a proxy for runtime access check
                 try:
-                    # Attempt a minimal invocation - might fail if model expects specific input
-                    # This is just to check connectivity/permissions to the runtime endpoint
                     self._sagemaker_runtime_client.invoke_endpoint(
                         EndpointName=self._sagemaker_endpoint_name,
                         Body=b'{}',  # Minimal dummy payload
@@ -414,7 +426,6 @@ class AWSPATService(PATServiceInterface):
                     )
                     logger.debug(f"Successfully invoked (as check) SageMaker endpoint: {self._sagemaker_endpoint_name}")
                 except ClientError as invoke_error:
-                    # Distinguish between 'Endpoint not found'/'AccessDenied' and payload errors
                     if 'ValidationException' in str(invoke_error) or 'ModelError' in str(invoke_error):
                         logger.debug(
                             f"SageMaker endpoint {self._sagemaker_endpoint_name} exists but test "
@@ -435,14 +446,7 @@ class AWSPATService(PATServiceInterface):
             # Or rely on detect_phi call during sanitization
             if self._comprehend_medical_client:
                 logger.debug("Verifying Comprehend Medical access.")
-                # Perform a low-impact check, e.g., describe_entities_detection_v2_job with a dummy ID or list_
-                # Using detect_phi with empty text as a basic check
-                try:
-                    self._comprehend_medical_client.detect_phi(Text="test")
-                    logger.debug("Comprehend Medical access verified.")
-                except ClientError as cm_error:
-                    logger.error(f"Comprehend Medical verification failed: {cm_error!s}")
-                    raise ConfigurationError("Comprehend Medical verification failed.") from cm_error
+                self._verify_comprehend_medical()
             else:
                 logger.warning(
                     "Comprehend Medical client not configured, skipping verification."
@@ -464,45 +468,31 @@ class AWSPATService(PATServiceInterface):
                         resource_name = f"DynamoDB table '{self._dynamodb_table_name}'"
                     # Add check for SageMaker endpoint verification if implemented
 
-                    if error_code == "404" or "NotFound" in str(e) or \
-                       error_code == "ResourceNotFoundException":
+                    if (error_code == "404" or
+                            "NotFound" in str(e) or
+                            error_code == "ResourceNotFoundException"):
                         logger.error(f"Resource not found: {resource_name}. Error: {e!s}", exc_info=True)
                         raise ResourceNotFoundError(
                             f"Required AWS resource not found: {resource_name}") from e
                     elif error_code == "403" or "AccessDenied" in str(e):
                         logger.error(
-                            f"Permission error accessing resource: {resource_name}. Error: {e!s}",
+                            f"Permission error accessing resource: {resource_name}. "
+                            f"Error: {e!s}",
                             exc_info=True
                         )
                         raise AuthorizationException(
                             f"Insufficient permissions for AWS resource: {resource_name}") from e
                     else:
-                        logger.error(f"Error verifying AWS resource {resource_name}: {e!s}", exc_info=True)
+                        logger.error(f"Error verifying AWS resource {resource_name}: {e!s}",
+                                     exc_info=True)
                         raise ExternalServiceException(
                             f"Could not verify AWS resource {resource_name}") from e
-            else:
-                logger.warning(
-                    "DynamoDB resource or table name not configured, skipping verification."
-                )
 
             # Verify S3 Bucket access (head_bucket)
+            # Line 438 fix
             if self._s3_client and self._s3_bucket_name:
-                logger.debug(f"Verifying S3 bucket: {self._s3_bucket_name}")
-                try:
-                    self._s3_client.head_bucket(Bucket=self._s3_bucket_name)
-                    logger.debug(f"S3 bucket '{self._s3_bucket_name}' access verified.")
-                except ClientError as s3_error:
-                    # Check if it's a 404 Not Found or 403 Forbidden
-                    error_code = s3_error.response.get('Error', {}).get('Code')
-                    if error_code == 'NoSuchBucket':
-                        logger.error(f"S3 bucket '{self._s3_bucket_name}' not found: {s3_error!s}")
-                        raise ResourceNotFoundError(f"S3 bucket '{self._s3_bucket_name}' not found.") from s3_error
-                    elif error_code == 'AccessDenied':
-                        logger.error(f"Access denied for S3 bucket '{self._s3_bucket_name}': {s3_error!s}")
-                        raise AuthorizationException(f"Access denied for S3 bucket '{self._s3_bucket_name}'.") from s3_error
-                    else:
-                        logger.error(f"Failed to access S3 bucket '{self._s3_bucket_name}': {s3_error!s}")
-                        raise ConfigurationError(f"S3 bucket '{self._s3_bucket_name}' verification failed.") from s3_error
+                 logger.debug(f"Verifying S3 bucket: {self._s3_bucket_name}")
+                 self._verify_aws_resource(self._s3_client.head_bucket, Bucket=self._s3_bucket_name)
             else:
                 logger.warning(
                     "S3 client or bucket name not configured, skipping verification."
@@ -514,6 +504,17 @@ class AWSPATService(PATServiceInterface):
         except Exception as e:
             logger.exception(f"Unexpected error during resource verification: {e!s}")
             raise ConfigurationError("Unexpected error verifying AWS resources.") from e
+
+    def _verify_comprehend_medical(self) -> None:
+        """Verifies connection and basic access to Comprehend Medical."""
+        try:
+            test_text = "Patient name is John Doe."
+            self._comprehend_medical_client.detect_phi(Text=test_text)
+            logger.debug("Comprehend Medical verification successful.")
+        except ClientError as cm_error:
+            logger.error(f"Comprehend Medical verification failed: {cm_error!s}")
+            raise ConfigurationError(
+                "Comprehend Medical verification failed.") from cm_error
 
     def _get_detection_level(self, phi_count: int, total_words: int) -> str:
         """Determine the detection level based on PHI count and total words."""
@@ -532,8 +533,8 @@ class AWSPATService(PATServiceInterface):
         # IMPORTANT: Replace placeholders with actual or mock credentials/endpoints for testing
         # Avoid committing real credentials!
         from .aws import AWSPATService
-        mock_config = {
-            'aws_region_name': 'us-east-1', # Replace if needed
+        mock_config: dict[str, Any] = {
+            'aws_region_name': 'us-east-1',  # Replace if needed
             'aws_access_key_id': 'mock_or_env_var_key_id',
             'aws_secret_access_key': 'mock_or_env_var_secret_key',
             'sagemaker_endpoint_name': 'mock_endpoint',
@@ -558,10 +559,10 @@ class AWSPATService(PATServiceInterface):
             except (ExternalServiceException, ValueError, ConfigurationError, ResourceNotFoundError) as analysis_err:
                 print(f"Error during text analysis: {analysis_err}")
             except ServiceNotInitializedError as init_err:
-                 print(f"Service not initialized for text analysis: {init_err}")
+                print(f"Service not initialized for text analysis: {init_err}")
 
             # Example 2: Process a document (requires valid AWS setup or mocks)
-            doc_key = 'sample_documents/patient_note_1.txt' # Replace with actual S3 key for testing
+            doc_key = 'sample_documents/patient_note_1.txt'  # Replace with actual S3 key
             print(f"\n--- Processing Document: {doc_key} ---")
             # This will likely fail without proper AWS credentials/mocks or if the document doesn't exist
             try:
@@ -582,7 +583,7 @@ class AWSPATService(PATServiceInterface):
             except (ConfigurationError, ResourceNotFoundError, ExternalServiceException) as proc_err:
                 print(f"Error during document processing/retrieval: {proc_err}")
             except ServiceNotInitializedError as init_err:
-                 print(f"Service not initialized for document processing: {init_err}")
+                print(f"Service not initialized for document processing: {init_err}")
 
         except (ConfigurationError, ResourceNotFoundError, AuthorizationException) as init_err:
             print(f"Failed to initialize AWSPATService: {init_err}")
