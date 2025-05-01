@@ -14,20 +14,14 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
 from app.core.config import settings
-from app.core.exceptions.aws_exceptions import (
-    AWSClientError,
-    AWSConfigurationError,
-    AWSPermissionError,
-    AWSResourceNotFoundError,
-    AWSTimeoutError,
-    ComprehendMedicalError,
-    DynamoDBError,
-    S3Error,
-    SageMakerError,
+from app.core.exceptions.base_exceptions import (
+    AuthorizationException,
+    ConfigurationError,
+    ExternalServiceException,
+    ResourceNotFoundError,
 )
 from app.core.interfaces.services.ml.pat import PATServiceInterface
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.phi_sanitizer import sanitize_phi_text
 from app.presentation.api.schemas.ml_schemas import (
     PHIDetectionRequest,
     PHIDetectionResponse,
@@ -84,7 +78,7 @@ class AWSPATService(PATServiceInterface):
             ]
             missing_keys = [key for key in required_keys if key not in config]
             if missing_keys:
-                raise InitializationError(f"Missing required configuration keys: {', '.join(missing_keys)}")
+                raise ConfigurationError(f"Missing required configuration keys: {', '.join(missing_keys)}")
 
             # Store the validated config
             self._config = config
@@ -117,7 +111,7 @@ class AWSPATService(PATServiceInterface):
             except Exception as e:
                 error_msg = f"Error initializing SageMaker client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
-                raise InitializationError(error_msg)
+                raise ConfigurationError(error_msg)
 
             try:
                 self._s3_client = self._session.client(
@@ -126,7 +120,7 @@ class AWSPATService(PATServiceInterface):
             except Exception as e:
                 error_msg = f"Error initializing S3 client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
-                raise InitializationError(error_msg)
+                raise ConfigurationError(error_msg)
 
             try:
                 self._dynamodb_resource = self._session.resource(
@@ -135,7 +129,7 @@ class AWSPATService(PATServiceInterface):
             except Exception as e:
                 error_msg = f"Error initializing DynamoDB resource: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
-                raise InitializationError(error_msg)
+                raise ConfigurationError(error_msg)
 
             try:
                 self._comprehend_medical_client = self._session.client(
@@ -144,23 +138,23 @@ class AWSPATService(PATServiceInterface):
             except Exception as e:
                 error_msg = f"Error initializing Comprehend Medical client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
-                raise InitializationError(error_msg)
+                raise ConfigurationError(error_msg)
 
             self._initialized = True
             logger.info(f"AWS PAT service initialized successfully")
         except ClientError as e:
             error_msg = f"AWS client error during initialization: {e.__class__.__name__}: {e}"
             logger.error(error_msg)
-            raise InitializationError(error_msg)
+            raise ExternalServiceException(error_msg)
         except Exception as e:
             error_msg = f"Unexpected error during initialization: {e.__class__.__name__}: {str(e)}"
             logger.error(error_msg)
-            raise InitializationError(error_msg)
+            raise ConfigurationError(error_msg)
 
     def _check_initialized(self) -> None:
         """Check if the service is initialized."""
         if not self._initialized:
-            raise InitializationError("AWS PAT service not initialized")
+            raise ConfigurationError("AWS PAT service not initialized")
 
     def _sanitize_phi(self, text: str) -> str:
         """Sanitize PHI from text using AWS Comprehend Medical.
@@ -271,16 +265,16 @@ class AWSPATService(PATServiceInterface):
             return {"message": "SageMaker endpoint invoked, parsing pending"}
         except ClientError as e:
             logger.error(f"Error invoking SageMaker endpoint {self._sagemaker_endpoint_name}: {e!s}")
-            raise
+            raise ExternalServiceException(f"Error invoking SageMaker endpoint {self._sagemaker_endpoint_name}: {e!s}") from e
         except Exception as e:
             logger.error(f"Unexpected error during SageMaker invocation: {e!s}")
-            raise
+            raise ExternalServiceException(f"Unexpected error during SageMaker invocation: {e!s}") from e
 
     def store_result(self, result_id: str, analysis_result: dict[str, Any]) -> None:
         """Store analysis result in DynamoDB."""
         self._check_initialized()
         if not self._dynamodb_resource or not self._dynamodb_table_name:
-            raise InitializationError("DynamoDB resource or table name not configured")
+            raise ConfigurationError("DynamoDB resource or table name not configured")
 
         # TODO: Implement embedding generation logic
         # embeddings = self._generate_embeddings(analysis_result['sanitized_text'])
@@ -300,13 +294,16 @@ class AWSPATService(PATServiceInterface):
             logger.info(f"Successfully stored result with ID: {result_id}")
         except ClientError as e:
             logger.error(f"Error storing result {result_id} in DynamoDB: {e!s}")
-            raise
+            raise ExternalServiceException(f"Error storing result {result_id} in DynamoDB: {e!s}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error storing result {result_id} in DynamoDB: {e!s}")
+            raise ExternalServiceException(f"Unexpected error storing result {result_id} in DynamoDB: {e!s}") from e
 
     def retrieve_result(self, result_id: str) -> Optional[dict[str, Any]]:
         """Retrieve analysis result from DynamoDB."""
         self._check_initialized()
         if not self._dynamodb_resource or not self._dynamodb_table_name:
-            raise InitializationError("DynamoDB resource or table name not configured")
+            raise ConfigurationError("DynamoDB resource or table name not configured")
 
         try:
             table = self._dynamodb_resource.Table(self._dynamodb_table_name)
@@ -321,13 +318,16 @@ class AWSPATService(PATServiceInterface):
                 return None
         except ClientError as e:
             logger.error(f"Error retrieving result {result_id} from DynamoDB: {e!s}")
-            raise
+            raise ExternalServiceException(f"Error retrieving result {result_id} from DynamoDB: {e!s}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving result {result_id} from DynamoDB: {e!s}")
+            raise ExternalServiceException(f"Unexpected error retrieving result {result_id} from DynamoDB: {e!s}") from e
 
     def process_document(self, document_path: str) -> dict[str, Any]:
         """Process a document from S3: download, analyze, store result."""
         self._check_initialized()
         if not self._s3_client or not self._s3_bucket_name:
-            raise InitializationError("S3 client or bucket name not configured")
+            raise ConfigurationError("S3 client or bucket name not configured")
 
         try:
             # Download document from S3
@@ -340,7 +340,10 @@ class AWSPATService(PATServiceInterface):
 
         except ClientError as e:
             logger.error(f"Error downloading document {document_path} from S3: {e!s}")
-            raise
+            raise ExternalServiceException(f"Error downloading document {document_path} from S3: {e!s}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error downloading document {document_path} from S3: {e!s}")
+            raise ExternalServiceException(f"Unexpected error downloading document {document_path} from S3: {e!s}") from e
 
         # Analyze document
         analysis_result = self.analyze_text(document_content)
@@ -455,10 +458,10 @@ class AWSPATService(PATServiceInterface):
                     error_code = s3_error.response.get('Error', {}).get('Code')
                     if error_code == 'NoSuchBucket':
                         logger.error(f"S3 bucket {self._s3_bucket_name} not found: {s3_error!s}")
-                        raise ConfigurationError(f"S3 bucket {self._s3_bucket_name} not found.") from s3_error
+                        raise ResourceNotFoundError(f"S3 bucket {self._s3_bucket_name} not found.") from s3_error
                     elif error_code == 'AccessDenied':
                         logger.error(f"Access denied for S3 bucket {self._s3_bucket_name}: {s3_error!s}")
-                        raise ConfigurationError(f"Access denied for S3 bucket {self._s3_bucket_name}.") from s3_error
+                        raise AuthorizationException(f"Access denied for S3 bucket {self._s3_bucket_name}.") from s3_error
                     else:
                         logger.error(f"Failed to access S3 bucket {self._s3_bucket_name}: {s3_error!s}")
                         raise ConfigurationError(f"S3 bucket {self._s3_bucket_name} verification failed.") from s3_error
@@ -470,4 +473,4 @@ class AWSPATService(PATServiceInterface):
             raise
         except Exception as e:
             logger.exception(f"Unexpected error during resource verification: {e!s}")
-            raise InitializationError("Unexpected error verifying AWS resources.") from e
+            raise ConfigurationError("Unexpected error verifying AWS resources.") from e
