@@ -47,6 +47,7 @@ class DigitalTwin:
     created_at: datetime = field(default_factory=now_utc)
     last_updated: datetime = field(default_factory=now_utc)
     version: int = 1
+    integration_summary: Optional[str] = field(default=None) # Added integration summary field
 
     def update_state(self, new_state_data: Dict[str, Any]):
         """Update the twin's state based on new data."""
