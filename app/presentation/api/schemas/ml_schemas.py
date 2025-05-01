@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
 """
 ML Service API Schemas.
 
 This module defines the Pydantic schemas for the ML service APIs.
 """
 
-from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
+
+from .ml import DetectionLevel, PHIDetected
 
 
 class MentaLLaMABaseRequest(BaseModel):
@@ -42,7 +44,7 @@ class ProcessTextRequest(MentaLLaMABaseRequest):
         None,
         description="Task to perform (e.g., depression_detection, risk_assessment)"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for processing"
     )
@@ -64,7 +66,7 @@ class DepressionDetectionRequest(MentaLLaMABaseRequest):
         True,
         description="Whether to include severity assessment in the response"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for analysis"
     )
@@ -86,7 +88,7 @@ class RiskAssessmentRequest(MentaLLaMABaseRequest):
         True,
         description="Whether to include suggested actions in the response"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for analysis"
     )
@@ -104,7 +106,7 @@ class SentimentAnalysisRequest(MentaLLaMABaseRequest):
         True,
         description="Whether to include emotion distribution in the response"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for analysis"
     )
@@ -118,7 +120,7 @@ class WellnessDimensionsRequest(MentaLLaMABaseRequest):
         description="Text to analyze for wellness dimensions",
         min_length=1
     )
-    dimensions: Optional[List[str]] = Field(
+    dimensions: Optional[list[str]] = Field(
         None,
         description="Optional list of dimensions to analyze"
     )
@@ -126,7 +128,7 @@ class WellnessDimensionsRequest(MentaLLaMABaseRequest):
         True,
         description="Whether to include recommendations in the response"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for analysis"
     )
@@ -148,7 +150,7 @@ class DigitalTwinConversationRequest(MentaLLaMABaseRequest):
         None,
         description="Optional session ID for continued conversations"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for the conversation"
     )
@@ -171,10 +173,10 @@ class PHIDetectionRequest(BaseModel):
 class PHIDetectionResponse(BaseModel):
     """Response model for PHI detection."""
 
-    phi_detected: List[Dict[str, Any]] = Field(
+    phi_detected: list[PHIDetected] = Field(
         description="Detected PHI"
     )
-    detection_level: str = Field(
+    detection_level: DetectionLevel = Field(
         description="Detection level used"
     )
     phi_count: int = Field(
@@ -214,7 +216,7 @@ class DigitalTwinSessionCreateRequest(BaseModel):
         ...,
         description="Patient ID"
     )
-    context: Optional[Dict[str, Any]] = Field(
+    context: Optional[dict[str, Any]] = Field(
         None,
         description="Optional context for the session"
     )
@@ -273,10 +275,6 @@ class PIITextAnalysisResponse(BaseModel):
 
 class APIResponse(BaseModel):
     """Generic API response model."""
-    
-    model_config = ConfigDict(
-        extra="allow"
-    )
     
     success: bool = Field(
         ...,
