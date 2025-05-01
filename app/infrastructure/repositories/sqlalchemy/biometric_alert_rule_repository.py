@@ -1,7 +1,7 @@
 """
 SQLAlchemy implementation of the BiometricAlertRuleRepository.
 """
-from typing import List, Optional
+from typing import List, Optional, Any 
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,3 +55,27 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
     async def update_active_status(self, rule_id: UUID, is_active: bool) -> bool:
         """Mock implementation for test collection."""
         return True
+
+    async def get_rules(
+        self,
+        patient_id: UUID | None = None,
+        is_active: bool | None = None
+    ) -> list[BiometricAlertRule]:
+        """Retrieve rules, optionally filtering by patient_id and is_active status."""
+        print(f"\nWARNING: Using placeholder SQLAlchemyBiometricAlertRuleRepository.get_rules(patient_id={patient_id}, is_active={is_active})\n")
+        if patient_id is not None and is_active is not None:
+            if is_active:
+                return await self.get_active_rules_for_patient(patient_id)
+            else:
+                all_patient_rules = await self.get_by_patient_id(patient_id)
+                return [rule for rule in all_patient_rules if not rule.is_active]
+        elif patient_id is not None:
+            return await self.get_by_patient_id(patient_id)
+        elif is_active is not None:
+            if is_active:
+                return await self.get_all_active()
+            else:
+                all_rules = await self.get_all()
+                return [rule for rule in all_rules if not rule.is_active]
+        else:
+            return await self.get_all()
