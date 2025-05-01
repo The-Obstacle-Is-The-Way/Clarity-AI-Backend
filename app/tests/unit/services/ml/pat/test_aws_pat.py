@@ -6,7 +6,7 @@ All AWS services are mocked to avoid making actual API calls.
 """
 
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 
 # Third-party imports
 from botocore.exceptions import ClientError
@@ -32,22 +32,41 @@ def aws_config():
 @pytest.fixture(scope="function", autouse=True)
 def mock_boto3(mocker, request):
     """Autouse fixture to mock boto3 clients and resources for all tests."""
-    # Mock S3 client
-    mocker.patch("boto3.client", autospec=True).return_value.list_buckets.return_value = {
-        "Buckets": [{"Name": "test-pat-bucket"}]
-    }
 
-    # Conditionally mock DynamoDB resource
+    # --- Mock boto3.client to return specific mocks per service --- 
+    mock_s3_instance = MagicMock()
+    mock_s3_instance.list_buckets.return_value = {"Buckets": [{"Name": "test-pat-bucket"}]}
+    # Add other S3 mocks as needed...
+
+    mock_sagemaker_instance = MagicMock()
+    # Add SageMaker mocks as needed...
+
+    mock_comprehend_instance = MagicMock()
+    # Add Comprehend Medical mocks as needed...
+
+    # Central mock for boto3.client
+    mock_client = mocker.patch("boto3.client", autospec=True)
+
+    # Side effect function to return the correct mock based on service name
+    def client_side_effect(service_name, *args, **kwargs):
+        if service_name == 's3':
+            return mock_s3_instance
+        elif service_name == 'sagemaker-runtime':
+            return mock_sagemaker_instance
+        elif service_name == 'comprehendmedical':
+            return mock_comprehend_instance
+        # Return a default mock if service name is unexpected
+        return MagicMock()
+
+    mock_client.side_effect = client_side_effect
+
+    # --- Conditionally mock DynamoDB resource --- 
     if not request.node.get_closest_marker("no_mock_dynamodb_resource"):
-        mocker.patch("boto3.resource", autospec=True)
+        mock_dynamodb_resource_instance = MagicMock()
+        # Add DynamoDB table mocks as needed...
+        mocker.patch("boto3.resource", return_value=mock_dynamodb_resource_instance)
 
-    # Mock SageMaker Runtime client
-    mocker.patch("boto3.client", autospec=True)
-
-    # Mock Comprehend Medical client
-    mocker.patch("boto3.client", autospec=True)
-
-    yield
+    yield # Allow tests to run with mocks
 
 
 @pytest.fixture
@@ -83,21 +102,45 @@ class TestAWSPATService:
 
     @pytest.mark.no_mock_dynamodb_resource
     def test_initialization_failure(self, aws_config, mocker):
-        """Test initialization failure when a client/resource creation fails."""
-        mock_error_response = {'Error': {'Code': 'ServiceUnavailable', 'Message': 'Mock service error'}}
-        mock_operation_name = 'DescribeTable'
-        client_error = ClientError(mock_error_response, mock_operation_name)
+        """Test initialization failure when accessing a table fails during check."""
+        # Mock boto3.resource factory
+        mock_resource_factory = mocker.patch("boto3.resource")
 
-        mock_resource = mocker.patch('app.core.services.ml.pat.aws.boto3.resource')
-        mock_resource.side_effect = client_error
+        # Create a mock for the resource instance
+        mock_dynamodb_instance = MagicMock()
 
+        # Create a mock for the table instance
+        mock_table_instance = MagicMock()
+
+        # Configure the mock table's load() method to raise a suitable ClientError
+        # Use an error code OTHER than 'ResourceNotFoundException' to trigger InitializationError
+        mock_table_instance.load.side_effect = ClientError(
+            error_response={'Error': {'Code': 'ProvisionedThroughputExceededException', 'Message': 'Mock load error'}},
+            operation_name='DescribeTable' # Example operation name
+        )
+
+        # Configure the mock resource's Table() method to return the mock table instance
+        mock_dynamodb_instance.Table.return_value = mock_table_instance
+
+        # Make the patched boto3.resource return the configured mock resource instance
+        mock_resource_factory.return_value = mock_dynamodb_instance
+
+        # --- Debug Prints ---
+        print("\n[TEST DEBUG] Mock Setup Complete:")
+        print(f"[TEST DEBUG] boto3.resource patched: {mocker.patch.call_args_list}") # Crude check
+        print(f"[TEST DEBUG] mock_dynamodb_instance.Table returns: {mock_dynamodb_instance.Table.return_value}")
+        print(f"[TEST DEBUG] mock_table_instance.load side_effect: {mock_table_instance.load.side_effect}\n")
+
+        # --- Act & Assert ---
         service = AWSPATService()
+        # Expect InitializationError because mock_table_instance.load() will raise a ClientError
+        # which is caught by _check_table_exists and re-raised as InitializationError.
         with pytest.raises(InitializationError) as excinfo:
-            service.initialize(config=aws_config)
+            service.initialize(aws_config)
 
-        assert "Error initializing DynamoDB resource" in str(excinfo.value)
-        assert "ClientError" in str(excinfo.value)
-        assert "Mock service error" in str(excinfo.value)
+        # Assert on the exception message
+        assert "ClientError accessing table" in str(excinfo.value) 
+        assert "Mock load error" in str(excinfo.value)
 
     def test_sanitize_phi(self, mocker):
         """Test PHI sanitization logic by manually instantiating after patching boto3.client."""

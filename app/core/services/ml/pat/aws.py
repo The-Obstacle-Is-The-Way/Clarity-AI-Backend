@@ -467,3 +467,21 @@ class AWSPATService(PATInterface):
                 "updated_at": timestamp
             }
         }
+
+    def _check_table_exists(self, table, table_name: str) -> None:
+        """Checks if a DynamoDB table exists and is active."""
+        print(f"\n[SERVICE DEBUG] Entering _check_table_exists for table: {table_name}")
+        print(f"[SERVICE DEBUG] Table object type: {type(table)}")
+        try:
+            print(f"[SERVICE DEBUG] Attempting table.load() on {table_name}")
+            table.load()  # Attempts to load table metadata
+            print(f"[SERVICE DEBUG] table.load() completed for {table_name}")
+            if table.table_status != 'ACTIVE':
+                logger.warning(f"Table {table_name} exists but is not ACTIVE (Status: {table.table_status}).")
+                # Depending on requirements, you might raise an error here or just warn
+                # raise InitializationError(f"Table {table_name} is not ACTIVE (Status: {table.table_status})")
+        except ClientError as e:
+            print(f"[SERVICE DEBUG] Caught ClientError in _check_table_exists for {table_name}: {e.response['Error']['Code']}")
+            if e.response['Error']['Code'] == 'ResourceNotFoundException':
+                logger.error(f"Required DynamoDB table '{table_name}' not found.")
+                raise ResourceNotFoundError(f"Required DynamoDB table '{table_name}' not found.") from e
