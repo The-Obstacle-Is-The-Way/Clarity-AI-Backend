@@ -245,7 +245,7 @@ class AWSPATService(PATInterface):
                 entity_type = entity["Type"]
                 sanitized_text = (
                     sanitized_text[:begin] + 
-                    f"[REDACTED-{entity_type}]" + 
+                    f"[{entity_type}]" + 
                     sanitized_text[end:]
                 )
             
