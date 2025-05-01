@@ -251,28 +251,36 @@ class TestRateLimitingMiddleware:
 class TestRateLimitingMiddlewareFactory:
     """Tests for the RateLimitingMiddlewareFactory."""
 
-    @patch("app.presentation.middleware.rate_limiting_middleware.RateLimitingMiddleware")
-    def test_create_rate_limiting_middleware(self, mock_middleware_class):
-        """Test the factory function for creating rate limiting middleware."""
+    def test_create_rate_limiting_middleware(self):
+        """Test the factory function using dependency injection for the middleware class type."""
+        # Create a mock representing the middleware class TYPE
+        mock_middleware_class_type = MagicMock(spec=RateLimitingMiddleware) # Use spec for better mocking
+        mock_middleware_class_type.__name__ = "MockRateLimitingMiddleware"
+        
         # Mock app
         mock_app = MagicMock()
-        mock_middleware_class.return_value = MagicMock()
         
-        # Call factory function
+        # Call factory function, injecting the mock class TYPE
         middleware = create_rate_limiting_middleware(
             app=mock_app,
             api_rate_limit=100,
             api_window_seconds=120,
             api_block_seconds=600,
+            middleware_class=mock_middleware_class_type, # Inject the mock TYPE
         )
         
-        # Verify middleware was created with correct parameters
-        mock_middleware_class.assert_called_once()
-        # Get the call arguments
-        call_args = mock_middleware_class.call_args
-        assert call_args[0][0] == mock_app  # app is first positional arg
-        assert "default_limits" in call_args[1]
-        assert "path_limits" in call_args[1]
+        # Verify the injected mock class TYPE was instantiated (called)
+        assert mock_middleware_class_type.call_count == 1
+        call_args, call_kwargs = mock_middleware_class_type.call_args
+        assert call_args[0] == mock_app  # app is first positional arg
+        assert "default_limits" in call_kwargs
+        assert "path_limits" in call_kwargs
+        assert "limiter" in call_kwargs
+        assert "get_key" in call_kwargs
+        
+        # Verify the factory returned the INSTANCE created by the mock class TYPE
+        # The instance is mock_middleware_class_type.return_value
+        assert middleware is mock_middleware_class_type.return_value
 
 
 @pytest.mark.asyncio

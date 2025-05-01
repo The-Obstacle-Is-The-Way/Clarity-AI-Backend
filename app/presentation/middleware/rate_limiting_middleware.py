@@ -321,6 +321,7 @@ class RateLimitConfig:
 # Factory helper expected by tests                                       
 # ----------------------------------------------------------------------
 
+from .rate_limiting_middleware import RateLimitingMiddleware
 
 def create_rate_limiting_middleware(
     *,
@@ -330,6 +331,7 @@ def create_rate_limiting_middleware(
     api_block_seconds: int,
     limiter=None,
     get_key: Optional[Callable] = None,
+    middleware_class=RateLimitingMiddleware,
 ):
     """Factory that instantiates RateLimitingMiddleware with default/path limits."""
 
@@ -348,7 +350,7 @@ def create_rate_limiting_middleware(
         },
     }
 
-    return RateLimitingMiddleware(
+    return middleware_class(
         app,
         limiter=limiter,
         default_limits=default_limits,

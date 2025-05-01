@@ -885,17 +885,19 @@ class BedrockPAT(PATInterface):
         # For now, return information based on the configured model_mapping
         # In a real scenario, might query Bedrock's ListFoundationModels API
         models_info = []
-        if self._bedrock_analysis_model_id:
+        # Correct attribute name usage
+        if hasattr(self, '_analysis_model_id') and self._analysis_model_id:
              models_info.append({
-                 "model_id": self._bedrock_analysis_model_id,
-                 "name": f"Configured Analysis Model ({self._bedrock_analysis_model_id})",
+                 "model_id": self._analysis_model_id, # Corrected
+                 "name": f"Configured Analysis Model ({self._analysis_model_id})", # Corrected
                  "description": "Model configured for actigraphy analysis.",
                  "capabilities": ["analysis"]
              })
-        if self._bedrock_embedding_model_id:
+        # Correct attribute name usage
+        if hasattr(self, '_embedding_model_id') and self._embedding_model_id:
              models_info.append({
-                 "model_id": self._bedrock_embedding_model_id,
-                 "name": f"Configured Embedding Model ({self._bedrock_embedding_model_id})",
+                 "model_id": self._embedding_model_id, # Corrected
+                 "name": f"Configured Embedding Model ({self._embedding_model_id})", # Corrected
                  "description": "Model configured for actigraphy embeddings.",
                  "capabilities": ["embeddings"]
              })
