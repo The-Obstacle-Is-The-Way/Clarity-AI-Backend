@@ -168,6 +168,27 @@ class PHIDetectionRequest(BaseModel):
     )
 
 
+class PHIDetectionResponse(BaseModel):
+    """Response model for PHI detection."""
+
+    phi_detected: List[Dict[str, Any]] = Field(
+        description="Detected PHI"
+    )
+    detection_level: str = Field(
+        description="Detection level used"
+    )
+    phi_count: int = Field(
+        description="Number of PHI instances detected",
+        ge=0
+    )
+    has_phi: bool = Field(
+        description="Whether PHI was detected"
+    )
+    timestamp: str = Field(
+        description="Timestamp of the detection"
+    )
+
+
 class PHIRedactionRequest(BaseModel):
     """Request model for PHI redaction."""
     
@@ -224,6 +245,30 @@ class DigitalTwinInsightsRequest(BaseModel):
         None,
         description="Time period for insights"
     )
+
+
+class PIISanitizationRequest(BaseModel):
+    """Request model for PII Sanitization."""
+    text: str = Field(..., description="Text to sanitize for PII.")
+    # Add other relevant fields if needed, e.g., sanitization level, context
+
+
+class PIISanitizationResponse(BaseModel):
+    """Response model for PII Sanitization."""
+    sanitized_text: str = Field(..., description="Text with PII sanitized.")
+    # Add other relevant fields if needed, e.g., details of PII found
+
+
+class PIITextAnalysisRequest(BaseModel):
+    """Request model for PII text analysis."""
+    text: str = Field(..., description="Text to analyze for PII.")
+    # Add other relevant fields if needed, e.g., analysis level, context
+
+
+class PIITextAnalysisResponse(BaseModel):
+    """Response model for PII text analysis."""
+    analysis_results: dict = Field(..., description="Results of the PII analysis.")
+    # Add other relevant fields if needed, e.g., confidence scores, detected PII types
 
 
 class APIResponse(BaseModel):

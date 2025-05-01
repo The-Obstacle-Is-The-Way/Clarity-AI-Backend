@@ -6,7 +6,11 @@ that uses AWS services (SageMaker, S3, DynamoDB) for actigraphy data analysis
 and embedding generation.
 """
 
-import logging
+import asyncio
+import datetime
+import json
+import time
+import uuid
 from typing import Any, Optional
 
 import boto3
@@ -18,10 +22,18 @@ from app.core.services.ml.pat.exceptions import (
     ConfigurationError,
     InitializationError,
 )
-from app.infrastructure.logging.logger import setup_logging
+from app.infrastructure.logging.logger import get_logger
+from app.presentation.api.schemas.ml_schemas import (
+    PHIDetectionRequest, PIISanitizationRequest, PIISanitizationResponse,
+    PIITextAnalysisRequest, PIITextAnalysisResponse
+)
+from app.presentation.api.schemas.ml import (
+    PHIDetectionResponse
+)
+from app.infrastructure.security.phi_sanitizer import sanitize_phi_text
 
-setup_logging()
-logger = logging.getLogger(__name__)
+# Initialize logger for this module
+logger = get_logger(__name__)
 
 
 class AWSPATService(PATServiceBase):
