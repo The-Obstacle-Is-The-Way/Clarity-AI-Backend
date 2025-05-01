@@ -3,7 +3,7 @@
 
 # Linters & Formatters
 black==23.9.1
-ruff==0.3.5
+ruff>=0.5.3
 mypy==1.6.1
 
 # Pre-commit Hooks
