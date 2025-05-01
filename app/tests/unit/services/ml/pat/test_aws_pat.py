@@ -6,7 +6,7 @@ All AWS services are mocked to avoid making actual API calls.
 """
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 from botocore.exceptions import ClientError
 
 # Application-specific imports
@@ -30,9 +30,9 @@ def aws_config():
     }
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function")
 def mock_boto3(mocker, request):
-    """Autouse fixture to mock boto3 clients and resources for all tests."""
+    """Fixture to mock boto3 clients and resources for tests that need it."""
 
     # --- Mock boto3.client to return specific mocks per service --- 
     mock_s3_instance = MagicMock()
@@ -42,24 +42,12 @@ def mock_boto3(mocker, request):
     mock_sagemaker_instance = MagicMock()
     # Add SageMaker mocks as needed...
 
-    mock_comprehend_instance = MagicMock(name="MockComprehendMedicalClientFromBoto3")
-    # Configure the default return value needed for test_sanitize_phi directly here
-    mock_comprehend_instance.detect_phi.return_value = {
-        'Entities': [
-            {
-                'Text': 'John Doe', 'Type': 'NAME', 'Score': 0.99, 
-                'BeginOffset': 14, 'EndOffset': 22
-            },
-            {
-                'Text': '123 Main St', 'Type': 'ADDRESS', 'Score': 0.98, 
-                'BeginOffset': 34, 'EndOffset': 45
-            }
-        ]
-    }
+    mock_comprehend_instance = MagicMock(name="GenericMockComprehendMedicalClient")
+    # No specific config here anymore - will be handled by dedicated fixture
     # Add other Comprehend Medical mocks as needed...
 
     # Central mock for boto3.client, targeting where it's imported in the service module
-    mock_client = mocker.patch("app.core.services.ml.pat.aws.boto3.client", autospec=True)
+    mock_client = mocker.patch("app.core.services.ml.pat.aws.boto3.client")
 
     # Side effect function to return the correct mock based on service name
     def client_side_effect(service_name, *args, **kwargs):
@@ -99,16 +87,39 @@ def mock_dynamodb_resource(mocker, request):
     return mock_resource  # Return the configured mock resource
 
 
+# Restore the dedicated fixture for the Comprehend Medical client mock
 @pytest.fixture
-def aws_pat_service(mock_dynamodb_resource, aws_config):
-    """Provides an AWSPATService instance potentially initialized with mock resources."""
+def mock_comprehend_medical_client():
+    """Fixture for a mock comprehendmedical client."""
+    client = MagicMock(name="MockComprehendMedicalClient")
+    # Explicitly mock the detect_phi method itself using Mock instead of MagicMock
+    client.detect_phi = Mock(name="MockDetectPhiMethod")
+    # Set the return value on the mock method
+    client.detect_phi.return_value = {
+        'Entities': [
+            {
+                'Text': 'John Doe', 'Type': 'NAME', 'Score': 0.99, 
+                'BeginOffset': 14, 'EndOffset': 22
+            },
+            {
+                'Text': '123 Main St', 'Type': 'ADDRESS', 'Score': 0.98, 
+                'BeginOffset': 34, 'EndOffset': 45
+            }
+        ]
+    }
+    return client
+
+
+@pytest.fixture
+def aws_pat_service(mock_dynamodb_resource, mock_comprehend_medical_client, aws_config):
+    """Provides an AWSPATService instance initialized with mock resources."""
     service = AWSPATService()
-    # Pass the mock resource fixture into initialize for proper DI
-    # No longer need to inject comprehend_medical_client, it's handled by mock_boto3
+    # Pass the mock resource fixtures into initialize for proper DI
+    # Inject both mock DynamoDB and the dedicated Comprehend Medical client
     service.initialize(
         config=aws_config, 
-        dynamodb_resource=mock_dynamodb_resource
-        # comprehend_medical_client is now mocked via mock_boto3 autouse fixture
+        dynamodb_resource=mock_dynamodb_resource,
+        comprehend_medical_client=mock_comprehend_medical_client # Inject the dedicated mock
     )
     return service
 
@@ -142,20 +153,39 @@ def test_initialization_failure(
     mock_table.load.assert_called_once()
 
 
-def test_sanitize_phi(aws_pat_service, aws_config): 
+def test_sanitize_phi(mock_comprehend_medical_client, mock_dynamodb_resource, aws_config):
     """Test PHI sanitization logic using mocked comprehend_medical_client."""
     text = "Patient name: John Doe, lives at 123 Main St."
     expected_sanitized_text = "Patient name: [NAME], lives at [ADDRESS]."
 
-    # Service instance comes from the fixture, already initialized with mocks
-    service_instance = aws_pat_service 
+    # Manual initialization instead of using the aws_pat_service fixture
+    service_instance = AWSPATService()
+    service_instance.initialize(
+        config=aws_config,
+        dynamodb_resource=mock_dynamodb_resource,
+        comprehend_medical_client=mock_comprehend_medical_client # Explicitly pass the configured mock
+    )
+
+    # --- Diagnostics --- 
+    print("\n--- test_sanitize_phi Diagnostics ---")
+    print(f"Service instance comprehend client type: {type(service_instance._comprehend_medical)}")
+    print(f"Service instance comprehend client object: {service_instance._comprehend_medical}")
+    print(f"Fixture comprehend client object: {mock_comprehend_medical_client}")
+    print(f"Are objects the same? {service_instance._comprehend_medical is mock_comprehend_medical_client}")
+    try:
+        print(f"detect_phi return_value: {service_instance._comprehend_medical.detect_phi.return_value}")
+    except AttributeError as e:
+        print(f"Could not access detect_phi.return_value: {e}")
+    print("-----------------------------------\n")
+    # --- End Diagnostics --- 
 
     # Call the method under test
     sanitized = service_instance._sanitize_phi(text)
 
     # Assertions
     assert sanitized == expected_sanitized_text
-    aws_pat_service._comprehend_medical.detect_phi.assert_called_once_with(Text=text) 
+    # Check the call on the *specific mock instance* we passed in
+    mock_comprehend_medical_client.detect_phi.assert_called_once_with(Text=text) 
 
 
 def test_sanitize_phi_error(aws_pat_service):
