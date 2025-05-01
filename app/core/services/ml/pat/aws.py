@@ -240,10 +240,16 @@ class AWSPATService(PATInterface):
             logger.debug(f"DETECT_PHI RESPONSE ENTITIES: {response.get('Entities', [])}")
             entities = response.get("Entities", [])
             
+            if not entities:
+                return text  # Return original text if no entities found
+
+            # Sort entities by BeginOffset in descending order
+            # This ensures replacements don't affect indices of earlier entities
+            entities.sort(key=lambda x: x.get('BeginOffset', 0), reverse=True)
+
             sanitized_text = text
-            sorted_entities = sorted(entities, key=lambda x: x["BeginOffset"], reverse=True)
-            
-            for i, entity in enumerate(sorted_entities):
+            # Process each entity
+            for i, entity in enumerate(entities):
                 begin = entity["BeginOffset"]
                 end = entity["EndOffset"]
                 entity_type = entity["Type"]
@@ -251,11 +257,16 @@ class AWSPATService(PATInterface):
                 logger.debug(f"Processing entity: Type={entity_type}, Begin={begin}, End={end}, Text='{entity.get('Text', 'N/A')}'") # Added Text for debug
 
                 # Construct the sanitized text by replacing the entity span
-                part1 = sanitized_text[:begin]
-                replacement = f"[{entity_type}]"
-                part3 = sanitized_text[end:]
+                text_before = sanitized_text[:begin]
+                text_after = sanitized_text[end:]
+                
+                replacement_text = f"[{entity_type}]"
+                
+                logger.debug(f"  Replacing '{sanitized_text[begin:end]}' with '{replacement_text}'")
+                logger.debug(f"  Text Before (len={len(text_before)}): '{text_before}'")
+                logger.debug(f"  Text After (len={len(text_after)}): '{text_after}'")
 
-                sanitized_text = part1 + replacement + part3 # CRITICAL LINE
+                sanitized_text = text_before + replacement_text + text_after
                 logger.debug(f"  Current sanitized_text (len={len(sanitized_text)}): '{sanitized_text}'")
             
             return sanitized_text
