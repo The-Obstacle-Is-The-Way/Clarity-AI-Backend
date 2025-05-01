@@ -89,21 +89,21 @@ class TestAWSPATService:
         assert service._dynamodb_resource is not None
         assert service._comprehend_medical is not None
 
-    def test_initialization_failure(self, aws_config):
+    def test_initialization_failure(self, aws_config, mocker):
         """Test initialization failure."""
         # Use a more targeted patch that only affects the specific client we want to fail
-        original_client = boto3.client
+        original_resource = boto3.resource
 
-        def mock_client_factory(*args, **kwargs):
-            if args[0] == "sagemaker-runtime":
+        def mock_resource_factory(*args, **kwargs):
+            if args[0] == "dynamodb":
                 raise ClientError(
-                    {"Error": {"Code": "InvalidParameterValue", "Message": "Test error"}},
-                    "CreateEndpoint",
+                    {"Error": {"Code": "ServiceUnavailable", "Message": "Test DynamoDB error"}},
+                    "GetResource",
                 )
-            return original_client(*args, **kwargs)
+            return original_resource(*args, **kwargs)
 
         # Apply the patch
-        with patch("boto3.client", side_effect=mock_client_factory):
+        with patch("boto3.resource", side_effect=mock_resource_factory):
             service = AWSPATService()
             with pytest.raises(InitializationError):
                 service.initialize(aws_config)
