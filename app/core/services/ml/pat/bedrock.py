@@ -26,7 +26,6 @@ from app.core.services.ml.pat.exceptions import (
     AuthorizationError,
     EmbeddingError,
     IntegrationError, # Added IntegrationError
-    StorageError # Added StorageError
 )
 from app.core.services.ml.pat.pat_interface import PATInterface
 from app.core.interfaces.aws_service_interface import (
