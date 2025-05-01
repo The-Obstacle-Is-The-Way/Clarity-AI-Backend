@@ -1,7 +1,7 @@
 """
 SQLAlchemy implementation of the BiometricAlertRuleRepository.
 """
-from uuid import UUID
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,7 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         """Initialize repository with DB session."""
         self.db = db
     
-    async def get_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
+    async def get_by_id(self, rule_id: uuid.UUID) -> BiometricAlertRule | None:
         """Mock implementation for test collection."""
         return None
     
@@ -23,11 +23,11 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         """Mock implementation for test collection."""
         return []
     
-    async def get_by_patient_id(self, patient_id: UUID) -> list[BiometricAlertRule]:
+    async def get_by_patient_id(self, patient_id: uuid.UUID) -> list[BiometricAlertRule]:
         """Mock implementation for test collection."""
         return []
     
-    async def get_by_provider_id(self, provider_id: UUID) -> list[BiometricAlertRule]:
+    async def get_by_provider_id(self, provider_id: uuid.UUID) -> list[BiometricAlertRule]:
         """Mock implementation for test collection."""
         return []
     
@@ -35,7 +35,7 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         """Mock implementation for test collection."""
         return []
     
-    async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricAlertRule]:
+    async def get_active_rules_for_patient(self, patient_id: uuid.UUID) -> list[BiometricAlertRule]:
         """Mock implementation for test collection."""
         return []
     
@@ -43,21 +43,21 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         """Mock implementation for test collection."""
         return rule
     
-    async def delete(self, rule_id: UUID) -> bool:
+    async def delete(self, rule_id: uuid.UUID) -> bool:
         """Mock implementation for test collection."""
         return True
     
-    async def count_active_rules(self, patient_id: UUID) -> int:
+    async def count_active_rules(self, patient_id: uuid.UUID) -> int:
         """Mock implementation for test collection."""
         return 0
     
-    async def update_active_status(self, rule_id: UUID, is_active: bool) -> bool:
+    async def update_active_status(self, rule_id: uuid.UUID, is_active: bool) -> bool:
         """Mock implementation for test collection."""
         return True
 
     async def get_rules(
         self,
-        patient_id: UUID | None = None,
+        patient_id: uuid.UUID | None = None,
         is_active: bool | None = None
     ) -> list[BiometricAlertRule]:
         """Retrieve rules, optionally filtering by patient_id and is_active status."""
@@ -83,7 +83,7 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         else:
             return await self.get_all()
 
-    async def get_rule_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
+    async def get_rule_by_id(self, rule_id: uuid.UUID) -> BiometricAlertRule | None:
         """Alias for get_by_id()"""
         return await self.get_by_id(rule_id)
 
@@ -95,6 +95,6 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
         """Alias for save() for existing rules"""
         return await self.save(rule)
 
-    async def delete_rule(self, rule_id: UUID) -> bool:
+    async def delete_rule(self, rule_id: uuid.UUID) -> bool:
         """Alias for delete()"""
         return await self.delete(rule_id)
