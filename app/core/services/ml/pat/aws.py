@@ -24,10 +24,9 @@ from app.core.exceptions.base_exceptions import (
     AuthorizationException,
     ConfigurationError,
     ExternalServiceException,
-    ResourceNotFoundError,
-    ServiceNotInitializedError
+    ResourceNotFoundError
 )
-from app.core.interfaces.ml.pat import PATServiceInterface
+from app.core.interfaces.ml.pat_interface import PATServiceInterface
 from app.infrastructure.logging.logger import get_logger
 
 # Initialize logger for this module
@@ -153,7 +152,6 @@ class AWSPATService(PATServiceInterface):
             logger.error(error_msg)
             raise ExternalServiceException(error_msg) from e
         except Exception as e:
-            # Line 143 fix
             error_msg = (f"Unexpected error during initialization: "
                          f"{e.__class__.__name__}: {e!s}")
             logger.error(error_msg)
@@ -372,9 +370,9 @@ class AWSPATService(PATServiceInterface):
             analysis = self.analyze_text(document_content)
             return analysis
         except (ExternalServiceException, ValueError,
-                ConfigurationError, ResourceNotFoundError) as analysis_err: # Line length fix
+                ConfigurationError, ResourceNotFoundError) as analysis_err:
             logger.error(f"Error during text analysis: {analysis_err}")
-            raise # Line 382 fix
+            raise
 
     def _generate_embeddings(self, text: str) -> list[float]:
         """(Placeholder) Generate embeddings for the text."""
@@ -487,12 +485,11 @@ class AWSPATService(PATServiceInterface):
                                      exc_info=True)
                         raise ExternalServiceException(
                             f"Could not verify AWS resource {resource_name}") from e
-
-            # Verify S3 Bucket access (head_bucket)
-            # Line 438 fix
             if self._s3_client and self._s3_bucket_name:
                  logger.debug(f"Verifying S3 bucket: {self._s3_bucket_name}")
-                 self._verify_aws_resource(self._s3_client.head_bucket, Bucket=self._s3_bucket_name)
+                 self._verify_aws_resource(
+                     self._s3_client.head_bucket, Bucket=self._s3_bucket_name
+                 )
             else:
                 logger.warning(
                     "S3 client or bucket name not configured, skipping verification."
@@ -558,10 +555,8 @@ class AWSPATService(PATServiceInterface):
                 print(json.dumps(analysis, indent=2))
             except (ExternalServiceException, ValueError, ConfigurationError, ResourceNotFoundError) as analysis_err:
                 print(f"Error during text analysis: {analysis_err}")
-            except ServiceNotInitializedError as init_err:
-                print(f"Service not initialized for text analysis: {init_err}")
 
-            # Example 2: Process a document (requires valid AWS setup or mocks)
+            # Example 2: Process a document (requires valid AWS setup/mocks)
             doc_key = 'sample_documents/patient_note_1.txt'  # Replace with actual S3 key
             print(f"\n--- Processing Document: {doc_key} ---")
             # This will likely fail without proper AWS credentials/mocks or if the document doesn't exist
@@ -582,10 +577,10 @@ class AWSPATService(PATServiceInterface):
 
             except (ConfigurationError, ResourceNotFoundError, ExternalServiceException) as proc_err:
                 print(f"Error during document processing/retrieval: {proc_err}")
-            except ServiceNotInitializedError as init_err:
-                print(f"Service not initialized for document processing: {init_err}")
+            except ClientError as aws_err:
+                print(f"AWS client error during doc processing: {aws_err}")
 
         except (ConfigurationError, ResourceNotFoundError, AuthorizationException) as init_err:
-            print(f"Failed to initialize AWSPATService: {init_err}")
+            print(f"Initialization or configuration error: {init_err}")
         except Exception as e:
             print(f"An unexpected error occurred in the main block: {e}", exc_info=True)
