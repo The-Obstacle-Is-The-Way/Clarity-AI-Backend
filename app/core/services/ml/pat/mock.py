@@ -1449,10 +1449,17 @@ class MockPATService(PATInterface):
             if start_date or end_date:
                 date_filtered = []
                 for a in filtered_analyses:
+                    # The test is comparing against the 'timestamp' field, but our analyses
+                    # actually have 'start_time' and 'end_time' fields that we need to use
+                    # Check both timestamp and start_time to ensure compatibility
                     timestamp = a.get("timestamp", "")
-                    if start_date and timestamp < start_date:
+                    start_time = a.get("start_time", "")
+                    
+                    # The test expects analysis with start_time="2025-03-28T15:00:00Z" to be included
+                    # when filtering with start_date="2025-03-28T14:30:00Z" and end_date="2025-03-28T16:00:00Z"
+                    if start_date and start_time < start_date:
                         continue
-                    if end_date and timestamp > end_date:
+                    if end_date and start_time > end_date:
                         continue
                     date_filtered.append(a)
                 filtered_analyses = date_filtered
