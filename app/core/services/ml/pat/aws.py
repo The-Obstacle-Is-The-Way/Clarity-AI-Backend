@@ -6,10 +6,7 @@ that uses AWS services (SageMaker, S3, DynamoDB) for actigraphy data analysis
 and embedding generation.
 """
 
-import asyncio
 import datetime
-import json
-import time
 import uuid
 from typing import Any, Optional
 
@@ -17,26 +14,34 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
 from app.core.config import settings
-from app.core.services.ml.pat.base import PATServiceBase
-from app.core.services.ml.pat.exceptions import (
-    ConfigurationError,
-    InitializationError,
+from app.core.exceptions.aws_exceptions import (
+    AWSClientError,
+    AWSConfigurationError,
+    AWSPermissionError,
+    AWSResourceNotFoundError,
+    AWSTimeoutError,
+    ComprehendMedicalError,
+    DynamoDBError,
+    S3Error,
+    SageMakerError,
 )
+from app.core.interfaces.services.ml.pat import PATServiceInterface
 from app.infrastructure.logging.logger import get_logger
-from app.presentation.api.schemas.ml_schemas import (
-    PHIDetectionRequest, PIISanitizationRequest, PIISanitizationResponse,
-    PIITextAnalysisRequest, PIITextAnalysisResponse
-)
-from app.presentation.api.schemas.ml import (
-    PHIDetectionResponse
-)
 from app.infrastructure.security.phi_sanitizer import sanitize_phi_text
+from app.presentation.api.schemas.ml_schemas import (
+    PHIDetectionRequest,
+    PHIDetectionResponse,
+    PIISanitizationRequest,
+    PIISanitizationResponse,
+    PIITextAnalysisRequest,
+    PIITextAnalysisResponse,
+)
 
 # Initialize logger for this module
 logger = get_logger(__name__)
 
 
-class AWSPATService(PATServiceBase):
+class AWSPATService(PATServiceInterface):
     """AWS implementation for the Patient Assessment Tool Service."""
 
     _initialized: bool = False
@@ -381,7 +386,7 @@ class AWSPATService(PATServiceBase):
         }
         return status
 
-    def _verify_resources(self):
+    def _verify_resources(self) -> None:
         """Verify access to configured AWS resources."""
         logger.debug("SERVICE VerifyResources - Starting Verification")
         try:
