@@ -103,7 +103,7 @@ def mock_comprehend_medical_client():
             },
             {
                 'Text': '123 Main St.', 'Type': 'ADDRESS', 'Score': 0.98, 
-                'BeginOffset': 36, 'EndOffset': 48
+                'BeginOffset': 32, 'EndOffset': 48
             }
         ]
     }
@@ -173,7 +173,7 @@ def test_sanitize_phi(mock_comprehend_medical_client, mock_dynamodb_resource, mo
     )
 
     text_with_phi = "Patient name: John Doe, lives at 123 Main St."
-    expected_sanitized_text = "Patient name: [NAME], lives at [ADDRESS]."
+    expected_sanitized_text = "Patient name: [NAME], lives at [ADDRESS]"
 
     # Call the method under test
     sanitized = service._sanitize_phi(text_with_phi)

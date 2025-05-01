@@ -194,7 +194,7 @@ class AWSPATService(PATInterface):
                 table.load()  # Attempt to load table metadata, triggers ClientError if mock is set
                 sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Table {table_name} loaded successfully.\n")
                 sys.stderr.flush()
-                
+
             sys.stderr.write("\nDEBUG: SERVICE VerifyResources - DynamoDB tables verified.\n")
             sys.stderr.flush()
 
@@ -247,11 +247,15 @@ class AWSPATService(PATInterface):
                 end = entity["EndOffset"]
                 entity_type = entity["Type"]
 
-                sanitized_text = (
-                    sanitized_text[:begin] +
-                    f"[{entity_type}]" +
-                    sanitized_text[end:]
-                )
+                logger.debug(f"Processing entity: Type={entity_type}, Begin={begin}, End={end}, Text='{entity.get('Text', 'N/A')}'") # Added Text for debug
+
+                # Construct the sanitized text by replacing the entity span
+                part1 = sanitized_text[:begin]
+                replacement = f"[{entity_type}]"
+                part3 = sanitized_text[end:]
+
+                sanitized_text = part1 + replacement + part3 # CRITICAL LINE
+                logger.debug(f"  Current sanitized_text (len={len(sanitized_text)}): '{sanitized_text}'")
             
             return sanitized_text
         except ClientError as e:
