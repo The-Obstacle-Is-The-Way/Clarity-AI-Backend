@@ -102,8 +102,8 @@ def mock_comprehend_medical_client():
                 'BeginOffset': 14, 'EndOffset': 22
             },
             {
-                'Text': '123 Main St', 'Type': 'ADDRESS', 'Score': 0.98, 
-                'BeginOffset': 34, 'EndOffset': 45
+                'Text': '123 Main St.', 'Type': 'ADDRESS', 'Score': 0.98, 
+                'BeginOffset': 36, 'EndOffset': 48
             }
         ]
     }
@@ -179,6 +179,7 @@ def test_sanitize_phi(mock_comprehend_medical_client, mock_dynamodb_resource, mo
     sanitized = service._sanitize_phi(text_with_phi)
 
     # Assertions
+    print(f"\nDEBUG: Value before assertion: '{sanitized}'")
     assert sanitized == expected_sanitized_text
     # Assert mock was called correctly
     mock_comprehend_medical_client.detect_phi.assert_called_once_with(Text=text_with_phi)

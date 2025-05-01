@@ -233,19 +233,23 @@ class AWSPATService(PATInterface):
         Returns:
             Sanitized text with PHI removed
         """
+        self._check_initialized()
+        
         try:
             response = self._comprehend_medical.detect_phi(Text=text)
             entities = response.get("Entities", [])
             
-            # Replace PHI with redacted markers
             sanitized_text = text
-            for entity in sorted(entities, key=lambda x: x["BeginOffset"], reverse=True):
+            sorted_entities = sorted(entities, key=lambda x: x["BeginOffset"], reverse=True)
+            
+            for i, entity in enumerate(sorted_entities):
                 begin = entity["BeginOffset"]
                 end = entity["EndOffset"]
                 entity_type = entity["Type"]
+
                 sanitized_text = (
-                    sanitized_text[:begin] + 
-                    f"[{entity_type}]" + 
+                    sanitized_text[:begin] +
+                    f"[{entity_type}]" +
                     sanitized_text[end:]
                 )
             
