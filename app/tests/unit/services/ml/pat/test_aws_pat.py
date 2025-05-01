@@ -38,11 +38,11 @@ def mock_boto3():
     s3_client = Mock()
     dynamodb = Mock()
     comprehend_medical = Mock()
-    
+
     # Create a table method for dynamodb
     table = Mock()
     dynamodb.Table.return_value = table
-    
+
     # Return the mocks - we'll manage the patching in the fixture that uses these
     return {
         "sagemaker-runtime": sagemaker_runtime,
@@ -56,16 +56,16 @@ def mock_boto3():
 def aws_pat_service(mock_boto3, aws_config):
     """Fixture for AWS PAT service, injecting mock clients."""
     service = AWSPATService()
-    
+
     # Inject mock clients directly using the updated initialize method
     service.initialize(
         config=aws_config,
-        sagemaker_runtime_client=mock_boto3.get("sagemaker-runtime"), # Use .get for safety
+        sagemaker_runtime_client=mock_boto3.get("sagemaker-runtime"),  # Use .get for safety
         s3_client=mock_boto3.get("s3"),
         comprehend_medical_client=mock_boto3.get("comprehendmedical"),
-        dynamodb_resource=mock_boto3.get("dynamodb_resource") 
+        dynamodb_resource=mock_boto3.get("dynamodb_resource"),
     )
-    
+
     yield service
 
 
@@ -93,42 +93,40 @@ class TestAWSPATService:
         """Test initialization failure."""
         # Use a more targeted patch that only affects the specific client we want to fail
         original_client = boto3.client
-        
+
         def mock_client_factory(*args, **kwargs):
-            if args[0] == 'sagemaker-runtime':
+            if args[0] == "sagemaker-runtime":
                 raise ClientError(
                     {"Error": {"Code": "InvalidParameterValue", "Message": "Test error"}},
-                    "CreateEndpoint"
+                    "CreateEndpoint",
                 )
             return original_client(*args, **kwargs)
-        
+
         # Apply the patch
         with patch("boto3.client", side_effect=mock_client_factory):
             service = AWSPATService()
             with pytest.raises(InitializationError):
                 service.initialize(aws_config)
 
-    def test_sanitize_phi(self, mocker): 
+    def test_sanitize_phi(self, mocker):
         """Test PHI sanitization logic by manually instantiating after patching boto3.client."""
         text = "Patient is John Doe, lives at 123 Main St."
-        
+
         # 1. Create and configure the mock comprehend client
-        mock_comprehend_medical = Mock(spec=['detect_phi'])
+        mock_comprehend_medical = Mock(spec=["detect_phi"])
         mock_response_dict = {
             "Entities": [
                 # Corrected offsets based on the text
                 {"Type": "NAME", "BeginOffset": 11, "EndOffset": 15, "Score": 0.99},
-                {"Type": "ADDRESS", "BeginOffset": 28, "EndOffset": 38, "Score": 0.95}
+                {"Type": "ADDRESS", "BeginOffset": 28, "EndOffset": 38, "Score": 0.95},
             ]
         }
         # Use configure_mock for potentially more reliable nested configuration
-        mock_comprehend_medical.configure_mock(**{
-            'detect_phi.return_value': mock_response_dict
-        })
-        
-        # 3. Manually instantiate the service 
+        mock_comprehend_medical.configure_mock(**{"detect_phi.return_value": mock_response_dict})
+
+        # 3. Manually instantiate the service
         service_instance = AWSPATService()
-        
+
         #    Use a dummy config matching what the fixture provided, with correct keys
         dummy_config = {
             "aws_region": "us-east-1",
@@ -140,8 +138,7 @@ class TestAWSPATService:
         }
         #    Inject the mock client directly during initialization
         service_instance.initialize(
-            config=dummy_config, 
-            comprehend_medical_client=mock_comprehend_medical
+            config=dummy_config, comprehend_medical_client=mock_comprehend_medical
         )
 
         # 4. Call the method under test using the manual instance
@@ -161,8 +158,7 @@ class TestAWSPATService:
         # 2. Configure Mock
         # Configure the mock directly on the service instance attribute
         mock_comprehend_medical.detect_phi.side_effect = ClientError(
-            {"Error": {"Code": "InternalServerError", "Message": "Test error"}},
-            "DetectPHI"
+            {"Error": {"Code": "InternalServerError", "Message": "Test error"}}, "DetectPHI"
         )
 
         # 3. Execute
@@ -250,9 +246,7 @@ class TestAWSPATService:
         analysis_id = "analysis789"
 
         # Call method (implementation is stubbed)
-        result = aws_pat_service.integrate_with_digital_twin(
-            patient_id, profile_id, analysis_id
-        )
+        result = aws_pat_service.integrate_with_digital_twin(patient_id, profile_id, analysis_id)
 
         # Basic validation of stub implementation
         assert "integration_id" in result
