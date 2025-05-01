@@ -6,7 +6,7 @@ All AWS services are mocked to avoid making actual API calls.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 
 # Third-party imports
 import boto3
@@ -90,23 +90,32 @@ class TestAWSPATService:
         assert service._comprehend_medical is not None
 
     def test_initialization_failure(self, aws_config, mocker):
-        """Test initialization failure."""
-        # Use a more targeted patch that only affects the specific client we want to fail
-        original_resource = boto3.resource
+        """Test initialization failure when a client/resource creation fails."""
+        # Store the original boto3.resource factory
+        original_boto3_resource = boto3.resource
 
+        # Mock boto3.resource to raise an exception ONLY for DynamoDB
         def mock_resource_factory(*args, **kwargs):
-            if args[0] == "dynamodb":
+            service_name = args[0]
+            if service_name == "dynamodb":
                 raise ClientError(
                     {"Error": {"Code": "ServiceUnavailable", "Message": "Test DynamoDB error"}},
                     "GetResource",
                 )
-            return original_resource(*args, **kwargs)
+            # For any other service, call the original factory
+            return original_boto3_resource(*args, **kwargs)
 
-        # Apply the patch
-        with patch("boto3.resource", side_effect=mock_resource_factory):
-            service = AWSPATService()
-            with pytest.raises(InitializationError):
-                service.initialize(aws_config)
+        mocker.patch("boto3.resource", side_effect=mock_resource_factory)
+
+        service = AWSPATService()
+        with pytest.raises(InitializationError) as excinfo:
+            service.initialize(aws_config)
+
+        # Assert that the InitializationError contains the expected message and cause
+        assert "Error initializing DynamoDB resource" in str(excinfo.value)
+        # Check the __cause__ attribute for the original ClientError
+        assert isinstance(excinfo.value.__cause__, ClientError)
+        assert "Test DynamoDB error" in str(excinfo.value.__cause__)
 
     def test_sanitize_phi(self, mocker):
         """Test PHI sanitization logic by manually instantiating after patching boto3.client."""
