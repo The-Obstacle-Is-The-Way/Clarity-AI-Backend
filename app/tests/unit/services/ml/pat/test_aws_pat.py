@@ -125,7 +125,7 @@ class TestAWSPATService:
         text = "Patient is John Doe, lives at 123 Main St."
         
         # 1. Create and configure the mock comprehend client
-        mock_comprehend_medical = MagicMock()
+        mock_comprehend_medical = MagicMock(spec=['detect_phi'])
         mock_response_dict = {
             "Entities": [
                 {"Type": "NAME", "BeginOffset": 11, "EndOffset": 15, "Score": 0.99},

@@ -199,7 +199,6 @@ class AWSPATService(PATInterface):
             Sanitized text with PHI removed
         """
         try:
-            import pdb; pdb.set_trace() # DEBUG BREAKPOINT
             response = self._comprehend_medical.detect_phi(Text=text)
             entities = response.get("Entities", [])
             
