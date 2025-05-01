@@ -504,16 +504,6 @@ class TestMockPAT:
                 profile_id=""  # Empty profile ID
             )
 
-        # Test empty profile_id
-        with pytest.raises(ValidationError):
-            initialized_mock_pat.integrate_with_digital_twin(
-                patient_id="patient123",
-                analysis_id="some_id",
-                profile_id="",
-                integration_types=["behavioral"],
-                metadata={}
-            )
-
         # Test empty integration_types
         with pytest.raises(ValidationError):
             initialized_mock_pat.integrate_with_digital_twin(
