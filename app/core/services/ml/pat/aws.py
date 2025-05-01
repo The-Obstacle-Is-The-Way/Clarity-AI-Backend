@@ -8,6 +8,7 @@ and embedding generation.
 
 import json
 import logging
+import sys
 import time
 import uuid
 from datetime import datetime
@@ -79,6 +80,8 @@ class AWSPATService(PATInterface):
         Raises:
             InitializationError: If initialization fails or config is missing required keys.
         """
+        sys.stderr.write(f"\nDEBUG: SERVICE Initialize - Start. Provided dynamodb_resource: {dynamodb_resource} (ID: {id(dynamodb_resource) if dynamodb_resource else 'None'})\n")
+        sys.stderr.flush()
         try:
             # Validate and extract required configuration
             required_keys = [
@@ -130,9 +133,13 @@ class AWSPATService(PATInterface):
                 raise InitializationError(error_msg)
                 
             try:
+                sys.stderr.write("\nDEBUG: SERVICE Initialize - About to get DynamoDB resource via boto3.resource\n")
+                sys.stderr.flush()
                 self._dynamodb_resource = dynamodb_resource or boto3.resource(
                     "dynamodb", region_name=self._aws_region
                 )
+                sys.stderr.write(f"\nDEBUG: SERVICE Initialize - self._dynamodb_resource set to: {self._dynamodb_resource} (ID: {id(self._dynamodb_resource)})\n")
+                sys.stderr.flush()
             except Exception as e:
                 error_msg = f"Error initializing DynamoDB resource: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
@@ -152,6 +159,8 @@ class AWSPATService(PATInterface):
             
             self._initialized = True
             logger.info("AWS PAT service initialized successfully")
+            sys.stderr.write("\nDEBUG: SERVICE Initialize - Completed Successfully\n")
+            sys.stderr.flush()
         except ClientError as e:
             error_msg = f"AWS client error during initialization: {e.__class__.__name__}: {e}"
             logger.error(error_msg)
@@ -168,17 +177,51 @@ class AWSPATService(PATInterface):
         Raises:
             InitializationError: If resources do not exist
         """
+        sys.stderr.write("\nDEBUG: SERVICE VerifyResources - Start\n")
+        sys.stderr.flush()
         try:
-            # Check if SageMaker endpoint exists
-            pass  # Implementation omitted for brevity
+            # Check if SageMaker endpoint exists (Placeholder)
+            # TODO: Implement SageMaker endpoint verification if needed
+            # Example: self._sagemaker_runtime.describe_endpoint(EndpointName=self._endpoint_name)
+            pass
             
-            # Check if S3 bucket exists
-            pass  # Implementation omitted for brevity
+            # Check if S3 bucket exists (Placeholder)
+            # TODO: Implement S3 bucket verification if needed
+            # Example: self._s3_client.head_bucket(Bucket=self._bucket_name)
+            pass
             
             # Check if DynamoDB tables exist
-            pass  # Implementation omitted for brevity
+            sys.stderr.write("\nDEBUG: SERVICE VerifyResources - Verifying DynamoDB tables...\n")
+            sys.stderr.flush()
+            for table_name in [self._analyses_table, self._embeddings_table, self._integrations_table]:
+                sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Checking table: {table_name}\n")
+                sys.stderr.flush()
+                table = self._dynamodb_resource.Table(table_name)
+                sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Got table object: {table} (ID: {id(table)}). Calling load()...\n")
+                sys.stderr.flush()
+                table.load()  # Attempt to load table metadata, triggers ClientError if mock is set
+                sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Table {table_name} loaded successfully.\n")
+                sys.stderr.flush()
+                
+            sys.stderr.write("\nDEBUG: SERVICE VerifyResources - DynamoDB tables verified.\n")
+            sys.stderr.flush()
+
         except ClientError as e:
-            raise InitializationError(f"Resource verification failed: {str(e)}")
+            error_msg = f"Resource verification failed for table '{table_name}' (or other resource): {e.__class__.__name__}: {str(e)}"
+            logger.error(error_msg)
+            sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Caught ClientError: {error_msg}\n")
+            sys.stderr.flush()
+            raise InitializationError(error_msg)
+        except Exception as e:
+            # Catch other potential exceptions during verification
+            error_msg = f"Unexpected error during resource verification: {e.__class__.__name__}: {str(e)}"
+            logger.error(error_msg)
+            sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Caught unexpected error: {error_msg}\n")
+            sys.stderr.flush()
+            raise InitializationError(error_msg)
+            
+        sys.stderr.write("\nDEBUG: SERVICE VerifyResources - Completed Successfully\n")
+        sys.stderr.flush()
     
     def _check_initialized(self) -> None:
         """Check if the service is initialized.
@@ -468,20 +511,32 @@ class AWSPATService(PATInterface):
             }
         }
 
-    def _check_table_exists(self, table, table_name: str) -> None:
+    def _check_table_exists(self, table_name: str) -> None:
         """Checks if a DynamoDB table exists and is active."""
-        print(f"\n[SERVICE DEBUG] Entering _check_table_exists for table: {table_name}")
-        print(f"[SERVICE DEBUG] Table object type: {type(table)}")
+        sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Start for table: {table_name}\n")
+        sys.stderr.flush()
         try:
-            print(f"[SERVICE DEBUG] Attempting table.load() on {table_name}")
-            table.load()  # Attempts to load table metadata
-            print(f"[SERVICE DEBUG] table.load() completed for {table_name}")
-            if table.table_status != 'ACTIVE':
-                logger.warning(f"Table {table_name} exists but is not ACTIVE (Status: {table.table_status}).")
-                # Depending on requirements, you might raise an error here or just warn
-                # raise InitializationError(f"Table {table_name} is not ACTIVE (Status: {table.table_status})")
+            # Check if DynamoDB table exists
+            table = self._dynamodb_resource.Table(table_name)
+            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Got table object: {table} (ID: {id(table)}) from resource ID: {id(self._dynamodb_resource)}\n")
+            sys.stderr.flush()
+            # Attempt to load table metadata. This fails if the table doesn't exist.
+            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Calling table.load() on table: {table} (ID: {id(table)}) linked to resource ID: {id(table.meta.client.meta.resource_model._resource.meta.client)}\n")
+            sys.stderr.flush()
+            table.load()
+            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - table.load() SUCCEEDED for {table_name}\n")
+            sys.stderr.flush()
         except ClientError as e:
-            print(f"[SERVICE DEBUG] Caught ClientError in _check_table_exists for {table_name}: {e.response['Error']['Code']}")
-            if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            error_code = e.response.get("Error", {}).get("Code")
+            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Caught ClientError (Code: {error_code}) for {table_name}\n")
+            sys.stderr.flush()
+            if error_code == "ResourceNotFoundException":
                 logger.error(f"Required DynamoDB table '{table_name}' not found.")
                 raise ResourceNotFoundError(f"Required DynamoDB table '{table_name}' not found.") from e
+            else:
+                # This catches OTHER ClientErrors (like the simulated ProvisionedThroughputExceededException)
+                logger.error(f"ClientError accessing table {table_name}: {e}")
+                raise InitializationError(f"ClientError accessing table {table_name}: {e}") from e
+        except Exception as e:
+             logger.error(f"Unexpected error checking table {table_name}: {e}")
+             raise InitializationError(f"Unexpected error checking table {table_name}: {e}") from e
