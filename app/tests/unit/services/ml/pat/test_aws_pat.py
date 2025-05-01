@@ -111,7 +111,14 @@ def mock_comprehend_medical_client():
 
 
 @pytest.fixture
-def aws_pat_service(mock_dynamodb_resource, mock_comprehend_medical_client, aws_config):
+def mock_s3_client(mocker):
+    """Fixture for a mock S3 client."""
+    client = MagicMock(name="MockS3Client")
+    return client
+
+
+@pytest.fixture
+def aws_pat_service(mock_dynamodb_resource, mock_comprehend_medical_client, mock_s3_client, aws_config):
     """Provides an AWSPATService instance initialized with mock resources."""
     service = AWSPATService()
     # Pass the mock resource fixtures into initialize for proper DI
@@ -119,7 +126,8 @@ def aws_pat_service(mock_dynamodb_resource, mock_comprehend_medical_client, aws_
     service.initialize(
         config=aws_config, 
         dynamodb_resource=mock_dynamodb_resource,
-        comprehend_medical_client=mock_comprehend_medical_client # Inject the dedicated mock
+        comprehend_medical_client=mock_comprehend_medical_client, # Inject the dedicated mock
+        s3_client=mock_s3_client # Pass the S3 mock
     )
     return service
 
@@ -153,39 +161,27 @@ def test_initialization_failure(
     mock_table.load.assert_called_once()
 
 
-def test_sanitize_phi(mock_comprehend_medical_client, mock_dynamodb_resource, aws_config):
-    """Test PHI sanitization logic using mocked comprehend_medical_client."""
-    text = "Patient name: John Doe, lives at 123 Main St."
-    expected_sanitized_text = "Patient name: [NAME], lives at [ADDRESS]."
-
-    # Manual initialization instead of using the aws_pat_service fixture
-    service_instance = AWSPATService()
-    service_instance.initialize(
-        config=aws_config,
-        dynamodb_resource=mock_dynamodb_resource,
-        comprehend_medical_client=mock_comprehend_medical_client # Explicitly pass the configured mock
+def test_sanitize_phi(mock_comprehend_medical_client, mock_dynamodb_resource, mock_s3_client, aws_config):
+    """Test PHI sanitization works correctly."""
+    # Initialize service manually with all required mock clients
+    service = AWSPATService()
+    service.initialize(
+        config=aws_config, 
+        comprehend_medical_client=mock_comprehend_medical_client,
+        dynamodb_resource=mock_dynamodb_resource, 
+        s3_client=mock_s3_client # Pass the S3 mock
     )
 
-    # --- Diagnostics --- 
-    print("\n--- test_sanitize_phi Diagnostics ---")
-    print(f"Service instance comprehend client type: {type(service_instance._comprehend_medical)}")
-    print(f"Service instance comprehend client object: {service_instance._comprehend_medical}")
-    print(f"Fixture comprehend client object: {mock_comprehend_medical_client}")
-    print(f"Are objects the same? {service_instance._comprehend_medical is mock_comprehend_medical_client}")
-    try:
-        print(f"detect_phi return_value: {service_instance._comprehend_medical.detect_phi.return_value}")
-    except AttributeError as e:
-        print(f"Could not access detect_phi.return_value: {e}")
-    print("-----------------------------------\n")
-    # --- End Diagnostics --- 
+    text_with_phi = "Patient name: John Doe, lives at 123 Main St."
+    expected_sanitized_text = "Patient name: [NAME], lives at [ADDRESS]."
 
     # Call the method under test
-    sanitized = service_instance._sanitize_phi(text)
+    sanitized = service._sanitize_phi(text_with_phi)
 
     # Assertions
     assert sanitized == expected_sanitized_text
-    # Check the call on the *specific mock instance* we passed in
-    mock_comprehend_medical_client.detect_phi.assert_called_once_with(Text=text) 
+    # Assert mock was called correctly
+    mock_comprehend_medical_client.detect_phi.assert_called_once_with(Text=text_with_phi)
 
 
 def test_sanitize_phi_error(aws_pat_service):
