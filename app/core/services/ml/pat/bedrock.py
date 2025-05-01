@@ -5,7 +5,7 @@ import logging
 import hashlib
 from datetime import datetime, timezone, timedelta
 from app.domain.utils.datetime_utils import UTC
-from typing import Optional, Dict, List, Any, Tuple, Union
+from typing import Optional, List, Any, Union # Removed Tuple here
 from unittest.mock import MagicMock
 from botocore.exceptions import ClientError
 from app.core.exceptions import InvalidConfigurationError
@@ -71,7 +71,7 @@ class BedrockPAT(PATInterface):
         self._kms_key_id = ""
         
         # Model mappings
-        self.model_mapping = {
+        self.model_mapping: dict[str, str] = {
             "actigraphy": "amazon.titan-text-express-v1",
             "activity": "amazon.titan-embed-text-v1",
             "sleep": "amazon.titan-text-express-v1",
@@ -124,14 +124,14 @@ class BedrockPAT(PATInterface):
         """Set KMS key ID."""
         self._kms_key_id = value
     
-    def initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
         """
         Initialize the service with AWS configurations.
         
         Args:
             config: Configuration dictionary with required keys:
                 - bucket_name: S3 bucket name for storing data
-                - table_name: DynamoDB table name for analyses
+                - dynamodb_table_name: DynamoDB table name for analyses
                 - kms_key_id: KMS key ID for encryption
                 
         Raises:
@@ -146,7 +146,7 @@ class BedrockPAT(PATInterface):
             raise InvalidConfigurationError("S3 bucket name is required")
             
         # Test for missing table_name (second scenario in test_initialization)
-        if "table_name" not in config:
+        if "dynamodb_table_name" not in config:
             raise InvalidConfigurationError("DynamoDB table name is required")
             
         # Test for missing KMS key (third scenario in test_initialization)
@@ -168,7 +168,7 @@ class BedrockPAT(PATInterface):
             
             # Set configuration values
             self._s3_bucket = config["bucket_name"]
-            self._dynamodb_table = config["table_name"]
+            self._dynamodb_table = config["dynamodb_table_name"]
             self._kms_key_id = config["kms_key_id"]
             
             # Set initialized flag
@@ -210,7 +210,7 @@ class BedrockPAT(PATInterface):
         """
         return hashlib.sha256(identifier.encode()).hexdigest()[:12]
         
-    def _record_audit_log(self, event_type: str, event_data: Dict[str, Any]) -> None:
+    def _record_audit_log(self, event_type: str, event_data: dict[str, Any]) -> None:
         """
         Record an event in the audit log for HIPAA compliance.
         
@@ -232,7 +232,7 @@ class BedrockPAT(PATInterface):
         except Exception as e:
             logger.error(f"Failed to record audit log: {str(e)}")
     
-    def _store_analysis_result(self, analysis: Dict[str, Any]) -> None:
+    def _store_analysis_result(self, analysis: dict[str, Any]) -> None:
         """
         Store analysis result in DynamoDB.
         
@@ -274,7 +274,7 @@ class BedrockPAT(PATInterface):
     def _validate_actigraphy_request(
         self, 
         patient_id: str, 
-        readings: List[Dict[str, Any]],
+        readings: List[dict[str, Any]],
         start_time: str,
         end_time: str, 
         sampling_rate_hz: float
@@ -337,14 +337,14 @@ class BedrockPAT(PATInterface):
     def analyze_actigraphy(
         self, 
         patient_id: str, 
-        readings: List[Dict[str, Any]],
+        readings: List[dict[str, Any]],
         start_time: str, 
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Optional[Dict[str, Any]] = None,
+        device_info: Optional[dict[str, Any]] = None,
         analysis_types: Optional[List[str]] = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze actigraphy data using Bedrock models.
         
@@ -486,12 +486,12 @@ class BedrockPAT(PATInterface):
     def get_actigraphy_embeddings(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: List[dict[str, Any]],
         start_time: str, 
         end_time: str,
         sampling_rate_hz: float,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate embeddings for actigraphy data using Bedrock model.
         
@@ -620,7 +620,7 @@ class BedrockPAT(PATInterface):
             })
             raise EmbeddingError(error_msg)
 
-    def get_analysis_by_id(self, analysis_id: str) -> Dict[str, Any]:
+    def get_analysis_by_id(self, analysis_id: str) -> dict[str, Any]:
         """
         Retrieve an analysis by its ID.
         
@@ -726,7 +726,7 @@ class BedrockPAT(PATInterface):
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Retrieve analyses for a patient.
         
@@ -882,7 +882,7 @@ class BedrockPAT(PATInterface):
             logger.error(error_msg)
             raise ResourceNotFoundError(error_msg)
             
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about available models.
         
@@ -934,11 +934,11 @@ class BedrockPAT(PATInterface):
         patient_id: str,
         profile_id: str,
         analysis_id: Optional[str] = None,
-        actigraphy_analysis: Optional[Dict[str, Any]] = None,
+        actigraphy_analysis: Optional[dict[str, Any]] = None,
         integration_types: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Integrate actigraphy analysis with a digital twin profile.
         

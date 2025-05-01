@@ -85,6 +85,7 @@ def test_aws_config() -> Dict[str, Any]:
         "bucket_name": "novamind-test-bucket",
         "dynamodb_table_name": "novamind-test-predictions",
         "audit_table_name": "novamind-test-audit-log",
+        "kms_key_id": "test-kms-key", 
         "model_mappings": {
             "suicide": "suicide-risk",
             "readmission": "readmission-risk",
