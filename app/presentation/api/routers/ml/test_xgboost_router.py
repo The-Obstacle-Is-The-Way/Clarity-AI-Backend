@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 import uuid
 from datetime import datetime, timezone
 
-from app.core.constants.xgboost import ModelType, EndpointType
+from app.core.services.ml.xgboost.constants import ModelType, EndpointType
 from app.core.errors.validation import ValidationError
 from app.core.services.ml.xgboost.models import EpisodeRiskPredictionRequest
 from app.core.services.ml.xgboost.factory import get_xgboost_service

@@ -6,224 +6,145 @@ that uses AWS services (SageMaker, S3, DynamoDB) for actigraphy data analysis
 and embedding generation.
 """
 
-import json
 import logging
-import sys
-import time
-import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
-# Use canonical config path
-from app.config.settings import get_settings
-settings = get_settings()
+from app.core.config import settings
+from app.core.services.ml.pat.base import PATServiceBase
 from app.core.services.ml.pat.exceptions import (
-    AnalysisError,
-    AuthorizationError,
-    EmbeddingError,
+    ConfigurationError,
     InitializationError,
-    IntegrationError,
-    ResourceNotFoundError,
-    ValidationError,
 )
-from app.core.services.ml.pat.interface import PATInterface
+from app.infrastructure.logging.logger import setup_logging
 
-# Set up logging with no PHI
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class AWSPATService(PATInterface):
-    """AWS implementation of the PAT interface.
-    
-    This class uses AWS services to provide production-ready actigraphy
-    analysis and personalized insights.
-    """
-    
-    def __init__(self) -> None:
-        """Initialize the AWS PAT service.
-        
-        The service is not ready for use until initialize() is called.
-        """
-        self._initialized = False
-        self._sagemaker_runtime = None
-        self._s3_client = None
-        self._dynamodb_resource = None
-        self._comprehend_medical = None
-        self._endpoint_name = None
-        self._bucket_name = None
-        self._analyses_table = None
-        self._embeddings_table = None
-        self._integrations_table = None
-        self._config = {}
-    
-    def initialize(self, 
-                     config: Dict[str, Any],
-                     # Optional clients for dependency injection (testing)
-                     sagemaker_runtime_client: Optional[Any] = None,
-                     s3_client: Optional[Any] = None,
-                     comprehend_medical_client: Optional[Any] = None,
-                     dynamodb_resource: Optional[Any] = None
-                    ) -> None:
-        """Initialize the AWS PAT service with configuration and optional clients.
+class AWSPATService(PATServiceBase):
+    """AWS implementation for the Patient Assessment Tool Service."""
 
-        Args:
-            config: Configuration parameters for the service.
-            sagemaker_runtime_client: Optional pre-configured SageMaker Runtime client.
-            s3_client: Optional pre-configured S3 client.
-            comprehend_medical_client: Optional pre-configured Comprehend Medical client.
-            dynamodb_resource: Optional pre-configured DynamoDB resource.
+    _initialized: bool = False
+    _region_name: Optional[str] = None
+    _aws_access_key_id: Optional[str] = None
+    _aws_secret_access_key: Optional[str] = None
+    _aws_session_token: Optional[str] = None
+    _sagemaker_endpoint_name: Optional[str] = None
+    _dynamodb_table_name: Optional[str] = None
+    _s3_bucket_name: Optional[str] = None
 
-        Raises:
-            InitializationError: If initialization fails or config is missing required keys.
-        """
+    # Type hints for AWS clients/resources (using Any for now, can be refined)
+    _session: Optional[boto3.Session] = None
+    _sagemaker_runtime_client: Optional[Any] = None
+    _s3_client: Optional[Any] = None
+    _comprehend_medical_client: Optional[Any] = None
+    _dynamodb_resource: Optional[Any] = None
+
+    def __init__(self,
+                 config: dict[str, Any],
+                 sagemaker_runtime_client: Optional[Any] = None,
+                 s3_client: Optional[Any] = None,
+                 comprehend_medical_client: Optional[Any] = None,
+                 dynamodb_resource: Optional[Any] = None):
+        """Initialize the service with configuration and optional clients."""
+        super().__init__(config)
+        self._region_name = config.get('aws_region_name', settings.AWS_REGION_NAME)
+
+    def initialize(self, config: dict[str, Any]) -> None:
+        """Initialize the AWS PAT service with configuration."""
         try:
             # Validate and extract required configuration
             required_keys = [
-                "aws_region", "endpoint_name", "bucket_name",
-                "analyses_table", "embeddings_table", "integrations_table"
+                'aws_region_name',
+                'aws_access_key_id',
+                'aws_secret_access_key',
+                'sagemaker_endpoint_name',
+                'dynamodb_table_name',
+                's3_bucket_name'
             ]
             missing_keys = [key for key in required_keys if key not in config]
             if missing_keys:
                 raise InitializationError(f"Missing required configuration keys: {', '.join(missing_keys)}")
 
             # Store the validated config
-            self._config = config 
-            
+            self._config = config
+
             # Set region and endpoint attributes
-            self._aws_region = config["aws_region"]
-            self._endpoint_name = config["endpoint_name"]
-            self._bucket_name = config["bucket_name"]
-            
-            # Store table names with consistent naming
-            self._analyses_table = config["analyses_table"] 
-            self._embeddings_table = config["embeddings_table"]
-            self._integrations_table = config["integrations_table"]
-            
-            # Log initialization parameters
-            logger.info(
-                "Initializing AWSPATService with endpoint: %s, bucket: %s, tables: %s, %s, %s",
-                self._endpoint_name, self._bucket_name,
-                self._analyses_table, self._embeddings_table, self._integrations_table
-            )
+            self._aws_region_name = config['aws_region_name']
+            self._aws_access_key_id = config['aws_access_key_id']
+            self._aws_secret_access_key = config['aws_secret_access_key']
+            self._aws_session_token = config.get('aws_session_token')
+            self._sagemaker_endpoint_name = config['sagemaker_endpoint_name']
+            self._dynamodb_table_name = config['dynamodb_table_name']
+            self._s3_bucket_name = config['s3_bucket_name']
 
             # Initialize AWS clients
-            # Use provided clients if available (for DI/testing), otherwise create them
             try:
-                self._sagemaker_runtime = sagemaker_runtime_client or boto3.client(
-                    "sagemaker-runtime", region_name=self._aws_region
+                self._session = boto3.Session(
+                    aws_access_key_id=self._aws_access_key_id,
+                    aws_secret_access_key=self._aws_secret_access_key,
+                    aws_session_token=self._aws_session_token,
+                    region_name=self._aws_region_name
+                )
+            except (NoCredentialsError, PartialCredentialsError) as e:
+                logger.error(f"AWS credentials not found or incomplete: {e!s}")
+                raise ConfigurationError("AWS credentials configuration error.") from e
+
+            try:
+                self._sagemaker_runtime_client = self._session.client(
+                    "sagemaker-runtime", region_name=self._aws_region_name
                 )
             except Exception as e:
                 error_msg = f"Error initializing SageMaker client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
-                
+
             try:
-                self._s3_client = s3_client or boto3.client(
-                    "s3", region_name=self._aws_region
+                self._s3_client = self._session.client(
+                    "s3", region_name=self._aws_region_name
                 )
             except Exception as e:
                 error_msg = f"Error initializing S3 client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
-                
+
             try:
-                self._dynamodb_resource = dynamodb_resource or boto3.resource(
-                    "dynamodb", region_name=self._aws_region
+                self._dynamodb_resource = self._session.resource(
+                    "dynamodb", region_name=self._aws_region_name
                 )
             except Exception as e:
                 error_msg = f"Error initializing DynamoDB resource: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
-                
+
             try:
-                self._comprehend_medical = comprehend_medical_client or boto3.client(
-                    "comprehendmedical", region_name=self._aws_region
+                self._comprehend_medical_client = self._session.client(
+                    "comprehendmedical", region_name=self._aws_region_name
                 )
             except Exception as e:
                 error_msg = f"Error initializing Comprehend Medical client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
 
-            # Verify resources exist (optional, can be time-consuming)
-            self._verify_resources()
-            
             self._initialized = True
-            logger.info("AWS PAT service initialized successfully")
+            logger.info(f"AWS PAT service initialized successfully")
         except ClientError as e:
             error_msg = f"AWS client error during initialization: {e.__class__.__name__}: {e}"
             logger.error(error_msg)
             raise InitializationError(error_msg)
         except Exception as e:
-            # Use a safer string representation that won't fail on complex objects
             error_msg = f"Unexpected error during initialization: {e.__class__.__name__}: {str(e)}"
             logger.error(error_msg)
             raise InitializationError(error_msg)
-    
-    def _verify_resources(self) -> None:
-        """Verify that required AWS resources exist.
-        
-        Raises:
-            InitializationError: If resources do not exist
-        """
-        sys.stderr.write("\nDEBUG: SERVICE VerifyResources - Start\n")
-        sys.stderr.flush()
-        try:
-            # Check if SageMaker endpoint exists (Placeholder)
-            # TODO: Implement SageMaker endpoint verification if needed
-            # Example: self._sagemaker_runtime.describe_endpoint(EndpointName=self._endpoint_name)
-            pass
-            
-            # Check if S3 bucket exists (Placeholder)
-            # TODO: Implement S3 bucket verification if needed
-            # Example: self._s3_client.head_bucket(Bucket=self._bucket_name)
-            pass
-            
-            # Check if DynamoDB tables exist
-            sys.stderr.write("\nDEBUG: SERVICE VerifyResources - Verifying DynamoDB tables...\n")
-            sys.stderr.flush()
-            for table_name in [self._analyses_table, self._embeddings_table, self._integrations_table]:
-                sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Checking table: {table_name}\n")
-                sys.stderr.flush()
-                table = self._dynamodb_resource.Table(table_name)
-                sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Got table object: {table} (ID: {id(table)}). Calling load()...\n")
-                sys.stderr.flush()
-                table.load()  # Attempt to load table metadata, triggers ClientError if mock is set
-                sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Table {table_name} loaded successfully.\n")
-                sys.stderr.flush()
 
-            sys.stderr.write("\nDEBUG: SERVICE VerifyResources - DynamoDB tables verified.\n")
-            sys.stderr.flush()
-
-        except ClientError as e:
-            error_msg = f"Resource verification failed for table '{table_name}' (or other resource): {e.__class__.__name__}: {str(e)}"
-            logger.error(error_msg)
-            sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Caught ClientError: {error_msg}\n")
-            sys.stderr.flush()
-            raise InitializationError(error_msg)
-        except Exception as e:
-            # Catch other potential exceptions during verification
-            error_msg = f"Unexpected error during resource verification: {e.__class__.__name__}: {str(e)}"
-            logger.error(error_msg)
-            sys.stderr.write(f"\nDEBUG: SERVICE VerifyResources - Caught unexpected error: {error_msg}\n")
-            sys.stderr.flush()
-            raise InitializationError(error_msg)
-            
-        sys.stderr.write("\nDEBUG: SERVICE VerifyResources - Completed Successfully\n")
-        sys.stderr.flush()
-    
     def _check_initialized(self) -> None:
-        """Check if the service is initialized.
-        
-        Raises:
-            InitializationError: If the service is not initialized
-        """
+        """Check if the service is initialized."""
         if not self._initialized:
             raise InitializationError("AWS PAT service not initialized")
-    
+
     def _sanitize_phi(self, text: str) -> str:
         """Sanitize PHI from text using AWS Comprehend Medical.
 
@@ -239,7 +160,7 @@ class AWSPATService(PATInterface):
             return text
 
         try:
-            response = self._comprehend_medical.detect_phi(Text=text)
+            response = self._comprehend_medical_client.detect_phi(Text=text)
             entities = response.get('Entities', [])
             if not entities:
                 return text
@@ -261,7 +182,7 @@ class AWSPATService(PATInterface):
                         f"Skipping entity due to invalid/out-of-bounds offset: {entity}"
                     )
                     continue
-                
+
                 if begin > last_end:
                     sanitized_segments.append(original_text[last_end:begin])
                 elif begin < last_end:
@@ -269,7 +190,7 @@ class AWSPATService(PATInterface):
                         f"Potential overlap detected. Entity: {entity}, last_end: {last_end}"
                     )
                     # Handle overlap if necessary, current logic might skip text
-                    pass 
+                    pass
 
                 replacement_tag = f"[{entity_type}]"
                 sanitized_segments.append(replacement_tag)
@@ -282,16 +203,16 @@ class AWSPATService(PATInterface):
             sanitized_text = "".join(sanitized_segments)
             return sanitized_text
         except ClientError as e:
-            logger.error(f"AWS Comprehend Medical API Error: {e}")
+            logger.error(f"AWS Comprehend Medical API Error: {e!s}")
             # Return original text on error to avoid data loss
             return text
-    
-    def _sanitize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _sanitize_metadata(self, metadata: dict[str, Any]) -> dict[str, Any]:
         """Sanitize metadata to remove PHI.
-        
+
         Args:
             metadata: The metadata to sanitize
-            
+
         Returns:
             Sanitized metadata with PHI removed
         """
@@ -311,255 +232,225 @@ class AWSPATService(PATInterface):
             else:
                 sanitized[key] = value
         return sanitized
-    
-    def analyze_actigraphy(
-        self,
-        patient_id: str,
-        readings: List[Dict[str, Any]],
-        start_time: str,
-        end_time: str,
-        sampling_rate_hz: float,
-        device_info: Dict[str, Any],
-        analysis_types: List[str],
-    ) -> Dict[str, Any]:
-        """Analyze actigraphy data using AWS SageMaker.
-        
-        Args:
-            patient_id: The patient's unique identifier
-            readings: List of actigraphy readings
-            start_time: ISO8601 timestamp of first reading
-            end_time: ISO8601 timestamp of last reading
-            sampling_rate_hz: Sampling rate in Hz
-            device_info: Information about the device
-            analysis_types: Types of analysis to perform
-            
-        Returns:
-            Analysis results
-            
-        Raises:
-            ValidationError: If input validation fails
-            AnalysisError: If analysis fails
-        """
-        # Implementation omitted for brevity
-        # In a real implementation, this would:
-        # 1. Validate inputs
-        # 2. Sanitize any potential PHI
-        # 3. Upload data to S3
-        # 4. Invoke SageMaker endpoint
-        # 5. Process and store results in DynamoDB
-        # 6. Return processed results
-        
-        # For now, return a mock response to illustrate the structure
-        analysis_id = str(uuid.uuid4())
-        timestamp = datetime.now(UTC).isoformat() + "Z"
-        
-        return {
-            "analysis_id": analysis_id,
-            "patient_id": patient_id,
-            "timestamp": timestamp,
-            "analysis_types": analysis_types,
-            "device_info": device_info,
-            "data_summary": {
-                "start_time": start_time,
-                "end_time": end_time,
-                "duration_seconds": 3600.0,  # Example
-                "readings_count": len(readings),
-                "sampling_rate_hz": sampling_rate_hz
-            },
-            "results": {}  # Would contain actual analysis results
-        }
-    
-    def get_actigraphy_embeddings(
-        self,
-        patient_id: str,
-        readings: List[Dict[str, Any]],
-        start_time: str,
-        end_time: str,
-        sampling_rate_hz: float,
-    ) -> Dict[str, Any]:
-        """Generate embeddings from actigraphy data.
-        
-        Args:
-            patient_id: The patient's unique identifier
-            readings: List of actigraphy readings
-            start_time: ISO8601 timestamp of first reading
-            end_time: ISO8601 timestamp of last reading
-            sampling_rate_hz: Sampling rate in Hz
-            
-        Returns:
-            Embedding results
-            
-        Raises:
-            ValidationError: If input validation fails
-            EmbeddingError: If embedding generation fails
-        """
-        # Implementation omitted for brevity
-        # Similar approach to analyze_actigraphy
-        
-        embedding_id = str(uuid.uuid4())
-        timestamp = datetime.now(UTC).isoformat() + "Z"
-        
-        return {
-            "embedding_id": embedding_id,
-            "patient_id": patient_id,
-            "timestamp": timestamp,
-            "data_summary": {
-                "start_time": start_time,
-                "end_time": end_time,
-                "duration_seconds": 3600.0,  # Example
-                "readings_count": len(readings),
-                "sampling_rate_hz": sampling_rate_hz
-            },
-            "embedding": {
-                "vector": [],  # Would contain actual embedding vector
-                "dimension": 0,  # Would be set to actual dimension
-                "model_version": "aws-pat-embeddings-v1.0"
-            }
-        }
-    
-    def get_analysis_by_id(self, analysis_id: str) -> Dict[str, Any]:
-        """Get analysis results by ID.
-        
-        Args:
-            analysis_id: The analysis unique identifier
-            
-        Returns:
-            Analysis results
-            
-        Raises:
-            ResourceNotFoundError: If analysis not found
-        """
-        # Implementation omitted for brevity
-        # Would query DynamoDB for the analysis
-        raise ResourceNotFoundError(f"Analysis not found: {analysis_id}")
-    
-    def get_patient_analyses(
-        self,
-        patient_id: str,
-        limit: int = 10,
-        offset: int = 0
-    ) -> Dict[str, Any]:
-        """Get analyses for a patient.
-        
-        Args:
-            patient_id: The patient's unique identifier
-            limit: Maximum number of analyses to return
-            offset: Offset for pagination
-            
-        Returns:
-            List of analyses
-        """
-        # Implementation omitted for brevity
-        # Would query DynamoDB for analyses by patient_id
-        
-        return {
-            "analyses": [],  # Would contain actual analyses
-            "pagination": {
-                "total": 0,
-                "limit": limit,
-                "offset": offset,
-                "has_more": False
-            }
-        }
-    
-    def get_model_info(self) -> Dict[str, Any]:
-        """Get information about the PAT model.
-        
-        Returns:
-            Model information
-        """
-        self._check_initialized()
-        
-        return {
-            "name": "AWS-PAT",
-            "version": "1.0.0",
-            "description": "AWS-based implementation of the PAT service",
-            "capabilities": [
-                "activity_level_analysis",
-                "sleep_analysis",
-                "gait_analysis",
-                "tremor_analysis",
-                "embedding_generation"
-            ],
-            "maintainer": "Concierge Psychiatry Platform Team",
-            "last_updated": "2025-03-28",
-            "active": True,
-            "aws_region": self._aws_region, # Use stored instance attribute
-            "endpoint_name": self._endpoint_name
-        }
-    
-    def integrate_with_digital_twin(
-        self,
-        patient_id: str,
-        profile_id: str,
-        analysis_id: str
-    ) -> Dict[str, Any]:
-        """Integrate actigraphy analysis with digital twin.
-        
-        Args:
-            patient_id: The patient's unique identifier
-            profile_id: The digital twin profile ID
-            analysis_id: The analysis ID to integrate
-            
-        Returns:
-            Integration results
-            
-        Raises:
-            ResourceNotFoundError: If analysis or profile not found
-            AuthorizationError: If not authorized to integrate
-            IntegrationError: If integration fails
-        """
-        # Implementation omitted for brevity
-        # Would:
-        # 1. Retrieve analysis from DynamoDB
-        # 2. Validate authorization
-        # 3. Call digital twin service to integrate analysis
-        # 4. Store integration results
-        
-        integration_id = str(uuid.uuid4())
-        timestamp = datetime.now(UTC).isoformat() + "Z"
-        
-        return {
-            "integration_id": integration_id,
-            "patient_id": patient_id,
-            "profile_id": profile_id,
-            "analysis_id": analysis_id,
-            "timestamp": timestamp,
-            "status": "success",
-            "insights": [],  # Would contain actual insights
-            "profile_update": {
-                "updated_aspects": [],  # Would list updated aspects
-                "confidence_score": 0.0,  # Would be actual score
-                "updated_at": timestamp
-            }
-        }
 
-    def _check_table_exists(self, table_name: str) -> None:
-        """Checks if a DynamoDB table exists and is active."""
-        sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Start for table: {table_name}\n")
-        sys.stderr.flush()
+    def analyze_text(self, text: str) -> dict[str, Any]:
+        """Analyze text using AWS services (SageMaker, Comprehend Medical)."""
+        self._check_initialized()
+
+        # 1. Sanitize input text
+        sanitized_text = self._sanitize_phi(text)
+
+        # 2. Invoke SageMaker endpoint
         try:
-            # Check if DynamoDB table exists
-            table = self._dynamodb_resource.Table(table_name)
-            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Got table object: {table} (ID: {id(table)}) from resource ID: {id(self._dynamodb_resource)}\n")
-            sys.stderr.flush()
-            # Attempt to load table metadata. This fails if the table doesn't exist.
-            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Calling table.load() on table: {table} (ID: {id(table)}) linked to resource ID: {id(table.meta.client.meta.resource_model._resource.meta.client)}\n")
-            sys.stderr.flush()
-            table.load()
-            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - table.load() SUCCEEDED for {table_name}\n")
-            sys.stderr.flush()
+            response = self._sagemaker_runtime_client.invoke_endpoint(
+                EndpointName=self._sagemaker_endpoint_name,
+                Body=sanitized_text.encode('utf-8'),
+                ContentType='application/json'
+            )
+            # logger.info(f"Successfully invoked SageMaker endpoint: {self._sagemaker_endpoint_name}")
+            # logger.debug(f"SageMaker Response Body: {response['Body'].read().decode('utf-8')}")
+            # return json.loads(response['Body'].read().decode('utf-8'))
+            # TODO: Implement actual parsing based on expected response format
+            return {"message": "SageMaker endpoint invoked, parsing pending"}
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            sys.stderr.write(f"\nDEBUG: SERVICE _check_table_exists - Caught ClientError (Code: {error_code}) for {table_name}\n")
-            sys.stderr.flush()
-            if error_code == "ResourceNotFoundException":
-                logger.error(f"Required DynamoDB table '{table_name}' not found.")
-                raise ResourceNotFoundError(f"Required DynamoDB table '{table_name}' not found.") from e
-            else:
-                # This catches OTHER ClientErrors (like the simulated ProvisionedThroughputExceededException)
-                logger.error(f"ClientError accessing table {table_name}: {e}")
-                raise InitializationError(f"ClientError accessing table {table_name}: {e}") from e
+            logger.error(f"Error invoking SageMaker endpoint {self._sagemaker_endpoint_name}: {e!s}")
+            raise
         except Exception as e:
-             logger.error(f"Unexpected error checking table {table_name}: {e}")
-             raise InitializationError(f"Unexpected error checking table {table_name}: {e}") from e
+            logger.error(f"Unexpected error during SageMaker invocation: {e!s}")
+            raise
+
+    def store_result(self, result_id: str, analysis_result: dict[str, Any]) -> None:
+        """Store analysis result in DynamoDB."""
+        self._check_initialized()
+        if not self._dynamodb_resource or not self._dynamodb_table_name:
+            raise InitializationError("DynamoDB resource or table name not configured")
+
+        # TODO: Implement embedding generation logic
+        # embeddings = self._generate_embeddings(analysis_result['sanitized_text'])
+        embeddings = []  # Placeholder
+
+        # Store in DynamoDB
+        try:
+            table = self._dynamodb_resource.Table(self._dynamodb_table_name)
+            response = table.put_item(
+                Item={
+                    'result_id': result_id,
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'analysis_result': analysis_result,  # Store the whole analysis
+                    'embeddings': embeddings  # Store embeddings if generated
+                }
+            )
+            logger.info(f"Successfully stored result with ID: {result_id}")
+        except ClientError as e:
+            logger.error(f"Error storing result {result_id} in DynamoDB: {e!s}")
+            raise
+
+    def retrieve_result(self, result_id: str) -> Optional[dict[str, Any]]:
+        """Retrieve analysis result from DynamoDB."""
+        self._check_initialized()
+        if not self._dynamodb_resource or not self._dynamodb_table_name:
+            raise InitializationError("DynamoDB resource or table name not configured")
+
+        try:
+            table = self._dynamodb_resource.Table(self._dynamodb_table_name)
+            response = table.get_item(Key={'result_id': result_id})
+            item = response.get('Item')
+            if item:
+                logger.info(f"Successfully retrieved result with ID: {result_id}")
+                # Potentially deserialize complex types if needed
+                return item
+            else:
+                logger.warning(f"Result not found for ID: {result_id}")
+                return None
+        except ClientError as e:
+            logger.error(f"Error retrieving result {result_id} from DynamoDB: {e!s}")
+            raise
+
+    def process_document(self, document_path: str) -> dict[str, Any]:
+        """Process a document from S3: download, analyze, store result."""
+        self._check_initialized()
+        if not self._s3_client or not self._s3_bucket_name:
+            raise InitializationError("S3 client or bucket name not configured")
+
+        try:
+            # Download document from S3
+            # logger.info(f"Downloading document {document_path} from S3 bucket {self._s3_bucket_name}")
+            # s3_object = self._s3_client.get_object(Bucket=self._s3_bucket_name, Key=document_path)
+            # document_content = s3_object['Body'].read().decode('utf-8')
+            # Placeholder content until S3 integration is fully tested
+            document_content = "This is placeholder content for S3 document."
+            logger.info(f"Using placeholder content for document: {document_path}")
+
+        except ClientError as e:
+            logger.error(f"Error downloading document {document_path} from S3: {e!s}")
+            raise
+
+        # Analyze document
+        analysis_result = self.analyze_text(document_content)
+
+        # Store result
+        result_id = str(uuid.uuid4())
+        self.store_result(result_id, analysis_result)
+
+        return analysis_result
+
+    def _generate_embeddings(self, text: str) -> list[float]:
+        """(Placeholder) Generate embeddings for the text."""
+        self._check_initialized()
+        # This method would typically call another service (like SageMaker or a dedicated embedding model)
+        logger.warning("_generate_embeddings is not implemented. Returning empty list.")
+        return []
+
+    # --- Configuration and Helper Methods ---
+    @classmethod
+    def get_required_config_keys(cls) -> list[str]:
+        return [
+            'aws_region_name',
+            'aws_access_key_id',
+            'aws_secret_access_key',
+            # 'aws_session_token',  # Optional
+            'sagemaker_endpoint_name',
+            'dynamodb_table_name',
+            's3_bucket_name'
+        ]
+
+    def get_status(self) -> dict[str, Any]:
+        """Return the status of the service and its dependencies."""
+        status = {
+            "initialized": self._initialized,
+            "region": self._region_name,
+            "dependencies": {
+                "sagemaker_endpoint": self._sagemaker_endpoint_name,
+                "dynamodb_table": self._dynamodb_table_name,
+                "s3_bucket": self._s3_bucket_name,
+                # Add checks for actual connectivity if needed
+                "aws_credentials_set": bool(self._aws_access_key_id and self._aws_secret_access_key)
+            }
+        }
+        return status
+
+    def _verify_resources(self):
+        """Verify access to configured AWS resources."""
+        logger.debug("SERVICE VerifyResources - Starting Verification")
+        try:
+            # Verify SageMaker Endpoint access (describe_endpoint)
+            if self._sagemaker_runtime_client and self._sagemaker_endpoint_name:
+                logger.debug(f"Verifying SageMaker endpoint: {self._sagemaker_endpoint_name}")
+                # Need sagemaker client, not sagemaker_runtime_client for describe_endpoint
+                # sagemaker_client = self._session.client('sagemaker', region_name=self._region_name)
+                # sagemaker_client.describe_endpoint(EndpointName=self._sagemaker_endpoint_name)
+                # Using invoke_endpoint as a proxy for runtime access check
+                try:
+                    # Attempt a minimal invocation - might fail if model expects specific input
+                    # This is just to check connectivity/permissions to the runtime endpoint
+                    self._sagemaker_runtime_client.invoke_endpoint(
+                        EndpointName=self._sagemaker_endpoint_name,
+                        Body=b'{}',  # Minimal dummy payload
+                        ContentType='application/json'
+                    )
+                    logger.debug(f"Successfully invoked (as check) SageMaker endpoint: {self._sagemaker_endpoint_name}")
+                except ClientError as invoke_error:
+                    # Distinguish between 'Endpoint not found'/'AccessDenied' and payload errors
+                    if 'ValidationException' in str(invoke_error) or 'ModelError' in str(invoke_error):
+                        logger.debug(f"SageMaker endpoint {self._sagemaker_endpoint_name} exists but test invocation failed (expected for dummy payload): {invoke_error!s}")
+                    else:
+                        logger.error(f"Failed to invoke SageMaker endpoint {self._sagemaker_endpoint_name}: {invoke_error!s}")
+                        raise ConfigurationError(f"SageMaker endpoint {self._sagemaker_endpoint_name} verification failed.") from invoke_error
+            else:
+                logger.warning("SageMaker client or endpoint name not configured, skipping verification.")
+
+            # Verify Comprehend Medical access (simple call like list_phi_detection_jobs with limit 0?)
+            # Or rely on detect_phi call during sanitization
+            if self._comprehend_medical_client:
+                logger.debug("Verifying Comprehend Medical access.")
+                # Perform a low-impact check, e.g., describe_entities_detection_v2_job with a dummy ID or list_
+                # Using detect_phi with empty text as a basic check
+                try:
+                    self._comprehend_medical_client.detect_phi(Text="test")
+                    logger.debug("Comprehend Medical access verified.")
+                except ClientError as cm_error:
+                    logger.error(f"Comprehend Medical verification failed: {cm_error!s}")
+                    raise ConfigurationError("Comprehend Medical verification failed.") from cm_error
+            else:
+                logger.warning("Comprehend Medical client not configured, skipping verification.")
+
+            # Verify DynamoDB Table access (describe_table)
+            if self._dynamodb_resource and self._dynamodb_table_name:
+                logger.debug(f"Verifying DynamoDB table: {self._dynamodb_table_name}")
+                try:
+                    table = self._dynamodb_resource.Table(self._dynamodb_table_name)
+                    table.load()  # describe_table is called implicitly
+                    logger.debug(f"DynamoDB table {self._dynamodb_table_name} access verified.")
+                except ClientError as db_error:
+                    logger.error(f"Failed to access DynamoDB table {self._dynamodb_table_name}: {db_error!s}")
+                    raise ConfigurationError(f"DynamoDB table {self._dynamodb_table_name} verification failed.") from db_error
+            else:
+                logger.warning("DynamoDB resource or table name not configured, skipping verification.")
+
+            # Verify S3 Bucket access (head_bucket)
+            if self._s3_client and self._s3_bucket_name:
+                logger.debug(f"Verifying S3 bucket: {self._s3_bucket_name}")
+                try:
+                    self._s3_client.head_bucket(Bucket=self._s3_bucket_name)
+                    logger.debug(f"S3 bucket {self._s3_bucket_name} access verified.")
+                except ClientError as s3_error:
+                    # Check if it's a 404 Not Found or 403 Forbidden
+                    error_code = s3_error.response.get('Error', {}).get('Code')
+                    if error_code == 'NoSuchBucket':
+                        logger.error(f"S3 bucket {self._s3_bucket_name} not found: {s3_error!s}")
+                        raise ConfigurationError(f"S3 bucket {self._s3_bucket_name} not found.") from s3_error
+                    elif error_code == 'AccessDenied':
+                        logger.error(f"Access denied for S3 bucket {self._s3_bucket_name}: {s3_error!s}")
+                        raise ConfigurationError(f"Access denied for S3 bucket {self._s3_bucket_name}.") from s3_error
+                    else:
+                        logger.error(f"Failed to access S3 bucket {self._s3_bucket_name}: {s3_error!s}")
+                        raise ConfigurationError(f"S3 bucket {self._s3_bucket_name} verification failed.") from s3_error
+            else:
+                logger.warning("S3 client or bucket name not configured, skipping verification.")
+
+            logger.debug("SERVICE VerifyResources - Completed Successfully")
+        except ConfigurationError:
+            raise
+        except Exception as e:
+            logger.exception(f"Unexpected error during resource verification: {e!s}")
+            raise InitializationError("Unexpected error verifying AWS resources.") from e
