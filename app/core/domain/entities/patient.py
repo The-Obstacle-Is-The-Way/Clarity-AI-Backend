@@ -11,7 +11,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
 
 
 class Patient(BaseModel):
@@ -40,12 +40,13 @@ class Patient(BaseModel):
     email: Optional[EmailStr] = Field(None, description="Patient's email address")
     phone_number: Optional[str] = Field(None, description="Patient's phone number")
 
-    class Config:
-        from_attributes = True  # Renamed from orm_mode
-        str_strip_whitespace = True # Renamed from anystr_strip_whitespace
-        validate_assignment = True # Ensure validators run on assignment
+    model_config = {
+        'from_attributes': True,  # Renamed from orm_mode
+        'str_strip_whitespace': True,  # Renamed from anystr_strip_whitespace
+        'validate_assignment': True  # Ensure validators run on assignment
+    }
 
-    @validator('date_of_birth')
+    @field_validator('date_of_birth', mode='before')
     def ensure_dob_is_past(cls, v):
         if v >= date.today():
             raise ValueError('Date of birth must be in the past')

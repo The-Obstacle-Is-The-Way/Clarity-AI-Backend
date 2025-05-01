@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
 
 class UserRole(str, Enum):
     """Enumeration for user roles."""
@@ -50,13 +50,14 @@ class User(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now)
     last_login_at: Optional[datetime] = Field(None, description="Timestamp of last successful login")
 
-    class Config:
-        from_attributes = True
-        str_strip_whitespace = True
-        validate_assignment = True
-        use_enum_values = True # Important for serialization of Enum
+    model_config = {
+        'from_attributes': True,
+        'str_strip_whitespace': True,
+        'validate_assignment': True,
+        'use_enum_values': True  # Important for serialization of Enum
+    }
 
-    @validator('username')
+    @field_validator('username', mode='before')
     def username_alphanumeric(cls, v):
         if not v.isalnum():
             raise ValueError('Username must be alphanumeric')
