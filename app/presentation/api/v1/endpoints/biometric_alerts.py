@@ -1,142 +1,47 @@
-# -*- coding: utf-8 -*-
-"""
-FastAPI router for biometric alert endpoints.
+from typing import Optional
+from uuid import UUID
 
-This module provides API endpoints for managing biometric alerts,
-including creating, retrieving, and updating alerts.
-"""
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
-from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
-from uuid import UUID, uuid4
-import json
-import uuid
-import logging
-from unittest.mock import AsyncMock
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body, Path
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field, ValidationError
-
-from fastapi.responses import JSONResponse # Import JSONResponse
-from sqlalchemy.orm import Session
-
-# Fixed imports to match actual repository structure
-from app.core.dependencies.database import get_session as get_db_session
-from app.presentation.api.dependencies.auth import get_current_user, verify_admin_access
-from app.domain.entities.biometric_alert_rule import (
-    AlertPriority,
-    BiometricAlertRule,
-    BiometricMetricType,
-    ComparatorOperator,
-    RuleCondition,
-    RuleLogicalOperator
+from app.application.services.biometric_alert_rule_service import (
+    BiometricAlertRuleService,
 )
-from app.domain.exceptions.repository import RepositoryError
-from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
-from app.domain.services.biometric_event_processor import BiometricEventProcessor
-from app.domain.services.clinical_rule_engine import ClinicalRuleEngine
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricAlertRuleRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import SQLAlchemyBiometricAlertRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_template_repository import SQLAlchemyBiometricAlertTemplateRepository
-from app.presentation.api.schemas.biometric_alert import (
-    AlertPriorityEnum,
-    AlertResponseSchema,
-    BiometricAlertResponseSchema, # Added import
-    AlertRuleResponseSchema,
-    AlertRuleCreateFromConditionSchema,
-    AlertRuleCreateFromTemplateSchema,
-    AlertRuleUpdateSchema,
-    AlertStatusUpdateSchema,
-    ComparatorOperatorEnum,
-    LogicalOperatorEnum,
-    MetricTypeEnum,
-    RuleConditionResponseSchema,
-    RuleConditionSchema,
-    AlertRuleCreateSchema, # Added import
-    AlertListResponseSchema # Added import
-)
-from app.presentation.api.schemas.common import PaginatedResponseSchema
-from app.presentation.api.schemas.user import UserResponseSchema
-from app.core.services.service_registry import get_service
-from app.infrastructure.cache.redis_cache import RedisCache # Import directly
-from app.infrastructure.di.container import get_service
+from app.application.services.biometric_alert_service import BiometricAlertService
+from app.core.security import SecurityError, sanitize_input
 from app.core.utils.logging import get_logger
-from app.domain.entities.biometric_alert import AlertStatusEnum as DomainAlertStatusEnum
-from app.domain.exceptions import EntityNotFoundError, ValidationError, RepositoryError, ServiceError
+from app.domain.entities.biometric_alert import (
+    AlertPriority,
+    AlertStatusEnum as DomainAlertStatusEnum,
+    BiometricAlert,
+)
+from app.domain.entities.biometric_alert_rule import BiometricAlertRule 
+from app.domain.exceptions import EntityNotFoundError, ServiceError, ValidationError 
+from app.presentation.api.v1.dependencies import (
+    get_biometric_alert_rule_service,
+    get_biometric_alert_service,
+)
+from app.presentation.api.v1.schemas.biometric_alert import (
+    BiometricAlertCreateSchema,
+    BiometricAlertResponseSchema,
+    BiometricAlertUpdateSchema,
+)
+from app.presentation.api.v1.schemas.biometric_alert_rule import (
+    AlertConditionLogicEnum,
+    AlertConditionOperatorEnum,
+    BiometricAlertRuleCreateSchema,
+    BiometricAlertRuleResponseSchema,
+    BiometricAlertRuleTemplateSchema,
+    BiometricAlertRuleUpdateSchema,
+)
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
 
-def get_alert_repository(db: Session = Depends(get_db_session)) -> BiometricAlertRepository:
-    """
-    Dependency for getting the biometric alert repository.
-    
-    Args:
-        db: Database session
-        
-    Returns:
-        BiometricAlertRepository instance
-    """
-    # Always return the real implementation; tests should use overrides
-    return SQLAlchemyBiometricAlertRepository(db)
-
-
-def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricAlertRuleRepository:
-    """
-    Dependency for getting the biometric rule repository.
-    
-    Args:
-        db: Database session
-        
-    Returns:
-        BiometricAlertRuleRepository instance
-    """
-    # Always return the real implementation; tests should use overrides
-    return SQLAlchemyBiometricAlertRuleRepository(db)
-
-
-def get_event_processor() -> BiometricEventProcessor:
-    """
-    Dependency for getting the biometric event processor.
-    
-    Returns:
-        BiometricEventProcessor instance
-    """
-    # Always resolve from container; tests should override via container/app
-    return get_service(BiometricEventProcessor)
-
-
-def get_rule_engine() -> ClinicalRuleEngine:
-    """
-    Dependency for getting the clinical rule engine.
-    
-    Returns:
-        ClinicalRuleEngine instance
-    """
-    # Always resolve from container; tests should override via container/app
-    return get_service(ClinicalRuleEngine)
-
-
-def get_template_repository(db: Session = Depends(get_db_session)) -> BiometricAlertTemplateRepository:
-    """
-    Dependency for getting the biometric alert template repository.
-    
-    Args:
-        db: Database session
-        
-    Returns:
-        BiometricAlertTemplateRepository instance
-    """
-    # Always return the real implementation; tests should use overrides
-    return SQLAlchemyBiometricAlertTemplateRepository(db)
-
+logger = get_logger(__name__)
 
 router = APIRouter(
-    tags=["biometric-alerts"],
+    prefix="/biometric_alerts",
+    tags=["biometric_alerts"],
     responses={
         status.HTTP_401_UNAUTHORIZED: {"description": "Unauthorized"},
         status.HTTP_403_FORBIDDEN: {"description": "Forbidden"},
@@ -1215,7 +1120,7 @@ async def get_patient_alert_summary(
         total_alerts = len(alerts)
         
         # Count unresolved alerts (not dismissed or resolved)
-        unresolved_alerts = sum(1 for alert in alerts if alert.status not in [AlertStatus.RESOLVED, AlertStatus.DISMISSED])
+        unresolved_alerts = sum(1 for alert in alerts if alert.status not in [AlertStatusPath.RESOLVED, AlertStatusPath.DISMISSED])
         
         # Count alerts by priority
         urgent_alerts = sum(1 for alert in alerts if alert.priority == AlertPriority.URGENT)
@@ -1224,11 +1129,11 @@ async def get_patient_alert_summary(
         
         # Count alerts by status
         status_breakdown = {
-            "new": sum(1 for alert in alerts if alert.status == AlertStatus.NEW),
-            "acknowledged": sum(1 for alert in alerts if alert.status == AlertStatus.ACKNOWLEDGED),
-            "in_progress": sum(1 for alert in alerts if alert.status == AlertStatus.IN_PROGRESS),
-            "resolved": sum(1 for alert in alerts if alert.status == AlertStatus.RESOLVED),
-            "dismissed": sum(1 for alert in alerts if alert.status == AlertStatus.DISMISSED)
+            "new": sum(1 for alert in alerts if alert.status == AlertStatusPath.NEW),
+            "acknowledged": sum(1 for alert in alerts if alert.status == AlertStatusPath.ACKNOWLEDGED),
+            "in_progress": sum(1 for alert in alerts if alert.status == AlertStatusPath.IN_PROGRESS),
+            "resolved": sum(1 for alert in alerts if alert.status == AlertStatusPath.RESOLVED),
+            "dismissed": sum(1 for alert in alerts if alert.status == AlertStatusPath.DISMISSED)
         }
         
         # Get recent alerts (5 most recent)
@@ -1339,7 +1244,7 @@ async def update_alert_status(
                 return BiometricAlertResponseSchema.model_validate(alert_copy)
             
         # Convert status enum to domain enum
-        alert_status = AlertStatus(status_update.status.value)
+        alert_status = AlertStatusPath(status_update.status.value)
         
         # Update the alert status
         updated_alert = await repository.update_status(
