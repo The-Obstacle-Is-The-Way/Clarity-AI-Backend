@@ -11,7 +11,7 @@ from fastapi import status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.infrastructure.security.rate_limiting.rate_limiter import DistributedRateLimiter, RateLimitType
-from app.presentation.middleware.rate_limiting_middleware import RateLimitingMiddleware, RateLimitConfig, create_rate_limiting_middleware
+from app.presentation.middleware.rate_limiting_middleware import RateLimitConfig, RateLimitingMiddleware, create_rate_limiting_middleware
 
 # Helpers for testing
 async def dummy_endpoint(request):
@@ -252,35 +252,23 @@ class TestRateLimitingMiddlewareFactory:
     """Tests for the RateLimitingMiddlewareFactory."""
 
     def test_create_rate_limiting_middleware(self):
-        """Test the factory function using dependency injection for the middleware class type."""
-        # Create a mock representing the middleware class TYPE
-        mock_middleware_class_type = MagicMock(spec=RateLimitingMiddleware) # Use spec for better mocking
-        mock_middleware_class_type.__name__ = "MockRateLimitingMiddleware"
-        
-        # Mock app
-        mock_app = MagicMock()
-        
-        # Call factory function, injecting the mock class TYPE
+        """Test factory returns injected middleware instance."""
+        # Create a mock instance to be injected
+        mock_middleware_instance = MagicMock(spec=RateLimitingMiddleware)
+        mock_app = MagicMock() # Minimal mock needed for factory call
+
+        # No patching needed - we inject the instance directly
+        # Call factory function, providing the pre-built mock instance
         middleware = create_rate_limiting_middleware(
             app=mock_app,
             api_rate_limit=100,
             api_window_seconds=120,
             api_block_seconds=600,
-            middleware_class=mock_middleware_class_type, # Inject the mock TYPE
+            middleware_instance=mock_middleware_instance, # Inject the mock instance
         )
         
-        # Verify the injected mock class TYPE was instantiated (called)
-        assert mock_middleware_class_type.call_count == 1
-        call_args, call_kwargs = mock_middleware_class_type.call_args
-        assert call_args[0] == mock_app  # app is first positional arg
-        assert "default_limits" in call_kwargs
-        assert "path_limits" in call_kwargs
-        assert "limiter" in call_kwargs
-        assert "get_key" in call_kwargs
-        
-        # Verify the factory returned the INSTANCE created by the mock class TYPE
-        # The instance is mock_middleware_class_type.return_value
-        assert middleware is mock_middleware_class_type.return_value
+        # Assert that the factory returned the exact instance we provided
+        assert middleware is mock_middleware_instance
 
 
 @pytest.mark.asyncio

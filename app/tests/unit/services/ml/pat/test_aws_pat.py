@@ -51,18 +51,6 @@ def mock_boto3():
     dynamodb = MagicMock()
     comprehend_medical = MagicMock()
     
-    # Configure comprehend_medical mock for PHI detection
-    comprehend_medical.detect_phi.return_value = {
-        "Entities": [
-            {
-                "BeginOffset": 11,
-                "EndOffset": 22,
-                "Type": "NAME",
-                "Score": 0.95,
-            }
-        ]
-    }
-    
     # Create a table method for dynamodb
     table = MagicMock()
     dynamodb.Table.return_value = table
@@ -78,32 +66,21 @@ def mock_boto3():
 
 @pytest.fixture
 def aws_pat_service(mock_boto3, aws_config):
-    """Fixture for AWS PAT service."""
-    # Use patch to override boto3.client and boto3.resource for this test
-    with patch('boto3.client') as mock_client, patch('boto3.resource') as mock_resource:
-        # Configure the mock to return our prepared mock objects
-        def get_mock_client(service_name, **kwargs):
-            if service_name in mock_boto3:
-                return mock_boto3[service_name]
-            return MagicMock()
-            
-        def get_mock_resource(service_name, **kwargs):
-            resource_key = f"{service_name}_resource"
-            if resource_key in mock_boto3:
-                return mock_boto3[resource_key]
-            return MagicMock()
-            
-        mock_client.side_effect = get_mock_client
-        mock_resource.side_effect = get_mock_resource
-        
-        # Initialize the service
-        service = AWSPATService()
-        service.initialize(aws_config)
-        
-        return service
+    """Fixture for AWS PAT service, injecting mock clients."""
+    service = AWSPATService()
+    
+    # Inject mock clients directly using the updated initialize method
+    service.initialize(
+        config=aws_config,
+        sagemaker_runtime_client=mock_boto3.get("sagemaker-runtime"), # Use .get for safety
+        s3_client=mock_boto3.get("s3"),
+        comprehend_medical_client=mock_boto3.get("comprehendmedical"),
+        dynamodb_resource=mock_boto3.get("dynamodb_resource") 
+    )
+    
+    yield service
 
 
-@pytest.mark.db_required()
 class TestAWSPATService:
     """Test the AWS PAT service implementation."""
 
@@ -143,29 +120,44 @@ class TestAWSPATService:
             with pytest.raises(InitializationError):
                 service.initialize(aws_config)
 
-    def test_sanitize_phi(self, aws_pat_service, mock_boto3):
-        """Test PHI sanitization."""
-        # Create a direct patch for the _sanitize_phi method to test it independently
-        with patch.object(aws_pat_service, '_comprehend_medical') as mock_cm:
-            # Configure the mock to return PHI entities
-            mock_cm.detect_phi.return_value = {
-                "Entities": [
-                    {
-                        "BeginOffset": 11,
-                        "EndOffset": 22,
-                        "Type": "NAME",
-                        "Score": 0.95,
-                    }
-                ]
-            }
-            
-            text = "Patient is John Smith, a 45-year-old male."
-            sanitized = aws_pat_service._sanitize_phi(text)
+    def test_sanitize_phi(self, mocker): 
+        """Test PHI sanitization logic by manually instantiating after patching boto3.client."""
+        text = "Patient is John Doe, lives at 123 Main St."
+        
+        # 1. Create and configure the mock comprehend client
+        mock_comprehend_medical = MagicMock()
+        mock_response_dict = {
+            "Entities": [
+                {"Type": "NAME", "BeginOffset": 11, "EndOffset": 15, "Score": 0.99},
+                {"Type": "ADDRESS", "BeginOffset": 28, "EndOffset": 38, "Score": 0.95}
+            ]
+        }
+        mock_comprehend_medical.detect_phi.return_value = mock_response_dict
 
-            # Verify that PHI is replaced with redacted marker
-            assert "John Smith" not in sanitized
-            assert "[REDACTED-NAME]" in sanitized
-            assert mock_cm.detect_phi.called
+        # 3. Manually instantiate the service 
+        service_instance = AWSPATService()
+        
+        #    Use a dummy config matching what the fixture provided, with correct keys
+        dummy_config = {
+            "aws_region": "us-east-1",
+            "endpoint_name": "test-pat-endpoint",
+            "bucket_name": "test-pat-bucket",
+            "analyses_table": "test-pat-analyses",
+            "embeddings_table": "test-pat-embeddings",
+            "integrations_table": "test-pat-integrations",
+        }
+        #    Inject the mock client directly during initialization
+        service_instance.initialize(
+            config=dummy_config, 
+            comprehend_medical_client=mock_comprehend_medical
+        )
+
+        # 4. Call the method under test using the manual instance
+        sanitized = service_instance._sanitize_phi(text)
+
+        # 5. Assertions
+        mock_comprehend_medical.detect_phi.assert_called_once_with(Text=text)
+        assert sanitized == "Patient is [NAME], lives at [ADDRESS]."
 
     def test_sanitize_phi_error(self, aws_pat_service, mock_boto3):
         """Test PHI sanitization with error."""

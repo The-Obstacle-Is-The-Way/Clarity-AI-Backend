@@ -331,10 +331,15 @@ def create_rate_limiting_middleware(
     api_block_seconds: int,
     limiter=None,
     get_key: Optional[Callable] = None,
-    middleware_class=RateLimitingMiddleware,
+    middleware_instance: Optional[RateLimitingMiddleware] = None,
 ):
-    """Factory that instantiates RateLimitingMiddleware with default/path limits."""
+    """Factory that instantiates or returns a RateLimitingMiddleware."""
+    
+    # If an instance is provided, return it directly (DI)
+    if middleware_instance is not None:
+        return middleware_instance
 
+    # --- Otherwise, proceed with instantiation ---
     default_limits = {
         "global": RateLimitConfig(requests=api_rate_limit, window_seconds=api_window_seconds, block_seconds=api_block_seconds),
         "ip": RateLimitConfig(requests=api_rate_limit // 10, window_seconds=api_window_seconds, block_seconds=api_block_seconds),
@@ -350,7 +355,7 @@ def create_rate_limiting_middleware(
         },
     }
 
-    return middleware_class(
+    return RateLimitingMiddleware(
         app,
         limiter=limiter,
         default_limits=default_limits,

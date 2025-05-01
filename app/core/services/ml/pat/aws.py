@@ -39,11 +39,7 @@ class AWSPATService(PATInterface):
     """AWS implementation of the PAT interface.
     
     This class uses AWS services to provide production-ready actigraphy
-    analysis and embedding generation. It uses:
-    - SageMaker for model inference
-    - S3 for data storage
-    - DynamoDB for metadata and results storage
-    - AWS Comprehend Medical for PHI detection and removal
+    analysis and personalized insights.
     """
     
     def __init__(self) -> None:
@@ -63,17 +59,22 @@ class AWSPATService(PATInterface):
         self._integrations_table = None
         self._config = {}
     
-    def initialize(self, config: Dict[str, Any]) -> None:
-        """Initialize the AWS PAT service with configuration.
+    def initialize(self, 
+                     config: Dict[str, Any],
+                     # Optional clients for dependency injection (testing)
+                     sagemaker_runtime_client: Optional[Any] = None,
+                     s3_client: Optional[Any] = None,
+                     comprehend_medical_client: Optional[Any] = None,
+                     dynamodb_resource: Optional[Any] = None
+                    ) -> None:
+        """Initialize the AWS PAT service with configuration and optional clients.
 
         Args:
-            config: Configuration parameters for the service, must include:
-                - aws_region: AWS region for services
-                - endpoint_name: SageMaker endpoint name
-                - bucket_name: S3 bucket for data storage
-                - analyses_table: DynamoDB table for analyses
-                - embeddings_table: DynamoDB table for embeddings
-                - integrations_table: DynamoDB table for integrations
+            config: Configuration parameters for the service.
+            sagemaker_runtime_client: Optional pre-configured SageMaker Runtime client.
+            s3_client: Optional pre-configured S3 client.
+            comprehend_medical_client: Optional pre-configured Comprehend Medical client.
+            dynamodb_resource: Optional pre-configured DynamoDB resource.
 
         Raises:
             InitializationError: If initialization fails or config is missing required keys.
@@ -108,31 +109,39 @@ class AWSPATService(PATInterface):
                 self._analyses_table, self._embeddings_table, self._integrations_table
             )
 
-            # Initialize AWS clients - this should raise an exception in the test_initialization_failure test
-            # Create clients one by one to make it easier to catch specific initialization failures
+            # Initialize AWS clients
+            # Use provided clients if available (for DI/testing), otherwise create them
             try:
-                self._sagemaker_runtime = boto3.client("sagemaker-runtime", region_name=config["aws_region"])
+                self._sagemaker_runtime = sagemaker_runtime_client or boto3.client(
+                    "sagemaker-runtime", region_name=self._aws_region
+                )
             except Exception as e:
                 error_msg = f"Error initializing SageMaker client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
                 
             try:
-                self._s3_client = boto3.client("s3", region_name=config["aws_region"])
+                self._s3_client = s3_client or boto3.client(
+                    "s3", region_name=self._aws_region
+                )
             except Exception as e:
                 error_msg = f"Error initializing S3 client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
                 
             try:
-                self._dynamodb_resource = boto3.resource("dynamodb", region_name=config["aws_region"])
+                self._dynamodb_resource = dynamodb_resource or boto3.resource(
+                    "dynamodb", region_name=self._aws_region
+                )
             except Exception as e:
                 error_msg = f"Error initializing DynamoDB resource: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
                 raise InitializationError(error_msg)
                 
             try:
-                self._comprehend_medical = boto3.client("comprehendmedical", region_name=config["aws_region"])
+                self._comprehend_medical = comprehend_medical_client or boto3.client(
+                    "comprehendmedical", region_name=self._aws_region
+                )
             except Exception as e:
                 error_msg = f"Error initializing Comprehend Medical client: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
@@ -190,6 +199,7 @@ class AWSPATService(PATInterface):
             Sanitized text with PHI removed
         """
         try:
+            import pdb; pdb.set_trace() # DEBUG BREAKPOINT
             response = self._comprehend_medical.detect_phi(Text=text)
             entities = response.get("Entities", [])
             
