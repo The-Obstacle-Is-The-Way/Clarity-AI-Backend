@@ -66,6 +66,7 @@ from app.infrastructure.cache.redis_cache import RedisCache # Import directly
 from app.infrastructure.di.container import get_service
 from app.core.utils.logging import get_logger
 from app.domain.entities.biometric_alert import AlertStatusEnum as DomainAlertStatusEnum
+from app.domain.exceptions import EntityNotFoundError, ValidationError, RepositoryError, ServiceError
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
