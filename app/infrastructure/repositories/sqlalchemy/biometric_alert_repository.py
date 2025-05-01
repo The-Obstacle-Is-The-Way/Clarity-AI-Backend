@@ -1,7 +1,6 @@
 """
 SQLAlchemy implementation of the BiometricAlertRepository.
 """
-from typing import List, Optional, Tuple
 from uuid import UUID
 from datetime import datetime
 
@@ -10,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.biometric_alert import BiometricAlert, AlertStatusEnum, AlertPriority
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.exceptions import RepositoryError, EntityNotFoundError
 
 
 class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
@@ -32,7 +30,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         # Potentially raise RepositoryError on failure
         return alert
 
-    async def get_by_id(self, alert_id: UUID | str) -> Optional[BiometricAlert]:
+    async def get_by_id(self, alert_id: UUID | str) -> BiometricAlert | None:
         """Placeholder: Get a specific alert by its ID."""
         print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_id\n")
         # Mock implementation: Return None or raise RepositoryError
@@ -42,12 +40,12 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
     async def get_by_patient_id(
         self,
         patient_id: UUID,
-        acknowledged: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        acknowledged: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[BiometricAlert]:
+    ) -> list[BiometricAlert]:
         """Placeholder: Retrieve biometric alerts for a specific patient with filtering."""
         print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_by_patient_id\n")
         # Mock implementation: Return empty list or raise RepositoryError
@@ -56,11 +54,11 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
     async def get_unacknowledged_alerts(
         self,
-        priority: Optional[AlertPriority] = None,
-        patient_id: Optional[UUID] = None,
+        priority: AlertPriority | None = None,
+        patient_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[BiometricAlert]:
+    ) -> list[BiometricAlert]:
         """Placeholder: Retrieve unacknowledged alerts with filtering."""
         print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_unacknowledged_alerts\n")
         # Mock implementation: Return empty list or raise RepositoryError
@@ -77,9 +75,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
     async def count_by_patient(
         self,
         patient_id: UUID,
-        acknowledged: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        acknowledged: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None
     ) -> int:
         """Placeholder: Count alerts for a patient with filtering."""
         print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.count_by_patient\n")
@@ -91,53 +89,82 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
 
     async def get_alerts(
         self,
-        patient_id: Optional[UUID] = None,
-        rule_id: Optional[UUID] = None, # Note: rule_id not in interface methods used here
-        priority: Optional[str] = None,  # Note: priority type mismatch with interface (str vs AlertPriority)
-        status: Optional[AlertStatusEnum] = None, # Note: status not in interface methods used here
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        acknowledged: Optional[bool] = None,
+        patient_id: UUID | None = None,
+        rule_id: UUID | None = None, 
+        priority: str | None = None,  
+        status: AlertStatusEnum | None = None, 
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        acknowledged: bool | None = None,
         offset: int = 0,
         limit: int = 100,
-    ) -> Tuple[List[BiometricAlert], int]:
+    ) -> tuple[list[BiometricAlert], int]:
         """Compatibility Placeholder: Maps to get_by_patient_id or get_unacknowledged_alerts."""
-        print("\nWARNING: Using placeholder COMPATIBILITY SQLAlchemyBiometricAlertRepository.get_alerts\n")
-        alerts = []
+        print(
+            "\nWARNING: Using placeholder COMPATIBILITY "
+            "SQLAlchemyBiometricAlertRepository.get_alerts\n"
+        )
+        alerts: list[BiometricAlert] = []
         if patient_id:
-            alerts = await self.get_by_patient_id(patient_id, acknowledged, start_time, end_time, limit, offset)
+            alerts = await self.get_by_patient_id(
+                patient_id, acknowledged, start_time, end_time, limit, offset
+            )
         elif acknowledged is False:
             # Attempt to map to get_unacknowledged_alerts, priority needs mapping if provided
-            mapped_priority = AlertPriority[priority.upper()] if priority else None # Basic mapping
-            alerts = await self.get_unacknowledged_alerts(mapped_priority, patient_id, limit, offset)
+            mapped_priority: AlertPriority | None = None
+            if priority:
+                try:
+                    # Basic mapping from string to Enum
+                    mapped_priority = AlertPriority[priority.upper()]
+                except KeyError:
+                    # Handle invalid priority string gracefully if needed
+                    pass
+            alerts = await self.get_unacknowledged_alerts(
+                mapped_priority, patient_id, limit, offset
+            )
         # Simplified count for placeholder
         total_count = len(alerts)
         return alerts, total_count
 
-    async def get_alert_by_id(self, alert_id: UUID) -> Optional[BiometricAlert]:
+    async def get_alert_by_id(self, alert_id: UUID) -> BiometricAlert | None:
         """Compatibility Placeholder: Get a specific alert by its ID."""
-        print("\nWARNING: Using placeholder COMPATIBILITY SQLAlchemyBiometricAlertRepository.get_alert_by_id\n")
+        print(
+            "\nWARNING: Using placeholder COMPATIBILITY "
+            "SQLAlchemyBiometricAlertRepository.get_alert_by_id\n"
+        )
         return await self.get_by_id(alert_id)
 
     async def create_alert(self, alert: BiometricAlert) -> BiometricAlert:
         """Compatibility Placeholder: Create a new alert."""
-        print("\nWARNING: Using placeholder COMPATIBILITY SQLAlchemyBiometricAlertRepository.create_alert\n")
+        print(
+            "\nWARNING: Using placeholder COMPATIBILITY "
+            "SQLAlchemyBiometricAlertRepository.create_alert\n"
+        )
         return await self.save(alert)
 
-    async def update_alert(self, alert: BiometricAlert) -> Optional[BiometricAlert]:
+    async def update_alert(self, alert: BiometricAlert) -> BiometricAlert | None:
         """Compatibility Placeholder: Update an existing alert."""
-        print("\nWARNING: Using placeholder COMPATIBILITY SQLAlchemyBiometricAlertRepository.update_alert\n")
+        print(
+            "\nWARNING: Using placeholder COMPATIBILITY "
+            "SQLAlchemyBiometricAlertRepository.update_alert\n"
+        )
         # Assuming save handles updates; might need get_by_id check first in real impl
         return await self.save(alert)
 
     async def delete_alert(self, alert_id: UUID) -> bool:
         """Compatibility Placeholder: Delete an alert by its ID."""
-        print("\nWARNING: Using placeholder COMPATIBILITY SQLAlchemyBiometricAlertRepository.delete_alert\n")
+        print(
+            "\nWARNING: Using placeholder COMPATIBILITY "
+            "SQLAlchemyBiometricAlertRepository.delete_alert\n"
+        )
         return await self.delete(alert_id)
 
     async def get_patient_alert_summary(self, patient_id: UUID) -> dict:
         """Placeholder: Get alert summary statistics for a patient."""
-        print("\nWARNING: Using placeholder SQLAlchemyBiometricAlertRepository.get_patient_alert_summary\n")
+        print(
+            "\nWARNING: Using placeholder "
+            "SQLAlchemyBiometricAlertRepository.get_patient_alert_summary\n"
+        )
         # Mock implementation: Needs proper aggregation query in real impl
         count = await self.count_by_patient(patient_id)
         unack_count = await self.count_by_patient(patient_id, acknowledged=False)
@@ -147,6 +174,6 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             "total_alerts": count,
             "unacknowledged_alerts": unack_count,
             "acknowledged_alerts": ack_count,
-            "priority_counts": {}, # Placeholder
-            "status_counts": {} # Placeholder
+            "priority_counts": {}, 
+            "status_counts": {} 
         }
