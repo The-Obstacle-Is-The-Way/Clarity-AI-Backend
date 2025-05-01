@@ -80,8 +80,6 @@ class AWSPATService(PATInterface):
         Raises:
             InitializationError: If initialization fails or config is missing required keys.
         """
-        sys.stderr.write(f"\nDEBUG: SERVICE Initialize - Start. Provided dynamodb_resource: {dynamodb_resource} (ID: {id(dynamodb_resource) if dynamodb_resource else 'None'})\n")
-        sys.stderr.flush()
         try:
             # Validate and extract required configuration
             required_keys = [
@@ -133,13 +131,9 @@ class AWSPATService(PATInterface):
                 raise InitializationError(error_msg)
                 
             try:
-                sys.stderr.write("\nDEBUG: SERVICE Initialize - About to get DynamoDB resource via boto3.resource\n")
-                sys.stderr.flush()
                 self._dynamodb_resource = dynamodb_resource or boto3.resource(
                     "dynamodb", region_name=self._aws_region
                 )
-                sys.stderr.write(f"\nDEBUG: SERVICE Initialize - self._dynamodb_resource set to: {self._dynamodb_resource} (ID: {id(self._dynamodb_resource)})\n")
-                sys.stderr.flush()
             except Exception as e:
                 error_msg = f"Error initializing DynamoDB resource: {e.__class__.__name__}: {str(e)}"
                 logger.error(error_msg)
@@ -159,8 +153,6 @@ class AWSPATService(PATInterface):
             
             self._initialized = True
             logger.info("AWS PAT service initialized successfully")
-            sys.stderr.write("\nDEBUG: SERVICE Initialize - Completed Successfully\n")
-            sys.stderr.flush()
         except ClientError as e:
             error_msg = f"AWS client error during initialization: {e.__class__.__name__}: {e}"
             logger.error(error_msg)

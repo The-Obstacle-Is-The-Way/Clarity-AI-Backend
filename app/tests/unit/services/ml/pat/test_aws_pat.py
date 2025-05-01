@@ -6,11 +6,8 @@ All AWS services are mocked to avoid making actual API calls.
 """
 
 import pytest
-import sys
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import MagicMock
 from botocore.exceptions import ClientError
-from pytest_mock import mocker
 
 # Application-specific imports
 from app.core.services.ml.pat.aws import AWSPATService
@@ -45,11 +42,24 @@ def mock_boto3(mocker, request):
     mock_sagemaker_instance = MagicMock()
     # Add SageMaker mocks as needed...
 
-    mock_comprehend_instance = MagicMock()
-    # Add Comprehend Medical mocks as needed...
+    mock_comprehend_instance = MagicMock(name="MockComprehendMedicalClientFromBoto3")
+    # Configure the default return value needed for test_sanitize_phi directly here
+    mock_comprehend_instance.detect_phi.return_value = {
+        'Entities': [
+            {
+                'Text': 'John Doe', 'Type': 'NAME', 'Score': 0.99, 
+                'BeginOffset': 14, 'EndOffset': 22
+            },
+            {
+                'Text': '123 Main St', 'Type': 'ADDRESS', 'Score': 0.98, 
+                'BeginOffset': 34, 'EndOffset': 45
+            }
+        ]
+    }
+    # Add other Comprehend Medical mocks as needed...
 
-    # Central mock for boto3.client
-    mock_client = mocker.patch("boto3.client", autospec=True)
+    # Central mock for boto3.client, targeting where it's imported in the service module
+    mock_client = mocker.patch("app.core.services.ml.pat.aws.boto3.client", autospec=True)
 
     # Side effect function to return the correct mock based on service name
     def client_side_effect(service_name, *args, **kwargs):
@@ -70,15 +80,11 @@ def mock_boto3(mocker, request):
 @pytest.fixture
 def mock_dynamodb_resource(mocker, request):
     """Fixture to create and configure a mock boto3.resource('dynamodb')."""
-    sys.stderr.write(f"\nDEBUG: Fixture - mock_dynamodb_resource called (Fixture ID: {id(mocker)})\n")
-    sys.stderr.flush()
-
     mock_table = MagicMock(name="MockDynamoDBTable")
     mock_resource = MagicMock(name="MockDynamoDBResource")
 
     # Default behavior: Simulate successful load
     mock_table.load.return_value = None
-    sys.stderr.write(f"\nDEBUG: Fixture: Default mock_table.load (ID: {id(mock_table.load)}) configured for success.\n")
 
     # Check if the 'simulate_load_failure' marker is present
     if hasattr(request, "param") and request.param == "simulate_load_failure":
@@ -86,106 +92,80 @@ def mock_dynamodb_resource(mocker, request):
         error_response = {'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Table not found'}}
         operation_name = 'DescribeTable'
         mock_table.load.side_effect = ClientError(error_response, operation_name)
-        sys.stderr.write(f"\nDEBUG: Fixture: mock_table.load (ID: {id(mock_table.load)}) configured to raise ClientError.\n")
 
     # Configure the mock resource's Table method to return the mock table
     mock_resource.Table.return_value = mock_table
-    sys.stderr.write(f"\nDEBUG: Fixture: Configured mock_resource.Table (ID: {id(mock_resource.Table)}) to return mock_table (ID: {id(mock_table)})\n")
-    sys.stderr.flush()
 
     return mock_resource  # Return the configured mock resource
 
 
 @pytest.fixture
 def aws_pat_service(mock_dynamodb_resource, aws_config):
-    """Fixture for AWS PAT service. Relies on autouse mock_boto3 for patching."""
+    """Provides an AWSPATService instance potentially initialized with mock resources."""
     service = AWSPATService()
-
-    # Initialize the service. The autouse mock_boto3 fixture ensures that
-    # calls to boto3.client/resource within initialize() get the mocks.
-    service.initialize(config=aws_config)
-    yield service
+    # Pass the mock resource fixture into initialize for proper DI
+    # No longer need to inject comprehend_medical_client, it's handled by mock_boto3
+    service.initialize(
+        config=aws_config, 
+        dynamodb_resource=mock_dynamodb_resource
+        # comprehend_medical_client is now mocked via mock_boto3 autouse fixture
+    )
+    return service
 
 
 @pytest.mark.parametrize("mock_dynamodb_resource", ["simulate_load_failure"], indirect=True)
-@patch('app.core.services.ml.pat.aws.boto3') # Patch the whole boto3 module in aws.py
 def test_initialization_failure(
-    self, 
-    mock_boto3_module, # Mock for the 'boto3' module itself
     aws_config, 
-    mock_dynamodb_resource # Result from the fixture (via indirect=True)
+    mock_dynamodb_resource, # Result from the fixture (via indirect=True)
+    mocker # Add mocker fixture
 ):
     """Test initialization failure when a DynamoDB table load fails."""
-    sys.stderr.write(f"\nDEBUG: TEST - Entered test_initialization_failure. mock_boto3_module ID: {id(mock_boto3_module)}, fixture mock_resource ID: {id(mock_dynamodb_resource)}\n")
-    
-    # Configure the mocked module's 'resource' attribute to return the fixture's mock
-    mock_boto3_module.resource.return_value = mock_dynamodb_resource
-    sys.stderr.write(f"\nDEBUG: TEST - Configured mock_boto3_module.resource.return_value = mock_dynamodb_resource\n")
-    sys.stderr.flush()
+    # Patch boto3.resource within the service's module scope to return the fixture's mock resource
+    mock_b3_resource = mocker.patch("app.core.services.ml.pat.aws.boto3.resource")
+    mock_b3_resource.return_value = mock_dynamodb_resource
 
     service = AWSPATService() # Instantiate directly
 
-    sys.stderr.write(f"\nDEBUG: TEST - Calling service.initialize() inside pytest.raises()\n")
-    sys.stderr.flush()
     with pytest.raises(InitializationError) as excinfo:
         service.initialize(config=aws_config) # Call initialize here
 
-    sys.stderr.write(f"\nDEBUG: TEST - Exception caught: {excinfo.value}\n")
-    sys.stderr.write(f"\nDEBUG: TEST - Exception type: {type(excinfo.value)}\n")
-    sys.stderr.flush()
-
     # Check that the specific error message from _verify_resources is present
     expected_error_part = f"Resource verification failed for table '{aws_config['analyses_table']}'"
-    sys.stderr.write(f"\nDEBUG: TEST - Asserting '{expected_error_part}' in '{str(excinfo.value)}'\n")
-    sys.stderr.flush()
     assert expected_error_part in str(excinfo.value)
 
     # Verify that the mock resource's Table method was called
+    # Also verify that boto3.resource was called correctly by the initialize method
+    mock_b3_resource.assert_called_once_with('dynamodb', region_name=aws_config['aws_region'])
     mock_dynamodb_resource.Table.assert_called_once_with(aws_config['analyses_table'])
     # Verify that the mock table's load method was called
     mock_table = mock_dynamodb_resource.Table.return_value
     mock_table.load.assert_called_once()
 
 
-def test_sanitize_phi(mocker):
-    """Test PHI sanitization logic by manually instantiating after patching boto3.client."""
-    text = "Patient is John Doe, lives at 123 Main St."
+def test_sanitize_phi(aws_pat_service, aws_config): 
+    """Test PHI sanitization logic using mocked comprehend_medical_client."""
+    text = "Patient name: John Doe, lives at 123 Main St."
+    expected_sanitized_text = "Patient name: [NAME], lives at [ADDRESS]."
 
-    mock_comprehend_medical = Mock(spec=["detect_phi"])
-    mock_response_dict = {
-        "Entities": [
-            {"Type": "NAME", "BeginOffset": 11, "EndOffset": 15, "Score": 0.99},
-            {"Type": "ADDRESS", "BeginOffset": 28, "EndOffset": 38, "Score": 0.95},
-        ]
-    }
-    mock_comprehend_medical.configure_mock(**{"detect_phi.return_value": mock_response_dict})
+    # Service instance comes from the fixture, already initialized with mocks
+    service_instance = aws_pat_service 
 
-    service_instance = AWSPATService()
-
-    dummy_config = {
-        "aws_region": "us-east-1",
-        "endpoint_name": "test-pat-endpoint",
-        "bucket_name": "test-pat-bucket",
-        "analyses_table": "test-pat-analyses",
-        "embeddings_table": "test-pat-embeddings",
-        "integrations_table": "test-pat-integrations",
-    }
-    service_instance.initialize(
-        config=dummy_config, comprehend_medical_client=mock_comprehend_medical
-    )
-
+    # Call the method under test
     sanitized = service_instance._sanitize_phi(text)
 
-    mock_comprehend_medical.detect_phi.assert_called_once_with(Text=text)
-    expected_sanitized = "Patient is [REDACTED-NAME] Doe, lives a[REDACTED-ADDRESS] St."
-    assert sanitized == expected_sanitized
+    # Assertions
+    assert sanitized == expected_sanitized_text
+    aws_pat_service._comprehend_medical.detect_phi.assert_called_once_with(Text=text) 
 
 
 def test_sanitize_phi_error(aws_pat_service):
     """Test PHI sanitization when Comprehend Medical returns an error."""
     text = "Patient is John Smith, a 45-year-old male."
-    mock_comprehend_medical = aws_pat_service._comprehend_medical
 
+    # Ensure the service has been initialized and has the comprehend client
+    assert hasattr(aws_pat_service, '_comprehend_medical') and aws_pat_service._comprehend_medical is not None
+    mock_comprehend_medical = aws_pat_service._comprehend_medical
+    
     mock_comprehend_medical.detect_phi.side_effect = ClientError(
         {"Error": {"Code": "InternalServerError", "Message": "Test error"}}, "DetectPHI"
     )

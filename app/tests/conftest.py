@@ -233,60 +233,6 @@ def get_mock_user_repository() -> UserRepository:
 
 # --- Fixtures --- 
 
-@pytest.fixture(scope="session", autouse=True)
-def mock_problematic_imports():
-    """Mock problematic imports to prevent collection errors. Applied automatically."""
-    patches = []
-    # Patch get_db_session to use a mock session for collection
-    from app.tests.mocks.persistence_db_mock import get_db_session as mock_get_db_session
-    db_session_patch = patch(
-        "app.infrastructure.persistence.sqlalchemy.config.database.get_db_session",
-        mock_get_db_session
-    )
-    db_session_patch.start()
-    patches.append(db_session_patch)
-    # Ensure persistence.db module is mocked for collection
-    import sys
-    if "app.infrastructure.persistence.db" not in sys.modules:
-        import app.tests.mocks.persistence_db_mock as db_mock
-        sys.modules["app.infrastructure.persistence.db"] = db_mock
-    yield
-    # Clean up patches
-    for p in patches:
-        p.stop()
-    # Remove mock module if present
-    if "app.infrastructure.persistence.db" in sys.modules and \
-       sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
-        del sys.modules["app.infrastructure.persistence.db"]
-
-
-@pytest.fixture(scope="session", autouse=True)
-def mock_problematic_imports():
-    """Mock problematic imports to prevent collection errors. Applied automatically."""
-    patches = []
-    # Patch get_db_session to use a mock session for collection
-    from app.tests.mocks.persistence_db_mock import get_db_session as mock_get_db_session
-    db_session_patch = patch(
-        "app.infrastructure.persistence.sqlalchemy.config.database.get_db_session",
-        mock_get_db_session
-    )
-    db_session_patch.start()
-    patches.append(db_session_patch)
-    # Ensure persistence.db module is mocked for collection
-    import sys
-    if "app.infrastructure.persistence.db" not in sys.modules:
-        import app.tests.mocks.persistence_db_mock as db_mock
-        sys.modules["app.infrastructure.persistence.db"] = db_mock
-    yield
-    # Clean up patches
-    for p in patches:
-        p.stop()
-    # Remove mock module if present
-    if "app.infrastructure.persistence.db" in sys.modules and \
-       sys.modules["app.infrastructure.persistence.db"].__name__ == "app.tests.mocks.persistence_db_mock":
-        del sys.modules["app.infrastructure.persistence.db"]
-
-
 # --- Application Fixture with Overrides ---
 
 @pytest.fixture(scope="session") # Changed to session scope to match event_loop
@@ -847,113 +793,6 @@ def mock_db_session():
 
 @pytest.fixture
 def mock_encryption_service():
-    """Create a mock encryption service for security tests.
-    
-    This fixture provides a mock implementation of the encryption service
-    used in security testing.
-    
-    Returns:
-        MagicMock: A mock encryption service
-    """
-    from app.tests.security.utils.test_mocks import MockEncryptionService
-    
-    return MockEncryptionService()
-
-
-@pytest.fixture
-def mock_rbac():
-    """Create a mock role-based access control service for security tests.
-    
-    This fixture provides a mock implementation of the RBAC service
-    used to check permissions in security tests.
-    
-    Returns:
-        RoleBasedAccessControl: A mock RBAC service
-    """
-    from app.tests.security.utils.test_mocks import RoleBasedAccessControl
-    
-    return RoleBasedAccessControl()
-
-
-@pytest.fixture
-def mock_entity_factory():
-    """Create a mock entity factory for security tests.
-    
-    This fixture provides a mock implementation of the entity factory
-    used to create test entities in security tests.
-    
-    Returns:
-        MockEntityFactory: A mock entity factory
-    """
-    from app.tests.security.utils.test_mocks import MockEntityFactory
-    
-    return MockEntityFactory()
-
-
-@pytest.fixture
-def mock_phi_service():
-    """Create a mock PHI service for HIPAA compliance tests.
-    
-    This fixture provides a mock implementation of the PHI detection and
-    sanitization service used in HIPAA compliance tests.
-    
-    Returns:
-        MagicMock: A mock PHI service
-    """
-    from unittest.mock import MagicMock
-    from app.tests.security.utils.test_mocks import PHIRedactionService
-    
-    return PHIRedactionService()
-
-@pytest_asyncio.fixture(scope="function")
-async def setup_database():
-    """
-    Set up the test database with required tables and test users.
-    
-    This fixture ensures that the test database is properly initialized
-    before each test function runs.
-    """
-    # Import our standardized test database initializer - this is now our single source of truth for test database setup
-    from app.tests.integration.utils.test_db_initializer import (
-        get_test_db_session, 
-        TEST_USER_ID, 
-        TEST_CLINICIAN_ID,
-        TestUser,
-        TestPatient
-    )
-    
-    # Use our standardized test database initializer to set up the test database
-    logger.info("[Fixture setup_database] Using standardized test_db_initializer")
-    
-    # Simply yield and continue with tests - no actual setup needed here
-    # The test_db_session fixture in individual tests will handle table creation
-    yield
-    
-    # No teardown needed here - each test manages its own session via test_db_session
-
-@pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Create an isolated database session for each test function with test users.
-
-    This fixture uses the standardized test database initializer to ensure:
-    1. The database has the correct schema
-    2. Test users exist for foreign key relationships
-    3. Each test runs in its own transaction that is rolled back after the test
-
-    Yields:
-        AsyncSession: SQLAlchemy async session with test users created
-    """
-    # Import our standardized test database initializer
-    from app.tests.integration.utils.test_db_initializer import get_test_db_session
-    
-    # Use the standardized initializer to get a session
-    async for session in get_test_db_session():
-        yield session
-        # The get_test_db_session generator handles cleanup and rollback
-
-@pytest.fixture
-def mock_encryption_service():
     """
     Create a proper mock encryption service for testing.
     
@@ -1017,3 +856,65 @@ def mock_xgboost_service():
     
     logger.info("Created mock XGBoost service fixture.") # Add log
     return mock_service
+
+@pytest.fixture
+def mock_phi_service():
+    """Create a mock PHI service for HIPAA compliance tests.
+    
+    This fixture provides a mock implementation of the PHI detection and
+    sanitization service used in HIPAA compliance tests.
+    
+    Returns:
+        MagicMock: A mock PHI service
+    """
+    from unittest.mock import MagicMock
+    from app.tests.security.utils.test_mocks import PHIRedactionService
+    
+    return PHIRedactionService()
+
+@pytest_asyncio.fixture(scope="function")
+async def setup_database():
+    """
+    Set up the test database with required tables and test users.
+    
+    This fixture ensures that the test database is properly initialized
+    before each test function runs.
+    """
+    # Import our standardized test database initializer - this is now our single source of truth for test database setup
+    from app.tests.integration.utils.test_db_initializer import (
+        get_test_db_session, 
+        TEST_USER_ID, 
+        TEST_CLINICIAN_ID,
+        TestUser,
+        TestPatient
+    )
+    
+    # Use our standardized test database initializer to set up the test database
+    logger.info("[Fixture setup_database] Using standardized test_db_initializer")
+    
+    # Simply yield and continue with tests - no actual setup needed here
+    # The test_db_session fixture in individual tests will handle table creation
+    yield
+    
+    # No teardown needed here - each test manages its own session via test_db_session
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Create an isolated database session for each test function with test users.
+
+    This fixture uses the standardized test database initializer to ensure:
+    1. The database has the correct schema
+    2. Test users exist for foreign key relationships
+    3. Each test runs in its own transaction that is rolled back after the test
+
+    Yields:
+        AsyncSession: SQLAlchemy async session with test users created
+    """
+    # Import our standardized test database initializer
+    from app.tests.integration.utils.test_db_initializer import get_test_db_session
+    
+    # Use the standardized initializer to get a session
+    async for session in get_test_db_session():
+        yield session
+        # The get_test_db_session generator handles cleanup and rollback
