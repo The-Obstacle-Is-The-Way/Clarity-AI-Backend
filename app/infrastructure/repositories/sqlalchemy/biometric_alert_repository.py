@@ -1,13 +1,13 @@
 """
 SQLAlchemy implementation of the BiometricAlertRepository.
 """
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
 # Import AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.biometric_alert import BiometricAlert, AlertStatusEnum, AlertPriority
+from app.domain.entities.biometric_alert import AlertPriority, AlertStatusEnum, BiometricAlert
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
 
