@@ -5,14 +5,14 @@ This module contains tests for the AWS implementation of the PAT service.
 All AWS services are mocked to avoid making actual API calls.
 """
 
-import os
 import pytest
-from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
+# Third-party imports
 import boto3
 from botocore.exceptions import ClientError
 
+# First-party imports
 from app.core.services.ml.pat.aws import AWSPATService
 from app.core.services.ml.pat.exceptions import InitializationError, ResourceNotFoundError
 
