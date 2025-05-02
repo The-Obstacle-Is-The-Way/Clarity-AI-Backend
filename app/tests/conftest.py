@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import sys
+import uuid
 from collections.abc import AsyncGenerator, Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -26,8 +27,6 @@ for key in list(sys.modules.keys()):
 
 # Import test mocks first to ensure dependency issues are resolved
 # This makes tests collectable even without all dependencies installed
-import uuid
-
 import pytest_asyncio
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import (
@@ -451,6 +450,23 @@ def sample_actigraphy_data() -> dict[str, Any]:
     """Placeholder fixture for sample actigraphy data."""
     return {}
 
+# --- Sample Identifiers ---
+
+@pytest.fixture(scope="session")
+def sample_patient_id() -> uuid.UUID:
+    """Provides a consistent, reusable UUID for a sample patient."""
+    # return uuid.uuid4() # Generate random each run
+    return uuid.UUID("123e4567-e89b-12d3-a456-426614174000") # Fixed UUID for consistency
+
+@pytest.fixture(scope="session")
+def sample_rule_id() -> uuid.UUID:
+    """Provides a consistent, reusable UUID for a sample alert rule."""
+    return uuid.UUID("789e0123-f45a-67b8-c90d-123456789abc") # Fixed UUID for consistency
+
+@pytest.fixture(scope="session")
+def sample_alert_id() -> uuid.UUID:
+    """Provides a consistent, reusable UUID for a sample alert."""
+    return uuid.UUID("abcdef01-2345-6789-abcd-ef0123456789") # Fixed UUID for consistency
 
 @pytest.fixture
 def mock_patient_payload():
@@ -551,11 +567,6 @@ def sample_rule():
         "created_at": timestamp.isoformat(),
         "updated_at": timestamp.isoformat()
     }
-
-@pytest.fixture
-def sample_patient_id() -> uuid.UUID:
-    """Provides a sample patient UUID for testing."""
-    return uuid.uuid4()
 
 @pytest.fixture
 def mock_biometric_event_processor():

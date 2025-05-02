@@ -237,11 +237,11 @@ class TestBiometricAlertsEndpoints:
     async def test_get_alert_rule(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str],
+        provider_auth_headers: dict[str, str], 
         sample_rule_id: UUID,
     ) -> None:
         """Test retrieving a specific alert rule by ID."""
-        headers = get_valid_provider_auth_headers
+        headers = provider_auth_headers 
         rule_id_str = str(sample_rule_id)
         response = await client.get(
             f"/api/v1/biometric-alerts/rules/{rule_id_str}",
@@ -374,11 +374,11 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_acknowledge(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str],
+        provider_auth_headers: dict[str, str], 
         sample_alert_id: UUID,
     ) -> None:
         """Test acknowledging a biometric alert by updating its status."""
-        headers = get_valid_provider_auth_headers
+        headers = provider_auth_headers 
         alert_id_str = str(sample_alert_id)
         update_payload = {
             "status": "acknowledged",
