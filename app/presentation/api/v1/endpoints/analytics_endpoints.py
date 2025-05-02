@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 import json
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks, Response, Request # Added Response and Request
 from fastapi.responses import JSONResponse
 
 # Defer service import entirely
@@ -57,12 +57,12 @@ def get_analytics_service_dependency():
 @_v1_router.get("/patient/{patient_id}/treatment-outcomes", response_model=Dict[str, Any])
 async def get_patient_treatment_outcomes(
     patient_id: UUID,
+    background_tasks: BackgroundTasks,
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=90)),
     end_date: Optional[datetime] = Query(default=None),
     # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
     """
     Get treatment outcomes analytics for a specific patient.
@@ -194,13 +194,13 @@ async def get_analytics_job_status(
 
 @_v1_router.get("/practice-metrics", response_model=Dict[str, Any])
 async def get_practice_metrics(
+    background_tasks: BackgroundTasks,
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=30)),
     end_date: Optional[datetime] = Query(default=None),
     provider_id: Optional[UUID] = Query(default=None),
     # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
     """
     Get practice-wide metrics and analytics.
@@ -350,13 +350,13 @@ async def get_diagnosis_distribution(
 @_v1_router.get("/medications/{medication_name}/effectiveness", response_model=Dict[str, Any])
 async def get_medication_effectiveness(
     medication_name: str,
+    background_tasks: BackgroundTasks,
     diagnosis_code: Optional[str] = Query(default=None),
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
     # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
     """
     Analyze the effectiveness of a specific medication.
@@ -465,13 +465,13 @@ async def _process_medication_effectiveness(
 @_v1_router.get("/treatment-comparison/{diagnosis_code}", response_model=Dict[str, Any])
 async def get_treatment_comparison(
     diagnosis_code: str,
+    background_tasks: BackgroundTasks,
     treatments: List[str] = Query(...),
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
     # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Dict[str, Any]:
     """
     Compare the effectiveness of different treatments for a specific diagnosis.
@@ -623,19 +623,17 @@ events_router = APIRouter(
 
 @events_router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 async def record_analytics_event(
+    request: Request,
     event_data: Dict[str, Any],
-    user: Optional[Dict[str, Any]] = Depends(get_current_user),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    # Inject the correct use case
-    process_event_use_case: ProcessAnalyticsEventUseCase = Depends(ProcessAnalyticsEventUseCase),
-) -> JSONResponse:
+    background_tasks: BackgroundTasks,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
+) -> Response:
     """
     Record an analytics event.
 
     Args:
         event_data: Analytics event data
         user: Current authenticated user (optional)
-        background_tasks: Background tasks for async processing
         process_event_use_case: Use case for processing single events
 
     Returns:
@@ -653,6 +651,10 @@ async def record_analytics_event(
         raise HTTPException(status_code=400, detail="Missing event_type")
 
     timestamp = datetime.fromisoformat(timestamp_str) if timestamp_str else datetime.now(timezone.utc)
+
+    # Resolve use case manually
+    container = request.state.container
+    process_event_use_case: ProcessAnalyticsEventUseCase = container.resolve(ProcessAnalyticsEventUseCase)
 
     # Schedule the use case execution in the background
     background_tasks.add_task(
@@ -676,19 +678,17 @@ async def record_analytics_event(
 
 @events_router.post("/batch", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 async def record_analytics_batch(
+    request: Request,
     batch_data: Dict[str, List[Dict[str, Any]]],
+    background_tasks: BackgroundTasks,
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    # Inject the correct use case
-    batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(BatchProcessAnalyticsUseCase),
-) -> JSONResponse:
+) -> Response:
     """
     Record a batch of analytics events.
 
     Args:
         batch_data: Batch of analytics events (expected format: {"events": [...]})
         user: Current authenticated user (optional)
-        background_tasks: Background tasks for async processing
         batch_process_use_case: Use case for processing batch events
 
     Returns:
@@ -702,6 +702,10 @@ async def record_analytics_batch(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid batch format. Expected 'events' list."
         )
+
+    # Resolve use case manually
+    container = request.state.container
+    batch_process_use_case: BatchProcessAnalyticsUseCase = container.resolve(BatchProcessAnalyticsUseCase)
 
     # Schedule the batch use case execution
     background_tasks.add_task(
