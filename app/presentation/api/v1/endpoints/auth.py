@@ -312,62 +312,42 @@ async def logout(
     response_description="Current user data"
 )
 async def get_current_user_profile(
-    user_data: Dict[str, Any] = Depends(get_current_user),
-    user_repository: UserRepository = Depends(get_user_repository_provider)
+    current_user: User = Depends(get_current_user), 
+    user_repository: UserRepository = Depends(get_user_repository_provider) 
 ):
     """
     Get the current authenticated user's profile.
     
     Args:
-        user_data: User data from the JWT token
-        user_repository: Repository for user data
+        current_user: The authenticated User object from the dependency.
+        user_repository: Repository for user data (potentially unused here now).
         
     Returns:
         UserResponse with user information
         
     Raises:
-        HTTPException: If user is not found in database
+        HTTPException: If user is not found (should be handled by dependency).
     """
     try:
-        # Get user ID from token payload
-        user_id = user_data.get("sub") or user_data.get("user_id")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid user data in token"
-            )
-            
-        # Convert string to UUID for repository
-        try:
-            user_uuid = UUID(user_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid user ID format"
-            )
-            
-        # Get user from repository
-        user = await user_repository.get_by_id(user_uuid)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-            
-        # Return user data without sensitive information
+        # The get_current_user dependency should already handle authentication
+        # and raise HTTPException if the user is not valid or not found.
+        # We can directly use the provided current_user object.
+
+        # Directly return data from the User object provided by the dependency
         return UserResponse(
-            id=str(user.id),
-            email=user.email,
-            first_name=user.first_name,
-            last_name=user.last_name,
-            roles=[str(role) for role in user.roles],
-            is_active=user.is_active
+            id=str(current_user.id),
+            email=current_user.email,
+            first_name=current_user.first_name,
+            last_name=current_user.last_name,
+            roles=[str(role) for role in current_user.roles],
+            is_active=current_user.is_active
         )
     except HTTPException:
         # Re-throw HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error retrieving user profile: {str(e)}")
+        # Log unexpected errors
+        logger.error(f"Error retrieving user profile for user ID {current_user.id if current_user else 'UNKNOWN'}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve user profile"
