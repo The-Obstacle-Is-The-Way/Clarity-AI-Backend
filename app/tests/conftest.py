@@ -49,17 +49,18 @@ from app.domain.services.pat_service import PATService # Corrected import path a
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
-from app.main import create_application # Import create_application
+from app.main import create_application # Corrected: Import create_application
 from app.domain.services.analytics_service import AnalyticsService # Import AnalyticsService
 from app.infrastructure.di.container import get_container # Import get_container
 from app.domain.entities.user import User # Import User
+from app.domain.enums.role import Role # Import Role
+from app.domain.repositories.user_repository import UserRepository # Ensure imported
+from app.config.settings import get_settings # Corrected import path based on grep
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
 from app.domain.entities.biometric_alert import BiometricAlert # noqa F401
 from app.domain.entities.appointment import Appointment # noqa F401
 from app.domain.entities.biometric_twin import BiometricDataPoint # noqa F401
 from app.core.dependencies.database import get_db_session as get_core_db_session
-from app.domain.enums.role import Role # Import Role
-from app.domain.repositories.user_repository import UserRepository # Ensure imported
 
 @pytest.fixture
 def auth_headers():
@@ -291,6 +292,9 @@ def initialized_app(
     # Ensure test environment variable is set if needed elsewhere
     os.environ['TESTING'] = '1'
     
+    # Instantiate the app first
+    app = create_application() # Instantiate the app
+
     # Use primary test settings for the main application instance
     app.dependency_overrides[get_settings] = lambda: test_settings
 
