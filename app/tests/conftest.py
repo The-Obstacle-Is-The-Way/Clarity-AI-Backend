@@ -366,6 +366,27 @@ def mock_auth_service(test_patient: User) -> AsyncMock: # Depend on test_patient
     mock.get_user_from_token = AsyncMock(return_value=test_patient)
     return mock
 
+# ADDED: Lightweight JWT service variant for tests that skips DB user lookup
+class TestJWTService(JWTService):
+    """JWTService subclass that resolves the user directly from the token payload.
+
+    This avoids hitting the (overridden) UserRepository during tests and lets us
+    keep all validation logic (expiry, signature, issuer, audience) unchanged.
+    """
+
+    async def get_user_from_token(self, token: str):  # type: ignore[override]
+        payload = await self.decode_token(token)
+        # Extract mandatory fields (keep minimal for tests)
+        sub: str | None = payload.get("sub")
+        roles: list[str] = payload.get("roles", [])  # pragma: no cover – default empty list
+        if sub is None:
+            raise AuthenticationError("Missing subject (sub) claim")
+        # Return a *very* lightweight mock User – only id/roles used in endpoints
+        user = MagicMock(spec=User)
+        user.id = uuid.UUID(sub)
+        user.roles = roles
+        return user
+
 @pytest.fixture
 def initialized_app(
     test_settings: Settings, 
@@ -429,6 +450,11 @@ def initialized_app(
     except ImportError:
         logger.error("Cannot find get_analytics_service_provider. Override may fail!")
         # Attempt fallback if needed, or let tests fail explicitly
+
+    # Provide the lightweight in-memory JWT service so get_current_user works
+    test_app.dependency_overrides[get_jwt_service] = (
+        lambda ts=test_settings: TestJWTService(settings=ts, user_repository=None)
+    )
 
     # NO AuthenticationMiddleware added
     # NO patching needed
