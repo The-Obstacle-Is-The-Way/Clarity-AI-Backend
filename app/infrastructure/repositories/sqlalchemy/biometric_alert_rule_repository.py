@@ -4,9 +4,18 @@ SQLAlchemy implementation of the BiometricAlertRuleRepository.
 from uuid import UUID  # Standard library
 
 from sqlalchemy.ext.asyncio import AsyncSession  # Third-party
+from sqlalchemy import select, func, update
 
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule  # First-party
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
+    SQLAlchemyBiometricRuleRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
+from app.infrastructure.persistence.sqlalchemy.mappers.biometric_rule_mapper import (
+    map_rule_model_to_entity,
+)
+
 # Import necessary exceptions if needed for real implementation
 # from app.domain.exceptions import RepositoryError, ValidationError
 
@@ -15,60 +24,54 @@ class SQLAlchemyBiometricAlertRuleRepository(BiometricAlertRuleRepository):
     """SQLAlchemy implementation of BiometricAlertRuleRepository."""
 
     def __init__(self, db: AsyncSession):
-        """Initialize repository with DB session."""
+        """Initialize repository with DB session and set up delegate repository."""
         self.db = db
-
-    # NOTE: These methods are placeholders. Implement with actual SQLAlchemy logic.
+        # Re-use the fully-featured implementation to avoid code duplication
+        self._delegate = SQLAlchemyBiometricRuleRepository(session=db)
 
     async def get_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return None
+        """Retrieve a rule by ID using the delegate repository."""
+        return await self._delegate.get_by_id(rule_id)
 
     async def get_all(self) -> list[BiometricAlertRule]:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return []
+        """Retrieve all rules using the delegate repository."""
+        return await self._delegate.get_all()
 
     async def get_by_patient_id(self, patient_id: UUID) -> list[BiometricAlertRule]:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return []
+        """Retrieve rules for a patient using the delegate repository."""
+        return await self._delegate.get_by_patient_id(patient_id)
 
     async def get_by_provider_id(self, provider_id: UUID) -> list[BiometricAlertRule]:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return []
+        """Retrieve all rules created by a specific provider."""
+        stmt = select(BiometricRuleModel).where(BiometricRuleModel.provider_id == provider_id)
+        result = await self.db.execute(stmt)
+        models = result.scalars().all()
+        return [map_rule_model_to_entity(m) for m in models]
 
     async def get_all_active(self) -> list[BiometricAlertRule]:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return []
+        """Retrieve all active rules using the delegate repository."""
+        return await self._delegate.get_all_active()
 
     async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricAlertRule]:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return []
+        """Retrieve active rules for a patient by filtering delegate results."""
+        rules = await self._delegate.get_by_patient_id(patient_id)
+        return [rule for rule in rules if rule.is_active]
 
     async def save(self, rule: BiometricAlertRule) -> BiometricAlertRule:
-        """Mock implementation for test collection."""
-        # Replace with: self.db.add(rule); await self.db.commit(); await self.db.refresh(rule)
-        return rule
+        """Create or update a rule using the delegate repository."""
+        return await self._delegate.save(rule)
 
     async def delete(self, rule_id: UUID) -> bool:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.; await self.db.commit()
-        return True
+        """Delete a rule using the delegate repository."""
+        return await self._delegate.delete(rule_id)
 
     async def count_active_rules(self, patient_id: UUID) -> int:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.
-        return 0
+        """Count active rules for a patient using the delegate repository."""
+        return await self._delegate.count_active_rules(patient_id)
 
     async def update_active_status(self, rule_id: UUID, is_active: bool) -> bool:
-        """Mock implementation for test collection."""
-        # Replace with: await self.db.execute(...) etc.; await self.db.commit()
-        return True
+        """Update active status using the delegate repository."""
+        return await self._delegate.update_active_status(rule_id, is_active)
 
     # Aliases for backward compatibility / specific use cases
     async def get_rules(
