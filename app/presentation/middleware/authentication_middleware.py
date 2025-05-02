@@ -7,8 +7,9 @@ It implements HIPAA-compliant logging and authorization checks.
 """
 
 import re
+import asyncio
 from collections.abc import Callable
-from typing import Any, Optional, Union, list, set
+from typing import Any, Optional, Union
 
 from fastapi import FastAPI, Request, Response, status
 from starlette.authentication import AuthCredentials, UnauthenticatedUser
@@ -17,7 +18,6 @@ from starlette.responses import JSONResponse
 import json
 import re
 from typing import Any, Callable, Optional, Union
-import jsonse
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
@@ -28,8 +28,16 @@ from starlette.status import (
 from app.domain.exceptions import (
     AuthenticationError, 
     MissingTokenError,
-    PermissionDeniedError
+    PermissionDeniedError,
+    TokenExpiredException,
+    InvalidTokenException,
 )
+# Import UserNotFoundException from its specific module
+from app.domain.exceptions.auth_exceptions import UserNotFoundException
+
+# Import interfaces from the core layer
+from app.core.interfaces.services.authentication_service import IAuthenticationService 
+from app.core.interfaces.services.jwt_service import IJwtService
 
 from app.core.config.settings import Settings, get_settings
 from app.infrastructure.logging.logger import get_logger
@@ -96,6 +104,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self.rbac = RoleBasedAccessControl()
         
         # Get services for token validation and authentication
+        # Remove direct instantiation here
         # Initialize public paths as a set for O(1) lookups
         self.public_paths = set(public_paths or [])
         
@@ -141,9 +150,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def _ensure_services_initialized(self):
         """Lazy-load services if needed."""
         if not self._auth_service_instance:
-            self._auth_service_instance = self._auth_service or get_auth_service()
+            # Use await if the getter is async
+            auth_service_getter = self._auth_service or get_auth_service
+            self._auth_service_instance: IAuthenticationService = await auth_service_getter() if asyncio.iscoroutinefunction(auth_service_getter) else auth_service_getter()
         if not self._jwt_service_instance:
-            self._jwt_service_instance = self._jwt_service or get_jwt_service()
+            jwt_service_getter = self._jwt_service or get_jwt_service
+            self._jwt_service_instance: IJwtService = await jwt_service_getter() if asyncio.iscoroutinefunction(jwt_service_getter) else jwt_service_getter()
 
     def _extract_token(self, request: Request) -> Optional[str]:
         """
@@ -171,6 +183,47 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             
         return None
 
+    async def validate_token_and_get_user(self, token: str) -> Any:
+        """
+        Validate the provided token and retrieve the corresponding user.
+
+        Args:
+            token: The JWT token string.
+
+        Returns:
+            The authenticated user object if validation is successful.
+
+        Raises:
+            InvalidTokenException: If the token is invalid or malformed.
+            TokenExpiredException: If the token has expired.
+            UserNotFoundException: If the user identified by the token does not exist.
+            AuthenticationError: For other authentication-related errors.
+        """
+        try:
+            token_payload = await self._jwt_service_instance.verify_token(token)
+            user = await self._auth_service_instance.get_user_by_id(token_payload.sub)
+
+            if not user:
+                logger.warning(f"User not found for ID: {token_payload.sub}")
+                raise UserNotFoundException(f"User with ID {token_payload.sub} not found.")
+
+            if not user.is_active:
+                logger.warning(f"Attempt to authenticate inactive user: {user.id}")
+                raise AuthenticationError("User account is inactive.")
+
+            return user
+
+        except (InvalidTokenException, TokenExpiredException) as e:
+            logger.info(f"Token validation failed: {e}")
+            raise e # Re-raise specific exceptions
+        except UserNotFoundException as e:
+             logger.warning(f"User lookup failed during auth: {e}")
+             raise e
+        except Exception as e:
+            logger.error(f"Unexpected error during token validation: {e}", exc_info=True)
+            # Do not expose internal errors (HIPAA)
+            raise AuthenticationError("Authentication failed due to an internal error.")
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process the request through the authentication middleware.
@@ -190,107 +243,68 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         await self._ensure_services_initialized()
         
         # Skip authentication for public paths
-        if await self._is_public_path(request.url.path):
-            logger.debug(f"Skipping auth for public path: {request.url.path}")
+        request_path = request.url.path
+        if await self._is_public_path(request_path):
+            logger.debug(f"Skipping auth for public path: {request_path}")
             return await call_next(request)
         
         # Extract token from the request
         token = self._extract_token(request)
             
-        # Missing token
+        # Handle missing token
         if not token:
-            # For test_missing_token
-            # This is a modification to allow the test_missing_token to work
-            # The test expects a 200 response for missing token test
-            if getattr(request, 'path', '').endswith('/missing_token'):
-                return await call_next(request)
-                
+            logger.info(f"Authentication token missing for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Authentication required"}
+                content={"detail": "Authentication required. No token provided."}, # HIPAA: No PHI
             )
             
         try:
-            # Valid token handling
+            # Validate token and retrieve user
             user = await self.validate_token_and_get_user(token)
-            if user:
-                request.state.user = user
-                request.state.auth = AuthCredentials(scopes=user.roles)
-                return await call_next(request)
-                
-            # Special test cases
-            elif token == "invalid" or token == "malformed":
-                # For test_invalid_token and test_token_parsing_failure
-                return JSONResponse(
-                    status_code=HTTP_401_UNAUTHORIZED,
-                    content={"detail": "Invalid authentication token"}
-                )
-            elif token == "expired":
-                # For test_expired_token
-                return JSONResponse(
-                    status_code=HTTP_401_UNAUTHORIZED, 
-                    content={"detail": "Token has expired"}
-                )
-            elif token == "inactive_user":
-                # For test_inactive_user_authentication_failure
-                return JSONResponse(
-                    status_code=HTTP_403_FORBIDDEN,
-                    content={"detail": "User account is inactive or disabled"}
-                )
-            elif token == "user_not_found":
-                # For test_user_not_found_authentication_failure
-                return JSONResponse(
-                    status_code=HTTP_401_UNAUTHORIZED,
-                    content={"detail": "User not found"}
-                )
-            elif token == "error_token":
-                # For test_unexpected_error_handling
-                raise Exception("Test error")
-                
-            # Default case - should not reach in tests
+
+            # Attach authenticated user and credentials to request state
+            request.state.user = user
+            # Ensure roles/scopes are available on the user object
+            scopes = getattr(user, 'roles', []) or getattr(user, 'scopes', [])
+            request.state.auth = AuthCredentials(scopes=scopes)
+            logger.debug(f"User {user.id} authenticated successfully for path {request_path}")
+            return await call_next(request)
+
+        except InvalidTokenException:
+            logger.info(f"Invalid token received for path: {request_path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Invalid or unknown token type"}
+                content={"detail": "Invalid or malformed authentication token."}, # HIPAA: No PHI
             )
-            
-        except Exception as e:
-            # Handle unexpected errors
-            logger.error(f"Authentication error: {str(e)}", exc_info=True)
+        except TokenExpiredException:
+            logger.info(f"Expired token received for path: {request_path}")
             return JSONResponse(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR, 
-                content={"detail": "Internal server error during authentication"}
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": "Authentication token has expired."}, # HIPAA: No PHI
             )
-        
-    async def _is_public_path(self, path: str) -> bool:
-        """
-        Check if the path is public based on exact matches or regex patterns.
-
-        Args:
-            path: The request path.
-
-        Returns:
-            True if the path is considered public, False otherwise.
-        """
-        normalized_path = path.rstrip('/') # Normalize trailing slash for matching
-
-        # Check exact path matches (case-sensitive, normalized)
-        normalized_public_paths = [p.rstrip('/') for p in self.public_paths]
-        logger.debug(f"Checking public path match: normalized_path={normalized_path}, normalized_public_paths={normalized_public_paths}")
-        if normalized_path in normalized_public_paths:
-            logger.debug(f"Path matched public list (normalized): {path}")
-            return True
-
-        # Check standard FastAPI UI paths explicitly
-        # (Ensure these are covered even if not in configured list)
-        if path in ["/docs", "/redoc", "/openapi.json"] or path.startswith("/static/"):
-             logger.debug(f"Path matched standard UI/static path: {path}")
-             return True
-        
-        # Check regex patterns against the original path
-        for pattern in self.public_path_patterns:
-            if pattern.match(path):
-                logger.debug(f"Path matched public regex pattern '{pattern.pattern}': {path}")
-                return True
-
-        logger.debug(f"Path did not match any public criteria: {path}")
-        return False
+        except UserNotFoundException:
+             logger.warning(f"User not found during authentication attempt for path: {request_path}")
+             return JSONResponse(
+                 status_code=HTTP_401_UNAUTHORIZED,
+                 content={"detail": "User associated with token not found."}, # HIPAA: No PHI
+             )
+        except AuthenticationError as e:
+             logger.warning(f"Authentication failed for path {request_path}: {e}")
+             # Return specific message for inactive user, generic otherwise
+             detail = "User account is inactive." if "inactive" in str(e).lower() else "Authentication failed."
+             status_code = HTTP_403_FORBIDDEN if "inactive" in str(e).lower() else HTTP_401_UNAUTHORIZED
+             return JSONResponse(
+                 status_code=status_code,
+                 content={"detail": detail}, # HIPAA: No PHI
+             )
+        except Exception as e:
+            # Catch-all for unexpected errors during authentication
+            logger.error(
+                f"Unexpected internal error during authentication for path {request_path}: {e}",
+                exc_info=True,
+            )
+            return JSONResponse(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "An internal error occurred during authentication."}, # HIPAA: Generic error
+            )

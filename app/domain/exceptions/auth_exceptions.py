@@ -99,4 +99,9 @@ class MaxSessionsExceededException(AuthenticationException):
     
     def __init__(self, message: str = "Maximum sessions exceeded", *args, **kwargs):
         super().__init__(message, *args, **kwargs)
-        self.status_code = 401 
+        self.status_code = 401
+
+
+class UserNotFoundException(AuthenticationException):
+    """Raised when an authentication attempt refers to a non-existent user."""
+    pass 
