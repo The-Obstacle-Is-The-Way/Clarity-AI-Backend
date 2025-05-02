@@ -20,9 +20,9 @@ from starlette.responses import Response
 
 from app.app_factory import create_application
 from app.config.settings import Settings
-from app.core.interfaces.services.auth import IAuthenticationService
-from app.core.interfaces.services.jwt import IJwtService
-from app.core.interfaces.services.mentallama import MentaLLaMAInterface
+from app.core.interfaces.services.authentication_service import IAuthenticationService
+from app.core.interfaces.services.jwt_service import IJwtService
+from app.core.interfaces.services.mentallama_service import MentaLLaMAInterface
 from app.domain.entities.auth import User, UnauthenticatedUser 
 from app.presentation.api.v1.dependencies.auth import verify_api_key
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware 
