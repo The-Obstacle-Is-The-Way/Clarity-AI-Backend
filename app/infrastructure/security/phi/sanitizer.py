@@ -121,49 +121,79 @@ class PatternRepository:
             regex=r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b"
         ))
         
-        # Name patterns
+        # Name patterns - both case-sensitive and insensitive variants
         self.add_pattern(PHIPattern(
             name="NAME",
-            regex=r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
+            regex=r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"  # Matches "John Smith"
         ))
-        self.add_pattern(
-            PHIPattern(
-                name="NAME",
-                regex=r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b",
-                context_patterns=[r"\bname\b", r"\bpatient\b"],
-                strategy=RedactionStrategy.FULL,
-            )
-        )
+        self.add_pattern(PHIPattern(
+            name="NAME",
+            regex=r"\b[A-Z][A-Z]+ [A-Z][A-Z]+\b",  # Matches "JOHN SMITH"
+            strategy=RedactionStrategy.FULL,
+        ))
+        self.add_pattern(PHIPattern(
+            name="NAME",
+            fuzzy_match=[r"\b[A-Za-z]+\s+[A-Za-z]+\b"],  # Fuzzy match for names
+            context_patterns=[r"\bpatient\b", r"\bname\b", r"\bclient\b"],
+            strategy=RedactionStrategy.FULL,
+        ))
         
-        # Date of birth pattern
-        self.add_pattern(
-            PHIPattern(
-                name="DOB",
-                regex=r"\b(0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])[-/](19|20)\d{2}\b",
-                context_patterns=[r"\bdob\b", r"\bdate of birth\b", r"\bbirthday\b"],
-                strategy=RedactionStrategy.FULL,
-            )
-        )
+        # Date patterns - multiple formats including DOB
+        self.add_pattern(PHIPattern(
+            name="DOB",
+            regex=r"\b(0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])[-/](19|20)?\d{2}\b",  # MM/DD/YYYY or MM/DD/YY
+            context_patterns=[r"\bdob\b", r"\bdate of birth\b", r"\bbirthday\b"],
+            strategy=RedactionStrategy.FULL,
+        ))
+        self.add_pattern(PHIPattern(
+            name="DOB",
+            regex=r"\b(19|20)\d{2}[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b",  # YYYY/MM/DD
+            strategy=RedactionStrategy.FULL,
+        ))
         
-        # Address pattern
-        self.add_pattern(
-            PHIPattern(
-                name="ADDRESS",
-                regex=r"\b\d+\s+([A-Za-z]+\s+){1,3}(St(reet)?|Ave(nue)?|Rd|Road|Dr(ive)?|Pl(ace)?|Blvd|Boulevard|Ln|Lane|Way|Court|Ct|Circle|Cir|Terrace|Ter|Square|Sq|Highway|Route|Parkway|Pkwy)\b",
-                context_patterns=[r"\baddress\b", r"\blives at\b", r"\bresides at\b"],
-                strategy=RedactionStrategy.FULL,
-            )
-        )
+        # Email address pattern
+        self.add_pattern(PHIPattern(
+            name="EMAIL",
+            regex=r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+            strategy=RedactionStrategy.FULL,
+        ))
+        
+        # Phone number patterns - multiple formats
+        self.add_pattern(PHIPattern(
+            name="PHONE",
+            regex=r"\b\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}\b",  # (123) 456-7890 or 123-456-7890
+            strategy=RedactionStrategy.FULL,
+        ))
+        self.add_pattern(PHIPattern(
+            name="PHONE",
+            regex=r"\b\+?1?[-\s]?\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}\b",  # +1 (123) 456-7890
+            strategy=RedactionStrategy.FULL,
+        ))
+        
+        # Address pattern - improved to catch more variants
+        self.add_pattern(PHIPattern(
+            name="ADDRESS",
+            regex=r"\b\d+\s+[A-Za-z0-9\s]+(?:St(?:\.|reet)?|Ave(?:\.|nue)?|Rd|Road|Dr(?:\.|ive)?|Pl(?:\.|ace)?|Blvd|Boulevard|Ln|Lane|Way|Ct|Court|Cir(?:\.|cle)?)\b",
+            strategy=RedactionStrategy.FULL,
+        ))
+        # Simple street number detection
+        self.add_pattern(PHIPattern(
+            name="ADDRESS",
+            regex=r"\b\d+\s+[A-Za-z]+\s+St\b",  # Simple pattern like "123 Main St"
+            strategy=RedactionStrategy.FULL,
+        ))
         
         # Medical Record Number pattern
-        self.add_pattern(
-            PHIPattern(
-                name="MRN",
-                regex=r"\b(?:MR|MRN)[\s#:]?\d{5,10}\b",
-                context_patterns=[r"\bmedical record\b", r"\bpatient record\b"],
-                strategy=RedactionStrategy.FULL,
-            )
-        )
+        self.add_pattern(PHIPattern(
+            name="MRN",
+            regex=r"\bMRN[\s#:]?\d{5,10}\b",
+            strategy=RedactionStrategy.FULL,
+        ))
+        self.add_pattern(PHIPattern(
+            name="MRN",
+            regex=r"\bMRN?#\d+\b",  # Handles MRN#12345
+            strategy=RedactionStrategy.FULL,
+        ))
 
     def add_pattern(self, pattern: PHIPattern):
         """Add a pattern to the repository."""

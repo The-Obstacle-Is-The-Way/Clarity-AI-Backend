@@ -242,7 +242,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             await self._db_session.rollback()
             raise
     
-    async def list_users(self, skip: int = 0, limit: int = 100) -> List[DomainUser]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> List[DomainUser]:
         """
         Retrieve a list of users from the database.
         
@@ -266,6 +266,11 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
         except SQLAlchemyError as e:
             logger.error(f"Database error when listing users: {e}")
             raise
+            
+    # Maintain backward compatibility with existing code that might call list_users
+    async def list_users(self, skip: int = 0, limit: int = 100) -> List[DomainUser]:
+        """Alias for list_all to maintain backward compatibility."""
+        return await self.list_all(skip, limit)
             
     async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[DomainUser]:
         """
@@ -294,8 +299,8 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             result = await self._db_session.execute(query)
             user_models = result.scalars().all()
             
-            # Convert to domain entities
-            return [await self._to_domain(model) for model in user_models]
+            # Convert to domain entities using the mapper for consistency
+            return [UserMapper.to_domain(model) for model in user_models]
         except SQLAlchemyError as e:
             logger.error(f"Database error when retrieving users by role {role}: {e}")
             raise
@@ -438,6 +443,8 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             
         return model
     
+    # Helper method to convert a model to domain entity
+    # This should use the mapper for consistency
     async def _to_domain(self, model: UserModel) -> DomainUser:
         """
         Convert a User model to a User domain entity.
