@@ -57,6 +57,10 @@ from app.domain.entities.biometric_alert import BiometricAlert # noqa F401
 from app.domain.entities.appointment import Appointment # noqa F401
 from app.domain.entities.biometric_twin import BiometricDataPoint # noqa F401
 from app.core.dependencies.database import get_db_session as get_core_db_session
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import DigitalTwinRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_data_repository import BiometricDataRepository
+from app.core.services.ml.pat.pat_service import PATService # Import PATService
 
 @pytest.fixture
 def auth_headers():
@@ -251,13 +255,15 @@ def mock_user_repository_override() -> Callable[[], UserRepository]:
 
 @pytest.fixture(scope="session")
 def mock_pat_service_override() -> Callable[[], PATService]:
-    """Provides a dependency override for the PAT service returning a mock."""
-    def get_mock_pat_service() -> PATService:
-        mock_service = MagicMock(spec=PATService)
-        logger.debug("Providing mock PATService instance.")
-        return mock_service
-    logger.info("Created mock PATService override provider.")
-    return get_mock_pat_service
+    """Override PATService dependency for testing."""
+    mock_service = Mock(spec=PATService)
+    mock_service.initialize = AsyncMock()
+    mock_service.get_available_models = Mock(return_value=["model1", "model2"])
+    mock_service.predict = AsyncMock(return_value={"prediction": "some_value"})
+    mock_service.explain = AsyncMock(return_value={"explanation": "some_explanation"})
+    mock_service.integrate = AsyncMock(return_value=True)
+    logger.debug("Providing mock PATService instance.")
+    return mock_service
 
 @pytest.fixture(scope="session")
 def mock_xgboost_service_override() -> Callable[[], XGBoostInterface]:
