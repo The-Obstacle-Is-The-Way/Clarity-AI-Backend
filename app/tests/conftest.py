@@ -52,6 +52,7 @@ from app.domain.services.analytics_service import AnalyticsService # Import Anal
 from app.infrastructure.di.container import get_container # Import get_container
 from app.domain.entities.user import User # Import User
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
+from app.core.interfaces.repositories.user_repository import IUserRepository
 
 # Import additional database functions for dependency management
 from app.core.dependencies.database import get_db_session as get_core_db_session
@@ -180,7 +181,7 @@ class MockSettings:
 # --- Helper Functions / Mock Factories (Module Level) ---
 
 # Factory for Mock User Repository (Moved to Module Level)
-def get_mock_user_repository() -> UserRepository:
+def get_mock_user_repository() -> IUserRepository:
     mock_repo = AsyncMock(spec=UserRepository)
     async def mock_get_by_id(user_id: uuid.UUID) -> Optional[MagicMock]:
         # Return a mock user based on common test IDs used in token generation
@@ -238,10 +239,14 @@ def get_mock_user_repository() -> UserRepository:
 
 @pytest.fixture(scope="function") # Changed to function scope
 def initialized_app(
-    mock_xgboost_service: XGBoostInterface, # Only depend on session-scoped services
-    test_db_session: AsyncSession # Depend on the test_db_session fixture
+    mock_xgboost_service: XGBoostInterface,
+    test_db_session: AsyncSession,
+    test_settings_for_token_gen: Settings,
 ) -> FastAPI:
     """Creates a FastAPI app instance for testing with overridden dependencies."""
+    
+    # Instantiate mock repository once for this app instance
+    mock_user_repo_instance = get_mock_user_repository()
     
     # Define dependency overrides for the test session
     dependency_overrides = {
@@ -250,8 +255,12 @@ def initialized_app(
         get_core_db_session: lambda: test_db_session,
         
         # Override Authentication Service dependencies
-        # Provide a mock user repository to the AuthenticationService via JWTService
-        UserRepository: get_mock_user_repository, 
+        # Provide the *same instance* of the mock user repository
+        UserRepository: lambda: mock_user_repo_instance, 
+        IUserRepository: lambda: mock_user_repo_instance, # Override interface as well
+
+        # Override JWTService with test settings and mock repository
+        JWTService: lambda: JWTService(settings=test_settings_for_token_gen, user_repository=mock_user_repo_instance),
         
         # Override XGBoost ML service with a mock
         XGBoostInterface: lambda: mock_xgboost_service,
@@ -263,7 +272,7 @@ def initialized_app(
     # Create the application instance with overrides
     app = create_application(dependency_overrides=dependency_overrides)
     
-    logger.info("Initialized FastAPI app for testing with overrides.")
+    logger.info("Initialized FastAPI app for testing with overrides including JWTService.")
     return app
 
 # --- Async Client Fixture --- 
