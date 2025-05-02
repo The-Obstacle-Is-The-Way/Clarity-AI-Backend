@@ -157,24 +157,24 @@ def create_application(settings: Settings) -> FastAPI:
 
     # 6. Authentication Middleware - Placed after logging, rate limiting, CORS
     # It relies on infrastructure services, which are initialized via lifespan or DI.
-    # Skipped paths should be carefully defined.
-    skipped_auth_paths = {
-        f"/api/{settings.VERSION}/docs",
-        f"/api/{settings.VERSION}/openapi.json",
-        f"/api/{settings.VERSION}/redoc",
-        f"/api/{settings.VERSION}/auth/login",
-        f"/api/{settings.VERSION}/auth/refresh",
-        f"/api/{settings.VERSION}/auth/register", # Example: If registration doesn't require auth
+    # Public paths should be carefully defined.
+    public_paths = {
+        f"/api/{version}/docs",
+        f"/api/{version}/openapi.json",
+        f"/api/{version}/redoc",
+        f"/api/{version}/auth/login",
+        f"/api/{version}/auth/refresh",
+        f"/api/{version}/auth/register", # Example: If registration doesn't require auth
         "/health", # Example: Health check endpoint
     }
     # AuthenticationMiddleware itself should handle lazy-loading services if not injected.
     app.add_middleware(
         AuthenticationMiddleware,
-        skipped_paths=skipped_auth_paths
+        public_paths=public_paths
         # jwt_service and auth_service can be injected here for specific setups,
         # but typically rely on the default infrastructure getters.
     )
-    logger.info(f"Added AuthenticationMiddleware. Skipped paths: {skipped_auth_paths}")
+    logger.info(f"Added AuthenticationMiddleware. Public paths: {public_paths}")
 
     # Add other custom middleware here if needed...
 

@@ -12,6 +12,7 @@ import logging.config
 import asyncio
 from typing import Optional, Dict, Any
 import os
+import uvicorn
 
 # Monkey-patch httpx.AsyncClient to support 'app' parameter for FastAPI testing
 try:
