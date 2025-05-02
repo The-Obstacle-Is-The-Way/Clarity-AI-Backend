@@ -6,9 +6,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
-from app.application.services.biometric_alert_rule_service import (
-    BiometricAlertRuleService,
-)
 from app.application.services.biometric_alert_service import BiometricAlertService
 from app.core.utils.logging import get_logger
 from app.domain.entities.biometric_alert import (
@@ -19,7 +16,11 @@ from app.domain.entities.biometric_alert import (
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule 
 from app.domain.exceptions import EntityNotFoundError 
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.presentation.api.dependencies import get_biometric_alert_rule_service, get_biometric_alert_service, get_rule_repository, get_current_user
+from app.presentation.api.dependencies import (
+    get_rule_repository, 
+    get_current_user,
+    get_current_active_user
+)
 from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
     BiometricAlertResponse,
@@ -29,9 +30,9 @@ from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertRuleUpdate,
 )
 from app.presentation.api.schemas.biometric_alert_rule import (
-    AlertConditionLogicEnum,
-    AlertConditionOperatorEnum,
     BiometricAlertRuleTemplateSchema,
+    ConditionCreateSchema,
+    RuleCreateSchema,
 )
 from app.presentation.api.schemas.common import PaginatedResponseSchema, UserResponseSchema
 
