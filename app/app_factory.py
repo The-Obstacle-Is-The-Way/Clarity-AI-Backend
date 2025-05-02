@@ -178,11 +178,14 @@ def create_application(settings: Settings) -> FastAPI:
 
 
     logger.info("Adding API routers...")
-    # --- API Router Configuration ---
-    # Call the setup function to get the configured router instance
-    configured_api_router = setup_routers()
-    app.include_router(configured_api_router, prefix=f"/api/{settings.VERSION}")
-    logger.info(f"Included main API router with prefix: /api/{settings.VERSION}")
+    # --- API Router Configuration --- 
+    # TEMPORARILY COMMENTED OUT to isolate ModuleNotFoundError
+    # logger.info("Calling setup_routers()...")
+    # configured_api_router = setup_routers()
+    # logger.info("setup_routers() returned.")
+    # app.include_router(configured_api_router, prefix=f"/api/{settings.VERSION}")
+    logger.warning("Router inclusion TEMPORARILY SKIPPED for debugging.")
+    # logger.info(f"Included main API router with prefix: /api/{settings.VERSION}")
 
     # --- Static Files (Optional) ---
     # Example: Mount static files if serving frontend assets from backend
