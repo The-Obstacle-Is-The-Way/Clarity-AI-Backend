@@ -23,6 +23,10 @@ from app.presentation.api.dependencies.services import get_cache_service
 from app.infrastructure.di.container import get_service # Import the DI helper
 # Ensure AnalyticsService is NOT imported at the top level
 
+# Import the specific use cases needed for event processing
+from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
+
 # Create router
 _v1_router = APIRouter(
     prefix="/api/v1/analytics", # Keeping for future versioned endpoints
@@ -612,143 +616,107 @@ async def get_patient_risk_stratification(
 # Define a new router specifically for analytics events
 # This avoids requiring provider access for all analytics endpoints
 events_router = APIRouter(
-    prefix="/analytics",
-    tags=["analytics"],
-    # No provider access requirement for events collection
+    prefix="/analytics/events", # Prefix for event-specific endpoints
+    tags=["analytics-events"], # Separate tag
+    # No default dependency - allows anonymous events if needed
 )
 
-@events_router.post("/events", status_code=status.HTTP_202_ACCEPTED)
+@events_router.post("", status_code=status.HTTP_202_ACCEPTED)
 async def record_analytics_event(
     event_data: Dict[str, Any],
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    # Use the new dependency function
-    analytics_service: Any = Depends(get_analytics_service_dependency),
-) -> Dict[str, str]:
+    # Inject the correct use case
+    process_event_use_case: ProcessAnalyticsEventUseCase = Depends(ProcessAnalyticsEventUseCase),
+) -> JSONResponse:
     """
     Record an analytics event.
-    
+
     Args:
         event_data: Analytics event data
         user: Current authenticated user (optional)
         background_tasks: Background tasks for async processing
-        analytics_service: Analytics service
-        
+        process_event_use_case: Use case for processing single events
+
     Returns:
         Confirmation message
     """
-    # Add user_id to event data if authenticated user is available
-    if user:
-        event_data["user_id"] = str(user.get("user_id", user.get("id", "")))
-    
-    # Handle PHI detection and redaction
-    try:
-        # Only import PHIDetectionService here to avoid circular imports
-        from app.infrastructure.ml.phi_detection import PHIDetectionService
-        phi_service = PHIDetectionService()
-        
-        # Initialize PHI service (only if not already initialized)
-        await phi_service.ensure_initialized()
-        
-        # Check if event data contains PHI
-        data_str = json.dumps(event_data.get("data", {}))
-        contains_phi = await phi_service.contains_phi_async(data_str)
-        
-        if contains_phi:
-            # Redact PHI from data
-            redacted_data_str = await phi_service.redact_phi_async(data_str)
-            # Parse redacted data back to object
-            event_data["data"] = json.loads(redacted_data_str)
-            event_data["contains_phi"] = True
-    except Exception as e:
-        # Log the error but continue processing the event
-        # This prevents PHI detection issues from blocking analytics
-        # logger.error(f"Error in PHI detection for analytics event: {str(e)}")
-        event_data["phi_detection_error"] = str(e)
-    
-    # Process event in background
+    user_id = user["id"] if user else None
+    session_id = event_data.get("session_id") # Extract session if provided
+
+    # Extract required fields for the use case
+    event_type = event_data.get("event_type")
+    payload = event_data.get("data", {})
+    timestamp_str = event_data.get("timestamp")
+
+    if not event_type:
+        raise HTTPException(status_code=400, detail="Missing event_type")
+
+    timestamp = datetime.fromisoformat(timestamp_str) if timestamp_str else datetime.now(timezone.utc)
+
+    # Schedule the use case execution in the background
     background_tasks.add_task(
-        analytics_service.record_event,
-        event_data=event_data
+        process_event_use_case.execute,
+        event_type=event_type,
+        event_data=payload,
+        user_id=user_id,
+        session_id=session_id, # Pass session_id
+        timestamp=timestamp
     )
-    
-    return {"status": "accepted", "message": "Event recorded successfully"}
 
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "status": "success",
+            "message": "Analytics event received and scheduled for processing.",
+            # Optionally return a tracking ID if the use case provides one
+            # "data": {"event_id": str(new_event.id)} # Example
+        }
+    )
 
-@events_router.post("/events/batch", status_code=status.HTTP_202_ACCEPTED)
+@events_router.post("/batch", status_code=status.HTTP_202_ACCEPTED)
 async def record_analytics_batch(
     batch_data: Dict[str, List[Dict[str, Any]]],
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    # Use the new dependency function
-    analytics_service: Any = Depends(get_analytics_service_dependency),
-) -> Dict[str, str]:
+    # Inject the correct use case
+    batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(BatchProcessAnalyticsUseCase),
+) -> JSONResponse:
     """
     Record a batch of analytics events.
-    
+
     Args:
-        batch_data: Batch of analytics events
+        batch_data: Batch of analytics events (expected format: {"events": [...]})
         user: Current authenticated user (optional)
         background_tasks: Background tasks for async processing
-        analytics_service: Analytics service
-        
+        batch_process_use_case: Use case for processing batch events
+
     Returns:
         Confirmation message
     """
-    events = batch_data.get("events", [])
-    processed_events = []
-    
-    # Add user_id to all events if authenticated user is available
-    user_id = None
-    if user:
-        user_id = str(user.get("user_id", user.get("id", "")))
-    
-    # Handle PHI detection and redaction for each event
-    try:
-        # Only import PHIDetectionService here to avoid circular imports
-        from app.infrastructure.ml.phi_detection import PHIDetectionService
-        phi_service = PHIDetectionService()
-        
-        # Initialize PHI service (only if not already initialized)
-        await phi_service.ensure_initialized()
-        
-        for event in events:
-            # Add user_id if available
-            if user_id:
-                event["user_id"] = user_id
-                
-            # Check and redact PHI
-            data_str = json.dumps(event.get("data", {}))
-            contains_phi = await phi_service.contains_phi_async(data_str)
-            
-            if contains_phi:
-                # Redact PHI from data
-                redacted_data_str = await phi_service.redact_phi_async(data_str)
-                # Parse redacted data back to object
-                event["data"] = json.loads(redacted_data_str)
-                event["contains_phi"] = True
-                
-            processed_events.append(event)
-    except Exception as e:
-        # Log the error but continue processing the batch
-        # logger.error(f"Error in PHI detection for analytics batch: {str(e)}")
-        # Still process the events without PHI detection
-        processed_events = events
-        for event in processed_events:
-            if user_id:
-                event["user_id"] = user_id
-            event["phi_detection_error"] = str(e)
-    
-    # Process batch in background
+    user_id = user["id"] if user else None
+    events_list = batch_data.get("events")
+
+    if not events_list or not isinstance(events_list, list):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid batch format. Expected 'events' list."
+        )
+
+    # Schedule the batch use case execution
     background_tasks.add_task(
-        analytics_service.record_events_batch,
-        events=processed_events
+        batch_process_use_case.execute, # Call the execute method
+        events=events_list, # Pass the list of events
+        user_id=user_id # Pass user_id if needed by the use case
     )
-    
-    return {
-        "status": "accepted", 
-        "message": f"Batch of {len(processed_events)} events recorded successfully"
-    }
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "status": "success",
+            "message": f"{len(events_list)} analytics events received and scheduled for batch processing."
+        }
+    )
 
 # Include both routers in main app
 router = APIRouter()
