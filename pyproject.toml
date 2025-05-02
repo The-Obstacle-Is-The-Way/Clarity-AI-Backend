@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clarity-ai-backend"
-version = "0.1.0" # TODO: Update with actual version
+version = "0.0.1" # TODO: Update with actual version
 description = "Clarity AI Backend for Digital Twin Psychiatry Platform" # TODO: Update description
 readme = "README.md"
 requires-python = ">=3.10" # Based on Ruff config, adjust if needed
