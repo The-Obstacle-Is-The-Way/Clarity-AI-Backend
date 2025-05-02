@@ -28,9 +28,6 @@ from app.domain.enums.role import Role
 
 # Import services and repositories
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.auth.password_handler import PasswordHandler
-from app.domain.exceptions import AuthenticationError
-from app.infrastructure.security.auth.jwt_service import JWTService
 from app.core.config import settings
 
 # Import dependencies providers
@@ -331,7 +328,7 @@ async def test_session_info(
     headers = {"Authorization": "Bearer dummy_token"}
 
     # Act - Assuming the endpoint is /users/me
-    response = client.get("/api/v1/users/me", headers=headers)
+    response = client.get("/api/v1/auth/me", headers=headers)
 
     # Assert
     assert response.status_code == status.HTTP_200_OK
