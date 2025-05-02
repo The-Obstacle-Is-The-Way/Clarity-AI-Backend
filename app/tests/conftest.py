@@ -30,7 +30,8 @@ import json
 import uuid
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker, StaticPool
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 # Updated import path to match codebase structure
