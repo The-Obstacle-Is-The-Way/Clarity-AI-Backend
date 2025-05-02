@@ -54,29 +54,35 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]: # Correct type hint
              raise # Re-raise the exception for FastAPI to handle
         # Session closing/rollback is handled by the context manager in get_session_from_config
 
-def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]: # Return a factory function
+def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
     """
-    FastAPI dependency factory to get a repository instance.
-
-    This function returns *another function* (a closure) that FastAPI
-    will call with the database session dependency.
-
-    Args:
-        repo_type: The interface type of the repository to get.
-
-    Returns:
-        A function that takes an AsyncSession and returns an instance
-        of the requested repository type.
+    Dependency factory for obtaining repository instances.
+    Returns a function that expects an AsyncSession and returns the repository instance.
+    The lookup of the implementation is deferred until the dependency is actually called.
     """
-    def _get_repo_instance(session: AsyncSession = Depends(get_db)) -> T:
-        # Use the placeholder map (replace with container.resolve)
-        implementation = _repository_map.get(repo_type)
-        if not implementation:
-             logger.error(f"No repository implementation registered for interface {repo_type.__name__}")
-             raise NotImplementedError(f"Repository for {repo_type.__name__} not implemented or registered")
-        
-        logger.debug(f"Providing instance of {implementation.__name__} for interface {repo_type.__name__}")
-        # Instantiate the repository with the session
-        return implementation(session) 
+    # This inner function will be returned and called by FastAPI's dependency injection
+    def _get_repo_instance_deferred_lookup(session: AsyncSession = Depends(get_db)) -> T:
+        # Lookup happens here, when the dependency is resolved for a request
+        def _lookup_implementation() -> Type[T]:
+            implementation = _repository_map.get(repo_type)
+            if implementation is None:
+                logger.error(f"Failed to find repository implementation for {repo_type.__name__}")
+                # Log current map state for debugging
+                logger.debug(f"Current repository map: {_repository_map}")
+                raise NotImplementedError(
+                    f"No repository implementation registered for {repo_type.__name__}"
+                )
+            return implementation
 
-    return _get_repo_instance
+        implementation = _lookup_implementation()
+        try:
+            # Instantiate the concrete repository, passing the session
+            instance = implementation(session=session)
+            logger.debug(f"Successfully instantiated repository {implementation.__name__} for {repo_type.__name__}")
+            return instance
+        except Exception as e:
+            logger.error(f"Error instantiating repository {implementation.__name__}: {e}", exc_info=True)
+            raise  # Re-raise the exception after logging
+
+    # Return the inner function which performs the deferred lookup and instantiation
+    return _get_repo_instance_deferred_lookup

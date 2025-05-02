@@ -115,14 +115,17 @@ def mock_current_user() -> User:
 @pytest.fixture
 def test_app(
     mock_biometric_alert_repository: AsyncMock,
-    mock_current_user: User
+    mock_current_user: User,
 ) -> FastAPI:
     """Overrides dependencies for the test application instance."""
+
     app.dependency_overrides[get_biometric_alert_service] = lambda: AsyncMock(
         repo=mock_biometric_alert_repository
     )
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
-    yield app
+
+    yield app # Test runs here
+
     app.dependency_overrides.clear()
 
 @pytest.fixture
