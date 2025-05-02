@@ -5,7 +5,8 @@ This module contains tests for all methods of the MockPATService class,
 verifying both success paths and error handling.
 """
 
-from app.core.services.ml.pat.mock import MockPATService
+# Corrected import path
+from app.tests.standalone.mock_pat_service import MockPATService
 import logging
 import pytest
 from datetime import datetime

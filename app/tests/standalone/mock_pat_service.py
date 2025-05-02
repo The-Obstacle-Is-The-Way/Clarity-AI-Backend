@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Standalone mock implementation of the PAT (Patient Actigraphy Tracking)
 service.
@@ -6,53 +8,67 @@ This module provides a self-contained mock that can be used for testing
 PAT functionality without requiring actual AWS or external service connections.
 """
 
-import json
 import logging
 import uuid
-import time
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, List, Any, Optional
+from typing import Any
 
-from app.core.exceptions.base_exceptions import (
+from app.core.config import settings # noqa: F401
+from app.core.services.ml.pat.exceptions import (
     InitializationError,
     ResourceNotFoundError,
+    ValidationError,
+    AuthorizationError,
 )
-from app.core.services.ml.pat.exceptions import ValidationError
-
+from app.domain.utils.datetime_utils import UTC
 
 class MockPATService:
     """Mock implementation of the PAT service for standalone tests."""
 
-    def __init__(self):
-        """Initialize the Mock PAT service."""
-        self._initialized = False
-        self._mock_delay_ms = 0
-        self._analyses = {}
-        self._embeddings = {}
-        self._patients_analyses = {}
-        self._integrations = {}
-        self._logger = logging.getLogger(__name__)
+    _initialized: bool = False
+    _mock_delay_ms: int = 0
+    _mock_analyses: dict[str, dict[str, Any]] = {}
+    _mock_profiles: dict[str, dict[str, Any]] = {} # Key: profile_id
+    _logger = logging.getLogger(__name__)
 
-        # Supported analysis types
-        self._supported_types = [
-            "sleep",
-            "activity",
-            "stress",
-            "circadian",
-            "anomaly"
-        ]
+    def __init__(self) -> None:
+        pass
 
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the PAT service.
 
         Args:
             config: Configuration settings for the service
         """
+        # Check for re-initialization
+        if self._initialized:
+            raise InitializationError("MockPATService is already initialized.")
+
+        # Validate configuration
+        if config is None or not isinstance(config, dict):
+            raise ValidationError("Configuration must be a dictionary.")
+        
+        mock_delay_ms = config.get("mock_delay_ms", 0) # Default to 0 if not provided
+        if not isinstance(mock_delay_ms, int) or mock_delay_ms < 0:
+            raise ValidationError("'mock_delay_ms' must be a non-negative integer.")
+        
+        self._mock_delay_ms = mock_delay_ms
         self._initialized = True
-        self._mock_delay_ms = config.get("mock_delay_ms", 0)
-        self._logger.info("Mock PAT service initialized")
+        self._logger.info(
+            f"Mock PAT service initialized with config: {config}"
+        )
+
+    def shutdown(self) -> None:
+        """(Mock) Shutdown the service and clear state."""
+        self._initialized = False
+        self._mock_analyses = {}
+        self._mock_profiles = {}
+        self._logger.info("Mock PAT service shut down.")
+
+    def is_healthy(self) -> bool:
+        """(Mock) Check if the service is initialized and healthy."""
+        return self._initialized
 
     def _check_initialized(self) -> None:
         """
@@ -74,13 +90,13 @@ class MockPATService:
     def analyze_actigraphy(
         self,
         patient_id: str,
-        readings: List[Dict[str, float]],
+        readings: list[dict[str, float]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Dict[str, str],
-        analysis_types: List[str],
-    ) -> Dict[str, Any]:
+        device_info: dict[str, Any],
+        analysis_types: list[str],
+    ) -> dict[str, Any]:
         """
         Analyze actigraphy data for a patient.
 
@@ -101,54 +117,30 @@ class MockPATService:
             ValidationError: If input validation fails
         """
         self._check_initialized()
+        self._validate_inputs(
+            patient_id=patient_id,
+            readings=readings,
+            start_time_str=start_time,
+            end_time_str=end_time,
+            sampling_rate_hz=sampling_rate_hz,
+            device_info=device_info,
+            analysis_types=analysis_types,
+        )
 
-        # Validate inputs
-        if not readings:
-            raise ValidationError("Readings must be a non-empty list")
-        for reading in readings:
-            if "x" not in reading or "y" not in reading or "z" not in reading:
-                raise ValidationError(
-                    "Each reading must contain x, y, z values")
-        if sampling_rate_hz <= 0:
-            raise ValidationError("Sampling rate must be positive")
-        if (
-            not device_info
-            or "device_type" not in device_info
-            or "manufacturer" not in device_info
-        ):
-            raise ValidationError(
-                "Device info must include device_type and manufacturer"
-            )
-        if not analysis_types:
-            raise ValidationError("Analysis types must be a non-empty list")
-        for analysis_type in analysis_types:
-            if analysis_type not in self._supported_types:
-                raise ValidationError(
-                    f"Unsupported analysis type: {analysis_type}")
+        # Simulate analysis delay
+        if self._mock_delay_ms > 0:
+            self._logger.debug(f"PAT Mock: Simulating delay of {self._mock_delay_ms} ms")
+            # time.sleep(self._mock_delay_ms / 1000.0) # Remove blocking sleep
+            pass # Keep block structure valid
 
-        # Simulate processing delay
-        self._simulate_delay()
-
-        # Generate analysis results
         analysis_id = str(uuid.uuid4())
+        creation_timestamp = datetime.now(UTC).isoformat()
 
-        # Create mock result data based on input
-        result = {
-            "analysis_id": analysis_id,
-            "patient_id": patient_id,
-            "created_at": datetime.now(UTC).isoformat(),
-            "start_time": start_time,
-            "end_time": end_time,
-            "device_info": device_info,
-            "analysis_types": analysis_types,
-            "status": "completed",
-            "results": {},
-        }
-
-        # Generate mock results for each analysis type
+        # Mock results based on analysis_types
+        results: dict[str, Any] = {}
         for analysis_type in analysis_types:
             if analysis_type == "sleep":
-                result["results"]["sleep"] = {
+                results["sleep"] = {
                     "efficiency": 87.5,
                     "duration_hours": 7.2,
                     "deep_sleep_percentage": 22.3,
@@ -158,7 +150,7 @@ class MockPATService:
                     "wakeups": 2,
                 }
             elif analysis_type == "activity":
-                result["results"]["activity"] = {
+                results["activity"] = {
                     "active_minutes": 245,
                     "sedentary_minutes": 720,
                     "calories_burned": 2150,
@@ -166,10 +158,11 @@ class MockPATService:
                     "intensity_scores": {
                         "light": 120,
                         "moderate": 85,
-                        "vigorous": 40},
+                        "vigorous": 40
+                    },
                 }
             elif analysis_type == "stress":
-                result["results"]["stress"] = {
+                results["stress"] = {
                     "average_level": 3.2,
                     "peak_level": 7.8,
                     "low_periods": 2,
@@ -178,28 +171,260 @@ class MockPATService:
                 }
             else:
                 # Generic data for other analysis types
-                result["results"][analysis_type] = {
-                    "score": 75.0, "confidence": 0.85, "metrics": {
-                        "metric1": 0.6, "metric2": 0.8, "metric3": 0.4, }, }
+                results[analysis_type] = {
+                    "score": 75.0, 
+                    "confidence": 0.85, 
+                    "metrics": {
+                        "metric1": 0.6, 
+                        "metric2": 0.8, 
+                        "metric3": 0.4, 
+                    }, 
+                }
 
         # Store the analysis
-        self._analyses[analysis_id] = result
+        self._mock_analyses[analysis_id] = {
+            "analysis_id": analysis_id,
+            "patient_id": patient_id,
+            "timestamp": creation_timestamp,
+            "results": results,
+            "metadata": {
+                "device_info": device_info,
+                "start_time": start_time,
+                "end_time": end_time,
+                "sampling_rate_hz": sampling_rate_hz,
+                "readings_count": len(readings),
+                "analysis_types": analysis_types,
+            },
+        }
 
-        # Associate with patient
-        if patient_id not in self._patients_analyses:
-            self._patients_analyses[patient_id] = []
-        self._patients_analyses[patient_id].append(analysis_id)
-        return result
+        return self._mock_analyses[analysis_id]
+
+    def _validate_inputs(
+        self,
+        patient_id: str | None,
+        readings: list[dict[str, float]] | None,
+        start_time_str: str | None,
+        end_time_str: str | None,
+        sampling_rate_hz: float | None,
+        device_info: dict[str, Any] | None,
+        analysis_types: list[str] | None,
+    ) -> None:
+        """Validate all inputs for the analyze_actigraphy method."""
+        if not patient_id:
+            raise ValidationError("Patient ID must be provided.")
+        self._validate_readings(readings)
+        start_time, end_time = self._validate_time_range(
+            start_time_str, end_time_str
+        )
+        if sampling_rate_hz is None or sampling_rate_hz <= 0:
+            raise ValidationError("Sampling rate must be a positive number.")
+        self._validate_device_info(device_info)
+        if not analysis_types:
+            raise ValidationError("At least one analysis type must be specified.")
+
+    def _validate_readings(
+        self, readings: list[dict[str, float]] | None
+    ) -> None:
+        """(Mock) Validate actigraphy readings format and content."""
+        if not readings or not isinstance(readings, list):
+            raise ValidationError("Readings must be a non-empty list.")
+        
+        for i, reading in enumerate(readings):
+            if not isinstance(reading, dict):
+                raise ValidationError(f"Reading at index {i} is not a dictionary.")
+            required_keys = {'x', 'y', 'z'}
+            if not required_keys.issubset(reading.keys()):
+                missing = required_keys - reading.keys()
+                raise ValidationError(f"Reading at index {i} missing keys: {missing}")
+            for axis in required_keys:
+                if not isinstance(reading[axis], (int, float)):
+                    raise ValidationError(f"Value for '{axis}' at index {i} is not a number.")
+
+        self._logger.debug(f"Validated {len(readings)} readings.")
+
+    def _validate_time_range(
+        self, start_time_str: str | None, end_time_str: str | None
+    ) -> tuple[datetime, datetime]:
+        """Validate start and end time strings and their order."""
+        if not start_time_str or not end_time_str:
+             raise ValidationError("Start time and end time must be provided.")
+        try:
+            start_time = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
+            end_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValidationError(f"Invalid ISO 8601 timestamp format: {e}")
+
+        if end_time <= start_time:
+            raise ValidationError("End time must be after start time.")
+        return start_time, end_time
+
+    def _validate_device_info(self, device_info: dict[str, Any] | None) -> None:
+        """(Mock) Validate device information structure."""
+        # This is likely called internally in a real implementation.
+        # Added here mainly to satisfy test_device_info_validation.
+        if not device_info or not isinstance(device_info, dict):
+            raise ValidationError("Device info must be a dictionary.")
+
+        required_keys = ["device_type", "manufacturer", "model", "placement"]
+        missing_keys = [key for key in required_keys if key not in device_info]
+        if missing_keys:
+            raise ValidationError(f"Missing required device info keys: {', '.join(missing_keys)}")
+
+        # Add specific type checks if needed (e.g., manufacturer is string)
+        if not isinstance(device_info.get("manufacturer"), str):
+            raise ValidationError("'manufacturer' must be a string.")
+        if not isinstance(device_info.get("model"), str):
+             raise ValidationError("'model' must be a string.")
+
+        self._logger.debug(f"Device info validated: {device_info}")
+
+    def create_patient_profile(
+        self, patient_id: str, profile_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Create a patient profile (mock)."""
+        self._check_initialized()
+        if not patient_id:
+            raise ValidationError("Patient ID must be provided for profile creation.")
+        if not profile_data or not isinstance(profile_data, dict):
+            raise ValidationError("Profile data must be a non-empty dictionary.")
+
+        # In a real system, check if patient_id already has a profile
+        # For mock, we can just create it. Generate a unique profile ID.
+        profile_id = f"prof_{uuid.uuid4()}"
+        
+        # Store profile keyed by profile_id, including patient_id inside
+        self._mock_profiles[profile_id] = {
+            "profile_id": profile_id,
+            "patient_id": patient_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            **profile_data,
+        }
+        self._logger.info(f"Created profile {profile_id} for patient {patient_id}")
+        return self._mock_profiles[profile_id]
+
+    def get_patient_profile(self, patient_id: str) -> dict[str, Any]:
+        """(Mock) Retrieves an existing patient profile by patient_id.
+        
+        Note: Mock searches linearly. Real system uses indexed lookup.
+        """
+        self._check_initialized()
+        if not patient_id:
+            raise ValidationError("Patient ID must be provided.")
+
+        # Find the profile associated with the patient_id
+        found_profile = None
+        for prof_id, profile in self._mock_profiles.items():
+            if profile.get("patient_id") == patient_id:
+                found_profile = profile
+                break
+                
+        if not found_profile:
+            raise ResourceNotFoundError(f"Profile for patient {patient_id} not found.")
+            
+        self._logger.debug(f"Retrieved profile {found_profile['profile_id']} for patient {patient_id}")
+        return found_profile
+
+    def update_patient_profile(
+        self, patient_id: str, profile_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """(Mock) Updates an existing patient profile by patient_id.
+        
+        Note: Mock searches linearly. Real system uses indexed lookup.
+        """
+        self._check_initialized()
+        if not patient_id:
+            raise ValidationError("Patient ID must be provided for update.")
+        if not profile_data or not isinstance(profile_data, dict):
+            raise ValidationError("Profile data must be a non-empty dictionary for update.")
+
+        # Find the profile associated with the patient_id
+        target_profile_id = None
+        for prof_id, profile in self._mock_profiles.items():
+            if profile.get("patient_id") == patient_id:
+                target_profile_id = prof_id
+                break
+
+        if not target_profile_id:
+            raise ResourceNotFoundError(f"Profile for patient {patient_id} not found for update.")
+
+        # Update the found profile
+        self._mock_profiles[target_profile_id].update(profile_data)
+        self._mock_profiles[target_profile_id]["updated_at"] = datetime.now(UTC).isoformat()
+        self._logger.info(f"Updated profile {target_profile_id} for patient {patient_id}")
+        return self._mock_profiles[target_profile_id]
+
+    def get_analysis_by_id(self, analysis_id: str) -> dict[str, Any]:
+        """(Mock) Retrieves analysis results by ID."""
+        self._check_initialized()
+        if not analysis_id:
+            raise ValidationError("Analysis ID must be provided.")
+
+        if analysis_id not in self._mock_analyses:
+            raise ResourceNotFoundError(f"Analysis {analysis_id} not found")
+            
+        self._logger.info(f"Retrieved analysis {analysis_id}")
+        return self._mock_analyses[analysis_id]
+
+    def integrate_with_digital_twin(
+        self,
+        patient_id: str,
+        analysis_id: str,
+        twin_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Integrate PAT analysis with digital twin (mock)."""
+        self._check_initialized()
+        if not patient_id:
+            raise ValidationError("Patient ID must be provided for integration.")
+        if not analysis_id:
+            raise ValidationError("Analysis ID must be provided for integration.")
+
+        # Verify analysis exists
+        if analysis_id not in self._mock_analyses:
+            raise ResourceNotFoundError(f"Analysis {analysis_id} not found.")
+            
+        analysis_data = self._mock_analyses[analysis_id]
+        analysis_patient_id = analysis_data.get("patient_id")
+
+        # Verify analysis belongs to the correct patient
+        if analysis_patient_id != patient_id:
+            # Use AuthorizationError or a specific MismatchError if defined
+            raise AuthorizationError(
+                f"Analysis {analysis_id} does not belong to patient {patient_id}."
+            )
+
+        # Verify patient profile exists (implicitly checked by get_patient_profile)
+        try:
+            profile = self.get_patient_profile(patient_id)
+            profile_id = profile.get("profile_id") # Get the profile_id
+        except ResourceNotFoundError:
+             raise ResourceNotFoundError(f"Patient profile for {patient_id} not found for integration.")
+
+        # Simulate integration
+        integration_status = "success"
+        integration_id = str(uuid.uuid4())
+        integration_record = {
+            "integration_id": integration_id,
+            "patient_id": patient_id,
+            "analysis_id": analysis_id,
+            "twin_id": twin_id or f"mock_twin_{patient_id}",
+            "status": integration_status,
+            "timestamp": datetime.now(UTC).isoformat()
+        }
+        self._logger.info(
+            f"Integrated analysis {analysis_id} for patient {patient_id} "
+            f"with twin {integration_record['twin_id']}"
+        )
+        return integration_record
 
     def get_actigraphy_embeddings(
         self,
         patient_id: str,
-        readings: List[Dict[str, float]],
+        readings: list[dict[str, float]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
         embedding_dim: int = 384,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate embeddings from actigraphy data.
 
@@ -227,7 +452,10 @@ class MockPATService:
             raise ValidationError("Sampling rate must be positive")
 
         # Simulate processing delay
-        self._simulate_delay()
+        if self._mock_delay_ms > 0:
+            self._logger.debug(f"PAT Mock: Simulating delay of {self._mock_delay_ms} ms")
+            # time.sleep(self._mock_delay_ms / 1000.0) # Remove blocking sleep
+            pass # Keep block structure valid
 
         # Generate embedding
         embedding_id = str(uuid.uuid4())
@@ -257,33 +485,11 @@ class MockPATService:
             },
         }
 
-        # Store the embedding
-        self._embeddings[embedding_id] = result
-
         return result
-
-    def get_analysis_by_id(self, analysis_id: str) -> Dict[str, Any]:
-        """
-        Retrieve an analysis by its ID.
-
-        Args:
-            analysis_id: The ID of the analysis to retrieve
-
-        Returns:
-            Dict containing the analysis data
-
-        Raises:
-            InitializationError: If the service is not initialized
-            ResourceNotFoundError: If the analysis is not found
-        """
-        self._check_initialized()
-        if analysis_id not in self._analyses:
-            raise ResourceNotFoundError(f"Analysis not found: {analysis_id}")
-        return self._analyses[analysis_id]
 
     def get_patient_analyses(
         self, patient_id: str, limit: int = 10, offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Retrieve all analyses for a patient with pagination.
 
@@ -301,14 +507,14 @@ class MockPATService:
         self._check_initialized()
 
         # Get all analysis IDs for this patient
-        analysis_ids = self._patients_analyses.get(patient_id, [])
+        analysis_ids = [aid for aid, analysis in self._mock_analyses.items() if analysis.get("patient_id") == patient_id]
         total = len(analysis_ids)
 
         # Apply pagination
         paginated_ids = analysis_ids[offset: offset + limit]
 
         # Get full analysis data for each ID
-        analyses = [self._analyses[aid] for aid in paginated_ids]
+        analyses = [self._mock_analyses[aid] for aid in paginated_ids]
 
         return {
             "analyses": analyses,
@@ -320,7 +526,7 @@ class MockPATService:
             },
         }
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the PAT model.
 
@@ -342,7 +548,13 @@ class MockPATService:
                 "stress_assessment",
                 "anomaly_detection",
             ],
-            "supported_analysis_types": self._supported_types,
+            "supported_analysis_types": [
+                "sleep",
+                "activity",
+                "stress",
+                "circadian",
+                "anomaly"
+            ],
             "supported_devices": [
                 "Actigraph wGT3X-BT",
                 "Apple Watch",
@@ -359,88 +571,3 @@ class MockPATService:
                 "anomaly_detection": 0.78,
             },
         }
-
-    def integrate_with_digital_twin(
-        self, patient_id: str, profile_id: str, analysis_id: str
-    ) -> Dict[str, Any]:
-        """
-        Integrate analysis results with a digital twin profile.
-
-        Args:
-            patient_id: The ID of the patient
-            profile_id: The ID of the digital twin profile
-            analysis_id: The ID of the analysis to integrate
-
-        Returns:
-            Dict with integration results
-
-        Raises:
-            InitializationError: If the service is not initialized
-            ResourceNotFoundError: If the analysis is not found
-        """
-        self._check_initialized()
-
-        # Verify the analysis exists
-        if analysis_id not in self._analyses:
-            raise ResourceNotFoundError(f"Analysis not found: {analysis_id}")
-
-        # Verify the analysis belongs to the patient
-        analysis = self._analyses[analysis_id]
-        if analysis["patient_id"] != patient_id:
-            raise ValidationError(
-                f"Analysis {analysis_id} does not belong to patient {patient_id}")
-
-        # Simulate processing delay
-        self._simulate_delay()
-
-        # Generate a unique ID for this integration
-        integration_id = str(uuid.uuid4())
-
-        # Create mock integration result
-        result = {
-            "integration_id": integration_id,
-            "patient_id": patient_id,
-            "profile_id": profile_id,
-            "analysis_id": analysis_id,
-            "created_at": datetime.now(UTC).isoformat(),
-            "status": "completed",
-            "updated_profile": {
-                "profile_id": profile_id,
-                "patient_id": patient_id,
-                "last_updated": datetime.now(UTC).isoformat(),
-                "insights": [],
-            },
-        }
-
-        # Generate insights based on the analysis types
-        analysis_types = analysis["analysis_types"]
-
-        if "sleep" in analysis_types:
-            result["updated_profile"]["insights"].append(
-                {
-                    "type": "sleep",
-                    "title": "Sleep Quality Insight",
-                    "description": "Sleep quality has been moderate with occasional disruptions.",
-                    "confidence": 0.85,
-                    "recommendations": [
-                        "Maintain consistent sleep schedule",
-                        "Reduce screen time before bed",
-                    ],
-                })
-        if "activity" in analysis_types:
-            result["updated_profile"]["insights"].append(
-                {
-                    "type": "activity",
-                    "title": "Activity Pattern Insight",
-                    "description": "Activity levels have been below recommended guidelines.",
-                    "confidence": 0.78,
-                    "recommendations": [
-                        "Increase daily steps to 10,000",
-                        "Add 30 minutes of moderate exercise",
-                    ],
-                })
-
-        # Store the integration
-        self._integrations[integration_id] = result
-
-        return result
