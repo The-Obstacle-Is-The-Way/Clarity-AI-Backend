@@ -367,7 +367,7 @@ def mock_auth_service(test_patient: User) -> AsyncMock: # Depend on test_patient
 def initialized_app(
     test_settings: Settings, 
     mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], 
-    mock_user_repository: MockUserRepository, # Use the concrete mock repo fixture
+    mock_user_repository_override: Callable[[], IUserRepository], # Renamed dependency and updated type
     mock_pat_service_override: Callable[[], PATService], 
     mock_jwt_service: AsyncMock, # Use function-scoped SIMPLIFIED mock
     mock_auth_service: AsyncMock, # Use function-scoped SIMPLIFIED mock
