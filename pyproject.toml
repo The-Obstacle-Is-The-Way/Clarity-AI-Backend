@@ -28,7 +28,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi==0.49b0", # From requirements-standalone.txt
     "opentelemetry-sdk==1.28.0", # From requirements-standalone.txt
     "pandas", # From requirements-analytics.txt
-    "passlib[bcrypt]==2024.5.3", # From requirements-security.txt
+    "passlib[bcrypt]", # From requirements-security.txt
     "psycopg2-binary==2.9.9",
     "pydantic==2.9.1",
     "pydantic-settings==2.4.0",
@@ -36,8 +36,8 @@ dependencies = [
     "python-jose[cryptography]==3.3.0", # From requirements-security.txt
     "python-multipart==0.0.9",
     "pyyaml==6.0.2",
-    "redis==5.1.9",
-    "requests==2.33.2",
+    "redis",
+    "requests",
     "scikit-learn==1.5.2", # From requirements-analytics.txt
     "scipy==1.15.0", # From requirements-analytics.txt
     "smart-open[s3]==7.1.0",
