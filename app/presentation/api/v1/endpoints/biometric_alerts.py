@@ -6,21 +6,23 @@ from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
+# Import core exceptions
+from app.core.exceptions.base_exceptions import PersistenceError, EntityNotFoundError
 from app.application.services.biometric_alert_service import BiometricAlertService
 from app.core.utils.logging import get_logger
 from app.domain.entities.biometric_alert import (
     AlertPriority,
     AlertStatusEnum as DomainAlertStatusEnum,
-    BiometricAlert,
 )
-from app.domain.entities.biometric_alert_rule import BiometricAlertRule 
-from app.domain.exceptions import EntityNotFoundError 
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+
 from app.presentation.api.dependencies import (
     get_rule_repository, 
     get_current_user,
-    get_template_repository
+    get_template_repository,
+    get_alert_repository
 )
 from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
@@ -223,7 +225,7 @@ async def get_alert_rules(
             "page": 1,  # Implement pagination if needed
             "page_size": len(formatted_rules)
         }
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving alert rules: {str(e)}"
@@ -380,7 +382,7 @@ async def get_alert_rule(
         }
         
         return AlertRuleResponse.model_validate(formatted_rule)
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving alert rule: {str(e)}"
@@ -563,7 +565,7 @@ async def create_alert_rule_from_template(
         }
         
         return AlertRuleResponse.model_validate(formatted_rule)
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating alert rule from template: {str(e)}"
@@ -729,7 +731,7 @@ async def create_alert_rule(
         }
         
         return AlertRuleResponse.model_validate(formatted_rule)
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating alert rule: {str(e)}"
@@ -809,7 +811,7 @@ async def delete_alert_rule(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Alert rule with ID {rule_id} not found"
         )
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting alert rule: {str(e)}"
@@ -823,7 +825,7 @@ async def delete_alert_rule(
 )
 async def get_alerts(
     status: Optional[AlertStatusPath] = Query(None, description="Filter by alert status"),
-    priority: Optional[AlertPriorityEnum] = Query(None, description="Filter by alert priority"),
+    priority: Optional[AlertPriority] = Query(None, description="Filter by alert priority"),
     start_date: Optional[datetime] = Query(None, description="Filter by start date"),
     end_date: Optional[datetime] = Query(None, description="Filter by end date"),
     page: int = Query(1, ge=1, description="Page number"),
@@ -927,7 +929,7 @@ async def get_alerts(
             page=page,
             page_size=page_size
         )
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving biometric alerts: {str(e)}"
@@ -1045,7 +1047,7 @@ async def get_patient_alerts(
             page=page,
             page_size=page_size
         )
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving biometric alerts: {str(e)}"
@@ -1287,7 +1289,7 @@ async def update_alert_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Biometric alert with ID {alert_id} not found"
         )
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating biometric alert status: {str(e)}"
@@ -1388,7 +1390,7 @@ async def get_rule_templates(
             "templates": formatted_templates,
             "count": len(formatted_templates)
         }
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving rule templates: {str(e)}"
@@ -1533,7 +1535,7 @@ async def update_alert_rule(
         }
         
         return AlertRuleResponse.model_validate(formatted_rule)
-    except RepositoryError as e:
+    except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating alert rule: {str(e)}"

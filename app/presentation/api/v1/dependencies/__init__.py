@@ -20,8 +20,8 @@ from typing import Optional
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.infrastructure.persistence.sqlalchemy.database import get_db_session
-from app.domain.repositories.biometric_alert_rule_repository import BiometricRuleRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricRuleRepository
+from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricAlertRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_template_repository import SQLAlchemyBiometricAlertTemplateRepository
 
@@ -224,7 +224,7 @@ repositories.get_patient_repository = get_patient_repository  # type: ignore[att
 
 # --- Biometric Rule Repository ---
 
-def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricRuleRepository:
+def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricAlertRuleRepository:
     """
     Dependency for getting the biometric rule repository.
 
@@ -232,9 +232,9 @@ def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricRuleR
         db: Database session
 
     Returns:
-        BiometricRuleRepository instance
+        BiometricAlertRuleRepository instance
     """
-    return SQLAlchemyBiometricRuleRepository(db)
+    return SQLAlchemyBiometricAlertRuleRepository(db)
 
 repositories.get_rule_repository = get_rule_repository # type: ignore[attr-defined]
 
