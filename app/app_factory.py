@@ -3,7 +3,7 @@ import logging
 import logging.config
 import os
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Callable, Any, Dict
 
 import sentry_sdk
 from fastapi import FastAPI
@@ -78,11 +78,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application shutdown complete.")
 
 # --- Application Factory ---
-def create_application(settings: Settings) -> FastAPI:
+def create_application(
+    settings: Settings | None = None,
+    *,
+    dependency_overrides: Dict[Callable[..., Any], Callable[..., Any]] | None = None,
+) -> FastAPI:
     """
     Factory function to create and configure the FastAPI application instance.
     Moved from main.py to prevent import side effects.
     """
+    # Resolve settings lazily for test compatibility
+    if settings is None:
+        settings = get_settings()
+
     logger.info(f"Creating FastAPI application with version: {settings.VERSION}")
 
     # Initialize Sentry - with defensive programming to handle optional configurations
@@ -181,6 +189,13 @@ def create_application(settings: Settings) -> FastAPI:
 
     logger.info("Middleware configuration complete.")
 
+    # --- Dependency Overrides (mainly for testing) ---
+    if dependency_overrides:
+        logger.debug(
+            "Applying %d dependency overrides to FastAPI app instance.",
+            len(dependency_overrides),
+        )
+        app.dependency_overrides.update(dependency_overrides)
 
     logger.info("Adding API routers...")
     # --- API Router Configuration --- 
