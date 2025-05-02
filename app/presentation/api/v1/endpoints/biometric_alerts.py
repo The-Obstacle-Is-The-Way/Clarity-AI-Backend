@@ -47,7 +47,6 @@ AlertStatusPath = DomainAlertStatusEnum
 logger = get_logger(__name__)
 
 router = APIRouter(
-    prefix="/biometric_alerts",
     tags=["biometric_alerts"],
     responses={
         status.HTTP_401_UNAUTHORIZED: {"description": "Unauthorized"},
