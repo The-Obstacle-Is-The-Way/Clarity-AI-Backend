@@ -6,30 +6,31 @@ clean architecture principles with precise, mathematically elegant implementatio
 """
 
 import logging
-from collections.abc import Callable, AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.testclient import TestClient
+from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette.requests import Request
 from starlette.responses import Response
 
 from app.app_factory import create_application
-from app.config.settings import Settings
+from app.config.settings import Settings, get_settings
+from app.core.dependencies.database import get_db_session
 from app.core.interfaces.services.authentication_service import IAuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.services.ml.interface import MentaLLaMAInterface
-from app.core.domain.entities.user import User
+from app.infrastructure.di.container import container as di_container
 from app.api.routes.ml import verify_api_key
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+from app.presentation.api.middleware.auth_middleware import AuthenticationMiddleware
 
-settings = Settings()
+logger = logging.getLogger(__name__)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Define the base URL for the API version being tested
 BASE_URL = "/api/v1/mentallama"
@@ -38,7 +39,7 @@ BASE_URL = "/api/v1/mentallama"
 TEST_PROMPT = "This is a test prompt."
 TEST_USER_ID = "test_user_123"
 TEST_MODEL = "test_model"
-MENTALLAMA_API_PREFIX = f"{settings.API_V1_STR}/mentallama"
+MENTALLAMA_API_PREFIX = f"{Settings().API_V1_STR}/mentallama"
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -153,38 +154,65 @@ async def test_app_with_lifespan(
     """
     logger.info("Setting up test application fixture.")
 
-    # --- Patch add_middleware --- #
-    original_add_middleware = FastAPI.add_middleware
-    
-    def mock_add_middleware(self, middleware_class, **options):
-        # Prevent adding the real AuthenticationMiddleware during test setup
-        if middleware_class == AuthenticationMiddleware:
-            logger.info("Skipping add_middleware for AuthenticationMiddleware during test setup.")
-            return
-        # Call the original for other middleware
-        original_add_middleware(self, middleware_class, **options)
+    # --- Patch DI Container Resolve BEFORE app creation --- #
+    original_resolve = di_container.resolve # Store original
 
-    with patch.object(FastAPI, 'add_middleware', mock_add_middleware):
-        logger.info("Creating FastAPI app instance via create_application (with patched add_middleware)...")
-        # Now create the app. The real AuthMiddleware won't be added.
-        # NOTE: This assumes create_application doesn't have critical side effects
-        # that depend on the real AuthMiddleware being present during its execution.
-        app = create_application(settings) 
-        logger.info("FastAPI app instance created.")
+    def mock_resolve(interface_type: type[Any]) -> Any:
+        """Patched resolve to return mocks for specific auth services."""
+        # Use actual type comparison, avoid relying on internal _get_key if possible
+        key_name = getattr(interface_type, '__name__', str(interface_type))
+        logger.debug(f"Patched resolve called for: {key_name}")
+        if interface_type is IAuthenticationService:
+            logger.info("Patched resolve returning mock_auth_service.")
+            # Return the already created mock instance from the fixture
+            return mock_auth_service
+        if interface_type is IJwtService:
+            logger.info("Patched resolve returning mock_jwt_service.")
+            # Return the already created mock instance from the fixture
+            return mock_jwt_service
+        # Fallback to original resolution for other types
+        logger.debug(f"Falling back to original resolve for {key_name}.")
+        # Make sure to call the original method correctly
+        return original_resolve(interface_type)
 
-    # --- Apply Dependency Overrides AFTER app creation --- #
-    # Routes depending on these services will now get the mocks
-    logger.info("Applying dependency overrides...")
+    # Apply the patch to the container's resolve method using 'with'
+    with patch.object(di_container, 'resolve', side_effect=mock_resolve) as patched_resolve:
+        logger.info(f"DI container 'resolve' method patched (mock ID: {id(patched_resolve)}).")
+
+        # --- Patch FastAPI's add_middleware (as a safeguard) --- #
+        original_add_middleware = FastAPI.add_middleware
+        def mock_add_middleware(self, middleware_class, **options):
+            if middleware_class == AuthenticationMiddleware:
+                logger.info("Skipping add_middleware for AuthenticationMiddleware via patch.")
+                return # Skip adding the real middleware
+            logger.debug(f"Allowing add_middleware for {middleware_class.__name__}")
+            original_add_middleware(self, middleware_class, **options)
+
+        with patch.object(FastAPI, 'add_middleware', side_effect=mock_add_middleware):
+            logger.info("FastAPI 'add_middleware' method patched (safeguard).")
+            # --- Create FastAPI App Instance (now with patched resolve and add_middleware) --- #
+            # This should now succeed as auth dependencies will be mocked during middleware setup
+            try:
+                app = create_application(settings)
+                logger.info("FastAPI app instance created successfully with patches active.")
+            except Exception as e:
+                logger.error(f"Error during create_application WITH patches: {e}", exc_info=True)
+                raise # Re-raise the exception to fail the fixture setup clearly
+
+    # --- Apply Dependency Overrides AFTER app creation (for routers/endpoints) --- #
+    # Overrides for dependencies used directly in routes (not via middleware setup)
     dependency_overrides = {
-        # Core Service Mocks
         MentaLLaMAInterface: lambda: mock_mentallama_service_override,
-        IAuthenticationService: lambda: mock_auth_service, # Use the existing sync mock fixture
-        IJwtService: lambda: mock_jwt_service,          # Use the existing sync mock fixture
-        # API Key Dependency Mock (ensure it's overridden)
-        verify_api_key: lambda: mock_verify_api_key, # Use the async mock fixture
+        # Still override auth services here for direct injection into endpoints
+        IAuthenticationService: lambda: mock_auth_service,
+        IJwtService: lambda: mock_jwt_service,
+        verify_api_key: lambda: mock_verify_api_key,
+        get_settings: lambda: settings,
+        # Use the actual db session for tests - lifespan manager handles init/dispose
+        get_db_session: get_db_session,
     }
     app.dependency_overrides.update(dependency_overrides)
-    logger.info("Dependency overrides applied.")
+    logger.info("Dependency overrides applied for routes/endpoints.")
 
     # --- Manually Manage Lifespan --- #
     logger.info("Entering lifespan context manager...")
