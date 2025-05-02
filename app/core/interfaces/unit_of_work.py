@@ -1,21 +1,17 @@
-"""
-Unit of Work interface definition.
+"""Unit of Work interface definition.
 
 This module defines the Unit of Work pattern interface which provides
-a transactional boundary for database operations across multiple repositories,
-ensuring data consistency in the application's persistence layer.
+a transactional boundary for database operations across multiple repositories, 
+ensuring HIPAA-compliant data consistency in the application's persistence layer.
 """
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Protocol, TypeVar, Optional, Any, ForwardRef
+from typing import Optional
 from types import TracebackType
 
-# Define type variables for repository interfaces
-T = TypeVar('T')  # Generic type for repository
 
-
-class IUnitOfWork(abc.ABC):
+class IUnitOfWork(ABC):
     """
     Unit of Work interface defining a transaction boundary for domain operations.
     
@@ -25,7 +21,7 @@ class IUnitOfWork(abc.ABC):
     """
     
     @abstractmethod
-    async def __aenter__(self) -> 'IUnitOfWork':
+    async def __aenter__(self) -> IUnitOfWork:
         """
         Enter the context manager, beginning a new transaction.
         
@@ -35,9 +31,12 @@ class IUnitOfWork(abc.ABC):
         pass
     
     @abstractmethod
-    async def __aexit__(self, exc_type: Optional[Type[BaseException]], 
-                      exc_val: Optional[BaseException], 
-                      exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self, 
+        exc_type: Optional[type[BaseException]], 
+        exc_val: Optional[BaseException], 
+        exc_tb: Optional[TracebackType]
+    ) -> None:
         """
         Exit the context manager, handling commit or rollback based on exceptions.
         
@@ -68,64 +67,39 @@ class IUnitOfWork(abc.ABC):
         """
         pass
     
-    # Repository property protocols - replacing Any with specific repository types
+    # Repository property protocols
     @property
     @abstractmethod
-    def users(self) -> 'IUserRepository':
+    def users(self):
         """Access to the user repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def patients(self) -> 'IPatientRepository':
+    def patients(self):
         """Access to the patient repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def digital_twins(self) -> 'IDigitalTwinRepository':
+    def digital_twins(self):
         """Access to the digital twin repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def biometric_rules(self) -> 'IBiometricRuleRepository':
+    def biometric_rules(self):
         """Access to the biometric rule repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def biometric_alerts(self) -> 'IBiometricAlertRepository':
+    def biometric_alerts(self):
         """Access to the biometric alert repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def biometric_twins(self) -> 'IBiometricTwinRepository':
+    def biometric_twins(self):
         """Access to the biometric twin repository within this transaction."""
         pass
-
-# Repository interfaces - forward declarations
-class IUserRepository(Protocol):
-    """User repository interface."""
-    pass
-
-class IPatientRepository(Protocol):
-    """Patient repository interface."""
-    pass
-
-class IDigitalTwinRepository(Protocol):
-    """Digital twin repository interface."""
-    pass
-
-class IBiometricRuleRepository(Protocol):
-    """Biometric rule repository interface."""
-    pass
-
-class IBiometricAlertRepository(Protocol):
-    """Biometric alert repository interface."""
-    pass
-
-class IBiometricTwinRepository(Protocol):
-    """Biometric twin repository interface."""
-    pass
