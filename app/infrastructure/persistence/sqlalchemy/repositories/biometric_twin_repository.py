@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SQLAlchemy implementation of the BiometricTwinRepository.
+SQLAlchemy implementation of the BiometricTwinStateRepository.
 
 This module provides a concrete implementation of the BiometricTwinRepository
 interface using SQLAlchemy ORM for database operations.
@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from app.domain.entities.digital_twin.biometric_twin import BiometricTwin, BiometricDataPoint
+from app.domain.entities.biometric_twin import BiometricTwinState, BiometricDataPoint
 from app.domain.repositories.biometric_twin_repository import BiometricTwinRepository
 from app.infrastructure.persistence.sqlalchemy.models.biometric_twin_model import (
     BiometricTwinModel, BiometricDataPointModel
@@ -37,7 +37,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         self.session = session
     
-    def get_by_id(self, twin_id: UUID) -> Optional[BiometricTwin]:
+    def get_by_id(self, twin_id: UUID) -> Optional[BiometricTwinState]:
         """
         Retrieve a BiometricTwin by its ID.
         
@@ -56,7 +56,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return self._map_to_entity(twin_model)
     
-    def get_by_patient_id(self, patient_id: UUID) -> Optional[BiometricTwin]:
+    def get_by_patient_id(self, patient_id: UUID) -> Optional[BiometricTwinState]:
         """
         Retrieve a BiometricTwin by the associated patient ID.
         
@@ -75,7 +75,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return self._map_to_entity(twin_model)
     
-    def save(self, biometric_twin: BiometricTwin) -> BiometricTwin:
+    def save(self, biometric_twin: BiometricTwinState) -> BiometricTwinState:
         """
         Save a BiometricTwin entity.
         
@@ -137,7 +137,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return twin_deleted > 0
     
-    def list_by_connected_device(self, device_id: str) -> List[BiometricTwin]:
+    def list_by_connected_device(self, device_id: str) -> List[BiometricTwinState]:
         """
         List all BiometricTwin entities connected to a specific device.
         
@@ -154,7 +154,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return [self._map_to_entity(model) for model in twin_models]
     
-    def list_all(self, limit: int = 100, offset: int = 0) -> List[BiometricTwin]:
+    def list_all(self, limit: int = 100, offset: int = 0) -> List[BiometricTwinState]:
         """
         List all BiometricTwin entities with pagination.
         
@@ -180,7 +180,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         return self.session.query(func.count(BiometricTwinModel.twin_id)).scalar()
     
-    def _map_to_entity(self, model: BiometricTwinModel) -> BiometricTwin:
+    def _map_to_entity(self, model: BiometricTwinModel) -> BiometricTwinState:
         """
         Map a BiometricTwinModel to a BiometricTwin entity.
         
@@ -200,7 +200,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
                       for dp_model in data_point_models]
         
         # Create the BiometricTwin entity
-        return BiometricTwin(
+        return BiometricTwinState(
             patient_id=UUID(model.patient_id),
             twin_id=UUID(model.twin_id),
             data_points=data_points,
@@ -210,7 +210,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             connected_devices=set(model.connected_devices) if model.connected_devices else set()
         )
     
-    def _map_to_model(self, entity: BiometricTwin) -> BiometricTwinModel:
+    def _map_to_model(self, entity: BiometricTwinState) -> BiometricTwinModel:
         """
         Map a BiometricTwin entity to a BiometricTwinModel.
         
@@ -229,7 +229,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             connected_devices=list(entity.connected_devices) if entity.connected_devices else []
         )
     
-    def _update_model(self, model: BiometricTwinModel, entity: BiometricTwin) -> None:
+    def _update_model(self, model: BiometricTwinModel, entity: BiometricTwinState) -> None:
         """
         Update a BiometricTwinModel with values from a BiometricTwin entity.
         
@@ -290,7 +290,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             confidence=data_point.confidence
         )
     
-    def _save_data_points(self, entity: BiometricTwin) -> None:
+    def _save_data_points(self, entity: BiometricTwinState) -> None:
         """
         Save all data points for a BiometricTwin.
         

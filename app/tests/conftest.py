@@ -59,8 +59,9 @@ from app.domain.entities.biometric_twin import BiometricDataPoint # noqa F401
 from app.core.dependencies.database import get_db_session as get_core_db_session
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
 from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import DigitalTwinRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_data_repository import BiometricDataRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_twin_repository import BiometricTwinRepository # Correct import for biometric twin repository
 from app.core.services.ml.pat.pat_service import PATService # Import PATService
+from app.core.services.ml.xgboost.interface import XGBoostInterface
 
 @pytest.fixture
 def auth_headers():
