@@ -85,8 +85,15 @@ from app.infrastructure.security.jwt_service import get_jwt_service as get_jwt_s
 # ADDED: Import middleware for patching - REMOVED as patch is removed
 # from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware # Ensure middleware is imported
-from app.presentation.middleware.rate_limiting_middleware import RateLimitingMiddleware # Import other essential middleware
-from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter
+# REMOVED unused imports related to rate limiting example
+# from app.presentation.middleware.rate_limiting_middleware import RateLimitingMiddleware
+# from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter 
+
+# ADDED: Import the specific provider functions for route overrides
+from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_provider
+from app.presentation.api.dependencies.auth_service import get_auth_service_provider
+from app.presentation.api.dependencies.user_repository import get_user_repository_provider
+from app.main import create_application # Import the actual app factory
 
 @pytest.fixture
 def auth_headers():
@@ -339,75 +346,59 @@ def mock_auth_service(test_patient: User) -> AsyncMock: # Depend on test_patient
 
     return mock
 
-@pytest.fixture(scope="function") # CHANGED scope back to function for app fixture
+@pytest.fixture(scope="function") # Keep FUNCTION SCOPE
 def initialized_app(
-    test_settings: Settings, # Use the primary test settings
-    test_engine: "AsyncEngine",
+    test_settings: Settings, 
     mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], 
-    mock_user_repository_override: Callable[[], IUserRepository], 
+    mock_user_repository: MockUserRepository, # Use the concrete mock repo fixture
     mock_pat_service_override: Callable[[], PATService], 
-    mock_jwt_service: AsyncMock,  # Use function-scoped mock
+    mock_jwt_service: AsyncMock, # Use function-scoped mock
     mock_auth_service: AsyncMock, # Use function-scoped mock
+    mocker # Inject mocker fixture
 ) -> Generator[FastAPI, None, None]:
     """
-    Creates a FastAPI application instance for testing, explicitly adding 
-    AuthenticationMiddleware with injected mock services.
-    Replicates essential parts of create_application from main.py.
+    Creates a FastAPI application instance for testing using the real factory,
+    patches the INFRASTRUCTURE service getters used by AuthenticationMiddleware fallback,
+    and overrides necessary route dependencies.
+    Scope is function to ensure isolation.
     """
-    logger.info(">>> Creating initialized_app fixture with explicit middleware injection...")
+    logger.info(">>> Creating initialized_app fixture (scope=function) using INFRA GETTER PATCHING...")
 
-    # --- Replicate Core App Creation --- 
-    test_app = FastAPI(
-        title=test_settings.PROJECT_NAME,
-        openapi_url=f"/openapi.json",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        version=test_settings.VERSION
+    # --- Patch the INFRASTRUCTURE GETTERS used by Middleware Fallback --- 
+    # Target the names as they are imported *within* the middleware module
+    mocker.patch(
+        'app.presentation.middleware.authentication_middleware.get_jwt_service',
+        return_value=mock_jwt_service
     )
-    
-    # --- Apply Essential Middleware with Mock Injection --- 
-    # Add CORS middleware (example, adjust based on main.py)
-    # test_app.add_middleware(...) 
-
-    # Add Rate Limiting (example, adjust based on main.py)
-    # Assuming rate limiter uses cache, potentially needs mock cache override too
-    # mock_cache = AsyncMock(spec=RedisCache) # Example mock cache
-    # test_app.dependency_overrides[get_cache_service] = lambda: mock_cache
-    # rate_limiter = create_rate_limiter(settings=test_settings, cache_service=mock_cache)
-    # test_app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter)
-
-    # ** CRITICAL STEP: Add Auth Middleware with INJECTED MOCKS **
-    test_app.add_middleware(
-        AuthenticationMiddleware,
-        auth_service=mock_auth_service,  # Inject the function-scoped mock
-        jwt_service=mock_jwt_service     # Inject the function-scoped mock
+    mocker.patch(
+        'app.presentation.middleware.authentication_middleware.get_auth_service',
+        return_value=mock_auth_service
     )
-    logger.info("Added AuthenticationMiddleware with INJECTED mock services.")
+    logger.info(">>> Patched infrastructure getters in middleware module scope.")
 
-    # Add other middleware from create_application if essential for these tests...
-    # e.g., test_app.add_middleware(SecurityHeadersMiddleware)
+    # --- Create App using Real Factory --- 
+    # Middleware will now use the patched getters if its internal _jwt_service/_auth_service are None
+    test_app = create_application(settings=test_settings)
+    logger.info(">>> Real application created.")
 
-    # --- Apply Dependency Overrides --- 
-    test_app.dependency_overrides[get_session] = mock_db_session_override
+    # --- Apply Dependency Overrides for Database/PAT --- 
+    # Still override these essential ones
+    test_app.dependency_overrides[get_db] = mock_db_session_override
+    test_app.dependency_overrides[get_async_db] = mock_db_session_override
     test_app.dependency_overrides[get_pat_service] = mock_pat_service_override
-    test_app.dependency_overrides[get_settings] = lambda: test_settings
-    # Override the user repo provider used by endpoints/services if needed
-    # from app.presentation.api.dependencies.user_repository import get_user_repository_provider
-    # test_app.dependency_overrides[get_user_repository_provider] = mock_user_repository_override
     
-    # --- Include Routers (If necessary for endpoint tests) --- 
-    # Example: Include the analytics router if endpoints are defined there
-    # from app.presentation.api.v1.routers.analytics import router as analytics_router
-    # test_app.include_router(analytics_router, prefix=f"/api/{API_VERSION}/analytics", tags=["Analytics"]) 
+    # Keep user repo override for routes that might need it directly
+    def _override_user_repo_provider():
+        logger.info(f"*** ROUTE OVERRIDE: Providing mock_user_repository (ID: {id(mock_user_repository)}) ***")
+        return mock_user_repository
+    test_app.dependency_overrides[get_user_repository_provider] = _override_user_repo_provider
 
-    # Include other routers needed by the tests...
+    logger.info(f">>> Applied DB/PAT/UserRepo dependency overrides.")
 
-    logger.info("<<< Finished creating initialized_app fixture.")
-    yield test_app # Yield the configured app instance for testing
+    yield test_app # Yield the fully configured app instance
 
-    # Clean up overrides after tests are done
-    test_app.dependency_overrides = {}
-    logger.info("--- Cleaned up initialized_app fixture ---")
+    # Patcher context managers handle unpatching automatically
+    logger.info("<<< Tearing down initialized_app fixture (infra getter patching)...")
 
 # --- Async Client Fixture --- 
 

@@ -148,25 +148,47 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return False
 
     async def _ensure_services_initialized(self):
-        """Original lazy-load logic using fallbacks."""
-        # Simplified logic - always use fallback getters if instances not set
-        if self._auth_service_instance is None:
-            auth_service_getter = get_auth_service # Use default getter
-            auth_service_result = auth_service_getter()
-            if asyncio.iscoroutine(auth_service_result) or asyncio.iscoroutinefunction(auth_service_getter):
-                self._auth_service_instance: IAuthenticationService = await auth_service_result
+        """Lazy-load services ONCE per middleware instance, prioritizing injected services."""
+        # Reverted to logic that prefers injected, falls back if necessary
+        
+        # Check for AuthenticationService - only initialize if instance is None
+        if self._auth_service_instance is None: 
+            # If a service was injected via __init__, use it directly (it's already the mock instance)
+            if self._auth_service:
+                self._auth_service_instance = self._auth_service # Assign the mock instance directly
+                logger.debug(f"Using injected auth service instance: {type(self._auth_service_instance)}")
             else:
-                self._auth_service_instance: IAuthenticationService = auth_service_result
-            logger.debug(f"Auth service instance set via fallback: {type(self._auth_service_instance)}")
+                # Otherwise, fall back to the default infrastructure getter
+                auth_service_source = get_auth_service
+                logger.debug("Using default infrastructure getter for auth service.")
+                auth_service_result = auth_service_source()
+                # Await if necessary (for the real service getter)
+                if asyncio.iscoroutine(auth_service_result) or asyncio.iscoroutinefunction(auth_service_source):
+                     self._auth_service_instance: IAuthenticationService = await auth_service_result
+                else:
+                     self._auth_service_instance: IAuthenticationService = auth_service_result
+                logger.debug(f"Auth service instance set via fallback: {type(self._auth_service_instance)}")
 
-        if self._jwt_service_instance is None:
-            jwt_service_getter = get_jwt_service # Use default getter
-            jwt_service_result = jwt_service_getter()
-            if asyncio.iscoroutine(jwt_service_result) or asyncio.iscoroutinefunction(jwt_service_getter):
-                 self._jwt_service_instance: IJwtService = await jwt_service_result
+
+        # Check for JWTService - only initialize if instance is None
+        if self._jwt_service_instance is None: 
+            # If a service was injected via __init__, use it directly
+            if self._jwt_service:
+                self._jwt_service_instance = self._jwt_service # Assign the mock instance directly
+                logger.debug(f"Using injected jwt service instance: {type(self._jwt_service_instance)}")
             else:
-                self._jwt_service_instance: IJwtService = jwt_service_result
-            logger.debug(f"JWT service instance set via fallback: {type(self._jwt_service_instance)}")
+                # Otherwise, fall back to the default infrastructure getter
+                jwt_service_source = get_jwt_service
+                logger.debug("Using default infrastructure getter for jwt service.")
+                jwt_service_result = jwt_service_source()
+                # Await if necessary (for the real service getter)
+                if asyncio.iscoroutine(jwt_service_result) or asyncio.iscoroutinefunction(jwt_service_source):
+                     self._jwt_service_instance: IJwtService = await jwt_service_result
+                else:
+                     self._jwt_service_instance: IJwtService = jwt_service_result
+                logger.debug(f"JWT service instance set via fallback: {type(self._jwt_service_instance)}")
+        
+        # Removed excessive logging from previous attempt
 
     def _extract_token(self, request: Request) -> Optional[str]:
         """
