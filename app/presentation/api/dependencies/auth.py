@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import get_settings, Settings
 from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.core.utils.logging import get_logger
+from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.entities.user import User

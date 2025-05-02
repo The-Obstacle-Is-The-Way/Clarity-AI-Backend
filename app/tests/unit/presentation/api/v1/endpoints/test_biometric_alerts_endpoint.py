@@ -11,8 +11,9 @@ from httpx import AsyncClient
 from app.core.interfaces.repositories.user_repository import IUserRepository
 
 from app.domain.entities.user import User
-from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
+# Import from infrastructure layer implementations
+from app.infrastructure.database.persistence.repositories.biometric_alert_repository import BiometricAlertRepository
+from app.infrastructure.database.persistence.repositories.biometric_rule_repository import BiometricRuleRepository
 
 from app.domain.services.biometric_event_processor import (
     BiometricEventProcessor,
