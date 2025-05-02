@@ -50,10 +50,9 @@ from app.domain.repositories.user_repository import UserRepository
 from app.presentation.api.v1.endpoints.biometric_alerts import (
     router as alerts_router,
     get_alert_repository,
-    get_rule_repository as get_rule_repo_from_endpoint, # Alias to avoid conflict
     get_event_processor,
-    get_rule_engine
 ) 
+from app.presentation.api.v1.dependencies import get_rule_repository
 
 # Mock the rule endpoints instead of importing them directly
 # from fastapi import APIRouter
