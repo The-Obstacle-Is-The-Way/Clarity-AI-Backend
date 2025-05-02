@@ -15,7 +15,7 @@ import pytest
 from fastapi import FastAPI, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 import uuid
 
 from app.presentation.api.dependencies.auth import get_current_user

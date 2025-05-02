@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HIPAA Compliance Testing - API Security Tests
 
@@ -7,44 +6,36 @@ according to HIPAA requirements. Tests focus on authentication, authorization,
 input validation, and secure communication.
 """
 
-import json
 import uuid
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-import time
-import asyncio
-from typing import Callable, Dict, Any, Coroutine, Optional
-from datetime import datetime, timedelta
+from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+from fastapi import FastAPI, status
 from httpx import AsyncClient
-from fastapi import status, HTTPException, Depends, FastAPI
-from fastapi.security import OAuth2PasswordBearer
-from fastapi.testclient import TestClient
 
 # Use the new canonical config location
 from app.config.settings import get_settings
-
-# JWTService might be needed for direct token manipulation if required beyond fixtures
-from app.infrastructure.security.jwt.jwt_service import JWTService
-# AuthenticationService might be needed if testing it directly
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.domain.entities.patient import Patient
-from app.domain.exceptions.patient_exceptions import PatientNotFoundError
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
 
 # Import necessary modules for testing API security
 # REMOVE Mocks specific to BaseSecurityTest if not needed directly
 # from app.tests.security.utils.test_mocks import MockAuthService, MockRBACService, MockAuditLogger
 # REMOVE Base class import
 # from app.tests.security.utils.base_security_test import BaseSecurityTest
-
 # Dependency and interface imports for potential direct mocking
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.presentation.api.dependencies.auth import get_jwt_service
-from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.presentation.api.dependencies.database import get_repository
+
+# AuthenticationService might be needed if testing it directly
+from app.domain.entities.patient import Patient
+
 # Import Role enum if needed for token generation/verification
-from app.domain.enums.role import Role
-from app.domain.entities.user import User # Ensure User is imported for type hints
+from app.domain.entities.user import User  # Ensure User is imported for type hints
+
+# JWTService might be needed for direct token manipulation if required beyond fixtures
+from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.presentation.api.dependencies.auth import get_jwt_service
+from app.presentation.api.dependencies.database import get_repository
 
 # Global test patient ID for consistency
 TEST_PATIENT_ID = str(uuid.uuid4())
@@ -108,7 +99,7 @@ class TestAuthentication:
     async def test_valid_token_access(
         self, 
         client: AsyncClient, 
-        get_valid_auth_headers: Dict[str, str], # Use the fixture from conftest
+        get_valid_auth_headers: dict[str, str], # Use the fixture from conftest
         app: FastAPI # Get app fixture to potentially override repo
     ):
         """Test that a valid token grants access (mocking repo)."""
@@ -120,7 +111,7 @@ class TestAuthentication:
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
         mock_user_id = uuid.UUID("test-integration-user") # ID from get_valid_auth_headers
         
-        async def mock_get_patient(patient_id: uuid.UUID) -> Optional[User]:
+        async def mock_get_patient(patient_id: uuid.UUID) -> User | None:
             if patient_id == mock_user_id:
                 # Return a mock Patient domain entity matching the authenticated user
                 # Ensure the returned object structure matches what the endpoint expects
@@ -154,7 +145,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
     async def test_patient_accessing_own_data(
         self, 
         client: AsyncClient, 
-        get_valid_auth_headers: Dict[str, str], # Use patient headers fixture
+        get_valid_auth_headers: dict[str, str], # Use patient headers fixture
         app: FastAPI # Use app fixture to override repo
     ):
         """Patient with valid token can access their own resource."""
@@ -165,7 +156,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         # The user ID from get_valid_auth_headers is 'test-integration-user'
         mock_user_id = uuid.UUID("test-integration-user") 
 
-        async def mock_get_patient(patient_id: uuid.UUID) -> Optional[User]:
+        async def mock_get_patient(patient_id: uuid.UUID) -> User | None:
             if patient_id == mock_user_id:
                 mock_patient = MagicMock(spec=Patient)
                 mock_patient.id = patient_id
@@ -191,7 +182,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
     async def test_patient_accessing_other_patient_data(
         self, 
         client: AsyncClient, 
-        get_valid_auth_headers: Dict[str, str] # Use patient headers fixture
+        get_valid_auth_headers: dict[str, str] # Use patient headers fixture
     ):
         """Patient with valid token CANNOT access another patient's resource."""
         headers = get_valid_auth_headers
@@ -204,7 +195,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
     async def test_provider_accessing_patient_data(
         self, 
         client: AsyncClient, 
-        get_valid_provider_auth_headers: Dict[str, str], # Use provider headers fixture
+        get_valid_provider_auth_headers: dict[str, str], # Use provider headers fixture
         app: FastAPI # Use app fixture to override repo
     ):
         """Provider with valid token CAN access any patient's resource."""
@@ -214,7 +205,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
         mock_patient_id_to_access = uuid.UUID(TEST_PATIENT_ID) # ID defined globally
         
-        async def mock_get_patient(patient_id: uuid.UUID) -> Optional[User]:
+        async def mock_get_patient(patient_id: uuid.UUID) -> User | None:
              if patient_id == mock_patient_id_to_access:
                  mock_patient = MagicMock(spec=Patient)
                  mock_patient.id = patient_id
@@ -240,8 +231,8 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
     async def test_role_specific_endpoint_access(
         self, 
         client: AsyncClient, 
-        get_valid_auth_headers: Dict[str, str], 
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_auth_headers: dict[str, str], 
+        get_valid_provider_auth_headers: dict[str, str],
         test_jwt_service: JWTService # Needed to create admin token
     ):
         """Test access to endpoints protected by role dependencies."""
@@ -280,7 +271,7 @@ class TestInputValidation:
     """Test input validation using Pydantic models and FastAPI."""
 
     @pytest.mark.asyncio
-    async def test_invalid_input_format_rejected(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_invalid_input_format_rejected(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """FastAPI should return 422 for missing/invalid fields."""
         headers = get_valid_provider_auth_headers # Use provider token for POST
         # Assuming POST /api/v1/patients requires certain fields per PatientCreateSchema
@@ -291,7 +282,7 @@ class TestInputValidation:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
-    async def test_input_sanitization_handling(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_input_sanitization_handling(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test how potentially malicious input is handled (framework/model validation)."""
         headers = get_valid_provider_auth_headers
         malicious_input = {
@@ -306,7 +297,7 @@ class TestInputValidation:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
-    async def test_input_length_limits_enforced(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_input_length_limits_enforced(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test Pydantic model length constraints."""
         headers = get_valid_provider_auth_headers
         # Assuming PatientCreateSchema has max_length=50 on first_name (example)
@@ -367,7 +358,7 @@ class TestErrorHandling:
     """Test secure handling of application errors (no PHI leakage)."""
 
     @pytest.mark.asyncio
-    async def test_not_found_error_generic(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_not_found_error_generic(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test that 404 errors return a generic message."""
         headers = get_valid_provider_auth_headers # Need auth to try accessing non-existent resource
         response = await client.get("/api/v1/non_existent_endpoint/123", headers=headers)
@@ -380,7 +371,7 @@ class TestErrorHandling:
     async def test_internal_server_error_masked(
         self, 
         client: AsyncClient, 
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         app: FastAPI # Use app to override dependency
     ):
         """Test that unexpected errors result in a generic 500 response."""

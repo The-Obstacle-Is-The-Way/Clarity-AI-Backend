@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Biometric Alerts API endpoints.
 
@@ -7,59 +6,45 @@ requests and responses, maintain HIPAA compliance, and integrate properly
 with the biometric event processor.
 """
 
-import json
-from datetime import datetime, timedelta, timezone
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, List, Any, Optional, Union  
-from unittest.mock import AsyncMock, MagicMock, patch
-import uuid # Import the uuid module
+from datetime import datetime, timedelta
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock  # Added Mock
 from uuid import UUID, uuid4
 
-from enum import Enum  
-
 import pytest
-from fastapi import FastAPI, Depends, status  
-from fastapi.testclient import TestClient
-from pydantic import parse_obj_as
+from fastapi import status
 
-from app.domain.exceptions import (
-    ValidationError,
-    EntityNotFoundError,
-    RepositoryError,
-)  
+# Removed faulty import
+# from app.domain.repositories import BaseRepository 
+# Import the main FastAPI app instance
+# Use AsyncClient for testing async endpoints
+from httpx import AsyncClient
+
+from app.domain.entities.biometric_alert import AlertStatusEnum as DomainAlertStatusEnum
+
 # Import from the correct module path
-from app.domain.entities.biometric_alert import BiometricAlert, AlertStatusEnum as DomainAlertStatusEnum # <-- Corrected Source
-from app.domain.services.biometric_event_processor import ( 
-     AlertStatus as EventProcessorAlertStatus,
-     BiometricEventProcessor,
-     AlertObserver,
-     EmailAlertObserver,
-     SMSAlertObserver,
-     InAppAlertObserver,
-     ClinicalRuleEngine,  
-) 
+from app.domain.entities.biometric_alert import BiometricAlert  # <-- Corrected Source
+
 # Import AlertPriority from the correct location
 from app.domain.entities.biometric_rule import AlertPriority
 
-from app.domain.entities.biometric_twin import BiometricDataPoint
-from app.domain.entities.biometric_alert import BiometricAlert, AlertStatusEnum as AlertStatus # Import from domain
-from app.domain.entities.biometric_alert import AlertStatusEnum
+# Corrected imports based on likely structure - adjust if actual paths differ
+# Remove incorrect AlertStatus import from enums
+# from app.domain.enums import AlertStatus
+# ... existing imports ...
+# Import the User domain entity
+from app.domain.entities.user import User, set_test_mode  # Import set_test_mode
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
-from app.domain.repositories.user_repository import UserRepository
-from app.presentation.api.v1.endpoints.biometric_alerts import (
-    router as alerts_router,
-    get_alert_repository,
-    get_event_processor,
-) 
-from app.presentation.api.v1.dependencies import get_rule_repository
+from app.domain.services.biometric_event_processor import (
+    BiometricEventProcessor,
+    ClinicalRuleEngine,
+)
+from app.domain.utils.datetime_utils import UTC
 
 # Mock the rule endpoints instead of importing them directly
 # from fastapi import APIRouter
-
 # Create a mock rules router
 # rules_router = APIRouter()
-
 # Mock rule templates endpoint to avoid database dependencies
 # @rules_router.get("/rule-templates")
 # async def mock_get_rule_templates():
@@ -85,53 +70,22 @@ from app.presentation.api.v1.dependencies import get_rule_repository
 #         ],
 #         "count": 2
 #     }
-
 # Mock rule repository dependency
 # def get_rule_repository():
 #     """Mock rule repository dependency."""
 #     return AsyncMock()
-
 # Mock rule engine dependency
 # def get_rule_engine():
 #     """Mock rule engine dependency."""
 #     return AsyncMock()
-
 # Import the actual schema classes from our implementation
 from app.presentation.api.schemas.biometric_alert import (
-    AlertRuleCreateSchema,
-    AlertRuleResponseSchema,
-    AlertRuleUpdateSchema, 
-    AlertRuleListResponseSchema,
-    BiometricAlertResponseSchema,
-    AlertListResponseSchema,
-    AlertRuleTemplateResponseSchema,
-    AlertStatusUpdateSchema,
-    AlertPriorityEnum,  
+    AlertPriorityEnum,
     ComparatorOperatorEnum,
-    LogicalOperatorEnum
+    LogicalOperatorEnum,
     # AlertStatusEnum
 )
 
-
-# Corrected imports based on likely structure - adjust if actual paths differ
-# Remove incorrect AlertStatus import from enums
-# from app.domain.enums import AlertStatus
-from app.presentation.api.dependencies.auth import get_current_user 
- 
-# ... existing imports ...
-
-# Import the User domain entity
-from app.domain.entities.user import User, set_test_mode # Import set_test_mode
-from app.domain.entities.patient import Patient
-from app.domain.entities.biometric_alert import BiometricAlert
-from app.domain.entities.biometric_alert import AlertStatusEnum
-# Removed faulty import
-# from app.domain.repositories import BaseRepository 
-
-# Import the main FastAPI app instance
-from app.main import app
-# Use AsyncClient for testing async endpoints
-from httpx import AsyncClient 
 
 @pytest.fixture
 def mock_biometric_event_processor() -> AsyncMock:
@@ -252,7 +206,7 @@ def sample_alert_id() -> UUID:
     return uuid4()
 
 @pytest.fixture
-def sample_rule_data(sample_patient_id: UUID, sample_rule_id: UUID) -> Dict[str, Any]:
+def sample_rule_data(sample_patient_id: UUID, sample_rule_id: UUID) -> dict[str, Any]:
     """Provides sample rule data as a dictionary, matching expected structure."""
     return {
         "rule_id": sample_rule_id,
@@ -311,7 +265,7 @@ class TestBiometricAlertsEndpoints:
     # Note: Ensure dependencies are overridden in the main app fixture (initialized_app in conftest.py)
     # or override them within tests if necessary.
     
-    async def test_get_alert_rules(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]): # Request AsyncClient and auth headers
+    async def test_get_alert_rules(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]): # Request AsyncClient and auth headers
         """Test retrieving alert rules successfully."""
         # This test likely needs the rule repository mocked via dependency override
         # in the app fixture (initialized_app). Assuming that's done in conftest.
@@ -329,7 +283,7 @@ class TestBiometricAlertsEndpoints:
     async def test_create_alert_rule_from_template(
         self, 
         client: AsyncClient, # Use AsyncClient
-        get_valid_provider_auth_headers: Dict[str, str], # Use auth fixture
+        get_valid_provider_auth_headers: dict[str, str], # Use auth fixture
         sample_patient_id: UUID,
         # Dependencies like rule_repo, rule_engine, event_processor 
         # should be mocked via app fixture override in conftest or here
@@ -361,7 +315,7 @@ class TestBiometricAlertsEndpoints:
     async def test_create_alert_rule_from_condition(
         self, 
         client: AsyncClient, # Use AsyncClient
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: UUID,
         # Dependencies mocked via app fixture override
     ):
@@ -394,7 +348,7 @@ class TestBiometricAlertsEndpoints:
         assert len(response_data["conditions"]) == 1
         assert response_data["conditions"][0]["metric_name"] == "blood_oxygen"
 
-    async def test_create_alert_rule_validation_error(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str], sample_patient_id: UUID):
+    async def test_create_alert_rule_validation_error(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str], sample_patient_id: UUID):
         """Test creating an alert rule with invalid data results in 422."""
         headers = get_valid_provider_auth_headers
         invalid_payload = {
@@ -406,7 +360,7 @@ class TestBiometricAlertsEndpoints:
 
     # --- Start Refactoring Remaining Tests ---
 
-    async def test_get_alert_rule(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str], sample_rule_id: UUID):
+    async def test_get_alert_rule(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str], sample_rule_id: UUID):
         """Test retrieving a specific alert rule by ID."""
         # Assuming mock repo is overridden in app fixture
         headers = get_valid_provider_auth_headers
@@ -420,7 +374,7 @@ class TestBiometricAlertsEndpoints:
         assert response_data["rule_id"] == rule_id_str
         # Add more assertions based on expected mock repo response
 
-    async def test_get_alert_rule_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_get_alert_rule_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test retrieving a non-existent alert rule."""
         # Assuming mock repo get_by_id returns None for this ID (via app fixture override)
         headers = get_valid_provider_auth_headers
@@ -433,7 +387,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_rule(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_rule_id: UUID
     ):
         """Test updating an existing alert rule."""
@@ -469,7 +423,7 @@ class TestBiometricAlertsEndpoints:
     async def test_delete_alert_rule(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_rule_id: UUID
     ):
         """Test deleting an alert rule."""
@@ -482,7 +436,7 @@ class TestBiometricAlertsEndpoints:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         # Add checks for mock calls (repo delete, processor remove)
 
-    async def test_get_rule_templates(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_get_rule_templates(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test retrieving available rule templates."""
         # Assuming mock rule engine is overridden in app fixture
         headers = get_valid_provider_auth_headers
@@ -497,7 +451,7 @@ class TestBiometricAlertsEndpoints:
 
     # === Alert Endpoint Tests ===
 
-    async def test_get_alerts(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_get_alerts(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test retrieving biometric alerts."""
         # Assuming mock alert repo is overridden in app fixture
         headers = get_valid_provider_auth_headers
@@ -512,7 +466,7 @@ class TestBiometricAlertsEndpoints:
     async def test_get_alerts_with_filters(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: UUID
     ):
         """Test retrieving biometric alerts with filters."""
@@ -543,7 +497,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_acknowledge(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: Dict[str, str], # Provider/Clinician typically acknowledges
+        get_valid_provider_auth_headers: dict[str, str], # Provider/Clinician typically acknowledges
         sample_alert_id: UUID
     ):
         """Test acknowledging a biometric alert by updating its status."""
@@ -569,7 +523,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_resolve(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: Dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_alert_id: UUID
     ):
         """Test resolving a biometric alert by updating its status."""
@@ -594,7 +548,7 @@ class TestBiometricAlertsEndpoints:
         assert response_data["resolution_notes"] == resolution_notes
         # Add checks for mock repo calls
 
-    async def test_update_alert_status_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_update_alert_status_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test updating status of a non-existent alert."""
         # Assuming mock repo get_alert_by_id returns None (via app fixture)
         headers = get_valid_provider_auth_headers
@@ -606,7 +560,7 @@ class TestBiometricAlertsEndpoints:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         # Add check that mock repo update was not called
 
-    async def test_get_patient_alert_summary(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str], sample_patient_id: UUID):
+    async def test_get_patient_alert_summary(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str], sample_patient_id: UUID):
         """Test retrieving the alert summary for a specific patient."""
         # Assuming mock alert repo is handled by app fixture
         headers = get_valid_provider_auth_headers
@@ -622,7 +576,7 @@ class TestBiometricAlertsEndpoints:
         assert "active_alerts" in response_data
         # Add more assertions based on mock repo's get_patient_alert_summary return
 
-    async def test_get_patient_alert_summary_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: Dict[str, str]):
+    async def test_get_patient_alert_summary_not_found(self, client: AsyncClient, get_valid_provider_auth_headers: dict[str, str]):
         """Test retrieving summary for a patient with no alerts (or patient not found scenario handled by repo)."""
         # Assuming mock repo returns None or raises EntityNotFound (handled by app fixture)
         headers = get_valid_provider_auth_headers

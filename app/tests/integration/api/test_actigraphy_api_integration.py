@@ -16,7 +16,7 @@ from httpx import AsyncClient
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
-from unittest.mock import patch
+from unittest.mock import Mock, AsyncMock, patch
 
 from app.core.services.ml.pat.mock import MockPATService
 from app.presentation.api.dependencies.services import get_pat_service  # Corrected import path
