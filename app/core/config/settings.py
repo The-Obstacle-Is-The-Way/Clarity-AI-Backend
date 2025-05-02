@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     API_TITLE: str = "Novamind API"
     API_DESCRIPTION: str = "The Novamind Mental Health Digital Twin API"
     API_VERSION: str = "1.0.0"
+    
+    # Environment
+    TESTING: bool = False  # Flag to indicate when running in test environment
     API_V1_STR: str = "/api/v1"
     
     # Security Settings
@@ -95,4 +98,10 @@ def get_settings() -> Settings:
     Returns:
         The application settings instance
     """
+    # Check for test environment
+    if os.environ.get("ENVIRONMENT") == "test" or os.environ.get("PYTEST_CURRENT_TEST"):
+        # Create test-specific settings
+        test_settings = Settings(TESTING=True)
+        return test_settings
+        
     return settings
