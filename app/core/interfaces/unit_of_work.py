@@ -6,14 +6,16 @@ a transactional boundary for database operations across multiple repositories,
 ensuring data consistency in the application's persistence layer.
 """
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TypeVar, Protocol, Generic, Type, Optional, Any
+from typing import Protocol, TypeVar, Optional, Any, ForwardRef
+from types import TracebackType
 
 # Define type variables for repository interfaces
 T = TypeVar('T')  # Generic type for repository
 
 
-class IUnitOfWork(ABC):
+class IUnitOfWork(abc.ABC):
     """
     Unit of Work interface defining a transaction boundary for domain operations.
     

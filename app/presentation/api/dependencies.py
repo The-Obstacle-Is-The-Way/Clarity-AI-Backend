@@ -11,6 +11,7 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.application.services.digital_twin_service import DigitalTwinService

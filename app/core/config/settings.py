@@ -82,4 +82,17 @@ class Settings(BaseSettings):
 
 
 # Create a global settings instance
-settings = Settings() 
+settings = Settings()
+
+
+def get_settings() -> Settings:
+    """
+    Factory function to get the application settings.
+    
+    This function enables dependency injection of settings in FastAPI.
+    It can be extended to provide test-specific settings or mocked settings.
+    
+    Returns:
+        The application settings instance
+    """
+    return settings
