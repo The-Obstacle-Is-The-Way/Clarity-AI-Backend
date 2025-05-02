@@ -7,7 +7,9 @@ clean architecture principles with precise, mathematically elegant implementatio
 
 import logging
 from collections.abc import Callable
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+from typing import AsyncGenerator, Generator, Any, Dict
+from collections.abc import Callable, Awaitable
 
 import pytest
 import pytest_asyncio
@@ -130,59 +132,88 @@ async def mock_auth_middleware_call(request: Request, call_next: Callable[[Reque
     return response
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="session")
 async def test_app(
-    mock_mentallama_service_override: AsyncMock,
-    mock_auth_service: MagicMock,
-    mock_jwt_service: MagicMock,
-) -> FastAPI:
-    """Creates a FastAPI application instance for testing, with middleware and
-    dependencies overridden.
-    AuthenticationMiddleware is replaced with a simple mock.
-    """
-    # Get settings required by create_application
-    settings = get_settings()
-    # Pass settings to the factory function
+    settings,
+    mock_mentallama_service_override,
+    mock_auth_service,
+    mock_jwt_service,
+) -> AsyncGenerator[FastAPI, None]:
+    """Creates a FastAPI application instance for testing with mocked dependencies."""
+    logger.info("Creating test FastAPI application instance...")
     app = create_application(settings=settings)
 
-    # Check by class name string as the actual class might be different
+    # --- Mock Middleware Setup ---
+    # Find and REPLACE AuthenticationMiddleware with a MagicMock
     auth_middleware_index = -1
+    original_middleware = None
     for i, middleware in enumerate(app.user_middleware):
-        if middleware.cls.__name__ == "AuthenticationMiddleware":
+        if isinstance(middleware.cls, type) and issubclass(middleware.cls, AuthenticationMiddleware):
+        # Check if middleware.cls is a class type before using issubclass
+        # if inspect.isclass(middleware.cls) and issubclass(middleware.cls, AuthenticationMiddleware):
             auth_middleware_index = i
+            original_middleware = middleware # Keep reference if needed
+            logger.info(f"Found AuthenticationMiddleware at index {i}")
             break
 
     if auth_middleware_index != -1:
-        # Found the middleware instance
-        auth_middleware_instance = app.user_middleware[auth_middleware_index]
+        # 1. Create the mock middleware instance
+        mock_middleware_instance = MagicMock(spec=AuthenticationMiddleware)
 
-        # Directly patch its dispatch method to use our mock call
-        auth_middleware_instance.dispatch = mock_auth_middleware_call
-        logger.info("Patched AuthenticationMiddleware dispatch method.")
+        # 2. Inject mock services directly into the mock attributes
+        #    These names must match the attributes accessed within the *real* middleware's
+        #    _ensure_services_initialized or dispatch methods if they were called.
+        mock_middleware_instance._auth_service = mock_auth_service
+        mock_middleware_instance._jwt_service = mock_jwt_service
+        logger.info("Mock Auth and JWT services assigned to MagicMock attributes.")
 
-        # Rebuild the middleware stack to ensure changes take effect
+        # 3. Define a simple async dispatch function for the mock
+        async def mock_dispatch(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+            # This mock bypasses all real auth logic and just proceeds
+            logger.debug("Mock AuthenticationMiddleware dispatch called, proceeding to next.")
+            # Ensure user state exists, mimicking part of the real middleware setup
+            if not hasattr(request.state, 'user'):
+                 request.state.user = UnauthenticatedUser()
+            if not hasattr(request.state, 'auth'):
+                 request.state.auth = None
+            return await call_next(request)
+
+        # 4. Assign the mock dispatch method to the mock instance
+        mock_middleware_instance.dispatch = mock_dispatch
+
+        # 5. Replace the original middleware entry with our mock
+        #    We need to wrap the mock instance in a Middleware object like the original
+        app.user_middleware[auth_middleware_index] = Middleware(lambda app: mock_middleware_instance)
+        logger.info("Replaced original AuthenticationMiddleware with MagicMock wrapper.")
+
+        # 6. Rebuild the middleware stack to apply the replacement
         app.middleware_stack = app.build_middleware_stack()
-    else:
-        logger.warning("AuthenticationMiddleware not found in user_middleware.")
+        logger.info("Rebuilt FastAPI middleware stack.")
 
+    else:
+        logger.warning("AuthenticationMiddleware not found in user_middleware. Cannot replace with mock.")
+
+    # --- Dependency Overrides for Route Dependencies ---
     # Define a mock async function for verify_api_key dependency
     async def mock_verify_api_key():
         return None
 
-    # Add dependency overrides AFTER app creation and potential middleware patching
+    # Add dependency overrides AFTER app creation and middleware manipulation
     dependency_overrides = {
         MentaLLaMAInterface: lambda: mock_mentallama_service_override,
-        IAuthenticationService: lambda: mock_auth_service,
-        IJwtService: lambda: mock_jwt_service,
-        # Override with a lambda returning the mock async function
-        verify_api_key: mock_verify_api_key, # Direct assignment works too
+        IAuthenticationService: lambda: mock_auth_service, # Still needed for route dependencies
+        IJwtService: lambda: mock_jwt_service,          # Still needed for route dependencies
+        verify_api_key: mock_verify_api_key,
     }
-
     app.dependency_overrides = dependency_overrides
+    logger.info("Applied dependency overrides for routes.")
 
-    return app
+    logger.info("Test application setup complete.")
+    yield app
+    logger.info("Test application teardown.")
 
 
+# === Test Client Fixture ===
 @pytest_asyncio.fixture(scope="function")
 async def client(test_app: FastAPI) -> AsyncClient:
     """Provides an asynchronous test client for the application."""
