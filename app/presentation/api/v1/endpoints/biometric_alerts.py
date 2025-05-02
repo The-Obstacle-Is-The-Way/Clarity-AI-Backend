@@ -18,11 +18,9 @@ from app.domain.entities.biometric_alert import (
 )
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule 
 from app.domain.exceptions import EntityNotFoundError 
-from app.presentation.api.v1.dependencies import (
-    get_biometric_alert_rule_service,
-    get_biometric_alert_service,
-)
-from app.presentation.api.v1.schemas.biometric_alert_schemas import (
+from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.presentation.api.dependencies import get_biometric_alert_rule_service, get_biometric_alert_service, get_rule_repository, get_current_user
+from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
     BiometricAlertResponse,
     BiometricAlertListResponse,
@@ -30,11 +28,12 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertRuleResponse,
     AlertRuleUpdate,
 )
-from app.presentation.api.v1.schemas.biometric_alert_rule import (
+from app.presentation.api.schemas.biometric_alert_rule import (
     AlertConditionLogicEnum,
     AlertConditionOperatorEnum,
     BiometricAlertRuleTemplateSchema,
 )
+from app.presentation.api.schemas.common import PaginatedResponseSchema, UserResponseSchema
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
