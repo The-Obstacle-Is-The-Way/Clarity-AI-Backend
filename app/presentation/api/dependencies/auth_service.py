@@ -10,7 +10,8 @@ from typing import Dict, Any, Optional, Callable, AsyncGenerator, Annotated, Typ
 from fastapi import Depends
 
 # Use infrastructure implementation of user repository
-from app.infrastructure.database.persistence.repositories.user_repository import UserRepository
+# Use the repository implementation directly from infrastructure
+from app.infrastructure.repositories.user_repository import UserRepository
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.presentation.api.dependencies.auth import get_jwt_service
 from app.core.interfaces.repositories.user_repository import IUserRepository
