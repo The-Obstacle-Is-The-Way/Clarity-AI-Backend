@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     SERVER_PORT: int = Field(default=8000, json_schema_extra={"env": "SERVER_PORT"})
     UVICORN_WORKERS: int = Field(default=4, json_schema_extra={"env": "UVICORN_WORKERS"}) # Number of worker processes for production
     LOG_LEVEL: str = Field(default="INFO", json_schema_extra={"env": "LOG_LEVEL"})
+    
+    # Cache Configuration
+    REDIS_URL: Optional[str] = Field(default="redis://localhost:6379/0", json_schema_extra={"env": "REDIS_URL"})
+    REDIS_TIMEOUT: int = Field(default=5, json_schema_extra={"env": "REDIS_TIMEOUT"}) # Connection timeout in seconds
     PROJECT_NAME: str = Field(default="Novamind Digital Twin", json_schema_extra={"env": "PROJECT_NAME"})
     # Environment
     ENVIRONMENT: str = Field(default="development", json_schema_extra={"env": "ENVIRONMENT"})
