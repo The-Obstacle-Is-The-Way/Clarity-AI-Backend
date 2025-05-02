@@ -49,6 +49,8 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             db_session: The SQLAlchemy async session to use for database operations
         """
         self._db_session = db_session
+        # Implement these methods to make the interface concrete
+        self._mapper = UserMapper()
     
     async def create(self, user: DomainUser) -> DomainUser:
         """

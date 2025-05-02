@@ -7,10 +7,10 @@ ensuring data consistency in the application's persistence layer.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
+from typing import TypeVar, Protocol, Generic, Type, Optional, Any
 
-# Define a type variable for repository interfaces
-T = TypeVar('T')
+# Define type variables for repository interfaces
+T = TypeVar('T')  # Generic type for repository
 
 
 class IUnitOfWork(ABC):
@@ -33,7 +33,9 @@ class IUnitOfWork(ABC):
         pass
     
     @abstractmethod
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]], 
+                      exc_val: Optional[BaseException], 
+                      exc_tb: Optional[Any]) -> None:
         """
         Exit the context manager, handling commit or rollback based on exceptions.
         
@@ -64,38 +66,64 @@ class IUnitOfWork(ABC):
         """
         pass
     
+    # Repository property protocols - replacing Any with specific repository types
     @property
     @abstractmethod
-    def users(self) -> Any:
+    def users(self) -> 'IUserRepository':
         """Access to the user repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def patients(self) -> Any:
+    def patients(self) -> 'IPatientRepository':
         """Access to the patient repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def digital_twins(self) -> Any:
+    def digital_twins(self) -> 'IDigitalTwinRepository':
         """Access to the digital twin repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def biometric_rules(self) -> Any:
+    def biometric_rules(self) -> 'IBiometricRuleRepository':
         """Access to the biometric rule repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def biometric_alerts(self) -> Any:
+    def biometric_alerts(self) -> 'IBiometricAlertRepository':
         """Access to the biometric alert repository within this transaction."""
         pass
     
     @property
     @abstractmethod
-    def biometric_twins(self) -> Any:
+    def biometric_twins(self) -> 'IBiometricTwinRepository':
         """Access to the biometric twin repository within this transaction."""
         pass
+
+# Repository interfaces - forward declarations
+class IUserRepository(Protocol):
+    """User repository interface."""
+    pass
+
+class IPatientRepository(Protocol):
+    """Patient repository interface."""
+    pass
+
+class IDigitalTwinRepository(Protocol):
+    """Digital twin repository interface."""
+    pass
+
+class IBiometricRuleRepository(Protocol):
+    """Biometric rule repository interface."""
+    pass
+
+class IBiometricAlertRepository(Protocol):
+    """Biometric alert repository interface."""
+    pass
+
+class IBiometricTwinRepository(Protocol):
+    """Biometric twin repository interface."""
+    pass
