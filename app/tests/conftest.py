@@ -292,6 +292,28 @@ def mock_xgboost_service_override() -> Callable[[], XGBoostInterface]:
 
 # --- Application Fixture with Overrides ---
 
+@pytest.fixture(scope="function") # CHANGED scope to function
+def mock_jwt_service() -> AsyncMock:
+    """Provides an AsyncMock for the JWTService."""
+    # REMOVED spec=JWTService to see if it interferes with method mocking
+    mock = AsyncMock()
+    mock.create_access_token = AsyncMock(return_value="mock_access_token")
+    mock.create_refresh_token = AsyncMock(return_value="mock_refresh_token")
+    mock.decode_token = AsyncMock(return_value={"sub": "mock_user_id"})
+    mock.get_user_from_token = AsyncMock(return_value=None) # Default to None, override in specific tests if needed
+    return mock
+
+@pytest.fixture(scope="function") # CHANGED scope to function
+def mock_auth_service(test_patient: User) -> AsyncMock: # Depend on test_patient fixture
+    """Provides an AsyncMock for the AuthService."""
+    mock = AsyncMock(spec=IAuthenticationService)
+    mock.authenticate_user = AsyncMock(return_value=test_patient)
+    mock.create_access_token = AsyncMock(return_value="mock_access_token")
+    mock.create_refresh_token = AsyncMock(return_value="mock_refresh_token")
+    mock.decode_token = AsyncMock(return_value={"sub": "mock_user_id"})
+    mock.get_user_from_token = AsyncMock(return_value=test_patient)
+    return mock
+
 @pytest.fixture(scope="session")
 def initialized_app(
     test_settings: Settings, # Use the primary test settings

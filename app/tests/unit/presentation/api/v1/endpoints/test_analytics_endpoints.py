@@ -104,7 +104,8 @@ class TestAnalyticsEndpoints:
         client: TestClient,
         mock_process_event_use_case: MagicMock,
         mock_background_tasks: MagicMock, 
-        mock_user: MagicMock 
+        mock_user: MagicMock,
+        auth_headers: dict
     ):
         """Test the record_analytics_event endpoint."""
         event_data = {
@@ -124,7 +125,7 @@ class TestAnalyticsEndpoints:
                 mock_instance.contains_phi_async = AsyncMock(return_value=False) 
                 mock_instance.redact_phi_async = AsyncMock(return_value=json.dumps(event_data["data"])) 
 
-                response = client.post("/analytics/events", json=event_data)
+                response = client.post("/analytics/events", json=event_data, headers=auth_headers)
 
         assert response.status_code == status.HTTP_202_ACCEPTED
         response_data = response.json()
@@ -148,7 +149,8 @@ class TestAnalyticsEndpoints:
         client: TestClient,
         mock_batch_process_use_case: MagicMock,
         mock_background_tasks: MagicMock, 
-        mock_user: MagicMock 
+        mock_user: MagicMock,
+        auth_headers: dict
     ):
         """Test the record_analytics_batch endpoint."""
         batch_data = {
@@ -179,7 +181,7 @@ class TestAnalyticsEndpoints:
                 # Mock redact to return original data as string since no PHI detected
                 mock_instance.redact_phi_async = AsyncMock(side_effect=lambda d: json.dumps(d))
 
-                response = client.post("/analytics/events/batch", json=batch_data)
+                response = client.post("/analytics/events/batch", json=batch_data, headers=auth_headers)
 
         assert response.status_code == status.HTTP_202_ACCEPTED
         response_data = response.json()
@@ -200,7 +202,8 @@ class TestAnalyticsEndpoints:
         client: TestClient,
         mock_process_event_use_case: MagicMock,
         mock_background_tasks: MagicMock,
-        mock_user: MagicMock
+        mock_user: MagicMock,
+        auth_headers: dict
     ):
         """Test PHI detection and redaction in analytics events."""
         event_data_with_phi = {
@@ -231,7 +234,7 @@ class TestAnalyticsEndpoints:
 
             # Act
             with patch('app.presentation.api.v1.endpoints.analytics_endpoints.BackgroundTasks', return_value=mock_background_tasks):
-                response = client.post("/analytics/events", json=event_data_with_phi)
+                response = client.post("/analytics/events", json=event_data_with_phi, headers=auth_headers)
 
             # Assert
             assert response.status_code == status.HTTP_202_ACCEPTED

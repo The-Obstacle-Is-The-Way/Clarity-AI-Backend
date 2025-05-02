@@ -148,14 +148,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return False
 
     async def _ensure_services_initialized(self):
-        """Lazy-load services if needed."""
+        """Lazy-load service getters if needed, but don't await here."""
         if not self._auth_service_instance:
-            # Use await if the getter is async
             auth_service_getter = self._auth_service or get_auth_service
-            self._auth_service_instance: IAuthenticationService = await auth_service_getter() if asyncio.iscoroutinefunction(auth_service_getter) else auth_service_getter()
+            # Assign the awaitable, don't await it yet
+            self._auth_service_instance = auth_service_getter()
+
         if not self._jwt_service_instance:
             jwt_service_getter = self._jwt_service or get_jwt_service
-            self._jwt_service_instance: IJwtService = await jwt_service_getter() if asyncio.iscoroutinefunction(jwt_service_getter) else jwt_service_getter()
+            # Assign the awaitable, don't await it yet
+            self._jwt_service_instance = jwt_service_getter()
 
     def _extract_token(self, request: Request) -> Optional[str]:
         """
@@ -200,8 +202,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             AuthenticationError: For other authentication-related errors.
         """
         try:
-            token_payload = await self._jwt_service_instance.verify_token(token)
-            user = await self._auth_service_instance.get_user_by_id(token_payload.sub)
+            # ADDED: await the service instances before calling methods
+            jwt_service = await self._jwt_service_instance
+            auth_service = await self._auth_service_instance
+            
+            token_payload = await jwt_service.verify_token(token)
+            user = await auth_service.get_user_by_id(token_payload.sub)
 
             if not user:
                 logger.warning(f"User not found for ID: {token_payload.sub}")
@@ -209,20 +215,17 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             if not user.is_active:
                 logger.warning(f"Attempt to authenticate inactive user: {user.id}")
+                # Let this specific error propagate to dispatch
                 raise AuthenticationError("User account is inactive.")
 
             return user
 
         except (InvalidTokenException, TokenExpiredException) as e:
             logger.info(f"Token validation failed: {e}")
-            raise e # Re-raise specific exceptions
+            raise e # Re-raise specific token exceptions
         except UserNotFoundException as e:
              logger.warning(f"User lookup failed during auth: {e}")
-             raise e
-        except Exception as e:
-            logger.error(f"Unexpected error during token validation: {e}", exc_info=True)
-            # Do not expose internal errors (HIPAA)
-            raise AuthenticationError("Authentication failed due to an internal error.")
+             raise e # Re-raise specific user not found exception
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
