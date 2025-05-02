@@ -57,13 +57,20 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         app: FastAPI,
         auth_service=None,  # Support for test injection
         jwt_service=None,   # Support for test injection
-        public_paths: Optional[Union[List[str], Set[str]]] = None,
-        public_path_regex: Optional[List[str]] = None,
+        public_paths: Optional[Union[list[str], set[str]]] = None,
+        public_path_regex: Optional[list[str]] = None,
         settings: Optional[Settings] = None,
     ):
         """Initialize the middleware with configuration for public paths."""
         super().__init__(app)
         self.settings = settings or get_settings()
+        
+        # Store service factories for later async initialization
+        self._auth_service = auth_service
+        self._jwt_service = jwt_service
+        # Lazy-loaded service instances
+        self._auth_service_instance = None
+        self._jwt_service_instance = None
         
         # Define default public paths that don't require authentication
         default_public_paths = [
@@ -86,9 +93,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self.rbac = RoleBasedAccessControl()
         
         # Get services for token validation and authentication
-        # These can be overridden in testing
-        self.auth_service = auth_service or get_auth_service()
-        self.jwt_service = jwt_service or get_jwt_service()
+        # Initialize public paths as a set for O(1) lookups
+        self.public_paths = set(public_paths or [])
+        
+        # Add Swagger/OpenAPI paths by default
+        self.public_paths.update(['/docs', '/openapi.json', '/redoc', '/health', '/'])
         
         # Compile regex patterns for faster matching
         self.public_path_patterns = []
@@ -125,6 +134,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return True
                 
         return False
+
+    async def _ensure_services_initialized(self):
+        """Lazy-load services if needed."""
+        if not self._auth_service_instance:
+            self._auth_service_instance = self._auth_service or get_auth_service()
+        if not self._jwt_service_instance:
+            self._jwt_service_instance = self._jwt_service or get_jwt_service()
 
     def _extract_token(self, request: Request) -> Optional[str]:
         """
@@ -167,22 +183,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         request.state.user = UnauthenticatedUser()
         request.state.auth = None
         
-        # Check for exempt paths first
-        path = request.url.path
-        if await self._is_public_path(path):
+        # Lazy-load services if needed
+        await self._ensure_services_initialized()
+        
+        # Skip authentication for public paths
+        if await self._is_public_path(request.url.path):
+            logger.debug(f"Skipping auth for public path: {request.url.path}")
             return await call_next(request)
-            
-        # Testing mode check
-        settings = self.settings
-        if settings.TESTING:
-            # For test_testing_mode_middleware
-            if hasattr(self, 'auth_service') and self.auth_service is not None:
-                # Set user from mocked auth service
-                user = self.auth_service.get_user_by_id.return_value
-                request.state.user = user
-                request.state.auth = AuthCredentials(scopes=user.roles)
-            return await call_next(request)
-            
+        
         # Extract token from the request
         token = self._extract_token(request)
             
@@ -201,15 +209,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             
         try:
             # Valid token handling
-            if token == "valid.jwt.token":
-                # For test_valid_authentication
-                if hasattr(self, 'jwt_service') and self.jwt_service is not None:
-                    await self.jwt_service.verify_token(token)
-                
-                if hasattr(self, 'auth_service') and self.auth_service is not None:
-                    user = await self.auth_service.get_user_by_id("user123")
-                    request.state.user = user
-                    request.state.auth = AuthCredentials(scopes=user.roles)
+            user = await self.validate_token_and_get_user(token)
+            if user:
+                request.state.user = user
+                request.state.auth = AuthCredentials(scopes=user.roles)
                 return await call_next(request)
                 
             # Special test cases
