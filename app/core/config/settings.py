@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     PROJECT_DESCRIPTION: str = "Mental Health Digital Twin API"
     API_V1_STR: str = "/api/v1"
     
+    # Server Settings
+    SERVER_HOST: str = "127.0.0.1"  # Default host for the server
+    SERVER_PORT: int = 8000  # Default port for the server
+    UVICORN_WORKERS: int = 4  # Number of worker processes for production
+    
     # Security Settings
     JWT_SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
     JWT_ALGORITHM: str = "HS256"
