@@ -26,14 +26,14 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
     BiometricAlertResponse,
     BiometricAlertListResponse,
+    AlertRuleCreate,
+    AlertRuleResponse,
+    AlertRuleUpdate,
 )
 from app.presentation.api.v1.schemas.biometric_alert_rule import (
     AlertConditionLogicEnum,
     AlertConditionOperatorEnum,
-    BiometricAlertRuleCreateSchema,
-    BiometricAlertRuleResponseSchema,
     BiometricAlertRuleTemplateSchema,
-    BiometricAlertRuleUpdateSchema,
 )
 
 # Define the correct Enum type for path parameter
@@ -120,7 +120,7 @@ async def get_alert_rules(
                     }
                     
                     try:
-                        validated_rule = BiometricAlertRuleResponseSchema.model_validate(hardcoded_rule_data)
+                        validated_rule = AlertRuleResponse.model_validate(hardcoded_rule_data)
                         rules_data = [validated_rule.model_dump()]
                     except Exception as e:
                         logger.error(f"[MOCK PATH] Error creating/validating/dumping hardcoded response: {e}")
@@ -232,7 +232,7 @@ async def get_alert_rules(
 
 @router.get(
     "/rules/{rule_id}",
-    response_model=BiometricAlertRuleResponseSchema,
+    response_model=AlertRuleResponse,
     summary="Get alert rule",
     description="Retrieve a specific biometric alert rule by ID."
 )
@@ -240,7 +240,7 @@ async def get_alert_rule(
     rule_id: UUID,
     repository: BiometricAlertRuleRepository = Depends(get_rule_repository),
     current_user: UserResponseSchema = Depends(get_current_user)
-) -> BiometricAlertRuleResponseSchema:
+) -> AlertRuleResponse:
     """
     Get a specific biometric alert rule by ID.
     
@@ -293,7 +293,7 @@ async def get_alert_rule(
                         "metadata": mock_rule.get("metadata", {})
                     }
                     
-                    return BiometricAlertRuleResponseSchema.model_validate(hardcoded_rule_data)
+                    return AlertRuleResponse.model_validate(hardcoded_rule_data)
                 else:
                     # Mock object case - must convert all attributes to a proper dict
                     rule_id_str = str(uuid.uuid4())
@@ -321,7 +321,7 @@ async def get_alert_rule(
                         "metadata": {}
                     }
                     
-                    return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+                    return AlertRuleResponse.model_validate(formatted_rule)
             
             # Return 404 if rule not found
             raise HTTPException(
@@ -380,7 +380,7 @@ async def get_alert_rule(
             "metadata": rule.metadata or {}
         }
         
-        return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+        return AlertRuleResponse.model_validate(formatted_rule)
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
