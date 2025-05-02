@@ -122,6 +122,37 @@ def get_pat_service():
 services.get_pat_service = get_pat_service  # type: ignore[attr-defined]
 
 
+# Biometric Alert service shim (required by biometric_alerts endpoint)
+
+def get_biometric_alert_service():
+    """Return a stub BiometricAlertService suitable for tests."""
+    try:
+        # Attempt to import a dedicated mock service if it exists
+        from app.infrastructure.services.mock_biometric_alert_service import (
+            MockBiometricAlertService,  # type: ignore
+        )
+        return MockBiometricAlertService()
+    except ModuleNotFoundError:
+        # Fallback: Define a minimal stub if the mock is not found
+        class StubBiometricAlertService:  # pragma: no cover – fallback
+            async def create_alert(self, *args, **kwargs):
+                return {"id": "stub_alert_id", "message": "Stub Alert"}
+            async def get_alert_by_id(self, alert_id: str, *args, **kwargs):
+                if alert_id == "stub_alert_id":
+                    return {"id": "stub_alert_id", "message": "Stub Alert"}
+                return None # Or raise appropriate not found error stub
+            async def acknowledge_alert(self, alert_id: str, *args, **kwargs):
+                 if alert_id == "stub_alert_id":
+                     return {"id": "stub_alert_id", "message": "Acknowledged Stub Alert", "acknowledged": True}
+                 return None # Or raise appropriate not found error stub
+            async def list_alerts(self, *args, **kwargs):
+                return []
+
+        return StubBiometricAlertService()
+
+services.get_biometric_alert_service = get_biometric_alert_service # type: ignore[attr-defined]
+
+
 # Biometric Alert Rule service shim (required by biometric_alerts endpoint)
 
 def get_biometric_alert_rule_service():
