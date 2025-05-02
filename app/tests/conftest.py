@@ -53,8 +53,10 @@ from app.infrastructure.di.container import get_container # Import get_container
 from app.domain.entities.user import User # Import User
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
 from app.core.interfaces.repositories.user_repository import IUserRepository
-
-# Import additional database functions for dependency management
+from app.core.interfaces.services.patient_assignment_service import IPatientAssignmentService
+from app.domain.entities.alert import Alert # noqa F401
+from app.domain.entities.appointment import Appointment # noqa F401
+from app.domain.entities.biometric_data import BiometricData # noqa F401
 from app.core.dependencies.database import get_db_session as get_core_db_session
 from app.domain.enums.role import Role # Import Role
 from app.domain.repositories.user_repository import UserRepository # Ensure imported
@@ -187,7 +189,7 @@ class MockSettings:
 @pytest.fixture(scope="session")
 def initialized_app(
     test_settings: Settings, # Use the primary test settings
-    test_engine: AsyncEngine,
+    test_engine: "AsyncEngine", # Use forward reference
     mock_db_session_override: Callable[[], AsyncSession],
     mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
     mock_pat_service_override: Callable[[], IPatientAssignmentService],
