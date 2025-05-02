@@ -60,9 +60,9 @@ async def get_patient_treatment_outcomes(
     background_tasks: BackgroundTasks,
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=90)),
     end_date: Optional[datetime] = Query(default=None),
-    # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Get treatment outcomes analytics for a specific patient.
@@ -74,6 +74,7 @@ async def get_patient_treatment_outcomes(
         analytics_service: Analytics service dependency (DI injected, type hint Any)
         cache_service: Cache service dependency
         background_tasks: Background tasks for async processing
+        user: Current authenticated user (optional)
         
     Returns:
         Dict[str, Any]: Treatment outcomes analytics
@@ -198,9 +199,10 @@ async def get_practice_metrics(
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=30)),
     end_date: Optional[datetime] = Query(default=None),
     provider_id: Optional[UUID] = Query(default=None),
-    # Use the new dependency function
+    metric_type: Optional[str] = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Get practice-wide metrics and analytics.
@@ -209,16 +211,19 @@ async def get_practice_metrics(
         start_date: Start date for the analytics period (default: 30 days ago)
         end_date: End date for the analytics period (default: now)
         provider_id: Optional UUID to filter metrics by provider
+        metric_type: Optional metric type to filter by
         analytics_service: Analytics service dependency (DI injected)
         cache_service: Cache service dependency
         background_tasks: Background tasks for async processing
+        user: Current authenticated user (optional)
         
     Returns:
         Dict[str, Any]: Practice metrics analytics
     """
     # Generate cache key
     provider_part = str(provider_id) if provider_id else "all"
-    cache_key = f"practice_metrics:{provider_part}:{start_date.isoformat()}:{end_date.isoformat() if end_date else 'now'}"
+    metric_part = metric_type or "all"
+    cache_key = f"practice_metrics:{provider_part}:{metric_part}:{start_date.isoformat()}:{end_date.isoformat() if end_date else 'now'}"
     
     # Try to get from cache
     cached_data = await cache_service.get(cache_key)
@@ -233,12 +238,14 @@ async def get_practice_metrics(
         start_date,
         end_date,
         provider_id,
+        metric_type,
         cache_key
     )
     
     # Return a simplified immediate response
     return {
         "provider_filter": provider_part,
+        "metric_filter": metric_part,
         "status": "processing",
         "message": "Practice metrics analysis is being processed. Please check back shortly.",
         "check_url": f"/api/v1/analytics/status/{cache_key}"
@@ -252,6 +259,7 @@ async def _process_practice_metrics(
     start_date: datetime,
     end_date: Optional[datetime],
     provider_id: Optional[UUID],
+    metric_type: Optional[str],
     cache_key: str
 ):
     """
@@ -263,6 +271,7 @@ async def _process_practice_metrics(
         start_date: Start date for the analytics period
         end_date: End date for the analytics period
         provider_id: Optional UUID to filter metrics by provider
+        metric_type: Optional metric type to filter by
         cache_key: Cache key to store the results
     """
     try:
@@ -270,7 +279,8 @@ async def _process_practice_metrics(
         results = await analytics_service.get_practice_metrics(
             start_date=start_date,
             end_date=end_date,
-            provider_id=provider_id
+            provider_id=provider_id,
+            metric_type=metric_type
         )
         
         # Store in cache
@@ -302,7 +312,6 @@ async def get_diagnosis_distribution(
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
     provider_id: Optional[UUID] = Query(default=None),
-    # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
 ) -> List[Dict[str, Any]]:
@@ -354,9 +363,10 @@ async def get_medication_effectiveness(
     diagnosis_code: Optional[str] = Query(default=None),
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
-    # Use the new dependency function
+    min_effectiveness_score: Optional[float] = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Analyze the effectiveness of a specific medication.
@@ -366,9 +376,11 @@ async def get_medication_effectiveness(
         diagnosis_code: Optional diagnosis code to filter by
         start_date: Start date for the analytics period (default: 1 year ago)
         end_date: End date for the analytics period (default: now)
+        min_effectiveness_score: Optional minimum effectiveness score to filter by
         analytics_service: Analytics service dependency
         cache_service: Cache service dependency
         background_tasks: Background tasks for async processing
+        user: Current authenticated user (optional)
         
     Returns:
         Dict[str, Any]: Medication effectiveness analytics
@@ -394,6 +406,7 @@ async def get_medication_effectiveness(
         diagnosis_code,
         start_date,
         end_date,
+        min_effectiveness_score,
         cache_key
     )
     
@@ -415,6 +428,7 @@ async def _process_medication_effectiveness(
     diagnosis_code: Optional[str],
     start_date: Optional[datetime],
     end_date: Optional[datetime],
+    min_effectiveness_score: Optional[float],
     cache_key: str
 ):
     """
@@ -427,6 +441,7 @@ async def _process_medication_effectiveness(
         diagnosis_code: Optional diagnosis code to filter by
         start_date: Start date for the analytics period
         end_date: End date for the analytics period
+        min_effectiveness_score: Optional minimum effectiveness score to filter by
         cache_key: Cache key to store the results
     """
     try:
@@ -435,7 +450,8 @@ async def _process_medication_effectiveness(
             medication_name=medication_name,
             diagnosis_code=diagnosis_code,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            min_effectiveness_score=min_effectiveness_score
         )
         
         # Store in cache
@@ -469,9 +485,9 @@ async def get_treatment_comparison(
     treatments: List[str] = Query(...),
     start_date: Optional[datetime] = Query(default=None),
     end_date: Optional[datetime] = Query(default=None),
-    # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
+    user: Optional[Dict[str, Any]] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Compare the effectiveness of different treatments for a specific diagnosis.
@@ -484,6 +500,7 @@ async def get_treatment_comparison(
         analytics_service: Analytics service dependency
         cache_service: Cache service dependency
         background_tasks: Background tasks for async processing
+        user: Current authenticated user (optional)
         
     Returns:
         Dict[str, Any]: Treatment comparison analytics
@@ -578,7 +595,6 @@ async def _process_treatment_comparison(
 
 @_v1_router.get("/patient-risk-stratification", response_model=List[Dict[str, Any]])
 async def get_patient_risk_stratification(
-    # Use the new dependency function
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
 ) -> List[Dict[str, Any]]:
