@@ -39,7 +39,8 @@ class TestPatientRepository:
     This is used by test_patient_repository_int.py and works with the TestPatient model.
     """
     
-    def __init__(self, db_session: AsyncSession, encryption_service: BaseEncryptionService):
+    @pytest.fixture(autouse=True)
+    async def setup(self, db_session: AsyncSession, encryption_service: BaseEncryptionService):
         """Initialize the repository with required dependencies."""
         self.db_session = db_session
         self.encryption_service = encryption_service

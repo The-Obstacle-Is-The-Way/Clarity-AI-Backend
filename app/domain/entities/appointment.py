@@ -4,7 +4,7 @@ Domain entity representing a clinical Appointment.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, InitVar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import time as _time  # Make *time* available to external test modules
 # ---------------------------------------------------------------------------
 # Export *time* into builtins so test modules that naively call ``time.sleep``
@@ -93,10 +93,10 @@ class Appointment(BaseEntity):
     reason: Optional[str] = None  # e.g., "Routine Check‑up"
     location: Optional[str] = None  # e.g. "Telehealth", "Clinic Room 3"
 
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Canonical "updated" timestamp used internally by the domain model.
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # ------------------------------------------------------------------
     # Init‑only (non‑stored) parameters
@@ -165,7 +165,7 @@ class Appointment(BaseEntity):
     def touch(self) -> None:
         """Bump *last_updated* to *now* – intended for internal use."""
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         self.__dict__["updated_at"] = now
         self.__dict__["last_updated"] = now
 

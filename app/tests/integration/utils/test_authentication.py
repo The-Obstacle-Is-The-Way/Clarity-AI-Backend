@@ -6,6 +6,7 @@ in test environments, including direct authentication bypasses for integration t
 """
 
 import logging
+import pytest
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
@@ -23,7 +24,8 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
     and follows clean architecture principles.
     """
     
-    def __init__(
+    @pytest.fixture(autouse=True)
+    def setup(
         self,
         app: FastAPI,
         public_paths: list[str] | set[str] | None = None,

@@ -37,7 +37,7 @@ except ImportError:
     IBiometricRuleRepository = Any
 
 # Import concrete repository implementations
-from app.infrastructure.repositories.user_repository import UserRepository
+from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 
 # For biometric alert and rule repositories, we'll use Any as placeholder if they don't exist yet
 from typing import Any, cast
@@ -67,7 +67,7 @@ def register_repository(interface: type[T], implementation: type[T]) -> None:
 # --- Register Concrete Implementations ---
 
 # Register the actual implementations for the application runtime
-register_repository(IUserRepository, UserRepository)
+register_repository(IUserRepository, SqlAlchemyUserRepository)
 register_repository(IBiometricRuleRepository, BiometricRuleRepository)
 register_repository(IBiometricAlertRepository, BiometricAlertRepository)
 

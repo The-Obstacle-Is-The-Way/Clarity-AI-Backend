@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class AccelerometerReading(BaseModel):
@@ -19,7 +19,7 @@ class AccelerometerReading(BaseModel):
     y: float = Field(..., description="Y-axis acceleration value")
     z: float = Field(..., description="Z-axis acceleration value")
     
-    @validator('timestamp')
+    @field_validator('timestamp')
     def ensure_timezone(cls, v):
         """Ensure timestamp has timezone information."""
         if v.tzinfo is None:
@@ -167,7 +167,7 @@ class AnalysisResult(BaseModel):
     insights: List[str] = Field(..., description="Insights derived from the analysis")
     warnings: List[str] = Field([], description="Warnings or alerts from the analysis")
     
-    @validator('metrics', pre=True)
+    @field_validator('metrics', mode='before')
     def validate_metrics(cls, v, values):
         """Validate metrics based on analysis type."""
         if 'analysis_type' not in values:
