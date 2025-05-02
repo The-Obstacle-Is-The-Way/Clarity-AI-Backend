@@ -36,7 +36,7 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertRuleUpdate,
     AlertRuleTemplateResponse,
 )
-from app.presentation.api.v1.schemas.common import PaginatedResponseSchema, UserResponseSchema
+from app.presentation.api.schemas.common import PaginatedResponseSchema, UserResponseSchema
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
