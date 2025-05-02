@@ -1411,12 +1411,3 @@ async def update_alert_rule(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating alert rule: {str(e)}"
         )
-
-# Add update_forward_refs calls at the end of the file
-AlertRuleCreate.update_forward_refs()
-AlertRuleResponse.update_forward_refs()
-AlertRuleUpdate.update_forward_refs()
-AlertAcknowledgementRequest.update_forward_refs()
-AlertRuleTemplateResponse.update_forward_refs()
-BiometricAlertResponse.update_forward_refs()
-BiometricAlertListResponse.update_forward_refs()

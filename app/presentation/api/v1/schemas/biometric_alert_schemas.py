@@ -145,3 +145,15 @@ class AlertAcknowledgementRequest(BaseModel):
     """Request model for acknowledging an alert."""
     
     notes: Optional[str] = Field(None, description="Optional notes about the acknowledgement")
+
+# Update forward references for all models in this file
+AlertRuleCreate.update_forward_refs()
+AlertRuleUpdate.update_forward_refs()
+AlertRuleResponse.update_forward_refs()
+AlertRuleListResponse.update_forward_refs()
+AlertRuleTemplateResponse.update_forward_refs()
+AlertRuleTemplateListResponse.update_forward_refs()
+BiometricDataPointResponse.update_forward_refs()
+BiometricAlertResponse.update_forward_refs()
+BiometricAlertListResponse.update_forward_refs()
+AlertAcknowledgementRequest.update_forward_refs()
