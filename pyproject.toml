@@ -22,12 +22,12 @@ dependencies = [
     "httpx==0.28.1",
     "loguru==0.7.2", # From requirements-standalone.txt
     "numpy==1.26.4", # From requirements-analytics.txt
-    "openai==1.41.2", # From requirements-standalone.txt
+    "openai", # From requirements-standalone.txt
     "opentelemetry-api==1.28.0", # From requirements-standalone.txt
     "opentelemetry-exporter-otlp-proto-http==1.28.0", # From requirements-standalone.txt
     "opentelemetry-instrumentation-fastapi==0.49b0", # From requirements-standalone.txt
     "opentelemetry-sdk==1.28.0", # From requirements-standalone.txt
-    "pandas==2.2.4", # From requirements-analytics.txt
+    "pandas", # From requirements-analytics.txt
     "passlib[bcrypt]==2024.5.3", # From requirements-security.txt
     "psycopg2-binary==2.9.9",
     "pydantic==2.9.1",
