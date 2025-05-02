@@ -6,25 +6,28 @@ clean architecture principles with precise, mathematically elegant implementatio
 """
 
 import logging
-from collections.abc import Callable
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import AsyncGenerator, Generator, Any, Dict
-from collections.abc import Callable, Awaitable
+from collections.abc import Callable, AsyncGenerator, Awaitable
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from starlette.middleware import Middleware
+from starlette.requests import Request
+from starlette.responses import Response
 
-from app.api.routes.ml import verify_api_key
 from app.app_factory import create_application
-from app.core.config.settings import get_settings
-from app.core.exceptions import ModelNotFoundError, ServiceUnavailableError
-from app.core.interfaces.services.authentication_service import IAuthenticationService
-from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.services.ml.interface import MentaLLaMAInterface
+from app.config.settings import Settings
+from app.core.interfaces.services.auth import IAuthenticationService
+from app.core.interfaces.services.jwt import IJwtService
+from app.core.interfaces.services.mentallama import MentaLLaMAInterface
+from app.domain.entities.auth import User, UnauthenticatedUser 
+from app.presentation.api.v1.dependencies.auth import verify_api_key
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware 
 
-settings = get_settings()
+settings = Settings()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -134,10 +137,10 @@ async def mock_auth_middleware_call(request: Request, call_next: Callable[[Reque
 
 @pytest_asyncio.fixture(scope="session")
 async def test_app(
-    settings,
-    mock_mentallama_service_override,
-    mock_auth_service,
-    mock_jwt_service,
+    settings: Settings,
+    mock_mentallama_service_override: AsyncMock,
+    mock_auth_service: MagicMock,
+    mock_jwt_service: MagicMock,
 ) -> AsyncGenerator[FastAPI, None]:
     """Creates a FastAPI application instance for testing with mocked dependencies."""
     logger.info("Creating test FastAPI application instance...")
@@ -146,13 +149,11 @@ async def test_app(
     # --- Mock Middleware Setup ---
     # Find and REPLACE AuthenticationMiddleware with a MagicMock
     auth_middleware_index = -1
-    original_middleware = None
     for i, middleware in enumerate(app.user_middleware):
-        if isinstance(middleware.cls, type) and issubclass(middleware.cls, AuthenticationMiddleware):
         # Check if middleware.cls is a class type before using issubclass
-        # if inspect.isclass(middleware.cls) and issubclass(middleware.cls, AuthenticationMiddleware):
+        # Handles cases where middleware might be partially initialized
+        if isinstance(middleware.cls, type) and issubclass(middleware.cls, AuthenticationMiddleware):
             auth_middleware_index = i
-            original_middleware = middleware # Keep reference if needed
             logger.info(f"Found AuthenticationMiddleware at index {i}")
             break
 
@@ -168,22 +169,28 @@ async def test_app(
         logger.info("Mock Auth and JWT services assigned to MagicMock attributes.")
 
         # 3. Define a simple async dispatch function for the mock
-        async def mock_dispatch(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        async def mock_dispatch(
+            request: Request, 
+            call_next: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
             # This mock bypasses all real auth logic and just proceeds
             logger.debug("Mock AuthenticationMiddleware dispatch called, proceeding to next.")
             # Ensure user state exists, mimicking part of the real middleware setup
+            # Use UnauthenticatedUser as a placeholder
             if not hasattr(request.state, 'user'):
                  request.state.user = UnauthenticatedUser()
             if not hasattr(request.state, 'auth'):
-                 request.state.auth = None
+                 request.state.auth = None # Typically holds the auth result (e.g., token)
             return await call_next(request)
 
         # 4. Assign the mock dispatch method to the mock instance
         mock_middleware_instance.dispatch = mock_dispatch
 
         # 5. Replace the original middleware entry with our mock
-        #    We need to wrap the mock instance in a Middleware object like the original
-        app.user_middleware[auth_middleware_index] = Middleware(lambda app: mock_middleware_instance)
+        #    We need to wrap the mock instance in a Starlette Middleware object
+        app.user_middleware[auth_middleware_index] = Middleware( 
+            lambda app: mock_middleware_instance
+        )
         logger.info("Replaced original AuthenticationMiddleware with MagicMock wrapper.")
 
         # 6. Rebuild the middleware stack to apply the replacement
@@ -191,11 +198,12 @@ async def test_app(
         logger.info("Rebuilt FastAPI middleware stack.")
 
     else:
-        logger.warning("AuthenticationMiddleware not found in user_middleware. Cannot replace with mock.")
+        logger.warning("AuthenticationMiddleware not found in user_middleware. "
+                       "Cannot replace with mock.")
 
     # --- Dependency Overrides for Route Dependencies ---
     # Define a mock async function for verify_api_key dependency
-    async def mock_verify_api_key():
+    async def mock_verify_api_key() -> None: 
         return None
 
     # Add dependency overrides AFTER app creation and middleware manipulation
@@ -228,7 +236,7 @@ async def client(test_app: FastAPI) -> AsyncClient:
 async def test_health_check(client: AsyncClient) -> None:
     """Tests the health check endpoint."""
     response = await client.get("/health")
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
 
 
@@ -238,7 +246,7 @@ async def test_process_endpoint(client: AsyncClient) -> None:
         f"{MENTALLAMA_API_PREFIX}/process",
         json={"prompt": TEST_PROMPT, "model": TEST_MODEL},
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     data = response.json()
     assert data["model"] == "mock_model"
     assert data["prompt"] == TEST_PROMPT
@@ -247,12 +255,12 @@ async def test_process_endpoint(client: AsyncClient) -> None:
 
 async def test_process_invalid_model(client: AsyncClient, mock_mentallama_service_override: AsyncMock) -> None:
     """Tests the process endpoint with an invalid model name."""
-    mock_mentallama_service_override.process.side_effect = ModelNotFoundError("Invalid model")
+    mock_mentallama_service_override.process.side_effect = Exception("Invalid model")
     response = await client.post(
         f"{MENTALLAMA_API_PREFIX}/process",
         json={"prompt": TEST_PROMPT, "model": "invalid_model"},
     )
-    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.status_code == 404
 
 
 async def test_process_empty_prompt(client: AsyncClient) -> None:
@@ -261,7 +269,7 @@ async def test_process_empty_prompt(client: AsyncClient) -> None:
         f"{MENTALLAMA_API_PREFIX}/process", json={"prompt": "", "model": TEST_MODEL}
     )
     # Expecting FastAPI's validation error (422)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == 422
 
 
 async def test_analyze_text_endpoint(client: AsyncClient) -> None:
@@ -269,7 +277,7 @@ async def test_analyze_text_endpoint(client: AsyncClient) -> None:
     response = await client.post(
         f"{MENTALLAMA_API_PREFIX}/analyze", json={"text": TEST_PROMPT}
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     assert "analysis" in response.json()
 
 
@@ -278,7 +286,7 @@ async def test_detect_conditions_endpoint(client: AsyncClient) -> None:
     response = await client.post(
         f"{MENTALLAMA_API_PREFIX}/detect-conditions", json={"text": TEST_PROMPT}
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     assert "conditions" in response.json()
 
 
@@ -293,7 +301,7 @@ async def test_therapeutic_response_endpoint(client: AsyncClient) -> None:
         url,
         json=payload
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     assert "response" in response.json()
 
 
@@ -302,7 +310,7 @@ async def test_suicide_risk_endpoint(client: AsyncClient) -> None:
     response = await client.post(
         f"{MENTALLAMA_API_PREFIX}/suicide-risk", json={"text": TEST_PROMPT}
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     assert "risk_level" in response.json()
 
 
@@ -311,14 +319,14 @@ async def test_wellness_dimensions_endpoint(client: AsyncClient) -> None:
     response = await client.post(
         f"{MENTALLAMA_API_PREFIX}/wellness-dimensions", json={"text": TEST_PROMPT}
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == 200
     assert "dimensions" in response.json()
 
 
 async def test_service_unavailable(client: AsyncClient, mock_mentallama_service_override: AsyncMock) -> None:
     """Tests error handling when the MentaLLaMA service is unavailable."""
-    # Configure the mock service to raise ServiceUnavailableError
-    mock_mentallama_service_override.process.side_effect = ServiceUnavailableError(
+    # Configure the mock service to raise Exception
+    mock_mentallama_service_override.process.side_effect = Exception(
         "MentaLLaMA service is down"
     )
 
@@ -329,6 +337,6 @@ async def test_service_unavailable(client: AsyncClient, mock_mentallama_service_
     )
 
     # Assert that the API returns a 503 Service Unavailable status
-    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert response.status_code == 503
     assert "detail" in response.json()
     assert response.json()["detail"] == "MentaLLaMA service is down"
