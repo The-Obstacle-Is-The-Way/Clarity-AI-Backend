@@ -238,15 +238,16 @@ def get_mock_user_repository() -> UserRepository:
 
 @pytest.fixture(scope="session") # Changed to session scope to match event_loop
 def initialized_app(
-    mock_xgboost_service: XGBoostInterface # Only depend on session-scoped services
+    mock_xgboost_service: XGBoostInterface, # Only depend on session-scoped services
+    test_db_session: AsyncSession # Depend on the test_db_session fixture
 ) -> FastAPI:
     """Creates a FastAPI app instance for testing with overridden dependencies."""
     
     # Define dependency overrides for the test session
     dependency_overrides = {
-        # Override database session with mocks instead of real sessions
-        get_db_session: lambda: AsyncMock(spec=AsyncSession),
-        get_core_db_session: lambda: AsyncMock(spec=AsyncSession),
+        # Override database session with the test_db_session fixture
+        get_db_session: lambda: test_db_session,
+        get_core_db_session: lambda: test_db_session,
         
         # Override Authentication Service dependencies
         # Provide a mock user repository to the AuthenticationService via JWTService
@@ -900,7 +901,7 @@ async def setup_database():
     # No teardown needed here - each test manages its own session via test_db_session
 
 @pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
+async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Create an isolated database session for each test function with test users.
 
@@ -912,48 +913,43 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession: SQLAlchemy async session with test users created
     """
-    # Import our standardized test database initializer
-    from app.tests.integration.utils.test_db_initializer import get_test_db_session
-    
-    # Use the standardized initializer to get a session
-    async for session in get_test_db_session():
-        yield session
-        # The get_test_db_session generator handles cleanup and rollback
-
-@pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    # Use test settings to ensure we connect to the test database
-    settings = get_settings()
-    database_url = settings.DATABASE_URL
-
-    logger.debug(f"Creating test engine for URL: {database_url}")
-    # Ensure StaticPool is used for test engine, especially for SQLite
-    engine_args = {
-        "echo": settings.DATABASE_ECHO,
-        "future": True,
-        "poolclass": StaticPool # Add StaticPool here
-    }
-    if database_url.startswith("sqlite"):
-        engine_args["connect_args"] = {"check_same_thread": False}
-
-    engine = create_async_engine(database_url, **engine_args)
-
-    logger.debug("Creating test database tables...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    test_async_session_factory = async_sessionmaker( # Rename variable
-        bind=engine, expire_on_commit=False, class_=AsyncSession
+    # Use in-memory SQLite for testing; connect_args needed for SQLite
+    DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        # CRITICAL: Use StaticPool for asyncio compatibility with SQLite in tests
+        poolclass=StaticPool, 
+        connect_args={"check_same_thread": False} # Required for SQLite
     )
 
-    logger.debug("Yielding test session...")
-    async with test_async_session_factory() as session: # Use renamed variable
-        try:
-            yield session
-        finally:
-            await session.close()
-            logger.debug("Test session closed.")
+    # Use the canonical Base from the correct location
+    from app.infrastructure.persistence.sqlalchemy.models.base import Base
+
+    # Create tables
+    async with engine.begin() as conn:
+        # logger.info("Dropping all tables in test database...")
+        # await conn.run_sync(Base.metadata.drop_all)
+        logger.info("Creating all tables in test database...")
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Create a session factory
+    TestingSessionLocal = async_sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+        expire_on_commit=False,
+        class_=AsyncSession # Ensure we use AsyncSession
+    )
+
+    async with TestingSessionLocal() as session:
+        logger.info("Yielding test database session.")
+        yield session # Yield the session for the test
+        logger.info("Rolling back test database session transaction.")
+        await session.rollback() # Rollback any changes after the test
+
+    # Drop tables after session is closed (optional cleanup)
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
-    logger.debug("Test engine disposed.")

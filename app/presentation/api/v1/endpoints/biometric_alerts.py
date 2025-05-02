@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 from fastapi import status
-from typing import Optional
-from uuid import UUID
+from typing import Optional, Any, List
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
@@ -38,7 +38,6 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertRuleUpdate,
     AlertRuleTemplateResponse,
 )
-from app.presentation.api.schemas.common import PaginatedResponseSchema
 from app.presentation.api.schemas.user import UserResponseSchema
 
 # Define the correct Enum type for path parameter
@@ -63,8 +62,8 @@ router = APIRouter(
     description="Retrieve biometric alert rules with optional filtering."
 )
 async def get_alert_rules(
-    patient_id: Optional[UUID] = Query(None, description="Filter rules by patient"),
-    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    patient_id: UUID | None = Query(None, description="Filter rules by patient"),
+    is_active: bool | None = Query(None, description="Filter by active status"),
     repository: BiometricAlertRuleRepository = Depends(get_rule_repository),
     current_user: UserResponseSchema = Depends(get_current_user)
 ) -> BiometricAlertListResponse:
@@ -84,150 +83,19 @@ async def get_alert_rules(
         HTTPException: If there's an error retrieving the rules
     """
     try:
-        # For test compatibility
-        if type(repository).__name__ in ["MagicMock", "AsyncMock", "PlaceholderRuleRepository"]:
-            logger = get_logger(__name__)
-            
-            # Get the sample rule that was passed to the mock
-            try:
-                sample_rule = repository.get_rules.return_value[0][0]
-                if isinstance(sample_rule, dict):
-                    # Process the mock data to match the expected response format
-                    rule_id_str = str(sample_rule["rule_id"]) if isinstance(sample_rule.get("rule_id"), UUID) else sample_rule.get("rule_id")
-                    patient_id_str = str(sample_rule["patient_id"]) if isinstance(sample_rule.get("patient_id"), UUID) else sample_rule.get("patient_id")
-                    provider_id_str = str(sample_rule.get("provider_id")) if isinstance(sample_rule.get("provider_id"), UUID) else sample_rule.get("provider_id")
-                    
-                    # Format conditions
-                    formatted_conditions = []
-                    for condition in sample_rule.get("conditions", []):
-                        formatted_condition = {
-                            "metric": condition.get("metric_name", "heart_rate"),
-                            "operator": condition.get("operator", ">"),
-                            "threshold": condition.get("threshold_value", 100.0),
-                            "duration_minutes": condition.get("time_window_hours", 1) * 60
-                        }
-                        formatted_conditions.append(formatted_condition)
-                    
-                    hardcoded_rule_data = {
-                        "rule_id": rule_id_str,
-                        "name": sample_rule.get("name", "Sample Rule"),
-                        "description": sample_rule.get("description", "Sample description"),
-                        "patient_id": patient_id_str,
-                        "conditions": formatted_conditions,
-                        "logical_operator": sample_rule.get("logical_operator", "AND").lower(),
-                        "priority": sample_rule.get("priority", "warning"),
-                        "is_active": sample_rule.get("is_active", True),
-                        "created_at": sample_rule.get("created_at", datetime.now(timezone.utc)),
-                        "updated_at": sample_rule.get("updated_at", datetime.now(timezone.utc)),
-                        "provider_id": provider_id_str,
-                        "metadata": sample_rule.get("metadata", {})
-                    }
-                    
-                    try:
-                        validated_rule = AlertRuleResponse.model_validate(hardcoded_rule_data)
-                        rules_data = [validated_rule.model_dump()]
-                    except Exception as e:
-                        logger.error(f"[MOCK PATH] Error creating/validating/dumping hardcoded response: {e}")
-                        # Fallback for test compatibility
-                        rules_data = [hardcoded_rule_data]
-                        
-                    return {
-                        "items": rules_data,
-                        "total": 1,
-                        "page": 1,
-                        "page_size": 10
-                    }
-            except Exception as e:
-                logger.error(f"Error getting mock rules: {e}")
-                
-            # Default mock response if all else fails
-            uuid_str = str(uuid.uuid4())
-            rules_data = [{
-                "rule_id": uuid_str,
-                "name": "Mock Alert Rule",
-                "description": "This is a mock alert rule for testing",
-                "patient_id": str(uuid.uuid4()),
-                "conditions": [
-                    {
-                        "metric": "heart_rate",
-                        "operator": "gt",
-                        "threshold": 100.0,
-                        "duration_minutes": 5
-                    }
-                ],
-                "logical_operator": "and",
-                "priority": "warning",
-                "is_active": True,
-                "created_at": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc),
-                "provider_id": str(uuid.uuid4()),
-                "metadata": {}
-            }]
-            
-            return {
-                "items": rules_data,
-                "total": 1,
-                "page": 1,
-                "page_size": 10
-            }
-        
-        # Get rules from repository
-        rules, total = await repository.get_rules(
-            patient_id=patient_id,
-            is_active=is_active
+        # NOTE: The repository currently uses placeholder implementations.
+        # We call get_rules and calculate total manually as a temporary fix.
+        logger.info(
+            f"Fetching alert rules from repository (patient_id={patient_id}, is_active={is_active})..."
         )
+        rules = await repository.get_rules(
+            patient_id=patient_id, is_active=is_active
+        )
+        total = len(rules) # Calculate total manually
         
-        # Format rules for response
-        formatted_rules = []
-        for rule in rules:
-            # Format rule ID and other UUIDs
-            rule_id_str = str(rule.rule_id) if isinstance(rule.rule_id, UUID) else rule.rule_id
-            patient_id_str = str(rule.patient_id) if isinstance(rule.patient_id, UUID) else rule.patient_id
-            provider_id_str = str(rule.provider_id) if isinstance(rule.provider_id, UUID) else rule.provider_id
-            
-            # Format conditions
-            formatted_conditions = []
-            for condition in rule.conditions:
-                metric_str = condition.metric.value if hasattr(condition.metric, "value") else condition.metric
-                operator_str = condition.operator.value if hasattr(condition.operator, "value") else condition.operator
-                
-                formatted_condition = {
-                    "metric": metric_str,
-                    "operator": operator_str,
-                    "threshold": condition.threshold,
-                    "duration_minutes": condition.duration_minutes
-                }
-                formatted_conditions.append(formatted_condition)
-            
-            # Format logical operator
-            logical_op_str = rule.logical_operator.value if hasattr(rule.logical_operator, "value") else rule.logical_operator
-            
-            # Format priority
-            priority_str = rule.priority.value if hasattr(rule.priority, "value") else rule.priority
-            
-            # Create formatted rule
-            formatted_rule = {
-                "rule_id": rule_id_str,
-                "name": rule.name,
-                "description": rule.description,
-                "patient_id": patient_id_str,
-                "conditions": formatted_conditions,
-                "logical_operator": logical_op_str,
-                "priority": priority_str,
-                "is_active": rule.is_active,
-                "created_at": rule.created_at,
-                "updated_at": rule.updated_at,
-                "provider_id": provider_id_str,
-                "metadata": rule.metadata or {}
-            }
-            formatted_rules.append(formatted_rule)
-        
-        return {
-            "items": formatted_rules,
-            "total": total,
-            "page": 1,  # Implement pagination if needed
-            "page_size": len(formatted_rules)
-        }
+        # Process rules and return
+        response_rules = [AlertRuleResponse.from_orm(rule) for rule in rules]
+        return BiometricAlertListResponse(rules=response_rules, total=total)
     except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
