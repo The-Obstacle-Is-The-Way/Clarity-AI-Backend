@@ -17,6 +17,8 @@ from httpx import AsyncClient
 from starlette.requests import Request
 from starlette.responses import Response
 
+# Application imports (Sorted)
+from app.api.routes.ml import verify_api_key
 from app.app_factory import create_application
 from app.config.settings import Settings, get_settings
 from app.core.dependencies.database import get_db_session
@@ -24,8 +26,9 @@ from app.core.interfaces.services.authentication_service import IAuthenticationS
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.infrastructure.di.container import container as di_container
-from app.api.routes.ml import verify_api_key
-from app.presentation.api.middleware.auth_middleware import AuthenticationMiddleware
+from app.presentation.middleware.authentication_middleware import (
+    AuthenticationMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -134,13 +137,13 @@ async def mock_auth_middleware_call(request: Request, call_next: Callable[[Reque
     return response
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def mock_verify_api_key() -> AsyncMock:
     """Provides a mock for the verify_api_key dependency."""
     return AsyncMock() # Simple mock as the real function is empty
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def test_app_with_lifespan(
     settings: Settings,
     mock_mentallama_service_override: AsyncMock,
@@ -175,57 +178,56 @@ async def test_app_with_lifespan(
         # Make sure to call the original method correctly
         return original_resolve(interface_type)
 
-    # Apply the patch to the container's resolve method using 'with'
-    with patch.object(di_container, 'resolve', side_effect=mock_resolve) as patched_resolve:
-        logger.info(f"DI container 'resolve' method patched (mock ID: {id(patched_resolve)}).")
+    # Patch the DI container, Middleware, and Redis init/close functions
+    with (
+        patch.object(di_container, 'resolve', side_effect=mock_resolve),
+        patch(
+            "app.presentation.middleware.authentication_middleware.AuthenticationMiddleware",
+            new_callable=MagicMock
+        ) as _,
+        patch("app.app_factory.initialize_redis_pool", new_callable=AsyncMock) as _,
+        patch("app.app_factory.close_redis_connection", new_callable=AsyncMock) as _,
+    ):
+        logger.info(
+            "Creating FastAPI app instance within patched context "
+            "(DI, AuthMiddleware, Redis)..."
+        )
+        # Create app instance *after* patches are active
+        app = create_application(settings)
+        logger.info("FastAPI app instance created successfully with patches active.")
 
-        # --- Patch FastAPI's add_middleware (as a safeguard) --- #
-        original_add_middleware = FastAPI.add_middleware
-        def mock_add_middleware(self, middleware_class, **options):
-            if middleware_class == AuthenticationMiddleware:
-                logger.info("Skipping add_middleware for AuthenticationMiddleware via patch.")
-                return # Skip adding the real middleware
-            logger.debug(f"Allowing add_middleware for {middleware_class.__name__}")
-            original_add_middleware(self, middleware_class, **options)
-
-        with patch.object(FastAPI, 'add_middleware', side_effect=mock_add_middleware):
-            logger.info("FastAPI 'add_middleware' method patched (safeguard).")
-            # --- Create FastAPI App Instance (now with patched resolve and add_middleware) --- #
-            # This should now succeed as auth dependencies will be mocked during middleware setup
-            try:
-                app = create_application(settings)
-                logger.info("FastAPI app instance created successfully with patches active.")
-            except Exception as e:
-                logger.error(f"Error during create_application WITH patches: {e}", exc_info=True)
-                raise # Re-raise the exception to fail the fixture setup clearly
-
-    # --- Apply Dependency Overrides AFTER app creation (for routers/endpoints) --- #
-    # Overrides for dependencies used directly in routes (not via middleware setup)
-    dependency_overrides = {
-        MentaLLaMAInterface: lambda: mock_mentallama_service_override,
-        # Still override auth services here for direct injection into endpoints
-        IAuthenticationService: lambda: mock_auth_service,
-        IJwtService: lambda: mock_jwt_service,
-        verify_api_key: lambda: mock_verify_api_key,
-        get_settings: lambda: settings,
-        # Use the actual db session for tests - lifespan manager handles init/dispose
-        get_db_session: get_db_session,
-    }
-    app.dependency_overrides.update(dependency_overrides)
-    logger.info("Dependency overrides applied for routes/endpoints.")
+        # --- Apply Dependency Overrides AFTER app creation (for routers/endpoints) --- #
+        # Overrides for dependencies used directly in routes (not via middleware setup)
+        dependency_overrides = {
+            MentaLLaMAInterface: lambda: mock_mentallama_service_override,
+            # Still override auth services here for direct injection into endpoints
+            IAuthenticationService: lambda: mock_auth_service,
+            IJwtService: lambda: mock_jwt_service,
+            verify_api_key: lambda: mock_verify_api_key,
+            get_settings: lambda: settings,
+            # Use the actual db session for tests - lifespan manager handles init/dispose
+            get_db_session: get_db_session,
+        }
+        app.dependency_overrides.update(dependency_overrides)
+        logger.info("Dependency overrides applied for routes/endpoints.")
 
     # --- Manually Manage Lifespan --- #
     logger.info("Entering lifespan context manager...")
-    async with app.router.lifespan_context(app):
-        logger.info("Lifespan startup complete. Yielding app.")
-        yield app
-        logger.info("Lifespan shutdown initiated within fixture.")
+    try:
+        # Manually drive the lifespan context
+        async with app.router.lifespan_context(app):
+            logger.info("Lifespan startup complete (Redis calls mocked), yielding app...")
+            yield app
+            logger.info("Exiting lifespan context (yielded app)...")
+    except Exception as e:
+        logger.error(f"Error during lifespan context: {e}")
+        raise
     logger.info("Lifespan context manager exited.")
     logger.info("Tearing down test application fixture.")
 
 
 # --- Fixture for Test Client (Depends on Lifespan-Managed App) --- #
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def client(test_app_with_lifespan: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """Provides an asynchronous test client for the application."""
     logger.info("Creating test client using lifespan-managed app...")
