@@ -53,10 +53,9 @@ from app.infrastructure.di.container import get_container # Import get_container
 from app.domain.entities.user import User # Import User
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
 from app.core.interfaces.repositories.user_repository import IUserRepository
-from app.core.interfaces.services.patient_assignment_service import IPatientAssignmentService
-from app.domain.entities.alert import Alert # noqa F401
+from app.domain.entities.biometric_alert import BiometricAlert # noqa F401
 from app.domain.entities.appointment import Appointment # noqa F401
-from app.domain.entities.biometric_data import BiometricData # noqa F401
+from app.domain.entities.biometric_twin import BiometricDataPoint # noqa F401
 from app.core.dependencies.database import get_db_session as get_core_db_session
 from app.domain.enums.role import Role # Import Role
 from app.domain.repositories.user_repository import UserRepository # Ensure imported
@@ -192,8 +191,8 @@ def initialized_app(
     test_engine: "AsyncEngine", # Use forward reference
     mock_db_session_override: Callable[[], AsyncSession],
     mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
-    mock_pat_service_override: Callable[[], IPatientAssignmentService],
-    mock_xgboost_service_override: Callable[[], IXGBoostService],
+    mock_pat_service_override: Callable[[], "IPatientAssignmentService"], # Use forward reference
+    mock_xgboost_service_override: Callable[[], XGBoostInterface],
     test_settings_for_token_gen: Settings, # Inject settings specifically for JWT
 ) -> FastAPI:
     """Initialize FastAPI app with test settings and overrides."""
