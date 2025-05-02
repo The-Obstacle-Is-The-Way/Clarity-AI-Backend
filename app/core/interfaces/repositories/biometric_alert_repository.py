@@ -1,13 +1,10 @@
-"""Interface definition for Biometric Alert Repository.
-
-Defines the contract for data access operations related to Biometric Alert entities.
-"""
+"""Interface definition for Biometric Alert Repository."""
 
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
 
-# Import BiometricAlert entity - use Any as fallback if import fails
+# Import BiometricAlert entity from domain
 try:
     from app.domain.entities.biometric_alert import BiometricAlert
 except ImportError:
@@ -16,7 +13,7 @@ except ImportError:
 
 
 class IBiometricAlertRepository(ABC):
-    """Abstract base class for biometric alert data persistence operations."""
+    """Repository interface for BiometricAlert entities."""
 
     @abstractmethod
     async def get_by_id(self, alert_id: UUID) -> Optional[BiometricAlert]:
@@ -40,25 +37,5 @@ class IBiometricAlertRepository(ABC):
 
     @abstractmethod
     async def delete(self, alert_id: UUID) -> bool:
-        """Delete a biometric alert record by its ID. Returns True if deletion was successful."""
-        pass
-
-    @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[BiometricAlert]:
-        """List all biometric alerts with pagination."""
-        pass
-    
-    @abstractmethod
-    async def acknowledge(self, alert_id: UUID) -> BiometricAlert:
-        """Mark an alert as acknowledged."""
-        pass
-    
-    @abstractmethod
-    async def resolve(self, alert_id: UUID) -> BiometricAlert:
-        """Mark an alert as resolved."""
-        pass
-    
-    @abstractmethod
-    async def get_active_alerts(self, patient_id: Optional[UUID] = None, limit: int = 100, skip: int = 0) -> List[BiometricAlert]:
-        """Retrieve active (unresolved) alerts, optionally filtered by patient."""
+        """Delete a biometric alert record by its ID."""
         pass
