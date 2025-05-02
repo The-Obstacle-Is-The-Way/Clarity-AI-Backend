@@ -5,23 +5,26 @@ This module contains tests for all methods of the MockPATService class,
 verifying both success paths and error handling.
 """
 
-# Corrected import path
-from app.tests.standalone.mock_pat_service import MockPATService
-import logging
-import pytest
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+import sys
+from pathlib import Path
 
+import pytest
+
+# Imports first
 from app.core.services.ml.pat.exceptions import (
-    AnalysisError,
     AuthorizationError,
-    EmbeddingError,
     InitializationError,
-    IntegrationError,
     ResourceNotFoundError,
     ValidationError,
 )
+from app.tests.standalone.mock_pat_service import MockPATService
 
+# Add project root to sys.path AFTER imports
+project_root = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(project_root))
+
+# Replaced List, Dict with list, dict
+# Removed unused imports (UTC, Optional, Any)
 
 @pytest.fixture
 def mock_pat():
