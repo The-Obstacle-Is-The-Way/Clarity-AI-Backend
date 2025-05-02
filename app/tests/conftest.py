@@ -44,8 +44,8 @@ from app.presentation.api.dependencies.auth import get_jwt_service, get_authenti
 # Import the canonical Base from the correct location
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.core.services.ml.xgboost.interface import XGBoostInterface # Corrected XGBoostInterface import
-from app.domain.repositories.user_repository import IUserRepository # Corrected import path
-from app.domain.services.patient_assignment_service import IPatientAssignmentService # Corrected import path
+from app.domain.repositories.user_repository import UserRepository # Corrected import path to use UserRepository
+from app.domain.services.pat_service import PATService # Corrected import path and name
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
@@ -237,10 +237,10 @@ def mock_db_session_override(test_engine: AsyncEngine) -> Callable[[], AsyncGene
     return override_get_db
 
 @pytest.fixture(scope="session")
-def mock_user_repository_override() -> Callable[[], IUserRepository]:
+def mock_user_repository_override() -> Callable[[], UserRepository]:
     """Provides a dependency override for the user repository returning a mock."""
-    def get_mock_repo() -> IUserRepository:
-        mock_repo = MagicMock(spec=IUserRepository)
+    def get_mock_repo() -> UserRepository:
+        mock_repo = MagicMock(spec=UserRepository)
         # Define default mock behavior if needed for common scenarios, e.g.:
         # async def mock_get_by_id(user_id: str):
         #     if user_id == "existing_user":
@@ -253,13 +253,13 @@ def mock_user_repository_override() -> Callable[[], IUserRepository]:
     return get_mock_repo
 
 @pytest.fixture(scope="session")
-def mock_pat_service_override() -> Callable[[], IPatientAssignmentService]:
+def mock_pat_service_override() -> Callable[[], PATService]:
     """Provides a dependency override for the PAT service returning a mock."""
-    def get_mock_pat_service() -> IPatientAssignmentService:
-        mock_service = MagicMock(spec=IPatientAssignmentService)
-        logger.debug("Providing mock PatientAssignmentService instance.")
+    def get_mock_pat_service() -> PATService:
+        mock_service = MagicMock(spec=PATService)
+        logger.debug("Providing mock PATService instance.")
         return mock_service
-    logger.info("Created mock PatientAssignmentService override provider.")
+    logger.info("Created mock PATService override provider.")
     return get_mock_pat_service
 
 @pytest.fixture(scope="session")
@@ -279,8 +279,8 @@ def initialized_app(
     test_settings: Settings, # Use the primary test settings
     test_engine: "AsyncEngine",
     mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], # Ensure correct type hinting
-    mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
-    mock_pat_service_override: Callable[[], "IPatientAssignmentService"], # Use forward reference
+    mock_user_repository_override: Callable[[], UserRepository], # Inject the provider for mock repo
+    mock_pat_service_override: Callable[[], PATService], # Use corrected PATService type
     mock_xgboost_service_override: Callable[[], XGBoostInterface],
     test_settings_for_token_gen: Settings, # Inject settings specifically for JWT
 ) -> FastAPI:
