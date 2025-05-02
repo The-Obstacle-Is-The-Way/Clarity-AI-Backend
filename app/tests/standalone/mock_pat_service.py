@@ -1,38 +1,34 @@
 from __future__ import annotations
 
-"""
-Standalone mock implementation of the PAT (Patient Actigraphy Tracking)
-service.
-
-This module provides a self-contained mock that can be used for testing
-PAT functionality without requiring actual AWS or external service connections.
-"""
-
+# Standard library imports
 import logging
 import uuid
 from datetime import datetime
 from typing import Any
 
-from app.core.config import settings # noqa: F401
+# Local application/library specific imports
+from app.core.config import settings  # noqa: F401
 from app.core.services.ml.pat.exceptions import (
+    AuthorizationError,
     InitializationError,
     ResourceNotFoundError,
     ValidationError,
-    AuthorizationError,
 )
 from app.domain.utils.datetime_utils import UTC
+
+# --- Mock Service Class ---
+
 
 class MockPATService:
     """Mock implementation of the PAT service for standalone tests."""
 
     _initialized: bool = False
     _mock_delay_ms: int = 0
-    _mock_analyses: dict[str, dict[str, Any]] = {}
-    _mock_profiles: dict[str, dict[str, Any]] = {} # Key: profile_id
     _logger = logging.getLogger(__name__)
 
     def __init__(self) -> None:
-        pass
+        self._mock_profiles: dict[str, dict[str, Any]] = {}
+        self._mock_analyses: dict[str, dict[str, Any]] = {}
 
     def initialize(self, config: dict[str, Any]) -> None:
         """
@@ -237,8 +233,10 @@ class MockPATService:
                 missing = required_keys - reading.keys()
                 raise ValidationError(f"Reading at index {i} missing keys: {missing}")
             for axis in required_keys:
-                if not isinstance(reading[axis], (int, float)):
-                    raise ValidationError(f"Value for '{axis}' at index {i} is not a number.")
+                if not isinstance(reading[axis], int | float):
+                    raise ValidationError(
+                        f"Value for '{axis}' at index {i} is not a number."
+                    )
 
         self._logger.debug(f"Validated {len(readings)} readings.")
 
@@ -252,7 +250,7 @@ class MockPATService:
             start_time = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
             end_time = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
         except ValueError as e:
-            raise ValidationError(f"Invalid ISO 8601 timestamp format: {e}")
+            raise ValidationError(f"Invalid ISO 8601 timestamp format: {e}") from e
 
         if end_time <= start_time:
             raise ValidationError("End time must be after start time.")
@@ -296,7 +294,7 @@ class MockPATService:
         self._mock_profiles[profile_id] = {
             "profile_id": profile_id,
             "patient_id": patient_id,
-            "created_at": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(), # Renamed from created_at
             **profile_data,
         }
         self._logger.info(f"Created profile {profile_id} for patient {patient_id}")
@@ -313,7 +311,7 @@ class MockPATService:
 
         # Find the profile associated with the patient_id
         found_profile = None
-        for prof_id, profile in self._mock_profiles.items():
+        for profile in self._mock_profiles.values():
             if profile.get("patient_id") == patient_id:
                 found_profile = profile
                 break
@@ -321,7 +319,9 @@ class MockPATService:
         if not found_profile:
             raise ResourceNotFoundError(f"Profile for patient {patient_id} not found.")
             
-        self._logger.debug(f"Retrieved profile {found_profile['profile_id']} for patient {patient_id}")
+        self._logger.debug(
+            f"Retrieved profile {found_profile['profile_id']} for patient {patient_id}"
+        )
         return found_profile
 
     def update_patient_profile(
@@ -349,6 +349,7 @@ class MockPATService:
 
         # Update the found profile
         self._mock_profiles[target_profile_id].update(profile_data)
+        # Keep updated_at distinct if needed, or unify later
         self._mock_profiles[target_profile_id]["updated_at"] = datetime.now(UTC).isoformat()
         self._logger.info(f"Updated profile {target_profile_id} for patient {patient_id}")
         return self._mock_profiles[target_profile_id]
@@ -394,10 +395,11 @@ class MockPATService:
 
         # Verify patient profile exists (implicitly checked by get_patient_profile)
         try:
-            profile = self.get_patient_profile(patient_id)
-            profile_id = profile.get("profile_id") # Get the profile_id
-        except ResourceNotFoundError:
-             raise ResourceNotFoundError(f"Patient profile for {patient_id} not found for integration.")
+            self.get_patient_profile(patient_id)
+        except ResourceNotFoundError as err:
+             raise ResourceNotFoundError(
+                 f"Patient profile for {patient_id} not found for integration."
+             ) from err
 
         # Simulate integration
         integration_status = "success"
@@ -485,18 +487,26 @@ class MockPATService:
             },
         }
 
+        self._logger.info(
+            f"Generated embedding {embedding_id} for patient {patient_id} "
+            f"using model {result['metadata']['model_name']}"
+        )
+
         return result
 
     def get_patient_analyses(
-        self, patient_id: str, limit: int = 10, offset: int = 0
+        self,
+        patient_id: str,
+        page: int = 1,
+        limit: int = 10
     ) -> dict[str, Any]:
         """
-        Retrieve all analyses for a patient with pagination.
+        Get paginated list of analyses for a patient.
 
         Args:
             patient_id: The ID of the patient
+            page: Page number for pagination
             limit: Maximum number of analyses to return
-            offset: Number of analyses to skip
 
         Returns:
             Dict containing the analyses and pagination info
@@ -506,23 +516,27 @@ class MockPATService:
         """
         self._check_initialized()
 
-        # Get all analysis IDs for this patient
-        analysis_ids = [aid for aid, analysis in self._mock_analyses.items() if analysis.get("patient_id") == patient_id]
+        # Get all analysis IDs for this patient (reformatted comprehension)
+        analysis_ids = [
+            aid for aid, analysis in self._mock_analyses.items()
+            if analysis.get("patient_id") == patient_id
+        ]
         total = len(analysis_ids)
 
         # Apply pagination
+        offset = (page - 1) * limit
         paginated_ids = analysis_ids[offset: offset + limit]
+        total_pages = -(-total // limit)  # Ceiling division
 
-        # Get full analysis data for each ID
         analyses = [self._mock_analyses[aid] for aid in paginated_ids]
 
         return {
             "analyses": analyses,
             "pagination": {
-                "total": total,
+                "page": page,
                 "limit": limit,
-                "offset": offset,
-                "has_more": (offset + limit) < total,
+                "total_items": total,
+                "total_pages": total_pages,
             },
         }
 
@@ -559,7 +573,7 @@ class MockPATService:
                 "Actigraph wGT3X-BT",
                 "Apple Watch",
                 "Fitbit Sense",
-                "Oura Ring",
+                "Garmin Vivosmart",
                 "Generic Accelerometer",
             ],
             "created_at": "2025-01-01T00:00:00Z",
@@ -570,4 +584,41 @@ class MockPATService:
                 "stress_assessment": 0.85,
                 "anomaly_detection": 0.78,
             },
+        }
+
+    def get_system_capabilities(self) -> dict[str, Any]:
+        """
+        Get system capabilities.
+
+        Returns:
+            Dict with system capabilities
+        """
+        self._check_initialized()
+        return {
+            "service_status": "operational" if self._initialized else "offline",
+            "version": "mock-1.0.0",
+            "supported_endpoints": [
+                "/analyze",
+                "/analysis/{analysis_id}",
+                "/profiles",
+                "/profiles/{patient_id}",
+                "/integrate",
+                "/embeddings",
+                "/capabilities",
+                "/health",
+            ],
+            "supported_analysis_types": [
+                "sleep",
+                "activity",
+                "stress",
+                "circadian",
+                "anomaly",
+            ],
+            "supported_devices": [
+                "Actigraph wGT3X-BT",
+                "Apple Watch",
+                "Fitbit Sense",
+                "Garmin Vivosmart",
+                "Generic Accelerometer", 
+            ],
         }

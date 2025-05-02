@@ -54,6 +54,7 @@ def valid_device_info():
         "device_type": "Actigraph wGT3X-BT",
         "manufacturer": "Actigraph",
         "placement": "wrist",
+        "model": "TestModel"
     }
 
 
@@ -451,8 +452,7 @@ class TestMockPATProfileManagement:
 
         # Now retrieve it
         retrieved_profile = initialized_mock_pat.get_patient_profile(
-            patient_id="patient-123",
-            profile_id=profile_id
+            patient_id="patient-123"
         )
 
         # Verify retrieved profile matches created profile
@@ -465,8 +465,7 @@ class TestMockPATProfileManagement:
         """Test profile retrieval fails when service is not initialized."""
         with pytest.raises(InitializationError):
             mock_pat.get_patient_profile(
-                patient_id="patient-123",
-                profile_id="profile-123"
+                patient_id="patient-123"
             )
 
     @pytest.mark.standalone()
@@ -474,8 +473,7 @@ class TestMockPATProfileManagement:
         """Test profile retrieval fails when profile doesn't exist."""
         with pytest.raises(ResourceNotFoundError):
             initialized_mock_pat.get_patient_profile(
-                patient_id="patient-123",
-                profile_id="non-existent-profile"
+                patient_id="non-existent-profile"
             )
 
     @pytest.mark.standalone()
@@ -493,8 +491,7 @@ class TestMockPATProfileManagement:
         # Try to retrieve it with a different patient ID
         with pytest.raises(AuthorizationError):
             initialized_mock_pat.get_patient_profile(
-                patient_id="patient-456",  # Different patient
-                profile_id=profile_id
+                patient_id="patient-456"  # Different patient
             )
 
     @pytest.mark.standalone()
@@ -518,7 +515,6 @@ class TestMockPATProfileManagement:
 
         updated_profile = initialized_mock_pat.update_patient_profile(
             patient_id="patient-123",
-            profile_id=profile_id,
             profile_data=updated_data
         )
 
@@ -535,7 +531,6 @@ class TestMockPATProfileManagement:
         with pytest.raises(InitializationError):
             mock_pat.update_patient_profile(
                 patient_id="patient-123",
-                profile_id="profile-123",
                 profile_data={"age": 36}
             )
 
@@ -544,8 +539,7 @@ class TestMockPATProfileManagement:
         """Test profile update fails when profile doesn't exist."""
         with pytest.raises(ResourceNotFoundError):
             initialized_mock_pat.update_patient_profile(
-                patient_id="patient-123",
-                profile_id="non-existent-profile",
+                patient_id="non-existent-profile",
                 profile_data={"age": 36}
             )
 
@@ -565,7 +559,6 @@ class TestMockPATProfileManagement:
         with pytest.raises(AuthorizationError):
             initialized_mock_pat.update_patient_profile(
                 patient_id="patient-456",  # Different patient
-                profile_id=profile_id,
                 profile_data={"age": 36}
             )
 
@@ -585,7 +578,6 @@ class TestMockPATProfileManagement:
         with pytest.raises(ValidationError):
             initialized_mock_pat.update_patient_profile(
                 patient_id="patient-123",
-                profile_id=profile_id,
                 profile_data={}
             )
 
@@ -626,7 +618,6 @@ class TestMockPATIntegration:
         # Now integrate with digital twin
         result = initialized_mock_pat.integrate_with_digital_twin(
             patient_id="patient-123",
-            profile_id=profile_id,
             analysis_id=analysis_id,
         )
 
@@ -657,7 +648,6 @@ class TestMockPATIntegration:
         with pytest.raises(InitializationError):
             mock_pat.integrate_with_digital_twin(
                 patient_id="patient-123",
-                profile_id="profile-xyz",
                 analysis_id="analysis-xyz",
             )
 
@@ -667,7 +657,6 @@ class TestMockPATIntegration:
         with pytest.raises(ValidationError):
             initialized_mock_pat.integrate_with_digital_twin(
                 patient_id=None,
-                profile_id="profile-xyz",
                 analysis_id="analysis-xyz",
             )
 
@@ -696,8 +685,7 @@ class TestMockPATIntegration:
         # Attempt integration with non-existent profile
         with pytest.raises(ResourceNotFoundError):
             initialized_mock_pat.integrate_with_digital_twin(
-                patient_id="patient-123",
-                profile_id="non-existent-profile",
+                patient_id="non-existent-profile",
                 analysis_id=analysis_id,
             )
 
@@ -719,7 +707,6 @@ class TestMockPATIntegration:
         with pytest.raises(ResourceNotFoundError):
             initialized_mock_pat.integrate_with_digital_twin(
                 patient_id="patient-123",
-                profile_id=profile_id,
                 analysis_id="non-existent-analysis",
             )
 
@@ -749,6 +736,5 @@ class TestMockPATIntegration:
         with pytest.raises(AuthorizationError):
             initialized_mock_pat.integrate_with_digital_twin(
                 patient_id="patient-456",  # Different patient
-                profile_id="profile-xyz",
                 analysis_id=analysis_id,
             )
