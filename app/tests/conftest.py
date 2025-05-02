@@ -11,7 +11,7 @@ import sys
 from collections.abc import AsyncGenerator, Callable
 from datetime import datetime, timezone
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 import pytest
 from fastapi import FastAPI

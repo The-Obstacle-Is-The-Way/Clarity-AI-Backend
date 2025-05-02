@@ -8,26 +8,31 @@ with proper foreign key relationships.
 
 import asyncio
 import logging
-import os
 import sys
 import uuid
 from datetime import datetime
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
-logger = logging.getLogger(__name__)
-
-# Add the backend directory to sys.path if needed
-backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
+from pathlib import Path
 
 # Import SQLAlchemy components
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Add the backend directory to sys.path if needed
+current_file_path = Path(__file__)
+backend_dir = current_file_path.parent.parent.parent.resolve()
+
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 # Import application components
+from app.core.config import settings
+from app.core.security.passwords import get_password_hash
+from app.infrastructure.database.base import Base
 
 # Import model classes to register with metadata
 try:
@@ -37,11 +42,11 @@ except Exception as e:
     PATIENT_IMPORTED = False
 
 # Constants for test users
-TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-TEST_CLINICIAN_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
+TEST_USER_ID = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+TEST_CLINICIAN_ID = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12")
 TEST_USER_EMAIL = "test.user@novamind.ai"
 TEST_CLINICIAN_EMAIL = "test.clinician@novamind.ai"
-TEST_PASSWORD_HASH = "hashed_password_for_testing_only"
+TEST_PASSWORD_HASH = get_password_hash("testpassword")
 
 # Direct SQL statements for table creation
 DIRECT_SQL = {
@@ -113,6 +118,21 @@ DIRECT_SQL = {
     """
 }
 
+async def table_exists(session: AsyncSession, table_name: str) -> bool:
+    """
+    Check if a table exists in the SQLite database.
+    Uses parameterized query to prevent SQL injection.
+    """
+    try:
+        query = text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
+        result = await session.execute(query, {"table_name": table_name})
+        exists = result.scalar() is not None
+        logger.debug(f"Table '{table_name}' exists check result: {exists}")
+        return exists
+    except Exception as e:
+        logger.error(f"Error checking if table {table_name} exists: {e}")
+        return False
+
 async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
     """
     Verify that a table exists in the database.
@@ -125,9 +145,7 @@ async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
         bool: True if table exists, False otherwise
     """
     try:
-        query = text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
-        result = await session.execute(query)
-        exists = result.scalar() is not None
+        exists = await table_exists(session, table_name)
         
         if exists:
             # Also verify table has data structure by counting columns
@@ -150,56 +168,66 @@ async def create_test_users(session: AsyncSession) -> None:
     logger.info("Creating test users for foreign key relationships")
     
     # Check if test user exists
-    query = text(f"SELECT id FROM users WHERE id = '{TEST_USER_ID}'")
-    result = await session.execute(query)
+    query = text("SELECT id FROM users WHERE id = :user_id")
+    result = await session.execute(query, {"user_id": TEST_USER_ID})
     test_user_exists = result.scalar() is not None
     
     # Check if test clinician exists
-    query = text(f"SELECT id FROM users WHERE id = '{TEST_CLINICIAN_ID}'")
-    result = await session.execute(query)
+    query = text("SELECT id FROM users WHERE id = :user_id")
+    result = await session.execute(query, {"user_id": TEST_CLINICIAN_ID})
     test_clinician_exists = result.scalar() is not None
     
     # Create test user if not exists
     if not test_user_exists:
         logger.info(f"Creating test user with ID: {TEST_USER_ID}")
         query = text("""
-        INSERT INTO users (id, username, email, password_hash, is_active, is_verified, email_verified, role, created_at, updated_at)
-        VALUES (:id, :username, :email, :password_hash, :is_active, :is_verified, :email_verified, :role, :created_at, :updated_at)
+        INSERT INTO users (id, username, email, password_hash, is_active, 
+                         is_verified, email_verified, role, created_at, updated_at)
+        VALUES (:id, :username, :email, :password_hash, :is_active, 
+                :is_verified, :email_verified, :role, :created_at, :updated_at)
         """)
         
-        await session.execute(query, {
-            "id": str(TEST_USER_ID),
-            "username": "testuser",
-            "email": TEST_USER_EMAIL,
-            "password_hash": TEST_PASSWORD_HASH,
-            "is_active": True,
-            "is_verified": True,
-            "email_verified": True,
-            "role": "PATIENT",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        })
+        await session.execute(
+            query,
+            {
+                "id": TEST_USER_ID,
+                "username": "testuser",
+                "email": TEST_USER_EMAIL,
+                "password_hash": TEST_PASSWORD_HASH,
+                "is_active": True,
+                "is_verified": True,
+                "email_verified": True,
+                "role": "PATIENT",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+        )
     
     # Create test clinician if not exists
     if not test_clinician_exists:
         logger.info(f"Creating test clinician with ID: {TEST_CLINICIAN_ID}")
         query = text("""
-        INSERT INTO users (id, username, email, password_hash, is_active, is_verified, email_verified, role, created_at, updated_at)
-        VALUES (:id, :username, :email, :password_hash, :is_active, :is_verified, :email_verified, :role, :created_at, :updated_at)
+        INSERT INTO users (id, username, email, password_hash, is_active, 
+                         is_verified, email_verified, role, created_at, updated_at)
+        VALUES (:id, :username, :email, :password_hash, :is_active, 
+                :is_verified, :email_verified, :role, :created_at, :updated_at)
         """)
         
-        await session.execute(query, {
-            "id": str(TEST_CLINICIAN_ID),
-            "username": "testclinician",
-            "email": TEST_CLINICIAN_EMAIL,
-            "password_hash": TEST_PASSWORD_HASH,
-            "is_active": True,
-            "is_verified": True,
-            "email_verified": True,
-            "role": "CLINICIAN",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        })
+        await session.execute(
+            query,
+            {
+                "id": TEST_CLINICIAN_ID,
+                "username": "testclinician",
+                "email": TEST_CLINICIAN_EMAIL,
+                "password_hash": TEST_PASSWORD_HASH,
+                "is_active": True,
+                "is_verified": True,
+                "email_verified": True,
+                "role": "CLINICIAN",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+        )
     
     await session.commit()
     
@@ -211,80 +239,25 @@ async def create_test_users(session: AsyncSession) -> None:
         logger.error(f"Failed to verify test users. Found {len(users)}.")
     logger.info(f"Verified {len(users)}/2 test users exist")
 
-async def initialize_database():
+async def initialize_database() -> None:
     """
     Initialize the database with all required tables and test data.
     """
     logger.info("QUANTUM DATABASE INITIALIZER: Starting database initialization")
     
-    # Create in-memory SQLite database
-    db_url = "sqlite+aiosqlite:///:memory:"
-    engine = create_async_engine(db_url, echo=True)
-    
-    # Create session factory
-    async_session_factory = async_sessionmaker(
-        bind=engine,
-        expire_on_commit=False,
-        autoflush=False,
-        class_=AsyncSession
-    )
-    
-    # Create session
-    async with async_session_factory() as session:
-        try:
-            # Enable foreign keys - CRITICAL STEP
-            logger.info("Enabling foreign keys in SQLite")
-            await session.execute(text(DIRECT_SQL["enable_foreign_keys"]))
-            
-            # Create tables in correct order
-            logger.info("Creating users table")
-            await session.execute(text(DIRECT_SQL["users"]))
-            await session.commit()
-            
-            # Verify users table was created
-            if not await verify_table_exists(session, "users"):
-                raise RuntimeError("Failed to create users table")
-                
-            logger.info("Creating patients table")
-            await session.execute(text(DIRECT_SQL["patients"]))
-            await session.commit()
-            
-            # Verify patients table was created
-            if not await verify_table_exists(session, "patients"):
-                raise RuntimeError("Failed to create patients table")
-            
-            # Create test users
-            await create_test_users(session)
-            
-            # Final verification
-            logger.info("Verifying all tables")
-            query = text("SELECT name FROM sqlite_master WHERE type='table'")
-            result = await session.execute(query)
-            all_tables = [row[0] for row in result]
-            logger.info(f"Tables in database: {all_tables}")
-            
-            # Verify data
-            logger.info("Verifying data")
-            query = text("SELECT COUNT(*) FROM users")
-            result = await session.execute(query)
-            user_count = result.scalar()
-            logger.info(f"User count: {user_count}")
-            
-            query = text("SELECT COUNT(*) FROM patients")
-            result = await session.execute(query)
-            patient_count = result.scalar()
-            logger.info(f"Patient count: {patient_count}")
-            
-            logger.info("QUANTUM DATABASE INITIALIZER: Completed successfully")
-        except Exception as e:
-            logger.error(f"Error during database initialization: {e}")
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
-    
-    # Dispose of the engine
-    await engine.dispose()
+    engine = create_async_engine(settings.SQLALCHEMY_TEST_DATABASE_URI, echo=False)
+    async_session_local = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    async with engine.begin() as conn:
+        logger.info("Dropping all tables if they exist...")
+        await conn.run_sync(Base.metadata.drop_all)
+        logger.info("Creating all tables...")
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with async_session_local() as session:
+        await create_test_users(session)
+
+    logger.info("Database initialization complete.")
 
 if __name__ == "__main__":
-    asyncio.run(initialize_database()) 
+    asyncio.run(initialize_database())
