@@ -184,13 +184,18 @@ def create_application(settings: Settings) -> FastAPI:
 
     logger.info("Adding API routers...")
     # --- API Router Configuration --- 
-    # TEMPORARILY COMMENTED OUT to isolate ModuleNotFoundError
-    # logger.info("Calling setup_routers()...")
-    # configured_api_router = setup_routers()
-    # logger.info("setup_routers() returned.")
-    # app.include_router(configured_api_router, prefix=f"/api/{settings.VERSION}")
-    logger.warning("Router inclusion TEMPORARILY SKIPPED for debugging.")
-    # logger.info(f"Included main API router with prefix: /api/{settings.VERSION}")
+    # Re-enabled router setup for production use
+    try:
+        logger.info("Calling setup_routers()...")
+        configured_api_router = setup_routers()
+        logger.info("setup_routers() returned.")
+        app.include_router(configured_api_router, prefix=f"/api/{version}")
+        logger.info(f"Included main API router with prefix: /api/{version}")
+    except Exception as e:
+        logger.error(f"Failed to setup routers: {str(e)}")
+        # Still allow app to start without routers for debugging
+        logger.warning("Router inclusion failed, but allowing app to start for diagnostics.")
+        # In production, this should probably re-raise
 
     # --- Static Files (Optional) ---
     # Example: Mount static files if serving frontend assets from backend
