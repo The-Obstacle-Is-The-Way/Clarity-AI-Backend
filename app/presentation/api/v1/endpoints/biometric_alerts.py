@@ -34,12 +34,7 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertRuleCreate,
     AlertRuleResponse,
     AlertRuleUpdate,
-)
-from app.presentation.api.v1.schemas.biometric_alert_schemas import (
-    BiometricAlertRuleTemplateSchema,
-    BiometricAlertRuleCreate,
-    BiometricAlertRuleUpdate,
-    BiometricAlertRuleDB
+    AlertRuleTemplateResponse,
 )
 from app.presentation.api.v1.schemas.common import PaginatedResponseSchema, UserResponseSchema
 
@@ -402,7 +397,7 @@ async def get_alert_rule(
     description="Create a new biometric alert rule from a template."
 )
 async def create_alert_rule_from_template(
-    template_data: BiometricAlertRuleTemplateSchema,
+    template_data: AlertRuleTemplateResponse,
     rule_repository: BiometricAlertRuleRepository = Depends(get_rule_repository),
     template_repository: BiometricAlertTemplateRepository = Depends(get_template_repository),
     current_user: UserResponseSchema = Depends(get_current_user)
