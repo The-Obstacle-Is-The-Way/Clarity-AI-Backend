@@ -17,7 +17,7 @@ from app.domain.entities.biometric_alert import (
     BiometricAlert,
 )
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule 
-from app.domain.exceptions import EntityNotFoundError, ServiceError, ValidationError 
+from app.domain.exceptions import EntityNotFoundError 
 from app.presentation.api.v1.dependencies import (
     get_biometric_alert_rule_service,
     get_biometric_alert_service,

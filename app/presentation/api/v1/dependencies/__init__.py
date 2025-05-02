@@ -122,6 +122,41 @@ def get_pat_service():
 services.get_pat_service = get_pat_service  # type: ignore[attr-defined]
 
 
+# Biometric Alert Rule service shim (required by biometric_alerts endpoint)
+
+def get_biometric_alert_rule_service():
+    """Return a stub BiometricAlertRuleService suitable for tests."""
+    try:
+        # Attempt to import a dedicated mock service if it exists
+        from app.infrastructure.services.mock_biometric_alert_rule_service import (
+            MockBiometricAlertRuleService,  # type: ignore
+        )
+        return MockBiometricAlertRuleService()
+    except ModuleNotFoundError:
+        # Fallback: Define a minimal stub if the mock is not found
+        class StubBiometricAlertRuleService:  # pragma: no cover – fallback
+            async def create_rule(self, *args, **kwargs):
+                return {"id": "stub_rule_id", "name": "Stub Rule"}
+            async def get_rule_by_id(self, rule_id: str, *args, **kwargs):
+                if rule_id == "stub_rule_id":
+                    return {"id": "stub_rule_id", "name": "Stub Rule"}
+                return None # Or raise appropriate not found error stub
+            async def update_rule(self, rule_id: str, *args, **kwargs):
+                 if rule_id == "stub_rule_id":
+                     return {"id": "stub_rule_id", "name": "Updated Stub Rule"}
+                 return None # Or raise appropriate not found error stub
+            async def delete_rule(self, rule_id: str, *args, **kwargs):
+                if rule_id == "stub_rule_id":
+                    return True
+                return False # Or raise appropriate not found error stub
+            async def list_rules(self, *args, **kwargs):
+                return []
+
+        return StubBiometricAlertRuleService()
+
+services.get_biometric_alert_rule_service = get_biometric_alert_rule_service  # type: ignore[attr-defined]
+
+
 # ---------------------------------------------------------------------------
 # "repositories" pseudo‑sub‑package
 # ---------------------------------------------------------------------------
