@@ -7,10 +7,9 @@ All AWS service interactions are mocked through the interface implementations.
 """
 
 import json
-import os
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
@@ -24,16 +23,9 @@ from app.core.interfaces.aws_service_interface import (
     S3ServiceInterface
 )
 
+from app.core.exceptions.base_exceptions import InvalidConfigurationError
+
 from app.core.services.ml.pat.bedrock import BedrockPAT
-from app.core.services.ml.pat.exceptions import (
-    AnalysisError,
-    AuthorizationError,
-    EmbeddingError,
-    InitializationError,
-    InvalidConfigurationError,
-    ResourceNotFoundError,
-    ValidationError,
-)
 
 
 class BodyWrapper:
@@ -61,14 +53,14 @@ class MockS3Service(S3ServiceInterface):
     def check_bucket_exists(self, bucket_name: str) -> bool:
         return bucket_name in self.buckets
     
-    def put_object(self, bucket_name: str, key: str, body: bytes) -> Dict[str, Any]:
+    def put_object(self, bucket_name: str, key: str, body: bytes) -> dict[str, Any]:
         if not self.check_bucket_exists(bucket_name):
             raise Exception(f"Bucket {bucket_name} does not exist")
         
         self.mock_objects[(bucket_name, key)] = body
         return {"ETag": "mock-etag", "VersionId": "mock-version-id"}
     
-    def get_object(self, bucket_name: str, key: str) -> Dict[str, Any]:
+    def get_object(self, bucket_name: str, key: str) -> dict[str, Any]:
         if not self.check_bucket_exists(bucket_name):
             raise Exception(f"Bucket {bucket_name} does not exist")
         
@@ -81,7 +73,7 @@ class MockS3Service(S3ServiceInterface):
             "LastModified": datetime.now(timezone.utc)
         }
     
-    def list_objects(self, bucket_name: str, prefix: Optional[str] = None) -> Dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         if not self.check_bucket_exists(bucket_name):
             raise Exception(f"Bucket {bucket_name} does not exist")
@@ -115,7 +107,7 @@ class MockS3Service(S3ServiceInterface):
         # Just simulate successful download
         pass
     
-    def generate_presigned_url(self, operation: str, params: Dict[str, Any], expires_in: int = 3600) -> str:
+    def generate_presigned_url(self, operation: str, params: dict[str, Any], expires_in: int = 3600) -> str:
         """Generate a presigned URL for an S3 operation."""
         return f"https://mock-s3-presigned-url.com/{params.get('Bucket', '')}/{params.get('Key', '')}"
 
@@ -126,12 +118,12 @@ class MockDynamoDBService(DynamoDBServiceInterface):
     def __init__(self, mock_items=None):
         self.mock_items = mock_items or {}
     
-    def scan_table(self, table_name: str) -> Dict[str, List[Dict[str, Any]]]:
+    def scan_table(self, table_name: str) -> dict[str, list[dict[str, Any]]]:
         if table_name not in self.mock_items:
             self.mock_items[table_name] = []
         return {"Items": self.mock_items[table_name]}
     
-    def put_item(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
+    def put_item(self, table_name: str, item: dict[str, Any]) -> dict[str, Any]:
         if table_name not in self.mock_items:
             self.mock_items[table_name] = []
         
@@ -146,7 +138,7 @@ class MockDynamoDBService(DynamoDBServiceInterface):
         
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
     
-    def get_item(self, table_name: str, key: Dict[str, Any]) -> Dict[str, Any]:
+    def get_item(self, table_name: str, key: dict[str, Any]) -> dict[str, Any]:
         if table_name not in self.mock_items:
             return {}
         
@@ -157,7 +149,7 @@ class MockDynamoDBService(DynamoDBServiceInterface):
         
         return {}
     
-    def query(self, table_name: str, key_condition_expression: str, expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+    def query(self, table_name: str, key_condition_expression: str, expression_attribute_values: dict[str, Any]) -> dict[str, Any]:
         if table_name not in self.mock_items:
             return {"Items": []}
         
@@ -176,7 +168,7 @@ class MockDynamoDBService(DynamoDBServiceInterface):
 class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
     """Mock Comprehend Medical service for testing."""
     
-    def detect_entities(self, text: str) -> Dict[str, Any]:
+    def detect_entities(self, text: str) -> dict[str, Any]:
         return {
             "Entities": [
                 {
@@ -194,7 +186,7 @@ class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
             "ModelVersion": "MockVersion"
         }
     
-    def detect_phi(self, text: str) -> Dict[str, Any]:
+    def detect_phi(self, text: str) -> dict[str, Any]:
         return {
             "Entities": [
                 {
@@ -211,7 +203,7 @@ class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
             "ModelVersion": "MockVersion"
         }
     
-    def infer_icd10_cm(self, text: str) -> Dict[str, Any]:
+    def infer_icd10_cm(self, text: str) -> dict[str, Any]:
         return {
             "Entities": [],
             "ModelVersion": "MockVersion"
@@ -221,7 +213,7 @@ class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
 class MockBedrockService(BedrockServiceInterface):
     """Mock Bedrock service for testing."""
     
-    def list_foundation_models(self) -> Dict[str, Any]:
+    def list_foundation_models(self) -> dict[str, Any]:
         return {
             "modelSummaries": [
                 {
@@ -234,7 +226,7 @@ class MockBedrockService(BedrockServiceInterface):
             ]
         }
     
-    def invoke_model(self, model_id: str, body: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         return {
             "body": BodyWrapper(json.dumps({"generated_text": "Mock response from Bedrock"}))
         }
@@ -243,7 +235,7 @@ class MockBedrockService(BedrockServiceInterface):
 class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
     """Mock Bedrock Runtime service for testing."""
     
-    def invoke_model(self, model_id: str, body, content_type=None, accept=None, **kwargs) -> Dict[str, Any]:
+    def invoke_model(self, model_id: str, body, content_type=None, accept=None, **kwargs) -> dict[str, Any]:
         return {
             "body": BodyWrapper(json.dumps({
                 "completion": "This patient shows signs of disrupted sleep patterns with frequent awakenings during the night. The actigraphy data indicates moderate sleep latency (time to fall asleep) of approximately 25 minutes.",
@@ -252,7 +244,7 @@ class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
             }))
         }
     
-    def invoke_model_with_response_stream(self, model_id: str, body, content_type=None, accept=None, **kwargs) -> Dict[str, Any]:
+    def invoke_model_with_response_stream(self, model_id: str, body, content_type=None, accept=None, **kwargs) -> dict[str, Any]:
         return {
             "stream": iter([{"chunk": {"bytes": json.dumps({"completion": "Mock stream response"}).encode()}}])
         }
@@ -369,24 +361,27 @@ async def test_initialization(bedrock_pat_service, pat_config):
     """Test successful initialization (attributes set by fixture)."""
     # Initialization is now handled by the fixture
     # await bedrock_pat_service.initialize(pat_config) # Removed
-    assert bedrock_pat_service._initialized
-    assert bedrock_pat_service._s3_service is not None
-    assert bedrock_pat_service._dynamodb_service is not None
-    assert bedrock_pat_service._bedrock_runtime_service is not None
-    assert bedrock_pat_service._comprehend_medical_service is not None
-    # assert bedrock_pat_service._config == pat_config # Removed - service doesn't store _config
-    assert bedrock_pat_service._s3_bucket == pat_config['bucket_name']
-    assert bedrock_pat_service._dynamodb_table == pat_config['dynamodb_table_name']
-    assert bedrock_pat_service._analysis_model_id == pat_config['bedrock_analysis_model_id'] # Corrected attribute name
-    assert bedrock_pat_service._kms_key_id == pat_config['kms_key_id']
+    assert bedrock_pat_service.initialized is True
+    assert bedrock_pat_service.bucket_name == pat_config["bucket_name"]
+    assert bedrock_pat_service.table_name == pat_config["dynamodb_table_name"]
+    assert bedrock_pat_service.kms_key_id == pat_config["kms_key_id"]
+    assert bedrock_pat_service.embedding_model_id == pat_config["bedrock_embedding_model_id"]
+    assert bedrock_pat_service.analysis_model_id == pat_config["bedrock_analysis_model_id"]
+    assert bedrock_pat_service.s3_client is not None
+    assert bedrock_pat_service.dynamodb_client is not None
+    assert bedrock_pat_service.bedrock_runtime is not None
 
 
 @pytest.mark.asyncio
-async def test_initialization_failure_invalid_config(bedrock_pat_service):
-    """Test initialization failure with invalid configuration."""
-    with pytest.raises(InvalidConfigurationError):
-        # Await the initialization call
-        await bedrock_pat_service.initialize({}) # Pass empty config
+async def test_initialization_failure_invalid_config():
+    """Test initialization failure with invalid configuration (missing keys)."""
+    mock_factory = MockAWSServiceFactory()
+    service = BedrockPAT(aws_service_factory=mock_factory)
+    invalid_config = {"bucket_name": "test-bucket"} # Missing required keys
+    
+    # Now pytest.raises should catch the correct exception type
+    with pytest.raises(InvalidConfigurationError, match="Missing required configuration keys"):
+        await service.initialize(invalid_config)
 
 
 @pytest.mark.asyncio
@@ -586,4 +581,4 @@ async def test_get_model_info(bedrock_pat_service):
     assert "model_id" in first_model
     # Check against the value stored in the correct attribute of the service
     # Assuming the first model returned is the analysis model
-    assert first_model["model_id"] == bedrock_pat_service._analysis_model_id
+    assert first_model["model_id"] == bedrock_pat_service.analysis_model_id
