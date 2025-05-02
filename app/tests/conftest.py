@@ -35,7 +35,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 # Updated import path to match codebase structure
-from app.config.settings import Settings, get_settings
+from app.config.settings import Settings
 from pydantic import SecretStr, Field
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -236,7 +236,7 @@ def get_mock_user_repository() -> UserRepository:
 
 # --- Application Fixture with Overrides ---
 
-@pytest.fixture(scope="session") # Changed to session scope to match event_loop
+@pytest.fixture(scope="function") # Changed to function scope
 def initialized_app(
     mock_xgboost_service: XGBoostInterface, # Only depend on session-scoped services
     test_db_session: AsyncSession # Depend on the test_db_session fixture
@@ -262,18 +262,32 @@ def initialized_app(
     
     # Create the application instance with overrides
     app = create_application(dependency_overrides=dependency_overrides)
+    
+    # Import models that might have forward references
+    from app.presentation.api.v1.models.biometric_alerts import (AlertRuleInput, AlertRuleOutput, 
+                                                                AlertOutput, AlertUpdate, 
+                                                                PatientAlertSummary, AlertRuleTemplateOutput)
+
+    # Explicitly update forward references for models used in the endpoint
+    AlertRuleInput.update_forward_refs()
+    AlertRuleOutput.update_forward_refs()
+    AlertOutput.update_forward_refs()
+    AlertUpdate.update_forward_refs()
+    PatientAlertSummary.update_forward_refs()
+    AlertRuleTemplateOutput.update_forward_refs()
+
+    logger.info("Initialized FastAPI app for testing with overrides and updated forward refs.")
     return app
 
 # --- Async Client Fixture --- 
 
-@pytest_asyncio.fixture(scope="session") # Changed to session scope to match event_loop
+@pytest_asyncio.fixture(scope="function") # Changed to function scope
 async def async_client(
     initialized_app: FastAPI, # Depend on the initialized app with overrides
 ) -> AsyncGenerator[AsyncClient, None]:
     """
     Create a new httpx AsyncClient instance for tests.
     Uses the `initialized_app` fixture which includes dependency overrides.
-    Using session scope to match event_loop and prevent ScopeMismatch errors.
     """
     # Use ASGITransport to interact with the FastAPI app in-memory
     transport = ASGITransport(app=initialized_app)
@@ -763,8 +777,7 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest.fixture(scope='session')
-# @pytest.mark.usefixtures("event_loop") # No longer needed
+@pytest.fixture
 def client(async_client):
     """Provides the httpx.AsyncClient configured globally."""
     # This now correctly returns the AsyncClient instance, not TestClient.
@@ -900,11 +913,11 @@ async def setup_database():
     
     # No teardown needed here - each test manages its own session via test_db_session
 
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function") # Reverted scope to function
 async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Create an isolated database session for each test function with test users.
-
+    
     This fixture uses the standardized test database initializer to ensure:
     1. The database has the correct schema
     2. Test users exist for foreign key relationships
@@ -914,17 +927,14 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
         AsyncSession: SQLAlchemy async session with test users created
     """
     # Use in-memory SQLite for testing; connect_args needed for SQLite
-    DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    database_url = "sqlite+aiosqlite:///:memory:"
     engine = create_async_engine(
-        DATABASE_URL,
+        database_url,
         echo=False,
         # CRITICAL: Use StaticPool for asyncio compatibility with SQLite in tests
         poolclass=StaticPool, 
         connect_args={"check_same_thread": False} # Required for SQLite
     )
-
-    # Use the canonical Base from the correct location
-    from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
     # Create tables
     async with engine.begin() as conn:
@@ -934,7 +944,7 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.run_sync(Base.metadata.create_all)
 
     # Create a session factory
-    TestingSessionLocal = async_sessionmaker(
+    testing_session_local = async_sessionmaker(
         autocommit=False,
         autoflush=False,
         bind=engine,
@@ -942,7 +952,7 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
         class_=AsyncSession # Ensure we use AsyncSession
     )
 
-    async with TestingSessionLocal() as session:
+    async with testing_session_local() as session:
         logger.info("Yielding test database session.")
         yield session # Yield the session for the test
         logger.info("Rolling back test database session transaction.")
