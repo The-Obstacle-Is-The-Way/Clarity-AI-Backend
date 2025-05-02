@@ -19,13 +19,14 @@ settings = get_settings()
 database_url = settings.DATABASE_URL or "sqlite+aiosqlite:///:memory:"
 
 # Create async SQLAlchemy engine, handling SQLite in-memory differently
-if database_url.startswith("sqlite"):
+if database_url.startswith("sqlite+aiosqlite:///:memory:"):
+    # Use StaticPool for in-memory SQLite to avoid issues with asyncio
     engine = create_async_engine(
         database_url,
         echo=settings.DATABASE_ECHO,
         future=True,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},  # Specific to SQLite
+        poolclass=StaticPool,  # Explicitly set StaticPool
     )
 else:
     engine = create_async_engine(

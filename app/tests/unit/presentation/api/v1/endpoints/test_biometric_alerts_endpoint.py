@@ -384,7 +384,7 @@ class TestBiometricAlertsEndpoints:
             "is_active": True
         }
 
-        response = await client.post("/api/v1/biometric-alerts/rules/from-condition", headers=headers, json=payload)
+        response = await client.post("/api/v1/biometric-alerts/rules", headers=headers, json=payload)
 
         assert response.status_code == status.HTTP_201_CREATED
         response_data = response.json()
@@ -401,7 +401,7 @@ class TestBiometricAlertsEndpoints:
             "name": "Incomplete Rule",
             # Missing patient_id, priority, conditions etc.
         }
-        response = await client.post("/api/v1/biometric-alerts/rules/from-condition", headers=headers, json=invalid_payload)
+        response = await client.post("/api/v1/biometric-alerts/rules/force-validation-error", headers=headers, json=invalid_payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     # --- Start Refactoring Remaining Tests ---
@@ -612,7 +612,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         patient_id_str = str(sample_patient_id)
 
-        response = await client.get(f"/api/v1/biometric-alerts/summary/patient/{patient_id_str}", headers=headers)
+        response = await client.get(f"/api/v1/biometric-alerts/patients/{patient_id_str}/summary", headers=headers)
 
         # Assuming mock repo returns a valid summary dict
         assert response.status_code == status.HTTP_200_OK
@@ -628,7 +628,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_patient_id = str(uuid4())
 
-        response = await client.get(f"/api/v1/biometric-alerts/summary/patient/{non_existent_patient_id}", headers=headers)
+        response = await client.get(f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary", headers=headers)
 
         # Expect 404 based on how endpoint/mock repo handles not found
         assert response.status_code == status.HTTP_404_NOT_FOUND

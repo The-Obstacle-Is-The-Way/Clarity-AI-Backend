@@ -30,7 +30,7 @@ import json
 import uuid
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker, StaticPool
 from sqlalchemy.orm import sessionmaker
 
 # Updated import path to match codebase structure
@@ -918,3 +918,41 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async for session in get_test_db_session():
         yield session
         # The get_test_db_session generator handles cleanup and rollback
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    # Use test settings to ensure we connect to the test database
+    settings = get_settings()
+    database_url = settings.DATABASE_URL
+
+    logger.debug(f"Creating test engine for URL: {database_url}")
+    # Ensure StaticPool is used for test engine, especially for SQLite
+    engine_args = {
+        "echo": settings.DATABASE_ECHO,
+        "future": True,
+        "poolclass": StaticPool # Add StaticPool here
+    }
+    if database_url.startswith("sqlite"):
+        engine_args["connect_args"] = {"check_same_thread": False}
+
+    engine = create_async_engine(database_url, **engine_args)
+
+    logger.debug("Creating test database tables...")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    test_async_session_factory = async_sessionmaker( # Rename variable
+        bind=engine, expire_on_commit=False, class_=AsyncSession
+    )
+
+    logger.debug("Yielding test session...")
+    async with test_async_session_factory() as session: # Use renamed variable
+        try:
+            yield session
+        finally:
+            await session.close()
+            logger.debug("Test session closed.")
+
+    await engine.dispose()
+    logger.debug("Test engine disposed.")
