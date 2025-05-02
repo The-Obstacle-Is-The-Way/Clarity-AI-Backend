@@ -222,7 +222,7 @@ class FullRedactor(Redactor):
 
 class TypedRedactor(Redactor):
     """Redact with type information."""
-    
+
     def __init__(self, phi_type: str):
         """Initialize with PHI type."""
         # Map DOB to DATE for consistency with tests
@@ -230,7 +230,7 @@ class TypedRedactor(Redactor):
             self.phi_type = "DATE"
         else:
             self.phi_type = phi_type
-        
+
     def redact(self, text: str) -> str:
         """Replace text with [REDACTED TYPE]."""
         return f"[REDACTED {self.phi_type}]"
