@@ -41,7 +41,7 @@ dependencies = [
     "scikit-learn==1.5.2", # From requirements-analytics.txt
     "scipy==1.15.0", # From requirements-analytics.txt
     "smart-open[s3]==7.1.0",
-    "spacy==3.8.8", # From requirements-analytics.txt
+    "spacy", # From requirements-analytics.txt
     "sqlalchemy[asyncio]==2.0.40",
     "structlog==25.3.0",
     "tenacity==9.1.2",
