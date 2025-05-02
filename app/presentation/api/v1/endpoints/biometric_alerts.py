@@ -16,9 +16,11 @@ from app.domain.entities.biometric_alert import (
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule 
 from app.domain.exceptions import EntityNotFoundError 
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.presentation.api.dependencies import (
     get_rule_repository, 
     get_current_user,
+    get_template_repository
 )
 from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
