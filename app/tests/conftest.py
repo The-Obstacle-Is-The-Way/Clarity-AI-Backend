@@ -30,7 +30,7 @@ import json
 import uuid
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker, AsyncEngine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
@@ -180,64 +180,6 @@ class MockSettings:
 
 # --- Helper Functions / Mock Factories (Module Level) ---
 
-# Factory for Mock User Repository (Moved to Module Level)
-def get_mock_user_repository() -> IUserRepository:
-    mock_repo = AsyncMock(spec=UserRepository)
-    async def mock_get_by_id(user_id: uuid.UUID) -> Optional[MagicMock]:
-        # Return a mock user based on common test IDs used in token generation
-        mock_user = MagicMock(spec=User) # Using User domain entity spec
-        mock_user.id = user_id
-        mock_user.is_active = True
-        mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
-
-        # --- Use defined constant UUIDs for comparison ---
-        if user_id == TEST_INTEGRATION_USER_ID: 
-             mock_user.username = "testuser"
-             mock_user.email = "test@example.com"
-             mock_user.roles = [Role.PATIENT] # Use Role enum
-             logger.debug(f"MockUserRepository: Found user {user_id}")
-             return mock_user
-        elif user_id == TEST_PROVIDER_USER_ID: 
-             mock_user.username = "testprovider"
-             mock_user.email = "provider@example.com"
-             mock_user.roles = [Role.PROVIDER, Role.CLINICIAN] # Use Role enum
-             logger.debug(f"MockUserRepository: Found user {user_id}")
-             return mock_user
-        # ---------------------------------------------------
-        logger.warning(f"MockUserRepository: User ID {user_id} not found in mock setup.")
-        return None # Simulate user not found for unexpected IDs
-
-    mock_repo.get_by_id = mock_get_by_id
-
-    async def mock_get_by_username(username: str) -> Optional[MagicMock]:
-         if username == "testuser":
-             mock_user = MagicMock(spec=User)
-             # --- Use defined constant UUID --- 
-             mock_user.id = TEST_INTEGRATION_USER_ID 
-             # -----------------------------------
-             mock_user.username = username
-             mock_user.is_active = True
-             mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
-             mock_user.roles = [Role.PATIENT]
-             logger.debug(f"MockUserRepository: Found user by username {username}")
-             return mock_user
-         elif username == "testprovider": # Match username used in test_auth_endpoints and mock_get_by_id
-             mock_user = MagicMock(spec=User)
-             # --- Use defined constant UUID --- 
-             mock_user.id = TEST_PROVIDER_USER_ID 
-             # -----------------------------------
-             mock_user.username = username
-             mock_user.is_active = True
-             mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
-             mock_user.roles = [Role.PROVIDER, Role.CLINICIAN]
-             logger.debug(f"MockUserRepository: Found user by username {username}")
-             return mock_user
-         logger.warning(f"MockUserRepository: User username {username} not found in mock setup.")
-         return None
-    mock_repo.get_by_username = mock_get_by_username
-
-    return mock_repo
-
 # --- Fixtures --- 
 
 # --- Application Fixture with Overrides ---
@@ -278,7 +220,13 @@ def initialized_app(
         settings=test_settings_for_token_gen,
         user_repository=mock_user_repository_override() # Execute the callable to get the mock repo
     )
-    app.dependency_overrides[get_jwt_service] = lambda: validation_jwt_service
+    # Add logging inside the lambda to confirm which service is provided
+    def get_validation_service_override():
+        repo_status = "present" if validation_jwt_service.user_repository else "None"
+        logger.info(f"Providing overridden JWTService for validation. User Repo: {repo_status}")
+        return validation_jwt_service
+        
+    app.dependency_overrides[get_jwt_service] = get_validation_service_override
     # -------------------------------------------------------------------
     
     return app

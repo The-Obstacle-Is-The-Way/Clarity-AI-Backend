@@ -213,11 +213,13 @@ class JWTService(IJwtService):
             raise InvalidTokenException("Token is missing.")
 
         # Check blacklist first
+        logger.debug("Checking token against blacklist...")
         if self._is_token_blacklisted(token):
             logger.warning(f"Attempted use of blacklisted token.")
             raise AuthenticationError("Token has been revoked.") # Or a specific RevokedTokenException
 
         try:
+            logger.debug(f"Attempting to decode token with: Algorithm={self.algorithm}, Audience={self.audience}, Issuer={self.issuer}")
             payload_dict = jwt.decode(
                 token,
                 self.secret_key,
@@ -225,10 +227,13 @@ class JWTService(IJwtService):
                 audience=self.audience,
                 issuer=self.issuer
             )
+            logger.debug(f"Raw decoded payload: {payload_dict}")
             
             # Validate payload structure using Pydantic model
+            logger.debug("Validating payload structure with TokenPayload model...")
             try:
                 validated_payload = TokenPayload.model_validate(payload_dict)
+                logger.debug(f"Payload structure validated successfully: {validated_payload}")
             except Exception as validation_error: # Catch Pydantic validation errors
                 logger.warning(f"Token payload validation failed: {validation_error}")
                 raise InvalidTokenException(f"Invalid token structure: {validation_error}")
@@ -260,41 +265,47 @@ class JWTService(IJwtService):
         return payload
 
     async def get_user_from_token(self, token: str) -> Optional[User]:
-        """Decodes token and retrieves the user from the repository."""
+        """Decode the token and fetch the user from the repository."""
+        logger.debug("Attempting to get user from token...")
         if not self.user_repository:
-            logger.error("User repository not configured in JWTService, cannot get user from token.")
+            logger.warning("User repository not set in JWTService, cannot fetch user.")
             return None
-
+        
         try:
-            payload = await self.decode_token(token)
-            user_id_str = self.get_token_payload_subject(payload)
+            logger.debug(f"Decoding token to extract user payload...")
+            payload: TokenPayload = await self.decode_token(token) # Re-uses the validation logic
+            logger.debug(f"Token decoded successfully. Payload: {payload}")
 
+            # Extract user identifier (assuming it's stored in 'sub' claim)
+            user_id_str = payload.sub
+            logger.debug(f"Extracted user ID string from token payload: {user_id_str}")
             if not user_id_str:
-                # Already logged in decode_token or get_token_payload_subject
+                logger.warning("No 'sub' (user ID) found in token payload.")
                 return None
-
+            
             try:
+                logger.debug(f"Attempting to parse user ID string '{user_id_str}' to UUID.")
                 user_id = UUID(user_id_str)
-            except ValueError:
-                logger.warning(f"Invalid subject format in token: {user_id_str}")
+                logger.debug(f"User ID parsed successfully: {user_id}")
+            except ValueError as e:
+                logger.error(f"Invalid user ID format in token 'sub' claim: {user_id_str}. Error: {e}")
                 return None
 
-            # Fetch user from repository
+            logger.debug(f"Fetching user with ID {user_id} from repository {type(self.user_repository).__name__}...")
             user = await self.user_repository.get_by_id(user_id)
-            if not user:
-                logger.warning(f"User ID {user_id} from valid token not found in repository.")
+            if user:
+                logger.debug(f"User found in repository: {user.email} (ID: {user.id})")
+                return user
+            else:
+                logger.warning(f"User with ID {user_id} not found in the repository.")
                 return None
-            if not user.is_active:
-                logger.warning(f"Authentication attempt for inactive user: {user_id}")
-                raise AuthenticationError("User account is inactive.")
-
-            return user
-
-        except AuthenticationError as e:
-            # Logged in decode_token, re-raise to signal auth failure upstream
-            raise e
+            
+        except AuthenticationError as e: # Catches errors from decode_token
+            logger.warning(f"Authentication error while getting user from token: {e}")
+            # Depending on policy, you might re-raise or return None
+            return None # Or raise AuthenticationError("Failed to authenticate token.")
         except Exception as e:
-            logger.error(f"Unexpected error retrieving user from token: {e}")
+            logger.exception(f"Unexpected error retrieving user from token: {e}")
             raise AuthenticationError("Failed to retrieve user information from token.")
 
     def get_token_payload_subject(self, payload: TokenPayload) -> Optional[str]:
