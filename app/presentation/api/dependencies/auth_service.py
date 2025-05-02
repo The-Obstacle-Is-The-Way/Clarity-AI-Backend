@@ -10,8 +10,8 @@ from typing import Dict, Any, Optional, Callable, AsyncGenerator, Annotated, Typ
 from fastapi import Depends
 
 # Use infrastructure implementation of user repository
-# Use the repository implementation directly from infrastructure
-from app.infrastructure.repositories.user_repository import UserRepository
+# Use the concrete SqlAlchemy implementation
+from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.presentation.api.dependencies.auth import get_jwt_service
 from app.core.interfaces.repositories.user_repository import IUserRepository
@@ -45,7 +45,7 @@ async def get_auth_service_provider(
         Configured AuthenticationService instance
     """
     # Create user repository with the session
-    user_repository = UserRepository(session=db_session)
+    user_repository = SqlAlchemyUserRepository(session=db_session)
     
     # Create and return authentication service
     auth_service = AuthenticationService(
