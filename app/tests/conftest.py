@@ -40,12 +40,7 @@ from pydantic import SecretStr, Field
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.presentation.api.dependencies.auth import get_jwt_service, get_authentication_service
-# Import the canonical Base from the correct location
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.core.services.ml.xgboost.interface import XGBoostInterface # Corrected XGBoostInterface import
-from app.domain.repositories.user_repository import UserRepository # Corrected import path to use UserRepository
-from app.domain.services.pat_service import PATService # Corrected import path and name
+from app.presentation.api.dependencies.auth import get_current_active_user, get_user_repository # Import the missing dependency function
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
