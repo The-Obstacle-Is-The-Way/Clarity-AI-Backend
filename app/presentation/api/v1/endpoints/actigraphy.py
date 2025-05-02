@@ -6,17 +6,19 @@ generation, and integration with digital twins.
 """
 
 import logging
-from typing import List, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, Body, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Body, HTTPException, Query, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
+import uuid
 
 # Adjust imports based on new location under presentation/
 from app.presentation.api.schemas.actigraphy import (
     AnalysesList,
     AnalysisResult,
     AnalyzeActigraphyRequest,
+    AnalyzeActigraphyResponse,
     EmbeddingResult,
     GetActigraphyEmbeddingsRequest,
     IntegrateWithDigitalTwinRequest,
@@ -24,17 +26,12 @@ from app.presentation.api.schemas.actigraphy import (
     AnalysisType,
 )
 # Assuming standard dependency injection setup within presentation layer
-from app.presentation.api.dependencies.auth import get_current_user  # Corrected import
+from app.presentation.api.dependencies.auth import get_current_user  
 from app.presentation.api.v1.dependencies.actigraphy import (
-    validate_analyze_actigraphy_request,
     validate_get_actigraphy_embeddings_request,
 )
-from typing import Dict, Any # Import Dict and Any for type hinting
-import uuid
-
 # Assuming core/services paths remain stable or adjust if moved
 from app.core.services.ml.pat import (
-    AnalysisError,
     AuthorizationError,
     EmbeddingError,
     InitializationError,
@@ -49,14 +46,14 @@ from app.core.services.ml.pat import (
 logger = logging.getLogger(__name__)
 
 # Set up router
-router = APIRouter() # Prefix is usually added when including the router
+router = APIRouter() 
 
 # ---------------------------------------------------------------------------
 # Helper – convert AnalysisType enums or raw strings to plain string values
 # ---------------------------------------------------------------------------
 
 
-def _normalize_analysis_type(value: Any) -> str:  # noqa: ANN401
+def _normalize_analysis_type(value: AnalysisType | str) -> str:  
     """Return the *string* representation for an ``AnalysisType`` value.
 
     The PAT service (or tests) might return a mixture of raw strings and
@@ -67,10 +64,6 @@ def _normalize_analysis_type(value: Any) -> str:  # noqa: ANN401
     if hasattr(value, "value"):
         return str(value.value)
     return str(value)
-
-# Security might be handled by middleware or dependencies now, review if needed
-# security = HTTPBearer()
-
 
 async def get_pat_service() -> PATInterface:
     """Get an initialized PAT service instance.
@@ -112,131 +105,103 @@ async def get_pat_service() -> PATInterface:
 
 @router.post(
     "/analyze",
-    response_model=AnalysisResult,
+    response_model=AnalyzeActigraphyResponse,
     status_code=status.HTTP_200_OK,
-    summary="Analyze actigraphy data",
-    description="Analyze raw actigraphy data to derive physical activity insights."
+    summary="Analyze Actigraphy Data",
+    description="Initiates analysis of raw actigraphy data.",
+    dependencies=[Depends(get_current_user)] 
 )
 async def analyze_actigraphy(
-    request: Request,
-    payload: AnalyzeActigraphyRequest = Depends(validate_analyze_actigraphy_request),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    request_data: AnalyzeActigraphyRequest = Body(...),
+):
+    """Receives actigraphy data and starts the analysis process."""
+    logging.info(f"Received actigraphy analysis request for patient: {request_data.patient_id}")
+    analysis_id = uuid.uuid4() 
+    return AnalyzeActigraphyResponse(analysis_id=analysis_id, status="processing")
+
+
+@router.get("/analyses/{analysis_id}", response_model=AnalysisResult)
+async def get_analysis_status(
+    analysis_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
     pat_service: PATInterface = Depends(get_pat_service)
-    ) -> AnalysisResult:
-    """Analyze actigraphy data endpoint.
+) -> dict[str, Any]:
+    """Get an analysis by ID endpoint.
     
-    This endpoint processes raw accelerometer data to extract physical activity
-    patterns and insights, such as activity levels, sleep patterns, gait
-    characteristics, and tremor analysis.
+    This endpoint retrieves a specific analysis by its unique identifier,
+    including all analysis results and metadata.
     
     Args:
-        request: The analysis request containing the data to analyze
+        analysis_id: The unique identifier of the analysis
         current_user: The authenticated user dictionary/object.
-        pat_service: PAT service for analysis
-    
+        pat_service: PAT service
+        
     Returns:
-        Analysis results
-    
+        The requested analysis
+        
     Raises:
-        HTTPException: If analysis fails or validation errors occur
+        HTTPException: If the analysis is not found or access is denied
     """
-    # Require Authorization header even if get_current_user is overridden
-    if not request.headers.get("authorization"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
-        )
     try:
-        # Log analysis request (without PHI)
-        logger.info(
-            f"Analyzing actigraphy data: readings_count={len(payload.readings)}, "
-            f"analysis_types={[t.value for t in payload.analysis_types]}"
-        )
-        # Prepare inputs for service
-        readings_list = [r.model_dump() for r in payload.readings]
-        types_list = [t.value for t in payload.analysis_types]
-        # Perform analysis via PAT service
-        result = pat_service.analyze_actigraphy(
-            patient_id=payload.patient_id,
-            readings=readings_list,
-            start_time=payload.start_time,
-            end_time=payload.end_time,
-            sampling_rate_hz=payload.sampling_rate_hz,
-            device_info=payload.device_info.model_dump(),
-            analysis_types=types_list
-        )
-        # Log success (without PHI)
-        logger.info(
-            f"Successfully analyzed actigraphy data: analysis_id={result['analysis_id']}"
-        )
-        # Build data summary
-        # Parse ISO timestamps, normalizing Zulu indicator
-        start_str = payload.start_time
-        if start_str.endswith("Z"):
-            start_str = start_str[:-1]
-        start_dt = datetime.fromisoformat(start_str)  # type: ignore
-        end_str = payload.end_time
-        if end_str.endswith("Z"):
-            end_str = end_str[:-1]
-        end_dt = datetime.fromisoformat(end_str)      # type: ignore
-        duration_seconds = (end_dt - start_dt).total_seconds()
-        data_summary = {
-            "start_time": payload.start_time,
-            "end_time": payload.end_time,
-            "duration_seconds": duration_seconds,
-            "readings_count": len(payload.readings),
-            "sampling_rate_hz": payload.sampling_rate_hz
-        }
-        # Build and return response payload
-        payload_dict: Dict[str, Any] = {
+        logger.info(f"Retrieving analysis: analysis_id={analysis_id}")
+        
+        # Get the analysis
+        result = pat_service.get_analysis_by_id(analysis_id)
+        
+        user_id = current_user.get("id")
+        user_roles = current_user.get("roles", [])
+        
+        # Authorization Check (allow clinicians)
+        if not (
+            user_id == result.get("patient_id")
+            or "admin" in user_roles
+            or "doctor" in user_roles
+            or "clinician" in user_roles
+        ):
+            logger.warning(
+                f"Unauthorized attempt to access analysis: "
+                f"user_id={user_id}, patient_id={result.get('patient_id')}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this analysis"
+            )
+        
+        logger.info(f"Successfully retrieved analysis: analysis_id={analysis_id}")
+        # Shape payload to match analyze endpoint output
+        payload: dict[str, Any] = {
             "analysis_id": result.get("analysis_id"),
             "patient_id": result.get("patient_id"),
+            # use provided timestamp or fallback
             "timestamp": result.get("timestamp") or result.get("created_at"),
-            "analysis_types": types_list,
-            "device_info": payload.device_info.model_dump(),
-            "data_summary": data_summary,
-            "results": result.get("results", {})
         }
-        # Include individual metrics at top-level for convenience
-        if "sleep_metrics" in result:
-            payload_dict["sleep_metrics"] = result["sleep_metrics"]
-        elif AnalysisType.SLEEP_QUALITY.value in payload_dict["results"]:
-            payload_dict["sleep_metrics"] = payload_dict["results"][AnalysisType.SLEEP_QUALITY.value]
-        if "activity_levels" in result:
-            payload_dict["activity_levels"] = result["activity_levels"]
-        elif AnalysisType.ACTIVITY_LEVELS.value in payload_dict["results"]:
-            payload_dict["activity_levels"] = payload_dict["results"][AnalysisType.ACTIVITY_LEVELS.value]
-        return payload_dict
-        # Include individual metrics at top-level for convenience
+        # Top-level sleep metrics
         if "sleep_metrics" in result:
             payload["sleep_metrics"] = result["sleep_metrics"]
-        elif AnalysisType.SLEEP_QUALITY.value in payload["results"]:
-            payload["sleep_metrics"] = payload["results"][AnalysisType.SLEEP_QUALITY.value]
+        elif result.get("results") and AnalysisType.SLEEP_QUALITY.value in result["results"]:
+            payload["sleep_metrics"] = result["results"][AnalysisType.SLEEP_QUALITY.value]
+        # Top-level activity levels
         if "activity_levels" in result:
             payload["activity_levels"] = result["activity_levels"]
-        elif AnalysisType.ACTIVITY_LEVELS.value in payload["results"]:
-            payload["activity_levels"] = payload["results"][AnalysisType.ACTIVITY_LEVELS.value]
+        elif result.get("results") and AnalysisType.ACTIVITY_LEVELS.value in result["results"]:
+            payload["activity_levels"] = result["results"][AnalysisType.ACTIVITY_LEVELS.value]
         return payload
-    except ValidationError as e:
-        logger.warning(f"Validation error in analyze_actigraphy: {str(e)}")
+    
+    except ResourceNotFoundError as e:
+        logger.warning(f"Analysis not found: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e)
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Analysis not found: {analysis_id}"
         )
-    except AnalysisError as e:
-        logger.error(f"Analysis error in analyze_actigraphy: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis failed: {str(e)}"
-        )
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
+    
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
+    
     except Exception as e:
-        logger.error(f"Unexpected error in analyze_actigraphy: {str(e)}")
+        logger.error(f"Unexpected error in get_analysis_by_id: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during analysis"
+            detail="An unexpected error occurred while retrieving the analysis"
         )
 
 
@@ -249,7 +214,7 @@ async def analyze_actigraphy(
 )
 async def get_actigraphy_embeddings(
     payload: GetActigraphyEmbeddingsRequest = Depends(validate_get_actigraphy_embeddings_request),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     pat_service: PATInterface = Depends(get_pat_service)
     ) -> EmbeddingResult:
     """Generate embeddings from actigraphy data endpoint.
@@ -293,11 +258,11 @@ async def get_actigraphy_embeddings(
         start_str = payload.start_time
         if start_str.endswith("Z"):
             start_str = start_str[:-1]
-        start_dt = datetime.fromisoformat(start_str)  # type: ignore
+        start_dt = datetime.fromisoformat(start_str)  
         end_str = payload.end_time
         if end_str.endswith("Z"):
             end_str = end_str[:-1]
-        end_dt = datetime.fromisoformat(end_str)      # type: ignore
+        end_dt = datetime.fromisoformat(end_str)      
         duration_seconds = (end_dt - start_dt).total_seconds()
         data_summary = {
             "start_time": payload.start_time,
@@ -354,109 +319,20 @@ async def get_actigraphy_embeddings(
             detail=f"Embedding generation failed: {str(e)}"
         )
     
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
     
     except Exception as e:
-        logger.error(f"Unexpected error in get_actigraphy_embeddings: {str(e)}")
+        logger.error(f"Unexpected error in get_actigraphy_embeddings: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during embedding generation"
-        )
-
-
-@router.get(
-    "/analyses/{analysis_id}",
-    status_code=status.HTTP_200_OK,
-    summary="Get an analysis by ID",
-    description="Retrieve a specific actigraphy analysis by its ID."
-)
-async def get_analysis_by_id(
-    analysis_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    pat_service: PATInterface = Depends(get_pat_service)
-) -> Dict[str, Any]:
-    """Get an analysis by ID endpoint.
-    
-    This endpoint retrieves a specific analysis by its unique identifier,
-    including all analysis results and metadata.
-    
-    Args:
-        analysis_id: The unique identifier of the analysis
-        current_user: The authenticated user dictionary/object.
-        pat_service: PAT service
-        
-    Returns:
-        The requested analysis
-        
-    Raises:
-        HTTPException: If the analysis is not found or access is denied
-    """
-    try:
-        logger.info(f"Retrieving analysis: analysis_id={analysis_id}")
-        
-        # Get the analysis
-        result = pat_service.get_analysis_by_id(analysis_id)
-        
-        user_id = current_user.get("id")
-        user_roles = current_user.get("roles", [])
-        
-        # Authorization Check (allow clinicians)
-        if not (
-            user_id == result.get("patient_id")
-            or "admin" in user_roles
-            or "doctor" in user_roles
-            or "clinician" in user_roles
-        ):
-            logger.warning(
-                f"Unauthorized attempt to access analysis: "
-                f"user_id={user_id}, patient_id={result.get('patient_id')}"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to access this analysis"
-            )
-        
-        logger.info(f"Successfully retrieved analysis: analysis_id={analysis_id}")
-        # Shape payload to match analyze endpoint output
-        payload: Dict[str, Any] = {
-            "analysis_id": result.get("analysis_id"),
-            "patient_id": result.get("patient_id"),
-            # use provided timestamp or fallback
-            "timestamp": result.get("timestamp") or result.get("created_at"),
-        }
-        # Top-level sleep metrics
-        if "sleep_metrics" in result:
-            payload["sleep_metrics"] = result["sleep_metrics"]
-        elif result.get("results") and AnalysisType.SLEEP_QUALITY.value in result["results"]:
-            payload["sleep_metrics"] = result["results"][AnalysisType.SLEEP_QUALITY.value]
-        # Top-level activity levels
-        if "activity_levels" in result:
-            payload["activity_levels"] = result["activity_levels"]
-        elif result.get("results") and AnalysisType.ACTIVITY_LEVELS.value in result["results"]:
-            payload["activity_levels"] = result["results"][AnalysisType.ACTIVITY_LEVELS.value]
-        return payload
-    
-    except ResourceNotFoundError as e:
-        logger.warning(f"Analysis not found: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Analysis not found: {analysis_id}"
-        )
-    
-    except HTTPException:
-        raise
-    
-    except Exception as e:
-        logger.error(f"Unexpected error in get_analysis_by_id: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred while retrieving the analysis"
-        )
+        ) from e
 
 
 @router.get(
     "/patient/{patient_id}/analyses",
+    response_model=AnalysesList,
     status_code=status.HTTP_200_OK,
     summary="Get analyses for a patient",
     description="Retrieve a list of actigraphy analyses for a specific patient."
@@ -465,9 +341,9 @@ async def get_patient_analyses(
     patient_id: str,
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     pat_service: PATInterface = Depends(get_pat_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get analyses for a patient endpoint.
     
     This endpoint retrieves a paginated list of analyses for a specific patient,
@@ -523,9 +399,9 @@ async def get_patient_analyses(
             f"count={len(result.get('analyses', []))}"
         )
         # Shape payload for response
-        analyses_payload: List[Dict[str, Any]] = []
+        analyses_payload: list[dict[str, Any]] = []
         for a in result.get("analyses", []):
-            entry: Dict[str, Any] = {
+            entry: dict[str, Any] = {
                 "analysis_id": a.get("analysis_id"),
                 "patient_id": a.get("patient_id"),
                 "timestamp": a.get("timestamp") or a.get("created_at"),
@@ -547,15 +423,15 @@ async def get_patient_analyses(
             "total": len(analyses_payload),
         }
     
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
     
     except Exception as e:
-        logger.error(f"Unexpected error in get_patient_analyses: {str(e)}")
+        logger.error(f"Unexpected error getting analyses for patient {patient_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while retrieving analyses"
-        )
+        ) from e
 
 
 @router.get(
@@ -565,9 +441,9 @@ async def get_patient_analyses(
     description="Retrieve information about the PAT model being used."
 )
 async def get_model_info(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     pat_service: PATInterface = Depends(get_pat_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get PAT model information endpoint.
 
     Retrieves information about the PAT model, including capabilities,
@@ -584,12 +460,15 @@ async def get_model_info(
             "capabilities": result.get("capabilities"),
             "developer": result.get("developer"),
         }
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
+    
     except Exception as e:
-        logger.error(f"Unexpected error in get_model_info: {str(e)}")
+        logger.error(f"Unexpected error getting model info: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while retrieving model information"
-        )
+        ) from e
 
 
 # ---------------------------------------------------------------------------
@@ -599,14 +478,14 @@ async def get_model_info(
 
 @router.get(
     "/analysis_types",
-    response_model=List[str],
+    response_model=list[str],
     status_code=status.HTTP_200_OK,
     summary="List available actigraphy analysis types",
     description="Return the list of analysis types supported by the PAT service."
 )
 async def get_analysis_types(
     pat_service: PATInterface = Depends(get_pat_service),
-) -> List[str]:
+) -> list[str]:
     """Return the list of supported analysis types.
 
     The values ultimately originate from the PAT service so that advanced
@@ -617,8 +496,8 @@ async def get_analysis_types(
     """
 
     try:
-        types_raw = pat_service.get_analysis_types()  # type: ignore[attr-defined]
-    except Exception as exc:  # pragma: no cover – defensive
+        types_raw = pat_service.get_analysis_types()  
+    except Exception as exc:  
         logger.warning("PAT service did not expose get_analysis_types: %s", exc)
         types_raw = [t.value for t in AnalysisType]
 
@@ -634,10 +513,10 @@ async def get_analysis_types(
     description="Integrate actigraphy analysis with a digital twin profile."
 )
 async def integrate_with_digital_twin(
-    request_data: Dict[str, Any],
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    request_data: IntegrateWithDigitalTwinRequest = Body(...),
+    current_user: dict[str, Any] = Depends(get_current_user),
     pat_service: PATInterface = Depends(get_pat_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Integrate with digital twin endpoint.
     
     This endpoint integrates actigraphy analysis results with a digital twin
@@ -659,14 +538,14 @@ async def integrate_with_digital_twin(
     user_id = current_user.get("id")
     user_roles = current_user.get("roles", [])
     if not (
-        user_id == request_data.get("patient_id")
+        user_id == request_data.patient_id
         or "admin" in user_roles
         or "doctor" in user_roles
         or "clinician" in user_roles
     ):
         logger.warning(
             f"Unauthorized attempt to integrate with digital twin: "
-            f"user_id={user_id}, patient_id={request_data.get('patient_id')}"
+            f"user_id={user_id}, patient_id={request_data.patient_id}"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -676,16 +555,16 @@ async def integrate_with_digital_twin(
     try:
         logger.info(
             f"Integrating with Digital Twin: "
-            f"patient_id={request_data.get('patient_id')}, "
-            f"profile_id={request_data.get('profile_id')}"
+            f"patient_id={request_data.patient_id}, "
+            f"profile_id={request_data.profile_id}"
         )
         # Call service with analysis_id or full analysis data, pass integration options
         result = pat_service.integrate_with_digital_twin(
-            patient_id=request_data.get("patient_id"),
-            profile_id=request_data.get("profile_id"),
-            analysis_id=request_data.get("analysis_id"),
-            actigraphy_analysis=request_data.get("actigraphy_analysis"),
-            **request_data.get("integration_options", {})
+            patient_id=request_data.patient_id,
+            profile_id=request_data.profile_id,
+            analysis_id=request_data.analysis_id,
+            actigraphy_analysis=request_data.actigraphy_analysis,
+            **request_data.integration_options
         )
         logger.info(
             f"Successfully integrated with Digital Twin: "
@@ -727,21 +606,22 @@ async def integrate_with_digital_twin(
             detail=f"Integration failed: {str(e)}"
         )
     
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
     
     except Exception as e:
-        logger.error(f"Unexpected error in integrate_with_digital_twin: {str(e)}")
+        logger.error(f"Unexpected error integrating with Digital Twin: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during integration"
-        )
-    
+            detail="An unexpected error occurred during Digital Twin integration"
+        ) from e
+
+
 # --- Legacy-style upload and retrieval endpoints for integration tests ---
 @router.post("/upload/{patient_id}", status_code=status.HTTP_200_OK)
 async def upload_actigraphy_data(
     patient_id: str,
-    payload: Dict[str, Any] = Body(...)
+    payload: dict[str, Any] = Body(...)
 ):
     """
     Upload actigraphy data for a patient and return an analysis ID.

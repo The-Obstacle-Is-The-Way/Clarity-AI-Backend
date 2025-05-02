@@ -9,6 +9,7 @@ with digital twins.
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
+import uuid
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -436,6 +437,11 @@ class ProfileUpdate(BaseModel):
         description="ISO-8601 formatted timestamp of the update"
     )
 
+
+class AnalyzeActigraphyResponse(BaseModel):
+    """Response containing the ID and status of the initiated analysis."""
+    analysis_id: uuid.UUID = Field(..., description="Unique identifier for the analysis task")
+    status: str = Field("processing", description="Current status of the analysis task")
 
 class AnalysisResponse(BaseModel):
     """Minimal AnalysisResponse schema for actigraphy analysis endpoints."""
