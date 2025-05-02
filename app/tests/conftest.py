@@ -59,7 +59,7 @@ from app.domain.entities.appointment import Appointment  # noqa F401
 from app.domain.entities.biometric_alert import BiometricAlert  # noqa F401
 from app.domain.entities.biometric_twin import BiometricDataPoint  # noqa F401
 from app.domain.entities.user import User  # Import User
-from app.domain.repositories.user_repository import UserRepository  # Ensure imported
+from app.core.interfaces.repositories.user_repository import IUserRepository # ADDED
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
     SQLAlchemyUserRepository as UserRepository,
@@ -253,19 +253,19 @@ def mock_db_session_override(test_engine: AsyncEngine) -> Callable[[], AsyncGene
     return override_get_db
 
 @pytest.fixture(scope="session")
-def mock_user_repository_override() -> Callable[[], UserRepository]:
-    """Provides a dependency override for the user repository returning a mock."""
-    def get_mock_repo() -> UserRepository:
-        mock_repo = MagicMock(spec=UserRepository)
-        # Define default mock behavior if needed for common scenarios, e.g.:
-        # async def mock_get_by_id(user_id: str):
-        #     if user_id == "existing_user":
-        #         return User(id="existing_user", username="testuser", role="patient") # Example User model
-        #     return None
-        # mock_repo.get_by_id = AsyncMock(side_effect=mock_get_by_id)
-        logger.debug("Providing mock UserRepository instance.")
+def mock_user_repository_override() -> Callable[[], IUserRepository]: # Changed return type
+    """Provides a factory for creating MagicMock UserRepository instances."""
+    def get_mock_repo() -> IUserRepository: # Changed return type
+        mock_repo = MagicMock(spec=IUserRepository) # Changed spec
+        mock_repo.get_by_id = AsyncMock(return_value=None)
+        mock_repo.get_by_email = AsyncMock(return_value=None)
+        mock_repo.create = AsyncMock(return_value=User(id=uuid.uuid4(), username="testuser", email="test@example.com", hashed_password="hashed", role="patient")) # Changed return value
+        mock_repo.update = AsyncMock(return_value=User(id=uuid.uuid4(), username="testuser", email="test@example.com", hashed_password="hashed", role="patient")) # Changed return value
+        mock_repo.delete = AsyncMock(return_value=True)
+        mock_repo.list_all = AsyncMock(return_value=[])
+        logger.debug("Providing mock IUserRepository instance.") # Updated log message
         return mock_repo
-    logger.info("Created mock UserRepository override provider.")
+    logger.info("Created mock IUserRepository override provider.") # Updated log message
     return get_mock_repo
 
 @pytest.fixture(scope="session")
@@ -297,7 +297,7 @@ def initialized_app(
     test_settings: Settings, # Use the primary test settings
     test_engine: "AsyncEngine",
     mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], # Ensure correct type hinting
-    mock_user_repository_override: Callable[[], UserRepository], # Inject the provider for mock repo
+    mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
     mock_pat_service_override: Callable[[], PATService], # Use corrected PATService type
     mock_xgboost_service_override: Callable[[], XGBoostInterface],
     test_settings_for_token_gen: Settings, # Inject settings specifically for JWT
@@ -1060,9 +1060,9 @@ def mock_unit_of_work(mock_session: AsyncSession) -> MockUnitOfWork:
     return MockUnitOfWork(mock_session)
 
 @pytest.fixture
-def user_repository(mock_session: AsyncSession) -> UserRepository:
+def user_repository(mock_session: AsyncSession) -> IUserRepository: # Changed return type
     """Create a test-compatible UserRepository instance."""
-    return MockUserRepository(mock_session)
+    return MockUserRepository(mock_session) # Assumes MockUserRepository implements IUserRepository
 
 @pytest.fixture
 def mock_current_active_user_override():

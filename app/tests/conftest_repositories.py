@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock
 from app.tests.utils.repository_factory import (
     create_repository,
     MockUnitOfWork,
-    MockUserRepository,
     MockPatientRepository,
     MockBiometricRuleRepository,
     MockBiometricAlertRepository,
@@ -20,7 +19,6 @@ from app.tests.utils.repository_factory import (
 )
 
 # Repository interfaces
-from app.domain.repositories.user_repository import UserRepository
 from app.domain.repositories.patient_repository import PatientRepository
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
@@ -28,6 +26,9 @@ from app.domain.repositories.biometric_twin_repository import BiometricTwinRepos
 
 # Import the domain Unit of Work interface
 from app.domain.interfaces.unit_of_work import UnitOfWork
+
+# Import the core IUserRepository interface
+from app.core.interfaces.repositories.user_repository import IUserRepository
 
 T = TypeVar('T')
 
@@ -62,7 +63,7 @@ def mock_unit_of_work(mock_session: AsyncSession) -> MockUnitOfWork:
     return MockUnitOfWork(mock_session)
 
 @pytest.fixture
-def user_repository(mock_session: AsyncSession) -> UserRepository:
+def user_repository(mock_session: AsyncSession) -> IUserRepository:
     """
     Create a mock UserRepository for testing.
     

@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import interfaces
-from app.domain.repositories.user_repository import UserRepository
+from app.core.interfaces.repositories.user_repository import IUserRepository
 from app.domain.repositories.patient_repository import PatientRepository
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
@@ -51,7 +51,7 @@ class MockRepository:
         self.save = create_async_mock()
 
 
-class MockUserRepository(MockRepository, UserRepository):
+class MockUserRepository(MockRepository, IUserRepository):
     """Mock implementation of UserRepository for testing."""
     
     def __init__(self, session: Optional[AsyncSession] = None):
@@ -106,7 +106,7 @@ class MockBiometricTwinRepository(MockRepository, BiometricTwinRepository):
 
 # Mapping from repository interfaces to mock implementations
 REPOSITORY_MOCKS: Dict[Type, Type] = {
-    UserRepository: MockUserRepository,
+    IUserRepository: MockUserRepository,
     PatientRepository: MockPatientRepository,
     BiometricRuleRepository: MockBiometricRuleRepository,
     BiometricAlertRepository: MockBiometricAlertRepository,
