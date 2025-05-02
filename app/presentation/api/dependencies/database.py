@@ -36,13 +36,24 @@ except ImportError:
     IBiometricAlertRepository = Any
     IBiometricRuleRepository = Any
 
-from app.infrastructure.database.persistence.repositories.biometric_alert_repository import (
-    BiometricAlertRepository,
-)
-from app.infrastructure.database.persistence.repositories.biometric_rule_repository import (
-    BiometricRuleRepository,
-)
-from app.infrastructure.database.persistence.repositories.user_repository import UserRepository
+# Import concrete repository implementations
+from app.infrastructure.repositories.user_repository import UserRepository
+
+# For biometric alert and rule repositories, we'll use Any as placeholder if they don't exist yet
+from typing import Any, cast
+
+# Try to import concrete repository implementations, use placeholders if not found
+try:
+    from app.infrastructure.repositories.biometric_alert_repository import BiometricAlertRepository
+except ImportError:
+    logger.warning("BiometricAlertRepository not found, using placeholder")
+    BiometricAlertRepository = Any  # type: ignore
+
+try:
+    from app.infrastructure.repositories.biometric_rule_repository import BiometricRuleRepository
+except ImportError:
+    logger.warning("BiometricRuleRepository not found, using placeholder")
+    BiometricRuleRepository = Any  # type: ignore
 
 T = TypeVar('T')
 

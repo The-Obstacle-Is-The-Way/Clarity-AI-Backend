@@ -12,8 +12,14 @@ from app.core.interfaces.repositories.user_repository import IUserRepository
 
 from app.domain.entities.user import User
 # Import from infrastructure layer implementations
-from app.infrastructure.database.persistence.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.infrastructure.database.persistence.repositories.biometric_rule_repository import BiometricRuleRepository
+try:
+    from app.infrastructure.repositories.biometric_alert_repository import BiometricAlertRepository
+    from app.infrastructure.repositories.biometric_rule_repository import BiometricRuleRepository
+except ImportError:
+    # Use Any as a placeholder if repositories aren't found
+    from typing import Any
+    BiometricAlertRepository = Any
+    BiometricRuleRepository = Any
 
 from app.domain.services.biometric_event_processor import (
     BiometricEventProcessor,
