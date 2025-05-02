@@ -10,14 +10,10 @@ from typing import Dict, List, Optional, Any, Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Body
-from sqlalchemy.orm import Session
-
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine, BiometricRule, AlertPriority
 from app.domain.exceptions import EntityNotFoundError, RepositoryError, ValidationError
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import SQLAlchemyBiometricRuleRepository
-from app.presentation.api.dependencies.auth import get_current_user
+from app.presentation.api.dependencies import get_rule_repository
 from app.presentation.api.schemas.biometric_alert import (
     AlertRuleCreateSchema,
     AlertRuleUpdateSchema,
@@ -39,19 +35,6 @@ router = APIRouter(
         status.HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Internal Server Error"}
     }
 )
-
-
-def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricRuleRepository:
-    """
-    Dependency for getting the biometric rule repository.
-    
-    Args:
-        db: Database session
-        
-    Returns:
-        BiometricRuleRepository instance
-    """
-    return SQLAlchemyBiometricRuleRepository(db)
 
 
 def get_clinical_rule_engine() -> ClinicalRuleEngine:

@@ -16,6 +16,13 @@ from types import ModuleType
 import sys
 from typing import Optional
 
+# Added imports
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from app.infrastructure.persistence.sqlalchemy.database import get_db_session
+from app.domain.repositories.biometric_alert_rule_repository import BiometricRuleRepository
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricRuleRepository
+
 
 def _lazy_submodule(name: str) -> ModuleType:  # pragma: no cover – helper
     """Create and register an empty module so that dotted imports succeed."""
@@ -212,3 +219,19 @@ def get_patient_repository():
 
 
 repositories.get_patient_repository = get_patient_repository  # type: ignore[attr-defined]
+
+# --- Biometric Rule Repository ---
+
+def get_rule_repository(db: Session = Depends(get_db_session)) -> BiometricRuleRepository:
+    """
+    Dependency for getting the biometric rule repository.
+
+    Args:
+        db: Database session
+
+    Returns:
+        BiometricRuleRepository instance
+    """
+    return SQLAlchemyBiometricRuleRepository(db)
+
+repositories.get_rule_repository = get_rule_repository # type: ignore[attr-defined]
