@@ -17,6 +17,7 @@ from app.domain.entities.biometric_alert import (
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+from app.domain.services.biometric_event_processor import BiometricEventProcessor
 
 # Import general dependencies
 from app.presentation.api.dependencies.auth import get_current_user
