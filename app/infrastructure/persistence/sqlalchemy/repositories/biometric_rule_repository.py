@@ -24,7 +24,7 @@ from app.infrastructure.persistence.sqlalchemy.mappers.biometric_rule_mapper imp
     map_rule_entity_to_model,
     map_rule_model_to_entity,
 )
-from app.infrastructure.persistence.sqlalchemy.models.biometric_rule_model import BiometricRuleModel
+from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
 
 logger = logging.getLogger(__name__)
 
