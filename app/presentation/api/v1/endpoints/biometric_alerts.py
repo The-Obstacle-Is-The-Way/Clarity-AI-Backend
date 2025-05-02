@@ -389,7 +389,7 @@ async def get_alert_rule(
 
 @router.post(
     "/rules/from-template",
-    response_model=BiometricAlertRuleResponseSchema,
+    response_model=AlertRuleResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create rule from template",
     description="Create a new biometric alert rule from a template."
@@ -399,7 +399,7 @@ async def create_alert_rule_from_template(
     rule_repository: BiometricAlertRuleRepository = Depends(get_rule_repository),
     template_repository: BiometricAlertTemplateRepository = Depends(get_template_repository),
     current_user: UserResponseSchema = Depends(get_current_user)
-) -> BiometricAlertRuleResponseSchema:
+) -> AlertRuleResponse:
     """
     Create a new biometric alert rule from a template.
     
@@ -445,7 +445,7 @@ async def create_alert_rule_from_template(
                     "metadata": template_data.metadata or {}
                 }
                 
-                return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+                return AlertRuleResponse.model_validate(formatted_rule)
             else:
                 # Process the mock data to match the expected response format
                 if isinstance(mock_rule, dict):
@@ -495,7 +495,7 @@ async def create_alert_rule_from_template(
                         "metadata": mock_rule.get("metadata", template_data.metadata or {})
                     }
                     
-                    return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+                    return AlertRuleResponse.model_validate(formatted_rule)
         
         # First, get the template
         template = await template_repository.get_template_by_id(template_data.template_id)
@@ -563,7 +563,7 @@ async def create_alert_rule_from_template(
             "metadata": created_rule.metadata or {}
         }
         
-        return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+        return AlertRuleResponse.model_validate(formatted_rule)
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -573,16 +573,16 @@ async def create_alert_rule_from_template(
 
 @router.post(
     "/rules",
-    response_model=BiometricAlertRuleResponseSchema,
+    response_model=AlertRuleResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create alert rule",
     description="Create a new biometric alert rule."
 )
 async def create_alert_rule(
-    rule: BiometricAlertRuleCreateSchema,
+    rule: AlertRuleCreate,
     repository: BiometricAlertRuleRepository = Depends(get_rule_repository),
     current_user: UserResponseSchema = Depends(get_current_user)
-) -> BiometricAlertRuleResponseSchema:
+) -> AlertRuleResponse:
     """
     Create a new biometric alert rule.
     
@@ -622,7 +622,7 @@ async def create_alert_rule(
                     "metadata": rule.metadata or {}
                 }
                 
-                return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+                return AlertRuleResponse.model_validate(formatted_rule)
             else:
                 # Process the mock data to match the expected response format
                 if isinstance(mock_rule, dict):
@@ -667,7 +667,7 @@ async def create_alert_rule(
                         "metadata": mock_rule.get("metadata", rule.metadata or {})
                     }
                     
-                    return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+                    return AlertRuleResponse.model_validate(formatted_rule)
         
         # Format rule data for creation
         rule_data = rule.model_dump()
@@ -729,7 +729,7 @@ async def create_alert_rule(
             "metadata": created_rule.metadata or {}
         }
         
-        return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+        return AlertRuleResponse.model_validate(formatted_rule)
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -739,15 +739,15 @@ async def create_alert_rule(
 
 @router.post(
     "/rules/validation-error",
-    response_model=BiometricAlertRuleResponseSchema,
+    response_model=AlertRuleResponse,
     status_code=status.HTTP_400_BAD_REQUEST,
     summary="Create alert rule (validation error test)",
     description="Test endpoint that always returns a validation error."
 )
 async def create_alert_rule_validation_error(
-    rule_data: BiometricAlertRuleCreateSchema,
+    rule_data: AlertRuleCreate,
     current_user: UserResponseSchema = Depends(get_current_user)
-) -> BiometricAlertRuleResponseSchema:
+) -> AlertRuleResponse:
     """
     Test endpoint that always returns a validation error.
     
@@ -1398,17 +1398,17 @@ async def get_rule_templates(
 
 @router.put(
     "/rules/{rule_id}",
-    response_model=BiometricAlertRuleResponseSchema,
+    response_model=AlertRuleResponse,
     summary="Update alert rule",
     description="Update an existing biometric alert rule."
 )
 async def update_alert_rule(
     rule_id: UUID,
-    rule_data: BiometricAlertRuleUpdateSchema,
+    rule_data: AlertRuleUpdate,
     repository: BiometricAlertRuleRepository = Depends(get_rule_repository),
     event_processor: BiometricEventProcessor = Depends(get_event_processor),
     current_user: UserResponseSchema = Depends(get_current_user)
-) -> BiometricAlertRuleResponseSchema:
+) -> AlertRuleResponse:
     """
     Update an existing biometric alert rule.
     
@@ -1466,7 +1466,7 @@ async def update_alert_rule(
             if hasattr(event_processor, "add_rule"):
                 event_processor.add_rule(formatted_rule)
             
-            return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+            return AlertRuleResponse.model_validate(formatted_rule)
         
         # Check if rule exists
         existing_rule = await repository.get_rule_by_id(rule_id)
@@ -1533,7 +1533,7 @@ async def update_alert_rule(
             "metadata": updated_rule.metadata or {}
         }
         
-        return BiometricAlertRuleResponseSchema.model_validate(formatted_rule)
+        return AlertRuleResponse.model_validate(formatted_rule)
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
