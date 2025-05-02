@@ -132,28 +132,31 @@ def test_app(
 ) -> FastAPI:
     """Overrides dependencies for the test application instance."""
 
-    def mock_repository_factory(repo_type: type[T]) -> Callable[[], T]:
+    def mock_repository_factory(repo_type: type[T]) -> Callable[[], T]: 
         """Factory to return mock repository instances based on type."""
+        print(f"---> [DEBUG] MOCK factory called for repo_type: {repo_type.__name__}")
         if repo_type is IUserRepository:
-            # Return a function that creates the mock when called
+            print(f"------> [DEBUG] MOCK factory returning mock for: IUserRepository")
             return lambda: AsyncMock(spec=IUserRepository)
         elif repo_type is BiometricRuleRepository:
+            print(f"------> [DEBUG] MOCK factory returning mock for: BiometricRuleRepository")
             return lambda: mock_biometric_rule_repository
         elif repo_type is BiometricAlertRepository:
+            print(f"------> [DEBUG] MOCK factory returning mock for: BiometricAlertRepository")
             return lambda: mock_biometric_alert_repository
         else:
-            # Raise error for unexpected types to make issues explicit
+            print(f"---------> [DEBUG] MOCK factory FAILURE: No mock configured for {repo_type.__name__}")
             raise TypeError(f"No mock factory configured for repository type: {repo_type.__name__}")
 
-    # Override the main repository factory
+    print("*** [DEBUG] Applying dependency override for get_repository ***")
     app.dependency_overrides[get_repository] = mock_repository_factory
 
-    # Keep the user override
+    print("*** [DEBUG] Applying dependency override for get_current_user ***")
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
 
     yield app
 
-    # Clean up overrides
+    print("*** [DEBUG] Clearing dependency overrides ***")
     app.dependency_overrides = {}
 
 @pytest.fixture

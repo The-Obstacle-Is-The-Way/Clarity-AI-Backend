@@ -6,40 +6,61 @@ This module provides dependency functions for database sessions
 to be injected into FastAPI endpoints.
 """
 
-from typing import Generator, AsyncGenerator, Type, TypeVar, Callable # Ensure AsyncGenerator, Type, TypeVar, Callable are imported
+from collections.abc import AsyncGenerator, Callable
+from typing import Optional, Any, TypeVar
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Corrected import: Use get_db_session from the config module
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session as get_session_from_config
 from app.config.settings import get_settings
 settings = get_settings()
 
-from typing import Optional, Dict, Any # Ensure Optional is imported
-from app.core.utils.logging import get_logger
-# Remove get_db_instance import if unused, or ensure it exists
-# from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance 
-
-# Import BaseRepository or similar if needed for type hinting
-# from app.infrastructure.persistence.sqlalchemy.repositories.base import BaseRepository
-
+from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
-# Define a TypeVar for repository types
+# Repository interfaces
+from app.core.interfaces.repositories.base import IRepository
+from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
+
+# Import biometric repository interfaces - these might need to be created if they don't exist
+try:
+    from app.core.interfaces.repositories.biometric_alert_repository import IBiometricAlertRepository
+    from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
+except ImportError:
+    # If these interfaces don't exist yet, use placeholders for now
+    # This allows the app to start while we implement these interfaces
+    logger.warning("Biometric repository interfaces not found, using Any as placeholder")
+    from typing import Any
+    IBiometricAlertRepository = Any
+    IBiometricRuleRepository = Any
+
+from app.infrastructure.database.persistence.repositories.biometric_alert_repository import (
+    BiometricAlertRepository,
+)
+from app.infrastructure.database.persistence.repositories.biometric_rule_repository import (
+    BiometricRuleRepository,
+)
+from app.infrastructure.database.persistence.repositories.user_repository import UserRepository
+
 T = TypeVar('T')
 
-# Placeholder for repository mapping (replace with DI container logic)
-# This maps interface types to concrete implementation classes
-_repository_map = {}
+_repository_map: dict[type[T], type[T]] = {}
 
-# Function to register repository implementations (call this during app setup)
-def register_repository(interface: Type[T], implementation: Type[T]):
+def register_repository(interface: type[T], implementation: type[T]) -> None:
     global _repository_map
     logger.debug(f"Registering repository: {interface.__name__} -> {implementation.__name__}")
     _repository_map[interface] = implementation
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]: # Correct type hint
+# --- Register Concrete Implementations ---
+
+# Register the actual implementations for the application runtime
+register_repository(IUserRepository, UserRepository)
+register_repository(IBiometricRuleRepository, BiometricRuleRepository)
+register_repository(IBiometricAlertRepository, BiometricAlertRepository)
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Provide an async database session for endpoints.
     Yields an AsyncSession from the configured session factory.
@@ -48,16 +69,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]: # Correct type hint
         try:
             yield session
         except Exception as e:
-             # Log rollback error if needed, but ensure session handling continues
              logger.error(f"Exception during DB session yield: {e}", exc_info=True)
-             # The context manager should handle rollback/close
-             raise # Re-raise the exception for FastAPI to handle
+             raise 
         # Session closing/rollback is handled by the context manager in get_session_from_config
 
-from app.infrastructure.database.repositories.user_repository import UserRepository
-from app.infrastructure.logging.logger import logger # Ensure logger is imported
-
-def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
+def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     """
     Dependency factory for obtaining repository instances.
     Returns a function that expects an AsyncSession and returns the repository instance.
@@ -74,7 +90,7 @@ def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
         # === END DEBUG PRINT ===
 
         # Lookup happens here, when the dependency is resolved for a request
-        def _lookup_implementation() -> Type[T]:
+        def _lookup_implementation() -> type[T]:
             implementation = _repository_map.get(repo_type)
             if implementation is None:
                 # === DEBUG PRINT ===
@@ -96,7 +112,7 @@ def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
             return instance
         except Exception as e:
             logger.error(f"Error instantiating repository {implementation.__name__}: {e}", exc_info=True)
-            raise  # Re-raise the exception after logging
+            raise  
 
     # Return the inner function which performs the deferred lookup and instantiation
     return _get_repo_instance_deferred_lookup
