@@ -24,11 +24,13 @@ from app.core.interfaces.repositories.user_repository import IUserRepository
 from .database import get_repository
 
 # --- JWT Service Dependency --- 
-def get_jwt_service(settings: Settings = Depends(get_settings)) -> IJwtService:
+def get_jwt_service(
+    settings: Settings = Depends(get_settings),
+    user_repository: IUserRepository = Depends(get_repository(IUserRepository)) 
+) -> IJwtService:
     """Dependency function to get JWTService instance conforming to IJwtService."""
-    # If JWTService requires user_repo, it needs to be injected here.
-    # For now, assume it only needs settings based on previous refactor.
-    return JWTService(settings=settings)
+    # Pass the user_repository to the JWTService constructor
+    return JWTService(settings=settings, user_repository=user_repository)
 
 # ---------------------------------------------------------------------------
 # Dependency‑injection helper – thin factory that returns the concrete

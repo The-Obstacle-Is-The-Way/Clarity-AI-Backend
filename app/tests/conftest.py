@@ -43,7 +43,9 @@ from app.infrastructure.security.auth.authentication_service import Authenticati
 from app.presentation.api.dependencies.auth import get_jwt_service, get_authentication_service
 # Import the canonical Base from the correct location
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.core.services.ml.xgboost.interface import XGBoostInterface, ModelType
+from app.domain.interfaces.services.ml_service import XGBoostInterface # Added XGBoostInterface import
+from app.domain.interfaces.repositories.user_repository import IUserRepository
+from app.domain.interfaces.services.patient_assignment_service import IPatientAssignmentService
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
@@ -183,13 +185,101 @@ class MockSettings:
 
 # --- Fixtures --- 
 
+# Add the missing primary test settings fixture
+@pytest.fixture(scope="session")
+def test_settings() -> Settings:
+    """Provides application settings configured for the test environment."""
+    logger.info("Loading test settings.")
+    try:
+        settings = Settings()
+        # Log critical settings like the database URL
+        db_url = getattr(settings, 'DATABASE_URL', 'DATABASE_URL not found')
+        logger.info(f"Loaded test settings. DATABASE_URL: {db_url}")
+        if not db_url or db_url == 'DATABASE_URL not found':
+             raise ValueError("DATABASE_URL is missing in test settings.")
+        # Add checks for other essential settings if needed
+        return settings
+    except Exception as e:
+        logger.error(f"Failed to load test settings: {e}")
+        raise
+
+@pytest.fixture(scope="session")
+def test_engine(test_settings: Settings) -> AsyncEngine:
+    """Provides a SQLAlchemy AsyncEngine configured for the test database."""
+    logger.info(f"Creating test database engine for URL: {test_settings.DATABASE_URL}")
+    engine_options = {
+        "echo": False,  # Set to True for SQL debugging
+        "poolclass": StaticPool,  # Important for SQLite in-memory
+    }
+    # Ensure the URL uses aiosqlite for async
+    db_url = test_settings.DATABASE_URL
+    if db_url.startswith("sqlite://") and not db_url.startswith("sqlite+aiosqlite://"):
+        db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://")
+
+    # For SQLite, connect_args might be needed
+    if "sqlite" in db_url:
+        engine_options["connect_args"] = {"check_same_thread": False}
+
+    engine = create_async_engine(db_url, **engine_options)
+    return engine
+
+@pytest.fixture(scope="session")
+def mock_db_session_override(test_engine: AsyncEngine) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
+    """Provides a dependency override for the database session using the test engine."""
+    test_session_local = async_sessionmaker(
+        autocommit=False, autoflush=False, bind=test_engine, class_=AsyncSession
+    )
+
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        async with test_session_local() as session:
+            yield session
+
+    logger.info("Created mock DB session override.")
+    return override_get_db
+
+@pytest.fixture(scope="session")
+def mock_user_repository_override() -> Callable[[], IUserRepository]:
+    """Provides a dependency override for the user repository returning a mock."""
+    def get_mock_repo() -> IUserRepository:
+        mock_repo = MagicMock(spec=IUserRepository)
+        # Define default mock behavior if needed for common scenarios, e.g.:
+        # async def mock_get_by_id(user_id: str):
+        #     if user_id == "existing_user":
+        #         return User(id="existing_user", username="testuser", role="patient") # Example User model
+        #     return None
+        # mock_repo.get_by_id = AsyncMock(side_effect=mock_get_by_id)
+        logger.debug("Providing mock UserRepository instance.")
+        return mock_repo
+    logger.info("Created mock UserRepository override provider.")
+    return get_mock_repo
+
+@pytest.fixture(scope="session")
+def mock_pat_service_override() -> Callable[[], IPatientAssignmentService]:
+    """Provides a dependency override for the PAT service returning a mock."""
+    def get_mock_pat_service() -> IPatientAssignmentService:
+        mock_service = MagicMock(spec=IPatientAssignmentService)
+        logger.debug("Providing mock PatientAssignmentService instance.")
+        return mock_service
+    logger.info("Created mock PatientAssignmentService override provider.")
+    return get_mock_pat_service
+
+@pytest.fixture(scope="session")
+def mock_xgboost_service_override() -> Callable[[], XGBoostInterface]:
+    """Provides a dependency override for the XGBoost service returning a mock."""
+    def get_mock_xgboost_service() -> XGBoostInterface:
+        mock_service = MagicMock(spec=XGBoostInterface)
+        logger.debug("Providing mock XGBoostService instance.")
+        return mock_service
+    logger.info("Created mock XGBoostService override provider.")
+    return get_mock_xgboost_service
+
 # --- Application Fixture with Overrides ---
 
 @pytest.fixture(scope="session")
 def initialized_app(
     test_settings: Settings, # Use the primary test settings
-    test_engine: "AsyncEngine", # Use forward reference
-    mock_db_session_override: Callable[[], AsyncSession],
+    test_engine: "AsyncEngine",
+    mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], # Ensure correct type hinting
     mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
     mock_pat_service_override: Callable[[], "IPatientAssignmentService"], # Use forward reference
     mock_xgboost_service_override: Callable[[], XGBoostInterface],
