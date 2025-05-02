@@ -43,9 +43,9 @@ from app.infrastructure.security.auth.authentication_service import Authenticati
 from app.presentation.api.dependencies.auth import get_jwt_service, get_authentication_service
 # Import the canonical Base from the correct location
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.domain.interfaces.services.ml_service import XGBoostInterface # Added XGBoostInterface import
-from app.domain.interfaces.repositories.user_repository import IUserRepository
-from app.domain.interfaces.services.patient_assignment_service import IPatientAssignmentService
+from app.core.services.ml.xgboost.interface import XGBoostInterface # Corrected XGBoostInterface import
+from app.domain.repositories.user_repository import IUserRepository # Corrected import path
+from app.domain.services.patient_assignment_service import IPatientAssignmentService # Corrected import path
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
@@ -54,7 +54,6 @@ from app.domain.services.analytics_service import AnalyticsService # Import Anal
 from app.infrastructure.di.container import get_container # Import get_container
 from app.domain.entities.user import User # Import User
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
-from app.core.interfaces.repositories.user_repository import IUserRepository
 from app.domain.entities.biometric_alert import BiometricAlert # noqa F401
 from app.domain.entities.appointment import Appointment # noqa F401
 from app.domain.entities.biometric_twin import BiometricDataPoint # noqa F401
