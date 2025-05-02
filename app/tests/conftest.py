@@ -343,7 +343,7 @@ async def async_client(
 # Moved from integration/conftest.py for potential wider use, or keep it there if preferred.
 _TEST_SECRET_KEY_FOR_FIXTURES = "test-secret-key-for-testing-only" # Ensure this matches the override
 
-@pytest.fixture
+@pytest.fixture(scope="session") # <-- Added scope="session"
 def test_settings_for_token_gen() -> Settings:
     """Provides Settings configured with the correct test secret key for token generation fixtures."""
     # Using MagicMock might be simpler if only JWT settings are needed by JWTService
