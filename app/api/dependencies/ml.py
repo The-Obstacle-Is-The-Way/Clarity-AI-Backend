@@ -10,22 +10,15 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.core.services.ml.xgboost.factory_refactored import create_xgboost_service
-from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
-
+from app.core.services.ml.xgboost.factory import create_xgboost_service
 
 def get_xgboost_service() -> XGBoostInterface:
     """
-    Dependency provider for XGBoost service.
-    
-    Returns:
-        Configured XGBoost service implementation
+    Dependency injector for XGBoostService.
+    Creates an instance of XGBoostService using the factory.
     """
-    # Ensure AWS services are properly initialized
-    aws_factory = get_aws_service_factory()
-    
-    # Create and return the service
-    return create_xgboost_service(implementation_name="aws")
+    service = create_xgboost_service()
+    return service
 
 
 # Type alias for use in route handler function signatures

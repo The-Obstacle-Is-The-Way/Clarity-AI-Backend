@@ -55,9 +55,14 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
     SQLAlchemyUserRepository as UserRepository,
 )
 from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.main import create_application  # Corrected: Import create_application
+from app.main import app as main_app  # Renamed to avoid conflict with app fixture
+from app.presentation.api.v1.dependencies import (  # Import from v1 dependencies
+    get_pat_service,  # Add this import
+)
+from app.api.dependencies.ml import get_xgboost_service # Corrected import path
 from app.presentation.dependencies.auth import (
     get_user_repository,  # Keep the correct import for get_user_repository
+    get_jwt_service,  # Import get_jwt_service
 )
 from app.tests.unit.mocks import *
 
@@ -295,7 +300,7 @@ def initialized_app(
     os.environ['TESTING'] = '1'
     
     # Instantiate the app first
-    app = create_application() # Instantiate the app
+    app = main_app # Instantiate the app
 
     # Use primary test settings for the main application instance
     app.dependency_overrides[get_settings] = lambda: test_settings
