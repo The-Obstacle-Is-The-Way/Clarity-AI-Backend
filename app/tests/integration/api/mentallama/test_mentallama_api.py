@@ -26,9 +26,6 @@ from app.core.interfaces.services.authentication_service import IAuthenticationS
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.infrastructure.di.container import container as di_container
-from app.presentation.middleware.authentication_middleware import (
-    AuthenticationMiddleware,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +44,9 @@ MENTALLAMA_API_PREFIX = f"{Settings().API_V1_STR}/mentallama"
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_mentallama_service_instance() -> AsyncMock:
-    """Provides a mocked instance of the MentaLLaMA service based on its interface."""
+    """Provides a mock Mentallama service dependency override 
+    with pre-configured return values.
+    """
     # Create a mock instance respecting the MentaLLaMAInterface spec
     mock_service = AsyncMock(spec=MentaLLaMAInterface)
 
@@ -74,13 +73,17 @@ async def mock_mentallama_service_instance() -> AsyncMock:
 def mock_mentallama_service_override(
     mock_mentallama_service_instance: AsyncMock
 ) -> AsyncMock:
-    """Returns the mocked service instance for overriding the dependency."""
+    """Provides a mock Mentallama service dependency override 
+    with pre-configured return values.
+    """
     return mock_mentallama_service_instance
 
 
 @pytest.fixture(scope="function")
 def mock_auth_service() -> MagicMock:
-    """Provides a mocked instance of the IAuthenticationService."""
+    """Provides a mock JWTService dependency override,
+    simplifying token verification for tests.
+    """
     mock = MagicMock(spec=IAuthenticationService)
 
     # Mock ASYNC methods using AsyncMock
@@ -111,12 +114,17 @@ def mock_auth_service() -> MagicMock:
 
 @pytest.fixture(scope="function")
 def mock_jwt_service() -> MagicMock:
-    """Provides a mocked instance of the IJwtService."""
+    """Provides a mock JWTService dependency override,
+    simplifying token verification for tests.
+    """
     mock = MagicMock(spec=IJwtService)
 
     # Mock async methods correctly
     # Ensure decode_token itself is an awaitable mock that returns the payload
-    mock.decode_token.return_value = {"sub": "testuser", "role": "admin"}
+    mock.decode_token.return_value = {
+        "sub": "testuser",
+        "role": "admin",
+    }
     # Add mocks for other IJwtService async methods if they are called, even if just returning None or default
     mock.create_access_token = AsyncMock(return_value="mock_access_token")
     mock.create_refresh_token = AsyncMock(return_value="mock_refresh_token")
@@ -139,13 +147,16 @@ async def mock_auth_middleware_call(request: Request, call_next: Callable[[Reque
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_verify_api_key() -> AsyncMock:
-    """Provides a mock for the verify_api_key dependency."""
-    return AsyncMock() # Simple mock as the real function is empty
+    """Provides a mock for the verify_api_key dependency,
+    allowing tests to bypass API key checks.
+    """
+    # Simulate successful API key verification
+    return AsyncMock(return_value=None)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def test_app_with_lifespan(
-    settings: Settings,
+    test_settings: Settings,
     mock_mentallama_service_override: AsyncMock,
     mock_auth_service: MagicMock,
     mock_jwt_service: MagicMock,
@@ -178,22 +189,27 @@ async def test_app_with_lifespan(
         # Make sure to call the original method correctly
         return original_resolve(interface_type)
 
-    # Patch the DI container, Middleware, and Redis init/close functions
+    # Patch the DI container, service getters, and Redis functions
     with (
         patch.object(di_container, 'resolve', side_effect=mock_resolve),
+        # Patch the service getters used by AuthenticationMiddleware fallback
         patch(
-            "app.presentation.middleware.authentication_middleware.AuthenticationMiddleware",
-            new_callable=MagicMock
-        ) as _,
+            "app.infrastructure.security.jwt_service.get_jwt_service",
+            return_value=mock_jwt_service
+        ),
+        patch(
+            "app.infrastructure.security.auth_service.get_auth_service",
+            return_value=mock_auth_service
+        ),
         patch("app.app_factory.initialize_redis_pool", new_callable=AsyncMock) as _,
         patch("app.app_factory.close_redis_connection", new_callable=AsyncMock) as _,
     ):
         logger.info(
             "Creating FastAPI app instance within patched context "
-            "(DI, AuthMiddleware, Redis)..."
+            "(DI, Redis)..."
         )
         # Create app instance *after* patches are active
-        app = create_application(settings)
+        app = create_application(test_settings)
         logger.info("FastAPI app instance created successfully with patches active.")
 
         # --- Apply Dependency Overrides AFTER app creation (for routers/endpoints) --- #
@@ -204,7 +220,7 @@ async def test_app_with_lifespan(
             IAuthenticationService: lambda: mock_auth_service,
             IJwtService: lambda: mock_jwt_service,
             verify_api_key: lambda: mock_verify_api_key,
-            get_settings: lambda: settings,
+            get_settings: lambda: test_settings,
             # Use the actual db session for tests - lifespan manager handles init/dispose
             get_db_session: get_db_session,
         }
