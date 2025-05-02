@@ -10,7 +10,6 @@ from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
 )
 from app.application.services.biometric_alert_service import BiometricAlertService
-from app.core.security import SecurityError, sanitize_input
 from app.core.utils.logging import get_logger
 from app.domain.entities.biometric_alert import (
     AlertPriority,
