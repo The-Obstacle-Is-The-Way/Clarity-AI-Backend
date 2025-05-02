@@ -263,20 +263,7 @@ def initialized_app(
     # Create the application instance with overrides
     app = create_application(dependency_overrides=dependency_overrides)
     
-    # Import models that might have forward references
-    from app.presentation.api.v1.models.biometric_alerts import (AlertRuleInput, AlertRuleOutput, 
-                                                                AlertOutput, AlertUpdate, 
-                                                                PatientAlertSummary, AlertRuleTemplateOutput)
-
-    # Explicitly update forward references for models used in the endpoint
-    AlertRuleInput.update_forward_refs()
-    AlertRuleOutput.update_forward_refs()
-    AlertOutput.update_forward_refs()
-    AlertUpdate.update_forward_refs()
-    PatientAlertSummary.update_forward_refs()
-    AlertRuleTemplateOutput.update_forward_refs()
-
-    logger.info("Initialized FastAPI app for testing with overrides and updated forward refs.")
+    logger.info("Initialized FastAPI app for testing with overrides.")
     return app
 
 # --- Async Client Fixture --- 
@@ -301,7 +288,7 @@ async def async_client(
 # Moved from integration/conftest.py for potential wider use, or keep it there if preferred.
 _TEST_SECRET_KEY_FOR_FIXTURES = "test-secret-key-for-testing-only" # Ensure this matches the override
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def test_settings_for_token_gen() -> Settings:
     """Provides Settings configured with the correct test secret key for token generation fixtures."""
     # Using MagicMock might be simpler if only JWT settings are needed by JWTService
@@ -316,7 +303,7 @@ def test_settings_for_token_gen() -> Settings:
     # mock_settings.JWT_SECRET_KEY.get_secret_value.return_value = _TEST_SECRET_KEY_FOR_FIXTURES
     return mock_settings
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def test_jwt_service(test_settings_for_token_gen: Settings) -> JWTService:
     """Provides a JWTService instance configured for generating test tokens."""
     # Pass None for user_repository if it's not needed or mock it
