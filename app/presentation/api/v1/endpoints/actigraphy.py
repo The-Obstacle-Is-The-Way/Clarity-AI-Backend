@@ -106,7 +106,7 @@ async def get_pat_service() -> PATInterface:
 @router.post(
     "/analyze",
     response_model=AnalyzeActigraphyResponse,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     summary="Analyze Actigraphy Data",
     description="Initiates analysis of raw actigraphy data.",
     dependencies=[Depends(get_current_user)] 
