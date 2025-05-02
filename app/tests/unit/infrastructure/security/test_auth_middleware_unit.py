@@ -78,11 +78,13 @@ def app():
 @pytest.fixture
 def mock_jwt_service():
     """Create an AsyncMock JWT service."""
-    mock_service = AsyncMock(spec=JWTService) # Use AsyncMock for async methods
+    mock_service = AsyncMock(spec=JWTService) # Mock the service instance
     
-    # Configure mock verify_token method for successful validation by default
-    # It needs to be awaitable
-    async def mock_verify(token): 
+    # Create individual AsyncMocks for each method we need to configure
+    mock_verify_token_method = AsyncMock() 
+    
+    # Configure the side effect of the method mock
+    async def verify_side_effect(token):
         if token == "valid.jwt.token":
             return TokenPayload(
                 sub="user123",
@@ -94,19 +96,28 @@ def mock_jwt_service():
             )
         elif token == "expired.jwt.token":
             raise TokenExpiredException("Token has expired")
-        elif token == "invalid.jwt.token":
-            raise InvalidTokenException("Invalid token format")
-        elif token == "malformed.jwt.token":
-             raise InvalidTokenException("Malformed token")
+        elif token == "invalid.jwt.token" or token == "malformed.jwt.token":
+             raise InvalidTokenException("Invalid or malformed token")
         else:
-            # Default for other tokens in tests (e.g., those representing specific users)
-            # Extract user id if possible, or return a default valid payload
-            user_id = token.split('_')[-1] if '_' in token else "default_user"
-            return TokenPayload(
-                sub=user_id, exp=9999999999, iat=1713830000, jti="test-jti", type="access", scopes=["test_scope"] 
-            )
+            # Handle tokens representing specific user IDs for other tests
+            # Example token format: user_inactive_user, user_not_found_user, etc.
+            if token.startswith("user_"):
+                 user_id_part = token.split("_", 1)[1] # Extract user ID part after "user_"
+                 return TokenPayload(
+                     sub=user_id_part, 
+                     exp=9999999999, 
+                     iat=1713830000, 
+                     jti=f"jti-{user_id_part}", 
+                     type="access", 
+                     scopes=["test_scope"]
+                 )
+            # Default case if token format is unexpected in tests
+            raise InvalidTokenException(f"Unexpected token format in test: {token}")
             
-    mock_service.verify_token = mock_verify # Assign the async function
+    mock_verify_token_method.side_effect = verify_side_effect
+    # Assign the configured method mock to the service mock
+    mock_service.verify_token = mock_verify_token_method
+    
     return mock_service
 
 @pytest.fixture
@@ -114,8 +125,11 @@ def mock_auth_service():
     """Create an AsyncMock authentication service."""
     mock_service = AsyncMock(spec=AuthenticationService)
     
-    # Configure get_user_by_id to be awaitable
-    async def mock_get_user(user_id):
+    # Create an AsyncMock for the get_user_by_id method
+    mock_get_user_method = AsyncMock()
+
+    # Configure the side effect for get_user_by_id
+    async def get_user_side_effect(user_id):
         if user_id == "user123":
             # Standard valid, active user
             return User(
@@ -130,26 +144,37 @@ def mock_auth_service():
              # Inactive user
              return User(id="inactive_user", email="inactive@example.com", is_active=False, roles=["patient"], hashed_password="")
         elif user_id == "not_found_user":
-            # User that causes a UserNotFoundException
-            raise UserNotFoundException(f"User {user_id} not found")
+            # User that should trigger UserNotFoundException (return None initially was wrong)
+            return None # The middleware should handle None by raising UserNotFoundException
         elif user_id == "auth_error_user":
-            # User that causes a generic AuthenticationError
-            raise AuthenticationException("Simulated auth service error")
+            # User that causes a generic AuthenticationError (used for 500 test)
+            # Make sure this error propagates correctly
+            raise AuthenticationException("Simulated auth service error for testing 500 response") 
         else:
-            # Default: return None for unexpected IDs to simulate user not found
+            # Default: return None for any other unexpected IDs
+            logger.warning(f"mock_auth_service received unexpected user_id: {user_id}")
             return None
             
-    mock_service.get_user_by_id = mock_get_user # Assign the async function
+    mock_get_user_method.side_effect = get_user_side_effect
+    # Assign the configured method mock to the service mock
+    mock_service.get_user_by_id = mock_get_user_method
+    
     return mock_service
     
 @pytest.fixture
 def auth_middleware(app, mock_jwt_service, mock_auth_service, auth_config):
     """Create an authentication middleware instance with async mocks."""
+    # Define async getters for the dependency injection override
+    async def get_mock_jwt():
+        return mock_jwt_service
+    async def get_mock_auth():
+        return mock_auth_service
+
     middleware = AuthMiddleware(
         app=app,
-        # Inject the async mocks directly
-        auth_service=lambda: mock_auth_service, 
-        jwt_service=lambda: mock_jwt_service,   
+        # Provide the async getters
+        auth_service=get_mock_auth, 
+        jwt_service=get_mock_jwt,   
         public_paths=list(auth_config.exempt_paths) 
     )
     return middleware
@@ -470,3 +495,7 @@ class TestAuthMiddleware:
 
 # Ensure imports at the top include necessary items like pytest, User, etc.
 # Add any missing imports based on the refactored code.
+
+# Add logger import if not present
+import logging
+logger = logging.getLogger(__name__)
