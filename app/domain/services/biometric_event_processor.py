@@ -70,7 +70,7 @@ class AlertRule:
         self.updated_at = self.created_at
         self.is_active = is_active
     
-    def evaluate(self, data_point: BiometricDataPoint, context: dict[str, Any]) -> bool:
+    def evaluate(self, data_point: BiometricDataPoint, context: Optional[Dict[str, Any]] = None) -> bool:
         """
         Evaluate the rule against a biometric data point.
         

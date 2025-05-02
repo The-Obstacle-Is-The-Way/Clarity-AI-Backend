@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, ValidationInfo
 
 
 class AccelerometerReading(BaseModel):
@@ -168,29 +168,45 @@ class AnalysisResult(BaseModel):
     warnings: List[str] = Field([], description="Warnings or alerts from the analysis")
     
     @field_validator('metrics', mode='before')
-    def validate_metrics(cls, v, info):
+    def validate_metrics(cls, v, info: ValidationInfo):
         """Validate metrics based on analysis type."""
-        # In Pydantic v2, ValidationInfo replaces the values dict
-        values = info.data
+        # In Pydantic v2, we need to use the ValidationInfo object's data attribute
+        # instead of the raw values dict from v1
         
-        if not hasattr(info, 'data') or 'analysis_type' not in values:
+        # Safely extract data - handle both Pydantic v1 and v2 patterns
+        data = {}
+        if hasattr(info, 'data'):
+            # Pydantic v2 pattern
+            data = info.data
+        else:
+            # Fallback for older tests that might pass values directly
+            data = info
+            
+        # Early return if we don't have analysis_type
+        if 'analysis_type' not in data:
             return v
             
-        analysis_type = values['analysis_type']
+        analysis_type = data['analysis_type']
         
-        # This is just a validation check, not enforcing specific schema
-        # In a real implementation, we would validate against the appropriate metrics model
+        # Define required metrics for each analysis type
         required_keys = {
-            AnalysisTypeEnum.SLEEP_QUALITY: ['total_sleep_time', 'sleep_efficiency'],
-            AnalysisTypeEnum.ACTIVITY_PATTERNS: ['daily_step_count', 'sedentary_hours'],
+            AnalysisTypeEnum.SLEEP_QUALITY: ['efficiency', 'duration', 'latency', 'rem_percentage', 'deep_percentage'],
+            AnalysisTypeEnum.ACTIVITY_PATTERNS: ['steps', 'active_minutes', 'calories_burned', 'sedentary_hours'],
             AnalysisTypeEnum.CIRCADIAN_RHYTHM: ['sleep_onset_time', 'wake_time', 'rhythm_stability'],
             AnalysisTypeEnum.ENERGY_EXPENDITURE: ['total_daily_energy_expenditure', 'base_metabolic_rate'],
             AnalysisTypeEnum.MENTAL_STATE_CORRELATION: ['depression_risk_score', 'anxiety_risk_score'],
             AnalysisTypeEnum.MEDICATION_RESPONSE: ['pre_post_activity_change', 'pre_post_sleep_change']
         }
         
-        if analysis_type in required_keys:
-            for key in required_keys[analysis_type]:
+        # Handle both enum values and strings
+        analysis_type_key = analysis_type
+        if hasattr(analysis_type, 'value'):
+            # If it's an enum, get its value
+            analysis_type_key = analysis_type
+        
+        # Check metrics requirements
+        if analysis_type_key in required_keys:
+            for key in required_keys[analysis_type_key]:
                 if key not in v:
                     raise ValueError(f"Missing required metric '{key}' for analysis type '{analysis_type}'")
         
