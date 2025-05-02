@@ -19,7 +19,7 @@ from typing import Optional
 # Added imports
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from app.infrastructure.persistence.sqlalchemy.database import get_db_session
+from app.core.dependencies.database import get_db_session
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricAlertRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository

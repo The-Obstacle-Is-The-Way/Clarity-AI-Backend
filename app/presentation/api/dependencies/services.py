@@ -6,10 +6,11 @@ the PAT service via FastAPI's dependency_overrides.
 """
 import logging
 from fastapi import HTTPException, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.services.ml.pat import PATInterface, PATServiceFactory, InitializationError
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
 from app.infrastructure.persistence.repositories.digital_twin_repository import DigitalTwinRepository
-from app.infrastructure.persistence.sqlalchemy.database import get_db_session
+from app.core.dependencies.database import get_db_session
 from app.infrastructure.cache.redis_cache import RedisCache
 from app.application.interfaces.services.cache_service import CacheService
 
@@ -33,7 +34,7 @@ async def get_pat_service() -> PATInterface:
 
 
 async def get_digital_twin_service(
-    session: Depends = Depends(get_db_session),
+    session: AsyncSession = Depends(get_db_session),
 ) -> DigitalTwinApplicationService:  # noqa: D401 – factory function
     """Provide a fully‑wired ``DigitalTwinApplicationService`` instance.
 

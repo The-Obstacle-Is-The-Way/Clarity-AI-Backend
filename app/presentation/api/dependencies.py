@@ -12,7 +12,7 @@ from fastapi import Depends
 
 from app.application.services.digital_twin_service import DigitalTwinService
 from app.infrastructure.persistence.repositories.digital_twin_repository import DigitalTwinRepository
-from app.infrastructure.persistence.sqlalchemy.database import get_db_session
+from app.core.dependencies.database import get_db_session
 
 
 logger = logging.getLogger(__name__)
