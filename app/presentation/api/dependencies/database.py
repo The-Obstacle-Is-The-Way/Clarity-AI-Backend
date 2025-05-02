@@ -54,18 +54,32 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]: # Correct type hint
              raise # Re-raise the exception for FastAPI to handle
         # Session closing/rollback is handled by the context manager in get_session_from_config
 
+from app.infrastructure.database.repositories.user_repository import UserRepository
+from app.infrastructure.logging.logger import logger # Ensure logger is imported
+
 def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
     """
     Dependency factory for obtaining repository instances.
     Returns a function that expects an AsyncSession and returns the repository instance.
     The lookup of the implementation is deferred until the dependency is actually called.
     """
+    # === DEBUG PRINT ===
+    print(f"---> [DEBUG] Original get_repository called for repo_type: {repo_type.__name__}")
+    # === END DEBUG PRINT ===
+
     # This inner function will be returned and called by FastAPI's dependency injection
     def _get_repo_instance_deferred_lookup(session: AsyncSession = Depends(get_db)) -> T:
+        # === DEBUG PRINT ===
+        print(f"------> [DEBUG] Inner _get_repo_instance_deferred_lookup executing for repo_type: {repo_type.__name__}")
+        # === END DEBUG PRINT ===
+
         # Lookup happens here, when the dependency is resolved for a request
         def _lookup_implementation() -> Type[T]:
             implementation = _repository_map.get(repo_type)
             if implementation is None:
+                # === DEBUG PRINT ===
+                print(f"---------> [DEBUG] FAILURE: No implementation found for {repo_type.__name__} in _repository_map: {_repository_map}")
+                # === END DEBUG PRINT ===
                 logger.error(f"Failed to find repository implementation for {repo_type.__name__}")
                 # Log current map state for debugging
                 logger.debug(f"Current repository map: {_repository_map}")
