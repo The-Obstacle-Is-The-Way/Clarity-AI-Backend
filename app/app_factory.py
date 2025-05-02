@@ -23,9 +23,8 @@ from app.presentation.api.routes import setup_routers
 from app.config.settings import Settings, get_settings
 # REMOVED incorrect import for exception handlers
 # from app.core.exceptions.handlers import add_exception_handlers 
-from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.cache.redis_cache import close_redis_connection, initialize_redis_pool
-from app.infrastructure.persistence.unit_of_work import UnitOfWork
+from app.infrastructure.persistence.sqlalchemy.unit_of_work import UnitOfWork
 from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.presentation.middleware.logging_middleware import LoggingMiddleware
@@ -86,17 +85,17 @@ def create_application(settings: Settings) -> FastAPI:
     """
     logger.info(f"Creating FastAPI application with version: {settings.VERSION}")
 
-    # Initialize Sentry
-    if settings.SENTRY_DSN:
+    # Initialize Sentry - with defensive programming to handle optional configurations
+    if hasattr(settings, 'SENTRY_DSN') and settings.SENTRY_DSN:
         logger.info(f"Initializing Sentry for environment: {settings.ENVIRONMENT}")
         sentry_sdk.init(
             dsn=str(settings.SENTRY_DSN),
             integrations=[
                 LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
             ],
-            environment=settings.ENVIRONMENT,
-            traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-            profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
+            environment=getattr(settings, 'ENVIRONMENT', 'development'),
+            traces_sample_rate=getattr(settings, 'SENTRY_TRACES_SAMPLE_RATE', 0.0),
+            profiles_sample_rate=getattr(settings, 'SENTRY_PROFILES_SAMPLE_RATE', 0.0),
             send_default_pii=False # Ensure PII is not sent by default
         )
         logger.info("Sentry initialized.")
@@ -104,13 +103,19 @@ def create_application(settings: Settings) -> FastAPI:
         logger.warning("SENTRY_DSN not configured. Sentry integration disabled.")
 
 
+    # Apply defensive programming for settings attributes that might not exist in all environments
+    project_name = getattr(settings, 'PROJECT_NAME', 'Clarity AI Backend')
+    project_desc = getattr(settings, 'PROJECT_DESCRIPTION', 'Digital Twin Platform')
+    version = getattr(settings, 'VERSION', '0.1.0')
+    environment = getattr(settings, 'ENVIRONMENT', 'development')
+    
     app = FastAPI(
-        title=settings.PROJECT_NAME,
-        description=settings.PROJECT_DESCRIPTION,
-        version=settings.VERSION,
-        openapi_url=f"/api/{settings.VERSION}/openapi.json" if settings.ENVIRONMENT != 'production' else None,
-        docs_url=f"/api/{settings.VERSION}/docs" if settings.ENVIRONMENT != 'production' else None,
-        redoc_url=f"/api/{settings.VERSION}/redoc" if settings.ENVIRONMENT != 'production' else None,
+        title=project_name,
+        description=project_desc,
+        version=version,
+        openapi_url=f"/api/{version}/openapi.json" if environment != 'production' else None,
+        docs_url=f"/api/{version}/docs" if environment != 'production' else None,
+        redoc_url=f"/api/{version}/redoc" if environment != 'production' else None,
         lifespan=lifespan # Use the lifespan context manager
     )
 
@@ -119,7 +124,7 @@ def create_application(settings: Settings) -> FastAPI:
     # IMPORTANT: Order matters! Middleware are processed in the order they are added.
 
     # 1. SentryAsgiMiddleware (if enabled) - Must be early to catch errors in other middleware/routes
-    if settings.SENTRY_DSN:
+    if hasattr(settings, 'SENTRY_DSN') and settings.SENTRY_DSN:
         app.add_middleware(SentryAsgiMiddleware)
         logger.info("Added SentryAsgiMiddleware.")
 

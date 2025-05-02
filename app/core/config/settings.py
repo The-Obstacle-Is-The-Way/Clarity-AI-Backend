@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     
     # Environment
     TESTING: bool = False  # Flag to indicate when running in test environment
+    ENVIRONMENT: str = "development"  # development, staging, production
+    VERSION: str = "0.1.0"  # Application version
+    PROJECT_NAME: str = "Clarity AI"
+    PROJECT_DESCRIPTION: str = "Mental Health Digital Twin API"
     API_V1_STR: str = "/api/v1"
     
     # Security Settings
@@ -44,6 +48,23 @@ class Settings(BaseSettings):
     
     # Logging Settings
     LOG_LEVEL: str = "INFO"
+    
+    # Monitoring and Error Tracking (Sentry)
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.2  # Percentage of transactions to trace
+    SENTRY_PROFILES_SAMPLE_RATE: float = 0.2  # Percentage of transactions to profile
+    
+    # Redis Configuration
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_SSL: bool = False
+    
+    # Rate Limiting
+    RATE_LIMITING_ENABLED: bool = True
+    DEFAULT_RATE_LIMITS: List[str] = ["60/minute", "1000/hour"]
+    RATE_LIMIT_STRATEGY: str = "ip"
+    
+    # CORS Settings (extended with explicit typing)
+    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
     
     # Security Headers
     SECURITY_HEADERS: Dict[str, str] = {

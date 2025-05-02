@@ -93,7 +93,38 @@ from app.presentation.middleware.authentication_middleware import Authentication
 from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_provider
 from app.presentation.api.dependencies.auth_service import get_auth_service_provider
 from app.presentation.api.dependencies.user_repository import get_user_repository_provider
-from app.main import create_application # Import the actual app factory
+
+# CLEAN ARCH FIX: Create a test-specific application factory to avoid problematic imports
+def create_test_application(settings):
+    """
+    Create a minimal FastAPI application instance for testing.
+    
+    This function is a simplified version of the real create_application 
+    function in app_factory.py, bypassing problematic imports and dependencies
+    that aren't needed for testing.
+    
+    Args:
+        settings: Application settings
+        
+    Returns:
+        FastAPI application instance configured for testing
+    """
+    from fastapi import FastAPI
+    
+    # Create a minimal FastAPI app with test-appropriate settings
+    app = FastAPI(
+        title=settings.PROJECT_NAME if hasattr(settings, "PROJECT_NAME") else "Test API",
+        description="Test API for automated testing",
+        version=settings.VERSION if hasattr(settings, "VERSION") else "0.1.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json"
+    )
+    
+    return app
+
+# Import the actual app factory for reference (without using it directly in tests)
+# from app.main import create_application
 
 @pytest.fixture
 def auth_headers():
@@ -349,14 +380,13 @@ def initialized_app(
     EXCLUDING AuthenticationMiddleware entirely to isolate endpoint logic.
     Only includes the analytics router and overrides its direct dependencies.
     Scope is function to ensure isolation.
+    
+    Uses our test-specific app factory to avoid problematic dependencies.
     """
     logger.info(">>> Creating MINIMAL initialized_app fixture (NO AUTH MIDDLEWARE)... ")
 
-    # --- Create BARE App --- 
-    test_app = FastAPI(
-        title="Minimal Test App",
-        version="1.0", 
-    )
+    # --- Create BARE App using our test-specific factory --- 
+    test_app = create_test_application(test_settings)
 
     # --- Include ONLY Analytics Router --- 
     from app.presentation.api.v1.endpoints.analytics import router as analytics_router

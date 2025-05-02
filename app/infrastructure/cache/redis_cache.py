@@ -430,10 +430,11 @@ class InMemoryFallback:
         self._expirations = {}
         logger.debug("InMemoryFallback closed (cleared).")
 
-# Optional: Add a utility function to get the cache instance if needed elsewhere
+# Global Redis connection pool and cache instance for application-wide use
+_redis_pool: Optional[aioredis.Redis] = None
 _cache_instance: Optional[RedisCache] = None
 
-def get_cache_service() -> CacheService:
+async def get_cache_service() -> CacheService:
     """
     Get the global cache service instance.
     
@@ -443,7 +444,75 @@ def get_cache_service() -> CacheService:
         CacheService: The initialized cache service instance (Redis or fallback).
     """
     global _cache_instance
+    
     if _cache_instance is None:
         _cache_instance = RedisCache()
-        # Note: Initialization (connection) happens lazily on first operation
+        await _cache_instance.initialize()
+        
     return _cache_instance
+
+
+async def initialize_redis_pool(redis_url: Optional[str] = None) -> None:
+    """
+    Initialize the global Redis connection pool for application-wide use.
+    
+    Should be called during application startup to ensure Redis is properly configured
+    before it's needed by various components.
+    
+    Args:
+        redis_url: Optional Redis connection URL. Defaults to settings.
+    """
+    global _redis_pool
+    
+    if _redis_pool is not None:
+        logger.info("Redis pool already initialized.")
+        return
+        
+    # Get Redis connection settings
+    settings = get_settings()
+    effective_redis_url = redis_url or getattr(settings, 'REDIS_URL', "redis://localhost:6379/1")
+    
+    try:
+        # Prepare connection options with reasonable defaults
+        redis_ssl = getattr(settings, "REDIS_SSL", False)
+        redis_connection_options = {
+            "encoding": "utf-8",
+            "decode_responses": True
+        }
+        if redis_ssl:
+             redis_connection_options["ssl"] = True
+
+        # Connect to Redis using the prepared options
+        _redis_pool = await aioredis.from_url(
+            effective_redis_url,
+            **redis_connection_options
+        )
+        
+        logger.info(f"Global Redis pool initialized at {effective_redis_url}")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis pool: {str(e)}")
+        # In production, this might be critical enough to re-raise
+        # For development/testing, we can fallback to an in-memory implementation
+        if getattr(settings, "ENVIRONMENT", "").lower() == "production":
+            logger.critical("Redis connection failure in production environment")
+            # Consider raising exception to prevent app startup with missing Redis
+            # raise
+
+
+async def close_redis_connection() -> None:
+    """
+    Close the global Redis connection pool.
+    
+    Should be called during application shutdown to ensure proper cleanup.
+    """
+    global _redis_pool
+    
+    if _redis_pool is not None:
+        try:
+            await _redis_pool.close()
+            logger.info("Global Redis pool closed.")
+        except Exception as e:
+            logger.error(f"Error closing Redis pool: {str(e)}")
+        finally:
+            _redis_pool = None
