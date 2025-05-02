@@ -1,30 +1,25 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, TypeVar
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import FastAPI, HTTPException, status
-from fastapi.testclient import TestClient
+from fastapi import FastAPI, status
 from httpx import AsyncClient
 
-from app.domain.entities.biometric_alert import BiometricAlert, BiometricAlertCreate, BiometricAlertUpdate
-from app.domain.entities.biometric_alert_rule import BiometricAlertRule
-from app.domain.entities.biometric_alert_template import BiometricAlertTemplate
 from app.domain.entities.user import User
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.domain.services.biometric_event_processor import BiometricEventProcessor, ClinicalRuleEngine
 from app.main import app
-from app.presentation.api.dependencies.auth import get_current_user
 from app.presentation.api.v1.dependencies import (
     get_alert_repository,
     get_event_processor,
     get_rule_repository,
     get_template_repository,
 )
-from app.presentation.api.v1.endpoints.biometric_alerts import router
+from app.presentation.dependencies.auth import get_current_user
 
 # Attempt to import infrastructure implementations for more realistic mocking specs
 # Fallback to basic AsyncMock if infrastructure layer is not available
@@ -187,9 +182,8 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
         assert response.status_code == status.HTTP_200_OK
-        response_data = response.json()
-        assert "rules" in response_data
-        assert "total" in response_data
+        assert "rules" in response.json()
+        assert "total" in response.json()
 
     async def test_create_alert_rule_from_template(
         self,
@@ -212,10 +206,9 @@ class TestBiometricAlertsEndpoints:
             json=payload
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_data = response.json()
-        assert response_data["name"] == "High Heart Rate Mock Rule"
-        assert response_data["patient_id"] == str(sample_patient_id)
-        assert response_data["priority"] == "high"
+        assert response.json()["name"] == "High Heart Rate Mock Rule"
+        assert response.json()["patient_id"] == str(sample_patient_id)
+        assert response.json()["priority"] == "high"
 
     async def test_create_alert_rule_from_condition(
         self,
@@ -246,12 +239,11 @@ class TestBiometricAlertsEndpoints:
             json=payload
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_data = response.json()
-        assert response_data["name"] == "Custom Low Oxygen Rule"
-        assert response_data["patient_id"] == str(sample_patient_id)
-        assert response_data["priority"] == "critical"
-        assert len(response_data["conditions"]) == 1
-        assert response_data["conditions"][0]["metric_name"] == "blood_oxygen"
+        assert response.json()["name"] == "Custom Low Oxygen Rule"
+        assert response.json()["patient_id"] == str(sample_patient_id)
+        assert response.json()["priority"] == "critical"
+        assert len(response.json()["conditions"]) == 1
+        assert response.json()["conditions"][0]["metric_name"] == "blood_oxygen"
 
     async def test_create_alert_rule_validation_error(
         self,
@@ -283,8 +275,7 @@ class TestBiometricAlertsEndpoints:
             headers=headers
         )
         assert response.status_code == status.HTTP_200_OK
-        response_data = response.json()
-        assert response_data["rule_id"] == rule_id_str
+        assert response.json()["rule_id"] == rule_id_str
 
     async def test_get_alert_rule_not_found(
         self,
@@ -328,10 +319,9 @@ class TestBiometricAlertsEndpoints:
             json=update_payload
         )
         assert response.status_code == status.HTTP_200_OK
-        response_data = response.json()
-        assert response_data["rule_id"] == rule_id_str
-        assert response_data["name"] == update_payload["name"]
-        assert response_data["is_active"] == update_payload["is_active"]
+        assert response.json()["rule_id"] == rule_id_str
+        assert response.json()["name"] == update_payload["name"]
+        assert response.json()["is_active"] == update_payload["is_active"]
 
     async def test_delete_alert_rule(
         self,
@@ -358,9 +348,8 @@ class TestBiometricAlertsEndpoints:
             headers=headers
         )
         assert response.status_code == status.HTTP_200_OK
-        response_data = response.json()
-        assert "templates" in response_data
-        assert "total" in response_data
+        assert "templates" in response.json()
+        assert "total" in response.json()
 
     async def test_get_alerts(
         self,
@@ -398,7 +387,6 @@ class TestBiometricAlertsEndpoints:
             params=params
         )
         assert response.status_code == status.HTTP_200_OK
-        response_data = response.json()
 
     async def test_update_alert_status_acknowledge(
         self,
@@ -467,10 +455,9 @@ class TestBiometricAlertsEndpoints:
             headers=headers
         )
         assert response.status_code == status.HTTP_200_OK
-        response_data = response.json()
-        assert response_data["patient_id"] == patient_id_str
-        assert "total_alerts" in response_data
-        assert "active_alerts" in response_data
+        assert response.json()["patient_id"] == patient_id_str
+        assert "total_alerts" in response.json()
+        assert "active_alerts" in response.json()
 
     async def test_get_patient_alert_summary_not_found(
         self,
@@ -514,10 +501,9 @@ class TestBiometricAlertsEndpoints:
             json=payload
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_data = response.json()
-        assert response_data["template_id"] == payload["template_id"]
-        assert response_data["name"] == payload["name"]
-        assert response_data["description"] == payload["description"]
+        assert response.json()["template_id"] == payload["template_id"]
+        assert response.json()["name"] == payload["name"]
+        assert response.json()["description"] == payload["description"]
 
     async def test_update_alert_status_unauthorized(
         self, client: AsyncClient, sample_patient_id: uuid.UUID
@@ -566,12 +552,11 @@ class TestBiometricAlertsEndpoints:
             json=payload
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_data = response.json()
-        assert response_data["alert_id"] is not None
-        assert response_data["patient_id"] == patient_id_str
-        assert response_data["metric_name"] == payload["metric_name"]
-        assert response_data["value"] == payload["value"]
-        assert response_data["unit"] == payload["unit"]
+        assert response.json()["alert_id"] is not None
+        assert response.json()["patient_id"] == patient_id_str
+        assert response.json()["metric_name"] == payload["metric_name"]
+        assert response.json()["value"] == payload["value"]
+        assert response.json()["unit"] == payload["unit"]
 
     async def test_hipaa_compliance_no_phi_in_url_or_errors(
         self,

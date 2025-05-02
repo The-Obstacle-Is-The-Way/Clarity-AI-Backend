@@ -388,18 +388,29 @@ def initialized_app(
     # --- Create BARE App using our test-specific factory --- 
     test_app = create_test_application(test_settings)
 
-    # --- Include ONLY Analytics Router --- 
-    from app.presentation.api.v1.endpoints.analytics import router as analytics_router
+    # Import routers within the fixture to avoid circular dependencies at module level
+    from app.presentation.api.v1.endpoints.auth import router as auth_router
+    # from app.presentation.api.v1.endpoints.users import router as users_router # Commented out - Module not found
+    # from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router # Commented out for focus
+    # from app.presentation.api.v1.endpoints.patients import router as patients_router # Commented out for focus
+    from app.presentation.api.v1.endpoints.biometric_alert_rules import router as biometric_alert_rules_router
+    from app.presentation.api.v1.endpoints.analytics_endpoints import router as analytics_router
+    # from app.presentation.api.v1.endpoints.clinical_sessions import router as clinical_sessions_router # Commented out for focus
+    # from app.presentation.api.v1.endpoints.symptom_assessments import router as symptom_assessments_router # Commented out for focus
+
     # Use a generic prefix for isolation if needed, or the real one if required by tests
+    # --- Include ONLY Necessary Routers for Biometric Tests --- 
+    test_app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+    # Re-added prefix='/api/v1' because tests expect routes under this base path
+    test_app.include_router(biometric_alert_rules_router, prefix="/api/v1", tags=["biometric_alert_rules"])
     test_app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
-    logger.info(">>> Included Analytics Router.")
+    logger.info(">>> Included Auth, Biometric Alerts/Rules, and Analytics Routers.")
 
     # --- Apply Dependency Overrides for ROUTE --- 
-    # Override database session provider (if analytics route needs it)
-    test_app.dependency_overrides[get_db] = mock_db_session_override
-    test_app.dependency_overrides[get_async_db] = mock_db_session_override
-    
-    # Override PAT service provider (if analytics route needs it)
+    # Override database session provider
+    test_app.dependency_overrides[get_db_session] = mock_db_session_override # Corrected: Use get_db_session
+    # test_app.dependency_overrides[get_async_db] = mock_db_session_override # Commented out old override
+    # Override PAT service provider
     test_app.dependency_overrides[get_pat_service] = mock_pat_service_override
     
     # Override the ACTUAL Analytics Service dependency used by the route
