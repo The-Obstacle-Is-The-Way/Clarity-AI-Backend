@@ -155,11 +155,11 @@ class TestBiometricAlertsEndpoints:
     async def test_create_alert_rule_from_template(
         self,
         client: AsyncClient,
-        get_valid_admin_auth_headers: dict[str, str],
+        provider_auth_headers: dict[str, str],
         sample_patient_id: UUID,
     ) -> None:
         """Test creating an alert rule from a template."""
-        headers = get_valid_admin_auth_headers
+        headers = provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
             "patient_id": str(sample_patient_id),
@@ -268,11 +268,11 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_rule(
         self,
         client: AsyncClient,
-        get_valid_admin_auth_headers: dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_rule_id: UUID
     ) -> None:
         """Test updating an existing alert rule."""
-        headers = get_valid_admin_auth_headers
+        headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_rule_id)
         update_payload = {
             "name": "Updated Sample Rule",
@@ -303,11 +303,11 @@ class TestBiometricAlertsEndpoints:
     async def test_delete_alert_rule(
         self,
         client: AsyncClient,
-        get_valid_admin_auth_headers: dict[str, str],
+        get_valid_provider_auth_headers: dict[str, str],
         sample_rule_id: UUID
     ) -> None:
         """Test deleting an alert rule."""
-        headers = get_valid_admin_auth_headers
+        headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_rule_id)
         response = await client.delete(
             f"/api/v1/biometric-alerts/rules/{rule_id_str}",
@@ -465,10 +465,10 @@ class TestBiometricAlertsEndpoints:
     async def test_create_alert_rule_template(
         self,
         client: AsyncClient,
-        get_valid_admin_auth_headers: dict[str, str]
+        get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         """Test creating an alert rule template."""
-        headers = get_valid_admin_auth_headers
+        headers = get_valid_provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
             "name": "High Heart Rate Template",
