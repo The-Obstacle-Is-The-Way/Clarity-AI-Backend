@@ -6,22 +6,22 @@ the AWS XGBoost service with a clean separation of concerns and proper
 interface adherence.
 """
 
-import json
-from typing import Dict, Any, List, Optional, Union
-from datetime import datetime
 import asyncio
-from app.core.services.aws.interfaces import AWSServiceFactoryInterface
+import json
+from datetime import datetime
+from typing import Any
 
 from app.core.interfaces.aws_service_interface import (
+    AWSSessionServiceInterface,
+    BedrockRuntimeServiceInterface,
+    BedrockServiceInterface,
+    ComprehendMedicalServiceInterface,
     DynamoDBServiceInterface,
     S3ServiceInterface,
-    SageMakerServiceInterface,
     SageMakerRuntimeServiceInterface,
-    ComprehendMedicalServiceInterface,
-    BedrockServiceInterface,
-    BedrockRuntimeServiceInterface,
-    AWSSessionServiceInterface
+    SageMakerServiceInterface,
 )
+from app.core.services.aws.interfaces import AWSServiceFactoryInterface
 
 
 class MockDynamoDBService(DynamoDBServiceInterface):
@@ -31,20 +31,20 @@ class MockDynamoDBService(DynamoDBServiceInterface):
         """Initialize with empty tables."""
         self.tables = {}
     
-    def scan_table(self, table_name: str) -> Dict[str, List[Dict[str, Any]]]:
+    def scan_table(self, table_name: str) -> dict[str, list[dict[str, Any]]]:
         """Scan a DynamoDB table and return all items."""
         if table_name not in self.tables:
             self.tables[table_name] = []
         return {"Items": self.tables[table_name]}
     
-    def put_item(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
+    def put_item(self, table_name: str, item: dict[str, Any]) -> dict[str, Any]:
         """Add an item to a DynamoDB table."""
         if table_name not in self.tables:
             self.tables[table_name] = []
         self.tables[table_name].append(item)
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
     
-    def get_item(self, table_name: str, key: Dict[str, Any]) -> Dict[str, Any]:
+    def get_item(self, table_name: str, key: dict[str, Any]) -> dict[str, Any]:
         """Get an item from a DynamoDB table."""
         if table_name not in self.tables:
             return {"ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -61,7 +61,7 @@ class MockDynamoDBService(DynamoDBServiceInterface):
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
     
     def query(self, table_name: str, key_condition_expression: str, 
-                  expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+                  expression_attribute_values: dict[str, Any]) -> dict[str, Any]:
         """Query a DynamoDB table with a key condition expression."""
         if table_name not in self.tables:
             return {"Items": [], "Count": 0, "ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -74,9 +74,9 @@ class MockDynamoDBService(DynamoDBServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200}
         }
     
-    def update_item(self, table_name: str, key: Dict[str, Any], 
+    def update_item(self, table_name: str, key: dict[str, Any], 
                    update_expression: str, 
-                   expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+                   expression_attribute_values: dict[str, Any]) -> dict[str, Any]:
         """Update an item in a DynamoDB table."""
         if table_name not in self.tables:
             return {"ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -111,14 +111,14 @@ class MockS3Service(S3ServiceInterface):
         """Check if a bucket exists in S3."""
         return self.bucket_exists
     
-    def put_object(self, bucket_name: str, key: str, body: bytes) -> Dict[str, Any]:
+    def put_object(self, bucket_name: str, key: str, body: bytes) -> dict[str, Any]:
         """Put an object in S3."""
         if bucket_name not in self.objects:
             self.objects[bucket_name] = {}
         self.objects[bucket_name][key] = body
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
     
-    def get_object(self, bucket_name: str, key: str) -> Dict[str, Any]:
+    def get_object(self, bucket_name: str, key: str) -> dict[str, Any]:
         """Get an object from S3."""
         if (bucket_name not in self.objects or 
             key not in self.objects[bucket_name]):
@@ -129,7 +129,7 @@ class MockS3Service(S3ServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200}
         }
     
-    def list_objects(self, bucket_name: str, prefix: Optional[str] = None) -> Dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         if bucket_name not in self.objects:
             return {"Contents": [], "ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -201,11 +201,11 @@ class MockSageMakerService(SageMakerServiceInterface):
                 }
             ]
     
-    def list_endpoints(self) -> Dict[str, List[Dict[str, Any]]]:
+    def list_endpoints(self) -> dict[str, list[dict[str, Any]]]:
         """List all SageMaker endpoints."""
         return {"Endpoints": self.endpoints}
     
-    def describe_endpoint(self, endpoint_name: str) -> Dict[str, Any]:
+    def describe_endpoint(self, endpoint_name: str) -> dict[str, Any]:
         """Describe a specific SageMaker endpoint."""
         for endpoint in self.endpoints:
             if endpoint["EndpointName"] == endpoint_name:
@@ -230,7 +230,7 @@ class MockSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
         self.exception_to_raise = None
     
     async def invoke_endpoint(self, EndpointName: str, ContentType: str, 
-                      Body: bytes, Accept: Optional[str] = None) -> Dict[str, Any]:
+                      Body: bytes, Accept: str | None = None) -> dict[str, Any]:
         """Async mock invoke endpoint implementation."""
         # If we're configured to raise an exception, do so
         if self.exception_to_raise:
@@ -271,7 +271,7 @@ class MockResponseBody:
 class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
     """Mock Comprehend Medical service for testing."""
     
-    def detect_entities(self, text: str) -> Dict[str, Any]:
+    def detect_entities(self, text: str) -> dict[str, Any]:
         """Detect medical entities in text."""
         entities = []
         # Add PHI detection if text contains typical PHI patterns
@@ -287,7 +287,7 @@ class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
             
         return {"Entities": entities}
     
-    def detect_phi(self, text: str) -> Dict[str, Any]:
+    def detect_phi(self, text: str) -> dict[str, Any]:
         """Detect PHI in text."""
         entities = []
         # Add PHI detection if text contains typical PHI patterns
@@ -302,7 +302,7 @@ class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
             
         return {"Entities": entities}
     
-    def infer_icd10_cm(self, text: str) -> Dict[str, Any]:
+    def infer_icd10_cm(self, text: str) -> dict[str, Any]:
         """Infer ICD-10-CM codes from medical text."""
         return {
             "Entities": [{
@@ -323,7 +323,7 @@ class MockComprehendMedicalService(ComprehendMedicalServiceInterface):
 class MockBedrockService(BedrockServiceInterface):
     """Mock Bedrock service for testing."""
     
-    def list_foundation_models(self) -> Dict[str, Any]:
+    def list_foundation_models(self) -> dict[str, Any]:
         """List available foundation models."""
         return {
             "modelSummaries": [{
@@ -333,7 +333,7 @@ class MockBedrockService(BedrockServiceInterface):
             }]
         }
     
-    def invoke_model(self, model_id: str, body: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    def invoke_model(self, model_id: str, body: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Invoke a foundation model."""
         return {
             "body": json.dumps({
@@ -346,9 +346,9 @@ class MockBedrockService(BedrockServiceInterface):
 class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
     """Mock Bedrock Runtime service for testing."""
     
-    def invoke_model(self, model_id: str, body: Union[str, Dict[str, Any], bytes],
-                   content_type: Optional[str] = None, 
-                   accept: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    def invoke_model(self, model_id: str, body: str | dict[str, Any] | bytes,
+                   content_type: str | None = None, 
+                   accept: str | None = None, **kwargs) -> dict[str, Any]:
         """Invoke a foundation model."""
         return {
             "body": MockResponseBody({
@@ -358,9 +358,9 @@ class MockBedrockRuntimeService(BedrockRuntimeServiceInterface):
         }
     
     def invoke_model_with_response_stream(self, model_id: str, 
-                                        body: Union[str, Dict[str, Any], bytes],
-                                        content_type: Optional[str] = None, 
-                                        accept: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+                                        body: str | dict[str, Any] | bytes,
+                                        content_type: str | None = None, 
+                                        accept: str | None = None, **kwargs) -> dict[str, Any]:
         """Invoke a foundation model with streaming response."""
         return {
             "stream": MockStreamIterator([
@@ -395,7 +395,7 @@ class MockStreamIterator:
 class MockAWSSessionService(AWSSessionServiceInterface):
     """Mock AWS Session service for testing."""
     
-    def get_caller_identity(self) -> Dict[str, str]:
+    def get_caller_identity(self) -> dict[str, str]:
         """Get the AWS identity information for the caller."""
         return {
             "UserId": "AIDAXXXXXXXXXXXXXXXX",
@@ -403,7 +403,7 @@ class MockAWSSessionService(AWSSessionServiceInterface):
             "Arn": "arn:aws:iam::123456789012:user/test-user"
         }
     
-    def get_available_regions(self, service_name: str) -> List[str]:
+    def get_available_regions(self, service_name: str) -> list[str]:
         """Get available regions for a specific AWS service."""
         return ["us-east-1", "us-west-2", "eu-west-1"]
     

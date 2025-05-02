@@ -5,13 +5,12 @@ This module provides mock implementations for various security components
 to be used in unit tests, ensuring isolation from real security services.
 """
 
-from unittest.mock import MagicMock
 import uuid
+from unittest.mock import MagicMock
 
 # Mock Encryption Service
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-import base64
-from cryptography.fernet import Fernet, InvalidToken
+
 
 class MockEncryptionService(BaseEncryptionService):
     """A proper mock implementation of BaseEncryptionService for testing.
@@ -50,7 +49,7 @@ class MockEncryptionService(BaseEncryptionService):
             return f"{self.VERSION_PREFIX}{encrypted_bytes.decode()}"
             
         except Exception as e:
-            return f"encryption_error: {str(e)}"
+            return f"encryption_error: {e!s}"
             
     def decrypt(self, encrypted_value):
         """Decrypt a value using the cipher."""

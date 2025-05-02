@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the Appointment entity.
 """
 
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
+
 import pytest
-from typing import Any # Import Any
 
 # Import Appointment entity and related enums
 from app.domain.entities.appointment import (
@@ -14,6 +13,7 @@ from app.domain.entities.appointment import (
     AppointmentStatus,
     AppointmentType,
 )
+
 # Import exceptions if needed for specific tests
 # from app.domain.exceptions import (
 #     InvalidAppointmentStateError, # May not be used anymore

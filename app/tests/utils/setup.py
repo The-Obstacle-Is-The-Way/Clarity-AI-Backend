@@ -7,9 +7,6 @@ and adherence to SOLID design patterns.
 """
 
 import os
-import sys
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 # Configure test environment variables if not already set
 if not os.environ.get("TESTING"):
@@ -21,7 +18,6 @@ if not os.environ.get("ENVIRONMENT"):
 # Import app modules to verify setup
 try:
     from app.config.settings import Settings
-    from app.infrastructure.persistence.sqlalchemy.config.database import Base
 
     # Create settings instance to validate configuration
     settings = Settings()

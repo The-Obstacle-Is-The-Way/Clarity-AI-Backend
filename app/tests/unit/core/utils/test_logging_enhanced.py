@@ -1,20 +1,13 @@
 """Unit tests for enhanced logging functionality."""
-import pytest
-from unittest.mock import patch, MagicMock, call
 import logging
-import json
 import os
-import time
-from datetime import datetime
-import tempfile
 import sys
-from io import StringIO
+import tempfile
+from unittest.mock import MagicMock, patch
 
-from app.core.utils.logging import (
-    get_logger,
-    log_execution_time,
-    LogLevel
-)
+import pytest
+
+from app.core.utils.logging import get_logger
 
 
 @pytest.fixture

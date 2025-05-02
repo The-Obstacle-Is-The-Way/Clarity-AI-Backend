@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for ML Service Factory.
 
@@ -12,11 +11,12 @@ import pytest
 
 from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.factory import MLServiceFactory
+from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA
+
 # Corrected imports from infrastructure layer
 from app.infrastructure.ml.mentallama.service import MentaLLaMA
-from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA
-from app.infrastructure.ml.phi.mock import MockPHIDetection
 from app.infrastructure.ml.phi.aws_comprehend_medical import AWSComprehendMedicalPHIDetection
+from app.infrastructure.ml.phi.mock import MockPHIDetection
 
 
 @pytest.mark.db_required()

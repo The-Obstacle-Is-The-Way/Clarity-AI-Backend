@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Analytics API endpoints.
 
@@ -8,27 +7,19 @@ and process in a HIPAA-compliant manner.
 """
 
 import json
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from datetime import datetime, timedelta, timezone 
-from unittest.mock import AsyncMock, MagicMock, patch, ANY 
-from uuid import UUID, uuid4
-from typing import List, Dict, Any, Optional
-
-from fastapi import BackgroundTasks, status, Request, Response, Depends
+from fastapi import BackgroundTasks, status
 from fastapi.testclient import TestClient
-from app.main import app
 
-# Defer service import
-# from app.domain.services.analytics_service import AnalyticsService
-from app.infrastructure.cache.redis_cache import RedisCache 
 # Correctly import router and endpoint functions/models we need to test or mock
 # Avoid importing the dependency provider (get_analytics_service) itself if possible
-from app.domain.entities.analytics import AnalyticsEvent
-from app.presentation.api.v1.endpoints.analytics_endpoints import (
-    router,
-    # get_analytics_service, 
-    # AnalyticsEvent 
-)
+# Defer service import
+# from app.domain.services.analytics_service import AnalyticsService
+from app.infrastructure.cache.redis_cache import RedisCache
+from app.main import app
 
 # Import the *actual* service for type hints where necessary
 # from app.domain.services.analytics_service import AnalyticsService
@@ -52,8 +43,8 @@ except ImportError:
     UTC = timezone.utc 
 
 # Import the use cases to be mocked
-from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
 from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
+from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
 
 # --- Test Fixtures ---
 

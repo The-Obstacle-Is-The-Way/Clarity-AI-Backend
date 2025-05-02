@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Pharmacogenomics Model Service.
 
@@ -7,26 +6,25 @@ analyzes genetic data and predicts medication responses.
 """
 
 import pytest
+
 pytest.skip("Skipping pharmacogenomics model service tests (torch unsupported)", allow_module_level=True)
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC, now_utc
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
-from typing import Dict, Any, Optional
+from uuid import uuid4
+
 from pytest_mock import MockerFixture
 
-from app.infrastructure.ml.pharmacogenomics.model_service import PharmacogenomicsService
-# Corrected import
-from app.infrastructure.ml.pharmacogenomics.gene_medication_model import GeneMedicationModel
 # Corrected exception imports based on definitive source location
 from app.core.exceptions import ValidationError
 from app.core.exceptions.base_exceptions import ModelExecutionError
-from app.config import settings # Corrected path: app.config.settings
-from app.domain.entities.digital_twin import DigitalTwin # Corrected import name
-from app.domain.entities.pgx import PGXReport, PGXResult # Correct import path
 from app.domain.entities.patient import Patient
+from app.domain.entities.pgx import PGXReport  # Correct import path
+from app.domain.utils.datetime_utils import UTC
+
+# Corrected import
+from app.infrastructure.ml.pharmacogenomics.gene_medication_model import GeneMedicationModel
+from app.infrastructure.ml.pharmacogenomics.model_service import PharmacogenomicsService
+
 
 # Define test class
 class TestPharmacogenomicsService:

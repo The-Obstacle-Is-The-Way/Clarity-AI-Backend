@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the Symptom Forecasting Service.
 
@@ -7,14 +6,12 @@ implements psychiatric symptom forecasting using an ensemble of models,
 following Clean Architecture principles and ensuring HIPAA compliance.
 """
 import pytest
+
 pytest.skip("Skipping symptom forecasting tests (torch unsupported in this environment)", allow_module_level=True)
-import os
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
 import numpy as np
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timedelta
-from uuid import UUID, uuid4
-from app.core.services.ml.xgboost.exceptions import PredictionError, ValidationError
 
 from app.infrastructure.ml.symptom_forecasting.model_service import SymptomForecastingService
 

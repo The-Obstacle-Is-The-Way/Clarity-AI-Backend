@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Unit tests for the Patient repository SQLAlchemy implementation.
 
 This module tests the functionality of the PatientRepository class to ensure
@@ -7,29 +6,25 @@ patient data in accordance with HIPAA and other security requirements.
 """
 
 import asyncio
+import base64
+import json
+import logging
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-import json
-import uuid
-import types
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from datetime import datetime, timedelta, timezone, date
-from typing import Dict, Any, Optional, List
-import base64
-import binascii
-import logging
-from faker import Faker
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import Column, String, select
-from sqlalchemy.exc import SQLAlchemyError
 
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
 from app.domain.entities.patient import Patient as PatientEntity
-from app.domain.entities.patient import Patient as PatientDomain
 from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository,
+)
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.core.exceptions import PersistenceError
+
 
 @pytest.fixture
 def sample_patient_id() -> str:
@@ -38,7 +33,7 @@ def sample_patient_id() -> str:
 
 
 @pytest.fixture
-def sample_patient_data(sample_patient_id: str) -> Dict[str, Any]:
+def sample_patient_data(sample_patient_id: str) -> dict[str, Any]:
     """Create sample patient data for testing."""
     return {
         "id": sample_patient_id,

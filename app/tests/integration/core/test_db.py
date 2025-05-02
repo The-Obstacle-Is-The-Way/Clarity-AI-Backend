@@ -6,17 +6,14 @@ with the standardized test database infrastructure.
 """
 import pytest
 import pytest_asyncio
+from sqlalchemy import Column, String, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text, Column, String, Integer
 
 # Import REAL application Base
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Import standardized test database components
-from app.tests.integration.utils.test_db_initializer import (
-    get_test_db_session,
-    verify_table_exists
-)
+from app.tests.integration.utils.test_db_initializer import get_test_db_session, verify_table_exists
 
 
 @pytest.mark.asyncio

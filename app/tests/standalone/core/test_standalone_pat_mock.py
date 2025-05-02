@@ -5,16 +5,15 @@ This module contains standalone tests that can be run independently
 without requiring external dependencies.
 """
 
-from app.core.services.ml.pat.mock import MockPATService
+
 import pytest
-from datetime import datetime
-from unittest.mock import MagicMock
 
 from app.core.services.ml.pat.exceptions import (
-    ValidationError,
     InitializationError,
-    ResourceNotFoundError
+    ResourceNotFoundError,
+    ValidationError,
 )
+from app.core.services.ml.pat.mock import MockPATService
 
 
 @pytest.fixture

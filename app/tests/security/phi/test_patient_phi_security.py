@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HIPAA security tests for Patient PHI protection.
 
@@ -11,18 +10,17 @@ for Protected Health Information (PHI) in the patient model, including:
     """
 
 import logging
-import pytest
 import uuid
 from datetime import date
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch
+
+import pytest
 
 from app.domain.entities.patient import Patient
-from app.domain.value_objects.address import Address
-from app.domain.value_objects.emergency_contact import EmergencyContact
+
 # from app.domain.value_objects.insurance import Insurance # Insurance VO
 # removed or refactored
 from app.infrastructure.security.encryption import BaseEncryptionService
-from app.core.utils.logging import get_logger
 from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 # Import necessary modules for testing PHI security
@@ -34,6 +32,7 @@ except ImportError:
 
 # Import the canonical function for getting a sanitized logger
 from app.infrastructure.security.phi.log_sanitizer import get_sanitized_logger
+
 
 # Import BaseSecurityTest for test base class
 @pytest.mark.db_required
@@ -111,7 +110,7 @@ class TestPatientPHISecurity(BaseSecurityTest):
             try:
                 raise ValueError(f"Error processing patient {patient.id} with email {patient.email}")
             except ValueError as e:
-                logger.error(f"Error occurred: {str(e)}")
+                logger.error(f"Error occurred: {e!s}")
             for call in mock_log_error.call_args_list:
                 log_message = call[0][0]
                 assert patient.email not in log_message, "Email should not be in error logs"

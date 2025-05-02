@@ -1,21 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the PAT (Patient Assessment Tool) service.
 
 These tests validate the functionality of the PAT service implementation.
 """
 
-from app.core.services.ml.pat.pat_service import PATService
-import datetime
+
 import pytest
-import sys
-import os
-from typing import Any, Dict, Optional
-from unittest.mock import patch, MagicMock
 
 # Import exceptions directly
-from app.core.exceptions import InvalidRequestError, ModelNotFoundError, ServiceUnavailableError
 from app.core.services.ml.pat.mock import MockPATService
+
 
 @pytest.mark.venv_only()
 class TestPATService:

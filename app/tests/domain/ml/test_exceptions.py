@@ -6,6 +6,7 @@ particularly the MentalLLaMA inference system exceptions.
 """
 
 import pytest
+
 from app.domain.ml.exceptions import (
     MentalLLaMAAuthenticationError,
     MentalLLaMABaseException,

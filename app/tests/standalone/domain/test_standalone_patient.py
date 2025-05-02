@@ -5,13 +5,11 @@ This module contains both the patient entity implementation and tests in a singl
 making it completely independent of the rest of the application.
 """
 
-import pytest
 import unittest
 from datetime import date
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 from uuid import uuid4
-
 
 # ============= Patient Entity Implementation =============
 
@@ -50,7 +48,7 @@ class EmergencyContact:
         name: str,
         relationship: str,
         phone: str,
-        email: Optional[str] = None
+        email: str | None = None
     ):
         self.name = name
         self.relationship = relationship
@@ -82,7 +80,7 @@ class Insurance:
         self,
         provider: str,
         policy_number: str,
-        group_number: Optional[str] = None,
+        group_number: str | None = None,
         status: InsuranceStatus = InsuranceStatus.ACTIVE
     ):
         self.provider = provider
@@ -121,14 +119,14 @@ class Patient:
         last_name: str,
         date_of_birth: date,
         gender: Gender | str,
-        email: Optional[str] = None,
-        phone: Optional[str] = None,
-        address: Optional[str] = None,
+        email: str | None = None,
+        phone: str | None = None,
+        address: str | None = None,
         status: PatientStatus | str = PatientStatus.ACTIVE,
-        emergency_contacts: Optional[List[EmergencyContact]] = None,
-        insurance: Optional[Insurance] = None,
-        medical_record_number: Optional[str] = None,
-        notes: Optional[str] = None
+        emergency_contacts: list[EmergencyContact] | None = None,
+        insurance: Insurance | None = None,
+        medical_record_number: str | None = None,
+        notes: str | None = None
     ):
         self.id = uuid4()
         self.first_name = first_name
@@ -177,7 +175,7 @@ class Patient:
         name: str,
         relationship: str,
         phone: str,
-        email: Optional[str] = None
+        email: str | None = None
     ) -> EmergencyContact:
         """Add an emergency contact."""
         contact = EmergencyContact(name, relationship, phone, email)
@@ -188,7 +186,7 @@ class Patient:
         self,
         provider: str,
         policy_number: str,
-        group_number: Optional[str] = None,
+        group_number: str | None = None,
         status: InsuranceStatus = InsuranceStatus.ACTIVE
     ) -> Insurance:
         """Set insurance information."""

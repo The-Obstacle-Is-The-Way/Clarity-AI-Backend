@@ -4,16 +4,17 @@ Test suite for auth endpoints.
 These tests verify the functionality of the authentication endpoints
 using direct API calls to ensure proper behavior.
 """
+from unittest.mock import AsyncMock, patch
+
 import pytest
-import json
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
-from app.main import app as application, create_application
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
+
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.main import create_application
 from app.presentation.api.dependencies.auth_service import get_auth_service_provider
-from app.presentation.api.routes import setup_routers
+
 
 # Create a test client
 @pytest.fixture

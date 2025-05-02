@@ -5,11 +5,11 @@ This mock specifically addresses the mismatch between the test_patient.py
 expectations and the actual domain Patient model.
 """
 
-from datetime import datetime, date
-from typing import Optional, List, Dict, Any, Union
 from dataclasses import dataclass, field
-from uuid import uuid4, UUID
+from datetime import date, datetime
 from enum import Enum
+from typing import Any
+from uuid import UUID, uuid4
 
 
 # Mock enums for testing
@@ -50,31 +50,31 @@ class Patient:
     """
 
     # Required fields - default to None for validation checks
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    date_of_birth: Optional[Union[date, str]] = None
-    gender: Optional[Union[Gender, str]] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    date_of_birth: date | str | None = None
+    gender: Gender | str | None = None
 
     # Optional fields with defaults
-    id: Optional[Union[UUID, str]] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[Dict[str, str]] = None
-    emergency_contacts: List[Dict[str, str]] = field(default_factory=list)
-    insurance_info: Optional[Dict[str, str]] = None
-    insurance_status: Union[InsuranceStatus, str] = InsuranceStatus.UNVERIFIED
-    medical_history: List[Dict[str, Any]] = field(default_factory=list)
-    medications: List[Dict[str, Any]] = field(default_factory=list)
-    allergies: List[str] = field(default_factory=list)
-    notes: Optional[str] = None
-    status: Union[PatientStatus, str] = PatientStatus.ACTIVE
+    id: UUID | str | None = None
+    email: str | None = None
+    phone: str | None = None
+    address: dict[str, str] | None = None
+    emergency_contacts: list[dict[str, str]] = field(default_factory=list)
+    insurance_info: dict[str, str] | None = None
+    insurance_status: InsuranceStatus | str = InsuranceStatus.UNVERIFIED
+    medical_history: list[dict[str, Any]] = field(default_factory=list)
+    medications: list[dict[str, Any]] = field(default_factory=list)
+    allergies: list[str] = field(default_factory=list)
+    notes: str | None = None
+    status: PatientStatus | str = PatientStatus.ACTIVE
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
     # Additional attributes for test compatibility
-    last_appointment: Optional[datetime] = None
-    next_appointment: Optional[datetime] = None
-    preferred_provider_id: Optional[str] = None
+    last_appointment: datetime | None = None
+    next_appointment: datetime | None = None
+    preferred_provider_id: str | None = None
 
     def __post_init__(self):
         """Initialize and validate the instance after creation."""

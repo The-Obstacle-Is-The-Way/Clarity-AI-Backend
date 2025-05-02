@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the BiometricIntegrationService.
 
@@ -6,26 +5,22 @@ This module contains tests for the BiometricIntegrationService, ensuring it
 correctly integrates biometric data into patient digital twins.
 """
 
-import pytest
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from uuid import UUID, uuid4
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-# Correct import for BiometricTwin
-from app.domain.entities.digital_twin.digital_twin import DigitalTwin
-from app.domain.entities.patient import Patient
-from app.domain.entities.provider import Provider
-# Correct import path for BiometricTwin
-from app.domain.entities.biometric_twin_enhanced import BiometricTwin
-from app.domain.repositories.biometric_twin_repository import BiometricTwinRepository
-from app.domain.services.biometric_integration_service import BiometricIntegrationService
-from app.domain.exceptions import DomainError
-from app.domain.services.digital_twin_service import DigitalTwinService
+import pytest
+
 # from app.infrastructure.external.devices.interface import WearableDevice  # Commented out: Path seems incorrect and usage unclear
 # Keep existing BiometricDataPoint import if needed by tests
-from app.domain.entities.biometric_twin import BiometricDataPoint
+# Correct import path for BiometricTwin
+from app.domain.entities.biometric_twin_enhanced import BiometricTwin
+
+# Correct import for BiometricTwin
+from app.domain.exceptions import DomainError
+from app.domain.services.biometric_integration_service import BiometricIntegrationService
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.mark.db_required()  # Assuming db_required is a valid marker

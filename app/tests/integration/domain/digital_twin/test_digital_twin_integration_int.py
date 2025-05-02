@@ -5,9 +5,10 @@ Demonstrates the interaction between all components.
 import asyncio
 import uuid
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
 
 import pytest
+
+from app.domain.utils.datetime_utils import UTC
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio

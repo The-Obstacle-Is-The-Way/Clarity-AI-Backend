@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Enhanced unit tests for the JWT Service implementation.
 
@@ -6,18 +5,18 @@ This test suite provides comprehensive coverage for JWT token generation,
 validation, and management to ensure secure authentication within the platform.
 """
 
-import pytest
-import jwt
-from datetime import datetime, timedelta, timezone # Corrected import
+from datetime import datetime, timedelta, timezone  # Corrected import
+
 # from app.domain.utils.datetime_utils import UTC # Use timezone.utc directly
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock
+
+import jwt
+import pytest
 from freezegun import freeze_time
 
 # Use canonical config path
 from app.config.settings import Settings
-from app.domain.models.user import User
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
-from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from app.infrastructure.security.jwt.jwt_service import JWTService
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:

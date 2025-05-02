@@ -5,17 +5,12 @@ These tests validate the complete vertical stack from API to infrastructure,
 ensuring that all components work together seamlessly with proper horizontal
 coverage across all neurotransmitters and brain regions.
 """
-import asyncio
 import logging
-import pytest
-import pytest_asyncio
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, List, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI
+import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 
 # Mark all tests in this module as asyncio tests
@@ -23,22 +18,23 @@ pytestmark = pytest.mark.asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.application.services.temporal_neurotransmitter_service import TemporalNeurotransmitterService
+from app.application.services.temporal_neurotransmitter_service import (
+    TemporalNeurotransmitterService,
+)
 from app.config.settings import get_settings
-from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter, ClinicalSignificance
-from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
-from app.domain.entities.temporal_events import CorrelatedEvent, EventChain
-from app.domain.entities.temporal_sequence import TemporalSequence
-from app.domain.repositories.temporal_repository import TemporalSequenceRepository, EventRepository
+from app.domain.entities.digital_twin_enums import (
+    BrainRegion,
+    Neurotransmitter,
+)
+from app.domain.repositories.temporal_repository import EventRepository, TemporalSequenceRepository
 from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 from app.domain.services.visualization_preprocessor import NeurotransmitterVisualizationPreprocessor
 from app.infrastructure.models.temporal_sequence_model import Base
-from app.infrastructure.repositories.temporal_event_repository import SqlAlchemyEventRepository
-from app.infrastructure.repositories.temporal_sequence_repository import SqlAlchemyTemporalSequenceRepository
-from app.domain.enums.role import Role
-from app.domain.entities.patient import Patient
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
 from app.infrastructure.persistence.sqlalchemy.database import Base
+from app.infrastructure.repositories.temporal_event_repository import SqlAlchemyEventRepository
+from app.infrastructure.repositories.temporal_sequence_repository import (
+    SqlAlchemyTemporalSequenceRepository,
+)
 
 # Initialize settings using the getter function
 settings = get_settings()
@@ -178,7 +174,7 @@ async def test_temporal_service_with_xgboost_integration(
     if hasattr(temporal_service, 'nt_mapping') and temporal_service.nt_mapping is not None:
         logger.info(f"[DEBUG test_fn] hasattr receptor_map? {hasattr(temporal_service.nt_mapping, 'receptor_map')}")
     else:
-        logger.info(f"[DEBUG test_fn] temporal_service.nt_mapping is None or does not exist.")
+        logger.info("[DEBUG test_fn] temporal_service.nt_mapping is None or does not exist.")
 
     # Simulate treatment response
     treatment_results = await temporal_service.simulate_treatment_response(

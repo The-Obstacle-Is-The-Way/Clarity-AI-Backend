@@ -1,29 +1,26 @@
-# -*- coding: utf-8 -*-
 """Unit tests for Authentication Middleware functionality.
 
 This module tests the authentication middleware which enforces secure
 access to protected resources and routes in our HIPAA-compliant system.
 """
 
-import pytest
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
-from fastapi import FastAPI, Request, Response, HTTPException, status
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import FastAPI, Request, Response, status
+from starlette.authentication import AuthCredentials, UnauthenticatedUser
 from starlette.datastructures import Headers, State
 from starlette.responses import JSONResponse
-from starlette.types import Scope, Receive, Send, ASGIApp
-from starlette.authentication import UnauthenticatedUser, AuthCredentials
-from typing import Dict, Any, Awaitable, Callable, Optional
+
+# Assuming these exceptions are correctly defined in the domain layer
+from app.domain.exceptions.token_exceptions import (
+    InvalidTokenException,
+    TokenExpiredException,
+)
 
 # Import the TokenPayload model which is essential for our JWT verification
 from app.infrastructure.security.jwt.jwt_service import TokenPayload
-
-# Assuming these exceptions are correctly defined in the domain layer
-from app.domain.exceptions.auth_exceptions import InvalidCredentialsException
-from app.domain.exceptions.token_exceptions import (
-    TokenExpiredException,
-    InvalidTokenException,
-)
 
 # Assuming RoleBasedAccessControl is correctly defined/imported
 # If not, define a mock or import the actual class
@@ -37,7 +34,9 @@ except ImportError:
             return True
 
 # Import the middleware being tested
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware as AuthMiddleware
+from app.presentation.middleware.authentication_middleware import (
+    AuthenticationMiddleware as AuthMiddleware,
+)
 
 # Mock TokenAuthorizationError if it's a custom exception used internally
 # class TokenAuthorizationError(Exception):

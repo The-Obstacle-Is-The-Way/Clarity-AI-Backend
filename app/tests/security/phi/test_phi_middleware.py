@@ -5,15 +5,14 @@ These tests verify that the PHI middleware correctly sanitizes requests and resp
 to prevent PHI exposure through API endpoints.
 """
 
-import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.infrastructure.security.phi import PHIService, PHIMiddleware, add_phi_middleware
+from app.infrastructure.security.phi import add_phi_middleware
 
 
 class TestPHIMiddleware:

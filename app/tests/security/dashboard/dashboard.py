@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 NovaMind Digital Twin Security Dashboard Generator
 
@@ -8,12 +7,12 @@ security test results, highlighting HIPAA compliance metrics and
 quantum-level encryption effectiveness across all components.
 """
 
-import os
 import json
-from datetime import datetime
-from typing import Dict, Any, List
+import os
 import unittest
-from unittest.mock import Mock
+from datetime import datetime
+from typing import Any
+
 
 class MockDatabase:
     def clear_data(self):
@@ -27,7 +26,7 @@ class MockUser:
         self.role = role
 
 class MockAuthService:
-    def __init__(self, users: Dict[str, MockUser]):
+    def __init__(self, users: dict[str, MockUser]):
         self.users = users
 
 class MockAuthorizationService:
@@ -155,7 +154,7 @@ class DashboardSecurityTest(unittest.TestCase):
         response = self.client.get('/admin/dashboard')
         self.assertUnauthorized(response)
 
-def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
+def generate_dashboard(results: dict[str, Any], output_path: str) -> None:
     """Generate HTML dashboard for security test results.
 
     Args:
@@ -327,7 +326,7 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
         status_text = "NON-COMPLIANT"
 
     # Generate the HTML
-    html = f"""<!DOCTYPE html>
+    html = """<!DOCTYPE html>
     <html lang="en">
     <head>
     <meta charset="UTF-8">
@@ -335,17 +334,17 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
     <title>NovaMind Digital Twin Security Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-    .dashboard-header {{background-color: #343a40; color: white; padding: 20px 0; margin-bottom: 30px;}}
-    .status-indicator {{font-size: 24px; font-weight: bold; padding: 10px 20px; border-radius: 5px; display: inline-block;}}
-    .success {{background-color: #d4edda; color: #155724;}}
-    .warning {{background-color: #fff3cd; color: #856404;}}
-    .danger {{background-color: #f8d7da; color: #721c24;}}
-    .metrics-card {{text-align: center; margin-bottom: 20px;}}
-    .metric-value {{font-size: 36px; font-weight: bold;}}
-    .metric-label {{font-size: 14px; text-transform: uppercase;}}
-    .test-details {{margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px;}}
-    .message {{font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;}}
-    footer {{margin-top: 50px; padding: 20px 0; background-color: #f8f9fa; text-align: center;}}
+    .dashboard-header {background-color: #343a40; color: white; padding: 20px 0; margin-bottom: 30px;}
+    .status-indicator {font-size: 24px; font-weight: bold; padding: 10px 20px; border-radius: 5px; display: inline-block;}
+    .success {background-color: #d4edda; color: #155724;}
+    .warning {background-color: #fff3cd; color: #856404;}
+    .danger {background-color: #f8d7da; color: #721c24;}
+    .metrics-card {text-align: center; margin-bottom: 20px;}
+    .metric-value {font-size: 36px; font-weight: bold;}
+    .metric-label {font-size: 14px; text-transform: uppercase;}
+    .test-details {margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px;}
+    .message {font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;}
+    footer {margin-top: 50px; padding: 20px 0; background-color: #f8f9fa; text-align: center;}
     </style>
     </head>
     <body>
@@ -355,11 +354,11 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
     <div class="col-md-8">
         <h1>NovaMind Digital Twin</h1>
         <h2>HIPAA Security Compliance Dashboard</h2>
-        <p class="mb-0">Generated: {{formatted_timestamp}}</p>
+        <p class="mb-0">Generated: {formatted_timestamp}</p>
     </div>
     <div class="col-md-4 text-end">
-        <div class="status-indicator {{status_class}}">
-            {{status_text}}
+        <div class="status-indicator {status_class}">
+            {status_text}
         </div>
     </div>
     </div>
@@ -371,7 +370,7 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
     <div class="col-md-3">
     <div class="card metrics-card">
         <div class="card-body">
-            <div class="metric-value">{{total_tests}}</div>
+            <div class="metric-value">{total_tests}</div>
             <div class="metric-label">Total Tests</div>
         </div>
     </div>
@@ -379,7 +378,7 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
     <div class="col-md-3">
     <div class="card metrics-card">
         <div class="card-body">
-            <div class="metric-value text-success">{{passed_tests}}</div>
+            <div class="metric-value text-success">{passed_tests}</div>
             <div class="metric-label">Passed</div>
         </div>
     </div>
@@ -387,7 +386,7 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
     <div class="col-md-3">
     <div class="card metrics-card">
         <div class="card-body">
-            <div class="metric-value text-danger">{{failed_tests + error_tests}}</div>
+            <div class="metric-value text-danger">{failed_tests + error_tests}</div>
             <div class="metric-label">Failed/Errors</div>
         </div>
     </div>
@@ -395,7 +394,7 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
     <div class="col-md-3">
     <div class="card metrics-card">
         <div class="card-body">
-            <div class="metric-value {{status_class}}">{{success_rate:.2f}}%</div>
+            <div class="metric-value {status_class}">{success_rate:.2f}%</div>
             <div class="metric-label">Success Rate</div>
         </div>
     </div>
@@ -484,7 +483,7 @@ def generate_dashboard(results: Dict[str, Any], output_path: str) -> None:
             success_rate=success_rate,
         ))
 
-def parse_test_results(results_path: str) -> Dict[str, Any]:
+def parse_test_results(results_path: str) -> dict[str, Any]:
     """Parse a test results JSON file.
 
     Args:
@@ -493,7 +492,7 @@ def parse_test_results(results_path: str) -> Dict[str, Any]:
     Returns:
         Parsed results dictionary
     """
-    with open(results_path, 'r') as f:
+    with open(results_path) as f:
         return json.load(f)
 
 if __name__ == "__main__":

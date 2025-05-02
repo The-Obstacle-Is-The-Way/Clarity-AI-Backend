@@ -5,13 +5,9 @@ This module contains both the PHI sanitizer implementation and tests in a single
 making it completely independent of the rest of the application.
 """
 
-import json
 import logging
 import re
-import unittest
-from collections.abc import Callable
 from enum import Enum
-from typing import Any
 
 import pytest
 

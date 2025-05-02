@@ -1,10 +1,9 @@
 """
 Standalone test for the TemporalNeurotransmitterSequence class.
 """
+import datetime
 import sys
 import uuid
-import pytest
-import datetime
 from pathlib import Path
 
 # Add backend to the sys.path
@@ -12,12 +11,12 @@ backend_dir = str(Path(__file__).resolve().parent.parent.parent.parent)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+from app.domain.entities.digital_twin.temporal_neurotransmitter_sequence import (
+    TemporalNeurotransmitterSequence,
+)
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     Neurotransmitter,
-)
-from app.domain.entities.digital_twin.temporal_neurotransmitter_sequence import (
-    TemporalNeurotransmitterSequence,
 )
 
 

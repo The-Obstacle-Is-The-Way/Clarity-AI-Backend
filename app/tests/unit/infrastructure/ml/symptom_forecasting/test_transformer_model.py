@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Symptom Forecasting Transformer Model.
 
@@ -7,16 +6,16 @@ time series data and generates accurate forecasts.
 """
 
 import pytest
+
 pytest.skip("Skipping transformer model tests (torch unsupported in this environment)", allow_module_level=True)
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
 
 from app.infrastructure.ml.symptom_forecasting.transformer_model import SymptomTransformerModel
 
-from app.core.interfaces.ml.base_model import BaseMLModel
 
 class TestTransformerTimeSeriesModel:
     """Tests for the TransformerTimeSeriesModel."""

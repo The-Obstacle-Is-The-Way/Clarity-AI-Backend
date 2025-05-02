@@ -1,24 +1,23 @@
 """Unit tests for the rate limiter functionality."""
+import asyncio
+import time
+from datetime import datetime, timedelta, timezone  # Added timezone
+from unittest.mock import AsyncMock, MagicMock, patch  # Added call and AsyncMock
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone # Added timezone
-import time
-from unittest.mock import Mock, patch, MagicMock, call, AsyncMock # Added call and AsyncMock
-import redis # Import redis for mocking RedisRateLimiter if needed
-import logging
-import os # Import os if needed for env vars, though not used in this version
-import asyncio
+import redis  # Import redis for mocking RedisRateLimiter if needed
 import redis.exceptions
 
 # Updated import path
 from app.infrastructure.security.rate_limiting.rate_limiter_enhanced import (
-    RateLimiter,  # Import the base class directly
-    RateLimitConfig,
     InMemoryRateLimiter,
-    RedisRateLimiter,
+    RateLimitConfig,
     RateLimiterFactory,
     RateLimitType,
+    RedisRateLimiter,
 )
+
 # Keep original RateLimitType if used, or check enhanced file
 # Remove unused/incorrect imports
 # from app.infrastructure.cache.redis_cache import RedisCache

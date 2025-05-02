@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the ProcessAnalyticsEventUseCase.
 
@@ -6,12 +5,13 @@ This module contains unit tests for the analytics event processing use case,
 ensuring proper handling of events, validation, and error conditions.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.domain.entities.analytics import AnalyticsEvent
+import pytest
+
 from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+from app.domain.entities.analytics import AnalyticsEvent
 
 
 @pytest.fixture

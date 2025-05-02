@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 NovaMind Digital Twin Security Test Runner
 
@@ -7,12 +6,12 @@ This script executes the comprehensive security test suite for the
 NovaMind Digital Twin backend with HIPAA-compliant reporting.
 """
 
-import os
-import sys
-import subprocess
 import json
+import os
+import subprocess
+import sys
 from datetime import datetime
-from typing import Dict, List, Any, Tuple
+from typing import Any
 
 # Add the root directory to Python path
 sys.path.insert(
@@ -71,7 +70,7 @@ class SecurityTestRunner:
             "categories": {},
         }
 
-    def find_test_files(self, pattern: str) -> List[str]:
+    def find_test_files(self, pattern: str) -> list[str]:
         """Find test files matching the pattern.
 
         Args:
@@ -93,7 +92,7 @@ class SecurityTestRunner:
         print(f"Found {len(matching_files)} files")
         return matching_files
 
-    def run_pytest(self, test_file: str) -> Dict[str, Any]:
+    def run_pytest(self, test_file: str) -> dict[str, Any]:
         """Run pytest on a specific test file.
 
         Args:
@@ -102,9 +101,8 @@ class SecurityTestRunner:
         Returns:
             Dictionary with test results
         """
-        import subprocess
-        import os
         import json
+        import os
         import uuid
 
         # Ensure test_results directory exists in scripts folder
@@ -132,7 +130,7 @@ class SecurityTestRunner:
             
             # Read the JSON report
             if os.path.exists(report_file):
-                with open(report_file, "r") as f:
+                with open(report_file) as f:
                     return json.load(f)
             else:
                 return {
@@ -144,10 +142,10 @@ class SecurityTestRunner:
         except Exception as e:
             return {
                 "success": False,
-                "error": f"Error running test {test_file}: {str(e)}"
+                "error": f"Error running test {test_file}: {e!s}"
             }
 
-    def parse_test_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_test_results(self, results: dict[str, Any]) -> dict[str, Any]:
         """Parse pytest JSON report into a simplified format.
 
         Args:
@@ -178,7 +176,7 @@ class SecurityTestRunner:
 
         return {"summary": summary, "tests": tests}
 
-    def run_category(self, cat: Dict[str, str]) -> None:
+    def run_category(self, cat: dict[str, str]) -> None:
         """Run tests for a specific category.
 
         Args:

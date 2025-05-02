@@ -5,7 +5,6 @@ This module registers all custom pytest markers used in the test suite
 to avoid warnings during test collection and execution.
 """
 
-import pytest
 
 def pytest_configure(config):
     """

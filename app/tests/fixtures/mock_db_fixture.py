@@ -27,23 +27,24 @@ while keeping deterministic behaviour and zero external dependencies.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any
 
 
 class _ScalarResult:
     """Mimics SQLAlchemy ``ScalarResult`` for simple unit tests."""
 
     def __init__(self, items: Sequence[Any]):
-        self._items: List[Any] = list(items)
+        self._items: list[Any] = list(items)
 
     # ---------------------------------------------------------------------
     # Public helpers used in the current test‑suite
     # ---------------------------------------------------------------------
-    def first(self) -> Optional[Any]:
+    def first(self) -> Any | None:
         return self._items[0] if self._items else None
 
-    def all(self) -> List[Any]:
+    def all(self) -> list[Any]:
         return list(self._items)
 
 
@@ -53,31 +54,31 @@ class _ExecutionResult:
     def __init__(self, items: Sequence[Any]):
         self._items = list(items)
 
-    def scalars(self) -> _ScalarResult:  # noqa: D401 – keep sqlalchemy API
+    def scalars(self) -> _ScalarResult:
         return _ScalarResult(self._items)
 
 
 class _QueryBuilder:
     """Ultra‑simple emulation of ``session.query`` chain."""
 
-    def __init__(self, data: List[Any]):
+    def __init__(self, data: list[Any]):
         # We *copy* so that subsequent filters don't mutate the original.
-        self._data: List[Any] = list(data)
+        self._data: list[Any] = list(data)
 
     # ------------------------------------------------------------------
     # Chained helpers – only ``filter_by``/``first``/``all`` are needed
     # ------------------------------------------------------------------
-    def filter_by(self, **filters: Any) -> "_QueryBuilder":
+    def filter_by(self, **filters: Any) -> _QueryBuilder:
         def _matches(obj: Any) -> bool:
             return all(getattr(obj, key, None) == value for key, value in filters.items())
 
         self._data = [obj for obj in self._data if _matches(obj)]
         return self
 
-    def first(self) -> Optional[Any]:
+    def first(self) -> Any | None:
         return self._data[0] if self._data else None
 
-    def all(self) -> List[Any]:
+    def all(self) -> list[Any]:
         return list(self._data)
 
 
@@ -95,52 +96,52 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
         self.flushed: bool = False
 
         # simple object registries -----------------------------------------
-        self._pending_objects: List[Any] = []
-        self._committed_objects: List[Any] = []
-        self._deleted_objects: List[Any] = []
-        self._entity_registry: Dict[Any, Any] = {}
+        self._pending_objects: list[Any] = []
+        self._committed_objects: list[Any] = []
+        self._deleted_objects: list[Any] = []
+        self._entity_registry: dict[Any, Any] = {}
 
         # misc helpers for assertions --------------------------------------
-        self.added_objects: List[Any] = []
-        self.deleted_objects: List[Any] = []
-        self.refreshed_objects: List[Any] = []
-        self.executed_queries: List[str] = []
-        self.query_results: Dict[str, Union[Any, List[Any]]] = {}
+        self.added_objects: list[Any] = []
+        self.deleted_objects: list[Any] = []
+        self.refreshed_objects: list[Any] = []
+        self.executed_queries: list[str] = []
+        self.query_results: dict[str, Any | list[Any]] = {}
 
         # optional callback invoked during ``refresh`` ----------------------
-        self._refresh_callback: Optional[callable] = None
+        self._refresh_callback: callable | None = None
 
     # ------------------------------------------------------------------
     # Async context‑manager so tests can `async with MockAsyncSession()`
     # ------------------------------------------------------------------
-    async def __aenter__(self) -> "MockAsyncSession":
+    async def __aenter__(self) -> MockAsyncSession:
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:  # noqa: D401 – keep signature
+    async def __aexit__(self, exc_type, exc, tb) -> None:
         # On error we *still* close to keep semantics predictable.
         await self.close()
 
     # ------------------------------------------------------------------
     # CRUD helpers
     # ------------------------------------------------------------------
-    def add(self, obj: Any) -> None:  # noqa: D401 – matches SQLAlchemy API
+    def add(self, obj: Any) -> None:
         self.added_objects.append(obj)
         self._pending_objects.append(obj)
         if hasattr(obj, "id"):
             # Use the *raw* value – don't rely on UUID hashing specifics
-            self._entity_registry[getattr(obj, "id")] = obj
+            self._entity_registry[obj.id] = obj
 
     def delete(self, obj: Any) -> None:
         self.deleted_objects.append(obj)
         self._deleted_objects.append(obj)
         # Remove from committed registry if applicable
-        if hasattr(obj, "id") and getattr(obj, "id") in self._entity_registry:
-            self._entity_registry.pop(getattr(obj, "id"), None)
+        if hasattr(obj, "id") and obj.id in self._entity_registry:
+            self._entity_registry.pop(obj.id, None)
 
     # ------------------------------------------------------------------
     # Transaction helpers (async to mirror SQLAlchemy's API)
     # ------------------------------------------------------------------
-    async def commit(self) -> None:  # noqa: D401 – keep signature
+    async def commit(self) -> None:
         # Move pending → committed ----------------------------------------
         self._committed_objects.extend(self._pending_objects)
         self._pending_objects.clear()
@@ -153,23 +154,23 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
 
         self.committed = True
 
-    async def rollback(self) -> None:  # noqa: D401 – keep signature
+    async def rollback(self) -> None:
         # Simply drop staged changes – don't touch committed objects.
         self._pending_objects.clear()
         self._deleted_objects.clear()
         self.rolled_back = True
 
-    async def flush(self) -> None:  # noqa: D401 – keep signature
+    async def flush(self) -> None:
         # Nothing fancy for a mock – just flip the flag.
         self.flushed = True
 
-    async def close(self) -> None:  # noqa: D401 – keep signature
+    async def close(self) -> None:
         self.closed = True
 
     # ------------------------------------------------------------------
     # Refresh helper (async)
     # ------------------------------------------------------------------
-    async def refresh(self, obj: Any) -> None:  # noqa: D401 – keep signature
+    async def refresh(self, obj: Any) -> None:
         self.refreshed_objects.append(obj)
         if callable(self._refresh_callback):
             self._refresh_callback(obj)
@@ -180,7 +181,7 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
     # ------------------------------------------------------------------
     # Minimal SELECT/INSERT/UPDATE/DELETE emulation via ``execute``
     # ------------------------------------------------------------------
-    async def execute(self, query: Any, *args, **kwargs):  # noqa: D401 – keep API
+    async def execute(self, query: Any, *args, **kwargs):
         query_str = str(query)
         self.executed_queries.append(query_str)
 
@@ -198,7 +199,7 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
         return SimpleNamespace()
 
     # Helper used directly by a couple of tests ---------------------------
-    async def scalars(self, result: Any, *args, **kwargs):  # noqa: D401
+    async def scalars(self, result: Any, *args, **kwargs):
         # ``result`` could be an *ExecutionResult* or any arbitrary object.
         # Our tests only care that ``scalars().first()`` & ``scalars().all()``
         # work, so we wrap *result* in our helper if needed.
@@ -209,7 +210,7 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
     # ------------------------------------------------------------------
     # Very small subset of *synchronous* query API -----------------------
     # ------------------------------------------------------------------
-    def query(self, model_class):  # noqa: D401 – mimic SQLAlchemy API
+    def query(self, model_class):
         # Pull committed objects that are exactly of type ``model_class``
         items = [obj for obj in self._committed_objects if isinstance(obj, model_class)]
         return _QueryBuilder(items)
@@ -217,11 +218,11 @@ class MockAsyncSession:  # pylint: disable=too-many-instance-attributes
     # ------------------------------------------------------------------
     # Convenience helpers for tests to pre‑seed results ------------------
     # ------------------------------------------------------------------
-    def set_result(self, results: Union[Any, List[Any]]):
+    def set_result(self, results: Any | list[Any]):
         """Configure default *SELECT* results when query string unknown."""
         self.query_results["unknown_query"] = results
 
-    def configure_mock_results(self, query: str, results: Union[Any, List[Any]]):
+    def configure_mock_results(self, query: str, results: Any | list[Any]):
         """Bind *results* to a specific ``query`` string (exact match)."""
         self.query_results[query] = results
 
@@ -236,7 +237,7 @@ import pytest
 
 
 @pytest.fixture
-def mock_db():  # noqa: D401 – matches test‑suite naming
+def mock_db():
     """Yield a new *MockAsyncSession* per‑test."""
 
     session = MockAsyncSession()

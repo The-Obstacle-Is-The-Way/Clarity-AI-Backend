@@ -6,40 +6,36 @@ to avoid external dependencies.
 """
 
 import pytest
+
 pytest.skip("Skipping AWS XGBoostService tests (AWS integration not available)", allow_module_level=True)
 import json
 import uuid
+from unittest.mock import ANY, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, ANY
-from datetime import datetime
 from botocore.exceptions import ClientError
-
-from app.core.services.ml.xgboost.aws import AWSXGBoostService
-
-# Import Enums from the correct schema location
-from app.presentation.api.schemas.xgboost import (
-    RiskLevel,
-    TreatmentType,
-    RiskPredictionRequest,
-    TreatmentResponseRequest,
-)  # Renamed TreatmentCategory to TreatmentType, removed ValidationStatus
-
-# Import Exceptions from the service exception module
-from app.core.services.ml.xgboost.exceptions import (
-    ModelNotFoundError,
-    ResourceNotFoundError,  # Added for resource not found errors
-    PredictionError,
-    # InvalidFeatureError,   # Does not exist in exceptions module
-    ServiceConfigurationError,
-    ServiceConnectionError,
-    ValidationError,  # Added for input validation errors
-)
 
 # ModelType and PrivacyLevel might be defined elsewhere or need clarification
 from app.core.services.ml.xgboost import (
     ModelType,
     PrivacyLevel,
 )  # Assuming ModelType and PrivacyLevel are correctly here for now
+from app.core.services.ml.xgboost.aws import AWSXGBoostService
+
+# Import Exceptions from the service exception module
+from app.core.services.ml.xgboost.exceptions import (
+    ModelNotFoundError,
+    ResourceNotFoundError,  # Added for resource not found errors
+    # InvalidFeatureError,   # Does not exist in exceptions module
+    ServiceConfigurationError,
+    ServiceConnectionError,
+    ValidationError,  # Added for input validation errors
+)
+
+# Import Enums from the correct schema location
+from app.presentation.api.schemas.xgboost import (
+    RiskLevel,
+)  # Renamed TreatmentCategory to TreatmentType, removed ValidationStatus
 
 # from app.domain.services.xgboost_service import IXGBoostService # Corrected import -> Interface likely removed
 # TODO: Verify if this test is still relevant after IXGBoostService removal/refactor.

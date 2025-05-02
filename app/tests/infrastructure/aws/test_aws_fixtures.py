@@ -5,13 +5,12 @@ This file tests that the AWS fixtures are working correctly
 in their new location.
 """
 
-import pytest
 from app.core.interfaces.aws_service_interface import AWSServiceFactory
 from app.infrastructure.aws.in_memory_aws_services import (
     InMemoryAWSServiceFactory,
     InMemoryDynamoDBService,
     InMemoryS3Service,
-    InMemorySageMakerService
+    InMemorySageMakerService,
 )
 
 

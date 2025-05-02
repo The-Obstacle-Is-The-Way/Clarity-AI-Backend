@@ -5,41 +5,36 @@ These tests verify that the XGBoost API endpoints correctly validate input,
 handle authentication, and pass data to and from the service layer.
 """
 
+import uuid
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
 import pytest
 import pytest_asyncio
-import inspect
-import uuid
-import json
-from unittest.mock import patch, AsyncMock, MagicMock
-from httpx import AsyncClient
 from fastapi import status
-from datetime import datetime, timezone
-import logging
+from httpx import AsyncClient
 
-from app.presentation.api.schemas.xgboost import (
-    RiskPredictionRequest,
-    TreatmentResponseRequest,
-    OutcomePredictionRequest,
+from app.core.services.ml.xgboost.exceptions import (
+    DataPrivacyError,
+    ModelNotFoundError,
+    ResourceNotFoundError,
+    ServiceUnavailableError,
 )
 from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.core.services.ml.xgboost.exceptions import (
-    ValidationError,
-    DataPrivacyError,
-    ResourceNotFoundError,
-    ModelNotFoundError,
-    ServiceUnavailableError
-)
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
 
-from typing import Generator, Dict, Any, AsyncGenerator
-from app.main import create_application
+from collections.abc import AsyncGenerator
+from typing import Any
+
 from fastapi import FastAPI
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.routes.xgboost import get_xgboost_service, validate_permissions
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+
+from app.api.routes.xgboost import get_xgboost_service
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
+from app.main import create_application
+
 
 # Create a concrete implementation of XGBoostInterface for tests
 class MockXGBoostService:
@@ -67,7 +62,7 @@ class MockXGBoostService:
         return {"prediction": 0.5, "confidence": 0.8}
         
     # Implementation of abstract methods from XGBoostInterface
-    def initialize(self, config: Dict[str, Any]):
+    def initialize(self, config: dict[str, Any]):
         self._initialized = True
         return None
         
@@ -84,25 +79,25 @@ class MockXGBoostService:
         return self._initialized
         
     # Mock implementations for the service methods
-    async def predict_risk(self, patient_id: str, risk_type: str, clinical_data: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    async def predict_risk(self, patient_id: str, risk_type: str, clinical_data: dict[str, Any], **kwargs) -> dict[str, Any]:
         return await self.predict_risk_mock(patient_id, risk_type, clinical_data, **kwargs)
         
-    async def predict_treatment_response(self, patient_id: str, treatment_type: str, treatment_details: Dict[str, Any], clinical_data: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    async def predict_treatment_response(self, patient_id: str, treatment_type: str, treatment_details: dict[str, Any], clinical_data: dict[str, Any], **kwargs) -> dict[str, Any]:
         return await self.predict_treatment_response_mock(patient_id, treatment_type, clinical_data, **kwargs)
         
-    async def predict_outcome(self, patient_id: str, outcome_timeframe: Dict[str, int], clinical_data: Dict[str, Any], treatment_plan: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    async def predict_outcome(self, patient_id: str, outcome_timeframe: dict[str, int], clinical_data: dict[str, Any], treatment_plan: dict[str, Any], **kwargs) -> dict[str, Any]:
         return await self.predict_outcome_mock(patient_id, outcome_timeframe, clinical_data, treatment_plan, **kwargs)
         
-    async def get_feature_importance(self, patient_id: str, model_type: str, prediction_id: str) -> Dict[str, Any]:
+    async def get_feature_importance(self, patient_id: str, model_type: str, prediction_id: str) -> dict[str, Any]:
         return await self.get_feature_importance_mock(patient_id, model_type, prediction_id)
         
-    async def integrate_with_digital_twin(self, patient_id: str, profile_id: str, prediction_id: str) -> Dict[str, Any]:
+    async def integrate_with_digital_twin(self, patient_id: str, profile_id: str, prediction_id: str) -> dict[str, Any]:
         return await self.integrate_with_digital_twin_mock(patient_id, profile_id, prediction_id)
         
-    async def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    async def get_model_info(self, model_type: str) -> dict[str, Any]:
         return await self.get_model_info_mock(model_type)
         
-    async def post_model_info(self, model_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def post_model_info(self, model_data: dict[str, Any]) -> dict[str, Any]:
         return await self.post_model_info_mock(model_data)
 
 @pytest.fixture
@@ -117,7 +112,6 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     setup_test_environment()
     
     # Create a base application with standard configuration
-    from app.main import create_application
     app = create_application()
     
     # Override database dependency
@@ -129,17 +123,15 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
         return mock_xgboost_service
     
     # Import all auth dependencies we need to override
-    from app.presentation.api.dependencies.auth import (
-        get_current_user, 
-        verify_provider_access,
-        verify_admin_access,
-        get_jwt_service,
-        get_patient_id
-    )
-    
     # Create test user with provider/clinician role
     from app.domain.entities.user import User
     from app.domain.enums.role import Role as UserRole
+    from app.presentation.api.dependencies.auth import (
+        get_current_user,
+        get_patient_id,
+        verify_admin_access,
+        verify_provider_access,
+    )
     
     # Create a mock auth override that directly returns a user without JWT validation
     async def override_get_current_user(*args, **kwargs):
@@ -209,24 +201,25 @@ def mock_xgboost_service() -> MockXGBoostService:
 # Define auth headers using our test authentication bypass for clean testing architecture
 from app.tests.integration.utils.test_authentication import create_test_headers_for_role
 
+
 @pytest.fixture
-def psychiatrist_auth_headers() -> Dict[str, str]:
+def psychiatrist_auth_headers() -> dict[str, str]:
     """Create authentication headers for test psychiatrist user via test bypass."""
     return create_test_headers_for_role("CLINICIAN")
 
 @pytest.fixture
-def provider_auth_headers() -> Dict[str, str]:
+def provider_auth_headers() -> dict[str, str]:
     """Create authentication headers for test provider user via test bypass."""
     return create_test_headers_for_role("PROVIDER")
 
 @pytest.fixture
-def patient_auth_headers() -> Dict[str, str]:
+def patient_auth_headers() -> dict[str, str]:
     """Create authentication headers for test patient user via test bypass."""
     return create_test_headers_for_role("PATIENT")
 
 
 @pytest.fixture
-def valid_risk_prediction_data() -> Dict[str, Any]:
+def valid_risk_prediction_data() -> dict[str, Any]:
     """Valid data for risk prediction request."""
     return {
         "patient_id": "test-patient-123",
@@ -248,7 +241,7 @@ def valid_risk_prediction_data() -> Dict[str, Any]:
     }
 
 @pytest.fixture
-def valid_treatment_response_data() -> Dict[str, Any]:
+def valid_treatment_response_data() -> dict[str, Any]:
     """Valid data for treatment response prediction request."""
     return {
         "patient_id": "test-patient-123",
@@ -278,7 +271,7 @@ def valid_treatment_response_data() -> Dict[str, Any]:
     }
 
 @pytest.fixture
-def valid_outcome_prediction_data() -> Dict[str, Any]:
+def valid_outcome_prediction_data() -> dict[str, Any]:
     """Valid data for outcome prediction request."""
     return {
         "patient_id": "test-patient-123",
@@ -318,8 +311,8 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        valid_risk_prediction_data: Dict[str, Any],
-        provider_auth_headers: Dict[str, str] # Use provider headers
+        valid_risk_prediction_data: dict[str, Any],
+        provider_auth_headers: dict[str, str] # Use provider headers
     ):
         """Test successful risk prediction with valid data and authentication."""
         # Skip test implementation - creating a direct pass test that's simpler
@@ -356,7 +349,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str] # Use provider headers
+        provider_auth_headers: dict[str, str] # Use provider headers
     ):
         """Test risk prediction with invalid input data (missing field)."""
         invalid_data = {
@@ -380,7 +373,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str] # Use provider headers
+        provider_auth_headers: dict[str, str] # Use provider headers
     ):
         """Test risk prediction request blocked due to potential PHI in free-text fields (if applicable)."""
         # Assuming some field like 'notes' could contain PHI
@@ -420,8 +413,8 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        valid_risk_prediction_data: Dict[str, Any],
-        patient_auth_headers: Dict[str, str] # Use patient headers (insufficient permissions)
+        valid_risk_prediction_data: dict[str, Any],
+        patient_auth_headers: dict[str, str] # Use patient headers (insufficient permissions)
     ):
         """Test risk prediction attempt with insufficient permissions (e.g., patient role)."""
 
@@ -441,8 +434,8 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        valid_treatment_response_data: Dict[str, Any],
-        provider_auth_headers: Dict[str, str]
+        valid_treatment_response_data: dict[str, Any],
+        provider_auth_headers: dict[str, str]
     ):
         """Test successful treatment response prediction with valid data and authentication."""
         # Configure the mock response with valid data
@@ -472,8 +465,8 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        valid_outcome_prediction_data: Dict[str, Any],
-        provider_auth_headers: Dict[str, str]
+        valid_outcome_prediction_data: dict[str, Any],
+        provider_auth_headers: dict[str, str]
     ):
         """Test successful outcome prediction with valid data and authentication."""
         # Configure the mock response with valid data
@@ -504,7 +497,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str]
+        provider_auth_headers: dict[str, str]
     ):
         """Test successful feature importance retrieval."""
         # Configure test data
@@ -539,7 +532,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str] # Renamed fixture, use provider
+        provider_auth_headers: dict[str, str] # Renamed fixture, use provider
     ):
         """Test retrieval of feature importance for a non-existent prediction."""
         patient_id = "patient-feat-imp-nf"
@@ -565,7 +558,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str]
+        provider_auth_headers: dict[str, str]
     ):
         """Test successful integration with digital twin."""
         # Configure test data
@@ -595,7 +588,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str]
+        provider_auth_headers: dict[str, str]
     ):
         """Test successful model info retrieval."""
         # Configure test data
@@ -626,7 +619,7 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str] # Use provider headers
+        provider_auth_headers: dict[str, str] # Use provider headers
     ):
         """Test retrieval of model info for a non-existent model type."""
         model_type = "non_existent_model"
@@ -647,8 +640,8 @@ class TestXGBoostAPIIntegration:
         self,
         async_client: AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
-        provider_auth_headers: Dict[str, str], # Use provider headers
-        valid_risk_prediction_data: Dict[str, Any]
+        provider_auth_headers: dict[str, str], # Use provider headers
+        valid_risk_prediction_data: dict[str, Any]
     ):
         """Test API response when the XGBoost service is unavailable."""
         mock_xgboost_service.predict_risk_mock.side_effect = ServiceUnavailableError("XGBoost service is down")
@@ -666,7 +659,7 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
-    async def test_predict_risk_no_auth(self, async_client: AsyncClient, valid_risk_prediction_data: Dict[str, Any]):
+    async def test_predict_risk_no_auth(self, async_client: AsyncClient, valid_risk_prediction_data: dict[str, Any]):
         """Test predict risk endpoint without authentication headers."""
         response = await async_client.post(
             "/api/v1/xgboost/predict/risk",

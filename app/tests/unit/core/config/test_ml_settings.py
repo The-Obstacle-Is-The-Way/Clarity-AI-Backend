@@ -1,8 +1,6 @@
 """Unit tests for ML configuration settings."""
+
 import pytest
-from unittest.mock import patch, MagicMock
-import os
-from typing import Dict, Any
 
 # Corrected import path
 from app.config.settings import (
@@ -13,10 +11,10 @@ from app.config.settings import (
     # get_ml_settings, # TODO: Verify location
     # load_model_config, # TODO: Verify location
 )
+
 # TODO: Find and import MLModelType, MLFramework if not in settings.py
 # TODO: Find and import get_ml_settings, load_model_config if not in settings.py
-
-from app.domain.ml.ml_model import ModelType # Import located ModelType
+from app.domain.ml.ml_model import ModelType  # Import located ModelType
 
 # --- Fixtures ---
 

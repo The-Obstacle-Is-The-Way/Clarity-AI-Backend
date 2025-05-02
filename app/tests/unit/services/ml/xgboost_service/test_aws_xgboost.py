@@ -2,13 +2,16 @@
 Minimal test for AWS XGBoost service to verify basic async functionality.
 """
 
-import pytest
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock as PatchAsyncMock
+from unittest.mock import AsyncMock as PatchAsyncMock
+from unittest.mock import patch
+
+import pytest
 
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyLevel
 from app.core.services.ml.xgboost.exceptions import ConfigurationError
 from app.tests.unit.services.ml.xgboost_service.mocks import MockAWSServiceFactory
+
 
 # Utility to run async tests in a synchronous test function
 def run_async(coro):

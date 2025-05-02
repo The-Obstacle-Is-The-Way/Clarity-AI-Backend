@@ -5,8 +5,8 @@ This module tests that application configuration loads correctly
 and handles environment variables properly.
 """
 import os
+
 import pytest
-from pydantic import ValidationError
 
 from app.config.settings import Settings, get_settings
 

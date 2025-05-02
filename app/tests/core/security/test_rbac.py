@@ -5,16 +5,17 @@ This module contains tests for the RBAC component, ensuring
 proper role and permission management for security.
 """
 
+
 import pytest
-from unittest import mock
-from unittest.mock import MagicMock # Import MagicMock if needed for service init
+
+# Keep User import if needed for setup, but roles list is passed to check_permission
+from app.domain.entities.user import User
 
 # Corrected import for RBACService
-from app.infrastructure.security.rbac.rbac_service import RBACService 
+from app.infrastructure.security.rbac.rbac_service import RBACService
+
 # Verify Role enum location - assuming app.infrastructure.security.rbac.roles based on previous findings
-from app.infrastructure.security.rbac.roles import Role 
-# Keep User import if needed for setup, but roles list is passed to check_permission
-from app.domain.entities.user import User 
+from app.infrastructure.security.rbac.roles import Role
 
 
 @pytest.mark.venv_only()

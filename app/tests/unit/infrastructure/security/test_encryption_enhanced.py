@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Enhanced unit tests for the encryption utility.
 
@@ -6,20 +5,15 @@ This test suite provides comprehensive coverage for the encryption module,
 ensuring secure data handling and HIPAA-compliant data protection.
 """
 
-import pytest
 import os
-from unittest.mock import patch, MagicMock, mock_open
-import base64
-import hashlib
+from unittest.mock import MagicMock, patch
+
+import pytest
 from cryptography.fernet import Fernet, InvalidToken
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
-import json
-from typing import Dict, Any, Optional
 
 # Correctly import the necessary components
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+
 # Assuming Settings might be needed for context, though not directly used here
 # from app.core.config.settings import Settings
 

@@ -5,36 +5,37 @@ These tests mock the dependencies to test the endpoints functionality
 in isolation from the full application.
 """
 
-import pytest
 import warnings
+from collections.abc import Callable
+from unittest.mock import AsyncMock
+
+import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock
-from collections.abc import Callable
 
 # Import SQLAlchemy components
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# Import the base model
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-
-# Import the router
-from app.presentation.api.v1.endpoints.auth import router
+from app.core.config import settings
 
 # Import domain entities and enums
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
 
+# Import the base model
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+
 # Import services and repositories
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.core.config import settings
+from app.presentation.api.dependencies.auth import get_current_user, get_optional_user
 
 # Import dependencies providers
 from app.presentation.api.dependencies.auth_service import get_auth_service_provider
 from app.presentation.api.dependencies.user_repository import get_user_repository_provider
-from app.presentation.api.dependencies.auth import get_current_user, get_optional_user
 
+# Import the router
+from app.presentation.api.v1.endpoints.auth import router
 
 # Suppress datetime binary incompatibility warning
 warnings.filterwarnings(

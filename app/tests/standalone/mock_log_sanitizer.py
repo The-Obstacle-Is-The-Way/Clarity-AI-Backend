@@ -5,12 +5,11 @@ This module provides a self-contained mock version of the log sanitization compo
 to allow for testing without external dependencies.
 """
 
-import re
-import json
-import logging
 import hashlib
-from enum import Enum, auto
-from typing import Dict, List, Any, Optional, Callable, Set, Union, Tuple
+import logging
+import re
+from collections.abc import Callable
+from enum import Enum
 from functools import wraps
 
 
@@ -40,8 +39,8 @@ class PHIPattern:
         pattern: str,
         type: PatternType = PatternType.REGEX,
         priority: int = 5,
-        context_words: List[str] = None,
-        examples: List[str] = None
+        context_words: list[str] = None,
+        examples: list[str] = None
     ):
         """
         Initialize a PHI pattern.
@@ -226,7 +225,7 @@ class PatternRepository:
         # Sort patterns by priority (descending)
         self._patterns.sort(key=lambda p: p.priority, reverse=True)
         
-    def get_patterns(self) -> List[PHIPattern]:
+    def get_patterns(self) -> list[PHIPattern]:
         """
         Get all patterns in the repository.
 
@@ -249,7 +248,7 @@ class SanitizerConfig:
         hash_length: int = 10,
         custom_redaction_func: Callable = None,
         scan_nested_objects: bool = True,
-        sensitive_field_names: List[str] = None,
+        sensitive_field_names: list[str] = None,
         sensitive_keys_case_sensitive: bool = False,
         hash_identifiers: bool = False,
         max_log_size: int = 10000,
@@ -500,7 +499,7 @@ class LogSanitizer:
         config: SanitizerConfig = None,
         patterns: PatternRepository = None,
         strategy: RedactionStrategy = None,
-        hooks: List[Callable] = None,
+        hooks: list[Callable] = None,
     ):
         """
         Initialize the log sanitizer.
@@ -578,7 +577,7 @@ class LogSanitizer:
                 return self.strategy.redact(text, pattern)
         return text
 
-    def sanitize_dict(self, data: Dict) -> Dict:
+    def sanitize_dict(self, data: dict) -> dict:
         """
         Sanitize a dictionary by detecting and redacting PHI.
 
@@ -608,7 +607,7 @@ class LogSanitizer:
 
         return result
 
-    def sanitize_list(self, data: List) -> List:
+    def sanitize_list(self, data: list) -> list:
         """
         Sanitize a list by detecting and redacting PHI.
 
@@ -634,7 +633,7 @@ class LogSanitizer:
                 result.append(item)
         return result
 
-    def sanitize_structured_log(self, log: Dict) -> Dict:
+    def sanitize_structured_log(self, log: dict) -> dict:
         """
         Sanitize a structured log entry.
 

@@ -10,21 +10,19 @@ import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.exceptions.base_exceptions import InvalidConfigurationError
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,
     BedrockRuntimeServiceInterface,
     BedrockServiceInterface,
     ComprehendMedicalServiceInterface,
     DynamoDBServiceInterface,
-    S3ServiceInterface
+    S3ServiceInterface,
 )
-
-from app.core.exceptions.base_exceptions import InvalidConfigurationError
-
 from app.core.services.ml.pat.bedrock import BedrockPAT
 
 

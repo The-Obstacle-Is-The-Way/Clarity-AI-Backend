@@ -1,24 +1,22 @@
-# -*- coding: utf-8 -*-
 """Unit tests for JWT Service functionality.
 
 This module tests the JWT service that handles authentication tokens,
 a critical component for HIPAA-compliant user authentication and authorization.
 """
 
-import pytest
-import jwt
 import datetime
-import time
-from unittest.mock import patch, MagicMock, AsyncMock
-from freezegun import freeze_time
-from typing import Dict, Any, Callable
 from datetime import timezone
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+from freezegun import freeze_time
+
+from app.config.settings import Settings  # Import actual Settings
+from app.domain.exceptions import InvalidTokenException, TokenExpiredException
 
 # Corrected imports
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
-from app.domain.exceptions import InvalidTokenException, TokenExpiredException
-from jwt.exceptions import PyJWTError, ExpiredSignatureError, DecodeError, InvalidSignatureError, InvalidIssuerError, InvalidAudienceError, ImmatureSignatureError
-from app.config.settings import Settings # Import actual Settings
 
 # Define test constants directly
 TEST_SECRET_KEY = "test-jwt-secret-key-must-be-at-least-32-chars-long"
@@ -79,7 +77,7 @@ def jwt_service(mock_settings: Settings, mock_user_repository) -> JWTService:
     return service
 
 @pytest.fixture
-def user_claims() -> Dict[str, Any]:
+def user_claims() -> dict[str, Any]:
     """Create test user claims."""
     return {
         "sub": "user123",
@@ -95,7 +93,7 @@ class TestJWTService:
     """Test suite for the JWT service."""
 
     @pytest.mark.asyncio
-    async def test_create_access_token(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_create_access_token(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test creating an access token with user claims."""
         # Pass necessary data directly to create_access_token
         access_token = await jwt_service.create_access_token(
@@ -119,7 +117,7 @@ class TestJWTService:
 
 
     @pytest.mark.asyncio
-    async def test_create_refresh_token(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_create_refresh_token(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test creating a refresh token with user claims."""
         # Pass necessary data directly to create_refresh_token
         refresh_token = await jwt_service.create_refresh_token(
@@ -141,7 +139,7 @@ class TestJWTService:
 
 
     @pytest.mark.asyncio
-    async def test_decode_token_valid(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_decode_token_valid(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of a valid token."""
         token = await jwt_service.create_access_token(data=user_claims)
         
@@ -154,7 +152,7 @@ class TestJWTService:
 
     @freeze_time("2025-03-27 12:00:00")
     @pytest.mark.asyncio
-    async def test_decode_token_expired(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_decode_token_expired(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of an expired token."""
         # Create a token that is already expired
         expired_token = await jwt_service.create_access_token(
@@ -168,7 +166,7 @@ class TestJWTService:
 
 
     @pytest.mark.asyncio
-    async def test_decode_token_invalid_signature(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_decode_token_invalid_signature(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of a token with invalid signature."""
         token = await jwt_service.create_access_token(data=user_claims)
         
@@ -192,7 +190,7 @@ class TestJWTService:
 
     @freeze_time("2025-03-27 12:00:00")
     @pytest.mark.asyncio
-    async def test_token_expiry_time(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_token_expiry_time(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test that the token expiry time matches the expected duration."""
         token = await jwt_service.create_access_token(data=user_claims)
         
@@ -207,7 +205,7 @@ class TestJWTService:
 
 
     @pytest.mark.asyncio
-    async def test_token_audience_validation(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_token_audience_validation(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test token audience validation."""
         # Test with correct audience
         token_correct_aud = await jwt_service.create_access_token(data=user_claims)
@@ -226,7 +224,7 @@ class TestJWTService:
         assert "Invalid audience" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_token_issuer_validation(self, jwt_service: JWTService, user_claims: Dict[str, Any]):
+    async def test_token_issuer_validation(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test token issuer validation."""
         # Test with correct issuer
         token_correct_iss = await jwt_service.create_access_token(data=user_claims)

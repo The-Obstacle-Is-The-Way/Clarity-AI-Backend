@@ -5,10 +5,11 @@ This test verifies the core domain logic of the Patient entity
 without any external dependencies.
 """
 
-import pytest
-from unittest.mock import Mock
-from datetime import date, datetime
 import uuid
+from datetime import date
+from unittest.mock import Mock
+
+import pytest
 
 # Import the domain entity class
 from app.domain.entities.patient import Patient

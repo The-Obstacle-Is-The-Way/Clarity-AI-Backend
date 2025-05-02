@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Enhanced unit tests for domain value objects.
 
@@ -7,21 +6,22 @@ EmergencyContact, PsychiatricAssessment, Address, and ContactInfo, ensuring
 proper data encapsulation and validation.
 """
 
-import pytest
 from datetime import date
-from typing import Dict, Any, Optional
+from typing import Any
 
-from app.domain.value_objects.emergency_contact import EmergencyContact
-from app.domain.value_objects.psychiatric_assessment import PsychiatricAssessment
+import pytest
+
 from app.domain.value_objects.address import Address
 from app.domain.value_objects.contact_info import ContactInfo
+from app.domain.value_objects.emergency_contact import EmergencyContact
+from app.domain.value_objects.psychiatric_assessment import PsychiatricAssessment
 
 
 @pytest.mark.venv_only()
 class TestEmergencyContact:
     """Comprehensive tests for the EmergencyContact value object."""
     @pytest.fixture
-    def valid_contact_data(self) -> Dict[str, Any]:
+    def valid_contact_data(self) -> dict[str, Any]:
         """Create valid emergency contact data."""
         return {
             "name": "Jane Doe",
@@ -142,7 +142,7 @@ class TestEmergencyContact:
 class TestPsychiatricAssessment:
     """Comprehensive tests for the PsychiatricAssessment value object."""
     @pytest.fixture
-    def valid_assessment_data(self) -> Dict[str, Any]:
+    def valid_assessment_data(self) -> dict[str, Any]:
         """Create valid psychiatric assessment data."""
         return {
             "assessment_date": date(2025, 3, 15),
@@ -251,7 +251,7 @@ class TestPsychiatricAssessment:
 class TestAddressValueObject:
     """Tests for the Address value object."""
     @pytest.fixture
-    def valid_address_data(self) -> Dict[str, Any]:
+    def valid_address_data(self) -> dict[str, Any]:
         """Create valid address data."""
         return {
             "street": "123 Main St",
@@ -305,7 +305,7 @@ class TestAddressValueObject:
 class TestContactInfoValueObject:
     """Tests for the ContactInfo value object."""
     @pytest.fixture
-    def valid_contact_info_data(self) -> Dict[str, Any]:
+    def valid_contact_info_data(self) -> dict[str, Any]:
         """Create valid contact info data."""
         return {
             "email": "patient@example.com",

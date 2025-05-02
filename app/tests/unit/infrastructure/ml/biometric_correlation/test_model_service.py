@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Biometric Correlation Model Service.
 
@@ -6,15 +5,16 @@ These tests verify that the Biometric Correlation Model Service correctly
 analyzes correlations between biometric data and mental health indicators.
 """
 
-import pytest
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-from app.infrastructure.ml.biometric_correlation.model_service import BiometricCorrelationService
+import pandas as pd
+import pytest
+
 from app.infrastructure.ml.biometric_correlation.lstm_model import BiometricCorrelationModel
+from app.infrastructure.ml.biometric_correlation.model_service import BiometricCorrelationService
+
 
 # Group tests within a class
 class TestBiometricCorrelationService:

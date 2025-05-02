@@ -6,17 +6,16 @@ ensuring proper protection of PHI data according to HIPAA requirements.
 """
 
 import json
-import os
+from typing import Any
+
 import pytest
-from typing import Dict, Any
-import pandas as pd
 
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
 
 
 @pytest.fixture
-def sensitive_data() -> Dict[str, Any]:
+def sensitive_data() -> dict[str, Any]:
     """Test fixture with sensitive PHI data."""
     result = {
         "patient_id": "12345",
@@ -46,7 +45,7 @@ def field_encryptor(encryption_service) -> FieldEncryptor:
 
 
 @pytest.fixture
-def patient_record() -> Dict[str, Any]:
+def patient_record() -> dict[str, Any]:
     """Test fixture for a complete patient record with PHI."""
     result = {
         "medical_record_number": "MRN12345",

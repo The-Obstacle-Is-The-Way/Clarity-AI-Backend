@@ -4,38 +4,37 @@ Tests for the XGBoost API routes.
 This module tests the functionality of the XGBoost ML API endpoints,
 ensuring they handle requests correctly and return appropriate responses.
 """
-import json
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import status
 from fastapi.testclient import TestClient
-from datetime import datetime
 
 # Import directly from app.api.schemas to avoid routes import issues
 from app.presentation.api.schemas.xgboost import (
-    RiskPredictionRequest,
-    RiskPredictionResponse,
-    TreatmentResponseRequest,
-    TreatmentResponseResponse,
-    OutcomePredictionRequest,
-    OutcomePredictionResponse,
+    ExpectedOutcome,
     ModelInfoRequest,
     ModelInfoResponse,
-    RiskType,
-    TreatmentType,
-    OutcomeType,
-    TherapyDetails,
-    MedicationDetails,
-    TimeFrame,
-    ResponseLikelihood,
-    ExpectedOutcome,
-    SideEffectRisk,
-    OutcomeTrajectory,
-    OutcomeTrajectoryPoint,
     OutcomeDetails,
     OutcomeDomain,
-    VisualizationType,
+    OutcomePredictionRequest,
+    OutcomePredictionResponse,
+    OutcomeTrajectory,
+    OutcomeTrajectoryPoint,
+    OutcomeType,
     PerformanceMetrics,
+    ResponseLikelihood,
+    RiskPredictionRequest,
+    RiskPredictionResponse,
+    RiskType,
+    SideEffectRisk,
+    TherapyDetails,
+    TimeFrame,
+    TreatmentResponseRequest,
+    TreatmentResponseResponse,
+    TreatmentType,
+    VisualizationType,
 )
 
 # Use mock router instead of direct import

@@ -4,41 +4,25 @@ Tests for the neurotransmitter mapping methods in the MockEnhancedDigitalTwinCor
 These tests verify that the implementation of neurotransmitter mapping in the mock service
 behaves correctly, handles errors appropriately, and follows the expected patterns.
 """
-import asyncio
+import uuid
+from datetime import datetime, timedelta
+from uuid import UUID
+
 import pytest
 import pytest_asyncio
-import uuid
-import random
-import math
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, List, Optional
-from uuid import UUID
-from unittest.mock import MagicMock
 
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     ClinicalSignificance,
     Neurotransmitter,
 )
-
 from app.domain.entities.neurotransmitter_mapping import (
     NeurotransmitterMapping,
     ReceptorProfile,
-    ReceptorType,
     ReceptorSubtype,
+    ReceptorType,
 )
-
-from app.domain.entities.digital_twin import DigitalTwin
-
-from app.domain.entities.model_adapter import (
-    BrainRegionStateAdapter,
-    NeurotransmitterStateAdapter,
-    NeuralConnectionAdapter,
-    TemporalPatternAdapter,
-    DigitalTwinStateAdapter
-)
-
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.services.mock_enhanced_digital_twin_core_service import (
     MockEnhancedDigitalTwinCoreService,
 )

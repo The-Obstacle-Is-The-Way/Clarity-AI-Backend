@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Biometric Correlation LSTM Model.
 
@@ -6,12 +5,12 @@ These tests verify that the LSTM Model correctly processes
 biometric data and identifies correlations with mental health indicators.
 """
 
-import pytest
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+import pytest
 
 from app.infrastructure.ml.biometric_correlation.lstm_model import BiometricCorrelationModel
 

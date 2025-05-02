@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for Redis Cache Service.
 
@@ -7,8 +6,9 @@ focusing on caching, rate limiting, and other Redis operations.
 """
 
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from app.infrastructure.services.redis_cache_service import RedisCacheService
 

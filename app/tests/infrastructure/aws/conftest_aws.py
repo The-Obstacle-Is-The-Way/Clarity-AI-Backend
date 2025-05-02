@@ -6,18 +6,18 @@ that automatically use the in-memory implementations for hermetic tests.
 """
 
 import os
+from typing import Any
+
 import pytest
-from typing import Dict, Any, Generator
 
 from app.core.interfaces.aws_service_interface import AWSServiceFactory
-from app.infrastructure.aws.service_factory_provider import AWSServiceFactoryProvider
 from app.infrastructure.aws.in_memory_aws_services import (
-    InMemoryAWSServiceFactory, 
+    InMemoryAWSServiceFactory,
     InMemoryDynamoDBService,
     InMemoryS3Service,
     InMemorySageMakerService,
-    InMemorySageMakerRuntimeService
 )
+from app.infrastructure.aws.service_factory_provider import AWSServiceFactoryProvider
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -77,7 +77,7 @@ def sagemaker_service(aws_service_factory) -> InMemorySageMakerService:
 
 
 @pytest.fixture
-def test_aws_config() -> Dict[str, Any]:
+def test_aws_config() -> dict[str, Any]:
     """Provide standard AWS configuration for tests."""
     return {
         "aws_region": "us-east-1",

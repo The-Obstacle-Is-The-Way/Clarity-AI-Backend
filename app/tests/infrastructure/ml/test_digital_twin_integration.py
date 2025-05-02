@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the Digital Twin Integration Service.
 
@@ -6,16 +5,12 @@ This module contains tests for the Digital Twin Integration Service, which
 coordinates all ML microservices and provides a unified interface for the
 domain layer, following Clean Architecture principles and ensuring HIPAA compliance.
 """
-import pytest
-import os
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-from app.infrastructure.ml.digital_twin_integration_service import (
-    DigitalTwinIntegrationService
-)
+import pytest
+
+from app.infrastructure.ml.digital_twin_integration_service import DigitalTwinIntegrationService
 
 # Mock missing exception classes
 ModelInferenceError = MagicMock()

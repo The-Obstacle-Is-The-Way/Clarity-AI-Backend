@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the BiometricAlertNotificationService.
 
@@ -6,22 +5,22 @@ These tests verify that the BiometricAlertNotificationService correctly
 sends HIPAA-compliant notifications when biometric alerts are generated.
 """
 
-import pytest
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock
+from uuid import UUID
 
-# Corrected import path for BiometricAlert and AlertPriority
-from app.domain.services.biometric_event_processor import BiometricAlert, AlertPriority
-# Correct repository import
-from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+import pytest
+
 # Correct interface import
-from app.application.interfaces.notification_service import NotificationService as INotificationService
+# Correct repository import
 from app.domain.services.biometric_alert_notification_service import (
-    BiometricAlertNotificationService, NotificationChannel
+    BiometricAlertNotificationService,
+    NotificationChannel,
 )
 
+# Corrected import path for BiometricAlert and AlertPriority
+from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.mark.db_required()

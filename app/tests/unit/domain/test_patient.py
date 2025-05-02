@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
 """Unit tests for Patient domain entity."""
 
-import pytest
 from datetime import date
 from unittest.mock import MagicMock
 from uuid import UUID
 
+import pytest
+
 from app.domain.entities.patient import Patient
-from app.domain.value_objects.contact_info import ContactInfo
 from app.domain.value_objects.address import Address
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 

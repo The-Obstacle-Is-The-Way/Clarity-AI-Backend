@@ -3,11 +3,13 @@ Tests for the database utilities.
 
 This module tests the database connection utilities for SQLAlchemy.
 """
-import pytest
 import os
-from sqlalchemy import Column, String, Integer
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from app.core.dependencies.database import get_engine, init_db, get_session, Base
+
+import pytest
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.dependencies.database import Base, get_engine, get_session, init_db
 
 
 # Define TestModel at module level

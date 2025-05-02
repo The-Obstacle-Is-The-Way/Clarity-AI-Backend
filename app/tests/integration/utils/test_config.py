@@ -6,7 +6,8 @@ ensuring that JWT tokens and other security settings are consistent and valid.
 """
 
 import os
-from typing import Dict, Any
+from typing import Any
+
 from pydantic import SecretStr
 
 # Standard test settings used across all test suites
@@ -16,7 +17,7 @@ TEST_JWT_ALGORITHM = "HS256"
 TEST_JWT_TOKEN_EXPIRE_MINUTES = 30
 TEST_JWT_ISSUER = "clarity-ai-test"
 
-def get_test_settings_override() -> Dict[str, Any]:
+def get_test_settings_override() -> dict[str, Any]:
     """
     Get dictionary of settings overrides for test environment.
     

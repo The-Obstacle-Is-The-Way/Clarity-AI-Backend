@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for biometric endpoints dependencies.
 
@@ -6,51 +5,48 @@ These tests verify that the biometric endpoints dependencies correctly
 handle authentication and patient ID validation.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import Generator  # Added Generator
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
-from typing import Dict, Any, Optional, Generator # Added Generator
 
 import pytest
-from fastapi import FastAPI, Depends, HTTPException, status  # Added status
+from fastapi import Depends, FastAPI, HTTPException, status  # Added status
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.testclient import TestClient
 
 # Corrected exception import syntax
 from app.domain.exceptions import (
     AuthenticationError,
-    AuthorizationError,
 )  # Removed extra parenthesis after 'import'
 
 # Assuming these dependencies exist in the specified path
 # Corrected dependency import syntax
 from app.presentation.api.dependencies.auth import get_current_user, get_jwt_service
-from fastapi.security import OAuth2PasswordBearer
 
 # Create a mock OAuth2 scheme for testing
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-from app.domain.entities.biometric_twin import BiometricDataPoint # Import corrected
-from app.domain.entities.user import User # Added User import
+# Import service dependencies from the correct location
+# Import schema from the correct location
+# Assuming JWTService exists for mocking
+# from app.infrastructure.security.jwt_service import JWTService
+# Mocking JWTService directly as its location might still be in flux
+from app.core.interfaces.services.jwt_service import IJwtService
+from app.domain.entities.user import User  # Added User import
+
 # Corrected import path for UserRole enum
 from app.domain.enums.role import Role as UserRole
+
 # Correct import for the dependency function
 from app.presentation.api.v1.endpoints.biometric_endpoints import (
     get_patient_id,
-    require_clinician_role,
     require_admin_role,
     # router, # Removed - Endpoint modules typically don't export routers directly
     # get_biometric_twin_service, # Moved import to dependencies
     # BiometricDataBatchRequest, # This is a schema, should not be imported from endpoint
     # BiometricDataResponse # This is also a schema
+    require_clinician_role,
 )
-# Import service dependencies from the correct location
-from app.presentation.api.dependencies.services import get_digital_twin_service # Corrected service name
-# Import schema from the correct location
-from app.presentation.api.v1.schemas.biometric_schemas import BiometricDataPointBatchCreate, BiometricDataPointResponse
 
-# Assuming JWTService exists for mocking
-# from app.infrastructure.security.jwt_service import JWTService
-# Mocking JWTService directly as its location might still be in flux
-
-from app.core.interfaces.services.jwt_service import IJwtService
 
 @pytest.fixture
 def mock_jwt_service():
@@ -69,7 +65,6 @@ def app(mock_jwt_service): # Removed redundant decorator
     app_instance = FastAPI()
 
     # Import UserRole here for use in mock definitions
-    from app.domain.enums.role import Role as UserRole
 
     # --- Mock Dependency Setup --- 
     # Define override functions that return the mock service

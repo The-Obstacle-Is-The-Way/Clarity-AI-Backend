@@ -5,50 +5,43 @@ These tests verify that the Enhanced Digital Twin components work together
 correctly, including the core service, knowledge graph, belief network,
 and event system.
 """
-import asyncio
 import datetime
 import uuid
-import pytest
-from typing import Dict, List, Tuple
 from uuid import UUID
 
+import pytest
+
+from app.domain.entities.digital_twin.temporal_neurotransmitter_sequence import (
+    TemporalNeurotransmitterSequence,
+)
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     ClinicalInsight,
     ClinicalSignificance,
     Neurotransmitter,
 )
-
 from app.domain.entities.knowledge_graph import (
-    BayesianBeliefNetwork,
     NodeType,
-    TemporalKnowledgeGraph,
 )
-
 from app.domain.services.enhanced_digital_twin_core_service import (
     EnhancedDigitalTwinCoreService,
 )
-
 from app.domain.services.enhanced_mentalllama_service import EnhancedMentalLLaMAService
-from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 from app.domain.services.enhanced_pat_service import EnhancedPATService
-from app.domain.entities.digital_twin.temporal_neurotransmitter_sequence import (
-    TemporalNeurotransmitterSequence, 
-)
-from app.domain.ml.ml_model import MLModel, ModelType
+from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
+
 # Commented out imports for missing schemas - requires further investigation
 # from app.presentation.api.schemas.ml_schemas import (
 #     DigitalTwinCreateRequest,
 #     DigitalTwinResponse,
 # )
-
 from app.infrastructure.factories.enhanced_mock_digital_twin_factory import (
     EnhancedMockDigitalTwinFactory,
 )
 
 
 @pytest.fixture
-def enhanced_services() -> Tuple[
+def enhanced_services() -> tuple[
     EnhancedDigitalTwinCoreService,
     EnhancedMentalLLaMAService,
     EnhancedXGBoostService,
@@ -65,7 +58,7 @@ def patient_id() -> UUID:
 
 
 @pytest.fixture
-def initial_data() -> Dict:
+def initial_data() -> dict:
     """Fixture to provide initial patient data for testing."""
     return {
         "diagnoses": ["Major Depressive Disorder", "Generalized Anxiety Disorder"],

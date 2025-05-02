@@ -2,7 +2,7 @@
 Test script for the logger module.
 """
 
-from app.infrastructure.logging.logger import get_logger, format_log_message
+from app.infrastructure.logging.logger import format_log_message, get_logger
 
 # Test get_logger function
 logger = get_logger("test_logger")

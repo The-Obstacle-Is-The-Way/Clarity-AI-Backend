@@ -9,7 +9,7 @@ behaviors that work as expected in the real implementation.
 import unittest
 from uuid import uuid4
 
-from app.domain.entities.patient import Patient, ContactInfo
+from app.domain.entities.patient import ContactInfo, Patient
 
 
 class TestPatientContactInfo(unittest.TestCase):

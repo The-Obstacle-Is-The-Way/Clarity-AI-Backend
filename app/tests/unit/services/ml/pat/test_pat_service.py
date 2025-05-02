@@ -1,38 +1,32 @@
-# -*- coding: utf-8 -*-
 """Unit tests for the Bedrock PAT service."""
 
-import io
 import json
-import uuid
-from datetime import datetime, timedelta, timezone, UTC 
-from typing import Any
-from unittest.mock import MagicMock, patch, AsyncMock
-from io import BytesIO
-import pytest
-from pytest_mock import MockerFixture
 import random
-from freezegun import freeze_time
+import uuid
+from datetime import UTC, datetime, timedelta, timezone
+from io import BytesIO
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
-from app.core.services.ml.pat.bedrock import BedrockPAT
-from app.core.exceptions import (
-    InvalidConfigurationError,
-)
-from app.infrastructure.ml.pat.models import (
-    AccelerometerReading, 
-    AnalysisResult,
-    AnalysisTypeEnum
-)
+import pytest
+from freezegun import freeze_time
+from pytest_mock import MockerFixture
+
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,
-    S3ServiceInterface,
+    BedrockRuntimeServiceInterface,
     DynamoDBServiceInterface,
-    BedrockRuntimeServiceInterface
+    S3ServiceInterface,
 )
+from app.core.services.ml.pat.bedrock import BedrockPAT
+
+# Corrected import for PAT-specific exceptions
+from app.core.services.ml.pat.exceptions import ResourceNotFoundError
 
 # Corrected import for DigitalTwin from domain layer
 from app.domain.entities.digital_twin import DigitalTwin
-# Corrected import for PAT-specific exceptions
-from app.core.services.ml.pat.exceptions import ResourceNotFoundError
+from app.infrastructure.ml.pat.models import AccelerometerReading, AnalysisResult, AnalysisTypeEnum
+
 
 # Helper function to create sample readings
 def create_sample_readings(num_readings: int = 10) -> list[AccelerometerReading]:

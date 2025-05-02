@@ -4,10 +4,9 @@ These tests focus on the core infrastructure of the AWS XGBoost service,
 ensuring proper initialization, configuration validation, and basic operations.
 """
 
+from unittest.mock import patch
+
 import pytest
-import json
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timezone
 
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyLevel
 from app.core.services.ml.xgboost.exceptions import ConfigurationError

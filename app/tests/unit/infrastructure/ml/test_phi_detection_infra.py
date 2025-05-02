@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for PHI Detection Service.
 
@@ -6,17 +5,12 @@ This module contains tests for the PHI detection service functionality,
 including pattern loading, detection, and redaction capabilities.
 """
 
-import pytest
-import re # Import re for pattern creation test
-from typing import List, Dict, Any
-from unittest.mock import patch, mock_open, MagicMock
-import logging
-from unittest import mock
+from unittest.mock import MagicMock, patch
 
-from app.config.settings import Settings, get_settings
-from app.infrastructure.ml.phi_detection.service import PHIPattern
-from app.infrastructure.ml.phi_detection.service import PHIDetectionService
-from app.core.exceptions.ml_exceptions import PHIDetectionError, PHISecurityError
+import pytest
+
+from app.core.exceptions.ml_exceptions import PHISecurityError
+from app.infrastructure.ml.phi_detection.service import PHIDetectionService, PHIPattern
 
 # Mock external dependencies
 mock_model = MagicMock()
@@ -184,7 +178,7 @@ class TestPHIDetectionService:
         default_pattern_mock = PHIPattern(name="DefaultTest", pattern=r"default", description="desc", risk_level="low", category="test")
         default_patterns = [default_pattern_mock]
 
-        with patch("builtins.open", side_effect=IOError("Mock file error")):
+        with patch("builtins.open", side_effect=OSError("Mock file error")):
             # Patch the method that loads defaults
             with patch.object(PHIDetectionService, "_get_default_patterns", return_value=default_patterns):
                 service = PHIDetectionService(pattern_file="nonexistent_file.yaml")

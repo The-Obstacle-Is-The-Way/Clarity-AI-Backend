@@ -3,30 +3,21 @@
 This module tests HIPAA-compliant encryption functionality for the Patient model,
 ensuring proper PHI protection while maintaining data integrity.
 """
-import pytest
-from unittest.mock import patch, MagicMock
 import base64
-import json # Moved import to top level
-from cryptography.fernet import Fernet
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
+import json  # Moved import to top level
+from unittest.mock import patch
 
-# Correct import path for Patient model
-from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
+import pytest
+
 # from app.infrastructure.persistence.sqlalchemy.models.patient_model import PatientModel # Old incorrect path
-
 # Correct import path for SQLAlchemy Base
-from app.infrastructure.persistence.sqlalchemy.config.base import Base
-
+# Correct import path for Patient model
+# from app.infrastructure.security.encryption.field_encryptor import encrypt_value, decrypt_value # Commented out problematic import
 # Corrected import path
 from app.infrastructure.security.encryption.base_encryption_service import (
-    get_encryption_key, encrypt_value, decrypt_value
+    decrypt_value,
+    encrypt_value,
 )
-
-# from app.infrastructure.security.encryption.field_encryptor import encrypt_value, decrypt_value # Commented out problematic import
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
 
 
 @pytest.fixture(scope="module") # Use module scope for efficiency
@@ -61,7 +52,7 @@ class Patient:
     def __init__(self, **kwargs):
         """Initialize patient with encrypted fields."""
         # Import the get_encryption_key function to ensure it's called and tracked
-        from app.infrastructure.security.encryption import get_encryption_key, encrypt_value
+        from app.infrastructure.security.encryption import encrypt_value, get_encryption_key
         
         # Ensure key is retrieved first - this calls the function that's being mocked
         self.encryption_key = get_encryption_key()

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Repository Security Tests
 
@@ -9,21 +8,19 @@ These tests verify that repositories handling PHI/ePHI properly:
     4. Validate access permissions before operations
     5. Maintain audit trails for all operations
     """
+import logging
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-import json
-import uuid
-import logging
-from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock, AsyncMock, ANY, call
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
-from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.domain.entities.patient import Patient
-from app.core.exceptions.base_exceptions import PersistenceError
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository,
+)
+from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 
 
 @pytest.fixture
@@ -105,7 +102,6 @@ class MockPatient:
 # We should use the real entity or a more compatible mock if needed
 # Patient = MockPatient 
 # Revert to using the actual Patient entity for type hints, but tests will pass dicts
-from app.domain.entities.patient import Patient 
 
 @pytest.fixture
 def patient_repository(db_session, encryption_service):

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 HIPAA Security Test Suite - Encryption Tests
 
@@ -13,25 +12,18 @@ It verifies:
     4. Security of the encryption implementation
 """
 
-import os
-import unittest
-import pytest
-import uuid
-from typing import Dict, Any, List, Optional
 import json
+import unittest
 
 # Import the encryption modules from infrastructure layer
 # Removed empty import block for app.infrastructure.security.encryption
-
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from cryptography.fernet import InvalidToken
+# Correct import for FieldEncryptor
+from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
 
 # Updated import path for MockEncryptionService
 # from app.infrastructure.security.encryption.mock_encryption_service import MockEncryptionService # Old incorrect path
-from app.tests.security.utils.test_mocks import MockEncryptionService # Correct path
+from app.tests.security.utils.test_mocks import MockEncryptionService  # Correct path
 
-# Correct import for FieldEncryptor
-from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
 
 # Rename test class to reflect FieldEncryptor testing
 class TestFieldEncryption(unittest.TestCase):

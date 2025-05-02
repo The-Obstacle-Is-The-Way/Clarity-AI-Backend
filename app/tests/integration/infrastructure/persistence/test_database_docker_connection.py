@@ -6,17 +6,18 @@ in the Docker container test environment, following clean architecture principle
 and ensuring proper interface segregation between test components.
 """
 
-import os
-import pytest
 import logging
-from typing import Dict, Any, Optional, Tuple, List
-from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncConnection
-from sqlalchemy import text, MetaData, Table, Column, Integer, String, DateTime, insert, select
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.dialects.postgresql import UUID
+import os
 import uuid
+from typing import Any
+
+import pytest
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, insert, select, text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+from app.domain.utils.datetime_utils import now_utc
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class DatabaseConnectionValidator:
             connection_url: Database connection URL to test
         """
         self.connection_url = connection_url
-        self._engine: Optional[AsyncEngine] = None
+        self._engine: AsyncEngine | None = None
     
     async def create_engine(self) -> AsyncEngine:
         """
@@ -57,7 +58,7 @@ class DatabaseConnectionValidator:
         )
         return self._engine
     
-    async def validate_connection(self) -> Tuple[bool, str]:
+    async def validate_connection(self) -> tuple[bool, str]:
         """
         Validate database connection with proper error handling.
         
@@ -79,11 +80,11 @@ class DatabaseConnectionValidator:
                     return False, f"Unexpected result: {value}"
                     
         except SQLAlchemyError as e:
-            return False, f"Database connection error: {str(e)}"
+            return False, f"Database connection error: {e!s}"
         except Exception as e:
-            return False, f"Unexpected error: {str(e)}"
+            return False, f"Unexpected error: {e!s}"
             
-    async def validate_table_operations(self) -> Tuple[bool, str, List[Dict[str, Any]]]:
+    async def validate_table_operations(self) -> tuple[bool, str, list[dict[str, Any]]]:
         """
         Validate table operations with proper transaction management.
         
@@ -153,7 +154,7 @@ class DatabaseConnectionValidator:
                     await conn.run_sync(lambda sync_conn: test_table.drop(sync_conn, checkfirst=True))
             except:
                 pass
-            return False, f"Table operation error: {str(e)}", results
+            return False, f"Table operation error: {e!s}", results
         
     async def dispose(self) -> None:
         """

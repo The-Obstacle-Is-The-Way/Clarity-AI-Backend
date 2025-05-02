@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the SQLAlchemy implementation of the BiometricAlertRepository.
 
@@ -6,14 +5,14 @@ Using a pure, standalone approach with no external dependencies.
 """
 
 from datetime import datetime, timezone
+from enum import Enum
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
-from typing import List, Dict, Any, Optional
 
 import pytest
-import pytest_asyncio
-from enum import Enum
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 # Define our own clean domain models to avoid import errors
 class AlertPriority(str, Enum):
@@ -149,7 +148,7 @@ def sample_rule_id() -> UUID:
     return UUID("00000000-0000-0000-0000-000000000002")
 
 @pytest.fixture
-def sample_data_points() -> List[Dict[str, Any]]:
+def sample_data_points() -> list[dict[str, Any]]:
     """Create sample biometric data points."""
     timestamp_dt = datetime(2025, 3, 27, 12, 0, 0, tzinfo=timezone.utc)
     timestamp_iso = timestamp_dt.isoformat()
@@ -163,7 +162,7 @@ def sample_data_points() -> List[Dict[str, Any]]:
     ]
 
 @pytest.fixture
-def sample_alert(sample_patient_id: UUID, sample_alert_id: UUID, sample_rule_id: UUID, sample_data_points: List[Dict[str, Any]]) -> BiometricAlert:
+def sample_alert(sample_patient_id: UUID, sample_alert_id: UUID, sample_rule_id: UUID, sample_data_points: list[dict[str, Any]]) -> BiometricAlert:
     """Create a sample biometric alert domain entity."""
     now = datetime.now(timezone.utc)
     return BiometricAlert(

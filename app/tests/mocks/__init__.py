@@ -6,4 +6,4 @@ to allow tests to run without actual dependencies.
 """
 
 # Import common mocks for easier access
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch

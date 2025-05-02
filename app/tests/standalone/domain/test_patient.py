@@ -4,9 +4,16 @@ Tests for the Patient entity.
 
 import uuid
 from datetime import date, datetime, timedelta
+
 import pytest
 
-from app.tests.mocks.patient_mock import Patient, Gender, InsuranceStatus, PatientStatus, ValidationException
+from app.tests.mocks.patient_mock import (
+    Gender,
+    InsuranceStatus,
+    Patient,
+    PatientStatus,
+    ValidationException,
+)
 
 
 @pytest.fixture

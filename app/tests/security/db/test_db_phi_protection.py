@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test suite for database PHI protection mechanisms.
 This validates that database interactions properly protect PHI per HIPAA requirements.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock, call
-import json
 import datetime
-from typing import Dict, List, Any, Optional
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Import database components or mock them if not available
 # Ensure try block has a corresponding except block at the correct level
 try:
-    from app.infrastructure.persistence.sqlalchemy.config.database import Database
-    from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
-    from app.infrastructure.persistence.sqlalchemy.unit_of_work import UnitOfWork
     from app.domain.entities.patient import Patient
+    from app.infrastructure.persistence.sqlalchemy.config.database import Database
+    from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+        PatientRepository,
+    )
+    from app.infrastructure.persistence.sqlalchemy.unit_of_work import UnitOfWork
     # Assuming these are defined elsewhere or should be mocked too
     # from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
 
@@ -107,7 +107,7 @@ except ImportError:
             self.encryption_service = MagicMock()
 
         # Correct method indentation and logic
-        def get_by_id(self, patient_id: str) -> Optional[Patient]:
+        def get_by_id(self, patient_id: str) -> Patient | None:
             """Get patient by ID with proper access control."""
             # Check authorization
             if not self._can_access_patient(patient_id):
@@ -138,7 +138,7 @@ except ImportError:
             self,
             limit: int = 100,
             offset: int = 0
-        ) -> List[Patient]:
+        ) -> list[Patient]:
             """Get all patients with proper access control."""
             # Check authorization
             if self.user_context["role"] not in ["admin", "doctor", "nurse"]:
@@ -304,7 +304,7 @@ except ImportError:
         def _log_access_attempt(
             self,
             operation: str,
-            patient_id: Optional[str], # Allow None for operations like get_all
+            patient_id: str | None, # Allow None for operations like get_all
             success: bool
         ) -> None:
             """Log access attempt to audit trail."""

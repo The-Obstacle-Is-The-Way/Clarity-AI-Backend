@@ -5,10 +5,11 @@ This test module includes both the necessary security test infrastructure and te
 in a single file to validate that the test infrastructure is working correctly.
 """
 import unittest
-import pytest
 from enum import Enum
 from typing import Any
 from unittest.mock import MagicMock
+
+import pytest
 
 
 # Mock Role class that would normally be in app/core/security/roles.py

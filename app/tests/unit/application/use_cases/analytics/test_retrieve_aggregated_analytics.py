@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the RetrieveAggregatedAnalyticsUseCase.
 
@@ -6,13 +5,16 @@ This module contains unit tests for retrieving and formatting aggregated
 analytics data for dashboards and reporting.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC, now_utc
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from app.application.use_cases.analytics.retrieve_aggregated_analytics import (
+    RetrieveAggregatedAnalyticsUseCase,
+)
 from app.domain.entities.analytics import AnalyticsAggregate
-from app.application.use_cases.analytics.retrieve_aggregated_analytics import RetrieveAggregatedAnalyticsUseCase
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.fixture

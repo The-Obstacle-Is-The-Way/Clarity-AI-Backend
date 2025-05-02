@@ -1,15 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the core logging utility.
 """
 
 import logging
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from app.core.constants import LogLevel
 from app.core.utils.logging import get_logger, log_execution_time, log_method_calls
+
 
 class TestGetLogger:
     """Tests for the get_logger function."""

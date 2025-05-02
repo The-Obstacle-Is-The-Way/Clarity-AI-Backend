@@ -5,11 +5,9 @@ This module contains tests for the BaseSecurityTest class to ensure
 proper functionality of the security test infrastructure.
 """
 
-import pytest
-import uuid
-from unittest.mock import patch
 
 from app.tests.security.utils.base_security_test import BaseSecurityTest
+
 # Mocks are likely not needed directly in this test file anymore
 # from app.tests.security.utils.test_mocks import MockAuthService, MockRBACService, MockAuditLogger, MockEncryptionService, MockEntityFactory
 # User and Role might not be needed if BaseSecurityTest handles setup

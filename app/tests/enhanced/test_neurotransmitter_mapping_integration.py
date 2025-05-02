@@ -4,30 +4,24 @@ Integration tests for the Neurotransmitter Mapping functionality of the Enhanced
 These tests verify that the neurotransmitter mapping components work correctly with
 the rest of the Digital Twin system.
 """
-import asyncio
-import datetime
-import random
 import uuid
+from uuid import UUID
+
 import pytest
 import pytest_asyncio
-import math
-from typing import Dict, List, Tuple, Optional
-from uuid import UUID
-from datetime import datetime
 
+from app.domain.entities.digital_twin import DigitalTwinState
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     ClinicalInsight,
     ClinicalSignificance,
     Neurotransmitter,
 )
-from app.domain.entities.digital_twin import DigitalTwinState
-from app.domain.entities.neurotransmitter_mapping import ReceptorSubtype
 from app.domain.entities.neurotransmitter_mapping import (
     NeurotransmitterMapping,
     ReceptorProfile,
+    ReceptorSubtype,
     ReceptorType,
-    create_default_neurotransmitter_mapping,
 )
 from app.domain.services.enhanced_digital_twin_core_service import (
     EnhancedDigitalTwinCoreService,
@@ -35,7 +29,7 @@ from app.domain.services.enhanced_digital_twin_core_service import (
 from app.infrastructure.factories.enhanced_mock_digital_twin_factory import (
     EnhancedMockDigitalTwinFactory,
 )
-from app.domain.entities.digital_twin_enums import Neurotransmitter # Corrected import path and name
+
 # Commented out imports for missing service - requires further investigation
 # from app.domain.services.neurotransmitter_mapping_service import (
 #     NeurotransmitterMappingService
@@ -43,7 +37,7 @@ from app.domain.entities.digital_twin_enums import Neurotransmitter # Corrected 
 
 
 @pytest.fixture
-def enhanced_services() -> Tuple[EnhancedDigitalTwinCoreService]:
+def enhanced_services() -> tuple[EnhancedDigitalTwinCoreService]:
     """Fixture to create enhanced mock services for testing."""
     services = EnhancedMockDigitalTwinFactory.create_enhanced_mock_services()
     # Only return the Digital Twin service for simplicity
@@ -57,7 +51,7 @@ def patient_id() -> UUID:
 
 
 @pytest.fixture
-def initial_data() -> Dict:
+def initial_data() -> dict:
     """Fixture to provide initial patient data for testing."""
     return {
         "diagnoses": ["Major Depressive Disorder", "Generalized Anxiety Disorder"],
@@ -78,9 +72,9 @@ def initial_data() -> Dict:
 
 @pytest_asyncio.fixture
 async def initialized_patient(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
-    initial_data: Dict
+    initial_data: dict
 ) -> DigitalTwinState:
     """Fixture to provide an initialized patient digital twin."""
     (digital_twin_service,) = enhanced_services
@@ -96,7 +90,7 @@ async def initialized_patient(
 
 @pytest.mark.asyncio
 async def test_neurotransmitter_mapping_initialization(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     initialized_patient,  # Ensure digital twin is initialized for patient
     patient_id: UUID
 ):
@@ -137,7 +131,7 @@ async def test_neurotransmitter_mapping_initialization(
 
 @pytest.mark.asyncio
 async def test_add_custom_receptor_profile(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     initialized_patient,  # Ensure digital twin is initialized for patient
     patient_id: UUID
 ):
@@ -188,7 +182,7 @@ async def test_add_custom_receptor_profile(
 
 @pytest.mark.asyncio
 async def test_simulate_neurotransmitter_cascade(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):
@@ -238,7 +232,7 @@ async def test_simulate_neurotransmitter_cascade(
 
 @pytest.mark.asyncio
 async def test_analyze_neurotransmitter_interactions(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):
@@ -280,7 +274,7 @@ async def test_analyze_neurotransmitter_interactions(
 
 @pytest.mark.asyncio
 async def test_predict_medication_effects(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):
@@ -336,7 +330,7 @@ async def test_predict_medication_effects(
 
 @pytest.mark.asyncio
 async def test_analyze_treatment_response(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):
@@ -386,7 +380,7 @@ async def test_analyze_treatment_response(
 
 @pytest.mark.asyncio
 async def test_generate_clinical_insights(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):
@@ -431,7 +425,7 @@ async def test_generate_clinical_insights(
 
 @pytest.mark.asyncio
 async def test_analyze_regional_neurotransmitter_effects(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):
@@ -483,7 +477,7 @@ async def test_analyze_regional_neurotransmitter_effects(
 
 @pytest.mark.asyncio
 async def test_integrated_neurotransmitter_mapping_with_visualization(
-    enhanced_services: Tuple[EnhancedDigitalTwinCoreService],
+    enhanced_services: tuple[EnhancedDigitalTwinCoreService],
     patient_id: UUID,
     initialized_patient: DigitalTwinState
 ):

@@ -5,23 +5,16 @@ These tests verify that the MockDigitalTwinService correctly simulates
 digital twin functionality for testing purposes.
 """
 
-import json
-import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from unittest import TestCase
-
-import pytest
-from pydantic import BaseModel
-from unittest.mock import MagicMock
-
-from app.domain.models.digital_twin_state import DigitalTwinState
-from app.domain.services.digital_twin_service import DigitalTwinService
-from app.core.exceptions.base_exceptions import ResourceNotFoundError
-from app.domain.exceptions import ValidationError as InvalidConfigurationError, DomainError as SessionNotFoundError
-
 # Create mock classes for testing
 from abc import ABC, abstractmethod
+from datetime import datetime
+
+import pytest
+
+from app.domain.exceptions import DomainError as SessionNotFoundError
+from app.domain.exceptions import ValidationError as InvalidConfigurationError
+from app.domain.models.digital_twin_state import DigitalTwinState
+from app.domain.services.digital_twin_service import DigitalTwinService
 
 
 class DigitalTwinService(ABC):

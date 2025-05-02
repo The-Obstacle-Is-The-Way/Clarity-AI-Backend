@@ -12,7 +12,6 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import pytest
-from enum import Enum  # Role inherits from Enum
 
 # Import the Role enum from the correct infrastructure location
 from app.infrastructure.security.rbac.roles import Role

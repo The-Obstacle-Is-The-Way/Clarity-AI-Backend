@@ -5,12 +5,11 @@ This script directly examines the SQLAlchemy metadata registry and manually crea
 any missing tables to enable our tests to pass immediately.
 """
 
-import importlib
-import sys
-import os
-from pprint import pformat
 import asyncio
 import logging
+import os
+import sys
+from pprint import pformat
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -23,24 +22,26 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 # Import Base to access metadata
-from app.infrastructure.persistence.sqlalchemy.config.base import Base
-from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID
 import uuid
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Text, text
+from sqlalchemy.dialects.postgresql import UUID
+
 from app.domain.utils.datetime_utils import now_utc
+from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
 # Import all models to register with metadata 
-from app.infrastructure.persistence.sqlalchemy.models.user import User
+
 try:
     # Attempt to import Patient model
-    from app.infrastructure.persistence.sqlalchemy.models.patient import Patient
     PATIENT_IMPORTED = True
 except Exception as e:
     logger.error(f"Error importing Patient model: {e}")
     PATIENT_IMPORTED = False
 
 # Create in-memory SQLite database and test table creation
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 
 async def test_database_tables():
     """Test creating all tables in SQLAlchemy metadata."""
@@ -53,7 +54,7 @@ async def test_database_tables():
         logger.warning("'patients' table not found in metadata, creating manually")
         
         # Define table manually with minimal required columns for tests
-        from sqlalchemy import Table, MetaData
+        from sqlalchemy import Table
         if not hasattr(Base, 'metadata'):
             logger.error("Base.metadata does not exist!")
             return

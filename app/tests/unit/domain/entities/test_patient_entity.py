@@ -4,11 +4,9 @@ TRANSCENDENT QUANTUM VALIDATION
 This script directly tests the Patient contact_info architecture
 without dependencies on complex SQLAlchemy/database infrastructure.
 """
-import sys
 import os
-from pathlib import Path
+import sys
 import unittest
-from datetime import date
 import uuid
 
 # Add the backend directory to the Python path
@@ -16,7 +14,8 @@ backend_dir = os.path.join(os.path.dirname(__file__), "backend")
 sys.path.insert(0, backend_dir)
 
 # Now import from app
-from app.domain.entities.patient import Patient, ContactInfo
+from app.domain.entities.patient import ContactInfo, Patient
+
 
 class TestPatientContactInfo(unittest.TestCase):
     """Direct tests for Patient contact_info quantum architecture."""

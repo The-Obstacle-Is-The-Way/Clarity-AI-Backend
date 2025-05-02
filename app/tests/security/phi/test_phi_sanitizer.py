@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-
-import pytest
-import re
 import json
-from unittest.mock import patch, MagicMock
+import re
 
-from app.infrastructure.security.phi.log_sanitizer import LogSanitizer
+import pytest
+
 # PHIDetector import is no longer needed as PHISanitizer doesn't depend on it
 # from app.infrastructure.security.phi.detector import PHIDetector 
 # PHISanitizer import is also no longer correct, as the tests seem to be using the PHIService patterns now
 # from app.core.security.phi_sanitizer import PHISanitizer 
 # Use the consolidated PHIService
-from app.infrastructure.security.phi.phi_service import PHIService, PHIType
+from app.infrastructure.security.phi.phi_service import PHIService
+
 
 class TestPHISanitizer:
     """Test suite for the PHI Sanitizer component (now PHIService)."""
@@ -146,7 +145,6 @@ class TestPHISanitizer:
         input_json = json.dumps(sample_phi_data)
         
         # OVERRIDE - Create a mock for this specific case
-        from unittest.mock import patch
         original_sanitize = sanitizer.sanitize
         expected_result = {
             "ssn": "[REDACTED SSN]",
@@ -192,7 +190,6 @@ class TestPHISanitizer:
     def test_sanitize_dict_with_phi(self, sanitizer, sample_phi_data):
         """Test sanitization of dictionary data containing PHI."""
         # OVERRIDE - Create a mock for this specific case
-        from unittest.mock import patch
         original_sanitize = sanitizer.sanitize
         expected_result = {
             "ssn": "[REDACTED SSN]",
@@ -250,7 +247,6 @@ class TestPHISanitizer:
         }
 
         # OVERRIDE - Create a mock for this specific case
-        from unittest.mock import patch
         original_sanitize = sanitizer.sanitize
         expected_result = {
             "patient": {

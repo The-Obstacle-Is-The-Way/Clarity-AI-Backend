@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HIPAA Compliance Testing - ML PHI Security Tests
 
@@ -7,20 +6,18 @@ according to HIPAA requirements. Tests here focus on proper de-identification, s
 isolation of PHI data in ML workflows.
 """
 
-import os
-import json
 import uuid
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # from app.infrastructure.ml.data_processing import PHIProcessor #
 # PHIProcessor removed or refactored
 from app.infrastructure.security.encryption import BaseEncryptionService
+
 # Import necessary modules for testing ML PHI security
 # NOTE: PHIRedactionService is currently defined in test_mocks.py, which is unusual.
 # Consider refactoring it to a proper service or utility module if it represents real logic.
-from app.tests.security.utils.test_mocks import PHIRedactionService
-from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 # from app.infrastructure.security.phi_redaction import ()
 # PHIRedactionService # Module/Class does not exist

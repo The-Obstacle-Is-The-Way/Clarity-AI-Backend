@@ -1,11 +1,10 @@
 """Unit tests for the enhanced SQLAlchemy database module."""
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, call
-import logging
-from sqlalchemy import Column, Integer, String, create_engine, text
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy import Column, Integer, String, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session, declarative_base
 
 # Assuming Base is correctly defined elsewhere or use declarative_base
 Base = declarative_base()
@@ -13,12 +12,11 @@ Base = declarative_base()
 # Correct import - Assuming these are the intended imports
 from app.infrastructure.persistence.sqlalchemy.database import (
     Database,
-    EnhancedDatabase,
     DatabaseFactory,
+    EnhancedDatabase,
     get_database,
-    get_db_session
+    get_db_session,
 )
-from app.config.settings import get_settings
 
 
 # Define a test model for database operations
@@ -240,14 +238,13 @@ class TestDatabaseFactory:
     @pytest.fixture(autouse=True)
     def reset_factory(self):
         """Reset the DatabaseFactory singleton instance before and after each test."""
-        from app.infrastructure.persistence.sqlalchemy.database import DatabaseFactory
         DatabaseFactory.reset()
         yield
         DatabaseFactory.reset()
 
     def test_database_factory_singleton(self, mock_settings_module):
         """Test DatabaseFactory creates a singleton EnhancedDatabase instance."""
-        from app.infrastructure.persistence.sqlalchemy.database import DatabaseFactory, EnhancedDatabase
+        from app.infrastructure.persistence.sqlalchemy.database import EnhancedDatabase
         
         # Initialize with test settings
         DatabaseFactory.initialize(lambda: mock_settings_module)
@@ -264,7 +261,7 @@ class TestDatabaseFactory:
     
     def test_legacy_get_database_function(self, mock_settings_module):
         """Test that the legacy get_database function uses the DatabaseFactory."""
-        from app.infrastructure.persistence.sqlalchemy.database import get_database, DatabaseFactory, EnhancedDatabase
+        from app.infrastructure.persistence.sqlalchemy.database import EnhancedDatabase
         
         # Initialize with test settings
         DatabaseFactory.initialize(lambda: mock_settings_module)
@@ -281,7 +278,7 @@ class TestDatabaseFactory:
 
     def test_get_db_session(self, mock_settings_module):
         """Test get_db_session dependency injection function."""
-        from app.infrastructure.persistence.sqlalchemy.database import get_db_session, EnhancedDatabase
+        from app.infrastructure.persistence.sqlalchemy.database import EnhancedDatabase
         
         # Create mock database instance
         mock_db_instance = MagicMock(spec=EnhancedDatabase)
@@ -309,9 +306,7 @@ class TestDatabaseFactory:
     
     def test_thread_safety(self, mock_settings_module):
         """Test that the DatabaseFactory is thread-safe."""
-        from app.infrastructure.persistence.sqlalchemy.database import DatabaseFactory
         import concurrent.futures
-        import threading
         
         # Initialize with test settings
         DatabaseFactory.initialize(lambda: mock_settings_module)

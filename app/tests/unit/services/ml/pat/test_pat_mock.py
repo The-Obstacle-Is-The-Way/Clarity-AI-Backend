@@ -5,13 +5,17 @@ This module contains tests for all methods of the MockPAT class,
 verifying both success paths and error handling.
 """
 
-from app.core.services.ml.pat.mock import MockPATService as MockPAT
-import logging
-import pytest
-from datetime import datetime
-from unittest.mock import MagicMock, patch
 
-from app.core.exceptions import AnalysisError, AuthorizationError, EmbeddingError, InitializationError, IntegrationError, ResourceNotFoundError, ValidationError
+import pytest
+
+from app.core.exceptions import (
+    AuthorizationError,
+    InitializationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
+from app.core.services.ml.pat.mock import MockPATService as MockPAT
+
 
 @pytest.fixture
 def mock_pat():

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the BiometricAlertAuditService.
 
@@ -6,17 +5,18 @@ These tests verify that the BiometricAlertAuditService correctly
 maintains an audit trail for biometric alerts.
 """
 
-import pytest
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
+
+import pytest
+
+from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+from app.domain.services.biometric_alert_audit_service import BiometricAlertAuditService
 
 # Corrected import path for BiometricAlert and AlertPriority
 from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
-from app.domain.interfaces.alert_observer import AlertObserver
-from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.services.biometric_alert_audit_service import BiometricAlertAuditService
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.mark.db_required()

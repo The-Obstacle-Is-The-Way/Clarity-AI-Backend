@@ -1,21 +1,14 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the Appointment Service.
 """
 
 # Defer service import if necessary, though typically fine in tests
 # from app.domain.services.appointment_service import AppointmentService 
-from app.domain.exceptions import (
-    EntityNotFoundError,
-    ValidationError,
-    InvalidAppointmentStateError,
-    InvalidAppointmentTimeError # Moved from below
-)
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
-from typing import Any # Import Any
 
 # Defer entity import
 # from app.domain.entities.appointment import Appointment 
@@ -25,6 +18,8 @@ from app.domain.entities.appointment import (
     AppointmentType,
     # AppointmentPriority # Still assuming this doesn't exist
 )
+from app.domain.exceptions import ValidationError  # Moved from below
+
 # Removed duplicate import of InvalidAppointmentTimeError
 # Removed AppointmentNotFoundException, PatientNotFoundException, ProviderNotFoundException
 

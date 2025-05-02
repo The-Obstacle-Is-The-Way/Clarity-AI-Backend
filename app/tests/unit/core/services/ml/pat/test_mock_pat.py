@@ -6,23 +6,17 @@ work correctly and handle edge cases properly.
 """
 
 # Corrected import alias syntax
-from app.core.services.ml.pat.mock import MockPATService as MockPAT
-import json
-import uuid
 from datetime import datetime
-from typing import Any, Dict, List
-from unittest.mock import patch
 
 import pytest
 
 from app.core.services.ml.pat.exceptions import (
-    AnalysisError,
     AuthorizationError,
-    EmbeddingError,
-    InitializationError,
     ResourceNotFoundError,
     ValidationError,
 )
+from app.core.services.ml.pat.mock import MockPATService as MockPAT
+
 
 @pytest.fixture
 def mock_pat():

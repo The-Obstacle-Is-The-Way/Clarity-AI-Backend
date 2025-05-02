@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test suite for the PHI Audit tool.
 This validates that our PHI audit tool correctly identifies PHI violations.
 """
 
-import pytest
-import tempfile
-import os
 import json
-import shutil
-from unittest.mock import patch, MagicMock
-
-import sys
 import os
+import shutil
+import sys
+import tempfile
+from unittest.mock import patch
+
+import pytest
 
 # Add the parent directory to the path so we can import from scripts
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
@@ -218,7 +216,7 @@ def process_user_data(data):
         assert os.path.exists(json_file)
 
         # Verify report structure in the JSON file
-        with open(json_file, 'r') as f:
+        with open(json_file) as f:
             report_data = json.load(f)
 
         assert "summary" in report_data

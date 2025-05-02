@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base Security Test Case
 
@@ -7,25 +6,20 @@ proper authentication setup and user role management.
 """
 
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 # Remove unittest import
 # from unittest import TestCase
-
 import pytest
-import os
-from unittest.mock import MagicMock, patch
+
+from app.core.domain.entities.user import User, UserRole
 
 # Import mocks for testing
 from app.tests.security.utils.test_mocks import (
     MockAsyncSession,
-    RoleBasedAccessControl,
     MockEntityFactory,
+    RoleBasedAccessControl,
 )
-
-from app.core.domain.entities.user import User, UserRole
-
-from app.infrastructure.security.rbac.rbac_service import RBACService
-from app.core.exceptions.auth_exceptions import AuthorizationError
 
 # We're now using the MockEntityFactory from test_mocks.py
 
@@ -90,7 +84,7 @@ class BaseSecurityTest:
     def has_permission(
         self,
         permission: str,
-        roles: List[str] | None = None
+        roles: list[str] | None = None
     ) -> bool:
         """
         Check if the specified roles have the given permission using the instance's rbac.
@@ -114,9 +108,9 @@ class BaseSecurityTest:
 
     def get_auth_token(
         self,
-        user_id: Optional[str] = None,
-        roles: Optional[List[str]] = None,
-        custom_claims: Optional[Dict[str, Any]] = None,
+        user_id: str | None = None,
+        roles: list[str] | None = None,
+        custom_claims: dict[str, Any] | None = None,
     ) -> str:
         """
         Generate a mock authentication token for testing.
@@ -138,7 +132,7 @@ class BaseSecurityTest:
         # testing
         return f"mock_token.{claims!s}"
 
-    def get_auth_headers(self, token: Optional[str] = None) -> Dict[str, str]:
+    def get_auth_headers(self, token: str | None = None) -> dict[str, str]:
         """
         Generate mock authentication headers for testing.
 
@@ -181,7 +175,7 @@ class BaseSecurityTest:
         mock_db_session,
         user_id="test_user_id",
         email="test@example.com",
-        roles: List[str] | None = None
+        roles: list[str] | None = None
     ):
         """Helper to create a mock user with specific roles."""
         if roles is None:

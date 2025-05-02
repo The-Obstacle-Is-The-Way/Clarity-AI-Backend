@@ -6,10 +6,9 @@ proper functionality of the security test infrastructure.
 """
 
 import unittest
-import pytest
-import json
-from unittest.mock import patch, MagicMock
 import uuid
+
+import pytest
 
 from app.tests.security.utils.base_security_test import BaseSecurityTest
 
@@ -62,8 +61,8 @@ class TestBaseSecurityTest(BaseSecurityTest):
         # Test token with custom claims
         custom_claims = {"tenant_id": "t123", "session_id": "s456"}
         token3 = self.get_auth_token(custom_claims=custom_claims)
-        assert f"'tenant_id': 't123'" in token3
-        assert f"'session_id': 's456'" in token3
+        assert "'tenant_id': 't123'" in token3
+        assert "'session_id': 's456'" in token3
         assert f"'sub': '{self.test_user_id}'" in token3 # Default user id
 
     @pytest.mark.standalone()

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Tests for PHI Audit Logic.
 
@@ -8,12 +7,11 @@ particularly the rules that determine whether an audit passes or fails,
 including special handling for test directories and files.
 """
 
-import pytest
 import os
-import tempfile
 import shutil
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+import tempfile
+
+import pytest
 
 # Import necessary modules for testing
 try:
@@ -24,15 +22,12 @@ except ImportError:
     from app.tests.security.utils.test_mocks import MockPHIAuditResult as PHIAuditResult
 
 # Import BaseSecurityTest for test base class
-from app.tests.security.utils.base_security_test import BaseSecurityTest
-
 # Uncomment AuditLog import now that the model exists
-from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
+
 # TEMP: Keep UserModel commented until user.py is verified/completed
 # from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel 
-from app.infrastructure.security.audit import AuditLogger
-from app.infrastructure.security.encryption import BaseEncryptionService
-from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
+from app.tests.security.utils.base_security_test import BaseSecurityTest
+
 # Import PHIAuditMiddleware from presentation layer - REMOVED as it's unused
 # from app.presentation.middleware.phi_middleware import PHIAuditMiddleware
 # PHIAuditHandler might also be in presentation or removed, leaving commented for now
@@ -64,8 +59,8 @@ class TestPHIAuditLogic(BaseSecurityTest):
 
     def test_audit_passed_with_clean_app_directory(self):
         """Test that the audit passes for clean_app directory even with issues."""
-        import tempfile
         import shutil
+        import tempfile
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a clean_app directory
@@ -89,8 +84,8 @@ class TestPHIAuditLogic(BaseSecurityTest):
 
     def test_audit_passed_with_clean_app_in_path(self):
         """Test that the audit passes when 'clean_app' is in the path but not the directory name."""
-        import tempfile
         import shutil
+        import tempfile
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a directory with clean_app in the path
@@ -114,8 +109,8 @@ class TestPHIAuditLogic(BaseSecurityTest):
 
     def test_audit_file_detection(self):
         """Test the is_phi_test_file detection logic."""
-        import tempfile
         import shutil
+        import tempfile
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a PHIAuditor instance
@@ -149,16 +144,16 @@ class TestPHIAuditLogic(BaseSecurityTest):
                 """)
 
             # Test the detection logic
-            assert auditor.is_phi_test_file(regular_file, open(regular_file, "r").read()) is False, "Regular file should not be detected as PHI test file"
-            assert auditor.is_phi_test_file(non_phi_test_file, open(non_phi_test_file, "r").read()) is False, "Non-PHI test file should not be detected as PHI test file"
-            assert auditor.is_phi_test_file(phi_test_file, open(phi_test_file, "r").read()) is True, "PHI test file should be detected correctly"
+            assert auditor.is_phi_test_file(regular_file, open(regular_file).read()) is False, "Regular file should not be detected as PHI test file"
+            assert auditor.is_phi_test_file(non_phi_test_file, open(non_phi_test_file).read()) is False, "Non-PHI test file should not be detected as PHI test file"
+            assert auditor.is_phi_test_file(phi_test_file, open(phi_test_file).read()) is True, "PHI test file should be detected correctly"
         finally:
             shutil.rmtree(temp_dir)
 
     def test_strict_mode_disables_special_handling(self):
         """Test that strict mode disables special handling for test files and clean_app directories."""
-        import tempfile
         import shutil
+        import tempfile
         temp_dir = tempfile.mkdtemp()
         try:
             # Create a clean_app directory
@@ -188,14 +183,14 @@ class TestPHIAuditLogic(BaseSecurityTest):
 
             # Verify PHI test detection is disabled in strict mode
             # (No strict mode logic, so just check normal behavior)
-            assert strict_auditor.is_phi_test_file(test_file, open(test_file, "r").read()) is False, "PHI test file detection should be disabled in strict mode"
+            assert strict_auditor.is_phi_test_file(test_file, open(test_file).read()) is False, "PHI test file detection should be disabled in strict mode"
         finally:
             shutil.rmtree(temp_dir)
 
     def test_report_counts_for_clean_app_files(self):
         """Test that report correctly counts allowed PHI in clean_app directories."""
-        import tempfile
         import shutil
+        import tempfile
         temp_dir = tempfile.mkdtemp()
         try:
             # Create clean_app directory with PHI
@@ -251,8 +246,8 @@ class TestPHIAuditLogic(BaseSecurityTest):
 
     def test_run_audit_with_clean_app_directory(self):
         """Test the full run_audit method with a clean_app directory."""
-        import tempfile
         import shutil
+        import tempfile
         temp_dir = tempfile.mkdtemp()
         try:
             # Create clean_app directory

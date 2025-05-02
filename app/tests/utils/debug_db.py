@@ -7,10 +7,10 @@ and diagnosing any issues with the SQLite setup.
 
 import asyncio
 import logging
-import uuid
-from datetime import datetime
 import os
 import sys
+import uuid
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -24,7 +24,7 @@ if backend_dir not in sys.path:
 
 # Import SQLAlchemy components
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Direct SQL statements for table creation
 DIRECT_SQL = {

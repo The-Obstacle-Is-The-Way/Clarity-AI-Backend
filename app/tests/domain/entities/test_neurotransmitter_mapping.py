@@ -4,20 +4,20 @@ Unit tests for the NeurotransmitterMapping entity and related functionality.
 These tests verify that the neurotransmitter mapping models behave correctly
 and perform calculations accurately.
 """
-import pytest
 import uuid
-from uuid import UUID
+
+import pytest
+
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    Neurotransmitter,
     ClinicalSignificance,
+    Neurotransmitter,
 )
-
 from app.domain.entities.neurotransmitter_mapping import (
     NeurotransmitterMapping,
     ReceptorProfile,
-    ReceptorType,
     ReceptorSubtype,
+    ReceptorType,
     create_default_neurotransmitter_mapping,
 )
 

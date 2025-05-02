@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for ML mock services.
 
@@ -7,11 +6,9 @@ ensuring they correctly implement their respective interfaces and
 provide consistent behavior for testing purposes.
 """
 
+from datetime import datetime
+
 import pytest
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, Any, List
-import json
 
 from app.core.exceptions import (
     InvalidConfigurationError,
@@ -19,11 +16,11 @@ from app.core.exceptions import (
     ModelNotFoundError,
     ServiceUnavailableError,
 )
+from app.domain.utils.datetime_utils import UTC
 
 # Corrected imports from infrastructure layer
 from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA
 from app.infrastructure.ml.phi.mock import MockPHIDetection
-
 
 # Apply test markers for categorization
 pytestmark = [pytest.mark.unit, pytest.mark.ml]

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the BatchProcessAnalyticsUseCase.
 
@@ -6,15 +5,14 @@ This module contains unit tests for the batch analytics processing use case,
 ensuring proper handling of bulk events, error resilience, and concurrent processing.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock, call
-import asyncio
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.domain.entities.analytics import AnalyticsEvent
+import pytest
+
 from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
-from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+from app.domain.entities.analytics import AnalyticsEvent
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.fixture

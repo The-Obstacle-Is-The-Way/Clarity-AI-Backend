@@ -1,73 +1,62 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test suite for API endpoint HIPAA compliance.
 This validates that API endpoints properly protect PHI according to HIPAA requirements.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock, call
-import json
-from typing import Dict, List, Any, Optional, AsyncGenerator, Generator
-from datetime import datetime, timezone, timedelta
+
+# Import asynccontextmanager
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from pydantic import ValidationError
-# Import PostgresDsn for database URI building
-from pydantic import PostgresDsn
+
+import pytest
 
 # Ensure necessary imports are at the top level
-from fastapi import FastAPI, Depends, HTTPException, Request, Response, status, APIRouter
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
-from fastapi.security import OAuth2PasswordBearer, SecurityScopes
-from fastapi.testclient import TestClient
-from app.presentation.middleware.phi_middleware import add_phi_middleware
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.auth.dependencies import get_current_active_user
-from app.domain.entities.patient import Patient
-from app.domain.entities.user import User
-from app.domain.enums.role import Role
-from app.infrastructure.security.phi.phi_service import PHIType, PHIService
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
-from app.presentation.middleware.phi_middleware import PHIMiddleware
-# Assume api_router aggregates all relevant endpoints for testing
-# If not, import specific routers needed
-from app.config.settings import get_settings # To get API prefix, etc.
-
-# Import necessary FastAPI components
-from fastapi import FastAPI, Depends, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.testclient import TestClient
-from app.presentation.api.v1.endpoints.patients import router as patients_router
-from app.presentation.middleware.phi_middleware import PHIMiddleware, add_phi_middleware
-# Removed fallback mock definitions for FastAPI components
 
+# Import PostgresDsn for database URI building
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# Assume api_router aggregates all relevant endpoints for testing
+# If not, import specific routers needed
+from app.config.settings import get_settings  # To get API prefix, etc.
+from app.domain.entities.patient import Patient
+
+# Import necessary FastAPI components
+# Removed fallback mock definitions for FastAPI components
 # Import domain exceptions used in mocks
 from app.domain.exceptions.token_exceptions import InvalidTokenException
 
-# Import the actual dependency function used by the router
-from app.presentation.api.dependencies.auth import get_current_user 
-
 # Import database dependency and class for overriding
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session, Database
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository,
+)
+
 # Import Encryption Service for mocking
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-# Import the repository dependency provider to override
-from app.presentation.api.dependencies.repository import get_patient_repository
-from app.presentation.api.dependencies.repository import get_encryption_service
-# Import asynccontextmanager
-from contextlib import asynccontextmanager 
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
 
-from sqlalchemy.ext.asyncio import AsyncSession
+# Import the actual dependency function used by the router
+from app.presentation.api.dependencies.auth import get_current_user
+
+# Import the repository dependency provider to override
+from app.presentation.api.dependencies.repository import (
+    get_encryption_service,
+    get_patient_repository,
+)
+from app.presentation.middleware.phi_middleware import add_phi_middleware
 
 # Import MockSettings from global conftest
 from app.tests.conftest import MockSettings
 
 # Added import for PatientService
-from app.application.services.patient_service import PatientApplicationService as PatientService
 
 # Global settings for these tests
 # Note: Using fixtures might be cleaner than global variables
@@ -76,13 +65,12 @@ TEST_EMAIL = "test@example.com"
 TEST_PHONE = "123-456-7890"
 
 # Import types needed for middleware defined in the fixture
-from starlette.requests import Request 
-from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware # Needed for adding middleware
-from typing import Callable, Awaitable
+import logging  # Import logging module
+from collections.abc import Awaitable, Callable
 
-import re
-import logging # Import logging module
+from starlette.middleware.base import BaseHTTPMiddleware  # Needed for adding middleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 # Get logger instance for this module
 logger = logging.getLogger(__name__)
@@ -154,7 +142,7 @@ class TestAPIHIPAACompliance:
                     logger.debug(f"Returning mock payload for user {user_id}: {payload.model_dump()}")
                     return payload
                 else:
-                    logger.error(f"---> mock_decode_token_internal: Unrecognized token string: {repr(token_str)}")
+                    logger.error(f"---> mock_decode_token_internal: Unrecognized token string: {token_str!r}")
                     # Simulate an invalid token scenario
                     raise InvalidTokenException("Mock: Invalid or unrecognized token")
             
@@ -172,7 +160,7 @@ class TestAPIHIPAACompliance:
             # Override get_current_user (assuming it uses decode_token and get_user)
             async def override_get_current_user(request: Request, token: str = Depends(OAuth2PasswordBearer(tokenUrl="token", auto_error=False))):
                 # DEBUG: Log the received token
-                logger.info(f"---> override_get_current_user: Received token parameter: {repr(token)}") 
+                logger.info(f"---> override_get_current_user: Received token parameter: {token!r}") 
                 if not token:
                     # Simulate auto_error=False behavior if no token provided
                     logger.warning("---> override_get_current_user: No token received, returning None.")
@@ -202,9 +190,9 @@ class TestAPIHIPAACompliance:
                     # Re-raise known HTTP exceptions (like from mock_decode_token_internal)
                     logger.warning(f"---> override_get_current_user: Re-raising HTTPException: {e.detail}")
                     raise e
-                except Exception as e:
+                except Exception:
                     # Catch-all for unexpected errors
-                    logger.exception(f"---> override_get_current_user: Unexpected error during validation") # Use logger.exception
+                    logger.exception("---> override_get_current_user: Unexpected error during validation") # Use logger.exception
                     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
 
             # Mock DB Session (using context manager style)

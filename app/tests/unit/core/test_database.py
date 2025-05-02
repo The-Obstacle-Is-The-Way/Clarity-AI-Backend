@@ -1,18 +1,19 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for database connection and session management.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-# Assuming settings are correctly loaded
-from app.config.settings import Settings, get_settings
 # Updated imports from app.core.db
 import app.core.dependencies.database as dbmod
-from app.core.dependencies.database import get_engine, get_session_local, get_session, Base
+
+# Assuming settings are correctly loaded
+from app.config.settings import Settings, get_settings
+from app.core.dependencies.database import get_engine, get_session, get_session_local
 
 # Test settings (override if necessary for testing environment)
 TEST_DATABASE_URL = "postgresql+asyncpg://test_user:test_password@test_host:5432/test_db"

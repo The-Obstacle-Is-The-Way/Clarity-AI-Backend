@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-import os
-import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 # Import the canonical PHIService
 from app.infrastructure.security.phi.phi_service import PHIService, PHIType

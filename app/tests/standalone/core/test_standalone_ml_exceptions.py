@@ -5,10 +5,10 @@ This module contains both the ML exception classes and tests in a single file,
 making it completely independent of the rest of the application.
 """
 
-import pytest
-
 import unittest
 from typing import Any
+
+import pytest
 
 # ============= ML Exception Classes =============
 

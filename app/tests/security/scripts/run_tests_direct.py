@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 NovaMind Digital Twin Security Test Runner (Direct Mode)
 
@@ -7,13 +6,13 @@ This script executes the complete security test suite for the NovaMind Digital T
 without requiring extra dependencies, collecting and analyzing results directly from pytest.
 """
 
-import os
-import sys
-import subprocess
 import json
+import os
 import re
+import subprocess
+import sys
 from datetime import datetime
-from typing import Dict, List, Any, Tuple
+from typing import Any
 
 # Add the root directory to Python path
 sys.path.insert(
@@ -63,7 +62,7 @@ class DirectSecurityTestRunner:
             "summary": {"total": 0, "passed": 0, "failed": 0, "errors": 0},
         }
 
-    def run_test(self, test_info: Dict[str, str]) -> Dict[str, Any]:
+    def run_test(self, test_info: dict[str, str]) -> dict[str, Any]:
         """Run a specific test module.
 
         Args:
@@ -110,7 +109,7 @@ class DirectSecurityTestRunner:
 
         return test_results
 
-    def _parse_pytest_output(self, output: str) -> Dict[str, Any]:
+    def _parse_pytest_output(self, output: str) -> dict[str, Any]:
         """Parse pytest output to extract test counts and details.
 
         Args:
@@ -174,7 +173,7 @@ class DirectSecurityTestRunner:
                     )
                 except Exception as e:
                     # If parsing fails, just continue to the next line
-                    print(f"Error parsing line: {line} - {str(e)}")
+                    print(f"Error parsing line: {line} - {e!s}")
                     continue
 
         # If we couldn't parse any tests, try the summary line
@@ -198,7 +197,7 @@ class DirectSecurityTestRunner:
 
         return results
 
-    def run_all_tests(self) -> Dict[str, Any]:
+    def run_all_tests(self) -> dict[str, Any]:
         """Run all defined tests.
 
         Returns:
@@ -375,7 +374,7 @@ class DirectSecurityTestRunner:
 
             # Add test details if available
             if results["details"]:
-                html += f"""
+                html += """
                 <h4>Test Details</h4>
                 <table>
                 <tr>

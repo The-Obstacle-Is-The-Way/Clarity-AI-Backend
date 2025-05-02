@@ -6,15 +6,16 @@ correctly implements the PATInterface.
 """
 
 import datetime
-import pytest
 from typing import Any
 from unittest.mock import Mock
+
+import pytest
 
 from app.core.exceptions.base_exceptions import (
     AuthorizationError,
     InitializationError,
     ResourceNotFoundError,
-    ValidationError
+    ValidationError,
 )
 from app.core.services.ml.pat.mock import MockPATService
 

@@ -1,13 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the Provider entity.
 """
 
-from app.domain.exceptions import ValidationError
-from datetime import datetime, time
 import uuid
+from datetime import datetime
+
 import pytest
-from app.domain.entities.provider import Provider, ProviderType, ProviderStatus
+
+from app.domain.entities.provider import Provider, ProviderStatus, ProviderType
+from app.domain.exceptions import ValidationError
+
 
 @pytest.fixture
 def valid_provider_data():

@@ -9,21 +9,18 @@ realistic psychiatric session modeling for testing purposes.
 # Remove BaseUnitTest import
 # from app.tests.unit.base_test_unit import BaseUnitTest
 # Corrected import path for MockDigitalTwinService
-from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService
+from datetime import datetime
+
 import pytest
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, Any, List
+
 # Removed unused imports: Dict, Any, List (kept for potential future use if needed)
 # Removed unused exception: ModelNotFoundError
-
 from app.core.exceptions import (
     InvalidConfigurationError,
-    InvalidRequestError,
-    # ModelNotFoundError, # Not used in this file currently
-    ServiceUnavailableError,
-    ResourceNotFoundError
+    ResourceNotFoundError,
 )
+from app.domain.utils.datetime_utils import UTC
+from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService
 
 
 @pytest.fixture(scope="function")

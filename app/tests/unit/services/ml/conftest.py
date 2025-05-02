@@ -5,9 +5,7 @@ This conftest.py contains hooks to ensure proper test collection and module patc
 for machine learning service tests, following clean architecture principles.
 """
 
-import pytest
 import sys
-from pathlib import Path
 
 
 def pytest_collect_file(parent, path):
@@ -33,8 +31,8 @@ def setup_yaml_mocking():
     """Set up YAML mocking for XGBoost tests."""
     try:
         # Import the mocks first so they're in scope
-        from app.tests.unit.services.ml.xgboost_service.mock_yaml import safe_load as mock_safe_load
         from app.tests.unit.services.ml.xgboost_service.mock_yaml import dump as mock_dump
+        from app.tests.unit.services.ml.xgboost_service.mock_yaml import safe_load as mock_safe_load
         
         class MockYamlModule:
             safe_load = mock_safe_load

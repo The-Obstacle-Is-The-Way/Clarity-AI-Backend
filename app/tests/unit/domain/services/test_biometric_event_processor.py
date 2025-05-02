@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the BiometricEventProcessor.
 
@@ -6,28 +5,25 @@ These tests verify that the BiometricEventProcessor correctly processes
 biometric data points, evaluates rules, and notifies observers.
 """
 
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from unittest.mock import MagicMock, patch, AsyncMock  # Added AsyncMock
-from uuid import UUID, uuid4
-from typing import Any, List, Dict, Optional, Union, Callable  # Added Callable
+from datetime import datetime
+from unittest.mock import MagicMock, patch  # Added AsyncMock
+from uuid import UUID
 
 import pytest
 
 from app.domain.entities.biometric_twin import BiometricDataPoint
 from app.domain.exceptions import ValidationError
 from app.domain.services.biometric_event_processor import (
+    AlertObserver,
     AlertPriority,
     AlertRule,  # Assuming AlertRule exists or is defined elsewhere
     BiometricAlert,
     BiometricEventProcessor,
-    AlertObserver,
     EmailAlertObserver,
+    InAppAlertObserver,  # Assuming ClinicalRuleEngine exists or is defined elsewhere
     SMSAlertObserver,
-    InAppAlertObserver,
-    ClinicalRuleEngine  # Assuming ClinicalRuleEngine exists or is defined elsewhere
 )
-
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.fixture

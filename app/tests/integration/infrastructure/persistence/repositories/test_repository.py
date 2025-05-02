@@ -5,28 +5,30 @@ This module provides a simplified repository implementation that uses our
 test models to avoid conflicts with the actual models.
 """
 
-import pytest
-import uuid
-import logging
 import json
-from datetime import datetime, timezone, date
-from typing import List, Optional, Dict, Any, Union, cast
-from sqlalchemy.exc import SQLAlchemyError
+import logging
+import uuid
+from datetime import date
 
+import pytest
+from sqlalchemy import delete
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import delete, update
+
+from app.core.exceptions.base_exceptions import ResourceNotFoundError
+from app.domain.entities.patient import Patient as PatientDomain
+from app.domain.value_objects.address import Address as AddressVO
+from app.domain.value_objects.contact_info import ContactInfo as ContactInfoVO
+from app.domain.value_objects.emergency_contact import EmergencyContact
+from app.domain.value_objects.name import Name as NameVO
 
 # Use the actual Patient model and Repository
 from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
-from app.domain.entities.patient import Patient as PatientDomain
-from app.domain.value_objects.contact_info import ContactInfo as ContactInfoVO
-from app.domain.value_objects.address import Address as AddressVO
-from app.domain.value_objects.name import Name as NameVO
-from app.domain.value_objects.emergency_contact import EmergencyContact
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository,
+)
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.core.exceptions.base_exceptions import ResourceNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +59,10 @@ class TestPatientRepository:
             return await self._to_domain(patient_model)
         except SQLAlchemyError as e:
             await self.db_session.rollback()  # Rollback on error
-            logger.error(f"Error creating patient: {str(e)}")
+            logger.error(f"Error creating patient: {e!s}")
             raise
     
-    async def get_by_id(self, patient_id: uuid.UUID) -> Optional[PatientDomain]:
+    async def get_by_id(self, patient_id: uuid.UUID) -> PatientDomain | None:
         """Get a patient by ID."""
         try:
             result = await self.db_session.execute(
@@ -73,7 +75,7 @@ class TestPatientRepository:
             
             return await self._to_domain(patient_model)
         except SQLAlchemyError as e:
-            logger.error(f"Error retrieving patient by ID: {str(e)}")
+            logger.error(f"Error retrieving patient by ID: {e!s}")
             raise
     
     async def update(self, patient: PatientDomain) -> PatientDomain:
@@ -99,7 +101,7 @@ class TestPatientRepository:
             return await self._to_domain(updated_model)
         except SQLAlchemyError as e:
             await self.db_session.rollback()  # Rollback on error
-            logger.error(f"Error updating patient: {str(e)}")
+            logger.error(f"Error updating patient: {e!s}")
             raise
     
     async def delete(self, patient_id: uuid.UUID) -> bool:
@@ -115,10 +117,10 @@ class TestPatientRepository:
             return result.rowcount > 0
         except SQLAlchemyError as e:
             await self.db_session.rollback()  # Rollback on error
-            logger.error(f"Error deleting patient: {str(e)}")
+            logger.error(f"Error deleting patient: {e!s}")
             raise
     
-    async def get_all(self) -> List[PatientDomain]:
+    async def get_all(self) -> list[PatientDomain]:
         """Get all patients."""
         try:
             result = await self.db_session.execute(select(PatientModel))
@@ -126,10 +128,10 @@ class TestPatientRepository:
             
             return [await self._to_domain(model) for model in patient_models]
         except SQLAlchemyError as e:
-            logger.error(f"Error retrieving all patients: {str(e)}")
+            logger.error(f"Error retrieving all patients: {e!s}")
             raise
     
-    async def _to_model(self, patient: PatientDomain, existing_model: Optional[PatientModel] = None) -> PatientModel:
+    async def _to_model(self, patient: PatientDomain, existing_model: PatientModel | None = None) -> PatientModel:
         """Convert a domain entity to a database model.
         
         Handles Patient domain entity structure with value objects:
@@ -155,7 +157,7 @@ class TestPatientRepository:
                     return encrypted.decode()
                 return encrypted
             except Exception as e:
-                logger.error(f"Encryption error: {str(e)} for value type {type(value)}")
+                logger.error(f"Encryption error: {e!s} for value type {type(value)}")
                 # Return a safe fallback value rather than failing
                 return f"ENCRYPTED_{value}" if value is not None else None
         
@@ -237,7 +239,7 @@ class TestPatientRepository:
                     return decrypted.decode()
                 return decrypted
             except Exception as e:
-                logger.error(f"Decryption error: {str(e)} for value type {type(value)}")
+                logger.error(f"Decryption error: {e!s} for value type {type(value)}")
                 # Return original value as fallback rather than failing
                 if value and isinstance(value, str) and value.startswith("ENCRYPTED_"):
                     return value[10:]  # Remove prefix if it exists
@@ -270,7 +272,7 @@ class TestPatientRepository:
                     country=address_data.get('country', '')
                 )
             except (json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Error decoding address data: {str(e)}")
+                logger.warning(f"Error decoding address data: {e!s}")
         
         # Parse emergency contact JSON if present
         emergency_contact = None
@@ -283,7 +285,7 @@ class TestPatientRepository:
                     phone=ec_data.get('phone', '')
                 )
             except (json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Error decoding emergency contact data: {str(e)}")
+                logger.warning(f"Error decoding emergency contact data: {e!s}")
                 
         # Handle SSN - decrypt if present
         ssn = None
@@ -300,7 +302,7 @@ class TestPatientRepository:
                 else:
                     dob = model.date_of_birth
             except ValueError as e:
-                logger.warning(f"Error parsing date of birth: {str(e)}")
+                logger.warning(f"Error parsing date of birth: {e!s}")
                 dob = None
         
         # Construct and return domain entity with proper value objects

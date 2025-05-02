@@ -5,16 +5,12 @@ This module provides utilities for setting up and managing authentication
 in test environments, including direct authentication bypasses for integration testing.
 """
 
-import inspect
 import logging
-from typing import Optional, Dict, Any, Callable, Awaitable, List, Set, Union
-from uuid import UUID
-from fastapi import FastAPI, Depends, Response, Request
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from collections.abc import Awaitable, Callable
 
-from app.domain.entities.user import User
-from app.domain.enums.role import Role as UserRole
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +26,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: FastAPI,
-        public_paths: Optional[Union[List[str], Set[str]]] = None,
+        public_paths: list[str] | set[str] | None = None,
         auth_bypass_header: str = "X-Test-Auth-Bypass",
     ):
         """
@@ -109,7 +105,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
         )
 
 
-def create_test_headers_for_role(role: str, user_id: str = None) -> Dict[str, str]:
+def create_test_headers_for_role(role: str, user_id: str = None) -> dict[str, str]:
     """
     Create test headers that will bypass authentication in test environment.
     

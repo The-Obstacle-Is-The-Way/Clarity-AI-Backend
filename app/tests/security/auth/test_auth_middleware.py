@@ -1,12 +1,15 @@
-import pytest
-from fastapi import FastAPI, HTTPException, Depends, Request, Response, status
-from fastapi.testclient import TestClient
+import time
 from unittest.mock import AsyncMock, MagicMock
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
-from app.domain.exceptions.token_exceptions import TokenExpiredException, InvalidTokenException
-import time
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+
 
 @pytest.fixture
 def mock_auth_service():

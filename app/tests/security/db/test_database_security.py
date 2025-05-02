@@ -1,10 +1,7 @@
-from unittest.mock import patch, MagicMock
-import pytest
-from fastapi import HTTPException
-from sqlalchemy import create_engine
+from unittest.mock import patch
 
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.infrastructure.persistence.sqlalchemy.config.database import Base
+
 
 class TestDatabaseSecurity:
     def setup_method(self):

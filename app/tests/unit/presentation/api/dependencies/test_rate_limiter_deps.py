@@ -1,18 +1,18 @@
 """Unit tests for rate limiting dependencies."""
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from fastapi import FastAPI, Depends, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
-from fastapi.responses import JSONResponse
-from starlette import status
 
 from app.infrastructure.security.rate_limiting.limiter import RateLimiter
 from app.presentation.api.dependencies.rate_limiter import (
     RateLimitDependency,
+    admin_rate_limit,
     rate_limit,
     sensitive_rate_limit,
-    admin_rate_limit,
 )
+
 
 @pytest.fixture
 def mock_limiter():

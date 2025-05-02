@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HIPAA Security Test Suite - Database Security Tests
 
@@ -6,13 +5,13 @@ Tests for the SQLAlchemy Unit of Work implementation to ensure HIPAA-compliant
 data integrity and proper transaction management for PHI operations.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch, call
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
-from app.infrastructure.persistence.sqlalchemy.unit_of_work import SQLAlchemyUnitOfWork
 from app.domain.exceptions import RepositoryError
+from app.infrastructure.persistence.sqlalchemy.unit_of_work import SQLAlchemyUnitOfWork
 
 
 class TestSQLAlchemyUnitOfWork:

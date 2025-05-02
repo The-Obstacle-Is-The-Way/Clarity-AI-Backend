@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 MentaLLaMA API Integration Tests.
 
@@ -6,11 +5,10 @@ This module contains integration tests for the MentaLLaMA API routes, following
 clean architecture principles with precise, mathematically elegant implementations.
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Generator
-from unittest.mock import MagicMock, Mock, patch, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -21,14 +19,8 @@ from httpx import AsyncClient
 pytestmark = pytest.mark.asyncio
 
 from app.config.settings import get_settings
-from app.core.exceptions import (
-    InvalidRequestError,
-    ModelNotFoundError,
-    ServiceUnavailableError
-)
-
+from app.core.exceptions import InvalidRequestError, ModelNotFoundError
 from app.core.services.ml.interface import MentaLLaMAInterface
-from app.infrastructure.ml.mentallama.service import MentaLLaMA # Corrected import name
 from app.main import create_application
 
 # Load settings ONCE for the module
@@ -46,7 +38,7 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
         # Add a mock version attribute based on loaded settings if health check needs it
         self.version = settings.ml.mentallama.version if hasattr(settings.ml.mentallama, 'version') else "mock-0.1"
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """Mock initialization."""
         self.initialized = True
     
@@ -63,11 +55,11 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
         prompt: str,
         model: str = None,
         task: str = None,
-        context: Optional[Dict[str, Any]] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        context: dict[str, Any] | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock process method."""
         if not prompt:
             raise InvalidRequestError("Prompt cannot be empty")
@@ -91,10 +83,10 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
         self,
         text: str,
         analysis_type: str = "comprehensive",
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock text analysis method."""
         if not text:
             raise InvalidRequestError("Text cannot be empty")
@@ -120,10 +112,10 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
     def detect_mental_health_conditions(
         self,
         text: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock condition detection method."""
         if not text:
             raise InvalidRequestError("Text cannot be empty")
@@ -157,11 +149,11 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
     def generate_therapeutic_response(
         self,
         text: str,
-        context: Optional[Dict[str, Any]] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        context: dict[str, Any] | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock therapeutic response generation."""
         if not text:
             raise InvalidRequestError("Text cannot be empty")
@@ -186,11 +178,11 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
     def assess_suicide_risk(
         self,
         text: str,
-        context: Optional[Dict[str, Any]] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        context: dict[str, Any] | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock suicide risk assessment."""
         if not text:
             raise InvalidRequestError("Text cannot be empty")
@@ -217,12 +209,12 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
     def analyze_wellness_dimensions(
         self,
         text: str,
-        dimensions: List[str],
+        dimensions: list[str],
         include_recommendations: bool = False,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock wellness dimensions analysis."""
         if not text:
             raise InvalidRequestError("Text cannot be empty")
@@ -253,7 +245,7 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
         }
 
     # Add get_health_status if the endpoint calls it directly
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         return {
             "status": "healthy" if self.initialized else "unhealthy",
             "version": self.version,

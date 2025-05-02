@@ -1,18 +1,22 @@
 """
 Tests for the SQL Alchemy implementation of the temporal sequence repository.
 """
-from app.infrastructure.repositories.temporal_sequence_repository import SqlAlchemyTemporalSequenceRepository
-import pytest
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-import sqlalchemy as sa
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.temporal_sequence import TemporalSequence
-from app.infrastructure.models.temporal_sequence_model import TemporalSequenceModel, TemporalDataPointModel
+from app.domain.utils.datetime_utils import UTC
+from app.infrastructure.models.temporal_sequence_model import (
+    TemporalDataPointModel,
+    TemporalSequenceModel,
+)
+from app.infrastructure.repositories.temporal_sequence_repository import (
+    SqlAlchemyTemporalSequenceRepository,
+)
 
 
 @pytest.fixture

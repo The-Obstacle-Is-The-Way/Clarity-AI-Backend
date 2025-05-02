@@ -1,9 +1,11 @@
 """Unit tests for PhysiologicalRange value object."""
 
+
 import pytest
-from typing import Dict
 
 from app.domain.value_objects.physiological_ranges import PhysiologicalRange
+
+
 class TestPhysiologicalRange:
     """Tests for the PhysiologicalRange value object."""
 
@@ -31,7 +33,7 @@ class TestPhysiologicalRange:
             )
             
 
-            assert "Minimum value must be less than maximum value" in str()
+            assert "Minimum value must be less than maximum value" in ""
             excinfo.value
 
             def test_init_with_invalid_critical_min(self):

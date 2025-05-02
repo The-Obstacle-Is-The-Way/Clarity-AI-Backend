@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Mock MentaLLaMA implementation.
 
@@ -6,8 +5,8 @@ This module provides unit tests for the mock implementation of MentaLLaMA servic
 """
 
 import json
+
 import pytest
-from typing import Dict, Any
 
 from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.providers.mock import MockMentaLLaMA

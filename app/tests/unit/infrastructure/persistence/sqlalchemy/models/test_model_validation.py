@@ -5,14 +5,13 @@ This test suite validates the proper consolidation of User model representations
 across domain, persistence, and legacy layers to ensure clean architecture alignment.
 """
 import uuid
-from datetime import datetime
-import pytest
 
 # Import our models
 from app.domain.entities.user import User as DomainUser
-from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
 from app.infrastructure.models.user_model import UserModel as LegacyUserModel
 from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
+from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
+from app.infrastructure.persistence.sqlalchemy.models.user import UserRole
 
 
 class TestUserModelValidation:

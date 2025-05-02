@@ -1,35 +1,28 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the Secure Messaging Service.
 """
 
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-import base64
-import json
 import time
 import uuid
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from unittest.mock import MagicMock, AsyncMock
 
 # Corrected import
 from app.infrastructure.messaging.secure_messaging_service import (
-    SecureMessagingService,
-    MessageStatus,
+    MessageDecryptionException,
+    MessageNotFoundException,
     MessagePriority,
+    MessageStatus,
     MessageType,
     SecureMessagingException,
-    MessageEncryptionException,
-    MessageDecryptionException,
-    MessageSendException,
-    MessageNotFoundException
+    SecureMessagingService,
 )
+from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 
 # Assuming EncryptionService exists for type hinting/mocking
 # Assuming BaseRepository exists for type hinting/mocking

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Gene Medication Model.
 
@@ -7,12 +6,11 @@ analyzes genetic variants and predicts medication interactions.
 """
 
 import pytest
+
 pytest.skip("Skipping pharmacogenomics gene medication model tests (torch unsupported)", allow_module_level=True)
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
 
 from app.infrastructure.ml.pharmacogenomics.gene_medication_model import GeneMedicationModel
 

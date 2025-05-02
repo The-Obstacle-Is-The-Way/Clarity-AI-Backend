@@ -6,8 +6,7 @@ following HIPAA Security Rule requirements and neurotransmitter modeling pattern
 """
 
 import os
-from typing import Dict, Any
-
+from typing import Any
 
 # Detect test mode for deterministic fixture generation
 is_test_mode = bool(os.environ.get("PYTEST_CURRENT_TEST"))
@@ -74,7 +73,7 @@ ADDRESS_TEST_STR = "v1:encrypted_address_for_test_123"
 
 
 # Function to generate test patient record with deterministic values
-def get_test_patient_record() -> Dict[str, Any]:
+def get_test_patient_record() -> dict[str, Any]:
     """Get a deterministic test patient record with PHI data.
 
     Returns:

@@ -13,7 +13,7 @@ from app.domain.ml.exceptions import (
     MentalLLaMAConnectionError,
     MentalLLaMAInferenceError,
     MentalLLaMAQuotaExceededError,
-    MentalLLaMAValidationError
+    MentalLLaMAValidationError,
 )
 
 

@@ -1,22 +1,21 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Digital Twin entity.
 
 This module contains tests for the core Digital Twin entity, verifying its
 initialization and state/configuration updates.
 """
-import pytest
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
-from typing import Dict, List, Any
-from unittest.mock import MagicMock
+
+import pytest
 
 # Import the entities to test
 from app.domain.entities.digital_twin.digital_twin import (
     DigitalTwin,
     DigitalTwinConfiguration,
-    DigitalTwinState
+    DigitalTwinState,
 )
+
 # Import enums if needed for configuration/state values
 # from app.domain.entities.digital_twin_enums import ...
 

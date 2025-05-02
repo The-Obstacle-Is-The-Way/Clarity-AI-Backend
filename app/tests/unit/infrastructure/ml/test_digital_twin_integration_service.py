@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Digital Twin Integration Service.
 
@@ -7,12 +6,10 @@ coordinates between different ML microservices to generate comprehensive
 patient insights.
 """
 
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
 import pytest
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
 
 from app.infrastructure.ml.digital_twin_integration_service import DigitalTwinIntegrationService
 

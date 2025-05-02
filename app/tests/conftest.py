@@ -4,16 +4,18 @@ Pytest configuration file for the application.
 This module provides fixtures and configuration for testing the application.
 """
 
-import logging
-import sys
-import os
-import pytest
 import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, AsyncGenerator, Generator, Callable, Tuple
+import logging
+import os
+import sys
+from collections.abc import AsyncGenerator, Callable
+from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, ASGITransport
-from fastapi import Depends, FastAPI
+
+import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 # CRITICAL FIX: Prevent XGBoost namespace collision
 # This ensures the test collection mechanism doesn't confuse our test directory
@@ -24,44 +26,41 @@ for key in list(sys.modules.keys()):
 
 # Import test mocks first to ensure dependency issues are resolved
 # This makes tests collectable even without all dependencies installed
-from app.tests.unit.mocks import *
-
-import json
 import uuid
+
 import pytest_asyncio
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker, AsyncEngine
+from pydantic import SecretStr
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import sessionmaker
 
 # Updated import path to match codebase structure
-from app.config.settings import Settings
-from pydantic import SecretStr, Field
-from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.core.interfaces.services.jwt_service import IJwtService
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.auth.dependencies import get_current_active_user # Correct import path for get_current_active_user
-from app.presentation.dependencies.auth import get_user_repository # Keep the correct import for get_user_repository
-from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
-from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
-from app.main import create_application # Corrected: Import create_application
-from app.domain.services.analytics_service import AnalyticsService # Import AnalyticsService
-from app.infrastructure.di.container import get_container # Import get_container
-from app.domain.entities.user import User # Import User
-from app.domain.enums.role import Role # Import Role
-from app.domain.repositories.user_repository import UserRepository # Ensure imported
-from app.config.settings import get_settings # Corrected import path based on grep
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository as UserRepository
-from app.domain.entities.biometric_alert import BiometricAlert # noqa F401
-from app.domain.entities.appointment import Appointment # noqa F401
-from app.domain.entities.biometric_twin import BiometricDataPoint # noqa F401
-from app.core.dependencies.database import get_db_session as get_core_db_session
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import DigitalTwinRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_twin_repository import BiometricTwinRepository # Correct import for biometric twin repository
-from app.core.services.ml.pat.pat_service import PATService # Import PATService
+from app.config.settings import (
+    Settings,
+    get_settings,  # Corrected import path based on grep
+)
+from app.core.services.ml.pat.pat_service import PATService  # Import PATService
 from app.core.services.ml.xgboost.interface import XGBoostInterface
+from app.domain.entities.appointment import Appointment  # noqa F401
+from app.domain.entities.biometric_alert import BiometricAlert  # noqa F401
+from app.domain.entities.biometric_twin import BiometricDataPoint  # noqa F401
+from app.domain.entities.user import User  # Import User
+from app.domain.repositories.user_repository import UserRepository  # Ensure imported
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+    SQLAlchemyUserRepository as UserRepository,
+)
+from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.main import create_application  # Corrected: Import create_application
+from app.presentation.dependencies.auth import (
+    get_user_repository,  # Keep the correct import for get_user_repository
+)
+from app.tests.unit.mocks import *
+
 
 @pytest.fixture
 def auth_headers():
@@ -119,7 +118,7 @@ def mock_problematic_imports():
     """Mock problematic imports to prevent collection errors. Applied automatically."""
     patches = []
     # Mock database session getter for collection
-    from app.tests.mocks.persistence_db_mock import AsyncSession, get_db_session as mock_get_db_session
+    from app.tests.mocks.persistence_db_mock import get_db_session as mock_get_db_session
     db_session_patch = patch(
         "app.infrastructure.persistence.sqlalchemy.config.database.get_db_session",
         mock_get_db_session
@@ -374,7 +373,7 @@ def test_jwt_service(test_settings_for_token_gen: Settings) -> JWTService:
 
 # Fixture to generate a valid token dynamically
 @pytest_asyncio.fixture(scope="function") # Function scope for fresh tokens
-async def get_valid_auth_headers(test_jwt_service: JWTService) -> Dict[str, str]:
+async def get_valid_auth_headers(test_jwt_service: JWTService) -> dict[str, str]:
     """Generates valid authentication headers with a fresh token for integration tests."""
     # --- Use string representation of defined constant UUID --- 
     user_data = {"sub": str(TEST_INTEGRATION_USER_ID), "roles": ["patient"]}
@@ -383,7 +382,7 @@ async def get_valid_auth_headers(test_jwt_service: JWTService) -> Dict[str, str]
     return {"Authorization": f"Bearer {token}"}
 
 @pytest_asyncio.fixture(scope="function")
-async def get_valid_provider_auth_headers(test_jwt_service: JWTService) -> Dict[str, str]:
+async def get_valid_provider_auth_headers(test_jwt_service: JWTService) -> dict[str, str]:
     """Generates valid authentication headers for a provider role."""
     # --- Use string representation of defined constant UUID --- 
     user_data = {"sub": str(TEST_PROVIDER_USER_ID), "roles": ["provider", "clinician"]}
@@ -401,13 +400,13 @@ async def get_valid_provider_auth_headers(test_jwt_service: JWTService) -> Dict[
 # if they conflict with the new get_valid_auth_headers fixtures)
 
 @pytest.fixture
-def provider_token_headers(get_valid_provider_auth_headers: Dict[str, str]): # Depend on the new fixture
+def provider_token_headers(get_valid_provider_auth_headers: dict[str, str]): # Depend on the new fixture
     """Provides valid auth headers for a provider role."""
     # Optionally add more specific headers if needed
     return get_valid_provider_auth_headers
 
 @pytest.fixture
-def patient_token_headers(get_valid_auth_headers: Dict[str, str]): # Depend on the new fixture
+def patient_token_headers(get_valid_auth_headers: dict[str, str]): # Depend on the new fixture
     """Provides valid auth headers for a patient role."""
     # Optionally add more specific headers if needed
     return get_valid_auth_headers
@@ -423,8 +422,8 @@ def test_patient():
         Patient: A properly structured Patient domain entity
     """
     from app.domain.entities.patient import Patient
-    from app.domain.value_objects.name import Name
     from app.domain.value_objects.contact_info import ContactInfo
+    from app.domain.value_objects.name import Name
     
     # Generate a unique patient ID
     patient_id = str(uuid.uuid4())
@@ -443,7 +442,7 @@ def test_patient():
     return patient
 
 @pytest.fixture
-def sample_actigraphy_data() -> Dict[str, Any]:
+def sample_actigraphy_data() -> dict[str, Any]:
     """Placeholder fixture for sample actigraphy data."""
     return {}
 
@@ -485,6 +484,7 @@ def mock_get_patient_by_id():
         MagicMock: A pre-configured mock for get_patient_by_id
     """
     from unittest.mock import MagicMock
+
     from app.domain.exceptions.patient_exceptions import PatientNotFoundError
     
     mock = MagicMock()
@@ -509,7 +509,7 @@ def generate_token(jwt_service):
     Returns:
         Callable: A function that generates tokens
     """
-    async def _generate_token(claims: Dict[str, Any]) -> str:
+    async def _generate_token(claims: dict[str, Any]) -> str:
         subject = claims.get("sub", str(uuid.uuid4()))
         roles = claims.get("roles", ["patient"])
         token = await jwt_service.create_access_token(subject=subject, roles=roles)
@@ -604,6 +604,7 @@ def mock_rule_repository():
         MagicMock: A mock rule repository
     """
     from unittest.mock import MagicMock
+
     from app.domain.exceptions import EntityNotFoundError
     
     repo = MagicMock()
@@ -714,6 +715,7 @@ def mock_alert_repository():
         MagicMock: A mock alert repository
     """
     from unittest.mock import MagicMock
+
     from app.domain.exceptions import EntityNotFoundError
     
     repo = MagicMock()
@@ -757,7 +759,6 @@ def sample_data_point():
     Returns:
         BiometricDataPoint: A sample data point
     """
-    from app.domain.entities.biometric_twin import BiometricDataPoint
     from datetime import datetime, timezone
     
     # Create a data point with all common biometric measurements
@@ -790,8 +791,9 @@ def sample_alert(sample_rule, sample_data_point):
     Returns:
         BiometricAlert: A sample biometric alert
     """
-    from app.domain.services.biometric_event_processor import BiometricAlert
     from datetime import datetime, timezone
+
+    from app.domain.services.biometric_event_processor import BiometricAlert
     
     # Create an alert with proper structure
     alert = BiometricAlert(
@@ -853,7 +855,6 @@ def mock_db_session():
     Returns:
         MagicMock: A mock database session
     """
-    from unittest.mock import MagicMock
     from app.tests.security.utils.test_mocks import MockAsyncSession
     
     return MockAsyncSession()
@@ -935,7 +936,6 @@ def mock_phi_service():
     Returns:
         MagicMock: A mock PHI service
     """
-    from unittest.mock import MagicMock
     from app.tests.security.utils.test_mocks import PHIRedactionService
     
     return PHIRedactionService()
@@ -949,13 +949,6 @@ async def setup_database():
     before each test function runs.
     """
     # Import our standardized test database initializer - this is now our single source of truth for test database setup
-    from app.tests.integration.utils.test_db_initializer import (
-        get_test_db_session, 
-        TEST_USER_ID, 
-        TEST_CLINICIAN_ID,
-        TestUser,
-        TestPatient
-    )
     
     # Use our standardized test database initializer to set up the test database
     logger.info("[Fixture setup_database] Using standardized test_db_initializer")
@@ -1026,7 +1019,6 @@ _TEST_SECRET_KEY_FOR_FIXTURES = "super-secret-key-for-testing-fixtures-only"
 def mock_current_active_user_override():
     """Create a mock for the current active user dependency."""
     from unittest.mock import MagicMock
-    from app.domain.entities.user import User
     
     user = User(id=str(uuid.uuid4()), username="testuser", role="patient")
     mock = MagicMock(return_value=user)
@@ -1036,6 +1028,7 @@ def mock_current_active_user_override():
 def mock_jwt_handler():
     """Create a mock JWT handler for testing."""
     from unittest.mock import MagicMock
+
     from app.infrastructure.auth.jwt_handler import JWTHandler
     
     mock_handler = MagicMock(spec=JWTHandler)

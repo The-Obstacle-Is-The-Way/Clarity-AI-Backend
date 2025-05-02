@@ -7,7 +7,8 @@ reproducible security testing of HIPAA-compliant PHI encryption.
 
 import base64
 import os
-from typing import Dict, Any, Tuple
+from typing import Any
+
 from cryptography.fernet import Fernet
 
 # Deterministic test encryption key (urlsafe-base64 encoded for Fernet)
@@ -26,7 +27,7 @@ def get_test_salt() -> bytes:
     """Return a deterministic salt for tests."""
     return TEST_SALT 
 
-def setup_test_environment() -> Dict[str, str]: 
+def setup_test_environment() -> dict[str, str]: 
     """
     Setup the test environment with deterministic encryption keys.
 
@@ -46,7 +47,7 @@ def setup_test_environment() -> Dict[str, str]:
 
     return env_vars 
 
-def teardown_test_environment(env_vars: Dict[str, str]) -> None: 
+def teardown_test_environment(env_vars: dict[str, str]) -> None: 
     """
     Teardown the test environment, restoring original values.
 
@@ -58,7 +59,7 @@ def teardown_test_environment(env_vars: Dict[str, str]) -> None:
         if key in os.environ:
             del os.environ[key]
 
-def get_test_phi_data() -> Dict[str, Any]: 
+def get_test_phi_data() -> dict[str, Any]: 
     """
     Get a test PHI data dictionary with various nested fields.
 
@@ -102,7 +103,7 @@ def get_test_phi_data() -> Dict[str, Any]:
     }
 
 
-def get_test_client_data() -> Dict[str, Any]: 
+def get_test_client_data() -> dict[str, Any]: 
     """
     Get test client metadata that should not contain PHI.
 
@@ -120,7 +121,7 @@ def get_test_client_data() -> Dict[str, Any]:
     }
 
 
-def generate_test_key_pair() -> Tuple[bytes, bytes]: 
+def generate_test_key_pair() -> tuple[bytes, bytes]: 
     """
     Generate a deterministic key pair for testing.
 

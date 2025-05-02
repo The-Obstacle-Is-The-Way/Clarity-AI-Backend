@@ -1,14 +1,19 @@
 """Unit tests for the Ensemble Model for symptom forecasting."""
 import pytest
+
 pytest.skip("Skipping ensemble model tests (torch unsupported)", allow_module_level=True)
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch, AsyncMock
 
-from app.infrastructure.ml.symptom_forecasting.transformer_model import SymptomTransformerModel as TransformerModel
-from app.infrastructure.ml.symptom_forecasting.xgboost_model import XGBoostSymptomModel
 from app.infrastructure.ml.symptom_forecasting.ensemble_model import SymptomForecastingEnsemble
+from app.infrastructure.ml.symptom_forecasting.transformer_model import (
+    SymptomTransformerModel as TransformerModel,
+)
+from app.infrastructure.ml.symptom_forecasting.xgboost_model import XGBoostSymptomModel
+
 
 class TestEnsembleModel:
     """Test suite for the EnsembleModel class."""

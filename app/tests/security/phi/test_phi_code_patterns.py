@@ -7,10 +7,10 @@ in various types of source code files.
 
 import os
 import tempfile
-import pytest
-from unittest.mock import patch, MagicMock
 
-from app.infrastructure.security.phi.code_analyzer import PHICodeAnalyzer, CodeSeverity
+import pytest
+
+from app.infrastructure.security.phi.code_analyzer import CodeSeverity, PHICodeAnalyzer
 from app.infrastructure.security.phi.phi_service import PHIService
 
 

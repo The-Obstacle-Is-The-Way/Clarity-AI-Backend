@@ -5,22 +5,21 @@ This module contains tests for the Multi-Factor Authentication (MFA) service,
 which includes TOTP (Time-based One-Time Password), SMS, and Email authentication methods.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
-import base64
-import qrcode
-from io import BytesIO
-import time
+
+import pytest
+
 from app.infrastructure.security.auth.mfa_service import (
-    MFAService, 
-    MFAStrategyFactory, 
-    TOTPStrategy, 
-    SMSStrategy, 
     EmailStrategy,
+    MFAService,
+    MFASetupException,
+    MFAStrategyFactory,
     MFAType,
     MFAVerificationException,
-    MFASetupException
+    SMSStrategy,
+    TOTPStrategy,
 )
+
 
 class BaseSecurityTest:
     pass

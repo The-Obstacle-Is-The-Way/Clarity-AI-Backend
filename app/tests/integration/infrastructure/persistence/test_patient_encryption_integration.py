@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Integration tests for Patient PHI encryption in the database.
 
@@ -6,29 +5,28 @@ This module verifies that patient PHI is properly encrypted when stored in
 the database and decrypted when retrieved, according to HIPAA requirements.
 """
 
-import uuid
 import json
+import logging
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import date, datetime, timezone
+
 import pytest
 import pytest_asyncio
-import asyncio
-from datetime import date, datetime, timezone
-from typing import AsyncGenerator
-from sqlalchemy import text, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from cryptography.fernet import Fernet
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Import domain entities with clear namespace
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.domain.value_objects.address import Address
 from app.domain.value_objects.emergency_contact import EmergencyContact
+from app.infrastructure.persistence.sqlalchemy.models import Base, UserRole
+from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
 
 # Import SQLAlchemy models with clear namespace
-from app.infrastructure.persistence.sqlalchemy.models import User as UserModel
-from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
-from app.infrastructure.persistence.sqlalchemy.models import UserRole, Base
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 
-import logging
 logger = logging.getLogger(__name__)
 
 # Define standard test user IDs needed for foreign keys in the real models
@@ -69,7 +67,7 @@ async def integration_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
         try:
             # Use direct SQL to check if user exists and create if needed
-            check_user_sql = text(f"SELECT id FROM users WHERE id = :user_id")
+            check_user_sql = text("SELECT id FROM users WHERE id = :user_id")
             result = await session.execute(check_user_sql, {"user_id": str(TEST_USER_ID)})
             user_exists = result.scalar_one_or_none()
             
@@ -201,13 +199,13 @@ class TestPatientEncryptionIntegration:
         # STEP 3: Check directly on the PatientModel instance that internal fields are properly set
         # The SQLAlchemy model uses underscore prefix for encrypted fields
         # Add debugging to see which fields are actually set
-        print(f"Debug - Patient model fields:")
+        print("Debug - Patient model fields:")
         print(f"  _first_name: {patient_model._first_name is not None}")
         print(f"  _last_name: {patient_model._last_name is not None}")
         print(f"  _dob: {patient_model._dob is not None}")
         print(f"  _email: {patient_model._email is not None}")
         print(f"  _phone: {patient_model._phone is not None}")
-        print(f"Debug - Sample patient fields:")
+        print("Debug - Sample patient fields:")
         print(f"  first_name: {hasattr(sample_patient, 'first_name')}")
         print(f"  last_name: {hasattr(sample_patient, 'last_name')}")
         print(f"  date_of_birth: {hasattr(sample_patient, 'date_of_birth')}")

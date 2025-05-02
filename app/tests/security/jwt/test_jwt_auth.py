@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 HIPAA JWT Authentication Security Tests
 
@@ -15,24 +14,21 @@ The tests validate:
     5. Session security
 """
 
-import json
-import pytest
+import asyncio
 import time
 import uuid
-import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional, Tuple
-from unittest.mock import MagicMock, AsyncMock, PropertyMock
+from unittest.mock import MagicMock
 
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
+import pytest
+
+# import jwt # Use JWTService methods for encoding/decoding
+from fastapi import status
+from fastapi.testclient import TestClient
+from pydantic import SecretStr
+
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.domain.models.user import User, UserRole
-# import jwt # Use JWTService methods for encoding/decoding
-
-from fastapi import status, HTTPException
-from fastapi.testclient import TestClient
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
-from pydantic import SecretStr
+from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
 
 # Mock data for testing
 TEST_USERS = {
@@ -143,7 +139,7 @@ def jwt_service(mock_settings: MagicMock) -> JWTService:
 
 @pytest.fixture
 def token_factory(jwt_service: JWTService):
-    async def _create_token(user_type="admin", expired=False, invalid=False, custom_payload_claims: Optional[Dict] = None):
+    async def _create_token(user_type="admin", expired=False, invalid=False, custom_payload_claims: dict | None = None):
         user_data = TEST_USERS.get(user_type, TEST_USERS["admin"])
         # Ensure keys match what create_access_token expects (sub, roles, etc.)
         payload_data = {
@@ -222,7 +218,7 @@ class TestJWTAuthentication:
             await jwt_service.decode_token(malformed_token)
         assert ("Invalid header string" in str(exc_info.value) or 
                 "Not enough segments" in str(exc_info.value)), \
-               f"Unexpected malformed token error: {str(exc_info.value)}"
+               f"Unexpected malformed token error: {exc_info.value!s}"
 
     @pytest.mark.skip(reason="Needs refactoring to test actual endpoints/middleware, not call non-existent jwt_service method.")
     @pytest.mark.asyncio # Mark as async - Needs refactoring to hit actual endpoints/middleware

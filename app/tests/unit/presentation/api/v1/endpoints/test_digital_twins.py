@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Digital Twin API endpoints.
 
@@ -6,51 +5,35 @@ Tests the API endpoints for Digital Twin functionality, including
 the MentaLLaMA integration for clinical text processing.
 """
 # Standard Library Imports
-import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 # Third-Party Imports
 import pytest
-from fastapi import FastAPI, Depends, status
+from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
-from pydantic import parse_obj_as
 
 # First-Party Imports (Organized)
 # Assuming base exceptions are in core.exceptions.base_exceptions
 from app.core.exceptions.base_exceptions import (
-    ResourceNotFoundError, 
-    ExternalServiceException, # Corrected name
-    ValidationError, 
-    ModelExecutionError, # Changed from ModelInferenceError
-    AuthorizationError,
-    # Add specific exceptions if they exist (e.g., MentalLLaMAInferenceError, PhiDetectionError)
+    ModelExecutionError,  # Changed from ModelInferenceError
+    ResourceNotFoundError,
 )
-from app.domain.entities.user import User # Added User import
-# Import domain entities/services - Adjust paths if necessary
-from app.domain.entities.user import User
-from app.domain.entities.digital_twin import DigitalTwin # Corrected path
-# from app.infrastructure.ml.digital_twin_integration_service import DigitalTwinIntegrationService # Use for spec if needed
+from app.domain.entities.user import User  # Added User import
+from app.presentation.api.dependencies.auth import get_current_user  # Standard auth dependency
 
+# Import domain entities/services - Adjust paths if necessary
+# from app.infrastructure.ml.digital_twin_integration_service import DigitalTwinIntegrationService # Use for spec if needed
 # Import presentation layer components
 from app.presentation.api.dependencies.services import (
     get_digital_twin_service,
-    get_cache_service,
 )
 from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
-from app.domain.services.digital_twin_service import DigitalTwinService
-from app.domain.services.patient_service import PatientService
 from app.presentation.api.v1.schemas.digital_twin_schemas import (
-    PersonalizedInsightResponse,
-    BiometricCorrelationResponse,
-    MedicationResponsePredictionResponse,
-    TreatmentPlanResponse,
-    ClinicalTextAnalysisRequest,
     ClinicalTextAnalysisResponse,
+    PersonalizedInsightResponse,
 )
-from app.presentation.api.dependencies.auth import get_current_user # Standard auth dependency
 
 # Define UTC timezone
 UTC = timedelta(0) # Simple UTC offset

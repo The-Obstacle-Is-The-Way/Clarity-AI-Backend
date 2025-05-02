@@ -33,11 +33,11 @@ def patch_imports():
     
     # Apply the patch before entering context
     builtins_module = __import__("builtins")
-    setattr(builtins_module, "__import__", patched_import)
+    builtins_module.__import__ = patched_import
     
     try:
         # Enter the context
         yield
     finally:
         # Restore the original import when exiting
-        setattr(builtins_module, "__import__", original_import)
+        builtins_module.__import__ = original_import

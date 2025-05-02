@@ -5,11 +5,12 @@ These tests focus on the prediction functionality of the AWS XGBoost service,
 including risk prediction, treatment response prediction, and feature importance.
 """
 
-import pytest
-import json
 import uuid
-from unittest.mock import patch, MagicMock
 from datetime import datetime
+from unittest.mock import patch
+
+import pytest
+
 try:
     from datetime import UTC  # Python 3.11+
 except ImportError:
@@ -19,9 +20,7 @@ from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyL
 from app.core.services.ml.xgboost.exceptions import (
     PredictionError,
     ServiceConnectionError,
-    ThrottlingError,
-    ResourceNotFoundError,
-    ValidationError
+    ValidationError,
 )
 from app.presentation.api.schemas.xgboost import RiskLevel
 from app.tests.unit.services.ml.xgboost_service.mocks import MockAWSServiceFactory

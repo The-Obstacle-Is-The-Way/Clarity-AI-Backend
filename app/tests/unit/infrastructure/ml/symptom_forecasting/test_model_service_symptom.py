@@ -1,21 +1,21 @@
 """Unit tests for Symptom Forecasting Model Service."""
 import pytest
+
 pytest.skip("Skipping symptom forecasting model service tests (torch unsupported)", allow_module_level=True)
-from unittest.mock import MagicMock, AsyncMock, patch
-import pandas as pd
-import numpy as np
+from datetime import date, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
-from datetime import datetime, timedelta, date
+
+import pandas as pd
+
+# Corrected exception imports based on definitive source location
+from app.domain.entities.patient import Patient
 
 # Removed unused import for MLSettings
-from app.infrastructure.ml.symptom_forecasting.ensemble_model import SymptomForecastingEnsemble as EnsembleModel
 # Removed import for non-existent ModelRegistry
 # from app.infrastructure.ml.interfaces.model_registry import ModelRegistry 
 from app.infrastructure.ml.symptom_forecasting.model_service import SymptomForecastingService
-from app.domain.entities.patient import Patient
-# Corrected exception imports based on definitive source location
-from app.core.exceptions import ResourceNotFoundError
-from app.core.exceptions.base_exceptions import ModelExecutionError
+
 # from app.core.exceptions import ModelExecutionError, ResourceNotFoundError # Old incorrect import
 
 class TestSymptomForecastingModelService:

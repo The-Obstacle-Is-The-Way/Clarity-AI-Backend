@@ -5,11 +5,9 @@ Tests the treatment response prediction and interaction analysis capabilities
 of the XGBoost-based machine learning service.
 """
 import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
 
-import pytest
 import numpy as np
+import pytest
 
 from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
 from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService

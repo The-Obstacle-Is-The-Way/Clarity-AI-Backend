@@ -10,20 +10,17 @@ which serves as the single source of truth for test database sessions.
 
 # Import and expose the standardized test database initializer
 from app.tests.integration.utils.test_db_initializer import (
-    # Database session
-    get_test_db_session,
-    
+    TEST_CLINICIAN_ID,
     # Test models (REMOVED - Use real models now)
     # TestBase, 
     # TestUser,
     # TestPatient,
-    
     # Test data constants
     TEST_USER_ID,
-    TEST_CLINICIAN_ID,
-    
     # Helper functions
     create_test_patient_domain,
     create_test_users,
-    verify_table_exists
+    # Database session
+    get_test_db_session,
+    verify_table_exists,
 )

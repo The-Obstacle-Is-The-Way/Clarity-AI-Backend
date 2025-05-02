@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the ClinicalRuleEngine service.
 
@@ -6,18 +5,23 @@ These tests verify that the ClinicalRuleEngine correctly creates, updates,
 and manages clinical rules for biometric data.
 """
 
-from app.domain.services.clinical_rule_engine import ClinicalRuleEngine
-from app.domain.exceptions import ValidationError
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-from app.domain.entities.patient import Patient
-from app.domain.entities.symptom_assessment import SymptomAssessment
+import pytest
+
 # Removed unused import for non-existent entity
 # from app.domain.entities.clinical_impression import ClinicalImpression, ImpressionSection 
-from app.domain.entities.biometric_rule import BiometricRule, RuleCondition, RuleOperator, LogicalOperator, AlertPriority
+from app.domain.entities.biometric_rule import (
+    AlertPriority,
+    BiometricRule,
+    LogicalOperator,
+    RuleCondition,
+    RuleOperator,
+)
+from app.domain.exceptions import ValidationError
+from app.domain.services.clinical_rule_engine import ClinicalRuleEngine
+
 # Commenting out missing entity/enum imports
 # from app.domain.entities.biometric_rule import (
 #     BiometricRule,

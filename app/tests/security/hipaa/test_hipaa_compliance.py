@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HIPAA Compliance Test Suite
 
@@ -14,22 +13,23 @@ with the HIPAA Security Rule.:
         - Exception handling (avoiding PHI leaks)
         """
 
-import os
+import base64
 import json
-import secrets
+import os
 import uuid
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-import base64
 from unittest import mock
-import pytest
-from fastapi import HTTPException, status
-from jose import jwt
 from unittest.mock import patch
 
-# Import necessary modules for testing HIPAA compliance
-from app.tests.security.utils.test_mocks import MockRBACService, MockAuditLogger
+import pytest
+from fastapi import HTTPException
+from jose import jwt
+
+from app.domain.utils.datetime_utils import UTC
 from app.tests.security.utils.base_security_test import BaseSecurityTest
+
+# Import necessary modules for testing HIPAA compliance
+from app.tests.security.utils.test_mocks import MockAuditLogger, MockRBACService
 
 # Import application code
 try:
@@ -41,37 +41,32 @@ try:
         PHIAccessError,
         SecurityError,
     )
-    
-    from app.infrastructure.security.encryption import (
-        encrypt_phi,
-        decrypt_phi,
-        generate_phi_key,
-        encrypt_field,
-        decrypt_field,
-    )
-    
-    from app.infrastructure.security.auth.jwt_handler import (
-        create_access_token,
-        decode_token,
-        get_current_user,
-    )
-    
-    from app.infrastructure.security.rbac.role_manager import (
-        RoleBasedAccessControl,
-        check_permission,
-    )
-    
     from app.infrastructure.logging.audit_logger import (
         AuditLogger,
         log_phi_access,
         sanitize_phi,
     )
-    
+    from app.infrastructure.security.auth.jwt_handler import (
+        create_access_token,
+        decode_token,
+        get_current_user,
+    )
+    from app.infrastructure.security.encryption import (
+        decrypt_field,
+        decrypt_phi,
+        encrypt_field,
+        encrypt_phi,
+        generate_phi_key,
+    )
     from app.infrastructure.security.phi import PHIAuditHandler
+    from app.infrastructure.security.rbac.role_manager import (
+        RoleBasedAccessControl,
+        check_permission,
+    )
 except ImportError as e:
     # Create placeholder for these modules if they don't exist yet
     # This allows the tests to be defined even before implementation
-    print(f"Warning: Could not import required modules: {str(e)}")
+    print(f"Warning: Could not import required modules: {e!s}")
 
     # Mock the missing modules/functions
     from unittest.mock import MagicMock
@@ -204,7 +199,7 @@ except ImportError as e:
         return {
             "id": user_id,
             "username": username,
-            "email": f"test_77391bd0@example.com",
+            "email": "test_77391bd0@example.com",
             "role": "patient",
             "permissions": ["read:own_data", "update:own_data"],
             "created_at": datetime.now(UTC).isoformat(),

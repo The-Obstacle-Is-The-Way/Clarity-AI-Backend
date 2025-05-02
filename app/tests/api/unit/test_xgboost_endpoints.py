@@ -6,42 +6,33 @@ handle requests, interact with the XGBoost service, and return
 appropriate responses.
 """
 
-import json
-import pytest
 import uuid
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pydantic import ValidationError
 
-# Import the specific router from its new location
-from app.presentation.api.v1.endpoints.xgboost import router
-# Update dependency import path (assuming these are now in presentation.api.dependencies)
-from app.presentation.api.dependencies.auth import get_current_user
-# Update schema import path
-from app.presentation.api.schemas.xgboost import (
-    RiskPredictionRequest,
-    TreatmentResponseRequest,
-    OutcomePredictionRequest,
-    RiskPredictionResponse,
-    TreatmentResponseResponse,
-    OutcomePredictionResponse,
-)
-# Update dependency import path for service getter
-# from app.presentation.api.dependencies.services import get_xgboost_service # Old, likely removed
-from app.infrastructure.di.container import get_service # Use generic service provider
-from app.core.services.ml.xgboost.interface import XGBoostInterface # Import the interface
-from app.core.services.ml.xgboost.enums import RiskLevel, ResponseLevel
-from app.core.services.ml.xgboost.interface import ModelType
+from app.core.services.ml.xgboost.enums import ResponseLevel, RiskLevel
 from app.core.services.ml.xgboost.exceptions import (
-    XGBoostServiceError,
     ConfigurationError,
     ModelNotFoundError,
     PredictionError,
     ServiceConnectionError,
 )
+from app.core.services.ml.xgboost.interface import ModelType
+
+# Update schema import path
+# Update dependency import path for service getter
+# from app.presentation.api.dependencies.services import get_xgboost_service # Old, likely removed
+from app.infrastructure.di.container import get_service  # Use generic service provider
+
+# Update dependency import path (assuming these are now in presentation.api.dependencies)
+from app.presentation.api.dependencies.auth import get_current_user
+
+# Import the specific router from its new location
+from app.presentation.api.v1.endpoints.xgboost import router
 
 
 # Mock user for authentication
@@ -258,6 +249,7 @@ def client(app):
 
 
 import pytest
+
 
 @pytest.mark.skip("Skipping XGBoost endpoint unit tests: pending endpoint refactor")
 class TestXGBoostEndpoints:

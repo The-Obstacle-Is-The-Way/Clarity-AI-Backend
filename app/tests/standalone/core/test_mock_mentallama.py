@@ -7,24 +7,20 @@ behavior for testing purposes. The tests verify initialization, error handling,
 and all core psychiatry analysis features.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, Any, List
 
 from app.core.exceptions import (
-    InvalidConfigurationError,
     InvalidRequestError,
-    ModelNotFoundError,
     ServiceUnavailableError,
 )
 
 # Import the mock service and the interface it implements
 from app.infrastructure.ml.mentallama.mock_service import MockMentaLLaMA
-from app.core.services.ml.interface import MentaLLaMAInterface
+
 # Import PHI service needed for mock init
 from app.infrastructure.ml.phi_detection import PHIDetectionService
-from unittest.mock import MagicMock
 
 
 @pytest.fixture(scope="function")

@@ -1,24 +1,22 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for PHI Detection service.
 
 This module tests the AWS Comprehend Medical PHI Detection service implementation.
 """
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
 
-# Corrected import path for AWSComprehendMedicalPHIDetection
-from app.infrastructure.ml.phi.aws_comprehend_medical import AWSComprehendMedicalPHIDetection
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
-    ServiceUnavailableError
+    ServiceUnavailableError,
 )
 
+# Corrected import path for AWSComprehendMedicalPHIDetection
+from app.infrastructure.ml.phi.aws_comprehend_medical import AWSComprehendMedicalPHIDetection
 
 
 @pytest.mark.db_required()  # Assuming db_required is a valid marker

@@ -1,15 +1,14 @@
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4, UUID
-from typing import Dict, List, Any
+from datetime import datetime, timezone
+from typing import Any
+from uuid import uuid4
 
 import pytest
 
-# Import from biometric_event_processor
-from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
-from app.domain.exceptions import EntityNotFoundError, RepositoryError
 # Import status enum from domain entities instead of schemas
 from app.domain.entities.biometric_alert import AlertStatusEnum as AlertStatus
+
+# Import from biometric_event_processor
+from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
 
 
 @pytest.fixture
@@ -31,7 +30,7 @@ def sample_alert_id() -> str:
 
 
 @pytest.fixture
-def sample_data_points() -> List[Dict[str, Any]]:
+def sample_data_points() -> list[dict[str, Any]]:
     """Create sample biometric data points."""
     return [
         {

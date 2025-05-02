@@ -1,5 +1,3 @@
-from sqlalchemy import Column, Enum
-from sqlalchemy.types import Text, DateTime
 """
 Test Database Initializer
 
@@ -15,29 +13,28 @@ Features:
 5. Helper functions for creating test data
 """
 
-import uuid
-import logging
-import asyncio
 import json
+import logging
 import random
-from datetime import datetime, timezone, date
-from typing import AsyncGenerator, List, Dict, Any, Optional, Union
-
-# Import the base module which contains the model validation functions
-from app.infrastructure.persistence.sqlalchemy.models.base import Base, ensure_all_models_loaded, validate_models
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import date, datetime, timezone
 
 # Import models we need for test creation
-from app.infrastructure.persistence.sqlalchemy.models import User as UserModel, UserRole, Patient as PatientModel
+from app.infrastructure.persistence.sqlalchemy.models import UserRole
+
+# Import the base module which contains the model validation functions
+from app.infrastructure.persistence.sqlalchemy.models.base import (
+    Base,
+    ensure_all_models_loaded,
+    validate_models,
+)
 
 # Ensure all models are loaded and registered
 ensure_all_models_loaded()
 
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.dialects.postgresql import UUID as PostgresUUID # Use Postgres UUID for type hint consistency if needed
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.future import select
-
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -291,7 +288,7 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
                     await conn.run_sync(validate_models_sync)
                 logger.info("SQLAlchemy model validation completed successfully")
             except Exception as e:
-                logger.error(f"Model validation error: {str(e)}")
+                logger.error(f"Model validation error: {e!s}")
                 # Continue without validation for now - we've already created tables
                 
             # Create test users within the session context
@@ -318,21 +315,19 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
 # but ensure it uses the real PatientModel or PatientDomain entity
 # This example assumes PatientDomain is used for consistency
 from app.domain.entities.patient import Patient as PatientDomain
-from app.domain.value_objects.name import Name
 from app.domain.value_objects.contact_info import ContactInfo
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository # Import real repo if needed for creation logic
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService # Import if needed
+from app.domain.value_objects.name import Name
 
 
 async def create_test_patient_domain(
-    user_id: Optional[uuid.UUID] = None,
+    user_id: uuid.UUID | None = None,
     first_name: str = "Test",
     last_name: str = "Patient",
     email: str = f"testpatient.{uuid.uuid4().hex[:6]}@example.com", # Ensure unique email
     phone: str = f"555{random.randint(1000000, 9999999)}", # Ensure unique phone
-    ssn: Optional[str] = None,
-    date_of_birth: Optional[Union[str, date]] = None,
-    patient_id: Optional[uuid.UUID] = None,
+    ssn: str | None = None,
+    date_of_birth: str | date | None = None,
+    patient_id: uuid.UUID | None = None,
 ) -> PatientDomain:
     """
     Creates a Patient DOMAIN entity with default test data.

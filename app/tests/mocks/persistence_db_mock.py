@@ -6,6 +6,7 @@ to allow tests to run without actual database connections.
 """
 from unittest.mock import AsyncMock, MagicMock
 
+
 # Mock SQLAlchemy AsyncSession
 class AsyncSession(MagicMock):
     """Mock AsyncSession for testing without database connections."""

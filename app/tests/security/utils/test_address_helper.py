@@ -5,12 +5,13 @@ This module ensures proper encryption of address data structures
 while maintaining HIPAA compliance.
 """
 
+import ast  # Import ast for literal_eval
+
 import pytest
-import json # Import json for potential deserialization after decryption
-import ast # Import ast for literal_eval
 
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
+
 # TEMP: Comment out missing AddressHelper import
 # from app.infrastructure.utils.address_helper import AddressHelper 
 # TEMP: Comment out missing Address entity import

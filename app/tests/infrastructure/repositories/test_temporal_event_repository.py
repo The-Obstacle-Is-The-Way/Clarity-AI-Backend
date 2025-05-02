@@ -1,13 +1,11 @@
 """
 Tests for the SQL Alchemy implementation of the temporal event repository.
 """
-import pytest
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-import sqlalchemy as sa
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.temporal_events import CorrelatedEvent, EventChain

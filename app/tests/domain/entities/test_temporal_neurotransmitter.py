@@ -2,40 +2,32 @@
 Tests for the temporal neurotransmitter mapping components.
 Ensures proper functionality of the temporal extensions to the Digital Twin.
 """
-import datetime
 import math
 import uuid
-from unittest import mock
+
 import pytest
-import numpy as np
-from typing import Dict, List, Set, Tuple
 
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    Neurotransmitter,
     ClinicalSignificance,
     ConnectionType,
+    Neurotransmitter,
 )
-
-from app.domain.entities.temporal_events import CorrelatedEvent, EventChain
-from app.domain.entities.temporal_sequence import TemporalSequence
 from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
 from app.domain.entities.neurotransmitter_mapping import (
-    NeurotransmitterMapping,
     ReceptorProfile,
+    ReceptorSubtype,
     ReceptorType,
     create_default_neurotransmitter_mapping,
 )
-from app.domain.entities.temporal_events import TemporalEvent
-from app.domain.entities.neurotransmitter_mapping import ReceptorSubtype
-
+from app.domain.entities.temporal_events import CorrelatedEvent, EventChain
 from app.domain.entities.temporal_neurotransmitter_mapping import (
     extend_neurotransmitter_mapping,
 )
-
+from app.domain.entities.temporal_sequence import TemporalSequence
 from app.domain.services.visualization_preprocessor import (
-    NeurotransmitterVisualizationPreprocessor,
     NeurotransmitterEffectVisualizer,
+    NeurotransmitterVisualizationPreprocessor,
 )
 
 

@@ -4,7 +4,6 @@ Tests for the Appointment entity.
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Any # Import Any if needed for type hints
 
 import pytest
 
@@ -14,13 +13,9 @@ import pytest
 from app.domain.entities.appointment import (
     # AppointmentPriority, # This Enum likely doesn't exist in appointment.py
     AppointmentStatus,
-    AppointmentType
+    AppointmentType,
 )
-
-from app.domain.exceptions import (
-    InvalidAppointmentStateError,
-    InvalidAppointmentTimeError
-)
+from app.domain.exceptions import InvalidAppointmentStateError, InvalidAppointmentTimeError
 
 
 @pytest.fixture

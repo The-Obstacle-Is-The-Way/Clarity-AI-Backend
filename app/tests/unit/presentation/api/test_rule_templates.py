@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Isolated test for rule templates API endpoint.
 
@@ -6,17 +5,15 @@ This test focuses only on the rule templates endpoint without dependencies
 on the full application stack.
 """
 
-from typing import Dict, Any, List
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
+
 import pytest
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from app.domain.entities.user import User, set_test_mode
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine
 from app.presentation.api.dependencies.auth import get_current_user
-from app.presentation.api.schemas.biometric_alert import AlertPriorityEnum
-
 
 # Enable test mode
 set_test_mode(True)

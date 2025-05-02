@@ -5,30 +5,27 @@ This module contains unit tests for the actigraphy API routes, verifying that th
 correctly handle requests, responses, and errors.
 """
 
-import json
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional  # Added Optional
-from unittest.mock import MagicMock, patch, AsyncMock  # Added AsyncMock
-from uuid import UUID, uuid4  # Added UUID
+from typing import Any  # Added Optional
+from unittest.mock import AsyncMock, MagicMock  # Added AsyncMock
 
 import pytest
-from fastapi import HTTPException, status, FastAPI, Depends
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.testclient import TestClient
 
-from app.presentation.api.v1.endpoints.actigraphy import router
-from app.presentation.api.schemas.actigraphy import AnalysisType
 from app.core.services.ml.pat.exceptions import (
     AnalysisError,
     AuthorizationError,
     EmbeddingError,
     ResourceNotFoundError,
-    ValidationError
+    ValidationError,
 )
-
 
 # Assuming PATInterface and other dependencies exist
 from app.core.services.ml.pat.interface import PATInterface
+from app.domain.utils.datetime_utils import UTC
+from app.presentation.api.schemas.actigraphy import AnalysisType
+from app.presentation.api.v1.endpoints.actigraphy import router
 
 # Assuming auth dependencies exist
 # from app.api.dependencies.auth import validate_jwt, get_current_user_id
@@ -49,7 +46,7 @@ def mock_token() -> str:
         return "patient123"
 
 @pytest.fixture
-def sample_readings() -> List[Dict[str, Any]]:
+def sample_readings() -> list[dict[str, Any]]:
     """Create sample accelerometer readings."""
     base_time = datetime.now(UTC)  # Use UTC
     readings = []
@@ -70,7 +67,7 @@ def sample_readings() -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def device_info() -> Dict[str, Any]:
+def device_info() -> dict[str, Any]:
     """Create sample device info."""
     
     return {
@@ -85,8 +82,8 @@ def device_info() -> Dict[str, Any]:
 
 @pytest.fixture
 def analysis_request(
-    patient_id: str, sample_readings: List[Dict[str, Any]], device_info: Dict[str, Any]
-) -> Dict[str, Any]:
+    patient_id: str, sample_readings: list[dict[str, Any]], device_info: dict[str, Any]
+) -> dict[str, Any]:
     """Create an analysis request."""
 
     return {
@@ -103,8 +100,8 @@ def analysis_request(
 
 @pytest.fixture
 def embedding_request(
-    patient_id: str, sample_readings: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+    patient_id: str, sample_readings: list[dict[str, Any]]
+) -> dict[str, Any]:
     """Create an embedding request."""
 
     return {
@@ -117,7 +114,7 @@ def embedding_request(
 
 
 @pytest.fixture
-def integration_request(patient_id: str) -> Dict[str, Any]:
+def integration_request(patient_id: str) -> dict[str, Any]:
     """Create an integration request."""
 
     return {
@@ -129,8 +126,8 @@ def integration_request(patient_id: str) -> Dict[str, Any]:
 
 @pytest.fixture
 def analysis_result(
-    patient_id: str, device_info: Dict[str, Any]
-) -> Dict[str, Any]:
+    patient_id: str, device_info: dict[str, Any]
+) -> dict[str, Any]:
     """Create an analysis result."""
     now_iso = datetime.now(UTC).isoformat() + "Z"
     end_iso = (datetime.now(UTC) + timedelta(hours=1)).isoformat() + "Z"
@@ -178,7 +175,7 @@ def analysis_result(
 
 
 @pytest.fixture
-def embedding_result(patient_id: str) -> Dict[str, Any]:
+def embedding_result(patient_id: str) -> dict[str, Any]:
     """Create an embedding result with legacy alias fields."""
     now_iso = datetime.now(UTC).isoformat() + "Z"
     end_iso = (datetime.now(UTC) + timedelta(hours=1)).isoformat() + "Z"
@@ -207,7 +204,7 @@ def embedding_result(patient_id: str) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def integration_result(patient_id: str) -> Dict[str, Any]:
+def integration_result(patient_id: str) -> dict[str, Any]:
     """Create an integration result."""
     now_iso = datetime.now(UTC).isoformat() + "Z"
     return {
@@ -244,7 +241,7 @@ def integration_result(patient_id: str) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def model_info() -> Dict[str, Any]:
+def model_info() -> dict[str, Any]:
     """Create model info."""
     return {
         "name": "MockPAT",
@@ -264,7 +261,7 @@ def model_info() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def analyses_list(patient_id: str) -> Dict[str, Any]:
+def analyses_list(patient_id: str) -> dict[str, Any]:
     """Create a list of analyses."""
     now_iso = datetime.now(UTC).isoformat() + "Z"
     yesterday_iso = (datetime.now(UTC) - timedelta(days=1)).isoformat() + "Z"
@@ -315,11 +312,11 @@ def analyses_list(patient_id: str) -> Dict[str, Any]:
 # Mock PAT service
 @pytest.fixture
 def mock_pat_service(
-    analysis_result: Dict[str, Any],
-    embedding_result: Dict[str, Any],
-    integration_result: Dict[str, Any],
-    model_info: Dict[str, Any],
-    analyses_list: Dict[str, Any],
+    analysis_result: dict[str, Any],
+    embedding_result: dict[str, Any],
+    integration_result: dict[str, Any],
+    model_info: dict[str, Any],
+    analyses_list: dict[str, Any],
 ) -> MagicMock:
     """Create a mock PAT service."""
     mock_service = AsyncMock(spec=PATInterface)  # Use AsyncMock for async methods
@@ -356,7 +353,7 @@ def app(mock_pat_service):
     app_instance = FastAPI()
 
     # Mock auth dependencies (replace with actual dependency paths)
-    def mock_validate_jwt(token: Optional[str] = None):
+    def mock_validate_jwt(token: str | None = None):
         if token != "mock_jwt_token":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -368,8 +365,8 @@ def app(mock_pat_service):
         return payload.get("sub")
     
     try:
-        from app.presentation.api.dependencies.auth import validate_jwt as actual_validate_jwt
         from app.presentation.api.dependencies.auth import get_current_user_id as actual_get_user_id
+        from app.presentation.api.dependencies.auth import validate_jwt as actual_validate_jwt
         
         app_instance.dependency_overrides[actual_validate_jwt] = lambda: mock_validate_jwt
         app_instance.dependency_overrides[actual_get_user_id] = mock_get_current_user_id
@@ -379,7 +376,9 @@ def app(mock_pat_service):
         
     # Mock PAT service dependency
     try:
-        from app.presentation.api.dependencies.services import get_pat_service as actual_get_pat_service
+        from app.presentation.api.dependencies.services import (
+            get_pat_service as actual_get_pat_service,
+        )
         
         app_instance.dependency_overrides[actual_get_pat_service] = lambda: mock_pat_service
     except ImportError:
@@ -406,8 +405,8 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_request: Dict[str, Any],
-        analysis_result: Dict[str, Any],
+        analysis_request: dict[str, Any],
+        analysis_result: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful actigraphy analysis."""
@@ -426,7 +425,7 @@ class TestActigraphyRoutes:
         mock_pat_service.analyze_actigraphy.assert_called_once()
 
     def test_analyze_actigraphy_unauthorized(
-        self, client: TestClient, mock_token: str, analysis_request: Dict[str, Any]
+        self, client: TestClient, mock_token: str, analysis_request: dict[str, Any]
     ) -> None:
         """Test unauthorized actigraphy analysis."""
         # Change patient ID to trigger authorization error (assuming auth checks this)
@@ -450,7 +449,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_request: Dict[str, Any],
+        analysis_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test actigraphy analysis with validation error."""
@@ -472,7 +471,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_request: Dict[str, Any],
+        analysis_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test actigraphy analysis with analysis error."""
@@ -494,8 +493,8 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        embedding_request: Dict[str, Any],
-        embedding_result: Dict[str, Any],
+        embedding_request: dict[str, Any],
+        embedding_result: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful embedding generation."""
@@ -514,7 +513,7 @@ class TestActigraphyRoutes:
         mock_pat_service.get_actigraphy_embeddings.assert_called_once()
 
     def test_get_actigraphy_embeddings_unauthorized(
-        self, client: TestClient, mock_token: str, embedding_request: Dict[str, Any]
+        self, client: TestClient, mock_token: str, embedding_request: dict[str, Any]
     ) -> None:
         """Test unauthorized embedding generation."""
         # Change patient ID to trigger authorization error
@@ -536,7 +535,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        embedding_request: Dict[str, Any],
+        embedding_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test embedding generation with validation error."""
@@ -558,7 +557,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        embedding_request: Dict[str, Any],
+        embedding_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test embedding generation with embedding error."""
@@ -580,7 +579,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_result: Dict[str, Any],
+        analysis_result: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful analysis retrieval."""
@@ -620,7 +619,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_result: Dict[str, Any],
+        analysis_result: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test unauthorized analysis retrieval."""
@@ -643,7 +642,7 @@ class TestActigraphyRoutes:
         client: TestClient,
         mock_token: str,
         patient_id: str,
-        analyses_list: Dict[str, Any],
+        analyses_list: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful patient analyses retrieval."""
@@ -671,7 +670,7 @@ class TestActigraphyRoutes:
         """Test unauthorized patient analyses retrieval."""
         # Make the request for a different patient ID
         response = client.get(
-            f"/api/v1/actigraphy/patient/different_patient/analyses",
+            "/api/v1/actigraphy/patient/different_patient/analyses",
             headers={"Authorization": f"Bearer {mock_token}"}
         )
         # Expect forbidden status
@@ -682,7 +681,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        model_info: Dict[str, Any],
+        model_info: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful model info retrieval."""
@@ -705,8 +704,8 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        integration_request: Dict[str, Any],
-        integration_result: Dict[str, Any],
+        integration_request: dict[str, Any],
+        integration_result: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful digital twin integration."""
@@ -742,7 +741,7 @@ class TestActigraphyRoutes:
         mock_pat_service.get_analysis_types.assert_called_once()
 
     def test_integrate_with_digital_twin_unauthorized(
-        self, client: TestClient, mock_token: str, integration_request: Dict[str, Any]
+        self, client: TestClient, mock_token: str, integration_request: dict[str, Any]
     ) -> None:
         """Test unauthorized digital twin integration."""
         # Change patient ID
@@ -764,7 +763,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        integration_request: Dict[str, Any],
+        integration_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test digital twin integration with not found error."""
@@ -786,7 +785,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        integration_request: Dict[str, Any],
+        integration_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test digital twin integration with authorization error."""
@@ -808,7 +807,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        integration_request: Dict[str, Any],
+        integration_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test digital twin integration with validation error."""
@@ -830,7 +829,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        integration_request: Dict[str, Any],
+        integration_request: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test digital twin integration with integration error."""

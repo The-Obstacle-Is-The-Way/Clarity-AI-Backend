@@ -5,17 +5,18 @@ This script directly demonstrates and verifies the ContactInfoDescriptor impleme
 without any dependencies on complex infrastructure.
 """
 
-import uuid
 import unittest
-from dataclasses import dataclass, field
-from typing import Optional, Any, Dict, Union
+import uuid
+from dataclasses import dataclass
+from typing import Any
+
 
 # Mirror minimal implementation from app.domain.entities.patient
 @dataclass
 class ContactInfo:
     """Contact information with a clean, consistent interface."""
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
 
 # Minimal Patient implementation with the ContactInfoDescriptor
 @dataclass
@@ -50,17 +51,17 @@ class Patient:
     contact_info = ContactInfoDescriptor()
     
     # Required fields
-    id: Optional[Any] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    id: Any | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    date_of_birth: str | None = None
     
     # Contact fields
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
     
     # For initial contact_info processing
-    _contact_info: Optional[Union[Dict[str, Any], ContactInfo]] = None
+    _contact_info: dict[str, Any] | ContactInfo | None = None
     
     def __post_init__(self):
         """Process contact_info from constructor."""

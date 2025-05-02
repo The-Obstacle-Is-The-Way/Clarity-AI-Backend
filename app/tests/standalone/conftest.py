@@ -5,8 +5,9 @@ This file contains test fixtures specific to standalone tests which do not requi
 external dependencies or network connections.
 """
 
+from typing import Any
+
 import pytest
-from typing import Any, Dict, List, Optional
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def standalone_fixture():
 
 
 @pytest.fixture
-def mock_patient_data() -> Dict[str, Any]:
+def mock_patient_data() -> dict[str, Any]:
     """Return mock patient data for testing."""
     return {
         "id": "p-12345",
@@ -31,7 +32,7 @@ def mock_patient_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_provider_data() -> Dict[str, Any]:
+def mock_provider_data() -> dict[str, Any]:
     """Return mock provider data for testing."""
     return {
         "id": "prov-54321",
@@ -42,7 +43,7 @@ def mock_provider_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_appointment_data() -> Dict[str, Any]:
+def mock_appointment_data() -> dict[str, Any]:
     """Return mock appointment data for testing."""
     return {
         "id": "apt-67890",
@@ -55,7 +56,7 @@ def mock_appointment_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def mock_digital_twin_data() -> Dict[str, Any]:
+def mock_digital_twin_data() -> dict[str, Any]:
     """Return mock digital twin data for testing."""
     return {
         "patient_id": "p-12345",

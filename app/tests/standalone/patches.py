@@ -1,16 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 Import patches for (standalone tests.
 """
 
-from pydantic import Field
-from app.domain.utils.text_utils import sanitize_name, truncate_text
-from app.domain.entities.digital_twin.biometric_twin_model import BiometricTwinModel
-from app.infrastructure.security.mfa_service import MFAService
-from app.domain.entities.provider import Provider
-import sys
-from unittest.mock import patch
 import importlib.util
+import sys
 from pathlib import Path
 
 # Add patch import locations to module search path

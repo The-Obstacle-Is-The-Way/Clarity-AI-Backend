@@ -1,17 +1,16 @@
 """Unit tests for BiometricTwin entity."""
-import pytest
-from datetime import datetime, timedelta
 import uuid
-from typing import Dict, List
+from datetime import datetime, timedelta
+
+import pytest
 
 from app.domain.entities.biometric_twin_enhanced import (
-    BiometricTwin,
-    BiometricTimeseriesData,
     BiometricDataPoint,
+    BiometricSource,
+    BiometricTimeseriesData,
+    BiometricTwin,
     BiometricType,
-    BiometricSource
 )
-
 from app.domain.value_objects.physiological_ranges import PhysiologicalRange
 
 

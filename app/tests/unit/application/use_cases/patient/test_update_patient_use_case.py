@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from app.application.use_cases.patient.update_patient import UpdatePatientUseCase
 from app.domain.entities.patient import Patient

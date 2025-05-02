@@ -5,25 +5,12 @@ This module contains tests that verify the behavior of the actigraphy API endpoi
 including authentication, authorization, input validation, and HIPAA compliance.
 """
 
-import json
-import os
-import tempfile
-from typing import Any, Dict, Generator, List
-
-import jwt
-import pytest
-from fastapi import FastAPI, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from httpx import AsyncClient
-from unittest.mock import AsyncMock, Mock, patch
 import uuid
+from typing import Any
+from unittest.mock import AsyncMock, patch
 
-from app.presentation.api.dependencies.auth import get_current_user
-from app.presentation.api.dependencies.services import get_pat_service
-from app.presentation.api.v1.endpoints.actigraphy import router as actigraphy_router
-from app.domain.entities.user import User
-from app.core.services.ml.pat.mock import MockPATService
-
+import pytest
+from httpx import AsyncClient
 
 # Fixtures removed:
 # @pytest.fixture
@@ -73,7 +60,7 @@ def admin_token() -> str:
 
 
 @pytest.fixture
-def sample_readings() -> List[Dict[str, float]]:
+def sample_readings() -> list[dict[str, float]]:
 
     """Fixture that returns sample accelerometer readings.
 
@@ -89,7 +76,7 @@ def sample_readings() -> List[Dict[str, float]]:
 
 
 @pytest.fixture
-def sample_device_info() -> Dict[str, Any]:
+def sample_device_info() -> dict[str, Any]:
 
     """Fixture that returns sample device information.
 
@@ -179,7 +166,7 @@ class TestActigraphyEndpoints:
         assert "detail" in response.json()
 
     @pytest.fixture
-    async def test_phi_data_sanitization(self, async_client: AsyncClient, provider_token: str, sample_readings: List[Dict[str, Any]], sample_device_info: Dict[str, Any]) -> None:
+    async def test_phi_data_sanitization(self, async_client: AsyncClient, provider_token: str, sample_readings: list[dict[str, Any]], sample_device_info: dict[str, Any]) -> None:
         """Test that PHI data is properly sanitized."""
         # Create a request with PHI in various fields
         phi_request = {
@@ -223,7 +210,7 @@ class TestActigraphyEndpoints:
         # assert "patient_ssn" not in str(data.get("device_info", {}))
 
     @pytest.fixture
-    async def test_role_based_access_control(self, async_client: AsyncClient, patient_token: str, provider_token: str, admin_token: str, sample_readings: List[Dict[str, Any]], sample_device_info: Dict[str, Any]) -> None:
+    async def test_role_based_access_control(self, async_client: AsyncClient, patient_token: str, provider_token: str, admin_token: str, sample_readings: list[dict[str, Any]], sample_device_info: dict[str, Any]) -> None:
         """Test that role-based access control works correctly."""
         # Create an analysis request payload
         analysis_request = {
@@ -272,7 +259,7 @@ class TestActigraphyEndpoints:
         assert response_get_patient.status_code in [403, 404] 
 
     @pytest.fixture
-    async def test_hipaa_audit_logging(self, async_client: AsyncClient, provider_token: str, sample_readings: List[Dict[str, Any]], sample_device_info: Dict[str, Any]) -> None:
+    async def test_hipaa_audit_logging(self, async_client: AsyncClient, provider_token: str, sample_readings: list[dict[str, Any]], sample_device_info: dict[str, Any]) -> None:
         """Test that relevant actions trigger HIPAA audit logs."""
         # Mock the audit logger dependency used by the endpoint/service
         # This requires knowing which logger is used (e.g., injected via DI)
@@ -306,7 +293,7 @@ class TestActigraphyEndpoints:
             # )
 
     @pytest.fixture
-    async def test_secure_data_transmission(self, async_client: AsyncClient, provider_token: str, sample_readings: List[Dict[str, Any]], sample_device_info: Dict[str, Any]) -> None:
+    async def test_secure_data_transmission(self, async_client: AsyncClient, provider_token: str, sample_readings: list[dict[str, Any]], sample_device_info: dict[str, Any]) -> None:
         """Test that data transmission uses HTTPS (implicitly tested by AsyncClient)."""
         # This test primarily relies on the deployment configuration ensuring HTTPS.
         # We can simulate checking the base_url scheme if needed, 
@@ -332,7 +319,7 @@ class TestActigraphyEndpoints:
         assert response.status_code == 200
 
     @pytest.fixture
-    async def test_api_response_structure(self, async_client: AsyncClient, provider_token: str, sample_readings: List[Dict[str, Any]], sample_device_info: Dict[str, Any]) -> None:
+    async def test_api_response_structure(self, async_client: AsyncClient, provider_token: str, sample_readings: list[dict[str, Any]], sample_device_info: dict[str, Any]) -> None:
         """Verify the structure of API responses against the defined schemas."""
         # Perform an analysis request
         analysis_request = {
@@ -354,7 +341,9 @@ class TestActigraphyEndpoints:
 
         # Validate response structure (assuming AnalyzeActigraphyResponse schema)
         # This requires importing the response schema
-        from app.presentation.api.schemas.actigraphy import AnalyzeActigraphyResponse # Example import
+        from app.presentation.api.schemas.actigraphy import (
+            AnalyzeActigraphyResponse,  # Example import
+        )
         try:
             AnalyzeActigraphyResponse.model_validate(data) # Use model_validate for Pydantic v2
         except Exception as e: # Catch PydanticValidationError if possible
@@ -374,8 +363,8 @@ TEST_USER_ID = str(uuid.uuid4()) # Use a consistent test user ID
 async def test_upload_actigraphy_data(
     async_client: AsyncClient, 
     provider_token: str, # Assume provider uploads data
-    sample_readings: List[Dict[str, Any]],
-    sample_device_info: Dict[str, Any]
+    sample_readings: list[dict[str, Any]],
+    sample_device_info: dict[str, Any]
 ):
     """Test uploading actigraphy data successfully."""
     patient_id = f"patient-{uuid.uuid4()}"
@@ -427,8 +416,8 @@ async def test_get_actigraphy_data_summary(
 async def test_get_specific_actigraphy_data(
     async_client: AsyncClient, 
     provider_token: str, # Assume provider access
-    sample_readings: List[Dict[str, Any]],
-    sample_device_info: Dict[str, Any]
+    sample_readings: list[dict[str, Any]],
+    sample_device_info: dict[str, Any]
     # Removed mock_pat_service fixture dependency as client handles service interaction
 ) -> None:
     """Test retrieving specific actigraphy analysis data successfully."""

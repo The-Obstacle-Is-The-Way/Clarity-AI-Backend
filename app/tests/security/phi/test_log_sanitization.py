@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test suite for PHI (Protected Health Information) log sanitization.
 This validates that our logging system properly sanitizes PHI before writing to logs.
 """
 
-import pytest
 import logging
-import re
 import os
 import tempfile
-from unittest.mock import patch, MagicMock
+
+import pytest
 
 # Correct import path for log sanitizer components
 from app.infrastructure.security.phi.log_sanitizer import LogSanitizer, PHIFormatter
+
 # Updated import path for PHISanitizer
 # from app.core.security.phi_sanitizer import PHISanitizer # Old incorrect path
 # from app.infrastructure.security.log_sanitizer import PHISanitizer # Correct path - COMMENTED OUT as class seems removed
@@ -159,7 +158,7 @@ class TestLogSanitization:
         logger.error("Patient with phone number (555) 123-4567 reported an issue")
 
         # Read the log file and check for PHI
-        with open(log_file, 'r') as f:
+        with open(log_file) as f:
             log_content = f.read()
 
         # Verify no PHI is present

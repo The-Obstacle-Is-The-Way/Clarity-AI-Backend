@@ -5,9 +5,10 @@ This test module includes both the necessary exception classes and tests in a si
 to validate that the test infrastructure is working correctly.
 """
 
-import pytest
 import unittest
 from typing import Any
+
+import pytest
 
 
 # Exception classes that would normally be in app/core/ml/exceptions.py

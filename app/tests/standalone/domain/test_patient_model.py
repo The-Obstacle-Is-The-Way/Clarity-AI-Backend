@@ -4,10 +4,10 @@ Standalone test for (Patient domain model)
 These tests verify the behavior of the Patient model without any external dependencies.
 """
 
-import pytest
-from datetime import date
-from pydantic import BaseModel, Field, ValidationError
 import uuid
+from datetime import date
+
+import pytest
 
 from app.domain.entities.patient import Patient
 

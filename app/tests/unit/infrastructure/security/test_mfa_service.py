@@ -1,28 +1,23 @@
-# -*- coding: utf-8 -*-
 """
 Tests for the MFA service.
 """
 
-import time
-import pytest
 from unittest.mock import MagicMock, patch
-import pyotp # Import for mocking
-import qrcode # Import for mocking
-import uuid # Import for mocking
-import os # Import os for environment variable patching if needed
+
+import pytest
 
 # Updated import path
 from app.infrastructure.security.auth.mfa_service import (
+    EmailStrategy,
     MFAService,
-    MFAType,
-    MFAException,
     MFASetupException,
-    MFAVerificationException,
     MFAStrategyFactory,
-    TOTPStrategy,
+    MFAType,
+    MFAVerificationException,
     SMSStrategy,
-    EmailStrategy
+    TOTPStrategy,
 )
+
 # Assuming settings might be needed, import or mock appropriately
 # from app.core.config import settings # Example if needed
 

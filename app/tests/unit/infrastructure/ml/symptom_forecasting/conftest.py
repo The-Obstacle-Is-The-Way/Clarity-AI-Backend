@@ -4,9 +4,7 @@ This conftest.py contains hooks to ensure proper test collection and module patc
 for symptom forecasting tests.
 """
 
-import pytest
 import sys
-import os
 
 # Only clean up module imports that might cause issues
 for key in list(sys.modules.keys()):

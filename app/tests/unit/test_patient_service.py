@@ -4,22 +4,21 @@ VENV-dependent tests for the Patient Service.
 These tests require Python packages but mock database access.
 They test service layer functionality in isolation from actual database.
 """
+import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import asyncio
-from uuid import uuid4
-from datetime import date
 
-from app.domain.services.patient_service import PatientService
 from app.domain.entities.patient import Patient
-from app.domain.repositories.patient_repository import PatientRepository
-# Add imports for other required repositories/interfaces
-from app.domain.repositories.provider_repository import ProviderRepository
+from app.domain.exceptions.patient_exceptions import PatientNotFoundError
 from app.domain.repositories.appointment_repository import IAppointmentRepository
 from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
-from app.domain.exceptions.patient_exceptions import PatientNotFoundError
+from app.domain.repositories.patient_repository import PatientRepository
+
+# Add imports for other required repositories/interfaces
+from app.domain.repositories.provider_repository import ProviderRepository
+from app.domain.services.patient_service import PatientService
 
 
 @pytest.fixture

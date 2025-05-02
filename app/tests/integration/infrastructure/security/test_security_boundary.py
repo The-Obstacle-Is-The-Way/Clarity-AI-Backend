@@ -5,21 +5,23 @@ These tests verify that our security components work together correctly
 to enforce proper authentication and authorization boundaries.
 """
 
-import pytest
-import time
 import asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock, AsyncMock
 import uuid
+from datetime import datetime, timezone
+from unittest.mock import MagicMock
 
-from app.config.settings import Settings # Import Settings
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload, TokenType
-from app.infrastructure.security.password.password_handler import PasswordHandler
+import pytest
+from pydantic import SecretStr  # Correct import location
+
+from app.config.settings import Settings  # Import Settings
+
 # Assume RBACService is available or mock it if needed
 # from app.infrastructure.security.rbac.rbac_service import RBACService 
 from app.domain.enums.role import Role
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
-from pydantic import SecretStr # Correct import location
+from app.infrastructure.security.jwt.jwt_service import JWTService, TokenType
+from app.infrastructure.security.password.password_handler import PasswordHandler
+
 
 # Mock RBACService for testing
 class MockRBACService:

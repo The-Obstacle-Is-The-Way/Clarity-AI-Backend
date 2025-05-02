@@ -7,10 +7,12 @@ dependencies on other models, ensuring clean table creation.
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey
+
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
+
 
 class MockUser(Base):
     """

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 HIPAA Audit Logging Security Tests
 
@@ -7,10 +6,10 @@ Tests the audit logging system for HIPAA compliance (§164.312(b) - Audit contro
 """
 
 import json
-import pytest
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List
+
+import pytest
 
 # Test data
 TEST_USER = {
@@ -169,7 +168,7 @@ class TestAuditLogging:
         assert export_file is not None, "Failed to export audit logs"
 
         # Verify export contains expected data
-        with open(export_file, 'r') as f:
+        with open(export_file) as f:
             exported_logs = json.load(f)
 
         assert len(exported_logs) >= 5, "Exported logs missing entries"

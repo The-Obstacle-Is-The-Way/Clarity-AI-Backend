@@ -5,15 +5,14 @@ This module contains both the PHI sanitizer implementation and tests in a single
 making it completely independent of the rest of the application.
 """
 
+import hashlib
 import json
-import logging
 import re
 import unittest
-import pytest
-import hashlib
-from collections.abc import Callable
 from enum import Enum
-from typing import Any, List, Set, Dict, Optional, Union
+from typing import Any
+
+import pytest
 
 # Mark all tests in this file as skipped pending update
 pytestmark = pytest.mark.skip(reason="Standalone PHI sanitizer tests need update to match PHI implementation")
@@ -36,10 +35,10 @@ class PHIPattern:
     def __init__(
         self,
         name: str,
-        regex: Optional[str] = None,
-        exact_match: Optional[List[str]] = None,
-        fuzzy_match: Optional[List[str]] = None,
-        context_patterns: Optional[List[str]] = None,
+        regex: str | None = None,
+        exact_match: list[str] | None = None,
+        fuzzy_match: list[str] | None = None,
+        context_patterns: list[str] | None = None,
         strategy: RedactionStrategy = RedactionStrategy.FULL,
     ):
         self.name = name
@@ -87,7 +86,7 @@ class PatternRepository:
     """Repository of PHI patterns."""
 
     def __init__(self):
-        self._patterns: List[PHIPattern] = []
+        self._patterns: list[PHIPattern] = []
         self._initialize_default_patterns()
 
     def _initialize_default_patterns(self):
@@ -126,7 +125,7 @@ class PatternRepository:
         """Add a pattern to the repository."""
         self._patterns.append(pattern)
 
-    def get_patterns(self) -> List[PHIPattern]:
+    def get_patterns(self) -> list[PHIPattern]:
         """Get all patterns in the repository."""
         return self._patterns
 
@@ -195,7 +194,7 @@ class RedactorFactory:
 class PHISanitizer:
     """Sanitizer for PHI in text."""
 
-    def __init__(self, pattern_repository: Optional[PatternRepository] = None):
+    def __init__(self, pattern_repository: PatternRepository | None = None):
         self._pattern_repo = pattern_repository or PatternRepository()
         self._redactor_factory = RedactorFactory()
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Fixed test suite for PHI audit functionality.
 
@@ -9,13 +8,15 @@ This test file addresses three key issues:
     3. Testing special clean_app directory cases with intentional test PHI
 """
 
-from scripts.test.security.run_hipaa_phi_audit import PHIAuditor, PHIDetector
 import os
-import tempfile
-import pytest
-from unittest.mock import patch, MagicMock
 import shutil
 import sys
+import tempfile
+from unittest.mock import patch
+
+import pytest
+
+from scripts.test.security.run_hipaa_phi_audit import PHIAuditor, PHIDetector
 
 # Add scripts directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../scripts')))

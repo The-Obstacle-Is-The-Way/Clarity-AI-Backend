@@ -4,7 +4,6 @@ Test module for Role enumeration.
 This module tests the functionality of the Role enum used for 
 authentication and authorization in the application.
 """
-import pytest
 from app.domain.enums.role import Role
 
 

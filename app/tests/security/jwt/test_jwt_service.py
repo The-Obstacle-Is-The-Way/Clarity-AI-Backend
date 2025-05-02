@@ -1,19 +1,15 @@
-# -*- coding: utf-8 -*-
-import os
 # import jwt # Use service methods instead of direct jwt calls
-import time
-import pytest
-import uuid 
 import asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, PropertyMock
-from typing import Any, Dict
+import uuid
+from unittest.mock import MagicMock, PropertyMock
 
-from pydantic import SecretStr # Import SecretStr
+import pytest
+from pydantic import SecretStr  # Import SecretStr
 
-from app.config.settings import Settings # Import Settings
+from app.config.settings import Settings  # Import Settings
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload, TokenType
+
 
 @pytest.fixture
 def mock_settings() -> MagicMock:

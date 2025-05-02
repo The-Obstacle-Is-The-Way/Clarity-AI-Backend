@@ -5,14 +5,15 @@ This module provides pytest fixtures that can be used across all test modules
 for the AWS XGBoost service, ensuring consistent test setup and teardown.
 """
 
-import pytest
 import asyncio
 import sys
-from typing import Dict, Any
 from datetime import datetime
 
+import pytest
+
 # Apply YAML mocking directly in conftest.py
-from .mock_yaml import safe_load, dump
+from .mock_yaml import dump, safe_load
+
 
 # Create a mock YAML module
 class MockYamlModule:
@@ -24,15 +25,11 @@ class MockYamlModule:
 sys.modules['yaml'] = MockYamlModule
 
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyLevel
-from app.core.services.ml.xgboost.exceptions import ConfigurationError
 from app.tests.unit.services.ml.xgboost_service.mocks import (
     MockAWSServiceFactory,
-    MockSageMakerService,
-    MockSageMakerRuntimeService,
-    MockS3Service,
     MockDynamoDBService,
-    MockComprehendMedicalService,
-    AsyncMock
+    MockS3Service,
+    MockSageMakerService,
 )
 
 

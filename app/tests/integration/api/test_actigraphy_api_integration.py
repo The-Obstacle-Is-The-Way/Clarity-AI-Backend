@@ -5,21 +5,17 @@ This module tests the integration between the API routes and the
 PAT service implementation.
 """
 
-import json
-import uuid
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, Any
 
 import pytest
 from httpx import AsyncClient
 
+from app.domain.utils.datetime_utils import UTC
+
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
-from unittest.mock import Mock, AsyncMock, patch
 
 from app.core.services.ml.pat.mock import MockPATService
-from app.presentation.api.dependencies.services import get_pat_service  # Corrected import path
 
 
 @pytest.fixture

@@ -6,19 +6,17 @@ foreign key constraints and test data generation. This pure implementation follo
 SOLID principles with single responsibility and dependency inversion.
 """
 
-import asyncio
-import uuid
 import logging
-from typing import AsyncGenerator, Dict, Any, Optional
+import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, text, create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, Column, ForeignKey, String, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.future import select
+from sqlalchemy.orm import declarative_base, relationship
 
 # Import encryption service
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
@@ -101,7 +99,7 @@ async def create_test_user(session: AsyncSession) -> TestUser:
 
 async def create_test_patient(
     session: AsyncSession, 
-    user_id: Optional[uuid.UUID] = None,
+    user_id: uuid.UUID | None = None,
     first_name: str = "Test",
     last_name: str = "Patient",
     email: str = "test@example.com",
@@ -174,7 +172,7 @@ def mock_encryption_service():
     def encrypt_side_effect(value):
         if value is None:
             return None
-        return f"ENCRYPTED_{str(value)}"
+        return f"ENCRYPTED_{value!s}"
     
     def decrypt_side_effect(value):
         if value is None:

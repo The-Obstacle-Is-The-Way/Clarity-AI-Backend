@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the PHI sanitizer utility.
 
@@ -6,10 +5,10 @@ These tests ensure that Protected Health Information (PHI) is properly
 detected and sanitized in various data formats to maintain HIPAA compliance.
 """
 
-import pytest
 import logging
-from unittest.mock import patch, MagicMock
-import re
+from unittest.mock import MagicMock
+
+import pytest
 
 from app.core.utils.phi_sanitizer import PHIDetector, PHISanitizer
 from app.infrastructure.security.phi.phi_service import PHIType

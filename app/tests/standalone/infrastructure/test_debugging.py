@@ -2,9 +2,9 @@
 Debugging test to check enum behavior issues.
 """
 
-import pytest
-import sys
 from enum import Enum
+
+import pytest
 
 
 class ComparisonOperator(str, Enum):

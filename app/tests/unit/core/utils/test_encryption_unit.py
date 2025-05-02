@@ -1,13 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the HIPAA-compliant encryption utility.
 """
 
 import os
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService as EncryptionService
+import pytest
+
+from app.infrastructure.security.encryption.base_encryption_service import (
+    BaseEncryptionService as EncryptionService,
+)
 
 
 @pytest.mark.venv_only()

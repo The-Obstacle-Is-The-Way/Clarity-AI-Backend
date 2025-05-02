@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Symptom Forecasting XGBoost Model.
 
@@ -6,12 +5,10 @@ These tests verify that the XGBoost Model correctly processes
 time series data and generates accurate forecasts with feature importance.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+import pytest
 
 from app.infrastructure.ml.symptom_forecasting.xgboost_model import XGBoostSymptomModel
 

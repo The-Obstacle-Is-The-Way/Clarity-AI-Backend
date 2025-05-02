@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for the Treatment Response Model.
 
@@ -7,14 +6,18 @@ predicts medication efficacy and side effects based on patient data.
 """
 
 import pytest
-pytest.skip("Skipping pharmacogenomics treatment model tests (torch unsupported)", allow_module_level=True)
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
 
-from app.infrastructure.ml.pharmacogenomics.treatment_model import PharmacogenomicsModel as TreatmentResponseModel
+pytest.skip("Skipping pharmacogenomics treatment model tests (torch unsupported)", allow_module_level=True)
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+import numpy as np
+
+from app.infrastructure.ml.pharmacogenomics.treatment_model import (
+    PharmacogenomicsModel as TreatmentResponseModel,
+)
+
+
 class TestTreatmentResponseModel:
     """Tests for the TreatmentResponseModel."""
 

@@ -6,10 +6,9 @@ import uuid
 from datetime import datetime, time
 
 import pytest
-from pydantic import ValidationError as PydanticValidationError
 
 from app.domain.entities.provider import Provider, ProviderStatus, ProviderType
-from app.domain.exceptions import ValidationError, RepositoryError
+from app.domain.exceptions import ValidationError
 
 
 @pytest.fixture

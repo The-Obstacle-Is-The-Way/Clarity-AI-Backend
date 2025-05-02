@@ -6,7 +6,6 @@ biometric data points, evaluates rules, and notifies observers.
 """
 
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -23,9 +22,9 @@ from app.domain.services.biometric_event_processor import (
     ClinicalRuleEngine,
     EmailAlertObserver,
     InAppAlertObserver,
-    SMSAlertObserver
+    SMSAlertObserver,
 )
-
+from app.domain.utils.datetime_utils import UTC
 
 
 @pytest.fixture

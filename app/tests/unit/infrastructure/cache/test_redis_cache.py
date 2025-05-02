@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Redis Cache Service.
 
@@ -7,8 +6,9 @@ serialization, error handling, and TTL management.
 """
 
 import json
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.infrastructure.cache.redis_cache import RedisCache
 

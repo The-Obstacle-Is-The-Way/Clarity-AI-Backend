@@ -5,31 +5,27 @@ This file contains test fixtures specific to integration tests which may
 require network connections, databases, and other external services.
 """
 
+import logging
+import uuid
+from collections.abc import AsyncGenerator
+from typing import Any
+
 import pytest
 import pytest_asyncio
-import os
-import json
-import uuid
-import asyncio
-import logging
-from typing import Any, Dict, List, Optional, AsyncGenerator, Callable, Generator
-from httpx import AsyncClient
 from fastapi import FastAPI
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
-from sqlalchemy.ext.asyncio import AsyncSession
-
-# Import the FastAPI application
-from app.main import app
 
 # Import SQLAlchemy models and utils
-from app.infrastructure.persistence.sqlalchemy.models.base import Base, ensure_all_models_loaded
+from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
 from app.infrastructure.persistence.sqlalchemy.registry import validate_models
-from app.infrastructure.persistence.sqlalchemy.models.user import User, UserRole
 
+# Import the FastAPI application
 # Import test database initializer functions
-from app.tests.integration.utils.test_db_initializer import get_test_db_session, create_test_users
+from app.tests.integration.utils.test_db_initializer import create_test_users, get_test_db_session
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -74,7 +70,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-def mock_db_data() -> Dict[str, List[Dict[str, Any]]]:
+def mock_db_data() -> dict[str, list[dict[str, Any]]]:
     """
     Provides mock database data for tests.
 
@@ -135,7 +131,7 @@ def mock_db_data() -> Dict[str, List[Dict[str, Any]]]:
 
 # Authentication fixtures and JWT service for proper token generation
 @pytest.fixture
-def test_config() -> Dict[str, Any]:
+def test_config() -> dict[str, Any]:
     """
     Provides a standard test configuration for JWT and other services.
     
@@ -171,7 +167,7 @@ def jwt_service(test_config) -> IJwtService:
     return JWTService(settings=settings)
 
 @pytest.fixture
-async def patient_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
+async def patient_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
     """
     Creates authentication headers with a JWT token for patient test user.
     
@@ -198,7 +194,7 @@ async def patient_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
     }
 
 @pytest.fixture
-async def provider_auth_headers(jwt_service: IJwtService) -> Dict[str, str]:
+async def provider_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
     """
     Provides authentication headers for a test clinician user.
     
@@ -282,8 +278,8 @@ def mock_mentallama_api() -> Any:
 
     class MockMentaLLamaAPI:
         async def predict(
-            self, patient_id: str, data: Dict[str, Any]
-        ) -> Dict[str, Any]:
+            self, patient_id: str, data: dict[str, Any]
+        ) -> dict[str, Any]:
             return {
                 "patient_id": patient_id,
                 "prediction": {
@@ -298,7 +294,7 @@ def mock_mentallama_api() -> Any:
                 "model_version": "mentallama-v1.2.0",
             }
 
-        async def get_model_info(self) -> Dict[str, Any]:
+        async def get_model_info(self) -> dict[str, Any]:
             return {
                 "name": "MentaLLama",
                 "version": "1.2.0",
@@ -325,8 +321,8 @@ async def app_with_mocked_services() -> FastAPI:
 
     class MockAWSService:
         def invoke_endpoint(
-            self, endpoint_name: str, data: Dict[str, Any]
-        ) -> Dict[str, Any]:
+            self, endpoint_name: str, data: dict[str, Any]
+        ) -> dict[str, Any]:
             return {
                 "result": {
                     "prediction": [0.65, 0.35, 0.80],

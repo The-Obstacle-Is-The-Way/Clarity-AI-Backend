@@ -4,35 +4,27 @@ Unit tests for the TemporalNeurotransmitterService.
 These tests ensure the service correctly orchestrates interactions between
 domain entities, repositories, and external services.
 """
-import asyncio
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
 import uuid
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.application.services.temporal_neurotransmitter_service import (
     TemporalNeurotransmitterService,
 )
-
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    Neurotransmitter,
     ClinicalSignificance,
+    Neurotransmitter,
 )
-
-from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
 from app.domain.entities.temporal_events import (
     CorrelatedEvent,
     EventChain,
     TemporalEvent,
 )
-
 from app.domain.entities.temporal_sequence import TemporalSequence
-from app.domain.services.visualization_preprocessor import (
-    NeurotransmitterVisualizationPreprocessor,
-)
-
+from app.domain.utils.datetime_utils import UTC
 
 # Fixtures for testing
 

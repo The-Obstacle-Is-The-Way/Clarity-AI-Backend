@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test suite for HIPAA-compliant authentication and authorization.
 This ensures PHI access requires proper authentication and authorization.
 """
 
-import pytest
-import jwt
-import time
-from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import jwt
+import pytest
+
 from app.domain.utils.datetime_utils import UTC
-import json
 
 try:
     from app.infrastructure.security.jwt_service import JWTService

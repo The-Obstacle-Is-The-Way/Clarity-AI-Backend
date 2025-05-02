@@ -7,15 +7,13 @@ This test suite verifies that:
     3. Exception handling never exposes PHI
 """
 
-import pytest
-import asyncio
 import logging
 import uuid
 from datetime import date
-from typing import List, Dict, Any, Optional
 from io import StringIO
-from sqlalchemy.orm import Session
-from unittest.mock import MagicMock, patch
+from typing import Any
+
+import pytest
 
 # Mark all tests in this file as skipped pending update to match new implementation
 pytestmark = pytest.mark.skip(reason="PHI sanitization integration tests need updating to match new domain entity structures")
@@ -23,13 +21,13 @@ pytestmark = pytest.mark.skip(reason="PHI sanitization integration tests need up
 from app.domain.entities.patient import Patient
 from app.domain.value_objects.address import Address
 from app.domain.value_objects.emergency_contact import EmergencyContact
+
 # Corrected import path for PatientModel
 from app.infrastructure.database.models import PatientModel
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-from app.infrastructure.security.phi.phi_service import PHIService
+
 # Corrected import path for get_sanitized_logger
 from app.infrastructure.security.phi.log_sanitizer import get_sanitized_logger
-from app.domain.entities.patient import Patient as PatientDomain
+from app.infrastructure.security.phi.phi_service import PHIService
 
 
 @pytest.fixture
@@ -165,7 +163,7 @@ class TestPHISanitization:
                 )
             except Exception as e:
                 # Log the exception (should be sanitized)
-                logger.error(f"Error processing patient: {str(e)}")
+                logger.error(f"Error processing patient: {e!s}")
                 raise  # Re-raise for test verification
         
         # Call the function and expect an exception
@@ -196,7 +194,7 @@ class TestPHISanitization:
         patient_model = PatientModel.from_domain(test_patient)
         
         # Simulate processing in service layer
-        def process_patient_data(model: PatientModel) -> Dict[str, Any]:
+        def process_patient_data(model: PatientModel) -> dict[str, Any]:
             """Simulate processing in another module."""
             logger = get_sanitized_logger("service.patient")  # Use correct function
             

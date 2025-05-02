@@ -6,27 +6,23 @@ database testing, combining transaction management, dependency injection,
 and test data generation capabilities into a single cohesive module.
 """
 
+import asyncio
 import os
+from collections.abc import AsyncGenerator, Callable
+from typing import Any
+
 import pytest
 import pytest_asyncio
-import asyncio
-from typing import Any, Dict, List, Optional, Callable, AsyncGenerator, Generator
-from contextlib import asynccontextmanager
-
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
-    AsyncEngine,
+    async_sessionmaker,
     create_async_engine,
-    async_sessionmaker
 )
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
-from sqlalchemy import text
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.config.settings import get_settings
 from app.core.dependencies.database import get_session
-
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Test database URL from environment or default to a test PostgreSQL DB
 TEST_DATABASE_URL = os.environ.get(
@@ -134,6 +130,7 @@ def test_client(override_get_session):
     for all database operations.
     """
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as client:
@@ -144,7 +141,7 @@ class TestDataFactory:
     """Factory for creating test data."""
 
     @staticmethod
-    def create_patient_data(count: int = 1) -> List[Dict[str, Any]]:
+    def create_patient_data(count: int = 1) -> list[dict[str, Any]]:
         """Create test patient data."""
         patients = []
         for i in range(1, count + 1):
@@ -164,7 +161,7 @@ class TestDataFactory:
         return patients
 
     @staticmethod
-    def create_clinician_data(count: int = 1) -> List[Dict[str, Any]]:
+    def create_clinician_data(count: int = 1) -> list[dict[str, Any]]:
         """Create test clinician data."""
         clinicians = []
         for i in range(1, count + 1):
@@ -183,7 +180,7 @@ class TestDataFactory:
         return clinicians
 
     @staticmethod
-    def create_user_data(count: int = 1) -> List[Dict[str, Any]]:
+    def create_user_data(count: int = 1) -> list[dict[str, Any]]:
         """Create test user data."""
         users = []
         for i in range(1, count + 1):

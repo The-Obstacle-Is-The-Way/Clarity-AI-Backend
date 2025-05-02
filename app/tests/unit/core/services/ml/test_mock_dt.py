@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Mock Digital Twin Service.
 
@@ -7,22 +6,17 @@ to ensure it correctly simulates patient interaction and provides consistent
 responses for testing purposes.
 """
 
-from app.core.services.ml.interface import DigitalTwinInterface
-from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService # Corrected import path
-import pytest
-import time
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, Any, List
 import re
 import uuid
+
+import pytest
 
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
-    ServiceUnavailableError
+    ServiceUnavailableError,
 )
-
+from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService  # Corrected import path
 
 # Import the correct interface
 

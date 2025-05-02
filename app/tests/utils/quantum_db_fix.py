@@ -8,11 +8,10 @@ with proper foreign key relationships.
 
 import asyncio
 import logging
-import uuid
-from datetime import datetime
-from pathlib import Path
 import os
 import sys
+import uuid
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -25,18 +24,13 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 # Import SQLAlchemy components
-from sqlalchemy import text, MetaData, Table, Column, String, Text, DateTime, Boolean, Integer, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Import application components
-from app.infrastructure.persistence.sqlalchemy.config.base import Base
-from app.domain.utils.datetime_utils import now_utc
 
 # Import model classes to register with metadata
-from app.infrastructure.persistence.sqlalchemy.models.user import User, UserRole
 try:
-    from app.infrastructure.persistence.sqlalchemy.models.patient import Patient
     PATIENT_IMPORTED = True
 except Exception as e:
     logger.error(f"Error importing Patient model: {e}")
@@ -210,9 +204,11 @@ async def create_test_users(session: AsyncSession) -> None:
     await session.commit()
     
     # Verify users were created
-    query = text(f"SELECT id FROM users WHERE id IN ('{TEST_USER_ID}', '{TEST_CLINICIAN_ID}')")
-    result = await session.execute(query)
+    query = text("SELECT id FROM users WHERE id = ANY(:user_ids)")
+    result = await session.execute(query, {"user_ids": [TEST_USER_ID, TEST_CLINICIAN_ID]})
     users = result.fetchall()
+    if len(users) != 2:
+        logger.error(f"Failed to verify test users. Found {len(users)}.")
     logger.info(f"Verified {len(users)}/2 test users exist")
 
 async def initialize_database():
