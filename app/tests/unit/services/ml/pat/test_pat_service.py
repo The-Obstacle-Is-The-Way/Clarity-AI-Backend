@@ -3,7 +3,7 @@
 import json
 import random
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -56,26 +56,22 @@ class TestBedrockPAT:
     """Test suite for the BedrockPAT implementation."""
 
     @pytest.mark.asyncio
-    async def test_initialization(self, bedrock_pat_service):
+    async def test_initialization(self, bedrock_pat_service: BedrockPAT) -> None:
         """Test service initialization."""
-        service = await bedrock_pat_service() # Await the async factory
+        service = await bedrock_pat_service # Await the async factory
         assert service.initialized
         # Assert against internal attribute names used in initialize()
         assert service._s3_bucket == 'test-bucket'
         assert service._dynamodb_table == 'test-table'
 
     @pytest.mark.asyncio
-    async def test_analyze_actigraphy(self, bedrock_pat_service, mocker: MockerFixture):
+    async def test_analyze_actigraphy(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test successful analysis of actigraphy data."""
-        service = await bedrock_pat_service() # Await the async factory
+        service = await bedrock_pat_service # Await the async factory
         patient_id = "test-patient-123"
-        start_time = datetime.now() - timedelta(days=1)
-        end_time = datetime.now()
-        sampling_rate_hz = 100.0
         readings = create_sample_readings(num_readings=10)
 
         # Configure mock responses (access mocks via service.mocks)
-        mock_analysis_id = str(uuid.uuid4())
         analysis_data = {
             "results": [{"metric": "value"}],
             "patient_id": patient_id, 
@@ -83,7 +79,15 @@ class TestBedrockPAT:
             "analysis_type": "sleep_quality", 
             "model_version": "titan-0.1", 
             "confidence_score": 0.95, 
-            "metrics": {"sleep_efficiency": 0.85, "total_sleep_time": 420}, 
+            "metrics": {
+                "sleep_efficiency": 0.85, 
+                "total_sleep_time": 420, 
+                "efficiency": 0.85, 
+                "duration": 420,
+                "latency": 15,
+                "rem_percentage": 0.20,
+                "deep_percentage": 0.15
+            }, 
             "insights": ["Good sleep quality detected"] 
         }
         # Configure the MOCK read method to return the test-specific data
@@ -97,9 +101,6 @@ class TestBedrockPAT:
         analysis_result = await service.analyze_actigraphy(
             patient_id=patient_id,
             readings=[r.model_dump() for r in readings],
-            start_time=start_time.isoformat(),
-            end_time=end_time.isoformat(),
-            sampling_rate_hz=sampling_rate_hz,
             analysis_types=["sleep_quality"]
         )
 
@@ -112,7 +113,15 @@ class TestBedrockPAT:
         assert analysis_result.analysis_type == "sleep_quality"
         assert analysis_result.model_version == "titan-0.1"
         assert analysis_result.confidence_score == 0.95
-        assert analysis_result.metrics == {"sleep_efficiency": 0.85, "total_sleep_time": 420}
+        assert analysis_result.metrics == {
+            "sleep_efficiency": 0.85, 
+            "total_sleep_time": 420, 
+            "efficiency": 0.85, 
+            "duration": 420,
+            "latency": 15,
+            "rem_percentage": 0.20,
+            "deep_percentage": 0.15
+        }
         assert len(analysis_result.insights) == 1 and analysis_result.insights[0] == "Good sleep quality detected"
 
         # Verify interactions (access mocks via service.mocks)
@@ -120,18 +129,15 @@ class TestBedrockPAT:
         service.mocks['dynamodb'].put_item.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_embeddings(self, bedrock_pat_service, mocker: MockerFixture):
+    async def test_get_embeddings(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test generating embeddings with the Bedrock service."""
-        service = await bedrock_pat_service() # Await the async factory
+        service = await bedrock_pat_service # Await the async factory
         patient_id = "test-patient-embed-456"
-        start_time = (datetime.now() - timedelta(hours=2)).isoformat()
-        end_time = datetime.now().isoformat()
-        sampling_rate_hz = 50.0
         readings_models = create_sample_readings(5)
         readings_data = [r.model_dump() for r in readings_models]
 
         # Configure mock response for embeddings (access mocks via service.mocks)
-        mock_embeddings = [random.random() for _ in range(768)]
+        mock_embeddings = [random.random() for _ in range(768)] # nosec B311
         mock_bedrock_response = {
             "embedding": mock_embeddings,
             "inputTextTokenCount": 100,
@@ -163,12 +169,12 @@ class TestBedrockPAT:
         service.mocks['bedrock'].invoke_model.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_analysis_by_id(self, bedrock_pat_service, mocker: MockerFixture):
+    async def test_get_analysis_by_id(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test retrieving a specific analysis by its ID successfully."""
-        service = await bedrock_pat_service()
+        service = await bedrock_pat_service
         analysis_id = "existing-analysis-abc"
         patient_id_hash = service._hash_identifier("patient-123")
-        timestamp = datetime.now(UTC)
+        timestamp = datetime.now(timezone.utc)
         timestamp_str = timestamp.isoformat()
 
         # Mock data for the specific analysis item (flat structure)
@@ -181,7 +187,12 @@ class TestBedrockPAT:
             'ConfidenceScore': {'N': '0.85'},
             'Metrics': {'M': {
                 'total_sleep_time': {'N': '8.2'},
-                'sleep_efficiency': {'N': '0.91'}
+                'sleep_efficiency': {'N': '0.91'},
+                'efficiency': {'N': '0.91'},
+                'duration': {'N': '8.2'},
+                'latency': {'N': '10'},
+                'rem_percentage': {'N': '0.22'},
+                'deep_percentage': {'N': '0.18'}
             }},
             'Insights': {'L': [{'S': 'Consistent sleep pattern detected.'}]}
         }
@@ -202,7 +213,15 @@ class TestBedrockPAT:
         assert retrieved_analysis.analysis_type == AnalysisTypeEnum.SLEEP_QUALITY
         assert retrieved_analysis.model_version == 'titan-0.1'
         assert retrieved_analysis.confidence_score == 0.85
-        assert retrieved_analysis.metrics == {'total_sleep_time': 8.2, 'sleep_efficiency': 0.91}
+        assert retrieved_analysis.metrics == {
+            'total_sleep_time': 8.2,
+            'sleep_efficiency': 0.91,
+            'efficiency': 0.91,
+            'duration': 8.2,
+            'latency': 10,
+            'rem_percentage': 0.22,
+            'deep_percentage': 0.18
+        }
         assert retrieved_analysis.insights == ['Consistent sleep pattern detected.']
 
         # Verify interaction
@@ -212,8 +231,8 @@ class TestBedrockPAT:
         )
 
     @pytest.mark.asyncio
-    async def test_get_analysis_by_id_not_found(self, bedrock_pat_service, mocker: MockerFixture):
-        service = await bedrock_pat_service()
+    async def test_get_analysis_by_id_not_found(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
+        service = await bedrock_pat_service
         analysis_id = "non-existent-analysis-xyz"
 
         # Configure the mock client's get_item to return an empty dict (item not found)
@@ -231,9 +250,9 @@ class TestBedrockPAT:
         )
 
     @pytest.mark.asyncio
-    async def test_get_patient_analyses(self, bedrock_pat_service, mocker: MockerFixture):
+    async def test_get_patient_analyses(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test retrieving analyses for a patient with the Bedrock service."""
-        service = await bedrock_pat_service() # Await the async factory
+        service = await bedrock_pat_service # Await the async factory
         patient_id = "patient-analyses-test-456"
         limit = 10
         timestamp_now = datetime.now(timezone.utc)
@@ -250,7 +269,12 @@ class TestBedrockPAT:
             'confidence_score': {'N': '0.92'},
             'metrics': {'M': {
                 'sleep_efficiency': {'N': '0.90'},
-                'total_sleep_time': {'N': '7.5'} # Added required metric
+                'total_sleep_time': {'N': '7.5'},
+                'efficiency': {'N': '0.90'},
+                'duration': {'N': '7.5'},
+                'latency': {'N': '12'},
+                'rem_percentage': {'N': '0.21'},
+                'deep_percentage': {'N': '0.17'}
             }},
             'insights': {'L': [{'S': 'Good sleep.'}]},
         }
@@ -264,7 +288,10 @@ class TestBedrockPAT:
             'confidence_score': {'N': '0.75'},
             'metrics': {'M': {
                 'daily_step_count': {'N': '6000'},
-                'sedentary_hours': {'N': '5.5'}
+                'sedentary_hours': {'N': '5.5'},
+                'steps': {'N': '6000'},
+                'active_minutes': {'N': '45'},
+                'calories_burned': {'N': '2200'}
             }},
             'insights': {'L': [{'S': 'Active day.'}]},
         }
@@ -280,16 +307,19 @@ class TestBedrockPAT:
         service.dynamodb_client.query = AsyncMock(return_value=mock_query_response)
 
         # Mock the get_item call using a side_effect function
-        async def get_item_side_effect(*args, **kwargs):
-            key = kwargs.get('Key', {})
-            analysis_id = key.get('AnalysisId', {}).get('S')
-            if analysis_id == 'analysis-1':
-                return {'Item': mock_item_1_full}
-            elif analysis_id == 'analysis-2':
-                return {'Item': mock_item_2_full}
-            else:
-                # Return empty if unexpected ID requested
-                return {'Item': None}
+        async def get_item_side_effect(*args: Any, **kwargs: Any) -> dict | None:
+            """Simulate DynamoDB get_item responses based on key."""
+            table_name = kwargs.get('TableName')
+            key = kwargs.get('Key')
+            # Example logic (needs refinement based on actual usage)
+            if table_name == 'test-table' and key and 'AnalysisId' in key and 'SK' in key:
+                # Simulate finding an item
+                if key['AnalysisId']['S'] == 'analysis-1':
+                    return {'Item': mock_item_1_full}
+                elif key['AnalysisId']['S'] == 'analysis-2':
+                    return {'Item': mock_item_2_full}
+            # Simulate item not found
+            return None # Or raise specific boto error
         service.dynamodb_client.get_item = AsyncMock(side_effect=get_item_side_effect)
 
         # Call the service method
@@ -311,8 +341,22 @@ class TestBedrockPAT:
         assert result[1].analysis_type == AnalysisTypeEnum.ACTIVITY_PATTERNS
         assert result[0].confidence_score == 0.92
         assert result[1].confidence_score == 0.75
-        assert result[0].metrics == {'sleep_efficiency': 0.90, 'total_sleep_time': 7.5}
-        assert result[1].metrics == {'daily_step_count': 6000, 'sedentary_hours': 5.5}
+        assert result[0].metrics == {
+            'sleep_efficiency': 0.90,
+            'total_sleep_time': 7.5,
+            'efficiency': 0.90,
+            'duration': 7.5,
+            'latency': 12,
+            'rem_percentage': 0.21,
+            'deep_percentage': 0.17
+        }
+        assert result[1].metrics == {
+            'daily_step_count': 6000,
+            'sedentary_hours': 5.5,
+            'steps': 6000,
+            'active_minutes': 45,
+            'calories_burned': 2200
+        }
 
         # Verify interaction
         service.dynamodb_client.query.assert_called_once() # Query is called once
@@ -328,9 +372,9 @@ class TestBedrockPAT:
         )
 
     @pytest.mark.asyncio
-    async def test_get_patient_analyses_not_found(self, bedrock_pat_service, mocker: MockerFixture):
+    async def test_get_patient_analyses_not_found(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test retrieving analyses for a patient with no results."""
-        service = await bedrock_pat_service() # Await the async factory
+        service = await bedrock_pat_service # Await the async factory
         patient_id = "patient-without-analyses-222"
         patient_hash = service._hash_identifier(patient_id) # Get expected hash for message
 
@@ -354,9 +398,9 @@ class TestBedrockPAT:
         service.dynamodb_client.get_item.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_integrate_with_digital_twin(self, bedrock_pat_service, mocker: MockerFixture):
+    async def test_integrate_with_digital_twin(self, bedrock_pat_service: BedrockPAT, mocker: MockerFixture) -> None:
         """Test integrating actigraphy analysis with a digital twin with the Bedrock service."""
-        service = await bedrock_pat_service() # Await the async factory
+        service = await bedrock_pat_service # Await the async factory
         patient_id_uuid = uuid.uuid4() # Generate a valid UUID
         patient_id = str(patient_id_uuid) # Use its string representation
         analysis_id = "analysis-for-integration-xyz"
@@ -369,14 +413,18 @@ class TestBedrockPAT:
             'timestamp': timestamp_now_iso, # Use ISO string as Pydantic can parse it
             'analysis_type': 'sleep_quality',
             'model_version': 'claude-v1',
-            'confidence_score': 0.92,
+            'confidence_score': 0.88,
             'metrics': {
                 'sleep_duration': 8.5, 
-                'rem_percentage': 22,
-                'total_sleep_time': 8.0,  # Added required metric
-                'sleep_efficiency': 0.85 # Added required metric
+                'sleep_efficiency': 0.85, 
+                'efficiency': 0.85,
+                'duration': 8.5 * 60, 
+                'latency': 20,
+                'rem_percentage': 0.18,
+                'deep_percentage': 0.22
             },
             'insights': ['Good sleep quality detected'], # Changed to List[str]
+            'warnings': ['Slightly high sleep latency.'] # Added warnings
             # Removed raw_results as it's not in the base AnalysisResult model definition
             # raw_results: {'raw': 'data'} 
         }
@@ -393,21 +441,24 @@ class TestBedrockPAT:
             'Timestamp': {'S': timestamp_now_iso},
             'AnalysisType': {'S': 'sleep_quality'},
             'ModelVersion': {'S': 'claude-v1'},
-            'ConfidenceScore': {'N': '0.92'},
+            'ConfidenceScore': {'N': '0.88'},
             'Metrics': {'M': {
                 'sleep_duration': {'N': '8.5'}, 
-                'rem_percentage': {'N': '22'},
-                'total_sleep_time': {'N': '8.0'}, # Added required metric
-                'sleep_efficiency': {'N': '0.85'} # Added required metric
+                'sleep_efficiency': {'N': '0.85'}, 
+                'efficiency': {'N': '0.85'},
+                'duration': {'N': '8.5'},
+                'latency': {'N': '20'},
+                'rem_percentage': {'N': '0.18'},
+                'deep_percentage': {'N': '0.22'}
             }},
-            'Insights': {'L': [{'S': 'Good sleep quality detected'}]} # Changed to List[String]
+            'Insights': {'L': [{'S': 'Good sleep quality detected'}]}, # Changed to List[String]
+            'Warnings': {'L': [{'S': 'Slightly high sleep latency.'}]} # Added warnings
         }
         # Configure get_item mock on the client (might still be needed by internal logic)
         service.dynamodb_client.get_item = AsyncMock(return_value={'Item': mock_analysis_data_dynamodb})
 
         # Configure invoke_model mock for integration summary
         mock_integration_summary = "Integrated sleep patterns show moderate consistency."
-        mock_mental_health_insights = "No significant flags detected."
         mock_bedrock_response = {
             'results': [{'outputText': mock_integration_summary}]
         }
@@ -440,10 +491,10 @@ class TestBedrockPAT:
 # Fixture providing a factory function for BedrockPAT instance
 @pytest.fixture
 @freeze_time("2025-05-01 09:40:00")
-def bedrock_pat_service():
+def bedrock_pat_service() -> BedrockPAT:
     """Fixture providing a factory function to create a BedrockPAT service instance with mocked dependencies."""
 
-    async def create_service(): # Make inner factory async
+    async def create_service() -> BedrockPAT: # Make inner factory async
         """Inner factory function."""
         # Mock AWS service interfaces
         mock_s3 = MagicMock(spec=S3ServiceInterface)
@@ -464,8 +515,17 @@ def bedrock_pat_service():
             "analysis_type": "sleep_quality", # Use a valid enum value
             "model_version": "titan-custom-v1.0", # Provide a valid model version
             "confidence_score": 0.92, # Provide a valid score
-            "metrics": {"sleep_efficiency": 0.88, "total_sleep_time": 450}, # Provide valid metrics
-            "insights": ["Generally good sleep pattern detected.", "Slightly elevated WASO."] # Use List[str]
+            "metrics": {
+                "sleep_efficiency": 0.88, 
+                "total_sleep_time": 450, 
+                "efficiency": 0.88, 
+                "duration": 450,
+                "latency": 15,
+                "rem_percentage": 0.20,
+                "deep_percentage": 0.15
+            },
+            "insights": ["Generally good sleep pattern detected.", "Slightly elevated WASO."], # Use List[str]
+            "warnings": [] # Added warnings
         }
         mock_stream = AsyncMock()
         # Configure read() to return the PARSED DICT directly for this test
