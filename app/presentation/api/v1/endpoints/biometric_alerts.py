@@ -19,7 +19,6 @@ from app.domain.repositories.biometric_alert_rule_repository import BiometricAle
 from app.presentation.api.dependencies import (
     get_rule_repository, 
     get_current_user,
-    get_current_active_user
 )
 from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
@@ -31,8 +30,6 @@ from app.presentation.api.schemas.biometric_alert_schemas import (
 )
 from app.presentation.api.schemas.biometric_alert_rule import (
     BiometricAlertRuleTemplateSchema,
-    ConditionCreateSchema,
-    RuleCreateSchema,
 )
 from app.presentation.api.schemas.common import PaginatedResponseSchema, UserResponseSchema
 
