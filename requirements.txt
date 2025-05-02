@@ -13,7 +13,7 @@ pydantic-settings==2.3.4
 email-validator==2.0.0 # FastAPI-Users requires <2.1
 
 # Multipart parsing (FastAPI-Users strict pin)
-python-multipart==0.0.6
+python-multipart==0.0.9
 
 # Transitive: safety requires this lower bound
 filelock==3.16.1
@@ -36,6 +36,9 @@ loguru==0.7.2
 # API Docs
 # Jinja2 needed by FastAPI for docs templates
 Jinja2==3.1.4
+
+# User management library (transitive but pin for consistency)
+fastapi-users==12.1.3
 
 # Testing
 pytest==8.2.2
