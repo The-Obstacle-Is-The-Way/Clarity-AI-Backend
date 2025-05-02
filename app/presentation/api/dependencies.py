@@ -13,7 +13,10 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config.settings import get_settings, Settings
 from app.core.interfaces.unit_of_work import IUnitOfWork
+from app.core.interfaces.services.authentication_service import IAuthenticationService
+from app.core.interfaces.services.jwt_service import IJwtService
 from app.application.services.digital_twin_service import DigitalTwinService
 from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import SQLAlchemyDigitalTwinRepository
 from app.core.dependencies.database import get_db_session
@@ -66,6 +69,50 @@ def get_digital_twin_service(repository: SQLAlchemyDigitalTwinRepository = Depen
     """
     return DigitalTwinService(repository)
 
+async def get_auth_service_dep(settings: Settings = Depends(get_settings)) -> IAuthenticationService:
+    """
+    Get an authenticated service instance with proper async handling.
+    
+    This dependency ensures that async auth services are properly awaited
+    and made available to FastAPI endpoints. Since we've implemented async
+    interfaces in our security services, this adapter ensures the services
+    are properly instantiated.
+    
+    Args:
+        settings: Application settings
+        
+    Returns:
+        IAuthenticationService instance ready for use
+    """
+    from app.infrastructure.security.auth_service import get_auth_service
+    # Properly await the coroutine
+    auth_service = await get_auth_service(settings)
+    return auth_service
+
+
+async def get_jwt_service_dep(settings: Settings = Depends(get_settings)) -> IJwtService:
+    """
+    Get a JWT service instance with proper async handling.
+    
+    This dependency ensures that async JWT services are properly awaited
+    and made available to FastAPI endpoints. Since we've implemented async
+    interfaces in our security services, this adapter ensures the services
+    are properly instantiated.
+    
+    Args:
+        settings: Application settings
+        
+    Returns:
+        IJwtService instance ready for use
+    """
+    from app.infrastructure.security.jwt_service import get_jwt_service
+    # Properly await the coroutine
+    jwt_service = await get_jwt_service(settings)
+    return jwt_service
+
+
 # Type aliases for common dependencies
 UnitOfWorkDep = Annotated[IUnitOfWork, Depends(get_unit_of_work)]
 DigitalTwinServiceDep = Annotated[DigitalTwinService, Depends(get_digital_twin_service)]
+AuthServiceDep = Annotated[IAuthenticationService, Depends(get_auth_service_dep)]
+JwtServiceDep = Annotated[IJwtService, Depends(get_jwt_service_dep)]
