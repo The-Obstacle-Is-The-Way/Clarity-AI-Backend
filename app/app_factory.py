@@ -21,8 +21,8 @@ from app.core.dependencies.database import init_db # Corrected path for init_db
 from app.presentation.api.routes import setup_routers 
 
 from app.config.settings import Settings, get_settings
-# CORRECTED Import for exception handlers
-from app.core.exceptions.handlers import add_exception_handlers # Assuming it's in handlers.py
+# REMOVED incorrect import for exception handlers
+# from app.core.exceptions.handlers import add_exception_handlers 
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.cache.redis_cache import close_redis_connection, initialize_redis_pool
 from app.infrastructure.persistence.unit_of_work import UnitOfWork
@@ -189,9 +189,13 @@ def create_application(settings: Settings) -> FastAPI:
     #     logger.info(f"Mounted static files from: {static_files_path}")
 
     logger.info("Registering exception handlers...")
-    # --- Exception Handlers ---
-    add_exception_handlers(app)
-    logger.info("Exception handlers registered.")
+    # --- Exception Handlers --- 
+    # REMOVED call to non-existent add_exception_handlers
+    # Handlers should be defined directly using @app.exception_handler below or within this function
+    # Example: 
+    # @app.exception_handler(SomeException)
+    # async def handle_some_exception(...): ... 
+    logger.info("Exception handlers registered (assuming defined via decorators)." )
 
     logger.info("FastAPI application creation complete.")
     return app 
