@@ -621,7 +621,7 @@ events_router = APIRouter(
     # No default dependency - allows anonymous events if needed
 )
 
-@events_router.post("", status_code=status.HTTP_202_ACCEPTED)
+@events_router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 async def record_analytics_event(
     event_data: Dict[str, Any],
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
@@ -674,7 +674,7 @@ async def record_analytics_event(
         }
     )
 
-@events_router.post("/batch", status_code=status.HTTP_202_ACCEPTED)
+@events_router.post("/batch", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 async def record_analytics_batch(
     batch_data: Dict[str, List[Dict[str, Any]]],
     user: Optional[Dict[str, Any]] = Depends(get_current_user),
