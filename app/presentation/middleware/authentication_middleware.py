@@ -8,13 +8,16 @@ It implements HIPAA-compliant logging and authorization checks.
 
 import re
 from collections.abc import Callable
-from typing import List, Optional, Set, Union
+from typing import Any, Optional, Union, list, set
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response, status
 from starlette.authentication import AuthCredentials, UnauthenticatedUser
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import JSONResponse
+import json
+import re
+from typing import Any, Callable, Optional, Union
+import jsonse
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
