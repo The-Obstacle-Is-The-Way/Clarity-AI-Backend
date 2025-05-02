@@ -341,15 +341,14 @@ def mock_xgboost_service_override() -> Callable[[], XGBoostInterface]:
 
 # --- Application Fixture with Overrides ---
 
-@pytest.fixture(scope="function") # Keep function scope
+@pytest.fixture(scope="module") # Change scope to 'module'
 def mock_jwt_service() -> AsyncMock:
-    """Provides a SIMPLIFIED AsyncMock for the JWTService."""
-    mock = AsyncMock() # REMOVED spec
-    # Explicitly mock methods called by middleware/validation logic as AsyncMocks
-    mock.verify_token = AsyncMock(return_value=MagicMock(sub=uuid.uuid4())) # Return a mock object with 'sub'
-    # Add other methods if directly called elsewhere, ensure they are AsyncMock if needed
-    mock.decode_token = AsyncMock(return_value={"sub": str(uuid.uuid4())})
-    mock.create_access_token = AsyncMock(return_value="mock_access_token") 
+    """Provides a mock JWTService for testing."""
+    mock = AsyncMock(spec=JWTService)
+    mock.generate_token = AsyncMock(return_value="mock_jwt_token")
+    mock.verify_token = AsyncMock(return_value={"user_id": "test_user_id"}) # Example payload
+    mock.decode_token = AsyncMock(return_value={"user_id": "test_user_id"}) # Example payload
+    # Add more mocked methods as needed
     return mock
 
 @pytest.fixture(scope="function") # Keep function scope

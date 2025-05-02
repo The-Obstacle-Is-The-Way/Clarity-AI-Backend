@@ -9,11 +9,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI, status
 from httpx import AsyncClient
+import logging
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
@@ -22,6 +22,9 @@ from app.config.settings import get_settings
 from app.core.exceptions import InvalidRequestError, ModelNotFoundError
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.main import create_application
+from app.core.config.settings import Settings 
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+from starlette.middleware import Middleware
 
 # Load settings ONCE for the module
 settings = get_settings()
@@ -255,10 +258,41 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
 
 
 @pytest.fixture(scope="module")
-def test_app(mock_mentallama_service_override) -> FastAPI:
+def test_app(
+    test_settings: Settings,
+    mock_mentallama_service_override, 
+    mock_jwt_service: AsyncMock 
+) -> FastAPI:
     """Create a test application instance with overrides."""
-    app = create_application()
-    # Dependency override is handled by mock_mentallama_service_override fixture
+    app = create_application(settings=test_settings)
+
+    # Replace the AuthenticationMiddleware instance added by the factory
+    # with one that uses our mock_jwt_service directly.
+    auth_middleware_index = -1
+    original_middleware = None
+    for i, middleware in enumerate(app.user_middleware):
+        if isinstance(middleware.cls, type) and issubclass(middleware.cls, AuthenticationMiddleware):
+            auth_middleware_index = i
+            original_middleware = middleware
+            break
+
+    if auth_middleware_index != -1 and original_middleware:
+        # Get original options (like public_paths) to preserve them
+        original_options = original_middleware.options
+        # Create the new Starlette Middleware wrapper instance
+        replacement_middleware = Middleware(
+            AuthenticationMiddleware, # The class to instantiate
+            # Pass mock service and other options directly to the constructor
+            jwt_service=mock_jwt_service, 
+            **original_options 
+        )
+        # Replace the middleware wrapper in the app's list
+        app.user_middleware[auth_middleware_index] = replacement_middleware
+        logging.info("Replaced AuthenticationMiddleware with mock-injected instance.")
+    else:
+        logging.warning("Could not find AuthenticationMiddleware to replace in test_app fixture.")
+
+    # MentaLLaMA override is handled by its fixture
     return app
 
 @pytest_asyncio.fixture(scope="module")
