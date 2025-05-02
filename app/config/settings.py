@@ -95,6 +95,11 @@ class Settings(BaseSettings):
     # API Configuration
     API_V1_STR: str = Field(default="/api/v1", json_schema_extra={"env": "API_V1_STR"})
     API_V2_STR: str = Field(default="/api/v2", json_schema_extra={"env": "API_V2_STR"}) # Placeholder for future API version
+    
+    # Server Configuration
+    SERVER_HOST: str = Field(default="127.0.0.1", json_schema_extra={"env": "SERVER_HOST"})
+    SERVER_PORT: int = Field(default=8000, json_schema_extra={"env": "SERVER_PORT"})
+    UVICORN_WORKERS: int = Field(default=4, json_schema_extra={"env": "UVICORN_WORKERS"}) # Number of worker processes for production
     PROJECT_NAME: str = Field(default="Novamind Digital Twin", json_schema_extra={"env": "PROJECT_NAME"})
     # Environment
     ENVIRONMENT: str = Field(default="development", json_schema_extra={"env": "ENVIRONMENT"})
