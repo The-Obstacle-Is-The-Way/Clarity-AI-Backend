@@ -1,0 +1,53 @@
+fastapi==0.111.1 # Core web framework
+uvicorn[standard]==0.30.1 # ASGI server
+sqlalchemy[asyncio]==2.0.31 # ORM
+aiosqlite==0.20.0 # Async SQLite driver
+psycopg[binary]==3.2.1 # PostgreSQL driver (binary)
+alembic==1.13.2 # Database migrations
+asyncpg==0.29.0 # Alternative async PostgreSQL driver
+greenlet==3.0.3 # Needed by SQLAlchemy async
+
+# Pydantic & Settings
+pydantic==2.8.2
+pydantic-settings==2.3.4
+email-validator==2.2.0 # For email validation in Pydantic
+dotenv-cli==0.0.1 # Simple .env file handling (if used)
+
+# Security
+passlib[bcrypt]==1.7.4 # Password hashing
+python-jose[cryptography]==3.3.0 # JWT handling
+bcrypt==4.1.3
+
+# Cache
+redis[hiredis]==5.0.7 # Redis client with C extension for performance
+
+# DI Container
+dependency-injector
+
+# Observability & Logging
+loguru==0.7.2
+# python-json-logger==2.0.7 # Alternative structured logging
+
+# API Docs
+# Jinja2 needed by FastAPI for docs templates
+Jinja2==3.1.4
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7
+pytest-cov==5.0.0 # Code coverage
+httpx==0.27.0 # Async HTTP client for testing
+mock==5.1.0 # Mocking library (often included with Python >= 3.3 as unittest.mock)
+pytest-mock==3.14.0 # Pytest fixture for mock
+
+# ML/AI (Example - Add specific libraries as needed)
+xgboost==2.1.0 
+scikit-learn==1.5.1
+numpy==1.26.4
+pandas==2.2.2
+
+# Utils
+uuid==1.30
+
+# ADDED: Sentry SDK
+sentry-sdk[fastapi]==2.7.1 
