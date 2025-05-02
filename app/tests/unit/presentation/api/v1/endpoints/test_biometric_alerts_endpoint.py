@@ -318,7 +318,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
 
         # Make async request
-        response = await client.get("/api/v1/alerts/rules", headers=headers)
+        response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -349,7 +349,7 @@ class TestBiometricAlertsEndpoints:
         }
 
         # Assuming mocks are set up via app fixture overrides
-        response = await client.post("/api/v1/alerts/rules/from-template", headers=headers, json=payload)
+        response = await client.post("/api/v1/biometric-alerts/rules/from-template", headers=headers, json=payload)
 
         assert response.status_code == status.HTTP_201_CREATED
         response_data = response.json()
@@ -384,7 +384,7 @@ class TestBiometricAlertsEndpoints:
             "is_active": True
         }
 
-        response = await client.post("/api/v1/alerts/rules/from-condition", headers=headers, json=payload)
+        response = await client.post("/api/v1/biometric-alerts/rules/from-condition", headers=headers, json=payload)
 
         assert response.status_code == status.HTTP_201_CREATED
         response_data = response.json()
@@ -401,7 +401,7 @@ class TestBiometricAlertsEndpoints:
             "name": "Incomplete Rule",
             # Missing patient_id, priority, conditions etc.
         }
-        response = await client.post("/api/v1/alerts/rules/from-condition", headers=headers, json=invalid_payload)
+        response = await client.post("/api/v1/biometric-alerts/rules/from-condition", headers=headers, json=invalid_payload)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     # --- Start Refactoring Remaining Tests ---
@@ -412,7 +412,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_rule_id)
 
-        response = await client.get(f"/api/v1/alerts/rules/{rule_id_str}", headers=headers)
+        response = await client.get(f"/api/v1/biometric-alerts/rules/{rule_id_str}", headers=headers)
 
         # Assuming mock repo returns a valid rule
         assert response.status_code == status.HTTP_200_OK
@@ -426,7 +426,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_rule_id = str(uuid4())
 
-        response = await client.get(f"/api/v1/alerts/rules/{non_existent_rule_id}", headers=headers)
+        response = await client.get(f"/api/v1/biometric-alerts/rules/{non_existent_rule_id}", headers=headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -456,7 +456,7 @@ class TestBiometricAlertsEndpoints:
             "logical_operator": "or" # Use schema enum value
         }
 
-        response = await client.put(f"/api/v1/alerts/rules/{rule_id_str}", headers=headers, json=update_payload)
+        response = await client.put(f"/api/v1/biometric-alerts/rules/{rule_id_str}", headers=headers, json=update_payload)
 
         # Assuming mock repo returns the updated rule
         assert response.status_code == status.HTTP_200_OK
@@ -477,7 +477,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_rule_id)
 
-        response = await client.delete(f"/api/v1/alerts/rules/{rule_id_str}", headers=headers)
+        response = await client.delete(f"/api/v1/biometric-alerts/rules/{rule_id_str}", headers=headers)
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         # Add checks for mock calls (repo delete, processor remove)
@@ -486,7 +486,7 @@ class TestBiometricAlertsEndpoints:
         """Test retrieving available rule templates."""
         # Assuming mock rule engine is overridden in app fixture
         headers = get_valid_provider_auth_headers
-        response = await client.get("/api/v1/alerts/rules/templates", headers=headers)
+        response = await client.get("/api/v1/biometric-alerts/rules/templates", headers=headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -501,7 +501,7 @@ class TestBiometricAlertsEndpoints:
         """Test retrieving biometric alerts."""
         # Assuming mock alert repo is overridden in app fixture
         headers = get_valid_provider_auth_headers
-        response = await client.get("/api/v1/alerts/", headers=headers)
+        response = await client.get("/api/v1/biometric-alerts/", headers=headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -533,7 +533,7 @@ class TestBiometricAlertsEndpoints:
             "page": 2,
             "page_size": 5
         }
-        response = await client.get("/api/v1/alerts/", headers=headers, params=params)
+        response = await client.get("/api/v1/biometric-alerts/", headers=headers, params=params)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -555,7 +555,7 @@ class TestBiometricAlertsEndpoints:
             "resolution_notes": None
         }
 
-        response = await client.patch(f"/api/v1/alerts/{alert_id_str}/status", headers=headers, json=update_payload)
+        response = await client.patch(f"/api/v1/biometric-alerts/{alert_id_str}/status", headers=headers, json=update_payload)
 
         # Assuming mock repo returns the updated alert
         assert response.status_code == status.HTTP_200_OK
@@ -582,7 +582,7 @@ class TestBiometricAlertsEndpoints:
             "resolution_notes": resolution_notes
         }
 
-        response = await client.patch(f"/api/v1/alerts/{alert_id_str}/status", headers=headers, json=update_payload)
+        response = await client.patch(f"/api/v1/biometric-alerts/{alert_id_str}/status", headers=headers, json=update_payload)
 
         # Assuming mock repo returns the updated alert
         assert response.status_code == status.HTTP_200_OK
@@ -601,7 +601,7 @@ class TestBiometricAlertsEndpoints:
         non_existent_alert_id = str(uuid4())
         update_payload = {"status": "acknowledged"}
 
-        response = await client.patch(f"/api/v1/alerts/{non_existent_alert_id}/status", headers=headers, json=update_payload)
+        response = await client.patch(f"/api/v1/biometric-alerts/{non_existent_alert_id}/status", headers=headers, json=update_payload)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         # Add check that mock repo update was not called
@@ -612,7 +612,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         patient_id_str = str(sample_patient_id)
 
-        response = await client.get(f"/api/v1/alerts/summary/patient/{patient_id_str}", headers=headers)
+        response = await client.get(f"/api/v1/biometric-alerts/summary/patient/{patient_id_str}", headers=headers)
 
         # Assuming mock repo returns a valid summary dict
         assert response.status_code == status.HTTP_200_OK
@@ -628,7 +628,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_patient_id = str(uuid4())
 
-        response = await client.get(f"/api/v1/alerts/summary/patient/{non_existent_patient_id}", headers=headers)
+        response = await client.get(f"/api/v1/biometric-alerts/summary/patient/{non_existent_patient_id}", headers=headers)
 
         # Expect 404 based on how endpoint/mock repo handles not found
         assert response.status_code == status.HTTP_404_NOT_FOUND

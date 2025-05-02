@@ -99,6 +99,13 @@ def setup_routers() -> APIRouter:
         tags=["Digital Twins"]
     )
     
+    # Biometric Alerts router
+    main_api_router.include_router(
+        get_router("biometric_alerts"),
+        prefix="/biometric-alerts",
+        tags=["Biometric Alerts"]
+    )
+    
     # Temporal Neurotransmitter router
     main_api_router.include_router(
         get_router("temporal_neurotransmitter"),
@@ -156,16 +163,6 @@ def setup_routers() -> APIRouter:
         )
     except (ModuleNotFoundError, AttributeError):
         print("Analytics router not found or setup incorrectly, skipping.")
-        
-    # Biometric Alerts router
-    try:
-        main_api_router.include_router(
-            get_router("biometric_alerts"),
-            prefix="/alerts",
-            tags=["Biometric Alerts"]
-        )
-    except (ModuleNotFoundError, AttributeError):
-        print("Biometric Alerts router not found or setup incorrectly, skipping.")
         
     # Auth router 
     try:
