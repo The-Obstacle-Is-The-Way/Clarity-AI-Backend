@@ -34,6 +34,7 @@ else:
         max_overflow=settings.DB_MAX_OVERFLOW,
         echo=settings.DATABASE_ECHO,
         future=True,
+        poolclass=StaticPool,
         connect_args=(
             {
                 "ssl": {
