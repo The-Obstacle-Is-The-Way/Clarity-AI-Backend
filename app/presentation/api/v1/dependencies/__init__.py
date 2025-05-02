@@ -26,6 +26,7 @@ from app.domain.repositories.biometric_alert_template_repository import Biometri
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_template_repository import SQLAlchemyBiometricAlertTemplateRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import SQLAlchemyBiometricAlertRepository
+from app.domain.services.biometric_event_processor import BiometricEventProcessor
 
 
 def _lazy_submodule(name: str) -> ModuleType:  # pragma: no cover – helper
@@ -197,6 +198,16 @@ def get_biometric_alert_rule_service():
         return StubBiometricAlertRuleService()
 
 services.get_biometric_alert_rule_service = get_biometric_alert_rule_service  # type: ignore[attr-defined]
+
+
+# Biometric Event Processor service shim (required by biometric_alerts endpoint)
+
+def get_event_processor():
+    """Return an instance of the BiometricEventProcessor service."""
+    # Currently, BiometricEventProcessor has no init dependencies
+    return BiometricEventProcessor()
+
+services.get_event_processor = get_event_processor  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

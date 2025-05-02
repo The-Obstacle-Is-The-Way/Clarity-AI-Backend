@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import status
 from typing import Optional
 from uuid import UUID
@@ -24,7 +24,8 @@ from app.presentation.api.dependencies.auth import get_current_user
 from app.presentation.api.v1.dependencies import (
     get_rule_repository,
     get_template_repository,
-    get_alert_repository
+    get_alert_repository,
+    get_event_processor
 )
 
 from app.presentation.api.v1.schemas.biometric_alert_schemas import (
@@ -36,7 +37,8 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertRuleUpdate,
     AlertRuleTemplateResponse,
 )
-from app.presentation.api.schemas.common import PaginatedResponseSchema, UserResponseSchema
+from app.presentation.api.schemas.common import PaginatedResponseSchema
+from app.presentation.api.schemas.user import UserResponseSchema
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
