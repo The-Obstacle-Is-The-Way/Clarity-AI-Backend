@@ -257,7 +257,7 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
         }
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function") # <<< CHANGE SCOPE TO FUNCTION
 def test_app(
     test_settings: Settings,
     mock_mentallama_service_override, 
@@ -269,33 +269,41 @@ def test_app(
     # Replace the AuthenticationMiddleware instance added by the factory
     # with one that uses our mock_jwt_service directly.
     auth_middleware_index = -1
-    original_middleware = None
     for i, middleware in enumerate(app.user_middleware):
         if isinstance(middleware.cls, type) and issubclass(middleware.cls, AuthenticationMiddleware):
             auth_middleware_index = i
-            original_middleware = middleware
             break
 
-    if auth_middleware_index != -1 and original_middleware:
-        # Get original options (like public_paths) to preserve them
-        original_options = original_middleware.options
+    if auth_middleware_index != -1:
+        # Reconstruct public_paths using test_settings, mirroring app_factory
+        v1_prefix = test_settings.API_V1_STR
+        public_paths = {
+            f"{v1_prefix}/docs",
+            f"{v1_prefix}/openapi.json",
+            f"{v1_prefix}/redoc",
+            f"{v1_prefix}/auth/login",
+            f"{v1_prefix}/auth/register",
+            f"{v1_prefix}/auth/refresh",
+            "/health",
+        }
+
         # Create the new Starlette Middleware wrapper instance
         replacement_middleware = Middleware(
             AuthenticationMiddleware, # The class to instantiate
-            # Pass mock service and other options directly to the constructor
+            # Pass mock service and necessary options directly
             jwt_service=mock_jwt_service, 
-            **original_options 
+            public_paths=public_paths
         )
-        # Replace the middleware wrapper in the app's list
+        # Replace the original middleware wrapper in the app's list
         app.user_middleware[auth_middleware_index] = replacement_middleware
         logging.info("Replaced AuthenticationMiddleware with mock-injected instance.")
     else:
         logging.warning("Could not find AuthenticationMiddleware to replace in test_app fixture.")
 
-    # MentaLLaMA override is handled by its fixture
+    # MentaLLaMA override is handled by the mock_mentallama_service_override fixture via dependencies
     return app
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="function") # <<< CHANGE SCOPE TO FUNCTION
 async def client(test_app: FastAPI):
     """Create an AsyncClient for the application."""
     # Using async_client directly instead of async with context manager
@@ -303,69 +311,6 @@ async def client(test_app: FastAPI):
     yield client
     # Clean up after tests
     await client.aclose()
-
-@pytest.fixture(scope="module") # Use module scope if service is stateless for the module
-def mock_mentallama_service_instance() -> AsyncMock:
-    """Provides a single instance of the mock service for the module."""
-    # Use AsyncMock with the correct interface spec
-    mock_service = AsyncMock(spec=MentaLLaMAInterface)
-    
-    # --- Setup Mock Return Values for Methods Used in Tests ---
-    # Example: Mock the 'process' method (adjust based on actual test needs)
-    mock_process_result = {
-        "model": "mock-mentallama",
-        "model_version": "1.0.0",
-        "text_length": 100,
-        "word_count": 20,
-        "processed_at": datetime.now(timezone.utc).isoformat(),
-        "sentiment": {"score": 0.5, "label": "positive"},
-        "language_stats": {"avg_word_length": 5.0, "sentence_count": 2},
-        "options_used": {}
-    }
-    mock_service.process = AsyncMock(return_value=mock_process_result)
-    
-    # Example: Mock 'analyze_sentiment'
-    mock_sentiment_result = {"sentiment": {"score": 0.6, "label": "positive"}}
-    mock_service.analyze_sentiment = AsyncMock(return_value=mock_sentiment_result)
-    
-    # Example: Mock 'assess_risk'
-    mock_risk_result = {"risk_level": "low", "confidence": 0.9}
-    mock_service.assess_risk = AsyncMock(return_value=mock_risk_result)
-
-    # Example: Mock 'detect_depression'
-    mock_depression_result = {"detected": False, "score": 0.1}
-    mock_service.detect_depression = AsyncMock(return_value=mock_depression_result)
-    
-    # Example: Mock 'analyze_wellness_dimensions'
-    mock_wellness_result = {"dimensions": {"emotional": 0.7, "social": 0.6}}
-    mock_service.analyze_wellness_dimensions = AsyncMock(return_value=mock_wellness_result)
-    
-    # Mock 'is_healthy' to return True
-    mock_service.is_healthy = MagicMock(return_value=True) # is_healthy might be synchronous
-
-    # --- End Mock Return Values ---
-    
-    return mock_service # Return the configured AsyncMock
-
-# Fixture to apply the override
-@pytest.fixture(scope="module", autouse=True) # Autouse applies it to all tests in the module
-def mock_mentallama_service_override(mock_mentallama_service_instance):
-    """Overrides the real MentaLLaMA service with the mock instance."""
-    # Need to patch the actual dependency function used by the endpoint
-    # Assuming it's something like 'app.presentation.api.v1.dependencies.get_mentallama_service'
-    # This path needs to be verified.
-    dependency_path = "app.presentation.api.v1.dependencies.ml.get_mentallama_service" # Example path - VERIFY THIS
-    
-    # Define the override function
-    def override_dependency():
-        return mock_mentallama_service_instance
-
-    # Use patch context manager for robust override
-    with patch(dependency_path, return_value=override_dependency) as mock_dependency:
-        # Yield control to allow tests to run with the patch active
-        yield mock_dependency 
-        # Patch is automatically removed when the context exits
-
 
 @pytest.fixture
 def mock_auth():

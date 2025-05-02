@@ -341,13 +341,17 @@ def mock_xgboost_service_override() -> Callable[[], XGBoostInterface]:
 
 # --- Application Fixture with Overrides ---
 
-@pytest.fixture(scope="module") # Change scope to 'module'
+@pytest.fixture(scope="function") # Change scope to 'function'
 def mock_jwt_service() -> AsyncMock:
     """Provides a mock JWTService for testing."""
     mock = AsyncMock(spec=JWTService)
     mock.generate_token = AsyncMock(return_value="mock_jwt_token")
-    mock.verify_token = AsyncMock(return_value={"user_id": "test_user_id"}) # Example payload
-    mock.decode_token = AsyncMock(return_value={"user_id": "test_user_id"}) # Example payload
+    mock.verify_token = AsyncMock(return_value={"user_id": "test_user_id", "sub": "test_user_subject"}) # Ensure 'sub' is present
+    mock.decode_token = AsyncMock(return_value={"user_id": "test_user_id", "sub": "test_user_subject"})
+    # Add mocks for required abstract methods
+    mock.get_token_payload_subject = AsyncMock(return_value="test_user_subject")
+    mock.get_user_from_token = AsyncMock(return_value=MagicMock()) # Return a generic mock user
+    mock.verify_refresh_token = AsyncMock(return_value=True) # Assume refresh token is valid
     # Add more mocked methods as needed
     return mock
 
