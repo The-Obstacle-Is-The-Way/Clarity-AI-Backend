@@ -11,7 +11,7 @@ import sys
 import uuid
 from collections.abc import AsyncGenerator, Callable
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 import pytest
@@ -65,7 +65,6 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
     SQLAlchemyUserRepository as UserRepository,
 )
 from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.main import app as main_app  # Renamed to avoid conflict with app fixture
 from app.presentation.api.v1.dependencies import (  # Import from v1 dependencies
     get_pat_service,  # Add this import
 )
@@ -76,6 +75,18 @@ from app.presentation.dependencies.auth import (
 )
 from app.tests.unit.mocks import *
 
+# ADDED: Import the interface for mock spec
+from app.core.interfaces.services.authentication_service import IAuthenticationService 
+
+# ADDED: Import the infrastructure service getters to override
+from app.infrastructure.security.auth_service import get_auth_service as get_auth_service_infra
+from app.infrastructure.security.jwt_service import get_jwt_service as get_jwt_service_infra
+
+# ADDED: Import middleware for patching - REMOVED as patch is removed
+# from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware # Ensure middleware is imported
+from app.presentation.middleware.rate_limiting_middleware import RateLimitingMiddleware # Import other essential middleware
+from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter
 
 @pytest.fixture
 def auth_headers():
@@ -312,57 +323,91 @@ def mock_auth_service(test_patient: User) -> AsyncMock: # Depend on test_patient
     mock.create_refresh_token = AsyncMock(return_value="mock_refresh_token")
     mock.decode_token = AsyncMock(return_value={"sub": "mock_user_id"})
     mock.get_user_from_token = AsyncMock(return_value=test_patient)
+    mock.get_user_by_id = AsyncMock(return_value=test_patient) # Ensure this method is async mock
+    
+    # ADDED: Define an async side_effect function
+    async def _get_user_by_id_side_effect(user_id):
+        # Basic logic for testing, can be expanded
+        if str(user_id) == str(test_patient.id):
+            return test_patient
+        # Can add logic here to return different users or raise exceptions for tests
+        # from app.domain.exceptions.auth_exceptions import UserNotFoundException
+        # raise UserNotFoundException(\"Mock user not found\")
+        return test_patient # Default return
+
+    mock.get_user_by_id.side_effect = _get_user_by_id_side_effect # Assign the async side effect
+
     return mock
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function") # CHANGED scope back to function for app fixture
 def initialized_app(
     test_settings: Settings, # Use the primary test settings
     test_engine: "AsyncEngine",
-    mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], # Ensure correct type hinting
-    mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
-    mock_pat_service_override: Callable[[], PATService], # Use corrected PATService type
-    mock_xgboost_service_override: Callable[[], XGBoostInterface],
-    test_settings_for_token_gen: Settings, # Inject settings specifically for JWT
-) -> FastAPI:
-    """Initialize FastAPI app with test settings and overrides."""
-    logger.info(
-        "Initializing FastAPI app for testing with overrides including JWTService."
+    mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], 
+    mock_user_repository_override: Callable[[], IUserRepository], 
+    mock_pat_service_override: Callable[[], PATService], 
+    mock_jwt_service: AsyncMock,  # Use function-scoped mock
+    mock_auth_service: AsyncMock, # Use function-scoped mock
+) -> Generator[FastAPI, None, None]:
+    """
+    Creates a FastAPI application instance for testing, explicitly adding 
+    AuthenticationMiddleware with injected mock services.
+    Replicates essential parts of create_application from main.py.
+    """
+    logger.info(">>> Creating initialized_app fixture with explicit middleware injection...")
+
+    # --- Replicate Core App Creation --- 
+    test_app = FastAPI(
+        title=test_settings.PROJECT_NAME,
+        openapi_url=f"/openapi.json",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        version=test_settings.VERSION
     )
-    # Ensure test environment variable is set if needed elsewhere
-    os.environ['TESTING'] = '1'
     
-    # Instantiate the app first
-    app = main_app # Instantiate the app
+    # --- Apply Essential Middleware with Mock Injection --- 
+    # Add CORS middleware (example, adjust based on main.py)
+    # test_app.add_middleware(...) 
 
-    # Use primary test settings for the main application instance
-    app.dependency_overrides[get_settings] = lambda: test_settings
+    # Add Rate Limiting (example, adjust based on main.py)
+    # Assuming rate limiter uses cache, potentially needs mock cache override too
+    # mock_cache = AsyncMock(spec=RedisCache) # Example mock cache
+    # test_app.dependency_overrides[get_cache_service] = lambda: mock_cache
+    # rate_limiter = create_rate_limiter(settings=test_settings, cache_service=mock_cache)
+    # test_app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter)
 
-    # Apply database session override
-    app.dependency_overrides[get_db_session] = mock_db_session_override
-    
-    # Apply mock repository/service overrides using the provided fixtures
-    app.dependency_overrides[get_user_repository] = mock_user_repository_override
-    app.dependency_overrides[get_pat_service] = mock_pat_service_override
-    app.dependency_overrides[get_xgboost_service] = mock_xgboost_service_override
-
-    # --- Correctly instantiate and override JWTService for validation ---
-    # Create the JWTService instance for validation, ensuring it uses:
-    # 1. The same settings used for token creation (test_settings_for_token_gen)
-    # 2. The mock user repository provided by the override fixture
-    validation_jwt_service = JWTService(
-        settings=test_settings_for_token_gen,
-        user_repository=mock_user_repository_override() # Execute the callable to get the mock repo
+    # ** CRITICAL STEP: Add Auth Middleware with INJECTED MOCKS **
+    test_app.add_middleware(
+        AuthenticationMiddleware,
+        auth_service=mock_auth_service,  # Inject the function-scoped mock
+        jwt_service=mock_jwt_service     # Inject the function-scoped mock
     )
-    # Add logging inside the lambda to confirm which service is provided
-    def get_validation_service_override():
-        repo_status = "present" if validation_jwt_service.user_repository else "None"
-        logger.info(f"Providing overridden JWTService for validation. User Repo: {repo_status}")
-        return validation_jwt_service
-        
-    app.dependency_overrides[get_jwt_service] = get_validation_service_override
-    # -------------------------------------------------------------------
+    logger.info("Added AuthenticationMiddleware with INJECTED mock services.")
+
+    # Add other middleware from create_application if essential for these tests...
+    # e.g., test_app.add_middleware(SecurityHeadersMiddleware)
+
+    # --- Apply Dependency Overrides --- 
+    test_app.dependency_overrides[get_session] = mock_db_session_override
+    test_app.dependency_overrides[get_pat_service] = mock_pat_service_override
+    test_app.dependency_overrides[get_settings] = lambda: test_settings
+    # Override the user repo provider used by endpoints/services if needed
+    # from app.presentation.api.dependencies.user_repository import get_user_repository_provider
+    # test_app.dependency_overrides[get_user_repository_provider] = mock_user_repository_override
     
-    return app
+    # --- Include Routers (If necessary for endpoint tests) --- 
+    # Example: Include the analytics router if endpoints are defined there
+    # from app.presentation.api.v1.routers.analytics import router as analytics_router
+    # test_app.include_router(analytics_router, prefix=f"/api/{API_VERSION}/analytics", tags=["Analytics"]) 
+
+    # Include other routers needed by the tests...
+
+    logger.info("<<< Finished creating initialized_app fixture.")
+    yield test_app # Yield the configured app instance for testing
+
+    # Clean up overrides after tests are done
+    test_app.dependency_overrides = {}
+    logger.info("--- Cleaned up initialized_app fixture ---")
 
 # --- Async Client Fixture --- 
 
@@ -459,18 +504,24 @@ def test_patient():
         Patient: A properly structured Patient domain entity
     """
     from app.domain.entities.patient import Patient
-    from app.domain.value_objects.contact_info import ContactInfo
-    from app.domain.value_objects.name import Name
+    # Removed ContactInfo and Name imports as they are not directly needed for init
+    # from app.domain.value_objects.contact_info import ContactInfo 
+    # from app.domain.value_objects.name import Name
     
     # Generate a unique patient ID
-    patient_id = str(uuid.uuid4())
+    patient_id = uuid.uuid4() # Use UUID object directly
     
-    # Create using proper value objects for Name and ContactInfo
-    # Respecting the structure without direct attributes and avoiding extra_data
+    # Initialize using direct fields expected by the dataclass __init__
     patient = Patient(
         id=patient_id,
-        name=Name(first_name="Test", last_name="Patient"),
-        contact_info=ContactInfo(email="test@example.com", phone="555-123-4567"),
+        # Provide name components directly if preferred, or just 'name'
+        # name=Name(first_name="Test", last_name="Patient"), # Keep if Name is still used internally 
+        first_name="Test", # Or provide components
+        last_name="Patient",
+        # REMOVED: contact_info=ContactInfo(email="test@example.com", phone="555-123-4567"),
+        # ADDED: Provide email and phone directly
+        email="test@example.com", 
+        phone="555-123-4567",
         date_of_birth="1980-01-01",  # Using String for date to avoid SQLite binding issues
         medical_record_number="MRN-TEST-12345",
         created_by=None  # Set to None to bypass foreign key constraint

@@ -8,11 +8,12 @@ and process in a HIPAA-compliant manner.
 
 import json
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 import pytest
 from fastapi import BackgroundTasks, status
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 # Correctly import router and endpoint functions/models we need to test or mock
 # Avoid importing the dependency provider (get_analytics_service) itself if possible
@@ -45,6 +46,9 @@ except ImportError:
 # Import the use cases to be mocked
 from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
 from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+
+# Import the middleware class for patching
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 
 # --- Test Fixtures ---
 
@@ -105,7 +109,10 @@ class TestAnalyticsEndpoints:
         mock_process_event_use_case: MagicMock,
         mock_background_tasks: MagicMock, 
         mock_user: MagicMock,
-        auth_headers: dict
+        mock_jwt_service: AsyncMock,
+        mock_auth_service: AsyncMock,
+        auth_headers: dict,
+        mocker, # Inject pytest-mock fixture
     ):
         """Test the record_analytics_event endpoint."""
         event_data = {
@@ -116,7 +123,7 @@ class TestAnalyticsEndpoints:
             "data": {"page": "/dashboard", "referrer": "/login"}
         }
 
-        # Patch BackgroundTasks where it's used in the endpoint function
+        mock_process_event_use_case.reset_mock() # Use the correct mock use case name
         with patch('app.presentation.api.v1.endpoints.analytics_endpoints.BackgroundTasks', return_value=mock_background_tasks):
              # Mock PHI detection within the scope of this test if needed
              with patch('app.infrastructure.ml.phi_detection.PHIDetectionService') as mock_phi_detector:
@@ -150,7 +157,10 @@ class TestAnalyticsEndpoints:
         mock_batch_process_use_case: MagicMock,
         mock_background_tasks: MagicMock, 
         mock_user: MagicMock,
-        auth_headers: dict
+        mock_jwt_service: AsyncMock,
+        mock_auth_service: AsyncMock,
+        auth_headers: dict,
+        mocker, # Inject pytest-mock fixture
     ):
         """Test the record_analytics_batch endpoint."""
         batch_data = {
@@ -172,6 +182,7 @@ class TestAnalyticsEndpoints:
             ]
         }
 
+        mock_batch_process_use_case.reset_mock()
         with patch('app.presentation.api.v1.endpoints.analytics_endpoints.BackgroundTasks', return_value=mock_background_tasks):
              # Mock PHI detection within the scope of this test if needed
              with patch('app.infrastructure.ml.phi_detection.PHIDetectionService') as mock_phi_detector:
@@ -203,9 +214,13 @@ class TestAnalyticsEndpoints:
         mock_process_event_use_case: MagicMock,
         mock_background_tasks: MagicMock,
         mock_user: MagicMock,
-        auth_headers: dict
+        mock_jwt_service: AsyncMock,
+        mock_auth_service: AsyncMock,
+        auth_headers: dict,
+        mocker: Mock # Use correct type hint for mocker if needed
     ):
         """Test PHI detection and redaction in analytics events."""
+        # CORRECT INDENTATION STARTS HERE
         event_data_with_phi = {
             "event_type": "form_submit",
             "timestamp": datetime.now(UTC).isoformat(),

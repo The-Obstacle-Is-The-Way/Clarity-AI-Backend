@@ -148,16 +148,25 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return False
 
     async def _ensure_services_initialized(self):
-        """Lazy-load service getters if needed, but don't await here."""
-        if not self._auth_service_instance:
-            auth_service_getter = self._auth_service or get_auth_service
-            # Assign the awaitable, don't await it yet
-            self._auth_service_instance = auth_service_getter()
+        """Original lazy-load logic using fallbacks."""
+        # Simplified logic - always use fallback getters if instances not set
+        if self._auth_service_instance is None:
+            auth_service_getter = get_auth_service # Use default getter
+            auth_service_result = auth_service_getter()
+            if asyncio.iscoroutine(auth_service_result) or asyncio.iscoroutinefunction(auth_service_getter):
+                self._auth_service_instance: IAuthenticationService = await auth_service_result
+            else:
+                self._auth_service_instance: IAuthenticationService = auth_service_result
+            logger.debug(f"Auth service instance set via fallback: {type(self._auth_service_instance)}")
 
-        if not self._jwt_service_instance:
-            jwt_service_getter = self._jwt_service or get_jwt_service
-            # Assign the awaitable, don't await it yet
-            self._jwt_service_instance = jwt_service_getter()
+        if self._jwt_service_instance is None:
+            jwt_service_getter = get_jwt_service # Use default getter
+            jwt_service_result = jwt_service_getter()
+            if asyncio.iscoroutine(jwt_service_result) or asyncio.iscoroutinefunction(jwt_service_getter):
+                 self._jwt_service_instance: IJwtService = await jwt_service_result
+            else:
+                self._jwt_service_instance: IJwtService = jwt_service_result
+            logger.debug(f"JWT service instance set via fallback: {type(self._jwt_service_instance)}")
 
     def _extract_token(self, request: Request) -> Optional[str]:
         """
@@ -202,12 +211,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             AuthenticationError: For other authentication-related errors.
         """
         try:
-            # ADDED: await the service instances before calling methods
-            jwt_service = await self._jwt_service_instance
-            auth_service = await self._auth_service_instance
-            
-            token_payload = await jwt_service.verify_token(token)
-            user = await auth_service.get_user_by_id(token_payload.sub)
+            # Reverted: Remove explicit await here, rely on _ensure_services_initialized
+            token_payload = await self._jwt_service_instance.verify_token(token)
+            user = await self._auth_service_instance.get_user_by_id(token_payload.sub)
 
             if not user:
                 logger.warning(f"User not found for ID: {token_payload.sub}")
