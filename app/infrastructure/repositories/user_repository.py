@@ -198,6 +198,29 @@ class SqlAlchemyUserRepository(UserRepository):
         
         return [self._model_to_entity(model) for model in user_models]
     
+    async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+        """Alias for list_users to satisfy abstract interface naming."""
+        return await self.list_users(skip=skip, limit=limit)
+
+    async def count(self) -> int:
+        """Return total number of users in the repository."""
+        result = await self.session.execute(sa.select(sa.func.count()).select_from(UserModel))
+        return int(result.scalar() or 0)
+
+    async def exists(self, user_id: UUID) -> bool:
+        """Check whether a user with the given ID exists."""
+        result = await self.session.execute(
+            sa.select(sa.exists().where(UserModel.id == user_id))
+        )
+        return bool(result.scalar())
+
+    async def exists_by_email(self, email: str) -> bool:
+        """Check whether a user with the given email exists."""
+        result = await self.session.execute(
+            sa.select(sa.exists().where(UserModel.email == email))
+        )
+        return bool(result.scalar())
+    
     async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[User]:
         """
         Get users by role.
