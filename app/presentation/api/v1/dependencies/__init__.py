@@ -24,6 +24,8 @@ from app.domain.repositories.biometric_alert_rule_repository import BiometricAle
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricAlertRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_template_repository import SQLAlchemyBiometricAlertTemplateRepository
+from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import SQLAlchemyBiometricAlertRepository
 
 
 def _lazy_submodule(name: str) -> ModuleType:  # pragma: no cover – helper
@@ -253,3 +255,19 @@ def get_template_repository(db: Session = Depends(get_db_session)) -> BiometricA
     return SQLAlchemyBiometricAlertTemplateRepository(db)
 
 repositories.get_template_repository = get_template_repository # type: ignore[attr-defined]
+
+# --- Biometric Alert Repository ---
+
+def get_alert_repository(db: Session = Depends(get_db_session)) -> BiometricAlertRepository:
+    """
+    Dependency for getting the biometric alert repository.
+
+    Args:
+        db: Database session
+
+    Returns:
+        BiometricAlertRepository instance
+    """
+    return SQLAlchemyBiometricAlertRepository(db)
+
+repositories.get_alert_repository = get_alert_repository # type: ignore[attr-defined]

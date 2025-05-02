@@ -18,13 +18,16 @@ from app.domain.repositories.biometric_alert_rule_repository import BiometricAle
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
+# Import general dependencies
+from app.presentation.api.dependencies.auth import get_current_user
+# Import v1-specific dependencies
 from app.presentation.api.v1.dependencies import (
-    get_rule_repository, 
-    get_current_user,
+    get_rule_repository,
     get_template_repository,
     get_alert_repository
 )
-from app.presentation.api.schemas.biometric_alert_schemas import (
+
+from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
     BiometricAlertResponse,
     BiometricAlertListResponse,
@@ -32,10 +35,13 @@ from app.presentation.api.schemas.biometric_alert_schemas import (
     AlertRuleResponse,
     AlertRuleUpdate,
 )
-from app.presentation.api.schemas.biometric_alert_rule import (
+from app.presentation.api.v1.schemas.biometric_alert_rule import (
     BiometricAlertRuleTemplateSchema,
+    BiometricAlertRuleCreate,
+    BiometricAlertRuleUpdate,
+    BiometricAlertRuleDB
 )
-from app.presentation.api.schemas.common import PaginatedResponseSchema, UserResponseSchema
+from app.presentation.api.v1.schemas.common import PaginatedResponseSchema, UserResponseSchema
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
