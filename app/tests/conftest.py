@@ -40,7 +40,7 @@ from pydantic import SecretStr, Field
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.presentation.api.dependencies.auth import get_authentication_service
+from app.presentation.api.dependencies.auth import get_jwt_service, get_authentication_service
 # Import the canonical Base from the correct location
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.core.services.ml.xgboost.interface import XGBoostInterface, ModelType
@@ -185,25 +185,26 @@ def get_mock_user_repository() -> IUserRepository:
     mock_repo = AsyncMock(spec=UserRepository)
     async def mock_get_by_id(user_id: uuid.UUID) -> Optional[MagicMock]:
         # Return a mock user based on common test IDs used in token generation
-        user_id_str = str(user_id)
         mock_user = MagicMock(spec=User) # Using User domain entity spec
         mock_user.id = user_id
         mock_user.is_active = True
         mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
 
-        if user_id_str == "test-integration-user": # From get_valid_auth_headers token 'sub'
+        # --- Use defined constant UUIDs for comparison ---
+        if user_id == TEST_INTEGRATION_USER_ID: 
              mock_user.username = "testuser"
              mock_user.email = "test@example.com"
              mock_user.roles = [Role.PATIENT] # Use Role enum
-             logger.debug(f"MockUserRepository: Found user {user_id_str}")
+             logger.debug(f"MockUserRepository: Found user {user_id}")
              return mock_user
-        elif user_id_str == "test-provider-user": # From get_valid_provider_auth_headers token 'sub'
+        elif user_id == TEST_PROVIDER_USER_ID: 
              mock_user.username = "testprovider"
              mock_user.email = "provider@example.com"
              mock_user.roles = [Role.PROVIDER, Role.CLINICIAN] # Use Role enum
-             logger.debug(f"MockUserRepository: Found user {user_id_str}")
+             logger.debug(f"MockUserRepository: Found user {user_id}")
              return mock_user
-        logger.warning(f"MockUserRepository: User ID {user_id_str} not found in mock setup.")
+        # ---------------------------------------------------
+        logger.warning(f"MockUserRepository: User ID {user_id} not found in mock setup.")
         return None # Simulate user not found for unexpected IDs
 
     mock_repo.get_by_id = mock_get_by_id
@@ -211,16 +212,20 @@ def get_mock_user_repository() -> IUserRepository:
     async def mock_get_by_username(username: str) -> Optional[MagicMock]:
          if username == "testuser":
              mock_user = MagicMock(spec=User)
-             mock_user.id = uuid.UUID("test-integration-user") # Use consistent ID
+             # --- Use defined constant UUID --- 
+             mock_user.id = TEST_INTEGRATION_USER_ID 
+             # -----------------------------------
              mock_user.username = username
              mock_user.is_active = True
              mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
              mock_user.roles = [Role.PATIENT]
              logger.debug(f"MockUserRepository: Found user by username {username}")
              return mock_user
-         elif username == "test_provider": # Match username used in test_auth_endpoints
+         elif username == "testprovider": # Match username used in test_auth_endpoints and mock_get_by_id
              mock_user = MagicMock(spec=User)
-             mock_user.id = uuid.UUID("test-provider-user") # Use consistent ID
+             # --- Use defined constant UUID --- 
+             mock_user.id = TEST_PROVIDER_USER_ID 
+             # -----------------------------------
              mock_user.username = username
              mock_user.is_active = True
              mock_user.hashed_password = "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC" # Example hash for 'password'
@@ -237,42 +242,45 @@ def get_mock_user_repository() -> IUserRepository:
 
 # --- Application Fixture with Overrides ---
 
-@pytest.fixture(scope="function") # Changed to function scope
+@pytest.fixture(scope="session")
 def initialized_app(
-    mock_xgboost_service: XGBoostInterface,
-    test_db_session: AsyncSession,
-    test_settings_for_token_gen: Settings,
+    test_settings: Settings, # Use the primary test settings
+    test_engine: AsyncEngine,
+    mock_db_session_override: Callable[[], AsyncSession],
+    mock_user_repository_override: Callable[[], IUserRepository], # Inject the provider for mock repo
+    mock_pat_service_override: Callable[[], IPatientAssignmentService],
+    mock_xgboost_service_override: Callable[[], IXGBoostService],
+    test_settings_for_token_gen: Settings, # Inject settings specifically for JWT
 ) -> FastAPI:
-    """Creates a FastAPI app instance for testing with overridden dependencies."""
+    """Initialize FastAPI app with test settings and overrides."""
+    logger.info(
+        "Initializing FastAPI app for testing with overrides including JWTService."
+    )
+    # Ensure test environment variable is set if needed elsewhere
+    os.environ['TESTING'] = '1'
     
-    # Instantiate mock repository once for this app instance
-    mock_user_repo_instance = get_mock_user_repository()
-    
-    # Define dependency overrides for the test session
-    dependency_overrides = {
-        # Override database session with the test_db_session fixture
-        get_db_session: lambda: test_db_session,
-        get_core_db_session: lambda: test_db_session,
-        
-        # Override Authentication Service dependencies
-        # Provide the *same instance* of the mock user repository
-        UserRepository: lambda: mock_user_repo_instance, 
-        IUserRepository: lambda: mock_user_repo_instance, # Override interface as well
+    # Use primary test settings for the main application instance
+    app.dependency_overrides[get_settings] = lambda: test_settings
 
-        # Override JWTService with test settings and mock repository
-        JWTService: lambda: JWTService(settings=test_settings_for_token_gen, user_repository=mock_user_repo_instance),
-        
-        # Override XGBoost ML service with a mock
-        XGBoostInterface: lambda: mock_xgboost_service,
-        
-        # Mock Rate Limiter if necessary
-        get_rate_limiter: lambda: MagicMock(),
-    }
+    # Apply database session override
+    app.dependency_overrides[get_db_session] = mock_db_session_override
     
-    # Create the application instance with overrides
-    app = create_application(dependency_overrides=dependency_overrides)
+    # Apply mock repository/service overrides using the provided fixtures
+    app.dependency_overrides[get_user_repository] = mock_user_repository_override
+    app.dependency_overrides[get_pat_service] = mock_pat_service_override
+    app.dependency_overrides[get_xgboost_service] = mock_xgboost_service_override
+
+    # --- Correctly instantiate and override JWTService for validation ---
+    # Create the JWTService instance for validation, ensuring it uses:
+    # 1. The same settings used for token creation (test_settings_for_token_gen)
+    # 2. The mock user repository provided by the override fixture
+    validation_jwt_service = JWTService(
+        settings=test_settings_for_token_gen,
+        user_repository=mock_user_repository_override() # Execute the callable to get the mock repo
+    )
+    app.dependency_overrides[get_jwt_service] = lambda: validation_jwt_service
+    # -------------------------------------------------------------------
     
-    logger.info("Initialized FastAPI app for testing with overrides including JWTService.")
     return app
 
 # --- Async Client Fixture --- 
@@ -323,14 +331,18 @@ def test_jwt_service(test_settings_for_token_gen: Settings) -> JWTService:
 @pytest_asyncio.fixture(scope="function") # Function scope for fresh tokens
 async def get_valid_auth_headers(test_jwt_service: JWTService) -> Dict[str, str]:
     """Generates valid authentication headers with a fresh token for integration tests."""
-    user_data = {"sub": "test-integration-user", "roles": ["patient"]} # Example user
+    # --- Use string representation of defined constant UUID --- 
+    user_data = {"sub": str(TEST_INTEGRATION_USER_ID), "roles": ["patient"]}
+    # ----------------------------------------------------------
     token = await test_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {token}"}
 
 @pytest_asyncio.fixture(scope="function")
 async def get_valid_provider_auth_headers(test_jwt_service: JWTService) -> Dict[str, str]:
     """Generates valid authentication headers for a provider role."""
-    user_data = {"sub": "test-provider-user", "roles": ["provider", "clinician"]}
+    # --- Use string representation of defined constant UUID --- 
+    user_data = {"sub": str(TEST_PROVIDER_USER_ID), "roles": ["provider", "clinician"]}
+    # ----------------------------------------------------------
     token = await test_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {token}"}
 
@@ -959,3 +971,8 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
     #     await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
+
+# Define consistent UUIDs for test users
+TEST_INTEGRATION_USER_ID = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+TEST_PROVIDER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001") # Example provider UUID
+_TEST_SECRET_KEY_FOR_FIXTURES = "super-secret-key-for-testing-fixtures-only"
