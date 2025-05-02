@@ -35,7 +35,7 @@ from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertRuleResponse,
     AlertRuleUpdate,
 )
-from app.presentation.api.v1.schemas.biometric_alert_rule import (
+from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     BiometricAlertRuleTemplateSchema,
     BiometricAlertRuleCreate,
     BiometricAlertRuleUpdate,
