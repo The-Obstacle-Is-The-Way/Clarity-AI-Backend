@@ -1,12 +1,16 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, TypeVar
-from unittest.mock import AsyncMock
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI, status
+from fastapi import FastAPI, HTTPException, status
+from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
+from app.domain.entities.biometric_alert import BiometricAlert, BiometricAlertCreate, BiometricAlertUpdate
+from app.domain.entities.biometric_alert_rule import BiometricAlertRule
+from app.domain.entities.biometric_alert_template import BiometricAlertTemplate
 from app.domain.entities.user import User
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
@@ -20,16 +24,23 @@ from app.presentation.api.v1.dependencies import (
     get_rule_repository,
     get_template_repository,
 )
+from app.presentation.api.v1.endpoints.biometric_alerts import router
 
+# Attempt to import infrastructure implementations for more realistic mocking specs
+# Fallback to basic AsyncMock if infrastructure layer is not available
 try:
-    from app.infrastructure.repositories.biometric_alert_repository \
-        import BiometricAlertRepository as InfraAlertRepo
-    from app.infrastructure.repositories.biometric_alert_rule_repository \
-        import BiometricAlertRuleRepository as InfraRuleRepo
-    from app.infrastructure.repositories.biometric_alert_template_repository \
-        import BiometricAlertTemplateRepository as InfraTemplateRepo
-    from app.infrastructure.services.biometric_event_processor \
-        import BiometricEventProcessor as InfraEventProcessor
+    from app.infrastructure.repositories.biometric_alert_repository import (
+        BiometricAlertRepository as InfraAlertRepo,
+    )
+    from app.infrastructure.repositories.biometric_alert_rule_repository import (
+        BiometricAlertRuleRepository as InfraRuleRepo,
+    )
+    from app.infrastructure.repositories.biometric_alert_template_repository import (
+        BiometricAlertTemplateRepository as InfraTemplateRepo,
+    )
+    from app.infrastructure.services.biometric_event_processor import (
+        BiometricEventProcessor as InfraEventProcessor,
+    )
 except ImportError:
     InfraAlertRepo = AsyncMock(spec=BiometricAlertRepository)
     InfraRuleRepo = AsyncMock(spec=BiometricAlertRuleRepository)
@@ -55,7 +66,7 @@ def mock_clinical_rule_engine() -> AsyncMock:
     engine.register_custom_condition = AsyncMock()
 
     mock_rule_template_output = {
-        "rule_id": uuid4(),
+        "rule_id": uuid.uuid4(),
         "name": "High Heart Rate Mock Rule",
         "description": "Mock rule from template",
         "priority": "warning",
@@ -73,8 +84,8 @@ def mock_clinical_rule_engine() -> AsyncMock:
     }
 
     async def create_rule_side_effect(
-        template_id: UUID,
-        patient_id: UUID,
+        template_id: uuid.UUID,
+        patient_id: uuid.UUID,
         customization: dict[str, Any]
     ) -> dict[str, Any]:
         output = mock_rule_template_output.copy()
@@ -130,7 +141,7 @@ def mock_template_repository() -> AsyncMock:
 
 @pytest.fixture
 def mock_current_user() -> User:
-    test_user_id = UUID("123e4567-e89b-12d3-a456-426614174000")
+    test_user_id = uuid.UUID("123e4567-e89b-12d3-a456-426614174000")
     mock_user = User(
         id=test_user_id,
         role="admin",
@@ -159,8 +170,8 @@ def test_app(
     app.dependency_overrides = {}
 
 @pytest.fixture
-def sample_patient_id() -> UUID:
-    return UUID("abcdef12-e89b-12d3-a456-426614174abc")
+def sample_patient_id() -> uuid.UUID:
+    return uuid.UUID("abcdef12-e89b-12d3-a456-426614174abc")
 
 @pytest.fixture
 def get_valid_provider_auth_headers() -> dict[str, str]:
@@ -184,7 +195,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID,
+        sample_patient_id: uuid.UUID,
     ) -> None:
         headers = get_valid_provider_auth_headers
         payload = {
@@ -210,7 +221,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID,
+        sample_patient_id: uuid.UUID,
     ) -> None:
         headers = get_valid_provider_auth_headers
         payload = {
@@ -246,7 +257,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID
+        sample_patient_id: uuid.UUID
     ) -> None:
         headers = get_valid_provider_auth_headers
         invalid_payload = {
@@ -263,7 +274,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str], 
-        sample_patient_id: UUID,
+        sample_patient_id: uuid.UUID,
     ) -> None:
         headers = get_valid_provider_auth_headers 
         rule_id_str = str(sample_patient_id)
@@ -281,7 +292,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         headers = get_valid_provider_auth_headers
-        non_existent_rule_id = str(uuid4())
+        non_existent_rule_id = str(uuid.uuid4())
         response = await client.get(
             f"/api/v1/biometric-alerts/rules/{non_existent_rule_id}",
             headers=headers
@@ -292,7 +303,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID
+        sample_patient_id: uuid.UUID
     ) -> None:
         headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_patient_id)
@@ -326,7 +337,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID
+        sample_patient_id: uuid.UUID
     ) -> None:
         headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_patient_id)
@@ -364,7 +375,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID
+        sample_patient_id: uuid.UUID
     ) -> None:
         headers = get_valid_provider_auth_headers
         patient_id_str = str(sample_patient_id)
@@ -393,7 +404,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str], 
-        sample_patient_id: UUID,
+        sample_patient_id: uuid.UUID,
     ) -> None:
         headers = get_valid_provider_auth_headers 
         alert_id_str = str(sample_patient_id)
@@ -412,7 +423,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID,
+        sample_patient_id: uuid.UUID,
     ) -> None:
         headers = get_valid_provider_auth_headers
         alert_id_str = str(sample_patient_id)
@@ -434,7 +445,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         headers = get_valid_provider_auth_headers
-        non_existent_alert_id = str(uuid4())
+        non_existent_alert_id = str(uuid.uuid4())
         update_payload = {"status": "acknowledged"}
         response = await client.patch(
             f"/api/v1/biometric-alerts/{non_existent_alert_id}/status",
@@ -447,7 +458,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID
+        sample_patient_id: uuid.UUID
     ) -> None:
         headers = get_valid_provider_auth_headers
         patient_id_str = str(sample_patient_id)
@@ -467,7 +478,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         headers = get_valid_provider_auth_headers
-        non_existent_patient_id = str(uuid4())
+        non_existent_patient_id = str(uuid.uuid4())
         response = await client.get(
             f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary",
             headers=headers
@@ -509,7 +520,7 @@ class TestBiometricAlertsEndpoints:
         assert response_data["description"] == payload["description"]
 
     async def test_update_alert_status_unauthorized(
-        self, client: AsyncClient, sample_patient_id: UUID
+        self, client: AsyncClient, sample_patient_id: uuid.UUID
     ) -> None:
         alert_id_str = str(sample_patient_id)
         update_payload = {"new_status": "acknowledged", "comment": "Test comment"}
@@ -524,7 +535,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID
+        sample_patient_id: uuid.UUID
     ) -> None:
         headers = get_valid_provider_auth_headers
         alert_id_str = str(sample_patient_id)
@@ -540,7 +551,7 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: UUID,
+        sample_patient_id: uuid.UUID,
     ) -> None:
         headers = get_valid_provider_auth_headers
         patient_id_str = str(sample_patient_id)
@@ -568,7 +579,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         headers = get_valid_provider_auth_headers
-        alert_id_str = str(uuid4())
+        alert_id_str = str(uuid.uuid4())
         update_payload = {"status": "resolved"}
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id_str}/status",
