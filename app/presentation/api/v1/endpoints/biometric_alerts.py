@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from fastapi import status
 from typing import Optional, Any, List
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
@@ -14,29 +14,19 @@ from app.domain.entities.biometric_alert import (
     AlertPriority,
     AlertStatusEnum as DomainAlertStatusEnum,
 )
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.domain.services.biometric_event_processor import BiometricEventProcessor
 
 # Import general dependencies
 from app.presentation.api.dependencies.auth import get_current_user
 # Import v1-specific dependencies
 from app.presentation.api.v1.dependencies import (
-    get_rule_repository,
-    get_template_repository,
     get_alert_repository,
-    get_event_processor
 )
 
 from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
     BiometricAlertResponse,
     BiometricAlertListResponse,
-    AlertRuleCreate,
-    AlertRuleResponse,
-    AlertRuleUpdate,
-    AlertRuleTemplateResponse,
 )
 from app.presentation.api.schemas.user import UserResponseSchema
 

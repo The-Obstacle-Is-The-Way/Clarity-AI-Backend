@@ -13,14 +13,15 @@ from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
 
-from app.domain.entities.biometric_rule import BiometricRule, AlertPriority
+from loguru import logger
+from app.domain.entities.biometric_alert_rule import BiometricAlertRule, AlertPriority
 from app.domain.exceptions import RepositoryError, EntityNotFoundError
-from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
+from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
 from app.infrastructure.persistence.sqlalchemy.mappers.biometric_rule_mapper import map_rule_model_to_entity, map_rule_entity_to_model
 
 
-class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
+class SQLAlchemyBiometricRuleRepository(BiometricAlertRuleRepository):
     """SQLAlchemy implementation of the BiometricRuleRepository."""
 
     def __init__(self, session: AsyncSession):
@@ -32,7 +33,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         """
         self.session = session
 
-    async def save(self, rule: BiometricRule) -> BiometricRule:
+    async def save(self, rule: BiometricAlertRule) -> BiometricAlertRule:
         """
         Save a biometric rule to the database.
         
@@ -60,7 +61,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
             await self.session.rollback()
             raise RepositoryError(f"Error saving biometric rule: {str(e)}")
 
-    async def get_by_id(self, rule_id: UUID) -> Optional[BiometricRule]:
+    async def get_by_id(self, rule_id: UUID) -> Optional[BiometricAlertRule]:
         """
         Retrieve a biometric rule by its ID.
         
@@ -88,7 +89,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         except Exception as e:
             raise RepositoryError(f"Error retrieving biometric rule: {str(e)}")
 
-    async def get_by_patient_id(self, patient_id: UUID) -> List[BiometricRule]:
+    async def get_by_patient_id(self, patient_id: UUID) -> List[BiometricAlertRule]:
         """
         Retrieve all biometric rules for a specific patient.
         
@@ -112,7 +113,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         except Exception as e:
             raise RepositoryError(f"Error retrieving biometric rules for patient: {str(e)}")
 
-    async def get_all_active(self) -> List[BiometricRule]:
+    async def get_all_active(self) -> List[BiometricAlertRule]:
         """
         Retrieve all active biometric rules.
         
@@ -124,7 +125,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         """
         try:
             # Query for active rules
-            stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active == True)
+            stmt = select(BiometricRuleModel).where(BiometricRuleModel.is_active)
             result = await self.session.execute(stmt)
             rule_models = result.scalars().all()
             
@@ -133,7 +134,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         except Exception as e:
             raise RepositoryError(f"Error retrieving active biometric rules: {str(e)}")
 
-    async def update(self, rule: BiometricRule) -> BiometricRule:
+    async def update(self, rule: BiometricAlertRule) -> BiometricAlertRule:
         """
         Update an existing biometric rule.
         
@@ -271,7 +272,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         except Exception as e:
             raise RepositoryError(f"Error retrieving biometric rules: {str(e)}")
 
-    async def create_rule(self, rule: BiometricRule) -> Dict[str, Any]:
+    async def create_rule(self, rule: BiometricAlertRule) -> Dict[str, Any]:
         """
         Create a new biometric rule.
         
@@ -306,7 +307,7 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
         except Exception as e:
             raise RepositoryError(f"Error creating biometric rule: {str(e)}")
 
-    async def update_rule(self, rule: BiometricRule) -> Dict[str, Any]:
+    async def update_rule(self, rule: BiometricAlertRule) -> Dict[str, Any]:
         """
         Update an existing biometric rule.
         
@@ -358,3 +359,73 @@ class SQLAlchemyBiometricRuleRepository(BiometricRuleRepository):
             RepositoryError: If there's an error deleting the rule
         """
         return await self.delete(rule_id)
+
+    async def get_all(self) -> List[BiometricAlertRule]:
+        """
+        Retrieve all BiometricAlertRules.
+        
+        Returns:
+            List[BiometricAlertRule]: List of all rule entities
+            
+        Raises:
+            RepositoryError: If there's an error accessing the repository
+        """
+        try:
+            stmt = select(BiometricRuleModel)
+            result = await self.session.execute(stmt)
+            rule_models = result.scalars().all()
+            return [map_rule_model_to_entity(model) for model in rule_models]
+        except Exception as e:
+            logger.error(f"Error retrieving all biometric rules: {e}")
+            raise RepositoryError(f"Error retrieving all biometric rules: {str(e)}")
+
+    async def get_by_provider_id(self, provider_id: UUID) -> List[BiometricAlertRule]:
+        """
+        Retrieve all BiometricAlertRules created by a specific provider.
+
+        Args:
+            provider_id: UUID of the provider
+
+        Returns:
+            List[BiometricAlertRule]: List of rule entities created by the provider
+
+        Raises:
+            RepositoryError: If there's an error accessing the repository
+        """
+        try:
+            # Assuming provider_id corresponds to created_by field
+            # NOTE: The model 'BiometricRuleModel' does not have 'created_by'. Assuming it should be 'provider_id'
+            stmt = select(BiometricRuleModel).where(BiometricRuleModel.provider_id == provider_id)
+            result = await self.session.execute(stmt)
+            rule_models = result.scalars().all()
+            return [map_rule_model_to_entity(model) for model in rule_models]
+        except Exception as e:
+            logger.error(f"Error retrieving biometric rules for provider {provider_id}: {e}")
+            raise RepositoryError(f"Error retrieving biometric rules for provider: {str(e)}")
+
+    async def get_active_rules_for_patient(self, patient_id: UUID) -> List[BiometricAlertRule]:
+        """
+        Retrieve all active BiometricAlertRules for a specific patient.
+
+        Args:
+            patient_id: UUID of the patient
+
+        Returns:
+            List[BiometricAlertRule]: List of active rule entities for the patient
+
+        Raises:
+            RepositoryError: If there's an error accessing the repository
+        """
+        try:
+            # Query for global rules (patient_id is NULL) and patient-specific rules
+            # Fixed boolean comparison lint (SIM103)
+            stmt = select(BiometricRuleModel).where(
+                (BiometricRuleModel.is_active) &
+                ((BiometricRuleModel.patient_id == patient_id) | (BiometricRuleModel.patient_id is None)) # Changed == to is (E711)
+            )
+            result = await self.session.execute(stmt)
+            rule_models = result.scalars().all()
+            return [map_rule_model_to_entity(model) for model in rule_models]
+        except Exception as e:
+            logger.error(f"Error retrieving active rules for patient {patient_id}: {e}")
+            raise RepositoryError(f"Error retrieving active rules for patient: {str(e)}")

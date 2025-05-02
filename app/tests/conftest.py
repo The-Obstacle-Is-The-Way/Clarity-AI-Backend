@@ -363,7 +363,7 @@ def mock_auth_service(test_patient: User) -> AsyncMock: # Depend on test_patient
     mock.get_user_from_token = AsyncMock(return_value=test_patient)
     return mock
 
-@pytest.fixture(scope="function") # Keep FUNCTION SCOPE
+@pytest.fixture
 def initialized_app(
     test_settings: Settings, 
     mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], 
@@ -424,7 +424,7 @@ def initialized_app(
         test_app.dependency_overrides[get_analytics_service_provider] = lambda: mock_analytics_service
         logger.info(f">>> Overrode Analytics Service using get_analytics_service_provider.")
     except ImportError:
-        logger.error("Could not find get_analytics_service_provider. Analytics endpoint dependency override may fail!")
+        logger.error("Cannot find get_analytics_service_provider. Override may fail!")
         # Attempt fallback if needed, or let tests fail explicitly
 
     # NO AuthenticationMiddleware added
