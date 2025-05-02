@@ -40,7 +40,8 @@ from pydantic import SecretStr, Field
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.presentation.api.dependencies.auth import get_current_active_user, get_user_repository # Import the missing dependency function
+from app.infrastructure.security.auth.dependencies import get_current_active_user # Correct import path for get_current_active_user
+from app.presentation.dependencies.auth import get_user_repository # Keep the correct import for get_user_repository
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_session
 from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 from app.infrastructure.security.rate_limiting.rate_limiter import get_rate_limiter
@@ -1013,3 +1014,22 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 TEST_INTEGRATION_USER_ID = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
 TEST_PROVIDER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001") # Example provider UUID
 _TEST_SECRET_KEY_FOR_FIXTURES = "super-secret-key-for-testing-fixtures-only"
+
+@pytest.fixture
+def mock_current_active_user_override():
+    """Create a mock for the current active user dependency."""
+    from unittest.mock import MagicMock
+    from app.domain.entities.user import User
+    
+    user = User(id=str(uuid.uuid4()), username="testuser", role="patient")
+    mock = MagicMock(return_value=user)
+    return mock
+
+@pytest.fixture
+def mock_jwt_handler():
+    """Create a mock JWT handler for testing."""
+    from unittest.mock import MagicMock
+    from app.infrastructure.auth.jwt_handler import JWTHandler
+    
+    mock_handler = MagicMock(spec=JWTHandler)
+    return mock_handler
