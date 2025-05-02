@@ -32,6 +32,9 @@ from app.presentation.middleware.logging_middleware import LoggingMiddleware
 from app.presentation.middleware.rate_limiting_middleware import RateLimitingMiddleware
 from app.presentation.middleware.security_headers_middleware import SecurityHeadersMiddleware
 
+# MOVED logging_config import just before use
+from app.core.logging_config import LOGGING_CONFIG
+
 # Setup logging
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
