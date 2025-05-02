@@ -168,9 +168,12 @@ class AnalysisResult(BaseModel):
     warnings: List[str] = Field([], description="Warnings or alerts from the analysis")
     
     @field_validator('metrics', mode='before')
-    def validate_metrics(cls, v, values):
+    def validate_metrics(cls, v, info):
         """Validate metrics based on analysis type."""
-        if 'analysis_type' not in values:
+        # In Pydantic v2, ValidationInfo replaces the values dict
+        values = info.data
+        
+        if not hasattr(info, 'data') or 'analysis_type' not in values:
             return v
             
         analysis_type = values['analysis_type']

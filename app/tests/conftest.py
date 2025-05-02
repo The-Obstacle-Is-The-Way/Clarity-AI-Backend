@@ -37,6 +37,17 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
+# Import our repository test utilities 
+from app.tests.utils.repository_factory import (
+    create_repository,
+    MockUnitOfWork,
+    MockUserRepository,
+    MockPatientRepository,
+    MockBiometricRuleRepository,
+    MockBiometricAlertRepository,
+    MockBiometricTwinRepository
+)
+
 # Updated import path to match codebase structure
 from app.config.settings import (
     Settings,
@@ -1030,6 +1041,28 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 TEST_INTEGRATION_USER_ID = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
 TEST_PROVIDER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001") # Example provider UUID
 _TEST_SECRET_KEY_FOR_FIXTURES = "super-secret-key-for-testing-fixtures-only"
+
+@pytest.fixture
+def mock_session() -> AsyncSession:
+    """Create a mock AsyncSession for testing."""
+    mock = AsyncMock(spec=AsyncSession)
+    # Add essential session methods
+    mock.execute = AsyncMock()
+    mock.commit = AsyncMock()
+    mock.rollback = AsyncMock()
+    mock.close = AsyncMock()
+    mock.refresh = AsyncMock()
+    return mock
+
+@pytest.fixture
+def mock_unit_of_work(mock_session: AsyncSession) -> MockUnitOfWork:
+    """Create a MockUnitOfWork for dependency injection."""
+    return MockUnitOfWork(mock_session)
+
+@pytest.fixture
+def user_repository(mock_session: AsyncSession) -> UserRepository:
+    """Create a test-compatible UserRepository instance."""
+    return MockUserRepository(mock_session)
 
 @pytest.fixture
 def mock_current_active_user_override():
