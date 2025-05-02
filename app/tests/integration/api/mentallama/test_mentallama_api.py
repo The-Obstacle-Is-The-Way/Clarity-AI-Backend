@@ -6,15 +6,13 @@ clean architecture principles with precise, mathematically elegant implementatio
 """
 
 import logging
-from collections.abc import Callable, AsyncGenerator, Awaitable
-from unittest.mock import AsyncMock, MagicMock
-
+from collections.abc import Callable, AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -22,10 +20,10 @@ from app.app_factory import create_application
 from app.config.settings import Settings
 from app.core.interfaces.services.authentication_service import IAuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.interfaces.services.mentallama_service import MentaLLaMAInterface
-from app.domain.entities.auth import User, UnauthenticatedUser 
-from app.presentation.api.v1.dependencies.auth import verify_api_key
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware 
+from app.core.services.ml.interface import MentaLLaMAInterface
+from app.core.domain.entities.user import User
+from app.api.routes.ml import verify_api_key
+from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 
 settings = Settings()
 
@@ -114,7 +112,7 @@ def mock_jwt_service() -> MagicMock:
 
     # Mock async methods correctly
     # Ensure decode_token itself is an awaitable mock that returns the payload
-    mock.decode_token = AsyncMock(return_value={"sub": TEST_USER_ID, "scopes": ["mentallama"]})
+    mock.decode_token.return_value = {"sub": "testuser", "role": "admin"}
     # Add mocks for other IJwtService async methods if they are called, even if just returning None or default
     mock.create_access_token = AsyncMock(return_value="mock_access_token")
     mock.create_refresh_token = AsyncMock(return_value="mock_refresh_token")
@@ -136,103 +134,80 @@ async def mock_auth_middleware_call(request: Request, call_next: Callable[[Reque
 
 
 @pytest_asyncio.fixture(scope="session")
-async def test_app(
+async def mock_verify_api_key() -> AsyncMock:
+    """Provides a mock for the verify_api_key dependency."""
+    return AsyncMock() # Simple mock as the real function is empty
+
+
+@pytest_asyncio.fixture(scope="session")
+async def test_app_with_lifespan(
     settings: Settings,
     mock_mentallama_service_override: AsyncMock,
     mock_auth_service: MagicMock,
     mock_jwt_service: MagicMock,
+    mock_verify_api_key: AsyncMock,
 ) -> AsyncGenerator[FastAPI, None]:
-    """Creates a FastAPI application instance for testing with mocked dependencies."""
-    logger.info("Creating test FastAPI application instance...")
-    app = create_application(settings=settings)
+    """Creates a FastAPI application instance for testing with mocked dependencies.
+    
+    Patches add_middleware to prevent real AuthenticationMiddleware addition.
+    """
+    logger.info("Setting up test application fixture.")
 
-    # --- Mock Middleware Setup ---
-    # Find and REPLACE AuthenticationMiddleware with a MagicMock
-    auth_middleware_index = -1
-    for i, middleware in enumerate(app.user_middleware):
-        # Check if middleware.cls is a class type before using issubclass
-        # Handles cases where middleware might be partially initialized
-        if isinstance(middleware.cls, type) and issubclass(middleware.cls, AuthenticationMiddleware):
-            auth_middleware_index = i
-            logger.info(f"Found AuthenticationMiddleware at index {i}")
-            break
+    # --- Patch add_middleware --- #
+    original_add_middleware = FastAPI.add_middleware
+    
+    def mock_add_middleware(self, middleware_class, **options):
+        # Prevent adding the real AuthenticationMiddleware during test setup
+        if middleware_class == AuthenticationMiddleware:
+            logger.info("Skipping add_middleware for AuthenticationMiddleware during test setup.")
+            return
+        # Call the original for other middleware
+        original_add_middleware(self, middleware_class, **options)
 
-    if auth_middleware_index != -1:
-        # 1. Create the mock middleware instance
-        mock_middleware_instance = MagicMock(spec=AuthenticationMiddleware)
+    with patch.object(FastAPI, 'add_middleware', mock_add_middleware):
+        logger.info("Creating FastAPI app instance via create_application (with patched add_middleware)...")
+        # Now create the app. The real AuthMiddleware won't be added.
+        # NOTE: This assumes create_application doesn't have critical side effects
+        # that depend on the real AuthMiddleware being present during its execution.
+        app = create_application(settings) 
+        logger.info("FastAPI app instance created.")
 
-        # 2. Inject mock services directly into the mock attributes
-        #    These names must match the attributes accessed within the *real* middleware's
-        #    _ensure_services_initialized or dispatch methods if they were called.
-        mock_middleware_instance._auth_service = mock_auth_service
-        mock_middleware_instance._jwt_service = mock_jwt_service
-        logger.info("Mock Auth and JWT services assigned to MagicMock attributes.")
-
-        # 3. Define a simple async dispatch function for the mock
-        async def mock_dispatch(
-            request: Request, 
-            call_next: Callable[[Request], Awaitable[Response]]
-        ) -> Response:
-            # This mock bypasses all real auth logic and just proceeds
-            logger.debug("Mock AuthenticationMiddleware dispatch called, proceeding to next.")
-            # Ensure user state exists, mimicking part of the real middleware setup
-            # Use UnauthenticatedUser as a placeholder
-            if not hasattr(request.state, 'user'):
-                 request.state.user = UnauthenticatedUser()
-            if not hasattr(request.state, 'auth'):
-                 request.state.auth = None # Typically holds the auth result (e.g., token)
-            return await call_next(request)
-
-        # 4. Assign the mock dispatch method to the mock instance
-        mock_middleware_instance.dispatch = mock_dispatch
-
-        # 5. Replace the original middleware entry with our mock
-        #    We need to wrap the mock instance in a Starlette Middleware object
-        app.user_middleware[auth_middleware_index] = Middleware( 
-            lambda app: mock_middleware_instance
-        )
-        logger.info("Replaced original AuthenticationMiddleware with MagicMock wrapper.")
-
-        # 6. Rebuild the middleware stack to apply the replacement
-        app.middleware_stack = app.build_middleware_stack()
-        logger.info("Rebuilt FastAPI middleware stack.")
-
-    else:
-        logger.warning("AuthenticationMiddleware not found in user_middleware. "
-                       "Cannot replace with mock.")
-
-    # --- Dependency Overrides for Route Dependencies ---
-    # Define a mock async function for verify_api_key dependency
-    async def mock_verify_api_key() -> None: 
-        return None
-
-    # Add dependency overrides AFTER app creation and middleware manipulation
+    # --- Apply Dependency Overrides AFTER app creation --- #
+    # Routes depending on these services will now get the mocks
+    logger.info("Applying dependency overrides...")
     dependency_overrides = {
+        # Core Service Mocks
         MentaLLaMAInterface: lambda: mock_mentallama_service_override,
-        IAuthenticationService: lambda: mock_auth_service, # Still needed for route dependencies
-        IJwtService: lambda: mock_jwt_service,          # Still needed for route dependencies
-        verify_api_key: mock_verify_api_key,
+        IAuthenticationService: lambda: mock_auth_service, # Use the existing sync mock fixture
+        IJwtService: lambda: mock_jwt_service,          # Use the existing sync mock fixture
+        # API Key Dependency Mock (ensure it's overridden)
+        verify_api_key: lambda: mock_verify_api_key, # Use the async mock fixture
     }
-    app.dependency_overrides = dependency_overrides
-    logger.info("Applied dependency overrides for routes.")
+    app.dependency_overrides.update(dependency_overrides)
+    logger.info("Dependency overrides applied.")
 
-    logger.info("Test application setup complete.")
-    yield app
-    logger.info("Test application teardown.")
+    # --- Manually Manage Lifespan --- #
+    logger.info("Entering lifespan context manager...")
+    async with app.router.lifespan_context(app):
+        logger.info("Lifespan startup complete. Yielding app.")
+        yield app
+        logger.info("Lifespan shutdown initiated within fixture.")
+    logger.info("Lifespan context manager exited.")
+    logger.info("Tearing down test application fixture.")
 
 
-# === Test Client Fixture ===
-@pytest_asyncio.fixture(scope="function")
-async def client(test_app: FastAPI) -> AsyncClient:
+# --- Fixture for Test Client (Depends on Lifespan-Managed App) --- #
+@pytest_asyncio.fixture(scope="session")
+async def client(test_app_with_lifespan: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """Provides an asynchronous test client for the application."""
-    base_url = "http://testserver"
-    async with AsyncClient(app=test_app, base_url=base_url) as client:
-        yield client
+    logger.info("Creating test client using lifespan-managed app...")
+    async with AsyncClient(app=test_app_with_lifespan, base_url="http://test") as ac:
+        yield ac
+    logger.info("Test client teardown.")
 
 
-# --- Test Cases ---
-
-
+# --- Test Functions --- #
+@pytest.mark.asyncio
 async def test_health_check(client: AsyncClient) -> None:
     """Tests the health check endpoint."""
     response = await client.get("/health")
@@ -240,6 +215,7 @@ async def test_health_check(client: AsyncClient) -> None:
     assert response.json() == {"status": "healthy"}
 
 
+@pytest.mark.asyncio
 async def test_process_endpoint(client: AsyncClient) -> None:
     """Tests the process endpoint with valid input."""
     response = await client.post(
@@ -253,6 +229,7 @@ async def test_process_endpoint(client: AsyncClient) -> None:
     assert "response" in data
 
 
+@pytest.mark.asyncio
 async def test_process_invalid_model(client: AsyncClient, mock_mentallama_service_override: AsyncMock) -> None:
     """Tests the process endpoint with an invalid model name."""
     mock_mentallama_service_override.process.side_effect = Exception("Invalid model")
@@ -263,6 +240,7 @@ async def test_process_invalid_model(client: AsyncClient, mock_mentallama_servic
     assert response.status_code == 404
 
 
+@pytest.mark.asyncio
 async def test_process_empty_prompt(client: AsyncClient) -> None:
     """Tests the process endpoint with an empty prompt (should fail validation)."""
     response = await client.post(
@@ -272,6 +250,7 @@ async def test_process_empty_prompt(client: AsyncClient) -> None:
     assert response.status_code == 422
 
 
+@pytest.mark.asyncio
 async def test_analyze_text_endpoint(client: AsyncClient) -> None:
     """Tests the analyze text endpoint."""
     response = await client.post(
@@ -281,6 +260,7 @@ async def test_analyze_text_endpoint(client: AsyncClient) -> None:
     assert "analysis" in response.json()
 
 
+@pytest.mark.asyncio
 async def test_detect_conditions_endpoint(client: AsyncClient) -> None:
     """Tests the detect conditions endpoint."""
     response = await client.post(
@@ -290,6 +270,7 @@ async def test_detect_conditions_endpoint(client: AsyncClient) -> None:
     assert "conditions" in response.json()
 
 
+@pytest.mark.asyncio
 async def test_therapeutic_response_endpoint(client: AsyncClient) -> None:
     """Tests the therapeutic response endpoint."""
     payload = {
@@ -305,6 +286,7 @@ async def test_therapeutic_response_endpoint(client: AsyncClient) -> None:
     assert "response" in response.json()
 
 
+@pytest.mark.asyncio
 async def test_suicide_risk_endpoint(client: AsyncClient) -> None:
     """Tests the suicide risk assessment endpoint."""
     response = await client.post(
@@ -314,6 +296,7 @@ async def test_suicide_risk_endpoint(client: AsyncClient) -> None:
     assert "risk_level" in response.json()
 
 
+@pytest.mark.asyncio
 async def test_wellness_dimensions_endpoint(client: AsyncClient) -> None:
     """Tests the wellness dimensions assessment endpoint."""
     response = await client.post(
@@ -323,6 +306,7 @@ async def test_wellness_dimensions_endpoint(client: AsyncClient) -> None:
     assert "dimensions" in response.json()
 
 
+@pytest.mark.asyncio
 async def test_service_unavailable(client: AsyncClient, mock_mentallama_service_override: AsyncMock) -> None:
     """Tests error handling when the MentaLLaMA service is unavailable."""
     # Configure the mock service to raise Exception
