@@ -295,8 +295,13 @@ async def get_jwt_service(
     We therefore detect that case and synchronously acquire a real instance of
     :class:`Settings` so the service constructor does not blow up.
     """
-    # The DI marker is **not** the object we need.
-    if settings is Depends:  
+    # When called outside FastAPI's DI system the *settings* argument will be
+    # the *Depends* marker instance instead of a concrete ``Settings`` object.
+    # We therefore need to detect that case *robustly* (using ``isinstance``)
+    # and synchronously obtain a real ``Settings`` instance.
+    from fastapi.params import Depends as DependsClass  # local import to avoid hard dep at module import time
+
+    if isinstance(settings, DependsClass):
         candidate = get_settings()
         # ``get_settings`` may or may not be awaitable depending on impl.
         if asyncio.iscoroutine(candidate):
