@@ -162,11 +162,8 @@ async def login(
     except Exception as e:
         # Log the error but don't expose details to client
         logger.error(f"Login error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        # Raise a different error to expose the original cause in traceback
+        raise RuntimeError(f"Login endpoint failed internally: {str(e)}") from e
 
 
 @router.post(

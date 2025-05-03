@@ -121,7 +121,7 @@ def mock_jwt_service() -> AsyncMock:
 
 @pytest.fixture(scope="function")
 def mock_auth_service() -> AsyncMock:
-    """Provides a function-scoped AsyncMock for AuthService with login behavior."""
+    """Provides a function-scoped AsyncMock for AuthenticationService."""
     mock = AsyncMock(spec=AuthenticationService)
 
     # Define mock User objects (only need fields used by token creation)
@@ -160,8 +160,12 @@ def mock_auth_service() -> AsyncMock:
     # based on the user object passed to it by the endpoint handler.
     # If the endpoint *directly* calls auth_service.create_token_pair, 
     # we'd mock that too. For now, focus on authenticate_user.
-
-    logger.info("mock_auth_service configured with authenticate_user side effect.")
+    mock.create_token_pair.return_value = {
+        "access_token": "mock_access_token_from_auth_service",
+        "refresh_token": "mock_refresh_token_from_auth_service",
+        "token_type": "bearer"
+    }
+    logger.info("mock_auth_service configured with authenticate_user side effect and create_token_pair.")
     return mock
 
 @pytest.fixture(scope="function")
@@ -385,11 +389,12 @@ async def provider_token(
     login_data = {
         "username": TEST_PROVIDER_USERNAME, 
         "password": TEST_PROVIDER_PASSWORD,
+        "remember_me": False  # Add remember_me field
     }
     login_url = f"{test_settings.API_V1_STR}/auth/login"
     logger.info(f"Attempting provider login for provider_token fixture via URL: {login_url}")
     
-    response = await async_client.post(login_url, data=login_data)
+    response = await async_client.post(login_url, json=login_data) # Use json= instead of data=
     
     logger.info(f"Provider login response status: {response.status_code}")
     try:
