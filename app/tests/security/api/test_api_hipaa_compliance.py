@@ -53,9 +53,6 @@ from app.presentation.api.dependencies.repository import (
 )
 from app.presentation.middleware.phi_middleware import add_phi_middleware
 
-# Import MockSettings from global conftest
-from app.tests.conftest import MockSettings
-
 # Added import for PatientService
 
 # Global settings for these tests
