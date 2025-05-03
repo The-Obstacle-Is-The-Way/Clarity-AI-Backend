@@ -6,18 +6,19 @@ import hashlib
 import re
 from datetime import datetime, timezone, timedelta
 from app.domain.utils.datetime_utils import UTC
-from typing import Optional, List, Any, Union, Tuple, Dict 
+from typing import Optional, List, Any, Union, Tuple, Dict
 from unittest.mock import MagicMock
 from botocore.exceptions import ClientError
 from dateutil.parser import parse 
 from app.core.exceptions import (
     InitializationError,
     InvalidConfigurationError,
-    ValidationError, 
+    ValidationError,
     ResourceNotFoundError,
     AuthorizationError,
     EmbeddingError,
-    IntegrationError, 
+    IntegrationError,
+    DatabaseException,
 )
 from app.core.services.ml.pat.exceptions import (
     InitializationError,
@@ -40,7 +41,6 @@ from app.core.interfaces.aws_service_interface import (
 from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
 from app.infrastructure.ml.pat.models import AnalysisResult, AccelerometerReading
 from app.domain.entities.digital_twin import DigitalTwin
-from app.domain.utils.datetime_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -593,14 +593,15 @@ class BedrockPAT(PATInterface):
         except ClientError as e:
             error_msg = f"AWS Error retrieving analysis {analysis_id}: {e}"
             logging.error(error_msg)
-            raise DatabaseError(error_msg)
+            raise DatabaseException(error_msg) from e
         except (ValidationError, KeyError) as e: # Removed JSONDecodeError, ValueError as nested JSON is no longer expected
-            # Log specific parsing/validation errors but raise a generic ResourceNotFound or custom error
+            # Log specific parsing/validation errors but raise a generic ResourceNotFound
             error_msg = f"Failed to retrieve analysis: {e}"
             logging.error(error_msg)
-            # Depending on requirements, you might want a more specific exception
-            # For now, re-raising as ResourceNotFoundError for simplicity in this context
-            raise ResourceNotFoundError(error_msg)
+            raise ResourceNotFoundError(
+                f"Analysis with ID {analysis_id} could not be parsed: {e}"
+            ) from e
+            # Second raise statement removed - unreachable code
         except ResourceNotFoundError as e: # Catch specific not found error
             logging.warning(f"Analysis {analysis_id} not found.")
             raise e # Re-raise not found error
@@ -927,43 +928,74 @@ class BedrockPAT(PATInterface):
             item: DynamoDB item dictionary
         
         Returns:
-            Standard Python dictionary
+            Standard Python dictionary suitable for AnalysisResult model
         """
-        # Basic parser, extend as needed for more types (N, BOOL, L, M, etc.)
-        parsed = {} # Initialize the final dictionary
-        snake_case_item = {self._to_snake_case(k): v for k, v in item.items()}
-        for key, value_dict in snake_case_item.items(): # Iterate over snake_cased keys
-            # Determine the type and extract the value
-            dtype = list(value_dict.keys())[0]
-            value = value_dict[dtype]
-            if dtype == 'S':
-                parsed_value = value
-            elif dtype == 'N':
-                try:
-                    parsed_value = int(value)
-                except ValueError:
-                    parsed_value = float(value)
-            elif dtype == 'BOOL':
-                parsed_value = value
-            elif dtype == 'L':
-                # Recursively parse items in the list
-                parsed_value = [self._parse_dynamodb_item({'item': sub_item})['item'] for sub_item in value]
-            elif dtype == 'M':
-                # Recursively parse the nested map, ensuring keys are lowercased
-                parsed_value = self._parse_dynamodb_item(value)
-            elif dtype == 'NULL' and value:
-                parsed_value = None
-            # Add more type handling as needed (B, SS, NS, BS, etc.)
-            else:
-                # Fallback or raise error for unhandled types
-                logging.warning(f"Unhandled DynamoDB type for key '{key}': {value_dict}")
-                # Keep the raw structure for now if unhandled
-                parsed_value = value_dict 
-
-            parsed[key] = parsed_value # Use the already snake_cased key
-
-        # Specific mapping: Rename 'patient_id_hash' to 'patient_id' for AnalysisResult model compatibility
-        if 'patient_id_hash' in parsed:
-            parsed['patient_id'] = parsed.pop('patient_id_hash')
-
-        return parsed
+        if not item:
+            return {}
+            
+        result = {}
+        
+        # Handle common fields directly needed by AnalysisResult
+        if 'AnalysisId' in item:
+            result['analysis_id'] = item['AnalysisId'].get('S', '')
+            
+        if 'PatientIdHash' in item:
+            result['patient_id'] = item['PatientIdHash'].get('S', '')
+        elif 'PatientId' in item:
+            result['patient_id'] = item['PatientId'].get('S', '')
+            
+        if 'Timestamp' in item:
+            timestamp_str = item['Timestamp'].get('S', '')
+            try:
+                result['timestamp'] = parse(timestamp_str)
+            except Exception:
+                result['timestamp'] = datetime.now(UTC)
+                
+        if 'AnalysisType' in item:
+            result['analysis_type'] = item['AnalysisType'].get('S', '')
+            
+        if 'ModelVersion' in item:
+            result['model_version'] = item['ModelVersion'].get('S', '')
+            
+        if 'ConfidenceScore' in item:
+            try:
+                result['confidence_score'] = float(item['ConfidenceScore'].get('N', '0'))
+            except (ValueError, TypeError):
+                result['confidence_score'] = 0.0
+                
+        # Handle metrics - convert from DynamoDB map format to Python dict
+        if 'Metrics' in item and 'M' in item['Metrics']:
+            metrics_dict = {}
+            for metric_key, metric_value_dict in item['Metrics']['M'].items():
+                if 'N' in metric_value_dict:
+                    try:
+                        metrics_dict[metric_key] = float(metric_value_dict['N'])
+                    except (ValueError, TypeError):
+                        metrics_dict[metric_key] = 0.0
+                elif 'S' in metric_value_dict:
+                    metrics_dict[metric_key] = metric_value_dict['S']
+            result['metrics'] = metrics_dict
+        else:
+            result['metrics'] = {}
+            
+        # Handle insights - convert from DynamoDB list format to Python list
+        if 'Insights' in item and 'L' in item['Insights']:
+            insights_list = []
+            for insight_dict in item['Insights']['L']:
+                if 'S' in insight_dict:
+                    insights_list.append(insight_dict['S'])
+            result['insights'] = insights_list
+        else:
+            result['insights'] = []
+            
+        # Handle warnings - similar to insights
+        if 'Warnings' in item and 'L' in item['Warnings']:
+            warnings_list = []
+            for warning_dict in item['Warnings']['L']:
+                if 'S' in warning_dict:
+                    warnings_list.append(warning_dict['S'])
+            result['warnings'] = warnings_list
+        else:
+            result['warnings'] = []
+            
+        return result
