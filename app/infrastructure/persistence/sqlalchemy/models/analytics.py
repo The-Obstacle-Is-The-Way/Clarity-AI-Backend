@@ -7,12 +7,10 @@ mapping domain entities to database tables.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from app.domain.utils.datetime_utils import now_utc
-from typing import Dict, Any, Optional
 
 from sqlalchemy import Column, DateTime, String, Integer, JSON, func, Index, ForeignKey
-from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
 from app.infrastructure.persistence.sqlalchemy.types import GUID
@@ -31,7 +29,7 @@ class AnalyticsEventModel(Base):
     
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     event_type = Column(String(100), nullable=False, index=True)
-    event_data = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
+    event_data = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
     user_id = Column(String(100), nullable=True, index=True)
     session_id = Column(String(100), nullable=True, index=True)
     timestamp = Column(DateTime, nullable=False, default=now_utc, index=True)
@@ -67,9 +65,9 @@ class AnalyticsAggregateModel(Base):
     
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     aggregate_type = Column(String(50), nullable=False, index=True)
-    dimensions = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
-    metrics = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
-    time_period = Column(MutableDict.as_mutable(JSONB), nullable=True)
+    dimensions = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
+    metrics = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
+    metadata = Column(MutableDict.as_mutable(JSON), nullable=True)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     ttl = Column(Integer, nullable=True)  # Time-to-live in seconds
@@ -101,8 +99,8 @@ class AnalyticsJobModel(Base):
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     job_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default="pending", index=True)
-    parameters = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
-    result = Column(MutableDict.as_mutable(JSONB), nullable=True)
+    parameters = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
+    results = Column(MutableDict.as_mutable(JSON), nullable=True)
     error = Column(String(500), nullable=True)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     started_at = Column(DateTime, nullable=True)
