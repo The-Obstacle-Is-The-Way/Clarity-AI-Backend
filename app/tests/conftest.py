@@ -26,11 +26,12 @@ from app.domain.entities.user import User
 from app.domain.exceptions import AuthenticationError
 
 # --- Infrastructure Imports ---
-from app.infrastructure.persistence.sqlalchemy.database import Base
+from app.infrastructure.database.base_class import Base
 from app.infrastructure.security.auth_service import AuthenticationService
 from app.infrastructure.security.jwt_service import JWTService
 from app.infrastructure.security.password.hashing import pwd_context
 from app.domain.services.pat_service import PATService
+from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAlchemyUser
 
 # --- Presentation Layer Imports ---
 from app.main import create_application
@@ -221,6 +222,49 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
+async def seed_test_data(test_db_session: AsyncSession):
+    """Fixture to seed the database with essential test users."""
+    logger.info("Seeding test data...")
+    # Hash passwords
+    hashed_password = pwd_context.hash(TEST_PASSWORD)
+    hashed_provider_password = pwd_context.hash(TEST_PROVIDER_PASSWORD)
+
+    # Create SQLAlchemy User entities
+    test_user = SQLAlchemyUser(
+        id=str(TEST_INTEGRATION_USER_ID), # Ensure ID is string for SQLAlchemy model
+        username=TEST_USERNAME,
+        email=TEST_USERNAME,
+        password_hash=hashed_password, # Use correct field name
+        # roles=["patient"], # Omit roles for now
+        is_active=True,
+        is_verified=True, # Assume verified for testing login
+        email_verified=True # Assume verified for testing login
+    )
+    provider_user = SQLAlchemyUser(
+        id=str(TEST_PROVIDER_USER_ID), # Ensure ID is string
+        username=TEST_PROVIDER_USERNAME,
+        email=TEST_PROVIDER_USERNAME,
+        password_hash=hashed_provider_password, # Use correct field name
+        # roles=["provider"], # Omit roles for now
+        is_active=True,
+        is_verified=True, # Assume verified for testing login
+        email_verified=True # Assume verified for testing login
+    )
+
+    # Add users to session and commit
+    try:
+        test_db_session.add(test_user)
+        test_db_session.add(provider_user)
+        await test_db_session.commit()
+        logger.info(f"Test users {TEST_USERNAME} and {TEST_PROVIDER_USERNAME} created and committed.")
+    except Exception as e:
+        logger.error(f"Error seeding test data: {e}")
+        await test_db_session.rollback() # Rollback on error
+        raise
+    # No yield needed as this fixture just performs an action
+
+
+@pytest_asyncio.fixture(scope="function")
 async def mock_db_session_override(
     test_db_session: AsyncSession
 ) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
@@ -273,7 +317,7 @@ async def initialized_app(
     mock_jwt_service: AsyncMock,
     mock_auth_service: AsyncMock,
     mock_analytics_service: AsyncMock,
-    override_get_session: None
+    seed_test_data: None
 ) -> AsyncGenerator[FastAPI, None]:
     """
     Creates a MINIMAL FastAPI app configured for endpoint tests, 
