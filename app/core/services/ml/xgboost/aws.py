@@ -8,6 +8,7 @@ HIPAA compliance and security considerations.
 import json
 import logging
 import time
+import uuid
 from datetime import datetime
 from types import SimpleNamespace  # Keep if needed elsewhere, but mark as potentially unused
 from typing import Any, Dict, List, Optional, Set, Tuple, Union # Deprecated, mark for later refactor
@@ -28,6 +29,8 @@ from app.core.domain.prediction_result import PredictionResult
 from app.core.enums.model_type import ModelType
 from app.core.enums.prediction_type import PredictionCategory
 from app.core.enums.privacy_level import PrivacyLevel
+from app.core.exceptions import (ConfigurationError, ExternalServiceException,
+                                 ResourceNotFoundError)
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.core.services.ml.xgboost.enums import RiskLevel # Corrected import, removed ResponseLevel
 from app.core.services.ml.xgboost.exceptions import (
@@ -43,6 +46,7 @@ from app.core.services.ml.xgboost.exceptions import (
 
 # --- Infrastructure Imports ---
 from app.infrastructure.integrations.aws.sagemaker import SageMakerEndpoint
+from app.core.services.aws.interfaces import AWSServiceFactoryInterface
 
 # Helper function to safely get attributes from objects or dicts
 def safe_get(obj, key, default=None):
@@ -275,7 +279,7 @@ class AWSXGBoostService(XGBoostInterface):
             
             self._logger.error(f"AWS client error during initialization: {error_code} - {error_message}")
             
-            raise ServiceConnectionError(
+            raise ExternalServiceException(
                 f"Failed to connect to AWS services: {error_message}",
                 service="AWS",
                 error_type=error_code,
@@ -285,7 +289,7 @@ class AWSXGBoostService(XGBoostInterface):
         except Exception as e:
             self._logger.error(f"Failed to initialize AWS XGBoost service: {e}")
             # Propagate if already a configuration or service error
-            if isinstance(e, (ConfigurationError, ServiceConnectionError, ServiceConfigurationError)):
+            if isinstance(e, (ConfigurationError, ExternalServiceException, ServiceConfigurationError)):
                 raise
             # Wrap other errors as configuration issues
             raise ConfigurationError(
@@ -408,7 +412,7 @@ class AWSXGBoostService(XGBoostInterface):
         except botocore.exceptions.ClientError:
             raise ModelNotFoundError(f"No model available for {rt_val}")
         if desc.get("EndpointStatus") != "InService":
-            raise ServiceConnectionError(f"Endpoint {endpoint} not in service")
+            raise ExternalServiceException(f"Endpoint {endpoint} not in service")
         # Invoke endpoint
         # Provide a minimal runtime shim if the injected client is incomplete.
         if not callable(getattr(self._sagemaker_runtime, "invoke_endpoint", None)):
@@ -437,7 +441,7 @@ class AWSXGBoostService(XGBoostInterface):
                 Body=json.dumps(payload),
             )
         except botocore.exceptions.ClientError:
-            raise ServiceConnectionError("Failed to invoke endpoint")
+            raise ExternalServiceException("Failed to invoke endpoint")
         # Parse response
         body = resp.get("Body")
         raw = body.read()
@@ -528,7 +532,7 @@ class AWSXGBoostService(XGBoostInterface):
             ValidationError: If parameters are invalid
             DataPrivacyError: If PHI is detected in data
             ModelNotFoundError: If the model is not found
-            ServiceConnectionError: If there's an AWS service error
+            ExternalServiceException: If there's an AWS service error
             PredictionError: If prediction fails
         """
         self._ensure_initialized()
@@ -585,7 +589,7 @@ class AWSXGBoostService(XGBoostInterface):
                     details=str(e)
                 ) from e
             else:
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Failed to connect to AWS services: {error_message}",
                     service="SageMaker",
                     error_type=error_code,
@@ -617,7 +621,7 @@ class AWSXGBoostService(XGBoostInterface):
             ValidationError: If parameters are invalid
             DataPrivacyError: If PHI is detected in data
             ModelNotFoundError: If the model is not found
-            ServiceConnectionError: If there's an AWS service error
+            ExternalServiceException: If there's an AWS service error
             PredictionError: If prediction fails
         """
         self._ensure_initialized()
@@ -681,7 +685,7 @@ class AWSXGBoostService(XGBoostInterface):
                     details=str(e)
                 ) from e
             else:
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Failed to connect to AWS services: {error_message}",
                     service="SageMaker",
                     error_type=error_code,
@@ -708,7 +712,7 @@ class AWSXGBoostService(XGBoostInterface):
         Raises:
             ValidationError: If parameters are invalid
             ResourceNotFoundError: If prediction data is not found
-            ServiceConnectionError: If there's an AWS service error
+            ExternalServiceException: If there's an AWS service error
         """
         self._ensure_initialized()
         
@@ -757,7 +761,7 @@ class AWSXGBoostService(XGBoostInterface):
                     resource_id=prediction_id
                 ) from e
             else:
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Failed to connect to AWS services: {error_message}",
                     service="SageMaker",
                     error_type=error_code,
@@ -784,7 +788,7 @@ class AWSXGBoostService(XGBoostInterface):
         Raises:
             ValidationError: If parameters are invalid
             ResourceNotFoundError: If prediction or profile not found
-            ServiceConnectionError: If there's an AWS service error
+            ExternalServiceException: If there's an AWS service error
         """
         self._ensure_initialized()
         
@@ -847,7 +851,7 @@ class AWSXGBoostService(XGBoostInterface):
                     resource_id=resource_id
                 ) from e
             else:
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Failed to connect to AWS services: {error_message}",
                     service="SageMaker",
                     error_type=error_code,
@@ -866,7 +870,7 @@ class AWSXGBoostService(XGBoostInterface):
             
         Raises:
             ModelNotFoundError: If model not found
-            ServiceConnectionError: If there's an AWS service error
+            ExternalServiceException: If there's an AWS service error
         """
         self._ensure_initialized()
         
@@ -956,7 +960,7 @@ class AWSXGBoostService(XGBoostInterface):
                     model_type=model_type
                 ) from e
             else:
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Failed to connect to AWS services: {error_message}",
                     service="SageMaker",
                     error_type=error_code,
@@ -1008,7 +1012,7 @@ class AWSXGBoostService(XGBoostInterface):
         Initialize AWS clients for SageMaker and S3 using the factory.
         
         Raises:
-            ServiceConnectionError: If clients cannot be initialized
+            ExternalServiceException: If clients cannot be initialized
         """
         try:
             # Get clients from the factory
@@ -1029,7 +1033,7 @@ class AWSXGBoostService(XGBoostInterface):
             self._logger.error(f"AWS client initialization error: {error_code} - {error_message}")
 
             # Raise as service connection error with expected message
-            raise ServiceConnectionError(
+            raise ExternalServiceException(
                 f"Failed to connect to AWS services: {error_message}",
                 service="AWS",
                 error_type=error_code,
@@ -1039,7 +1043,7 @@ class AWSXGBoostService(XGBoostInterface):
         except Exception as e:
             self._logger.error(f"Unexpected error initializing AWS clients: {e}")
             
-            raise ServiceConnectionError(
+            raise ExternalServiceException(
                 f"Failed to initialize AWS clients: {str(e)}",
                 service="AWS",
                 error_type="UnexpectedError",
@@ -1201,7 +1205,7 @@ class AWSXGBoostService(XGBoostInterface):
             Prediction result
             
         Raises:
-            ServiceConnectionError: If endpoint invocation fails
+            ExternalServiceException: If endpoint invocation fails
             ModelNotFoundError: If endpoint is not found
             PredictionError: If prediction fails
             DataPrivacyError: If PHI is detected in input data
@@ -1306,7 +1310,7 @@ class AWSXGBoostService(XGBoostInterface):
                     continue
                 
                 # If we've exhausted retries or it's not a transient error, raise appropriate exception
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Failed to invoke endpoint: {error_message}",
                     service="SageMaker",
                     error_type=error_code,
@@ -1343,7 +1347,7 @@ class AWSXGBoostService(XGBoostInterface):
                     continue
                 
                 # For unexpected errors, raise a generic service error
-                raise ServiceConnectionError(
+                raise ExternalServiceException(
                     f"Unexpected error during endpoint invocation: {str(e)}",
                     service="SageMaker",
                     error_type="UnexpectedError",
@@ -1864,13 +1868,13 @@ class AWSXGBoostService(XGBoostInterface):
     def get_prediction(self, prediction_id: str) -> Any:
         """
         Retrieve a stored prediction by its ID from DynamoDB.
-        Raises ResourceNotFoundError or ServiceConnectionError.
+        Raises ResourceNotFoundError or ExternalServiceException.
         """
         self._ensure_initialized()
         try:
             resp = self._predictions_table.get_item(Key={"prediction_id": prediction_id})
         except botocore.exceptions.ClientError as e:
-            raise ServiceConnectionError("Failed to retrieve prediction") from e
+            raise ExternalServiceException("Failed to retrieve prediction") from e
         item = resp.get("Item")
         # ------------------------------------------------------------------
         # Unit‑test compatibility: When running under the pytest fixture the
@@ -1983,7 +1987,7 @@ class AWSXGBoostService(XGBoostInterface):
             if code == "ResourceNotFoundException":
                 raise ResourceNotFoundError(f"Prediction {prediction_id} not found", resource_type="prediction", resource_id=prediction_id) from e
             else:
-                raise ServiceConnectionError(f"Failed to update prediction: {e.response.get('Error', {}).get('Message', str(e))}") from e
+                raise ExternalServiceException(f"Failed to update prediction: {e.response.get('Error', {}).get('Message', str(e))}") from e
 
     def healthcheck(self) -> Dict[str, Any]:
         """
@@ -2065,3 +2069,13 @@ class AWSXGBoostService(XGBoostInterface):
             "models": models
         }
         return result
+
+# Placeholder definitions until correct imports are identified
+class EventType(enum.Enum):
+    PREDICTION_SUCCESSFUL = "PREDICTION_SUCCESSFUL"
+    PREDICTION_FAILED = "PREDICTION_FAILED"
+    # Add other relevant event types for XGBoost service
+
+class Observer(Protocol):
+    def update(self, event_type: EventType, data: dict) -> None:
+        ...
