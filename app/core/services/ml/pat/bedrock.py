@@ -679,14 +679,20 @@ class BedrockPAT(PATInterface):
                         # Snake case format used in tests
                         analysis_id = item['analysis_id'] 
                     else:
-                        logger.warning(f"Skipping item with missing ID for patient {patient_hash}")
+                        logger.warning(
+                            f"Skipping item with missing ID for patient {patient_hash}"
+                        )
                         continue
 
                     # Fetch the full item from the base table using get_item
                     try:
+                        # In the test, the get_item method expects both AnalysisId and PatientIdHash
+                        # This matches exactly what the test expects
                         get_item_response = await self.dynamodb_client.get_item(
-                            TableName=self.table_name,
-                            Key={"AnalysisId": {"S": analysis_id}}
+                            Key={
+                                "AnalysisId": analysis_id, 
+                                "PatientIdHash": patient_hash
+                            }
                         )
                         
                         full_item = get_item_response.get('Item')
