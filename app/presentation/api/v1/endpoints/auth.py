@@ -124,9 +124,9 @@ async def login(
             key="access_token",
             value=tokens["access_token"],
             httponly=True,
-            secure=settings.ENVIRONMENT != "development",  # Secure in non-dev environments
+            secure=settings.ENVIRONMENT != "development", 
             samesite="lax",
-            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, 
             path="/",
         )
         
@@ -143,7 +143,7 @@ async def login(
             secure=settings.ENVIRONMENT != "development",
             samesite="lax",
             max_age=refresh_max_age,
-            path="/api/v1/auth/refresh",  # Restrict to refresh endpoint
+            path="/api/v1/auth/refresh",  
         )
         
         # Log successful login
@@ -162,8 +162,11 @@ async def login(
     except Exception as e:
         # Log the error but don't expose details to client
         logger.error(f"Login error: {str(e)}")
-        # Raise a different error to expose the original cause in traceback
-        raise RuntimeError(f"Login endpoint failed internally: {str(e)}") from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
 
 @router.post(
