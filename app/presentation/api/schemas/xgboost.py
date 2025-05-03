@@ -54,6 +54,7 @@ class TreatmentType(str, Enum):
     """Types of treatments that can be evaluated (Presentation Layer)."""
     MEDICATION = "medication"
     PSYCHOTHERAPY = "psychotherapy"
+    THERAPY_CBT = "cognitive_behavioral_therapy"
     TMS = "transcranial_magnetic_stimulation"
     ECT = "electroconvulsive_therapy"
     LIFESTYLE = "lifestyle_intervention"
@@ -81,22 +82,44 @@ class BaseModelConfig(BaseModel):
 class RiskPredictionRequest(BaseModelConfig):
     """Request model for risk prediction."""
     risk_type: RiskType
-    duration_months: int = Field(ge=1, le=24)
-    features: Dict[str, Any] = Field(..., description="Patient features for prediction")
+    patient_id: str
+    patient_data: Dict[str, Any] = Field(..., description="Patient demographic and baseline data")
+    clinical_data: Dict[str, Any] = Field(..., description="Clinical data and measurements")
     include_explainability: bool = False
     visualization_type: Optional[VisualizationType] = None
+    
+    # For backward compatibility with legacy code
+    @property
+    def duration_months(self) -> int:
+        """Extract duration_months from clinical_data."""
+        return self.clinical_data.get("duration_months", 6) 
+    
+    @property
+    def features(self) -> Dict[str, Any]:
+        """Combine patient_data and clinical_data for legacy code."""
+        return {**self.patient_data, **self.clinical_data}
 
 class RiskPredictionResponse(BaseModelConfig):
     """Response model for risk prediction."""
+    prediction_id: str
+    patient_id: str
     risk_type: RiskType
+    risk_probability: float = Field(ge=0, le=1)
+    risk_level: str
     risk_score: float = Field(ge=0, le=1)
+    risk_factors: Dict[str, float] = Field(default_factory=dict)
     confidence: float = Field(ge=0, le=1)
-    timeframe_months: int
-    prediction_date: datetime
+    timestamp: str
+    time_frame_days: int
+    # Fields for backward compatibility
+    timeframe_months: int = 1
+    prediction_date: datetime = Field(default_factory=datetime.now)
     feature_importance: Optional[Dict[str, float]] = None
     visualization_data: Optional[Dict[str, Any]] = None
-    model_version: str
-    prediction_id: str
+    model_version: str = "1.0"
+    
+    class Config:
+        populate_by_name = True
 
 class ModelInfoRequest(BaseModelConfig):
     """Request schema for retrieving model information."""
@@ -167,15 +190,16 @@ class ExpectedOutcome(BaseModelConfig): # Placeholder for ExpectedOutcome struct
 
 class TherapyDetails(BaseModelConfig):
     """Details about a therapy or treatment."""
-    therapy_id: str
-    therapy_name: str
+    therapy_id: str = "therapy_default_id"
+    therapy_name: str = "Default Therapy Name"
     description: Optional[str] = None
-    typical_duration: Optional[int] = None  # in weeks
-    typical_frequency: Optional[int] = None  # sessions per week/month
+    typical_duration: Optional[int] = None
+    typical_frequency: Optional[int] = None
     therapy_type: Optional[str] = None
     is_medication: bool = False
-    dosage: Optional[str] = None  # For medications
+    dosage: Optional[str] = None
     side_effects: Optional[List[str]] = None
+    duration_weeks: Optional[int] = None  # For test compatibility
 
 class OutcomePredictionRequest(BaseModelConfig):
     """Request schema for clinical outcome predictions."""

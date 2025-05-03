@@ -1,0 +1,180 @@
+"""
+Biometric Domain Entity Module.
+
+This module defines the core domain entities for biometric data,
+representing physiological measurements captured from patients.
+"""
+
+from datetime import datetime
+from enum import Enum
+from typing import Dict, Any, Optional
+
+
+class BiometricType(str, Enum):
+    """Types of biometric data that can be captured."""
+    HEART_RATE = "heart_rate"
+    BLOOD_PRESSURE = "blood_pressure"
+    BLOOD_GLUCOSE = "blood_glucose"
+    WEIGHT = "weight"
+    TEMPERATURE = "temperature"
+    SLEEP = "sleep"
+    ACTIVITY = "activity"
+    STRESS = "stress"
+    MOOD = "mood"
+    OXYGEN_SATURATION = "oxygen_saturation"
+    RESPIRATION_RATE = "respiration_rate"
+    ECG = "ecg"
+    EEG = "eeg"
+    CORTISOL = "cortisol"
+
+
+class Biometric:
+    """
+    Biometric domain entity representing physiological measurements.
+    
+    Biometrics are key indicators of physical health that may correlate with
+    mental health status, enabling integrated care insights.
+    
+    Attributes:
+        id: Unique identifier for the biometric record
+        biometric_type: Type of biometric measurement
+        timestamp: When the biometric was recorded
+        value: The measurement value
+        device_id: ID of the device that recorded the biometric
+        metadata: Additional contextual data
+        user_id: ID of the patient this biometric belongs to
+    """
+    
+    def __init__(
+        self,
+        id: Optional[str],
+        biometric_type: BiometricType,
+        timestamp: datetime,
+        value: Dict[str, Any],
+        device_id: Optional[str],
+        metadata: Dict[str, Any],
+        user_id: str
+    ):
+        """
+        Initialize a new Biometric entity.
+        
+        Args:
+            id: Unique identifier (None for new records)
+            biometric_type: Type of biometric measurement
+            timestamp: When the biometric was recorded
+            value: The measurement value
+            device_id: ID of the device that recorded the biometric
+            metadata: Additional contextual data
+            user_id: ID of the patient this biometric belongs to
+            
+        Raises:
+            ValueError: If required fields are missing or invalid
+        """
+        self.id = id
+        self.biometric_type = biometric_type
+        self.timestamp = timestamp
+        self.value = value
+        self.device_id = device_id
+        self.metadata = metadata or {}
+        self.user_id = user_id
+        
+        # Validate entity state
+        self._validate()
+    
+    def _validate(self) -> None:
+        """
+        Validate the entity state.
+        
+        Raises:
+            ValueError: If entity state is invalid
+        """
+        if not self.biometric_type:
+            raise ValueError("Biometric type cannot be empty")
+            
+        if not self.timestamp:
+            raise ValueError("Timestamp cannot be empty")
+
+        if not self.value:
+            raise ValueError("Biometric value cannot be empty")
+            
+        if self.timestamp > datetime.now():
+            raise ValueError("Timestamp cannot be in the future")
+            
+        # Type-specific validations
+        if self.biometric_type == BiometricType.HEART_RATE:
+            if "bpm" not in self.value:
+                raise ValueError("Heart rate must include 'bpm' value")
+            if not isinstance(self.value["bpm"], (int, float)) or self.value["bpm"] <= 0:
+                raise ValueError("Heart rate bpm must be a positive number")
+                
+        elif self.biometric_type == BiometricType.BLOOD_PRESSURE:
+            if "systolic" not in self.value or "diastolic" not in self.value:
+                raise ValueError("Blood pressure must include 'systolic' and 'diastolic' values")
+                
+    def get_summary_value(self) -> Dict[str, Any]:
+        """
+        Get a summarized version of the biometric value.
+        
+        Returns:
+            Summarized biometric value
+        """
+        # Type-specific summary logic
+        if self.biometric_type == BiometricType.HEART_RATE:
+            return {"bpm": self.value.get("bpm")}
+            
+        elif self.biometric_type == BiometricType.BLOOD_PRESSURE:
+            return {
+                "systolic": self.value.get("systolic"), 
+                "diastolic": self.value.get("diastolic")
+            }
+            
+        elif self.biometric_type == BiometricType.SLEEP:
+            hours = self.value.get("duration_minutes", 0) / 60
+            return {"hours": round(hours, 1)}
+            
+        # Default summary is the entire value
+        return self.value
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert entity to dictionary.
+        
+        Returns:
+            Dictionary representation of the entity
+        """
+        return {
+            "id": self.id,
+            "biometric_type": self.biometric_type.value if isinstance(self.biometric_type, BiometricType) else self.biometric_type,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "value": self.value,
+            "device_id": self.device_id,
+            "metadata": self.metadata,
+            "user_id": self.user_id
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Biometric":
+        """
+        Create entity from dictionary.
+        
+        Args:
+            data: Dictionary representation of entity
+            
+        Returns:
+            Biometric entity
+        """
+        # Convert string enum values to enum instances
+        biometric_type = BiometricType(data["biometric_type"]) if isinstance(data["biometric_type"], str) else data["biometric_type"]
+        
+        # Parse timestamps
+        timestamp = datetime.fromisoformat(data["timestamp"]) if isinstance(data["timestamp"], str) else data["timestamp"]
+        
+        return cls(
+            id=data.get("id"),
+            biometric_type=biometric_type,
+            timestamp=timestamp,
+            value=data["value"],
+            device_id=data.get("device_id"),
+            metadata=data.get("metadata", {}),
+            user_id=data["user_id"]
+        )
