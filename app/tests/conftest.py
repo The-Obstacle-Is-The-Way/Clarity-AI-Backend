@@ -17,40 +17,37 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# --- Core App/Config Imports --- 
+# --- Core App/Config Imports ---
 from app.core.config.settings import Settings, get_settings
-
-# --- Domain Imports --- 
 from app.core.interfaces.repositories.user_repository import IUserRepository
-from app.domain.entities.user import User
 
-# --- Infrastructure Imports --- 
+# --- Domain Imports ---
+
+
+# --- Infrastructure Imports ---
 from app.infrastructure.persistence.sqlalchemy.database import Base
-from app.infrastructure.repositories.sql_user_repository import SQLUserRepository
 from app.infrastructure.security.password.hashing import pwd_context
-from app.infrastructure.services.external.pat_service import PATService
+from app.domain.services.pat_service import PATService
 
-# --- Presentation Layer Imports --- 
+# --- Presentation Layer Imports ---
 from app.main import create_application
-from app.presentation.api.dependencies.auth_dependencies import (
-    get_auth_service_provider,
-    get_jwt_service_provider,
-    get_user_repository_provider,
-)
-from app.presentation.api.dependencies.common import get_db_session
+from app.presentation.api.dependencies.user_repository import get_user_repository_provider
+from app.presentation.api.dependencies.auth_service import get_auth_service_provider
+from app.presentation.api.dependencies.auth import get_jwt_service
+from app.core.dependencies.database import get_db_session
 from app.presentation.api.dependencies.services import get_pat_service
-from app.presentation.api.v1.routers import auth as auth_router
+from app.presentation.api.v1.endpoints import auth as auth_router
 from app.presentation.middleware.authentication_middleware import (
     AuthenticationMiddleware,
 )
 
-# --- Test Utility Imports --- 
-from app.tests.utils.test_settings import get_test_settings
+# --- Test Utility Imports ---
+from app.tests.fixtures.db_test_fixture import get_test_settings
 
 # Setup logging for tests
 logger = logging.getLogger(__name__)
 
-# --- Global Test Constants --- 
+# --- Global Test Constants ---
 TEST_USERNAME = "testuser@example.com"
 TEST_PASSWORD = "testpassword" 
 TEST_INVALID_PASSWORD = "wrongpassword" 
@@ -201,9 +198,7 @@ def mock_user_repository_override(
         # Example: mock_repo.get_by_id = AsyncMock(return_value=None) 
         return mock_repo
 
-    return factory
-
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 def mock_pat_service_override(
     mock_pat_service: AsyncMock
 ) -> Callable[[], PATService]: 
@@ -235,7 +230,7 @@ async def initialized_app(
         get_settings: lambda: test_settings,
         get_db_session: mock_db_session_override, 
         get_pat_service: mock_pat_service_override, 
-        get_jwt_service_provider: lambda: mock_jwt_service, 
+        get_jwt_service: lambda: mock_jwt_service, 
         get_auth_service_provider: lambda: mock_auth_service, 
         get_user_repository_provider: mock_user_repository_override,
         # get_analytics_service_provider: lambda: mock_analytics_service, 
