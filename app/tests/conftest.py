@@ -231,7 +231,7 @@ async def seed_test_data(test_db_session: AsyncSession):
 
     # Create SQLAlchemy User entities
     test_user = SQLAlchemyUser(
-        id=str(TEST_INTEGRATION_USER_ID), # Ensure ID is string for SQLAlchemy model
+        id=TEST_INTEGRATION_USER_ID,  # Use UUID object directly for PostgresUUID column
         username=TEST_USERNAME,
         email=TEST_USERNAME,
         password_hash=hashed_password, # Use correct field name
@@ -241,7 +241,7 @@ async def seed_test_data(test_db_session: AsyncSession):
         email_verified=True # Assume verified for testing login
     )
     provider_user = SQLAlchemyUser(
-        id=str(TEST_PROVIDER_USER_ID), # Ensure ID is string
+        id=TEST_PROVIDER_USER_ID,  # Use UUID object directly for PostgresUUID column
         username=TEST_PROVIDER_USERNAME,
         email=TEST_PROVIDER_USERNAME,
         password_hash=hashed_provider_password, # Use correct field name

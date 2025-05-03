@@ -126,12 +126,13 @@ class User(Base, TimestampMixin, AuditMixin):
     # --- Core Identification and Metadata ---
     # Using stable, clearly mapped String type with explicit configuration and robust UUID generation
     # This approach avoids custom type descriptors which can cause mapping issues while maintaining type semantics
+    # Switch to UUID type for consistency with related models like ProviderModel
     id = Column(
-        String(36), 
+        PostgresUUID(as_uuid=True), 
         primary_key=True, 
         index=True,  # Add index for performance
         nullable=False,
-        default=lambda: str(uuid.uuid4()),  # Safe UUID generation
+        default=uuid.uuid4,  # Default generates UUID object
         comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
     )
     username = Column(String(64), unique=True, nullable=False, comment="Username for login")
