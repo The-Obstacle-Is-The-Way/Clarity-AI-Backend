@@ -178,6 +178,35 @@ class JWTService(IJwtService):
         """Alias for decode_token to maintain backward compatibility."""
         return await self.decode_token(token)
     
+    async def verify_refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        """Verify a refresh token and return its payload.
+
+        A thin wrapper around ``decode_token`` that additionally checks the
+        ``type`` claim equals ``"refresh"``.  Any decoding/expiry errors are
+        surfaced unchanged as ``AuthenticationError`` so upstream callers can
+        react consistently.
+        """
+        payload = await self.decode_token(refresh_token)
+        if payload.get("type") != "refresh":
+            raise AuthenticationError("Invalid token type – expected refresh token")
+        return payload
+
+    async def get_user_from_token(self, token: str):  # type: ignore[override]
+        """Return **None** because this lightweight implementation has no DB.
+
+        The full-featured JWT service (``app/infrastructure/security/jwt/jwt_service.py``)
+        performs a repository lookup.  For the purposes of unit-tests that rely
+        only on token validation we keep this stub minimal while still
+        satisfying the abstract interface so instantiation succeeds.
+        """
+        # Decode merely to validate; ignore payload details.
+        await self.decode_token(token)
+        return None
+
+    def get_token_payload_subject(self, payload: Dict[str, Any]):  # type: ignore[override]
+        """Extract the ``sub`` claim if present."""
+        return payload.get("sub")
+    
     def revoke_token(self, token: str) -> bool:
         """
         Revoke a token by adding it to the blacklist.
