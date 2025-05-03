@@ -32,17 +32,12 @@ from app.infrastructure.security.jwt_service import JWTService
 from app.infrastructure.security.password.hashing import pwd_context
 from app.domain.services.pat_service import PATService
 
-# --- Presentation Layer Imports ---
+# --- API Layer Imports ---
 from app.main import create_application
-from app.presentation.api.dependencies.user_repository import get_user_repository_provider
-from app.presentation.api.dependencies.auth_service import get_auth_service_provider
-from app.presentation.api.dependencies.auth import get_jwt_service
+from app.api.dependencies import get_user_repository_provider, get_auth_service_provider, get_jwt_service, get_pat_service
 from app.core.dependencies.database import get_db_session
-from app.presentation.api.dependencies.services import get_pat_service
-from app.presentation.api.v1.endpoints import auth as auth_router
-from app.presentation.middleware.authentication_middleware import (
-    AuthenticationMiddleware,
-)
+from app.api.routes import auth as auth_router
+from app.core.security import AuthenticationMiddleware
 
 # --- Test Utility Imports ---
 

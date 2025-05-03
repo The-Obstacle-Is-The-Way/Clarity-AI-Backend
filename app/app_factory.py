@@ -18,7 +18,7 @@ from app.infrastructure.database.session import session_local, engine # Assuming
 from app.core.dependencies.database import init_db # Corrected path for init_db
 
 # CORRECTED Import for API router - ONLY import the setup function
-from app.presentation.api.routes import setup_routers 
+from app.api.routes import setup_routers 
 
 from app.config.settings import Settings, get_settings
 # REMOVED incorrect import for exception handlers
@@ -26,10 +26,11 @@ from app.config.settings import Settings, get_settings
 from app.infrastructure.cache.redis_cache import close_redis_connection, initialize_redis_pool
 from app.infrastructure.persistence.sqlalchemy.unit_of_work import UnitOfWork
 from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
-from app.presentation.middleware.logging_middleware import LoggingMiddleware
-from app.presentation.middleware.rate_limiting_middleware import RateLimitingMiddleware
-from app.presentation.middleware.security_headers_middleware import SecurityHeadersMiddleware
+from app.core.security import AuthenticationMiddleware, PHIMiddleware
+from app.core.security.middleware import LoggingMiddleware
+from app.core.security.rate_limiting import RateLimitingMiddleware
+from app.core.security.headers import SecurityHeadersMiddleware
+from app.api.dependencies import setup_rate_limiting
 
 # MOVED logging_config import just before use
 from app.core.logging_config import LOGGING_CONFIG

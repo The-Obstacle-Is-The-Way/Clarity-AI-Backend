@@ -91,3 +91,44 @@ class PHIMiddleware(BaseHTTPMiddleware):
         
         response = await call_next(request)
         return response
+
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware for request/response logging.
+    
+    This middleware logs information about incoming requests and outgoing
+    responses for monitoring, debugging, and audit purposes.
+    """
+    
+    def __init__(self, app):
+        """
+        Initialize the logging middleware.
+        
+        Args:
+            app: The FastAPI application
+        """
+        super().__init__(app)
+        self.logger = logging.getLogger("api.access")
+        
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """
+        Process the request and log access information.
+        
+        Args:
+            request: The incoming HTTP request
+            call_next: The next middleware/endpoint in the chain
+            
+        Returns:
+            The HTTP response from downstream handlers
+        """
+        # Log request information (sanitized for PHI)
+        self.logger.info(f"Request: {request.method} {request.url.path}")
+        
+        # Process the request through the application stack
+        response = await call_next(request)
+        
+        # Log response information
+        self.logger.info(f"Response: {response.status_code}")
+        
+        return response
