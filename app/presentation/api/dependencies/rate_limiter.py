@@ -322,3 +322,23 @@ def rate_limit(tier: str = "default") -> RateLimitDependency:
         Rate limiter dependency based on tier
     """
     return get_rate_limiter(tier)
+
+
+def sensitive_rate_limit() -> RateLimitDependency:
+    """
+    Rate limiter for sensitive operations containing PHI.
+    
+    This applies stricter rate limits for endpoints that handle Protected Health Information,
+    helping to enforce HIPAA security requirements and prevent data exfiltration attempts.
+    
+    Returns:
+        Rate limiter configured for sensitive PHI operations
+    """
+    return RateLimitDependency(
+        RateLimitConfig(
+            rate=30,     # 30 requests
+            per=60,      # per minute
+            scope=RateLimitScope.USER,
+            burst_multiplier=1.2  # Lower burst allowance for sensitive endpoints
+        )
+    )

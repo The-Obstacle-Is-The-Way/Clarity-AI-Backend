@@ -106,16 +106,28 @@ class ModelInfoRequest(BaseModelConfig):
     include_history: bool = False
     version: Optional[str] = None
 
+class PerformanceMetrics(BaseModelConfig):
+    """Performance metrics for ML models."""
+    accuracy: float = Field(ge=0.0, le=1.0, description="Overall accuracy of the model")
+    precision: float = Field(ge=0.0, le=1.0, description="Precision metric")
+    recall: float = Field(ge=0.0, le=1.0, description="Recall/sensitivity metric")
+    f1_score: float = Field(ge=0.0, le=1.0, description="F1 score (harmonic mean of precision and recall)")
+    auc_roc: Optional[float] = Field(None, ge=0.0, le=1.0, description="Area under ROC curve")
+    specificity: Optional[float] = Field(None, ge=0.0, le=1.0, description="Specificity metric")
+    confusion_matrix: Optional[Dict[str, int]] = None
+    cross_validation_scores: Optional[List[float]] = None
+
 class ModelInfoResponse(BaseModelConfig):
     """Response model for model information."""
     model_name: str
-    model_version: str
     model_type: str
-    training_date: datetime
-    feature_count: int
-    performance_metrics: Dict[str, float]
-    supported_risk_types: List[RiskType]
+    model_version: str
+    creation_date: datetime
+    training_dataset_size: int
+    trained_for_domains: List[str]
+    supports_features: List[str]
     description: str
+    performance_metrics: Optional[PerformanceMetrics] = None
 
 class SideEffectRisk(BaseModelConfig):
     """Risk model for side effects."""

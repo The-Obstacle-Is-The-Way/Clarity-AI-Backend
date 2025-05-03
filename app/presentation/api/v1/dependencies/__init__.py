@@ -27,6 +27,10 @@ from app.presentation.api.v1.dependencies.biometric import (
     get_alert_service
 )
 
+from app.presentation.api.v1.dependencies.biometric_alert import (
+    get_alert_repository
+)
+
 from app.presentation.api.v1.dependencies.digital_twin import (
     get_digital_twin_service
 )
