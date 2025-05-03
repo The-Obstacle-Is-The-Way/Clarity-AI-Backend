@@ -4,6 +4,7 @@ Pytest configuration file for the application.
 This module provides fixtures and configuration for testing the application.
 """
 
+import asyncio
 import logging
 import uuid
 from collections.abc import AsyncGenerator, Callable
@@ -12,10 +13,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from typing import Any
 
 # --- Core App/Config Imports ---
 from app.core.config.settings import Settings, get_settings
@@ -241,8 +243,7 @@ async def initialized_app(
 
     app_instance = create_application(
         settings=test_settings, 
-        dependency_overrides=dependency_overrides,
-        include_routers=False
+        dependency_overrides=dependency_overrides
     )
 
     public_paths = getattr(
@@ -283,6 +284,47 @@ async def async_client(
     Ensures proper async context management.
     """
     async with AsyncClient(
-        transport=ASGITransport(app=initialized_app), base_url="http://test"
+        app=initialized_app, base_url="http://testserver"
     ) as client:
         yield client
+
+# --- Authentication Header Fixture ---
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_headers(
+    async_client: AsyncClient, 
+    test_settings: Settings 
+) -> dict[str, str]:
+    """Perform login and return authentication headers for test requests."""
+    login_data = {
+        "username": TEST_USERNAME, 
+        "password": TEST_PASSWORD,
+    }
+    # Use the API prefix from settings
+    login_url = f"{test_settings.API_V1_STR}/auth/login"
+    logger.info(f"Attempting login for auth_headers fixture via URL: {login_url}")
+    
+    response = await async_client.post(login_url, data=login_data)
+    
+    # Log response status and content for debugging
+    logger.info(f"Login response status: {response.status_code}")
+    try:
+        response_json = response.json()
+        logger.info(f"Login response JSON: {response_json}") 
+    except Exception as e:
+        logger.error(f"Failed to parse login response JSON: {e}")
+        logger.error(f"Login response text: {response.text}")
+        response_json = {}
+
+    if response.status_code != 200:
+        logger.error(f"Login failed with status {response.status_code}. Response: {response.text}")
+        # Optionally raise an error or return empty dict depending on test needs
+        pytest.fail(f"Login failed for auth_headers fixture: {response.status_code} - {response.text}")
+
+    access_token = response_json.get("access_token")
+    if not access_token:
+        pytest.fail("Access token not found in login response for auth_headers fixture.")
+        
+    headers = {"Authorization": f"Bearer {access_token}"}
+    logger.info("auth_headers fixture generated successfully.")
+    return headers
