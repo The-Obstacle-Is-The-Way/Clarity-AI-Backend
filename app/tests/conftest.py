@@ -18,13 +18,20 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 # --- Core App/Config Imports --- 
-from app.core.config import Settings, get_settings
-from app.core.security import pwd_context
+from app.core.config.settings import Settings, get_settings
 
 # --- Domain Imports --- 
-from app.domain.interfaces.repositories.user_repository import IUserRepository
+from app.domain.repositories.user_repository import IUserRepository
+from app.domain.services.authentication_service import AuthenticationService as DomainAuthService
+from app.domain.services.patient_data_service import PatientDataService
+from app.domain.services.risk_assessment_service import RiskAssessmentService
 
 # --- Infrastructure Imports --- 
+from app.infrastructure.persistence.sqlalchemy.database import Base
+from app.infrastructure.repositories.mock_user_repository import MockUserRepository
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.password.hashing import pwd_context
 from app.infrastructure.services.external.pat_service import PATService
 
 # --- Presentation Layer Imports --- 
@@ -143,8 +150,6 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
         poolclass=StaticPool,
         connect_args={"check_same_thread": False}
     )
-
-    from app.infrastructure.persistence.sqlalchemy.database import Base
 
     async with engine.begin() as conn:
         logger.info("Creating all tables in test database...")

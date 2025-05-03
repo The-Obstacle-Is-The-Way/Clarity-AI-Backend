@@ -1,6 +1,7 @@
 import time
+from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
-from typing import Any, List, Tuple, Optional, Dict
 
 import pytest
 import pytest_asyncio
@@ -17,7 +18,7 @@ from app.presentation.middleware.authentication_middleware import Authentication
 def mock_auth_service() -> AsyncMock:
     """Provides a mock AuthenticationService."""
     mock = AsyncMock(spec=AuthenticationService)
-    async def mock_validate_token(token: str) -> Tuple[Optional[Any], List[str]]:
+    async def mock_validate_token(token: str) -> tuple[Any | None, list[str]]:
         if token == "expired":
             raise TokenExpiredException("Token expired")
         if token == "invalid":
@@ -42,7 +43,7 @@ def mock_auth_service() -> AsyncMock:
 def mock_jwt_service() -> AsyncMock:
     """Provides a mock JWTService."""
     mock = AsyncMock(spec=JWTService)
-    async def mock_decode_token(token: str) -> Optional[TokenPayload]:
+    async def mock_decode_token(token: str) -> TokenPayload | None:
         if token == "valid-token":
             return TokenPayload(sub="user123", roles=["user"], exp=int(time.time()) + 3600)
         elif token == "expired-token":
@@ -67,11 +68,11 @@ def app(
     )
     
     @app.get("/public")
-    async def public_route() -> Dict[str, str]:
+    async def public_route() -> dict[str, str]:
         return {"message": "public access"}
         
     @app.get("/protected")
-    async def protected_route() -> Dict[str, str]:
+    async def protected_route() -> dict[str, str]:
         return {"message": "protected access"}
     
     return app
