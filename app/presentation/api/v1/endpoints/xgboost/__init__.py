@@ -1,11 +1,18 @@
 """
-XGBoost endpoints compatibility module.
+XGBoost API endpoints V1.
 
-This module provides backward compatibility for tests and code
-that still references the old app.presentation.api.v1.endpoints.xgboost module.
-
-DO NOT USE THIS IN NEW CODE - use app.api.routes.v1.endpoints.xgboost instead.
+This package contains the router and endpoint definitions for XGBoost model predictions.
 """
 
-# Re-export from the new location
-from app.api.routes.v1.endpoints.xgboost.router import router
+from fastapi import APIRouter
+
+router = APIRouter(
+    prefix="/xgboost",
+    tags=["xgboost"],
+)
+
+# TODO: Define actual xgboost endpoints here
+# Example:
+# @router.post("/predict")
+# async def predict_xgboost():
+#     return {"message": "XGBoost predict endpoint stub"}

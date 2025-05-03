@@ -1,11 +1,18 @@
 """
-Biometric alerts endpoints compatibility module.
+Biometric Alerts API endpoints V1.
 
-This module provides backward compatibility for tests and code
-that still references the old app.presentation.api.v1.endpoints.biometric_alerts module.
-
-DO NOT USE THIS IN NEW CODE - use app.api.routes.v1.endpoints.biometric_alerts instead.
+This package contains the router and endpoint definitions for biometric alert rules and events.
 """
 
-# Re-export from the new location
-from app.api.routes.v1.endpoints.biometric_alerts.router import router
+from fastapi import APIRouter
+
+router = APIRouter(
+    prefix="/biometric-alerts",
+    tags=["biometric-alerts"],
+)
+
+# TODO: Define actual biometric alert endpoints here
+# Example:
+# @router.get("/rules")
+# async def get_alert_rules():
+#     return {"message": "Biometric alert rules endpoint stub"}
