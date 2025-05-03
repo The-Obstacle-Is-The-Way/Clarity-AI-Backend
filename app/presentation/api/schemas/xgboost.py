@@ -98,6 +98,14 @@ class RiskPredictionResponse(BaseModelConfig):
     model_version: str
     prediction_id: str
 
+class ModelInfoRequest(BaseModelConfig):
+    """Request schema for retrieving model information."""
+    model_id: Optional[str] = None
+    include_metrics: bool = False
+    include_features: bool = False
+    include_history: bool = False
+    version: Optional[str] = None
+
 class ModelInfoResponse(BaseModelConfig):
     """Response model for model information."""
     model_name: str

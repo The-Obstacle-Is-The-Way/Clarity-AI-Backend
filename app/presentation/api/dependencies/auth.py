@@ -5,7 +5,7 @@ This module provides FastAPI dependency functions required for handling
 authentication and authorization within the API endpoints.
 """
 
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer

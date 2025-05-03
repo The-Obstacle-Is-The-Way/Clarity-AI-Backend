@@ -9,6 +9,7 @@ Rate limiting is a key component for API security and reliability.
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from fastapi import Depends, HTTPException, Request, status
@@ -16,6 +17,15 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
 from app.infrastructure.di.container import get_container
+
+
+class RateLimitScope(str, Enum):
+    """Scope for rate limiting rules."""
+    GLOBAL = "global"  # Global rate limit across all users
+    USER = "user"      # Per-user rate limit
+    IP = "ip"          # Per-IP address rate limit
+    PATH = "path"      # Per-endpoint path rate limit
+    TOKEN = "token"    # Per-token rate limit (for API tokens)
 
 
 @dataclass
@@ -249,7 +259,7 @@ class RateLimitDependency:
 
 # Predefined rate limiters for common scenarios
 default_rate_limiter = RateLimitDependency(
-    RateLimitConfig(rate=100, per=60, scope="ip")  # 100 requests per minute per IP
+    RateLimitConfig(rate=100, per=60, scope=RateLimitScope.IP)  # 100 requests per minute per IP
 )
 
 strict_rate_limiter = RateLimitDependency(
@@ -272,9 +282,43 @@ def get_rate_limiter(tier: str = "default") -> RateLimitDependency:
     Returns:
         Rate limiter dependency
     """
-    limiters = {
-        "default": default_rate_limiter,
-        "strict": strict_rate_limiter,
-        "auth": auth_rate_limiter,
-    }
-    return limiters.get(tier, default_rate_limiter)
+    if tier == "strict":
+        return strict_rate_limiter
+    elif tier == "auth":
+        return auth_rate_limiter
+    else:
+        return default_rate_limiter
+
+
+# HIPAA-compliant rate limits
+# These rate limits help prevent DoS attacks and ensure system availability
+# as required by the HIPAA Security Rule
+
+def admin_rate_limit() -> RateLimitDependency:
+    """
+    Rate limiter for admin endpoints - more permissive.
+    
+    Returns:
+        Rate limiter configured for admin routes
+    """
+    return RateLimitDependency(
+        RateLimitConfig(
+            rate=300,  # 300 requests
+            per=60,    # per minute
+            scope=RateLimitScope.USER,
+            burst_multiplier=2.0
+        )
+    )
+
+
+def rate_limit(tier: str = "default") -> RateLimitDependency:
+    """
+    Standard rate limiter for API endpoints.
+    
+    Args:
+        tier: Rate limit tier (default, strict, auth)
+        
+    Returns:
+        Rate limiter dependency based on tier
+    """
+    return get_rate_limiter(tier)
