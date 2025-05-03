@@ -1,58 +1,94 @@
-"""
-Token Service Interface.
-
-This module defines the interface for token management services.
-"""
-
 from abc import ABC, abstractmethod
 from typing import Any
 
 from app.domain.entities.user import User
 
-class TokenService(ABC):
+
+class ITokenService(ABC):
     """Interface for token management services."""
 
     @abstractmethod
-    async def create_access_token(self, data: dict, expires_delta: timedelta | None = None) -> str:
-        """Creates a new access token."""
+    def generate_tokens(self, user: User) -> dict[str, str]:
+        """
+        Generate access and refresh tokens for a user.
+
+        Args:
+            user: The user entity to generate tokens for
+
+        Returns:
+            Dictionary containing access_token and refresh_token
+        """
         pass
 
     @abstractmethod
-    async def create_refresh_token(self, data: dict, expires_delta: timedelta | None = None) -> str:
-        """Creates a new refresh token."""
+    def validate_access_token(self, token: str) -> dict[str, Any]:
+        """
+        Validate an access token and return its payload.
+
+        Args:
+            token: The access token to validate
+
+        Returns:
+            The decoded token payload
+        """
         pass
 
     @abstractmethod
-    async def verify_token(self, token: str, secret_key: str, algorithms: list[str]) -> dict[str, Any] | None:
-        """Verifies a token and returns its payload."""
+    def validate_refresh_token(self, token: str) -> dict[str, Any]:
+        """
+        Validate a refresh token and return its payload.
+
+        Args:
+            token: The refresh token to validate
+
+        Returns:
+            The decoded token payload
+        """
         pass
 
     @abstractmethod
-    async def decode_token(self, token: str) -> dict[str, Any] | None:
-        """Decodes a token payload without verification."""
+    def refresh_tokens(self, refresh_token: str, user: User) -> dict[str, str]:
+        """
+        Generate new access and refresh tokens using a valid refresh token.
+
+        Args:
+            refresh_token: The refresh token to validate
+            user: The user entity to generate new tokens for
+
+        Returns:
+            Dictionary containing new access_token and refresh_token
+        """
         pass
 
     @abstractmethod
-    async def get_token_payload(self, token: str) -> dict | None:
-        """Retrieves the payload from a valid token."""
+    def revoke_token(self, token: str) -> None:
+        """
+        Revoke (blacklist) a token.
+
+        Args:
+            token: The token to revoke
+        """
         pass
 
     @abstractmethod
-    async def validate_token_for_user(self, token: str, user: User) -> bool:
-        """Validates if the token belongs to the specified user."""
+    def revoke_user_tokens(self, user_id: str) -> None:
+        """
+        Revoke all tokens for a specific user.
+
+        Args:
+            user_id: The ID of the user whose tokens to revoke
+        """
         pass
 
     @abstractmethod
-    async def revoke_token(self, token: str) -> bool:
-        """Revokes a specific token."""
-        pass
+    def get_user_from_token(self, token: str) -> dict[str, Any]:
+        """
+        Extract and return the user information from a token.
 
-    @abstractmethod
-    async def is_token_revoked(self, token: str) -> bool:
-        """Checks if a token has been revoked."""
-        pass
+        Args:
+            token: The token to extract user information from
 
-    @abstractmethod
-    async def get_user_from_token(self, token: str) -> User | None:
-        """Retrieves the associated user from a token."""
+        Returns:
+            Dictionary containing user information from the token
+        """
         pass

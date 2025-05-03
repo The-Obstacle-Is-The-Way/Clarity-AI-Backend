@@ -22,14 +22,11 @@ from app.core.config.settings import Settings, get_settings
 
 # --- Domain Imports --- 
 from app.domain.repositories.user_repository import UserRepository
-from app.domain.services.patient_data_service import PatientDataService
-from app.domain.services.risk_assessment_service import RiskAssessmentService
+from app.domain.entities.user import User
 
 # --- Infrastructure Imports --- 
 from app.infrastructure.persistence.sqlalchemy.database import Base
-from app.infrastructure.repositories.mock_user_repository import MockUserRepository
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.repositories.sql_user_repository import SQLUserRepository
 from app.infrastructure.security.password.hashing import pwd_context
 from app.infrastructure.services.external.pat_service import PATService
 
