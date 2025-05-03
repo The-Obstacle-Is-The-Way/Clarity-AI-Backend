@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Common dependencies for biometric-related endpoints.
 
@@ -6,17 +5,15 @@ This module provides common dependencies and utilities for biometric-related
 endpoints, such as authentication and patient ID validation.
 """
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Path, status
-# from fastapi.security import OAuth2PasswordBearer # No longer needed directly here
 
-# from app.domain.exceptions import AuthenticationError, AuthorizationError # Corrected names
 # Use the specific exception and the standard auth dependency
-from app.core.exceptions.base_exceptions import AuthenticationException, AuthorizationError
+from app.core.exceptions.base_exceptions import AuthenticationException
+from app.domain.entities.user import User
+from app.domain.enums.role import Role
 from app.presentation.api.dependencies.auth import get_current_user
-from app.domain.entities.user import User  # Import User entity for type hinting
 
 
 # OAuth2 scheme for token authentication
@@ -134,7 +131,7 @@ async def get_patient_id(
 #         )
 
 
-async def require_role(required_role: str, current_user: User = Depends(get_current_user)):
+async def require_role(required_role: str, current_user: User = Depends(get_current_user)) -> None:
     """Generic dependency to check if the user has a specific role."""
     if not current_user:
         raise HTTPException(
@@ -153,7 +150,11 @@ async def require_role(required_role: str, current_user: User = Depends(get_curr
             detail=f"This operation requires '{required_role}' privileges"
         )
 
-async def require_any_role(required_roles: list[str], current_user: User = Depends(get_current_user)):
+
+async def require_any_role(
+    required_roles: list[str],
+    current_user: User = Depends(get_current_user)
+) -> None:
     """Generic dependency to check if the user has any of the specified roles."""
     if not current_user:
         raise HTTPException(
@@ -186,8 +187,6 @@ async def require_clinician_role(
     Raises:
         HTTPException: If the user doesn't have the clinician or admin role
     """
-    from app.domain.enums.role import Role
-    
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -200,7 +199,7 @@ async def require_clinician_role(
     allowed_roles = [Role.CLINICIAN.value, Role.ADMIN.value]
     
     if user_role_upper not in allowed_roles:
-        from app.domain.enums.role import Role
+        # Role is now imported at the module level
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"This operation requires one of the following roles: {Role.CLINICIAN.value}, {Role.ADMIN.value}"
@@ -219,8 +218,6 @@ async def require_admin_role(
     Raises:
         HTTPException: If the user doesn't have the admin role
     """
-    from app.domain.enums.role import Role
-    
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

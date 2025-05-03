@@ -196,9 +196,64 @@ class JWTService(IJwtService):
         if payload.get("type") != "refresh":
             raise AuthenticationError("Invalid token type – expected refresh token")
         return payload
+    
+    async def refresh_access_token(self, refresh_token: str) -> str:
+        """Generate a new access token based on a valid refresh token.
+        
+        Args:
+            refresh_token: A valid JWT refresh token
+            
+        Returns:
+            A new JWT access token
+            
+        Raises:
+            AuthenticationError: If the refresh token is invalid or expired
+        """
+        # Verify the refresh token is valid
+        payload = await self.verify_refresh_token(refresh_token)
+        
+        # Extract the core identity claims for the new token
+        data = {}
+        for claim in ["sub", "role", "roles", "email", "username"]:
+            if claim in payload:
+                data[claim] = payload[claim]
+                
+        # Create a new access token with the extracted identity
+        return await self.create_access_token(data)
+        
+    async def get_token_identity(self, token: str) -> str:
+        """Extract the subject (identity) from a token.
+        
+        Args:
+            token: JWT token
+            
+        Returns:
+            The subject claim (usually the user ID)
+            
+        Raises:
+            AuthenticationError: If token is invalid or does not contain a subject
+        """
+        payload = await self.decode_token(token)
+        subject = payload.get("sub")
+        
+        if not subject:
+            raise AuthenticationError("Token does not contain identity information")
+            
+        return subject
 
-    async def get_user_from_token(self, token: str):  # type: ignore[override]
-        """Return **None** because this lightweight implementation has no DB.
+    async def get_user_from_token(self, token: str) -> User:  # type: ignore[override]
+        """Construct a User entity from token claims.
+        
+        Extracts user claims from the token and constructs a User entity.
+        
+        Args:
+            token: JWT token
+            
+        Returns:
+            User entity populated with data from token claims
+            
+        Raises:
+            AuthenticationError: If token is invalid or missing required claims
 
         The full-featured JWT service (``app/infrastructure/security/jwt/jwt_service.py``)
         performs a repository lookup.  For the purposes of unit-tests that rely
