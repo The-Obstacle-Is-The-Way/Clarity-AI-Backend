@@ -671,14 +671,15 @@ class BedrockPAT(PATInterface):
                 # Iterate through the retrieved items and fetch full analysis details
                 for item in items:
                     # Handle both DynamoDB-style and direct dict-style responses for test compatibility
-                    if 'AnalysisId' in item and isinstance(item['AnalysisId'], dict) and 'S' in item['AnalysisId']:
+                    if ('AnalysisId' in item and isinstance(item['AnalysisId'], dict) 
+                            and 'S' in item['AnalysisId']):
                         # Standard DynamoDB response format
                         analysis_id = item['AnalysisId']['S']
                     elif 'analysis_id' in item:
                         # Snake case format used in tests
                         analysis_id = item['analysis_id'] 
                     else:
-                        logger.warning(f"Skipping item with missing analysis ID for patient {patient_hash}")
+                        logger.warning(f"Skipping item with missing ID for patient {patient_hash}")
                         continue
 
                     # Fetch the full item from the base table using get_item
