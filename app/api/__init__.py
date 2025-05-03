@@ -1,2 +1,6 @@
-"""Stub package for compatibility with integration tests."""
-# Package for compatibility with integration tests.
+"""
+API package for legacy route handling.
+
+This package exists for backward compatibility with old route structures.
+New code should use the presentation/api structure following clean architecture.
+"""

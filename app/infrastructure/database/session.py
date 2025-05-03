@@ -78,29 +78,37 @@ except Exception as e:
     is_async = False
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_async_session() -> AsyncGenerator[Union[AsyncSession, Session], None]:
     """
     Dependency function to get a database session.
     
     This function creates a new database session for each request
     and ensures that the session is properly closed when the request is complete,
-    even if an exception occurs.
+    even if an exception occurs. It adapts to both async and sync environments.
     
     Yields:
-        AsyncSession: SQLAlchemy async session for database operations
+        AsyncSession or Session: Session for database operations
     """
-    async with AsyncSessionLocal() as session:
+    if is_async:
+        async with AsyncSessionLocal() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
+    else:
+        # For test collection with sync session
+        session = SyncSessionLocal()
         try:
             yield session
         finally:
-            await session.close()
+            session.close()
 
 
-def get_session() -> AsyncSession:
+def get_session() -> Union[AsyncSession, Session]:
     """
     Get a new database session for non-dependency injection contexts.
     
     Returns:
-        AsyncSession: A new SQLAlchemy async session
+        AsyncSession or Session: A new session for database operations
     """
     return AsyncSessionLocal()
