@@ -5,13 +5,16 @@ This module provides an AWS-based implementation of the XGBoost service
 that uses SageMaker for model hosting and prediction with comprehensive
 HIPAA compliance and security considerations.
 """
+import enum
 import json
 import logging
+import os
+import re
 import time
-import uuid
+import typing
 from datetime import datetime
-from types import SimpleNamespace  # Keep if needed elsewhere, but mark as potentially unused
-from typing import Any, Dict, List, Optional, Set, Tuple, Union # Deprecated, mark for later refactor
+from types import SimpleNamespace
+from typing import Any, Dict, List, Optional, Protocol, Set, Tuple, Union
 
 import boto3
 import botocore
@@ -19,8 +22,8 @@ from botocore.exceptions import ClientError
 
 # --- Mock/Test Imports ---
 # These should ideally only be used in testing contexts or via dependency injection
-from app.infrastructure.aws.in_memory_boto3 import client as boto3_mock_client # Unused lint ID: 8e5d483f
-from app.infrastructure.aws.in_memory_boto3 import resource as boto3_mock_resource # Unused lint ID: ae76c1b5
+from app.infrastructure.aws.in_memory_boto3 import client as boto3_mock_client
+from app.infrastructure.aws.in_memory_boto3 import resource as boto3_mock_resource
 
 # --- Core Layer Imports ---
 from app.core.config.settings import Settings
@@ -29,10 +32,18 @@ from app.core.domain.prediction_result import PredictionResult
 from app.core.enums.model_type import ModelType
 from app.core.enums.prediction_type import PredictionCategory
 from app.core.enums.privacy_level import PrivacyLevel
-from app.core.exceptions import (ConfigurationError, ExternalServiceException,
-                                 ResourceNotFoundError)
+from app.core.exceptions import (
+    ConfigurationError,
+    ExternalServiceException,
+    ResourceNotFoundError,
+)
+from app.core.exceptions.base_exceptions import (
+    ConfigurationError,
+    ExternalServiceException,
+    ResourceNotFoundError,
+)
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
-from app.core.services.ml.xgboost.enums import RiskLevel # Corrected import, removed ResponseLevel
+from app.core.services.ml.xgboost.enums import RiskLevel
 from app.core.services.ml.xgboost.exceptions import (
     DataPrivacyError,
     FeatureValidationError,
@@ -80,15 +91,15 @@ class AWSXGBoostService(XGBoostInterface):
     def __init__(self, aws_service_factory: AWSServiceFactoryInterface):
         """Initialize a new AWS XGBoost service."""
         super().__init__()
-        self._factory = aws_service_factory # Store the factory
+        self._factory = aws_service_factory
         # AWS clients
         self._sagemaker_runtime = None
         self._sagemaker = None
         self._s3 = None
-        self._dynamodb = None # For audit table
-        self._predictions_table = None # For predictions table
+        self._dynamodb = None
+        self._predictions_table = None
         self._logger = logging.getLogger(__name__)
-        
+
     async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
         """Generic prediction method required by MLServiceInterface.
         
@@ -237,7 +248,7 @@ class AWSXGBoostService(XGBoostInterface):
             # Prepare DynamoDB predictions table handle via factory
             try:
                 # Assuming factory provides a dynamodb resource or similar abstraction
-                dynamo_resource = self._factory.get_service("dynamodb_resource") # Or adjust based on factory capability
+                dynamo_resource = self._factory.get_service("dynamodb_resource") 
                 if hasattr(dynamo_resource, "Table"):
                     self._predictions_table = dynamo_resource.Table(self._dynamodb_table_name)
                 else:
@@ -247,8 +258,7 @@ class AWSXGBoostService(XGBoostInterface):
                     if dynamo_client:
                         # This part might still rely on boto3 structure indirectly
                         # Ideal factory would provide the resource directly
-                        import boto3 # May need this import if creating resource manually
-                        dynamo_resource_manual = boto3.resource('dynamodb', region_name=self._region_name, client=dynamo_client) # Hypothetical
+                        dynamo_resource_manual = boto3.resource('dynamodb', region_name=self._region_name, client=dynamo_client) 
                         self._predictions_table = dynamo_resource_manual.Table(self._dynamodb_table_name)
                     else:
                         raise ConfigurationError("AWSServiceFactory does not provide a DynamoDB resource or client.")
@@ -382,7 +392,7 @@ class AWSXGBoostService(XGBoostInterface):
             rt_val = 'risk_hospitalization'
             
         valid_risks = {m.value for m in ModelType if m.name.startswith('RISK')}
-        if rt_val not in valid_risks and rt_val != 'unknown_risk':  # Allow 'unknown_risk' for test_predict_risk_unsupported_risk_type
+        if rt_val not in valid_risks and rt_val != 'unknown_risk':  
             raise ValidationError(f"Invalid risk type: {rt_val}", field="risk_type", value=risk_type)
         # Data privacy check
         if self._privacy_level == PrivacyLevel.STRICT:
@@ -401,8 +411,8 @@ class AWSXGBoostService(XGBoostInterface):
             # Provide a minimal stub so that tests relying on this call do not
             # explode if a partial mock (``SimpleNamespace``) was injected.
 
-            class _StubSageMaker:  # noqa: D401 – trivial shim
-                def describe_endpoint(self, **_kw):  # noqa: D401
+            class _StubSageMaker:  
+                def describe_endpoint(self, **_kw):  
                     return {"EndpointStatus": "InService"}
 
             self._sagemaker = _StubSageMaker()
@@ -416,8 +426,8 @@ class AWSXGBoostService(XGBoostInterface):
         # Invoke endpoint
         # Provide a minimal runtime shim if the injected client is incomplete.
         if not callable(getattr(self._sagemaker_runtime, "invoke_endpoint", None)):
-            class _StubRuntime:  # noqa: D401 – tiny test stub
-                def invoke_endpoint(self, *, EndpointName, ContentType, Body, **_kw):  # noqa: N802
+            class _StubRuntime:  
+                def invoke_endpoint(self, *, EndpointName, ContentType, Body, **_kw):  
                     from types import SimpleNamespace as _SN
                     # Echo back a deterministic payload so that downstream
                     # parsing (risk‑level conversion etc.) continues to work.
@@ -898,9 +908,9 @@ class AWSXGBoostService(XGBoostInterface):
                 "version": response.get("ModelVersion", "1.0.0"),
                 "last_updated": response.get("CreationTime", datetime.now()).isoformat(),
                 "description": response.get("ModelDescription", f"XGBoost model for {model_type}"),
-                "features": [],  # This would need to be stored elsewhere or exposed by the model
-                "performance_metrics": {},  # This would need to be stored elsewhere
-                "hyperparameters": {},  # This would need to be extracted from model artifacts
+                "features": [],  
+                "performance_metrics": {},  
+                "hyperparameters": {},  
                 "status": "active" if response.get("ModelStatus") == "InService" else "inactive"
             }
             
@@ -1116,11 +1126,11 @@ class AWSXGBoostService(XGBoostInterface):
             # been injected that lacks the full S3 client surface.  Provide a
             # minimal shim so that the validation step and subsequent unit
             # tests can proceed without error.
-            class _InMemoryS3Client:  # noqa: D401 – simple shim
-                def head_bucket(self, Bucket=None):  # noqa: N802 – boto3 style
+            class _InMemoryS3Client:  
+                def head_bucket(self, Bucket=None):  
                     return {}
 
-                def put_object(self, **_kw):  # present so that future calls work
+                def put_object(self, **_kw):  
                     return {}
 
             self._s3 = _InMemoryS3Client()
@@ -1135,8 +1145,8 @@ class AWSXGBoostService(XGBoostInterface):
         # Validate SageMaker endpoint listing
         if not hasattr(self._sagemaker, "list_endpoints"):
             # Provide a no‑op shim for tests lacking a proper SageMaker mock.
-            class _InMemorySageMaker:  # noqa: D401 – simple shim
-                def list_endpoints(self, **_kw):  # noqa: D401
+            class _InMemorySageMaker:  
+                def list_endpoints(self, **_kw):  
                     return {"Endpoints": []}
 
                 def describe_endpoint(self, **_kw):
@@ -1218,7 +1228,7 @@ class AWSXGBoostService(XGBoostInterface):
         
         # Define retry parameters
         max_retries = 3
-        retry_delay = 1.0  # seconds
+        retry_delay = 1.0  
         
         # Create request metadata for tracing
         request_id = f"req-{int(time.time())}-{hash(input_json) % 10000:04d}"
@@ -1300,7 +1310,7 @@ class AWSXGBoostService(XGBoostInterface):
                 
                 # Retry for transient errors
                 if error_code in transient_errors and retry_count < max_retries - 1:
-                    retry_seconds = retry_delay * (2 ** retry_count)  # Exponential backoff
+                    retry_seconds = retry_delay * (2 ** retry_count)  
                     self._logger.warning(
                         f"Transient error occurred, will retry in {retry_seconds:.2f}s: "
                         f"endpoint={endpoint_name}, request_id={request_id}, "
@@ -1391,15 +1401,15 @@ class AWSXGBoostService(XGBoostInterface):
                 "audit_id": {"S": audit_id},
                 "timestamp": {"S": datetime.now().isoformat()},
                 "endpoint_name": {"S": endpoint_name},
-                "patient_id_hash": {"S": hashed_patient_id},  # Store hash instead of actual ID
+                "patient_id_hash": {"S": hashed_patient_id},  
                 "request_type": {"S": self._get_request_type_from_endpoint(endpoint_name)},
                 "input_summary": {"S": json.dumps(sanitized_input)},
                 "output_summary": {"S": json.dumps(sanitized_result)},
                 "privacy_level": {"S": self._privacy_level.value},
-                "service_version": {"S": "1.0.0"},  # Include versioning for traceability
+                "service_version": {"S": "1.0.0"},  
                 "region": {"S": self._region_name},
                 "status": {"S": result.get("status", "completed")},
-                "ttl": {"N": str(int(time.time() + 7776000))}  # 90-day TTL for automatic cleanup
+                "ttl": {"N": str(int(time.time() + 7776000))}  
             }
             
             # Add user identifier if available (typically from JWT token)
@@ -1549,7 +1559,7 @@ class AWSXGBoostService(XGBoostInterface):
             # Only include feature names (not values) and exclude any that might contain PHI
             feature_names = list(data["feature_importance"].keys())
             sanitized["feature_names"] = [
-                name for name in feature_names[:10]  # Only include top 10 to limit possible PHI
+                name for name in feature_names[:10]  
                 if not any(excluded in name.lower() for excluded in excluded_fields)
             ]
             sanitized["feature_count"] = len(data["feature_importance"])
@@ -1565,7 +1575,7 @@ class AWSXGBoostService(XGBoostInterface):
         # Add security metadata
         sanitized["security_level"] = self._privacy_level.value
         sanitized["sanitized_timestamp"] = datetime.now().isoformat()
-        sanitized["sanitized_version"] = "2.0.0"  # Track version of sanitization algorithm used
+        sanitized["sanitized_version"] = "2.0.0"  
         
         return sanitized
     
@@ -1893,7 +1903,7 @@ class AWSXGBoostService(XGBoostInterface):
         if not item:
             try:
                 dynamodb_res = boto3.resource("dynamodb", region_name=self._region_name)
-                fresh_table = dynamodb_res.Table(self._dynamodb_table_name)  # type: ignore[attr-defined]
+                fresh_table = dynamodb_res.Table(self._dynamodb_table_name)  
                 if fresh_table is not self._predictions_table:
                     resp = fresh_table.get_item(Key={"prediction_id": prediction_id})
                     item = resp.get("Item")
@@ -2004,8 +2014,8 @@ class AWSXGBoostService(XGBoostInterface):
             components["dynamodb"] = {"status": "unhealthy", "error": e.response.get("Error", {}).get("Message", str(e))}
         # S3 – inject shim if the mocked client is missing the expected API
         if not hasattr(self._s3, "head_bucket"):
-            class _StubS3:  # noqa: D401 – simple shim
-                def head_bucket(self, **_kw):  # noqa: N802
+            class _StubS3:  
+                def head_bucket(self, **_kw):  
                     return {}
 
             self._s3 = _StubS3()
@@ -2072,10 +2082,18 @@ class AWSXGBoostService(XGBoostInterface):
 
 # Placeholder definitions until correct imports are identified
 class EventType(enum.Enum):
-    PREDICTION_SUCCESSFUL = "PREDICTION_SUCCESSFUL"
-    PREDICTION_FAILED = "PREDICTION_FAILED"
-    # Add other relevant event types for XGBoost service
+    PLACEHOLDER = "placeholder"
+    CONFIGURATION_VALIDATED = "config_validated"
+    CONFIGURATION_ERROR = "config_error"
+    PREDICTION_SUCCESS = "predict_success"
+    VALIDATION_ERROR = "validation_error"
+    MODEL_ERROR = "model_error"
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    AWS_ERROR = "aws_error"
+    UNEXPECTED_ERROR = "unexpected_error"
+    METRICS_FETCHED = "metrics_fetched"
+    METRICS_NOT_FOUND = "metrics_not_found"
 
 class Observer(Protocol):
-    def update(self, event_type: EventType, data: dict) -> None:
+    def update(self, event: EventType, data: dict) -> None:
         ...

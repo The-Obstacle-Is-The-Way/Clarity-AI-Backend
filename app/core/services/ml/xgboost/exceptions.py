@@ -247,3 +247,99 @@ class ThrottlingError(XGBoostServiceError):
             retry_after=retry_after,
             **kwargs
         )
+
+
+class FeatureValidationError(ValidationError):
+    """Exception raised when feature validation fails for ML prediction."""
+    
+    def __init__(self, message: str, feature_name: Optional[str] = None, expected_type: Optional[str] = None, 
+                 actual_value: Any = None, **kwargs):
+        """
+        Initialize a feature validation error.
+        
+        Args:
+            message: Error message
+            feature_name: Name of the feature that failed validation
+            expected_type: Expected type for the feature
+            actual_value: Actual value provided
+            **kwargs: Additional error context
+        """
+        super().__init__(
+            message,
+            field=feature_name,
+            value=actual_value,
+            expected_type=expected_type,
+            **kwargs
+        )
+
+
+class ModelInvocationError(XGBoostServiceError):
+    """Exception raised when model invocation fails but the service itself is working."""
+    
+    def __init__(self, message: str, model_type: Optional[str] = None, endpoint_name: Optional[str] = None,
+                 status_code: Optional[int] = None, **kwargs):
+        """
+        Initialize a model invocation error.
+        
+        Args:
+            message: Error message
+            model_type: Type of model that failed to invoke
+            endpoint_name: Name of the endpoint that failed
+            status_code: HTTP/API status code if applicable
+            **kwargs: Additional error context
+        """
+        super().__init__(
+            message,
+            model_type=model_type,
+            endpoint_name=endpoint_name,
+            status_code=status_code,
+            **kwargs
+        )
+
+
+class ModelTimeoutError(XGBoostServiceError):
+    """Exception raised when a model invocation times out."""
+    
+    def __init__(self, message: str, model_type: Optional[str] = None, endpoint_name: Optional[str] = None,
+                 timeout_seconds: Optional[int] = None, **kwargs):
+        """
+        Initialize a model timeout error.
+        
+        Args:
+            message: Error message
+            model_type: Type of model that timed out
+            endpoint_name: Name of the endpoint that timed out
+            timeout_seconds: Timeout threshold in seconds
+            **kwargs: Additional error context
+        """
+        super().__init__(
+            message,
+            model_type=model_type,
+            endpoint_name=endpoint_name,
+            timeout_seconds=timeout_seconds,
+            **kwargs
+        )
+
+
+class SerializationError(XGBoostServiceError):
+    """Exception raised when data serialization or deserialization fails."""
+    
+    def __init__(self, message: str, data_type: Optional[str] = None, format_type: Optional[str] = None,
+                 cause: Optional[str] = None, **kwargs):
+        """
+        Initialize a serialization error.
+        
+        Args:
+            message: Error message
+            data_type: Type of data being serialized/deserialized (e.g., 'features', 'result')
+            format_type: Format being used (e.g., 'json', 'csv')
+            cause: Root cause of the serialization error
+            **kwargs: Additional error context
+        """
+        super().__init__(
+            message,
+            data_type=data_type,
+            format_type=format_type,
+            cause=cause,
+            **kwargs
+        )
