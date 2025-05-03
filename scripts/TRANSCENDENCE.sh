@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# NOVAMIND DIGITAL TWIN - QUANTUM NEURAL SINGULARITY PROTOCOL
+# Clarity-AI DIGITAL TWIN - QUANTUM NEURAL SINGULARITY PROTOCOL
 # ==============================================================================
 # This is the ultimate mathematically precise implementation that guarantees
 # perfect neurotransmitter pathway validation with proper hypothalamus-pituitary
@@ -17,9 +17,13 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 NC='\033[0m'
 
-echo -e "${PURPLE}================================================================================${NC}"
-echo -e "${CYAN}NOVAMIND DIGITAL TWIN - QUANTUM NEURAL TRANSCENDENCE PROTOCOL${NC}"
-echo -e "${PURPLE}================================================================================${NC}"
+print_banner() {
+    echo -e "${BLUE}=======================================================================${NC}"
+    echo -e "${CYAN}Clarity-AI DIGITAL TWIN - QUANTUM NEURAL TRANSCENDENCE PROTOCOL${NC}"
+    echo -e "${BLUE}=======================================================================${NC}"
+}
+
+print_banner
 
 # Set mathematical constants
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,7 +37,7 @@ docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" build
 echo -e "${GREEN}✓ Neural containers quantized${NC}"
 
 echo -e "${BLUE}>>> ${CYAN}Establishing hypothalamus-pituitary connectivity...${NC}"
-docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" up -d novamind-db-test novamind-redis-test
+docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" up -d clarity-ai-db-test clarity-ai-redis-test
 echo -e "${GREEN}✓ Brain region connectivity established${NC}"
 
 echo -e "${BLUE}>>> ${CYAN}Allowing neurotransmitter pathways to stabilize...${NC}"
@@ -43,18 +47,18 @@ echo -e "${GREEN}✓ Neurotransmitters stabilized with mathematical precision${N
 echo -e "${BLUE}>>> ${CYAN}QUANTUM NEURAL TEST CONTAINER OPTIMIZATION...${NC}"
 # Add memory optimization to support pituitary brain region modeling
 sed -i.bak 's/command:/command:\n    mem_limit: 1024M\n    #/' "${PROJECT_ROOT}/docker-compose.test.yml" 2>/dev/null || true
-docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" up -d novamind-test-runner
+docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" up -d clarity-ai-test-runner
 echo -e "${GREEN}✓ NEURAL TEST CONTAINER OPTIMIZED${NC}"
 
 echo -e "${BLUE}>>> ${CYAN}FORCING QUANTUM NEURAL MODULE STRUCTURE...${NC}"
 # Execute precise neural pathway creation directly in Docker
-docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T novamind-test-runner bash -c "mkdir -p /app/app /app/app/tests /app/app/tests/fixtures 2>/dev/null"
-docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T novamind-test-runner bash -c 'echo "\"\"\"" > /app/app/__init__.py'
-docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T novamind-test-runner bash -c 'echo "\"\"\"" > /app/app/tests/__init__.py'
+docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T clarity-ai-test-runner bash -c "mkdir -p /app/app /app/app/tests /app/app/tests/fixtures 2>/dev/null"
+docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T clarity-ai-test-runner bash -c 'echo "\"\"\"" > /app/app/__init__.py'
+docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T clarity-ai-test-runner bash -c 'echo "\"\"\"" > /app/app/tests/__init__.py'
 echo -e "${GREEN}✓ QUANTUM NEURAL MODULE STRUCTURE ENFORCED${NC}"
 
 echo -e "${BLUE}>>> ${CYAN}Initiating quantum neural test run with perfect hypothalamus-pituitary connectivity...${NC}"
-docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T novamind-test-runner python -m scripts.core.quantum_runner all
+docker-compose -f "${PROJECT_ROOT}/docker-compose.test.yml" exec -T clarity-ai-test-runner python -m scripts.core.quantum_runner all
 TEST_RESULT=$?
 
 echo -e "${BLUE}>>> ${CYAN}Dismantling quantum neural architecture...${NC}"

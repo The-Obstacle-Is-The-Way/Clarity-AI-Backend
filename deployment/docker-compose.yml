@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 services:
   backend:
@@ -10,14 +10,14 @@ services:
     volumes:
       - ../backend:/app/backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/novamind
-      - LOG_LEVEL=INFO
-      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/clarity_ai
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
     depends_on:
       - db
       - redis
     networks:
-      - novamind-network
+      - clarity-ai-network
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   db:
@@ -25,13 +25,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
+      - POSTGRES_DB=clarity_ai
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=novamind
     ports:
       - "5432:5432"
     networks:
-      - novamind-network
+      - clarity-ai-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -43,7 +43,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - novamind-network
+      - clarity-ai-network
     volumes:
       - redis_data:/data
     healthcheck:
@@ -53,7 +53,8 @@ services:
       retries: 5
 
 networks:
-  novamind-network:
+  clarity-ai-network:
+    driver: bridge
 
 volumes:
   postgres_data:
