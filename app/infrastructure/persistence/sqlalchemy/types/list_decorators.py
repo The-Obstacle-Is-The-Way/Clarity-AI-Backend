@@ -7,91 +7,168 @@ between PostgreSQL (using native ARRAY type) and SQLite (using JSON serializatio
 """
 
 import json
-from typing import List, Optional, Type, Any, Union
+from typing import List, Optional, Any, Union, Sequence
 from sqlalchemy import types
-from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import ARRAY
 
 
-class BaseListDecorator(types.TypeDecorator):
+class StringListDecorator(types.TypeDecorator):
     """
-    Base class for list type decorators with cross-database compatibility.
+    SQLAlchemy type decorator for string lists.
     
-    This abstract base class provides the foundation for implementing
-    list type decorators that work across different database backends.
+    Uses PostgreSQL's native ARRAY type when available,
+    otherwise serializes as a JSON array in a TEXT column.
     """
     
+    impl = types.Text
     cache_ok = True
     
-    def __init__(self, item_type: Optional[Type] = None, *args, **kwargs):
-        """Initialize with optional item type for validation."""
-        super().__init__(*args, **kwargs)
-        self.item_type = item_type
+    def load_dialect_impl(self, dialect):
+        """
+        Use PostgreSQL's native ARRAY type when available, 
+        otherwise use TEXT for string-based storage.
+        
+        Args:
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Dialect-specific implementation
+        """
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(types.String))
+        else:
+            return dialect.type_descriptor(types.Text)
+    
+    def process_bind_param(self, value, dialect):
+        """
+        Process the value before binding to SQL statement.
+        
+        Args:
+            value: List of strings or None
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Processed value for the specific dialect
+        """
+        if value is None:
+            return None
+        
+        # Ensure we have a list
+        if not isinstance(value, (list, tuple)):
+            raise ValueError(f"Expected list or tuple, got {type(value)}: {value}")
+        
+        # For PostgreSQL, return the list directly
+        if dialect.name == 'postgresql':
+            return value
+        
+        # For other dialects (like SQLite), serialize to JSON
+        return json.dumps(value)
+    
+    def process_result_value(self, value, dialect):
+        """
+        Process the database value before returning it to Python.
+        
+        Args:
+            value: Value from database
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            List of strings
+        """
+        if value is None:
+            return []
+        
+        # For PostgreSQL, the value is already a list
+        if dialect.name == 'postgresql':
+            return value if isinstance(value, list) else list(value)
+        
+        # For other dialects, deserialize from JSON
+        try:
+            result = json.loads(value)
+            if not isinstance(result, list):
+                return [str(result)]
+            return [str(item) for item in result]
+        except (json.JSONDecodeError, TypeError):
+            # Fallback for invalid JSON
+            return []
+
+
+class FloatListDecorator(types.TypeDecorator):
+    """
+    SQLAlchemy type decorator for float lists.
+    
+    Uses PostgreSQL's native ARRAY type when available,
+    otherwise serializes as a JSON array in a TEXT column.
+    """
+    
+    impl = types.Text
+    cache_ok = True
     
     def load_dialect_impl(self, dialect):
-        """Load the appropriate dialect implementation."""
+        """
+        Use PostgreSQL's native ARRAY type when available, 
+        otherwise use TEXT for string-based storage.
+        
+        Args:
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Dialect-specific implementation
+        """
         if dialect.name == 'postgresql':
-            # Use native PostgreSQL ARRAY type
-            return dialect.type_descriptor(self.pg_array_type)
+            return dialect.type_descriptor(ARRAY(types.Float))
         else:
-            # Fall back to JSON for other databases like SQLite
-            return dialect.type_descriptor(types.JSON)
+            return dialect.type_descriptor(types.Text)
     
-    def process_bind_param(self, value: Optional[List], dialect) -> Optional[Union[List, str]]:
-        """Convert the value for storage in the database."""
+    def process_bind_param(self, value, dialect):
+        """
+        Process the value before binding to SQL statement.
+        
+        Args:
+            value: List of floats or None
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Processed value for the specific dialect
+        """
         if value is None:
             return None
-            
-        # Validate item types if specified
-        if self.item_type and any(not isinstance(item, self.item_type) for item in value):
-            raise ValueError(f"All items must be of type {self.item_type.__name__}")
-            
+        
+        # Ensure we have a list or sequence
+        if not isinstance(value, (list, tuple, Sequence)):
+            raise ValueError(f"Expected list, tuple or sequence, got {type(value)}: {value}")
+        
+        # For PostgreSQL, return the list directly
         if dialect.name == 'postgresql':
-            # PostgreSQL handles arrays natively
             return value
-        else:
-            # For other dialects like SQLite, serialize to JSON
-            return json.dumps(value)
+        
+        # For other dialects (like SQLite), serialize to JSON
+        return json.dumps(value)
     
-    def process_result_value(self, value: Any, dialect) -> Optional[List]:
-        """Convert the value retrieved from the database."""
+    def process_result_value(self, value, dialect):
+        """
+        Process the database value before returning it to Python.
+        
+        Args:
+            value: Value from database
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            List of floats
+        """
         if value is None:
-            return None
-            
+            return []
+        
+        # For PostgreSQL, the value is already a list
         if dialect.name == 'postgresql':
-            # PostgreSQL returns native arrays
-            return list(value)
-        else:
-            # For other dialects, deserialize from JSON
-            if isinstance(value, str):
-                return json.loads(value)
-            return value
-
-
-class StringListDecorator(BaseListDecorator):
-    """
-    TypeDecorator for lists of strings.
-    
-    Provides cross-database compatibility for string lists between
-    PostgreSQL ARRAY(String) and JSON-serialized lists in SQLite.
-    """
-    
-    pg_array_type = postgresql.ARRAY(types.String)
-    
-    def __init__(self, *args, **kwargs):
-        """Initialize with string as the item type."""
-        super().__init__(item_type=str, *args, **kwargs)
-
-
-class FloatListDecorator(BaseListDecorator):
-    """
-    TypeDecorator for lists of floats.
-    
-    Provides cross-database compatibility for float lists between
-    PostgreSQL ARRAY(Float) and JSON-serialized lists in SQLite.
-    """
-    
-    pg_array_type = postgresql.ARRAY(types.Float)
-    
-    def __init__(self, *args, **kwargs):
-        """Initialize with float as the item type."""
-        super().__init__(item_type=float, *args, **kwargs)
+            return value if isinstance(value, list) else list(value)
+        
+        # For other dialects, deserialize from JSON
+        try:
+            result = json.loads(value)
+            if not isinstance(result, list):
+                return [float(result)]
+            return [float(item) for item in result]
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Fallback for invalid JSON or float conversion errors
+            return []
