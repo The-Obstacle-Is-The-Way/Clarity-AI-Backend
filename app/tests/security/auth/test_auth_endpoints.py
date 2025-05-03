@@ -178,22 +178,23 @@ async def test_logout(
     async_client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test logout using async client."""
-    # Arrange
-    # Need valid tokens in cookies for logout.
     # First, perform login to get tokens.
     login_data = {"username": "testuser", "password": "testpassword"}
     login_response = await async_client.post("/api/v1/auth/login", json=login_data)
-    assert login_response.status_code == 200 # Ensure login succeeded
+    # Ensure login succeeded
+    assert login_response.status_code == 200 
     
     # Act - Use the client instance which now has cookies from login
     response = await async_client.post("/api/v1/auth/logout")
     
     # Assert
-    assert response.status_code == 204
+    assert response.status_code == 204 # No content on successful logout
     
     # Verify cookies were cleared
-    assert response.cookies.get("access_token") is None or response.cookies.get("access_token").value == ""
-    assert response.cookies.get("refresh_token") is None or response.cookies.get("refresh_token").value == ""
+    access_cookie = response.cookies.get("access_token")
+    refresh_cookie = response.cookies.get("refresh_token")
+    assert access_cookie is None or access_cookie.value == ""
+    assert refresh_cookie is None or refresh_cookie.value == ""
     
     # Verify the mock was called correctly
     mock_auth_service.logout.assert_called_once()
@@ -205,7 +206,8 @@ async def test_session_info_authenticated(async_client: AsyncClient) -> None:
     # Perform login to establish authenticated session
     login_data = {"username": "testuser", "password": "testpassword"}
     login_response = await async_client.post(
-        "/api/v1/auth/login", json=login_data
+        "/api/v1/auth/login", 
+        json=login_data
     )
     assert login_response.status_code == 200
     
@@ -219,10 +221,10 @@ async def test_session_info_authenticated(async_client: AsyncClient) -> None:
     assert data["session_active"] is True
     assert data["user_id"] == "user123"
     assert data["roles"] == ["provider"]
-    # Split long assert lines
+    # Reformat long assert lines
     assert data["permissions"] == [
         "read:patients", 
-        "write:notes"
+        "write:notes",
     ]
     assert data["exp"] == 1619900000
 
