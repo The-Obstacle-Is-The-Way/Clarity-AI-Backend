@@ -52,7 +52,32 @@ Implement a cross-database compatible GUID type that automatically adapts to the
 - Transparently convert to String(36) in SQLite environments
 - Maintain full compatibility with both string and UUID object inputs
 
-### 3.2 Technical Implementation
+### 3.2 Technical Solution
+
+### 3.2.1 Selected Approach
+
+After considering multiple options, we have chosen to implement a custom SQLAlchemy type decorator (`GUID`) that will automatically use the most efficient UUID implementation for each database dialect:
+
+1. For PostgreSQL: Use native UUID type
+2. For SQLite: Use String(36) with text conversion
+
+### 3.2.2 Additional Custom SQLAlchemy Types
+
+In addition to the `GUID` type, we've also implemented other cross-database compatible custom types:
+
+1. `JSONEncodedDict` - A TypeDecorator for handling dictionaries stored as JSON:
+   - Uses PostgreSQL's native JSON type when available
+   - Falls back to serialized JSON strings for SQLite
+
+2. `StringListDecorator` - For lists of strings:
+   - Uses PostgreSQL's ARRAY(String) for PostgreSQL
+   - Uses JSON serialized lists for SQLite
+
+3. `FloatListDecorator` - For lists of floating point numbers:
+   - Uses PostgreSQL's ARRAY(Float) for PostgreSQL
+   - Uses JSON serialized lists for SQLite
+
+### 3.3 Technical Implementation
 1. Create a `GUID` TypeDecorator class in `app.infrastructure.persistence.sqlalchemy.types.postgres_compatible_uuid`
 2. Implement dialect-specific loading and processing methods
 3. Update all models to use the new GUID type consistently
