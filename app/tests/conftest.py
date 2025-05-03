@@ -223,6 +223,7 @@ async def initialized_app(
     mock_jwt_service: AsyncMock,
     mock_auth_service: AsyncMock,
     mock_analytics_service: AsyncMock,
+    override_get_session: None
 ) -> AsyncGenerator[FastAPI, None]:
     """
     Creates a MINIMAL FastAPI app configured for endpoint tests, 

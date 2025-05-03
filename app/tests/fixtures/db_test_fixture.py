@@ -95,46 +95,25 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-@pytest_asyncio.fixture
-async def override_get_session(db_session: AsyncSession):
+@pytest_asyncio.fixture(scope="function")
+async def override_get_session(
+    db_session: AsyncSession, 
+    dependency_overrides: dict
+) -> None:
     """
-    Override the get_session dependency to use our test session.
+    Overrides the 'get_session' dependency for the FastAPI app using the 
+    standard dependency_overrides mechanism.
 
-    This fixture allows tests to use the same session for the entire test,
-    ensuring consistent state and transaction management.
+    Yields the test database session instance for the duration of a test.
     """
-    async def _get_session():
-        try:
-            yield db_session
-        finally:
-            pass
+    async def _override_get_session_func() -> AsyncGenerator[AsyncSession, None]:
+        """The actual function that will replace get_session during tests."""
+        yield db_session
 
-    # Store the original dependency
-    original_get_session = get_session
-
-    # Override the dependency
-    get_session.dependency = _get_session
-
-    yield
-
-    # Restore the original dependency
-    get_session.dependency = original_get_session
-
-
-@pytest.fixture
-def test_client(override_get_session):
-    """
-    Create a test client for FastAPI with overridden dependencies.
-
-    This fixture creates a test client that uses our test database session
-    for all database operations.
-    """
-    from fastapi.testclient import TestClient
-
-    from app.main import app
-
-    with TestClient(app) as client:
-        yield client
+    # Add the override to the dictionary
+    # The key is the original dependency function (get_session)
+    # The value is the function to use instead (_override_get_session_func)
+    dependency_overrides[get_session] = _override_get_session_func
 
 
 class TestDataFactory:
