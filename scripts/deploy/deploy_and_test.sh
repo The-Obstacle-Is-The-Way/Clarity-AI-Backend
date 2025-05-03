@@ -1,8 +1,8 @@
 #!/bin/bash
 # ===============================================================================
-# Novamind Digital Twin - Deployment and Test Automation Script
+# Clarity-AI Digital Twin - Deployment and Test Automation Script
 # ===============================================================================
-# This script orchestrates the deployment and testing of the Novamind Digital Twin
+# This script orchestrates the deployment and testing of the Clarity-AI Digital Twin
 # platform following clean architecture principles with mathematical precision.
 # It ensures a completely deterministic testing environment with neural pathways
 # for error handling and feedback.
@@ -97,7 +97,7 @@ function start_test_environment() {
     docker-compose -f "${DOCKER_COMPOSE_FILE}" down -v
     
     # Up with detached mode
-    docker-compose -f "${DOCKER_COMPOSE_FILE}" up -d novamind-db-test novamind-redis-test
+    docker-compose -f "${DOCKER_COMPOSE_FILE}" up -d clarity-ai-db-test clarity-ai-redis-test
     
     print_success "Test environment ready"
 }
@@ -107,16 +107,16 @@ function run_tests() {
     
     # Run the tests using our optimized neural architecture test runner
     # This ensures proper handling of neurotransmitter cascading effects and brain region connectivity
-    docker-compose -f "${DOCKER_COMPOSE_FILE}" run --rm novamind-test-runner python -m scripts.core.docker_test_runner all
+    docker-compose -f "${DOCKER_COMPOSE_FILE}" run --rm clarity-ai-test-runner python -m scripts.core.docker_test_runner all
     TEST_EXIT_CODE=$?
     
     print_step "Collecting test artifacts and neurotransmitter analysis data..."
     
     # Create container to copy from if needed
-    CONTAINER_ID=$(docker ps -aq --filter name=novamind-test-runner)
+    CONTAINER_ID=$(docker ps -aq --filter name=clarity-ai-test-runner)
     if [ -z "$CONTAINER_ID" ]; then
-        docker-compose -f "${DOCKER_COMPOSE_FILE}" run -d --name novamind-temp-container novamind-test-runner sleep 10
-        CONTAINER_ID="novamind-temp-container"
+        docker-compose -f "${DOCKER_COMPOSE_FILE}" run -d --name clarity-ai-temp-container clarity-ai-test-runner sleep 10
+        CONTAINER_ID="clarity-ai-temp-container"
     fi
     
     # Copy test results with proper path structure 
@@ -124,8 +124,8 @@ function run_tests() {
     docker cp ${CONTAINER_ID}:/app/test-results/. "${TEST_RESULTS_DIR}/reports/" || true
     
     # Clean up temp container if we created one
-    if [ "$CONTAINER_ID" = "novamind-temp-container" ]; then
-        docker rm -f novamind-temp-container || true
+    if [ "$CONTAINER_ID" = "clarity-ai-temp-container" ]; then
+        docker rm -f clarity-ai-temp-container || true
     fi
     
     if [ ${TEST_EXIT_CODE} -eq 0 ]; then
@@ -149,7 +149,7 @@ function clean_test_environment() {
 # Main Neural Execution Path
 # ===============================================================================
 
-print_banner "Novamind Digital Twin - Test Automation Pipeline"
+print_banner "Clarity-AI Digital Twin - Test Automation Pipeline"
 
 # Prepare environment
 ensure_directories

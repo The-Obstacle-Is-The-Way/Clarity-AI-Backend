@@ -10,7 +10,9 @@ import secrets
 from typing import List, Dict, Any, Optional
 from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
+import logging
 
+logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     """Application settings using Pydantic for validation and environment variable loading."""
@@ -126,8 +128,11 @@ def get_settings() -> Settings:
     """
     # Check for test environment
     if os.environ.get("ENVIRONMENT") == "test" or os.environ.get("PYTEST_CURRENT_TEST"):
-        # Create test-specific settings
-        test_settings = Settings(TESTING=True)
+        # Create test-specific settings with in-memory SQLite DB
+        test_db_url = "sqlite+aiosqlite:///./test_db.sqlite3" # Use correct var name and test DB
+        logger.info(f"Running in TEST environment, using DB: {test_db_url}")
+        test_settings = Settings(TESTING=True, DATABASE_URL=test_db_url)
         return test_settings
         
+    # Return standard settings otherwise
     return settings

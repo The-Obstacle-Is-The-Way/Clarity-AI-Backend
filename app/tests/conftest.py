@@ -42,7 +42,7 @@ from app.presentation.middleware.authentication_middleware import (
 )
 
 # --- Test Utility Imports ---
-from app.tests.fixtures.db_test_fixture import get_test_settings
+
 
 # Setup logging for tests
 logger = logging.getLogger(__name__)
@@ -86,9 +86,12 @@ def create_test_application(settings: Settings) -> FastAPI:
 
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
-    """Load test settings once per session."""
-    logger.info("Loading test settings...")
-    settings = get_test_settings()
+    """Load test settings once per session by calling the core get_settings.
+    The core get_settings function now handles test environment detection.
+    """
+    logger.info("Loading test settings via core get_settings()...")
+    # Call the correct get_settings from app.core.config.settings
+    settings = get_settings()
     logger.info(
         f"Test Settings Loaded: {settings.model_dump(exclude={'JWT_SECRET_KEY'})}" 
     )

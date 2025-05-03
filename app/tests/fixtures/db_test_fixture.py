@@ -205,35 +205,24 @@ class TransactionalTestContext:
         self.session = session
 
     async def __aenter__(self):
-        # Start a nested transaction
+        """Begin a nested transaction."""
         self.transaction = await self.session.begin_nested()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        # Roll back the nested transaction
-        if exc_type is not None:
-            await self.transaction.rollback()
-        else:
-            await self.transaction.commit()
+        """Roll back the transaction."""
+        await self.transaction.rollback()
 
 
+# Factory for creating transactional test contexts
 @pytest.fixture
-def transactional_test(db_session: AsyncSession) -> Callable:
-    """
-    Create a function to run tests in a nested transaction.
+def transactional_test(db_session: AsyncSession):
+    """Provide a transactional context for tests."""
 
-    This can be used within a test to create a savepoint and rollback
-    after a portion of the test is complete.
-    """
     def _transactional_test():
         return TransactionalTestContext(db_session)
 
     return _transactional_test
 
-# Define a local get_test_settings if the original is removed
-def get_test_settings():
-    """Provide test-specific settings, potentially overriding defaults."""
-    # Example: Use a test database URL
-    test_settings = get_settings().copy()
-    test_settings.SQLALCHEMY_DATABASE_URI = "sqlite+aiosqlite:///./test_db.sqlite3" # Example
-    return test_settings
+# NOTE: Removed redundant get_test_settings function.
+# Test settings should now be obtained via app.core.config.settings.get_settings()

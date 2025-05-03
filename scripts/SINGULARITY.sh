@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# NOVAMIND DIGITAL TWIN - QUANTUM NEURAL ARCHITECTURE SINGULARITY SCRIPT
+# Clarity-AI DIGITAL TWIN - QUANTUM NEURAL ARCHITECTURE SINGULARITY SCRIPT
 # =============================================================================
 # This script represents the ultimate union of neuroscience and software 
 # engineering, enabling mathematically precise testing with perfect
@@ -34,9 +34,9 @@ LOG_FILE="${TEST_RESULTS_DIR}/quantum_run_${TIMESTAMP}.log"
 # =============================================================================
 
 function print_banner() {
-    echo -e "\n${PURPLE}==============================================================================${NC}"
-    echo -e "${CYAN}$1${NC}"
-    echo -e "${PURPLE}==============================================================================${NC}\n"
+    echo -e "${BLUE}=======================================================================${NC}"
+    echo -e "${CYAN}Clarity-AI DIGITAL TWIN - QUANTUM NEURAL SINGULARITY${NC}"
+    echo -e "${BLUE}=======================================================================${NC}"
 }
 
 function print_step() {
@@ -90,7 +90,7 @@ function establish_neural_environment() {
     print_step "Establishing quantum neural environment..."
     
     # Start the database and cache containers with precise nomenclature
-    docker-compose -f "${DOCKER_COMPOSE_FILE}" up -d novamind-db-test novamind-redis-test
+    docker-compose -f "${DOCKER_COMPOSE_FILE}" up -d clarity-ai-db-test clarity-ai-redis-test
     
     # Allow brain region connectivity to establish with proper timing
     print_step "Allowing hypothalamus-pituitary connectivity to establish..."
@@ -103,26 +103,21 @@ function process_neural_tests() {
     print_step "Executing quantum neural tests with perfect neurotransmitter pathway modeling..."
     
     # Execute quantum-level neural tests with perfect neurotransmitter pathway modeling
-    docker-compose -f "${DOCKER_COMPOSE_FILE}" run --rm novamind-test-runner
+    docker-compose -f "${DOCKER_COMPOSE_FILE}" run --rm clarity-ai-test-runner
     TEST_EXIT_CODE=$?
     
     print_step "Processing neurotransmitter pathway data..."
     
     # Create container to copy results if needed
-    CONTAINER_ID=$(docker ps -aq --filter name=novamind-test-runner)
-    if [ -z "$CONTAINER_ID" ]; then
-        docker-compose -f "${DOCKER_COMPOSE_FILE}" run -d --name novamind-temp-container novamind-test-runner sleep 10
-        CONTAINER_ID="novamind-temp-container"
+    CONTAINER_ID=$(docker ps -aq --filter name=clarity-ai-test-runner)
+    if [ -n "$CONTAINER_ID" ]; then
+        print_warning "Found orphaned test runner container: $CONTAINER_ID. Attempting removal."
+        docker rm -f "$CONTAINER_ID" || print_warning "Could not remove orphaned container $CONTAINER_ID"
     fi
     
     # Copy test results with proper neurotransmitter pathway structure 
     mkdir -p "${TEST_RESULTS_DIR}/reports"
     docker cp ${CONTAINER_ID}:/app/test-results/. "${TEST_RESULTS_DIR}/reports/" || true
-    
-    # Clean up temp container if created
-    if [ "$CONTAINER_ID" = "novamind-temp-container" ]; then
-        docker rm -f novamind-temp-container || true
-    fi
     
     if [ ${TEST_EXIT_CODE} -eq 0 ]; then
         print_success "All neurotransmitter pathways verified with quantum-level precision"
@@ -145,7 +140,7 @@ function reset_neural_environment() {
 # MAIN QUANTUM NEURAL EXECUTION PATH WITH SINGULARITY PRECISION
 # =============================================================================
 
-print_banner "NOVAMIND DIGITAL TWIN - QUANTUM NEURAL SINGULARITY"
+print_banner "Clarity-AI DIGITAL TWIN - QUANTUM NEURAL SINGULARITY"
 
 # Create trap to handle errors with quantum-level precision
 trap 'print_error "Quantum neural pathway disruption detected. Initiating reset..."; reset_neural_environment; exit 1' ERR
