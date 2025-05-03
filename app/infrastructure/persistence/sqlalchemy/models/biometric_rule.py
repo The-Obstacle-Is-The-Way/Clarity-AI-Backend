@@ -6,13 +6,11 @@ using SQLAlchemy ORM. It represents the database schema and mapping for
 biometric rules in the Novamind platform.
 """
 
-import json
 from datetime import datetime
-from typing import Dict, Any, List
-from uuid import UUID
+import uuid
 
 from sqlalchemy import Column, String, Boolean, Text, ForeignKey, DateTime, JSON
-from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
@@ -24,8 +22,9 @@ class BiometricRuleModel(Base):
 
     # Core fields
     id = Column(
-        PostgresUUID(as_uuid=True), 
+        GUID, 
         primary_key=True,
+        default=uuid.uuid4,
         doc="Unique identifier for the rule"
     )
     name = Column(
@@ -65,13 +64,13 @@ class BiometricRuleModel(Base):
     
     # Relationships
     patient_id = Column(
-        PostgresUUID(as_uuid=True), 
+        GUID, 
         ForeignKey("patients.id", ondelete="CASCADE"), 
         nullable=True,
         doc="ID of the patient this rule is for (NULL for global rules)"
     )
     provider_id = Column(
-        PostgresUUID(as_uuid=True), 
+        GUID, 
         ForeignKey("users.id", ondelete="SET NULL"), 
         nullable=True,
         doc="ID of the provider who created this rule"

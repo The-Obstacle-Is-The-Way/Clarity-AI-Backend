@@ -14,8 +14,9 @@ from dateutil import parser
 
 import sqlalchemy as sa
 from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 # Break circular import by using string reference to User model
@@ -50,12 +51,12 @@ class Patient(Base):
     
     # --- Core Identification and Metadata ---
     # Store UUIDs as String(36) for SQLite compatibility
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
     # external_id could be from an EMR or other system
     external_id = Column(String(64), unique=True, index=True, nullable=True)
     # Foreign key to the associated user account (if applicable)
     # Use string reference "users.id"
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=True, index=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
@@ -133,7 +134,7 @@ class Patient(Base):
 
     # Digital twin relationships
     # Store as String(36) for SQLite compatibility
-    biometric_twin_id = Column(String(36), nullable=True)
+    biometric_twin_id = Column(GUID, nullable=True)
 
     # --- Encrypted Fields Set --- 
     # QUANTUM FIX: Update encrypted_fields set to use prefixed column names with underscores

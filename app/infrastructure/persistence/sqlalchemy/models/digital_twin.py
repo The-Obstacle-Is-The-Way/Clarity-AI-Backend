@@ -6,12 +6,15 @@ providing mapping between domain entities and the database schema.
 """
 
 import json
+import uuid
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
 from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer, JSON
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
@@ -26,8 +29,8 @@ class BiometricDataPointModel(Base):
     __tablename__ = "biometric_data_points"
     __table_args__ = {'extend_existing': True}
     
-    id = Column(String(36), primary_key=True, index=True)
-    timeseries_id = Column(String(36), ForeignKey("biometric_timeseries.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    timeseries_id = Column(GUID, ForeignKey("biometric_timeseries.id"), nullable=False)
     timestamp = Column(DateTime, nullable=False)
     value_json = Column(Text, nullable=False)
     source = Column(String(50), nullable=False)
@@ -72,8 +75,8 @@ class BiometricTimeseriesModel(Base):
     
     __tablename__ = "biometric_timeseries"
     
-    id = Column(String(36), primary_key=True, index=True)
-    twin_id = Column(String(36), ForeignKey("digital_twins.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    twin_id = Column(GUID, ForeignKey("digital_twins.id"), nullable=False)
     biometric_type = Column(String(50), nullable=False)
     unit = Column(String(20), nullable=False)
     physiological_range_json = Column(Text, nullable=True)
@@ -109,8 +112,8 @@ class DigitalTwinModel(Base):
     
     __tablename__ = "digital_twins"
     
-    id = Column(String(36), primary_key=True, index=True)
-    patient_id = Column(String(36), nullable=False, unique=True, index=True)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    patient_id = Column(GUID, nullable=False, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     version = Column(Integer, default=1, nullable=False)
