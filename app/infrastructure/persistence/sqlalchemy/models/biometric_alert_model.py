@@ -7,10 +7,13 @@ which are generated from biometric data analysis to notify clinical staff
 of concerning patterns in patient biometric data.
 """
 
+import uuid
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
+from app.domain.utils.datetime_utils import now_utc
 from sqlalchemy import Column, String, DateTime, Float, ForeignKey, JSON, Enum
 from sqlalchemy.orm import relationship
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.domain.services.biometric_event_processor import AlertPriority, AlertStatus
 from app.infrastructure.persistence.sqlalchemy.config.database import Base
@@ -26,12 +29,12 @@ class BiometricAlertModel(Base):
     
     __tablename__ = "biometric_alerts"
     
-    alert_id = Column(String, primary_key=True, index=True)
-    patient_id = Column(String, index=True, nullable=False)
+    alert_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    patient_id = Column(GUID, index=True, nullable=False)
     alert_type = Column(String, index=True, nullable=False)
     description = Column(String, nullable=False)
     priority = Column(Enum(AlertPriority), nullable=False, index=True)
-    rule_id = Column(String, index=True, nullable=False)
+    rule_id = Column(GUID, index=True, nullable=False)
     status = Column(Enum(AlertStatus), nullable=False, default=AlertStatus.NEW, index=True)
     
     # Timestamps
@@ -39,9 +42,9 @@ class BiometricAlertModel(Base):
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     
     # Acknowledgment and resolution
-    acknowledged_by = Column(String, nullable=True)
+    acknowledged_by = Column(GUID, nullable=True)
     acknowledged_at = Column(DateTime, nullable=True)
-    resolved_by = Column(String, nullable=True)
+    resolved_by = Column(GUID, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
     resolution_notes = Column(String, nullable=True)
     

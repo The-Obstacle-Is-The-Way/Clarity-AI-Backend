@@ -9,12 +9,13 @@ IMPORTANT: This module has been refactored to use a clean registry pattern
 that prevents SQLAlchemy conflicts during testing.
 """
 
+import uuid
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
-from typing import Dict, List, Optional, Any
-from sqlalchemy import Column, String, DateTime, Boolean, Float, ForeignKey, JSON, MetaData
+from app.domain.utils.datetime_utils import now_utc
+from sqlalchemy import Column, String, DateTime, Boolean, Float, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import declarative_base
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 # Import the shared base class to ensure consistent registry
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
@@ -30,8 +31,8 @@ class BiometricTwinModel(Base):
     
     __tablename__ = "biometric_twins"
     
-    twin_id = Column(String, primary_key=True, index=True)
-    patient_id = Column(String, index=True, nullable=False)
+    twin_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    patient_id = Column(GUID, index=True, nullable=False)
     created_at = Column(DateTime, nullable=False, default=now_utc)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     baseline_established = Column(Boolean, nullable=False, default=False)
@@ -60,8 +61,8 @@ class BiometricDataPointModel(Base):
     
     __tablename__ = "biometric_data_points"
     
-    data_id = Column(String, primary_key=True, index=True)
-    twin_id = Column(String, ForeignKey("biometric_twins.twin_id"), index=True, nullable=False)
+    data_id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    twin_id = Column(GUID, ForeignKey("biometric_twins.twin_id"), index=True, nullable=False)
     data_type = Column(String, index=True, nullable=False)
     value = Column(String, nullable=False)
     value_type = Column(String, nullable=False)  # "number", "string", "json"

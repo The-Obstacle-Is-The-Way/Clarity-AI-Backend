@@ -78,11 +78,13 @@ Implement a cross-database compatible GUID type that automatically adapts to the
 - [x] Update Medication model (`app.infrastructure.persistence.sqlalchemy.models.medication.py`)
 - [x] Update ClinicalNote model (`app.infrastructure.persistence.sqlalchemy.models.clinical_note.py`)
 - [x] Update Appointment model (`app.infrastructure.persistence.sqlalchemy.models.appointment.py`)
-- [ ] Update AuditLog model (`app.infrastructure.persistence.sqlalchemy.models.audit_log.py`)
-- [ ] Update Analytics models (`app.infrastructure.persistence.sqlalchemy.models.analytics.py`)
-- [ ] Update BiometricRule model (`app.infrastructure.persistence.sqlalchemy.models.biometric_rule.py`) 
-- [ ] Update TemporalSequence models (`app.infrastructure.models.temporal_sequence_model.py`)
-- [ ] Review and update any test models with UUID fields
+- [x] Update AuditLog model (`app.infrastructure.persistence.sqlalchemy.models.audit_log.py`)
+- [x] Update Analytics models (`app.infrastructure.persistence.sqlalchemy.models.analytics.py`)
+- [x] Update BiometricRule model (`app.infrastructure.persistence.sqlalchemy.models.biometric_rule.py`)
+- [x] Update BiometricAlert model (`app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model.py`)
+- [x] Update BiometricTwin models (`app.infrastructure.persistence.sqlalchemy.models.biometric_twin_model.py`)
+- [x] Update DigitalTwin models (`app.infrastructure.persistence.sqlalchemy.models.digital_twin.py`)
+- [x] Update Patient model (`app.infrastructure.persistence.sqlalchemy.models.patient.py`)
 
 ### 4.3 Test Fixtures
 - [ ] Update `seed_test_data` fixture in `app/tests/conftest.py` to handle UUID objects correctly
