@@ -1,535 +1,272 @@
-# -*- coding: utf-8 -*-
 """
-NOVAMIND Dependency Injection Container
-=====================================
-Implements a clean dependency injection pattern for the NOVAMIND platform.
-Follows SOLID principles and Clean Architecture by centralizing dependency management.
+Dependency Injection Container.
+
+This module implements a dependency injection container following
+the SOLID principles, particularly Dependency Inversion Principle.
+The container manages service registration and resolution, enabling
+loose coupling between components and facilitating testing.
 """
 
 import inspect
-import importlib # Added for dynamic imports
-from functools import lru_cache
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, cast, Union # Added Union
+import logging
+from typing import Any, Callable, Dict, Generic, Type, TypeVar, get_type_hints
 
-from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# Defer service/repository imports to within get_container
-from app.core.utils.logging import get_logger
-# Corrected import path for XGBoostInterface
-from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.domain.interfaces.ml_service_interface import (
-    BiometricCorrelationInterface,
-    DigitalTwinServiceInterface,
-    PharmacogenomicsInterface,
-    SymptomForecastingInterface,
-    # XGBoostInterface, # Removed from here
-)
+logger = logging.getLogger(__name__)
 
-# Remove top-level repository interface imports as they don't exist with these names
-# from app.domain.repositories.digital_twin_repository import IDigitalTwinRepository
-# from app.domain.repositories.patient_repository import IPatientRepository
+# Global container instance
+_container = None
 
-# Ensure AnalyticsService is importable here
-from app.domain.services.analytics_service import AnalyticsService
-# Placeholder for where AnalyticsService implementation might be
-# from app.infrastructure.services.analytics_service_impl import AnalyticsServiceImpl # Example
-
-# Import Settings class
-from app.config.settings import Settings, get_settings
-
-# Import EventRepository and potentially its implementation/mock
-from app.domain.repositories.temporal_repository import EventRepository
-# from app.infrastructure.repositories.temporal.timescale_repository import TimescaleEventRepository # Example Impl
-
-# Import Appointment Repository interface
-from app.domain.repositories.appointment_repository import IAppointmentRepository
-from unittest.mock import AsyncMock
-
-# Import Clinical Note Repository interface/type
-from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
-# Import Medication Repository type
-from app.domain.repositories.medication_repository import MedicationRepository
-# Import Patient Repository type
-from app.domain.repositories.patient_repository import PatientRepository
-# Import Digital Twin Repository type
-from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
-
-# Initialize logger using the utility function
-logger = get_logger(__name__)
-
-# Type variable for DI registrations
-T = TypeVar("T")
-
-# Initialize container global variable
-container = None
+# Generic type variable for interfaces
+T = TypeVar('T')
 
 
 class DIContainer:
     """
-    Dependency Injection Container for managing service dependencies.
-    Implements the Service Locator pattern in a clean, type-safe way.
+    Dependency Injection Container for managing application services.
+    
+    This container implements the Service Locator pattern responsibly,
+    allowing for centralized management of service dependencies while
+    maintaining testability and loose coupling between components.
     """
-
-    def __init__(self):
-        """Initialize the container with empty registrations."""
-        self._registrations: Dict[str, Callable[[], Any]] = {}
-        self._instances: Dict[str, Any] = {}
-        logger.debug("Dependency Injection Container initialized")
-
-    def register(
-        self, interface_type: Type[T], implementation_factory: Callable[[], T]
-    ) -> None:
+    
+    def __init__(self, is_mock: bool = False):
         """
-        Register a service implementation factory for an interface.
-
+        Initialize the DI container.
+        
         Args:
-            interface_type: The interface or abstract type
-            implementation_factory: Factory function creating the implementation
+            is_mock: Whether this container should use mock implementations
         """
-        key = self._get_key(interface_type)
-        self._registrations[key] = implementation_factory
-        logger.debug(f"Registered factory for {key}")
-
-    def register_scoped(
-        self, interface_type: Type[T], implementation_type: Type[T]
-    ) -> None:
+        self._services: Dict[Type, Any] = {}
+        self._factories: Dict[Type, Callable] = {}
+        self._repository_factories: Dict[Type, Callable[[AsyncSession], Any]] = {}
+        self._is_mock = is_mock
+        logger.info(f"Initializing {'MOCK' if is_mock else 'REAL'} DI container and registering services.")
+    
+    def register(self, interface: Type[T], implementation: T) -> None:
         """
-        Register a scoped service (instance per request/scope).
-
+        Register a service implementation for an interface.
+        
         Args:
-            interface_type: The interface or abstract type
-            implementation_type: The concrete implementation class
+            interface: The interface type
+            implementation: The concrete implementation instance
         """
-        key = self._get_key(interface_type)
-        # Store the type itself; instantiation happens on resolution
-        self._registrations[key] = implementation_type
-        logger.debug(f"Registered scoped service for {key}")
-
-    def register_instance(self, interface_type: Type[T], instance: T) -> None:
-        """
-        Register a singleton instance for an interface.
-
-        Args:
-            interface_type: The interface or abstract type
-            instance: The singleton instance
-        """
-        key = self._get_key(interface_type)
-        self._instances[key] = instance
-        logger.debug(f"Registered instance for {key}")
-
-    def resolve(self, interface_type: Union[Type[T], str]) -> T:
-        """
-        Resolve a dependency by its interface type.
-
-        Args:
-            interface_type: The interface type to resolve
-
-        Returns:
-            An instance of the registered implementation
-
-        Raises:
-            TypeError: If the type is not registered
-            Exception: If instantiation fails
-        """
-        key = self._get_key(interface_type)
-
-        # Check singletons first
-        if key in self._instances:
-            logger.debug(f"Resolving instance for {key}")
-            return cast(T, self._instances[key])
-
-        # Check registrations (factories or scoped types)
-        if key in self._registrations:
-            registration = self._registrations[key]
-            # If it's a factory function
-            if callable(registration) and not isinstance(registration, type):
-                logger.debug(f"Resolving factory for {key}")
-                try:
-                    instance = registration()
-                    return cast(T, instance)
-                except Exception as e:
-                    logger.error(f"Error instantiating {key} from factory: {e}", exc_info=True)
-                    raise Exception(f"Error resolving {key}: {e}") from e
-            # If it's a type (scoped registration)
-            elif isinstance(registration, type):
-                logger.debug(f"Resolving scoped type {key}")
-                try:
-                    # Perform dependency injection for the implementation's __init__
-                    instance = self._create_instance_with_dependencies(registration)
-                    return cast(T, instance)
-                except Exception as e:
-                    logger.error(f"Error instantiating scoped {key}: {e}", exc_info=True)
-                    raise Exception(f"Error resolving scoped {key}: {e}") from e
-
-        logger.error(f"Type {interface_type} not registered in DI container.")
-        raise TypeError(f"Type {interface_type} not registered.")
-
-    def _create_instance_with_dependencies(self, implementation_type: Type[T]) -> T:
-        """Instantiate a class, injecting its dependencies from the container."""
-        signature = inspect.signature(implementation_type.__init__)
-        dependencies: Dict[str, Any] = {}
-
-        for name, param in signature.parameters.items():
-            if name == 'self':
-                continue
-            if param.annotation is inspect.Parameter.empty:
-                logger.warning(
-                    f"Dependency '{name}' for {implementation_type.__name__} has no type hint. Cannot inject."
-                )
-                # Or raise an error if strict injection is required
-                # raise TypeError(f"Missing type hint for dependency '{name}' in {implementation_type.__name__}")
-                continue
-
-            # Resolve dependency based on type hint
-            try:
-                dependencies[name] = self.resolve(param.annotation)
-            except TypeError as e:
-                # If dependency not found, re-raise with more context
-                logger.error(
-                    f"Failed to resolve dependency '{name}: {param.annotation.__name__}' for {implementation_type.__name__}",
-                    exc_info=True
-                )
-                raise TypeError(
-                    f"Cannot instantiate {implementation_type.__name__}: Dependency '{name}' ({param.annotation.__name__}) not registered."
-                ) from e
-            except Exception as e:
-                 logger.error(
-                    f"Unexpected error resolving dependency '{name}: {param.annotation.__name__}' for {implementation_type.__name__}",
-                    exc_info=True
-                )
-                 raise
-
-        logger.debug(f"Injecting dependencies {list(dependencies.keys())} into {implementation_type.__name__}")
-        return implementation_type(**dependencies)
-
-    def _get_key(self, interface_type: Union[Type[T], str]) -> str: # Accept string
-        """Generate a unique key for registration/resolution."""
-        if isinstance(interface_type, str):
-            # If it's a string path, use it directly as the key
-            # We assume the registration also used this string path
-            return interface_type
-        elif inspect.isclass(interface_type):
-            return f"{interface_type.__module__}.{interface_type.__name__}"
+        if interface in self._services:
+            logger.debug(f"Overriding existing registration for {interface.__name__}")
+        
+        self._services[interface] = implementation
+        
+        register_msg = f"Registered {'MOCK' if self._is_mock else ''} {interface.__name__} in DI container."
+        if self._is_mock:
+            logger.info(register_msg)
         else:
-            # Handle unexpected types
-            raise TypeError(f"Unsupported type for DI key: {type(interface_type)}")
-
-    def override(self, interface_type: Union[Type[T], str], implementation_factory: Callable[[], T]) -> None: # Accept string
+            logger.debug(register_msg)
+    
+    def register_factory(self, interface: Type[T], factory: Callable[[], T]) -> None:
         """
-        Override an existing registration, useful for testing.
-
+        Register a factory function for creating service instances.
+        
         Args:
-            interface_type: The interface type to override.
-            implementation_factory: The new factory function.
+            interface: The interface type
+            factory: Factory function that creates instances of the interface
         """
-        key = self._get_key(interface_type)
-        if key not in self._registrations and key not in self._instances:
-             logger.warning(f"Attempting to override non-existent registration for {key}. Registering instead.")
-        
-        # Override the existing registration
-        self._registrations[key] = implementation_factory
-        # If there's an instance, remove it so the factory is used next time
-        if key in self._instances:
-            del self._instances[key]
-
-    def clear(self) -> None:
-        """Clear all registrations and instances. Useful for testing."""
-        self._registrations.clear()
-        self._instances.clear()
-        logger.debug("DI container cleared")
-
-
-class Container(DIContainer):
-    """
-    Extended container with additional features for FastAPI integration.
-    """
-
-    def __init__(self):
-        """Initialize the DI container with standard registrations."""
-        super().__init__()
-        logger.debug("Extended Container initialized")
-
-    def register(
-        self, interface_type: Type[T], implementation_factory: Callable[[], T]
+        self._factories[interface] = factory
+    
+    def register_repository_factory(
+        self, 
+        interface: Type[T], 
+        factory: Callable[[AsyncSession], T]
     ) -> None:
         """
-        Register with FastAPI dependency integration.
-        Supports both interface resolution and FastAPI dependency injection.
-        """
-        super().register(interface_type, implementation_factory)
+        Register a factory function for creating repository instances with session injection.
         
-        # Also register a FastAPI dependency for dependency injection
-        if inspect.isclass(interface_type):
-            dependency_key = f"fastapi_dependency_{interface_type.__name__}"
-            self._instances[dependency_key] = Depends(lambda: implementation_factory())
-
-    def register_instance(self, interface_type: Type[T], instance: T) -> None:
+        Args:
+            interface: The repository interface type
+            factory: Factory function that creates instances of the repository
         """
-        Register a singleton with FastAPI dependency integration.
+        self._repository_factories[interface] = factory
+    
+    def get(self, interface: Type[T]) -> T:
         """
-        super().register_instance(interface_type, instance)
+        Resolve an implementation for the specified interface.
         
-        # Also register a FastAPI dependency for this instance
-        if inspect.isclass(interface_type):
-            dependency_key = f"fastapi_dependency_{interface_type.__name__}"
-            self._instances[dependency_key] = Depends(lambda: instance)
-
-    def register_scoped(
-        self, interface_type: Type[T], implementation_type: Type[T]
-    ) -> None:
-        """
-        Register a scoped service with FastAPI dependency integration.
-        Creates a new instance per request.
-        """
-        key = self._get_key(interface_type)
-        
-        # Create a factory that resolves dependencies from the container
-        def factory():
-            # Get constructor dependencies
-            dependencies = self._resolve_dependencies(implementation_type)
-            # Create instance with resolved dependencies
-            return implementation_type(**dependencies)
-        
-        # Register the factory that creates a new instance each time
-        self._registrations[key] = factory
-        logger.debug(f"Registered scoped service for {key}")
-
-    def resolve(self, interface_type: Type[T]) -> T:
-        """
-        Resolve a dependency, with special handling for FastAPI's Depends.
-        """
-        # Handle FastAPI dependency injection if a string is passed
-        if isinstance(interface_type, str):
-            if interface_type.startswith("fastapi_dependency_"):
-                # Extract the raw dependency and return it
-                dependency_name = interface_type[len("fastapi_dependency_"):]
-                for key, instance in self._instances.items():
-                    if key.endswith(dependency_name):
-                        return cast(T, instance)
+        Args:
+            interface: The interface type to resolve
             
-            # If it's not a FastAPI dependency, resolve normally
+        Returns:
+            An instance implementing the interface
             
-        # Handle normal resolution
+        Raises:
+            KeyError: If no implementation is registered for the interface
+        """
+        # Check if we have a direct registration
+        if interface in self._services:
+            return self._services[interface]
+        
+        # Check if we have a factory
+        if interface in self._factories:
+            # Create instance using factory
+            instance = self._factories[interface]()
+            # Cache the instance for future use
+            self._services[interface] = instance
+            return instance
+        
+        # Not found
+        raise KeyError(f"No implementation registered for {interface.__name__}")
+    
+    def get_repository_factory(self, interface: Type[T]) -> Callable[[AsyncSession], T]:
+        """
+        Get a factory function for creating repository instances.
+        
+        Args:
+            interface: The repository interface type
+            
+        Returns:
+            A factory function that creates repository instances
+            
+        Raises:
+            KeyError: If no factory is registered for the interface
+        """
+        if interface in self._repository_factories:
+            return self._repository_factories[interface]
+        
+        raise KeyError(f"No repository factory registered for {interface.__name__}")
+    
+    def register_services(self) -> None:
+        """
+        Register all services based on configuration.
+        
+        This method is responsible for registering all application services
+        with their appropriate implementations, whether real or mocked.
+        """
         try:
-            return super().resolve(interface_type)
-        except TypeError as e:
-            # If it's a callable that returns a dependency, try invoking it
-            if callable(interface_type) and not inspect.isclass(interface_type):
-                try:
-                    result = interface_type()
-                    return cast(T, result)
-                except Exception:
-                    # If invoking fails, re-raise the original error
-                    raise e
-            # Re-raise the original error
-            raise
-
-    def _get_type_name(self, type_obj: Type) -> str:
-        """Get a human-readable type name."""
-        return getattr(type_obj, "__name__", str(type_obj))
-
-    def _resolve_dependencies(self, implementation_type: Type[T]) -> Dict[str, Any]:
-        """Resolve all constructor dependencies for a type."""
-        dependencies = {}
-        signature = inspect.signature(implementation_type.__init__)
-        
-        for param_name, param in signature.parameters.items():
-            if param_name == "self":
-                continue
+            if self._is_mock:
+                self._register_mock_services()
+            else:
+                self._register_real_services()
                 
-            # Skip parameters without type hints
-            if param.annotation is inspect.Parameter.empty:
-                logger.warning(
-                    f"Parameter '{param_name}' in {self._get_type_name(implementation_type)} has no type hint."
-                )
-                # Use default if available, otherwise skip
-                if param.default is not inspect.Parameter.empty:
-                    dependencies[param_name] = param.default
-                continue
-                
-            # Resolve the dependency
-            try:
-                dependencies[param_name] = self.resolve(param.annotation)
-            except Exception as e:
-                logger.error(
-                    f"Failed to resolve dependency '{param_name}' for {self._get_type_name(implementation_type)}: {e}",
-                    exc_info=True
-                )
-                # Use default if available
-                if param.default is not inspect.Parameter.empty:
-                    dependencies[param_name] = param.default
-                else:
-                    # Re-raise with more context
-                    raise ValueError(
-                        f"Could not resolve dependency '{param_name}' for {self._get_type_name(implementation_type)}"
-                    ) from e
-                    
-        return dependencies
-
-
-def get_container():
-    """Singleton function to access the DI container."""
-    global container
-    if container is not None:
-        return container
+            logger.info(f"DI Container initialized with {'MOCK' if self._is_mock else 'REAL'} service registrations.")
+        except Exception as e:
+            logger.error(f"Error registering {'mock' if self._is_mock else 'real'} services in DI container: {str(e)}")
+            logger.exception(e)
     
-    import os
-    if os.environ.get("MOCK_DI_CONTAINERS") == "true":
-        from unittest.mock import MagicMock, AsyncMock
+    def _register_mock_services(self) -> None:
+        """Register mock implementations for testing."""
+        from unittest.mock import MagicMock
         
-        # Create a mock container that will resolve any service
-        mock_container = MagicMock()
+        # Import core interfaces
+        from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
+
+        # Create and register generic mocks for all repository types
+        from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
         
-        # Configure the mock container to return mock objects for any requested service
-        def resolve_mock(*args, **kwargs):
-            mock_service = MagicMock()
-            # Make any async methods return AsyncMock
-            mock_service.__call__ = AsyncMock(return_value=mock_service)
-            return mock_service
+        # Event repository
+        mock_event_repo = MagicMock(spec=BaseRepositoryInterface)
+        self.register(BaseRepositoryInterface, mock_event_repo)
+        logger.info("Registered MOCK EventRepository in DI container.")
         
-        mock_container.resolve.side_effect = resolve_mock
-        mock_container.get.side_effect = resolve_mock
+        # For test collection, register some common repository types
+        from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
         
-        # Set our global container reference to use in the app
-        container = mock_container
-        return container
+        # Appointment repository
+        mock_appointment_repo = MagicMock(spec=BaseRepositoryInterface)
+        self.register(BaseRepositoryInterface, mock_appointment_repo)
+        logger.info("Registered MOCK IAppointmentRepository in DI container.")
+        
+        # Clinical note repository
+        mock_note_repo = MagicMock(spec=BaseRepositoryInterface)
+        self.register(BaseRepositoryInterface, mock_note_repo)
+        logger.info("Registered MOCK ClinicalNoteRepository in DI container.")
+        
+        # Medication repository
+        mock_medication_repo = MagicMock(spec=BaseRepositoryInterface)
+        self.register(BaseRepositoryInterface, mock_medication_repo)
+        logger.info("Registered MOCK MedicationRepository in DI container.")
+        
+        # Patient repository
+        mock_patient_repo = MagicMock(spec=BaseRepositoryInterface)
+        self.register(BaseRepositoryInterface, mock_patient_repo)
+        logger.info("Registered MOCK PatientRepository in DI container.")
+        
+        # Digital twin repository
+        mock_twin_repo = MagicMock(spec=BaseRepositoryInterface)
+        self.register(BaseRepositoryInterface, mock_twin_repo)
+        logger.info("Registered MOCK DigitalTwinRepository in DI container.")
+        
+        # Register service mocks as needed
+        
+        # Analytics service
+        from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
+        mock_analytics_service = MagicMock(spec=AnalyticsServiceInterface)
+        self.register(AnalyticsServiceInterface, mock_analytics_service)
+        logger.info("Registered AnalyticsService in DI container.")
     
-    # Normal container initialization WITH registrations
-    try:
-        from unittest.mock import AsyncMock
+    def _register_real_services(self) -> None:
+        """Register real implementations for production."""
+        # Import repositories and their interfaces
+        from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+        from app.infrastructure.repositories.user_repository import get_user_repository
         
-        logger.info("Initializing REAL DI container and registering services.")
-        container = Container() 
-
-        # --- Register Core Services --- 
-        # Settings is now imported
-        container.register(Settings, get_settings)
-
-        # Example: JWT Service
-        from app.core.interfaces.services.jwt_service import IJwtService
-        from app.infrastructure.security.jwt.jwt_service import JWTService
-        # Assuming JWTService needs settings; the container will resolve it
-        container.register_scoped(IJwtService, JWTService)
-
-        # Example: Password Handler (Singleton)
-        from app.infrastructure.security.password.password_handler import PasswordHandler
-        container.register_instance(PasswordHandler, PasswordHandler())
-
-        # Example: User Repository
-        from app.domain.repositories.user_repository import UserRepository
-        from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
-        # Assuming SqlAlchemyUserRepository needs an AsyncSession; 
-        # this might require session management integration or a factory
-        # For now, let's register the type (scoped)
-        container.register_scoped(UserRepository, SqlAlchemyUserRepository)
-
-        # Example: Authentication Service
-        from app.infrastructure.security.auth.authentication_service import AuthenticationService
-        # Container will inject registered dependencies (UserRepo, PW Handler, JWT Service)
-        container.register_scoped(AuthenticationService, AuthenticationService)
+        # Register repository factories
+        self.register_repository_factory(UserRepositoryInterface, get_user_repository)
         
-        # --- ADD EventRepository Registration (Mock) ---
-        mock_event_repo = AsyncMock(spec=EventRepository)
-        container.register(EventRepository, lambda: mock_event_repo)
-        logger.info(f"Registered MOCK {EventRepository.__name__} in DI container.")
-
-        # --- ADD AppointmentRepository Registration (Mock) ---
-        mock_appt_repo = AsyncMock(spec=IAppointmentRepository)
-        container.register(IAppointmentRepository, lambda: mock_appt_repo)
-        logger.info(f"Registered MOCK {IAppointmentRepository.__name__} in DI container.")
-
-        # --- ADD ClinicalNoteRepository Registration (Mock) ---
-        # TODO: Replace with actual implementation registration later if needed
-        mock_cnote_repo = AsyncMock(spec=ClinicalNoteRepository)
-        container.register(ClinicalNoteRepository, lambda: mock_cnote_repo)
-        logger.info(f"Registered MOCK {ClinicalNoteRepository.__name__} in DI container.")
-
-        # --- ADD MedicationRepository Registration (Mock) ---
-        # TODO: Replace with actual implementation registration later if needed
-        mock_med_repo = AsyncMock(spec=MedicationRepository)
-        container.register(MedicationRepository, lambda: mock_med_repo)
-        logger.info(f"Registered MOCK {MedicationRepository.__name__} in DI container.")
-
-        # --- ADD PatientRepository Registration (Mock) ---
-        # Assuming AnalyticsService uses PatientRepository type hint
-        # TODO: Replace with actual implementation registration later if needed
-        mock_patient_repo = AsyncMock(spec=PatientRepository)
-        container.register(PatientRepository, lambda: mock_patient_repo)
-        logger.info(f"Registered MOCK {PatientRepository.__name__} in DI container.")
-
-        # --- ADD DigitalTwinRepository Registration (Mock) ---
-        # TODO: Replace with actual implementation registration later if needed
-        mock_dt_repo = AsyncMock(spec=DigitalTwinRepository)
-        container.register(DigitalTwinRepository, lambda: mock_dt_repo)
-        logger.info(f"Registered MOCK {DigitalTwinRepository.__name__} in DI container.")
-
-        # --- Register AnalyticsService (depends on EventRepo, ApptRepo, CNoteRepo) --- 
-        container.register_scoped(AnalyticsService, AnalyticsService) 
-        logger.info(f"Registered {AnalyticsService.__name__} in DI container.")
-
-        # --- ADD XGBoost Registration (Example) ---
-        # Replace XGBoostServiceImpl with the actual implementation
-        # from app.infrastructure.services.xgboost_service_impl import XGBoostServiceImpl # Example
-        # Assume for now AnalyticsService acts as placeholder 
-        # container.register_scoped(XGBoostInterface, XGBoostServiceImpl) 
-
-        # ... register other necessary services/repositories ...
-
-        logger.info("DI Container initialized with REAL service registrations.")
-        return container
+        # Import services and their interfaces
+        from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+        from app.infrastructure.security.auth_service import get_auth_service
         
-    except Exception as e:
-        logger.error(f"Error registering real services in DI container: {e}", exc_info=True)
-        # Fallback to empty container on error during real init
-        container = DIContainer()
-        return container
+        from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+        from app.infrastructure.security.jwt_service import get_jwt_service
+        
+        # Register services directly or via factories
+        self.register_factory(AuthServiceInterface, get_auth_service)
+        self.register_factory(JWTServiceInterface, get_jwt_service)
+        
+        # Register additional services
+        try:
+            from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
+            from app.core.services.analytics_service import AnalyticsService
+            
+            # Create and register analytics service
+            analytics_service = AnalyticsService()
+            self.register(AnalyticsServiceInterface, analytics_service)
+            logger.info("Registered AnalyticsService in DI container.")
+        except ImportError:
+            logger.warning("Could not register AnalyticsService (missing implementation)")
 
 
-def get_service(service_type: Union[Type[T], str] = None) -> Any:  # Accept string or default to None, returns service instance or resolver
+def get_container(use_mock: bool = False) -> DIContainer:
     """
-    Get a service from the container.
+    Get the global DI container instance.
     
-    If service_type is None, this returns a function that can be used with
-    FastAPI's dependency injection system to resolve a service at request time.
+    This function follows the Singleton pattern, ensuring only one
+    container exists throughout the application lifecycle.
     
     Args:
-        service_type: Optional type to resolve directly
-    
-    Returns:
-        Either the resolved service instance or a function to resolve a service
-    """
-    container = get_container()  # This will create or reuse the singleton
-    
-    if service_type is not None:
-        # If service_type is provided, return the instance directly
-        return container.resolve(service_type)
-    
-    # Otherwise, return a resolver function for FastAPI dependency injection
-    def _get_service() -> T:
-        # Note: This should be called by FastAPI's dependency system, where
-        # the service type will be inferred from the parameter type annotation.
-        # Get the service type from the parameter annotation of the caller
-        frame = inspect.currentframe().f_back
-        if frame:
-            try:
-                # Get parameter name from the caller
-                param_name = list(frame.f_locals.keys())[0]  # This gets the name of the first parameter
-                # Get the function object
-                func_obj = frame.f_globals.get(frame.f_code.co_name, None)
-                if func_obj and hasattr(func_obj, "__annotations__"):
-                    # Get the type annotation for this parameter
-                    service_type_annotation = func_obj.__annotations__.get(param_name)
-                    if service_type_annotation:
-                        # Resolve the service from the container
-                        return container.resolve(service_type_annotation)
-            finally:
-                del frame  # Avoid reference cycles
+        use_mock: Whether to use mock implementations
         
-        raise ValueError("Could not determine service type from function annotation")
+    Returns:
+        The global DI container instance
+    """
+    global _container
     
-    return _get_service
+    if _container is None:
+        _container = DIContainer(is_mock=use_mock)
+        _container.register_services()
+    elif use_mock and not _container._is_mock:
+        # If we requested a mock container but have a real one, recreate it
+        _container = DIContainer(is_mock=True)
+        _container.register_services()
+    
+    return _container
 
 
-# Create and initialize a container instance for import
-# This addresses the import in main.py that expects 'container'
-container = get_container()
+def reset_container() -> None:
+    """
+    Reset the global DI container instance.
+    
+    This function is useful for testing when we need to reset
+    the container between tests.
+    """
+    global _container
+    _container = None

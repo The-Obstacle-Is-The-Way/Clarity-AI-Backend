@@ -45,6 +45,14 @@ class TimeFrame(str, Enum):
     MEDIUM_TERM = "medium_term"  # 30-90 days
     LONG_TERM = "long_term"  # 90+ days
 
+class TreatmentType(str, Enum):
+    """Types of treatments that can be evaluated (Presentation Layer)."""
+    MEDICATION = "medication"
+    PSYCHOTHERAPY = "psychotherapy"
+    TMS = "transcranial_magnetic_stimulation"
+    ECT = "electroconvulsive_therapy"
+    LIFESTYLE = "lifestyle_intervention"
+
 # --- Pydantic Models (Placeholders) ---
 
 class BaseModelConfig(BaseModel):

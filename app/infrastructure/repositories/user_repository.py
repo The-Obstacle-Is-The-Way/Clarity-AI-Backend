@@ -16,7 +16,7 @@ from app.core.errors.base_exceptions import NotFoundException
 from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
 
 
-class SQLAlchemyUserRepository(UserRepositoryInterface):
+class SqlAlchemyUserRepository(UserRepositoryInterface):
     """
     SQLAlchemy implementation of the UserRepositoryInterface.
     
@@ -164,4 +164,4 @@ def get_user_repository(session: AsyncSession) -> UserRepositoryInterface:
     Returns:
         An instance of UserRepositoryInterface
     """
-    return SQLAlchemyUserRepository(session)
+    return SqlAlchemyUserRepository(session)
