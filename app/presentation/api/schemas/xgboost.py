@@ -166,7 +166,8 @@ class TreatmentResponseRequest(BaseModelConfig):
     treatment_name: Optional[str] = None
     time_frame: Optional[TimeFrame] = None
     include_side_effects: bool = True
-    features: Dict[str, Any]
+    features: Dict[str, Any] = Field(default_factory=dict)
+    baseline_severity: Optional[float] = None  # For test compatibility
 
 class OutcomeDetails(BaseModelConfig):
     domain: OutcomeDomain
