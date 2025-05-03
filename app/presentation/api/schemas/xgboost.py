@@ -165,11 +165,22 @@ class TherapyDetails(BaseModelConfig):
     dosage: Optional[str] = None  # For medications
     side_effects: Optional[List[str]] = None
 
-class OutcomePredictionResponse(BaseModelConfig):
+class OutcomePredictionRequest(BaseModelConfig):
+    """Request schema for clinical outcome predictions."""
     patient_id: str
-    expected_outcomes: List[OutcomeDetails] # Or ExpectedOutcome? Need clarity
+    timeframe_days: int = Field(ge=1, le=365, description="Prediction timeframe in days")
+    prediction_domains: Optional[List[OutcomeDomain]] = None
+    prediction_types: Optional[List[OutcomeType]] = None
+    include_trajectories: bool = False
+    include_recommendations: bool = False
+    features: Dict[str, Any] = Field(..., description="Patient features for outcome prediction")
+
+class OutcomePredictionResponse(BaseModelConfig):
+    """Response schema for clinical outcome predictions."""
+    patient_id: str
+    expected_outcomes: List[OutcomeDetails]
     outcome_trajectories: Optional[List[OutcomeTrajectory]] = None
-    response_likelihood: Optional[ResponseLikelihood] = None # Added based on imports
+    response_likelihood: Optional[ResponseLikelihood] = None
     recommended_therapies: Optional[List[TherapyDetails]] = None
 
 class TreatmentResponseResponse(BaseModelConfig):
