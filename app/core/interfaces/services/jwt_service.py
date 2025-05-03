@@ -7,6 +7,7 @@ Defines the contract for creating and validating JSON Web Tokens.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
+from datetime import timedelta
 
 # Attempt to import User, handle potential circular dependency or missing file gracefully
 try:
@@ -23,14 +24,20 @@ class IJwtService(ABC):
 
     @abstractmethod
     async def create_access_token(
-        self, data: Dict[str, Any], expires_delta_minutes: Optional[int] = None
+        self, 
+        data: Dict[str, Any], 
+        expires_delta: Optional[timedelta] = None,
+        expires_delta_minutes: Optional[int] = None
     ) -> str:
         """Creates a new access token."""
         pass
 
     @abstractmethod
     async def create_refresh_token(
-        self, data: Dict[str, Any], expires_delta_minutes: Optional[int] = None
+        self, 
+        data: Dict[str, Any], 
+        expires_delta: Optional[timedelta] = None,
+        expires_delta_minutes: Optional[int] = None
     ) -> str:
         """Creates a new refresh token."""
         pass
