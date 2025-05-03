@@ -8,4 +8,4 @@ DO NOT USE THIS IN NEW CODE - use app.api.routes.v1.endpoints.analytics instead.
 """
 
 # Re-export from the new location
-from app.api.routes.v1.endpoints.analytics.router import router
+from .router import router

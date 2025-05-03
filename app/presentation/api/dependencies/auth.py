@@ -1,11 +1,102 @@
 """
-Authentication dependencies compatibility module.
+Authentication and Authorization Dependencies for the Presentation Layer.
 
-This module provides backward compatibility for tests and code
-that still references the old app.presentation.api.dependencies.auth module.
-
-DO NOT USE THIS IN NEW CODE - use app.api.dependencies instead.
+This module provides FastAPI dependency functions required for handling
+authentication and authorization within the API endpoints.
 """
 
-# Re-export from the new location
-from app.api.dependencies import get_current_user, get_authentication_service, get_jwt_service
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
+# Correct service/factory imports
+from app.core.domain.entities.user import User
+from app.core.errors.security_exceptions import InvalidCredentialsError
+from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.infrastructure.repositories.user_repository import get_user_repository
+from app.infrastructure.security.auth_service import get_auth_service
+from app.infrastructure.security.jwt_service import get_jwt_service
+
+# --- Type Hinting for Dependencies --- #
+
+AuthServiceDep = Annotated[AuthServiceInterface, Depends(get_auth_service)]
+JWTServiceDep = Annotated[JWTServiceInterface, Depends(get_jwt_service)]
+UserRepoDep = Annotated[UserRepositoryInterface, Depends(get_user_repository)]
+
+# OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+TokenDep = Annotated[str, Depends(oauth2_scheme)]
+
+# --- Dependency Functions --- #
+
+def get_authentication_service(
+    auth_service: AuthServiceInterface = Depends(get_auth_service),
+) -> AuthServiceInterface:
+    """Provides an instance of the Authentication Service."""
+    return auth_service
+
+def get_jwt_service(
+    jwt_service: JWTServiceInterface = Depends(get_jwt_service),
+) -> JWTServiceInterface:
+    """Provides an instance of the JWT Service."""
+    return jwt_service
+
+async def get_current_user(
+    token: TokenDep,
+    jwt_service: JWTServiceDep,
+    user_repo: UserRepoDep,
+) -> User:
+    """
+    Dependency to get the current authenticated user based on the provided token.
+
+    Decodes the JWT token, retrieves the user ID, and fetches the user
+    from the repository.
+
+    Args:
+        token: The OAuth2 bearer token.
+        jwt_service: Injected JWTService dependency.
+        user_repo: Injected UserRepository dependency.
+
+    Returns:
+        The authenticated User object.
+
+    Raises:
+        HTTPException: If credentials cannot be validated.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt_service.decode_token(token)
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except InvalidCredentialsError as e:
+        # Log the specific JWT error?
+        raise credentials_exception from e
+    except Exception as e:
+        # Catch unexpected errors during token processing
+        # Log e
+        raise credentials_exception from e
+
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise credentials_exception
+    # TODO: Add checks for user status (e.g., is_active)
+    return user
+
+
+# Optional: Dependency for getting an active user
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency to get the current active user."""
+    # if not current_user.is_active:
+    #     raise HTTPException(status_code=400, detail="Inactive user")
+    # TODO: Uncomment and implement user active status check
+    return current_user
