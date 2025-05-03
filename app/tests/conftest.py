@@ -223,43 +223,61 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def seed_test_data(test_db_session: AsyncSession):
-    """Fixture to seed the database with essential test users."""
+    """Fixture to seed the database with essential test users and provider."""
     logger.info("Seeding test data...")
+    # Import provider model here to avoid circular imports
+    from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel
+    
     # Hash passwords
     hashed_password = pwd_context.hash(TEST_PASSWORD)
     hashed_provider_password = pwd_context.hash(TEST_PROVIDER_PASSWORD)
 
     # Create SQLAlchemy User entities
     test_user = SQLAlchemyUser(
-        id=TEST_INTEGRATION_USER_ID,  # Use UUID object directly for PostgresUUID column
+        id=TEST_INTEGRATION_USER_ID,  # Use UUID object directly
         username=TEST_USERNAME,
         email=TEST_USERNAME,
-        password_hash=hashed_password, # Use correct field name
-        # roles=["patient"], # Omit roles for now
+        password_hash=hashed_password,
         is_active=True,
-        is_verified=True, # Assume verified for testing login
-        email_verified=True # Assume verified for testing login
+        is_verified=True,
+        email_verified=True
     )
+    
     provider_user = SQLAlchemyUser(
-        id=TEST_PROVIDER_USER_ID,  # Use UUID object directly for PostgresUUID column
+        id=TEST_PROVIDER_USER_ID,  # Use UUID object directly
         username=TEST_PROVIDER_USERNAME,
         email=TEST_PROVIDER_USERNAME,
-        password_hash=hashed_provider_password, # Use correct field name
-        # roles=["provider"], # Omit roles for now
+        password_hash=hashed_provider_password,
         is_active=True,
-        is_verified=True, # Assume verified for testing login
-        email_verified=True # Assume verified for testing login
+        is_verified=True,
+        email_verified=True
     )
-
-    # Add users to session and commit
+    
+    # Add users to session and flush to get IDs
+    test_db_session.add(test_user)
+    test_db_session.add(provider_user)
+    await test_db_session.flush()
+    
+    # Create provider record linked to the provider user
+    provider = ProviderModel(
+        id=uuid.uuid4(),
+        user_id=TEST_PROVIDER_USER_ID,  # Link to provider user
+        specialty="Psychiatry",
+        license_number="TEST-12345",
+        npi_number="9876543210",
+        active=True
+    )
+    
+    # Add provider to session
+    test_db_session.add(provider)
+    
+    # Commit everything
     try:
-        test_db_session.add(test_user)
-        test_db_session.add(provider_user)
         await test_db_session.commit()
-        logger.info(f"Test users {TEST_USERNAME} and {TEST_PROVIDER_USERNAME} created and committed.")
+        logger.info(f"Test users and provider created and committed.")
     except Exception as e:
         logger.error(f"Error seeding test data: {e}")
-        await test_db_session.rollback() # Rollback on error
+        await test_db_session.rollback()
         raise
     # No yield needed as this fixture just performs an action
 
