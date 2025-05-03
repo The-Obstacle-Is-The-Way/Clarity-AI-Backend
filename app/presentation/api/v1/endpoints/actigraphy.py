@@ -106,18 +106,50 @@ async def get_pat_service() -> PATInterface:
 @router.post(
     "/analyze",
     response_model=AnalyzeActigraphyResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     summary="Analyze Actigraphy Data",
     description="Initiates analysis of raw actigraphy data.",
-    dependencies=[Depends(get_current_user)] 
+    dependencies=[Depends(get_current_user)]
 )
 async def analyze_actigraphy(
     request_data: AnalyzeActigraphyRequest = Body(...),
-):
-    """Receives actigraphy data and starts the analysis process."""
-    logging.info(f"Received actigraphy analysis request for patient: {request_data.patient_id}")
-    analysis_id = uuid.uuid4() 
-    return AnalyzeActigraphyResponse(analysis_id=analysis_id, status="processing")
+    pat_service: PATInterface = Depends(get_pat_service),
+) -> dict[str, Any]:
+    """Receives actigraphy data and starts the analysis process by delegating to the PAT service."""
+    logger.info(
+        "Received actigraphy analysis request for patient %s with %d readings.",
+        request_data.patient_id,
+        len(request_data.readings),
+    )
+
+    # Convert AnalysisType enum values to plain strings expected by the service
+    analysis_types: list[str] = [
+        _normalize_analysis_type(a) for a in request_data.analysis_types
+    ]
+
+    try:
+        result = pat_service.analyze_actigraphy(
+            patient_id=request_data.patient_id,
+            readings=[r.model_dump() for r in request_data.readings],
+            start_time=request_data.start_time,
+            end_time=request_data.end_time,
+            sampling_rate_hz=request_data.sampling_rate_hz,
+            device_info=request_data.device_info.model_dump(),
+            analysis_types=analysis_types,
+        )
+
+        logger.info("Actigraphy analysis started: analysis_id=%s", result.get("analysis_id"))
+        return result  # FastAPI will serialise the dict and Validate via response_model
+
+    except ValidationError as e:
+        logger.warning("Validation error during actigraphy analysis: %s", e)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+    except InitializationError as e:
+        logger.error("PAT service not initialised: %s", e)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="PAT service unavailable") from e
+    except Exception as e:
+        logger.exception("Unexpected error during actigraphy analysis: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.get("/analyses/{analysis_id}", response_model=AnalysisResult)
