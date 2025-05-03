@@ -44,6 +44,7 @@ from app.core.exceptions.base_exceptions import (
 )
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.core.services.ml.xgboost.enums import RiskLevel
+from app.core.services.ml.xgboost.events import EventType, Observer
 from app.core.services.ml.xgboost.exceptions import (
     DataPrivacyError,
     FeatureValidationError,

@@ -39,6 +39,12 @@ class RiskType(str, Enum): # Assuming this is an enum
     HOSPITALIZATION = "hospitalization"
     TREATMENT_DROPOUT = "treatment_dropout"
 
+class TimeFrame(str, Enum):
+    """Time frames for predictions and risk assessments (Presentation Layer)."""
+    SHORT_TERM = "short_term"  # 0-30 days
+    MEDIUM_TERM = "medium_term"  # 30-90 days
+    LONG_TERM = "long_term"  # 90+ days
+
 # --- Pydantic Models (Placeholders) ---
 
 class BaseModelConfig(BaseModel):
@@ -82,6 +88,17 @@ class OutcomePredictionRequest(BaseModelConfig):
     treatment_context: Optional[Dict[str, Any]] = None
     features: Dict[str, Any]
 
+class TreatmentResponseRequest(BaseModelConfig):
+    """Request schema for treatment response predictions."""
+    patient_id: str
+    treatment_id: str
+    treatment_type: Optional[str] = None
+    dosage: Optional[str] = None
+    treatment_duration: Optional[int] = None  # in days
+    time_frame: Optional[TimeFrame] = None
+    include_side_effects: bool = True
+    features: Dict[str, Any]
+
 class OutcomeDetails(BaseModelConfig):
     domain: OutcomeDomain
     outcome_type: OutcomeType
@@ -102,8 +119,21 @@ class OutcomeTrajectory(BaseModelConfig):
 class ExpectedOutcome(BaseModelConfig): # Placeholder for ExpectedOutcome structure
     outcome_details: List[OutcomeDetails]
 
+class TherapyDetails(BaseModelConfig):
+    """Details about a therapy or treatment."""
+    therapy_id: str
+    therapy_name: str
+    description: Optional[str] = None
+    typical_duration: Optional[int] = None  # in weeks
+    typical_frequency: Optional[int] = None  # sessions per week/month
+    therapy_type: Optional[str] = None
+    is_medication: bool = False
+    dosage: Optional[str] = None  # For medications
+    side_effects: Optional[List[str]] = None
+
 class OutcomePredictionResponse(BaseModelConfig):
     patient_id: str
     expected_outcomes: List[OutcomeDetails] # Or ExpectedOutcome? Need clarity
     outcome_trajectories: Optional[List[OutcomeTrajectory]] = None
     response_likelihood: Optional[ResponseLikelihood] = None # Added based on imports
+    recommended_therapies: Optional[List[TherapyDetails]] = None
