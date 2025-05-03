@@ -13,7 +13,7 @@ from app.domain.exceptions import EntityNotFoundError, RepositoryError, Validati
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine, BiometricRule, AlertPriority
 from app.infrastructure.di.container import get_service
-from app.presentation.api.dependencies import get_rule_repository
+from app.presentation.api.v1.dependencies import get_rule_repository
 from app.presentation.api.schemas.biometric_alert import (
     AlertPriorityEnum,
     AlertRuleCreateSchema,
