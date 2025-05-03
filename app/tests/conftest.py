@@ -21,7 +21,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.config.settings import Settings, get_settings
 
 # --- Domain Imports --- 
-from app.domain.repositories.user_repository import UserRepository
+from app.core.interfaces.repositories.user_repository import IUserRepository
 from app.domain.entities.user import User
 
 # --- Infrastructure Imports --- 
@@ -179,9 +179,9 @@ async def mock_db_session_override(
 
 @pytest_asyncio.fixture(scope="function")
 def mock_user_repository_override(
-) -> Callable[[], UserRepository]: 
-    """Provides a factory function returning a mock UserRepository."""
-    def factory() -> UserRepository:
+) -> Callable[[], IUserRepository]: 
+    """Provides a factory function returning a mock IUserRepository."""
+    def factory() -> IUserRepository: 
         mock_repo = AsyncMock()
         # Configure get_user_by_username mock
         async def mock_get_by_username(username: str) -> MagicMock | None:
@@ -197,6 +197,8 @@ def mock_user_repository_override(
         mock_repo.get_user_by_username = AsyncMock(side_effect=mock_get_by_username)
         mock_repo.get_user_by_id = AsyncMock(return_value=None)
         mock_repo.create_user = AsyncMock(return_value=None)
+        # Add other necessary mock methods from IUserRepository if needed
+        # Example: mock_repo.get_by_id = AsyncMock(return_value=None) 
         return mock_repo
 
     return factory
@@ -216,7 +218,7 @@ def mock_pat_service_override(
 async def initialized_app(
     test_settings: Settings, 
     mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], 
-    mock_user_repository_override: Callable[[], UserRepository],
+    mock_user_repository_override: Callable[[], IUserRepository],
     mock_pat_service_override: Callable[[], PATService], 
     mock_jwt_service: AsyncMock,
     mock_auth_service: AsyncMock,
