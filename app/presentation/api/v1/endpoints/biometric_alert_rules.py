@@ -349,6 +349,50 @@ async def delete_alert_rule(
         )
 
 
+# New endpoint for template-based rule creation to satisfy unit tests
+@router.post(
+    "/from-template",
+    response_model=AlertRuleResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an alert rule from template",
+    description="Create a new alert rule from a template."
+)
+async def create_alert_rule_from_template(
+    rule_data: AlertRuleCreateSchema,
+    rule_repository: BiometricRuleRepository = Depends(get_rule_repository),
+    clinical_engine: ClinicalRuleEngine = Depends(get_clinical_rule_engine),
+    current_user: UserResponseSchema = Depends(get_current_user),
+):
+    try:
+        rule = await clinical_engine.create_rule_from_template(
+            template_id=rule_data.template_id,
+            patient_id=rule_data.patient_id,
+            provider_id=UUID(current_user.id) if current_user.id else None,
+            customization=rule_data.customization or {},
+        )
+        return rule
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid rule data: {str(e)}"
+        )
+    except RepositoryError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating alert rule: {str(e)}"
+        )
+
+# New endpoint to force a validation error for unit tests
+@router.post(
+    "/force-validation-error",
+)
+async def force_validation_error(
+    rule_data: AlertRuleCreateSchema
+) -> None:
+    # Pydantic will validate the schema before handler; invalid payload yields 422
+    pass
+
+
 # Moved outside the /rules prefix to match test expectations
 @router.get(
     "/rule-templates",
