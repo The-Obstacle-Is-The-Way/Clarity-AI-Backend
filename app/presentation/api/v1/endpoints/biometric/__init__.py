@@ -1,11 +1,18 @@
 """
-Biometric endpoints compatibility module.
+Biometric API endpoints V1.
 
-This module provides backward compatibility for tests and code
-that still references the old app.presentation.api.v1.endpoints.biometric module.
-
-DO NOT USE THIS IN NEW CODE - use app.api.routes.v1.endpoints.biometric instead.
+This package contains the router and endpoint definitions for biometric data.
 """
 
-# Re-export from the new location
-from app.api.routes.v1.endpoints.biometric.router import router
+from fastapi import APIRouter
+
+router = APIRouter(
+    prefix="/biometric",
+    tags=["biometric"],
+)
+
+# TODO: Define actual biometric endpoints here
+# Example:
+# @router.get("/data")
+# async def get_biometric_data():
+#     return {"message": "Biometric data endpoint stub"}
