@@ -40,20 +40,16 @@ from fastapi.staticfiles import StaticFiles
 from app.config.settings import get_settings
             
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance, get_db_session
-from app.presentation.api.routes import setup_routers 
+from app.api.routes import setup_routers 
 
 # Import Middleware and Services
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
-from app.presentation.middleware.rate_limiting_middleware import setup_rate_limiting
-from app.presentation.middleware.phi_middleware import PHIMiddleware  # PHI middleware (disabled in setup)
+from app.core.security import AuthenticationMiddleware
+from app.api.dependencies import setup_rate_limiting
+from app.core.security import PHIMiddleware  # PHI middleware (disabled in setup)
 
 # Import necessary types for middleware
 from starlette.responses import Response
 from typing import Callable, Awaitable
-
-# Import service provider functions needed for middleware instantiation
-from app.presentation.dependencies.auth import get_authentication_service
-from app.presentation.dependencies.auth import get_jwt_service
 
 # Remove direct imports of handlers/repos if not needed elsewhere in main
 # from app.infrastructure.security.password.password_handler import PasswordHandler
