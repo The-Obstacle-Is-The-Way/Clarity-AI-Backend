@@ -101,18 +101,68 @@ class JWTService(IJwtService):
     async def create_access_token(
         self,
         data: Dict[str, Any],
-        expires_delta_minutes: Optional[int] = None
+        *,
+        expires_delta: Optional[timedelta] = None,
+        expires_delta_minutes: Optional[int] = None,
     ) -> str:
-        """Creates a new access token based on the provided data dictionary."""
+        """
+        Create a new access token.
+
+        Args:
+            data: Dictionary containing claims to include in the token
+            expires_delta: Optional ``timedelta`` override for token expiration
+            expires_delta_minutes: Optional override for token expiration in minutes
+
+        Returns:
+            JWT access token as a string
+        """
+        # Prefer ``expires_delta`` if provided; fall back to minutes then default setting
+        if expires_delta is not None:
+            minutes = int(expires_delta.total_seconds() / 60)
+        else:
+            minutes = expires_delta_minutes or self.access_token_expire_minutes
+        return await self._create_token(data=data, token_type="access", expires_delta_minutes=minutes)
+
+    async def create_refresh_token(
+        self,
+        data: Dict[str, Any],
+        *,
+        expires_delta: Optional[timedelta] = None,
+        expires_delta_minutes: Optional[int] = None,
+    ) -> str:
+        """
+        Create a new refresh token.
+
+        Args:
+            data: Dictionary containing claims to include in the token
+            expires_delta: Optional ``timedelta`` override for token expiration
+            expires_delta_minutes: Optional override for token expiration in minutes (legacy)
+        """
+        # Compute expiration in minutes. If explicit ``timedelta`` given, convert; else derive.
+        if expires_delta is not None:
+            minutes = int(expires_delta.total_seconds() / 60)
+        else:
+            # Legacy logic – if caller passes a small integer assume **days** for bwd-compat
+            if expires_delta_minutes and expires_delta_minutes < 1000:
+                minutes = expires_delta_minutes * 24 * 60
+            else:
+                minutes = expires_delta_minutes or (self.refresh_token_expire_days * 24 * 60)
+        return await self._create_token(data=data, token_type="refresh", expires_delta_minutes=minutes)
+
+    async def _create_token(
+        self,
+        data: Dict[str, Any],
+        token_type: str,
+        expires_delta_minutes: int,
+    ) -> str:
         subject = data.get("sub") or data.get("user_id")
         if not subject:
-            raise ValueError("Subject ('sub' or 'user_id') is required in data to create access token")
+            raise ValueError("Subject ('sub' or 'user_id') is required in data to create token")
 
         subject_str = str(subject)
 
         # Calculate expiration time
-        expire_minutes = expires_delta_minutes or self.access_token_expire_minutes
-        expires_delta = timedelta(minutes=expire_minutes)
+        expires_delta = timedelta(minutes=expires_delta_minutes)
 
         now = datetime.now(timezone.utc)
         expire_time = now + expires_delta
@@ -128,8 +178,8 @@ class JWTService(IJwtService):
             "jti": token_id,
             "iss": self.issuer,
             "aud": self.audience,
-            "type": TokenType.ACCESS,
-            "scope": TokenType.ACCESS,
+            "type": token_type,
+            "scope": token_type,
             # Add other claims from input data, excluding reserved claims
             **{k: v for k, v in data.items() if k not in ["sub", "exp", "iat", "jti", "iss", "aud", "type", "scope"]}
         }
@@ -150,57 +200,7 @@ class JWTService(IJwtService):
             logger.error(f"JWT Encoding Error: {e}. Payload: {serializable_payload}")
             raise AuthenticationError("Failed to encode token due to unserializable data.") from e
 
-        logger.debug(f"Created access token with ID {token_id} for subject {subject_str}")
-        return encoded_token
-
-    async def create_refresh_token(
-        self,
-        data: Dict[str, Any],
-        expires_delta_minutes: Optional[int] = None
-    ) -> str:
-        """Creates a new refresh token."""
-        subject = data.get("sub") or data.get("user_id")
-        if not subject:
-            raise ValueError("Subject ('sub' or 'user_id') is required in data to create refresh token")
-
-        subject_str = str(subject)
-
-        # Use configured refresh token expiry (days), converted to minutes if needed
-        if expires_delta_minutes is None:
-            expire_days = self.refresh_token_expire_days
-            expires_delta = timedelta(days=expire_days)
-        else:
-            # Allow override via minutes if provided
-            expires_delta = timedelta(minutes=expires_delta_minutes)
-
-        now = datetime.now(timezone.utc)
-        expire_time = now + expires_delta
-
-        # Generate a unique token ID (jti) if not provided
-        token_id = data.get("jti", str(uuid.uuid4()))
-
-        to_encode = {
-            "sub": subject_str,
-            "exp": int(expire_time.timestamp()),
-            "iat": int(now.timestamp()),
-            "jti": token_id,
-            "iss": self.issuer,
-            "aud": self.audience,
-            "type": TokenType.REFRESH,
-            # Add other claims from input data, excluding reserved claims
-            **{k: v for k, v in data.items() if k not in ["sub", "exp", "iat", "jti", "iss", "aud", "type"]}
-        }
-
-        try:
-            serializable_payload = self._make_payload_serializable(to_encode)
-            encoded_token = jwt.encode(
-                serializable_payload, self.secret_key, algorithm=self.algorithm
-            )
-        except TypeError as e:
-            logger.error(f"JWT Refresh Encoding Error: {e}. Payload: {serializable_payload}")
-            raise AuthenticationError("Failed to encode refresh token due to unserializable data.") from e
-
-        logger.debug(f"Created refresh token with ID {token_id} for subject {subject_str}")
+        logger.debug(f"Created {token_type} token with ID {token_id} for subject {subject_str}")
         return encoded_token
 
     async def decode_token(self, token: str) -> TokenPayload:
