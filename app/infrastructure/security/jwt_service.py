@@ -255,14 +255,48 @@ class JWTService(IJwtService):
         Raises:
             AuthenticationError: If token is invalid or missing required claims
 
-        The full-featured JWT service (``app/infrastructure/security/jwt/jwt_service.py``)
-        performs a repository lookup.  For the purposes of unit-tests that rely
-        only on token validation we keep this stub minimal while still
-        satisfying the abstract interface so instantiation succeeds.
+        Unlike the full-featured JWT service which performs a repository lookup,
+        this method constructs a User entity directly from the token claims for
+        use in unit tests and situations where database access is not needed.
         """
-        # Decode merely to validate; ignore payload details.
-        await self.decode_token(token)
-        return None
+        # Decode the token and extract user claims
+        payload = await self.decode_token(token)
+        
+        # Extract required user attributes from payload
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise AuthenticationError("Token missing required 'sub' claim")
+            
+        try:
+            # Convert string user_id to UUID if possible
+            from uuid import UUID
+            user_id = UUID(user_id_str)
+        except ValueError:
+            # If not a valid UUID, use the string as is
+            user_id = user_id_str
+            
+        # Extract other user attributes with defaults
+        email = payload.get("email", "")
+        username = payload.get("username", "")
+        role = payload.get("role", "")
+        
+        # Extract roles list if available or create from single role
+        roles = payload.get("roles", [])
+        if not roles and role:
+            roles = [role]
+            
+        # Optional attributes
+        is_active = payload.get("is_active", True)
+        
+        # Create and return the User entity
+        return User(
+            id=user_id,
+            email=email,
+            username=username,
+            role=role,
+            roles=roles,
+            is_active=is_active
+        )
 
     def get_token_payload_subject(self, payload: Dict[str, Any]):  # type: ignore[override]
         """Extract the ``sub`` claim if present."""
