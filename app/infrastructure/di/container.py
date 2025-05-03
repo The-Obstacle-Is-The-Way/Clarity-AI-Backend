@@ -270,3 +270,24 @@ def reset_container() -> None:
     """
     global _container
     _container = None
+
+
+def get_service(interface_type: Type[T]) -> T:
+    """
+    Get a service instance by its interface type.
+    
+    This is a convenience function that delegates to the container's get method.
+    It maintains backward compatibility with existing code.
+    
+    Args:
+        interface_type: The interface type to resolve
+        
+    Returns:
+        An instance implementing the interface
+    """
+    container = get_container()
+    return container.get(interface_type)
+
+
+# Expose container singleton directly for backward compatibility
+container = get_container()

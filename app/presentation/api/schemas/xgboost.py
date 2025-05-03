@@ -35,9 +35,14 @@ class OutcomeDomain(str, Enum): # Assuming this is an enum
 
 class RiskType(str, Enum): # Assuming this is an enum
     """Type of risk predicted (Presentation Layer)."""
+    SUICIDE = "suicide"
     SUICIDE_ATTEMPT = "suicide_attempt"
     HOSPITALIZATION = "hospitalization"
     TREATMENT_DROPOUT = "treatment_dropout"
+    SELF_HARM = "self_harm"
+    VIOLENCE = "violence"
+    SUBSTANCE_ABUSE = "substance_abuse"
+    MEDICATION_NONCOMPLIANCE = "medication_noncompliance"
 
 class TimeFrame(str, Enum):
     """Time frames for predictions and risk assessments (Presentation Layer)."""
@@ -53,56 +58,69 @@ class TreatmentType(str, Enum):
     ECT = "electroconvulsive_therapy"
     LIFESTYLE = "lifestyle_intervention"
 
-# --- Pydantic Models (Placeholders) ---
+class VisualizationType(str, Enum):
+    """Types of visualizations for model results (Presentation Layer)."""
+    BAR_CHART = "bar_chart"
+    LINE_CHART = "line_chart"
+    SCATTER_PLOT = "scatter_plot"
+    HEATMAP = "heatmap"
+    NETWORK_GRAPH = "network_graph"
+    RADAR_CHART = "radar_chart"
+
+# --- Base Model Configuration ---
 
 class BaseModelConfig(BaseModel):
+    """Base Pydantic model configuration."""
     class Config:
-        orm_mode = True # Or from_attributes = True for Pydantic v2
-        extra = 'ignore' # Or model_config = {'extra': 'ignore'}
+        populate_by_name = True
+        from_attributes = True
+        arbitrary_types_allowed = True
 
-class ModelInfoRequest(BaseModelConfig):
-    model_id: Optional[str] = None
-
-class PerformanceMetrics(BaseModelConfig):
-    auc: Optional[float] = None
-    f1_score: Optional[float] = None
-    precision: Optional[float] = None
-    recall: Optional[float] = None
-
-class ModelInfoResponse(BaseModelConfig):
-    model_id: str
-    model_type: str # Consider defining ModelType enum here if needed
-    description: Optional[str] = None
-    performance: Optional[PerformanceMetrics] = None
+# --- Request/Response Models ---
 
 class RiskPredictionRequest(BaseModelConfig):
-    patient_id: str
-    features: Dict[str, Any]
-
-class SideEffectRisk(BaseModelConfig):
-    side_effect: str
-    probability: float
+    """Request model for risk prediction."""
+    risk_type: RiskType
+    duration_months: int = Field(ge=1, le=24)
+    features: Dict[str, Any] = Field(..., description="Patient features for prediction")
+    include_explainability: bool = False
+    visualization_type: Optional[VisualizationType] = None
 
 class RiskPredictionResponse(BaseModelConfig):
-    patient_id: str
+    """Response model for risk prediction."""
     risk_type: RiskType
-    risk_level: RiskLevel
-    probability: float
-    contributing_factors: Optional[List[str]] = None
-    side_effect_risks: Optional[List[SideEffectRisk]] = None
+    risk_score: float = Field(ge=0, le=1)
+    confidence: float = Field(ge=0, le=1)
+    timeframe_months: int
+    prediction_date: datetime
+    feature_importance: Optional[Dict[str, float]] = None
+    visualization_data: Optional[Dict[str, Any]] = None
+    model_version: str
+    prediction_id: str
 
-class OutcomePredictionRequest(BaseModelConfig):
-    patient_id: str
-    treatment_context: Optional[Dict[str, Any]] = None
-    features: Dict[str, Any]
+class ModelInfoResponse(BaseModelConfig):
+    """Response model for model information."""
+    model_name: str
+    model_version: str
+    model_type: str
+    training_date: datetime
+    feature_count: int
+    performance_metrics: Dict[str, float]
+    supported_risk_types: List[RiskType]
+    description: str
+
+class SideEffectRisk(BaseModelConfig):
+    """Risk model for side effects."""
+    effect_name: str
+    severity: str  # mild, moderate, severe
+    likelihood: float  # 0-1 probability
 
 class TreatmentResponseRequest(BaseModelConfig):
     """Request schema for treatment response predictions."""
     patient_id: str
-    treatment_id: str
-    treatment_type: Optional[str] = None
-    dosage: Optional[str] = None
-    treatment_duration: Optional[int] = None  # in days
+    treatment_type: TreatmentType
+    treatment_id: Optional[str] = None
+    treatment_name: Optional[str] = None
     time_frame: Optional[TimeFrame] = None
     include_side_effects: bool = True
     features: Dict[str, Any]
