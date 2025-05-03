@@ -17,8 +17,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.infrastructure.database.session import session_local, engine # Assuming session_local is the factory
 from app.core.dependencies.database import init_db # Corrected path for init_db
 
-# CORRECTED Import for API router - ONLY import the setup function
-from app.api.routes import setup_routers 
+# CORRECTED Import for the canonical V1 API router
+from app.presentation.api.v1.api_router import api_v1_router
 
 from app.config.settings import Settings, get_settings
 # REMOVED incorrect import for exception handlers
@@ -200,18 +200,9 @@ def create_application(
 
     logger.info("Adding API routers...")
     # --- API Router Configuration --- 
-    # Re-enabled router setup for production use
-    try:
-        logger.info("Calling setup_routers()...")
-        configured_api_router = setup_routers()
-        logger.info("setup_routers() returned.")
-        app.include_router(configured_api_router, prefix=f"/api/{version}")
-        logger.info(f"Included main API router with prefix: /api/{version}")
-    except Exception as e:
-        logger.error(f"Failed to setup routers: {str(e)}")
-        # Still allow app to start without routers for debugging
-        logger.warning("Router inclusion failed, but allowing app to start for diagnostics.")
-        # In production, this should probably re-raise
+    # Use the explicitly defined v1 router
+    app.include_router(api_v1_router, prefix=f"/api/{settings.VERSION}")
+    logger.info(f"Included main V1 API router from app.presentation.api.v1 with prefix: /api/{settings.VERSION}")
 
     # --- Static Files (Optional) ---
     # Example: Mount static files if serving frontend assets from backend
