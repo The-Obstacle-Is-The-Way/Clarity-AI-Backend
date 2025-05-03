@@ -1,79 +1,202 @@
-# -*- coding: utf-8 -*-
 """
-User Entity Module.
+User entity definition module.
 
-Defines the User domain entity, representing a user (patient, provider, admin)
-within the system. This entity encapsulates user authentication and authorization
-data and related business logic. It is designed to be persistence-agnostic.
+This module defines the User entity as a domain object with its
+attributes, behaviors, and invariants following Domain-Driven Design principles.
 """
 
-import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from typing import List, Optional, Set
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, EmailStr, field_validator
 
 class UserRole(str, Enum):
-    """Enumeration for user roles."""
-    PATIENT = "patient"
-    PROVIDER = "provider"
+    """Enum for available user roles within the system."""
     ADMIN = "admin"
-    SYSTEM = "system" # For system-level operations
+    CLINICIAN = "clinician"
+    RESEARCHER = "researcher"
+    PATIENT = "patient"
+    TECHNICIAN = "technician"
 
-class User(BaseModel):
+
+class UserStatus(str, Enum):
+    """Enum for possible user account statuses."""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+    PENDING_VERIFICATION = "pending_verification"
+
+
+@dataclass
+class User:
     """
-    Represents a User in the domain layer.
+    User entity representing system users in the domain model.
+    
+    This class encapsulates the core attributes and behaviors of users
+    in the system, enforcing business rules and invariants directly within
+    the domain model according to Domain-Driven Design principles.
     
     Attributes:
-        id: Unique identifier for the user (UUID).
-        username: Unique username used for login.
-        email: User's email address.
-        hashed_password: Securely hashed password.
-        first_name: User's first name (optional).
-        last_name: User's last name (optional).
-        role: The role assigned to the user (e.g., patient, provider).
-        is_active: Flag indicating if the user account is active.
-        created_at: Timestamp when the user record was created.
-        updated_at: Timestamp when the user record was last updated.
-        last_login_at: Timestamp of the last successful login (optional).
+        id: Unique identifier for the user
+        email: Email address (unique within the system)
+        username: Username (unique within the system)
+        full_name: User's full name
+        password_hash: Securely hashed password
+        roles: Set of roles assigned to this user
+        status: Current account status
+        created_at: When the account was created
+        last_login: When the user last logged in
+        mfa_enabled: Whether multi-factor authentication is enabled
+        attempts: Number of consecutive failed login attempts
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    username: str = Field(..., min_length=3, description="Unique username for login")
-    email: EmailStr = Field(..., description="User's email address")
-    hashed_password: str = Field(..., description="Hashed password")
-    first_name: Optional[str] = Field(None, description="User's first name")
-    last_name: Optional[str] = Field(None, description="User's last name")
-    role: UserRole = Field(..., description="Role assigned to the user")
-    is_active: bool = Field(default=True, description="Indicates if the user account is active")
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-    last_login_at: Optional[datetime] = Field(None, description="Timestamp of last successful login")
+    email: str
+    username: str
+    full_name: str
+    password_hash: str
+    id: UUID = field(default_factory=uuid4)
+    roles: Set[UserRole] = field(default_factory=lambda: {UserRole.PATIENT})
+    status: UserStatus = UserStatus.PENDING_VERIFICATION
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    last_login: Optional[datetime] = None
+    mfa_enabled: bool = False
+    mfa_secret: Optional[str] = None
+    attempts: int = 0
+    reset_token: Optional[str] = None
+    reset_token_expires: Optional[datetime] = None
 
-    model_config = {
-        'from_attributes': True,
-        'str_strip_whitespace': True,
-        'validate_assignment': True,
-        'use_enum_values': True  # Important for serialization of Enum
-    }
-
-    @field_validator('username', mode='before')
-    def username_alphanumeric(cls, v):
-        if not v.isalnum():
-            raise ValueError('Username must be alphanumeric')
-        return v
-
-    def update_timestamp(self):
-        """Updates the updated_at timestamp."""
-        self.updated_at = datetime.now()
-
-    def update_last_login(self):
-        """Updates the last_login_at timestamp."""
-        self.last_login_at = datetime.now()
-        self.update_timestamp() # Also update the general updated_at timestamp
-
-    def get_full_name(self) -> str:
-        """Returns the full name of the user if available, otherwise username."""
-        if self.first_name and self.last_name:
-            return f"{self.first_name} {self.last_name}"
-        return self.username 
+    def __post_init__(self):
+        """Validate the entity after initialization."""
+        self._validate()
+        
+    def _validate(self):
+        """
+        Validate entity invariants.
+        
+        Raises:
+            ValueError: If any invariants are violated
+        """
+        if not self.email:
+            raise ValueError("Email cannot be empty")
+        if not self.username:
+            raise ValueError("Username cannot be empty")
+        if not self.full_name:
+            raise ValueError("Full name cannot be empty")
+        if not self.password_hash:
+            raise ValueError("Password hash cannot be empty")
+        
+    def has_role(self, role: UserRole) -> bool:
+        """
+        Check if the user has a specific role.
+        
+        Args:
+            role: The role to check for
+            
+        Returns:
+            True if the user has the role, False otherwise
+        """
+        return role in self.roles
+        
+    def add_role(self, role: UserRole) -> None:
+        """
+        Add a role to the user.
+        
+        Args:
+            role: The role to add
+        """
+        self.roles.add(role)
+        
+    def remove_role(self, role: UserRole) -> None:
+        """
+        Remove a role from the user.
+        
+        Args:
+            role: The role to remove
+        """
+        if role in self.roles and len(self.roles) > 1:
+            self.roles.remove(role)
+            
+    def activate(self) -> None:
+        """Activate the user account."""
+        self.status = UserStatus.ACTIVE
+        
+    def deactivate(self) -> None:
+        """Deactivate the user account."""
+        self.status = UserStatus.INACTIVE
+        
+    def suspend(self) -> None:
+        """Suspend the user account."""
+        self.status = UserStatus.SUSPENDED
+        
+    def record_login(self) -> None:
+        """Record a successful login."""
+        self.last_login = datetime.utcnow()
+        self.attempts = 0
+        
+    def record_login_attempt(self) -> None:
+        """Record a failed login attempt."""
+        self.attempts += 1
+        
+    def reset_attempts(self) -> None:
+        """Reset the failed login attempt counter."""
+        self.attempts = 0
+        
+    def enable_mfa(self, secret: str) -> None:
+        """
+        Enable multi-factor authentication.
+        
+        Args:
+            secret: The MFA secret key
+        """
+        self.mfa_enabled = True
+        self.mfa_secret = secret
+        
+    def disable_mfa(self) -> None:
+        """Disable multi-factor authentication."""
+        self.mfa_enabled = False
+        self.mfa_secret = None
+        
+    def set_reset_token(self, token: str, expires: datetime) -> None:
+        """
+        Set a password reset token.
+        
+        Args:
+            token: The reset token
+            expires: When the token expires
+        """
+        self.reset_token = token
+        self.reset_token_expires = expires
+        
+    def clear_reset_token(self) -> None:
+        """Clear the password reset token."""
+        self.reset_token = None
+        self.reset_token_expires = None
+        
+    def is_reset_token_valid(self, token: str) -> bool:
+        """
+        Check if a reset token is valid.
+        
+        Args:
+            token: The token to check
+            
+        Returns:
+            True if the token matches and hasn't expired, False otherwise
+        """
+        if not self.reset_token or not self.reset_token_expires:
+            return False
+            
+        if self.reset_token != token:
+            return False
+            
+        return datetime.utcnow() < self.reset_token_expires
+        
+    @property
+    def is_active(self) -> bool:
+        """Whether the user account is active."""
+        return self.status == UserStatus.ACTIVE
+        
+    @property
+    def lockout_triggered(self) -> bool:
+        """Whether the account should be locked due to too many failed attempts."""
+        return self.attempts >= 5  # Configurable threshold

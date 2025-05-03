@@ -137,3 +137,15 @@ class OutcomePredictionResponse(BaseModelConfig):
     outcome_trajectories: Optional[List[OutcomeTrajectory]] = None
     response_likelihood: Optional[ResponseLikelihood] = None # Added based on imports
     recommended_therapies: Optional[List[TherapyDetails]] = None
+
+class TreatmentResponseResponse(BaseModelConfig):
+    """Response schema for treatment response predictions."""
+    patient_id: str
+    treatment_id: str
+    treatment_name: Optional[str] = None
+    response_likelihood: ResponseLikelihood
+    probability: float
+    time_frame: TimeFrame
+    expected_outcomes: List[OutcomeDetails]
+    side_effects: Optional[List[SideEffectRisk]] = None
+    confidence_interval: Optional[List[float]] = None
