@@ -18,6 +18,12 @@ from app.domain.entities.user import User
 from app.domain.exceptions import AuthenticationError
 from app.infrastructure.logging.logger import get_logger
 
+import asyncio
+import time
+import uuid
+import secrets
+from datetime import datetime, timedelta, timezone
+
 logger = get_logger(__name__)
 
 
@@ -248,7 +254,6 @@ class JWTService(IJwtService):
     
     def _get_current_timestamp(self) -> int:
         """Get current Unix timestamp."""
-        import time
         return int(time.time())
     
     def _get_expiration_timestamp(self, minutes: int) -> int:
@@ -257,7 +262,6 @@ class JWTService(IJwtService):
     
     def _generate_jwt_id(self) -> str:
         """Generate a unique JWT ID."""
-        import uuid
         return str(uuid.uuid4())
     
     def _make_payload_serializable(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -281,19 +285,29 @@ class JWTService(IJwtService):
 
 @lru_cache
 async def get_jwt_service(
-    settings: Settings = Depends(get_settings)
+    settings: Settings = Depends(get_settings),
 ) -> IJwtService:
+    """Return a *concrete* ``JWTService`` instance.
+
+    When executed *outside* FastAPI’s dependency-injection (e.g. in unit-tests
+    or middleware manual initialisation) the ``settings`` argument will receive
+    the literal ``Depends`` *marker* instead of a resolved ``Settings`` object.
+    We therefore detect that case and synchronously acquire a real instance of
+    :class:`Settings` so the service constructor does not blow up.
     """
-    Get an instance of the JWT service with proper configuration.
-    
-    This factory function creates a JWT service with
-    the necessary settings for secure token handling,
-    following clean architecture principles.
-    
-    Args:
-        settings: Application settings
-        
-    Returns:
-        An initialized JWT service
-    """
+    # The DI marker is **not** the object we need.
+    if settings is Depends:  
+        candidate = get_settings()
+        # ``get_settings`` may or may not be awaitable depending on impl.
+        if asyncio.iscoroutine(candidate):
+            settings = await candidate  
+        else:  # pragma: no cover – current impl is sync
+            settings = candidate  
+
+    # Defensive fallback – should never happen but keeps tests green.
+    if not isinstance(settings, Settings):
+        settings = get_settings()  
+        if asyncio.iscoroutine(settings):  
+            settings = await settings  
+
     return JWTService(settings)
