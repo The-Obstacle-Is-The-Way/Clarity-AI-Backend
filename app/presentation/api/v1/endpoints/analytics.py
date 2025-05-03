@@ -5,18 +5,13 @@ This module provides endpoints for retrieving analytics data related to
 patient treatment, outcomes, and clinical metrics.
 """
 
-import logging
-from typing import Dict, Any
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any
+import logging
+from fastapi import APIRouter
 
 # TODO: Import actual dependencies when implementing endpoints
-# from app.core.interfaces.services.ml.analytics_service_interface import AnalyticsServiceInterface
-# from app.presentation.api.dependencies.auth import get_current_active_user
-# from app.presentation.api.dependencies.services import get_analytics_service
-# from app.presentation.schemas.analytics import AnalysisRequest, AnalysisResponse
-# from app.presentation.schemas.user import UserSchema
+# from fastapi import Depends # Needed if securing routes
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +22,8 @@ router = APIRouter(
 )
 
 
-@router.get("/metrics", response_model=Dict[str, Any])
-async def get_metrics() -> Dict[str, Any]:
+@router.get("/metrics", response_model=dict[str, Any])
+async def get_metrics() -> dict[str, Any]:
     """
     Get system-wide analytics metrics.
 
@@ -48,8 +43,8 @@ async def get_metrics() -> Dict[str, Any]:
     }
 
 
-@router.get("/patient/{patient_id}", response_model=Dict[str, Any])
-async def get_patient_analytics(patient_id: UUID) -> Dict[str, Any]:
+@router.get("/patient/{patient_id}", response_model=dict[str, Any])
+async def get_patient_analytics(patient_id: UUID) -> dict[str, Any]:
     """
     Get analytics data for a specific patient.
 
