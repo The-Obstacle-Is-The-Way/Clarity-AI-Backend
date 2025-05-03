@@ -5,67 +5,72 @@ This module provides an AWS-based implementation of the XGBoost service
 that uses SageMaker for model hosting and prediction with comprehensive
 HIPAA compliance and security considerations.
 """
-import boto3  # AWS SDK (patched by pytest in tests)
-from app.infrastructure.aws.in_memory_boto3 import client as shim_client, resource as shim_resource
-  # Shim functions available for fallback; boto3.client/resource will be patched by tests and used directly
-
 import json
-import uuid
 import logging
-import os
-import re
 import time
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Set, Union, Tuple # Added Tuple
-from types import SimpleNamespace
-import botocore.exceptions
-from app.core.services.aws.interfaces import AWSServiceFactoryInterface # Corrected import
+from types import SimpleNamespace  # Keep if needed elsewhere, but mark as potentially unused
+from typing import Any, Dict, List, Optional, Set, Tuple, Union # Deprecated, mark for later refactor
 
-from app.core.services.ml.xgboost.interface import (
-    XGBoostInterface,
-    ModelType,
-    EventType,
-    Observer,
-    PrivacyLevel
+import boto3
+import botocore
+from botocore.exceptions import ClientError
+
+# --- Mock/Test Imports ---
+# These should ideally only be used in testing contexts or via dependency injection
+from app.infrastructure.aws.in_memory_boto3 import client as boto3_mock_client # Unused lint ID: 8e5d483f
+from app.infrastructure.aws.in_memory_boto3 import resource as boto3_mock_resource # Unused lint ID: ae76c1b5
+
+# --- Core Layer Imports ---
+from app.core.config.settings import Settings
+from app.core.domain.prediction_metadata import PredictionMetadata
+from app.core.domain.prediction_result import PredictionResult
+from app.core.enums.model_type import ModelType
+from app.core.enums.prediction_type import PredictionCategory
+from app.core.enums.privacy_level import PrivacyLevel
+from app.core.interfaces.services.ml.xgboost import XGBoostInterface
+from app.core.services.ml.xgboost.enums import RiskLevel # Corrected import, removed ResponseLevel
+from app.core.services.ml.xgboost.exceptions import (
+    DataPrivacyError,
+    FeatureValidationError,
+    ModelInvocationError,
+    ModelNotFoundError,
+    ModelTimeoutError,
+    PredictionError,
+    SerializationError,
+    ValidationError,
 )
+
+# --- Infrastructure Imports ---
+from app.infrastructure.integrations.aws.sagemaker import SageMakerEndpoint
 
 # Helper function to safely get attributes from objects or dicts
 def safe_get(obj, key, default=None):
     """Get a value from a dict or object safely, returning default if not found."""
     if isinstance(obj, dict):
         return obj.get(key, default)
-    elif hasattr(obj, key):
-        return getattr(obj, key, default)
-    else:
-        return default
-# NOTE:
-# ------
-# Two different `RiskLevel` enums exist in the code‑base – one in the *core*
-# layer (``app.core.services.ml.xgboost.enums``) and one in the *presentation*
-# layer (``app.presentation.api.schemas.xgboost``).  The unit‑test suite that
-# exercises the *AWSXGBoostService* uses the **presentation‑layer** variant for
-# its assertions, therefore the service must return *that* enum to satisfy the
-# tests.  Importing across the layer boundary is acceptable here because the
-# concrete service implementation already lives in the infrastructure
+    return getattr(obj, key, default)
+
+
+logger = logging.getLogger(__name__)
+
+# NOTE (Clean Architecture): This service acts as an adapter at the
 # integration boundary and therefore may depend on presentation‑level types
 # without violating the clean‑architecture inward‑dependency rule.
+# --> This note seems outdated/incorrect based on current structure & dependency flow.
+#     Core services should NOT depend on presentation types.
+#     The previous incorrect import has been fixed.
 
-from app.presentation.api.schemas.xgboost import RiskLevel  # noqa: WPS433 – intentional cross‑layer import
-from app.core.services.ml.xgboost.exceptions import (
-    ValidationError,
-    DataPrivacyError,
-    ResourceNotFoundError,
-    ModelNotFoundError,
-    PredictionError,
-    ServiceConnectionError,
-    ConfigurationError,
-    ServiceConfigurationError
-)
 
+# --- AWSXGBoostService Implementation ---
 
 class AWSXGBoostService(XGBoostInterface):
     """
-    AWS implementation of the XGBoost service interface using SageMaker.
+    AWS SageMaker implementation of the XGBoost service interface.
+
+    Handles interaction with SageMaker endpoints for XGBoost model inference,
+    including data validation, privacy checks, serialization, invocation,
+    and result parsing.
     """
 
     def __init__(self, aws_service_factory: AWSServiceFactoryInterface):
