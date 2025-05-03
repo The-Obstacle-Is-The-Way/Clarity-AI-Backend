@@ -23,7 +23,7 @@ from app.infrastructure.aws.in_memory_boto3 import resource as boto3_mock_resour
 
 # --- Core Layer Imports ---
 from app.core.config.settings import Settings
-from app.core.domain.prediction_metadata import PredictionMetadata
+from app.core.domain.entities.ml.prediction_metadata import PredictionMetadata
 from app.core.domain.prediction_result import PredictionResult
 from app.core.enums.model_type import ModelType
 from app.core.enums.prediction_type import PredictionCategory
