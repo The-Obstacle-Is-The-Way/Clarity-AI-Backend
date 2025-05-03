@@ -27,6 +27,7 @@ from sqlalchemy.orm import relationship
 # Import the canonical Base and registry
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.domain.utils.datetime_utils import now_utc, UTC
 
@@ -128,7 +129,7 @@ class User(Base, TimestampMixin, AuditMixin):
     # This approach avoids custom type descriptors which can cause mapping issues while maintaining type semantics
     # Switch to UUID type for consistency with related models like ProviderModel
     id = Column(
-        PostgresUUID(as_uuid=True), 
+        GUID, 
         primary_key=True, 
         index=True,  # Add index for performance
         nullable=False,

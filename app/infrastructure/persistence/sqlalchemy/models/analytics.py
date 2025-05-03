@@ -7,16 +7,15 @@ mapping domain entities to database tables.
 """
 
 import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
-from app.domain.utils.datetime_utils import UTC
+from datetime import datetime, timezone
+from app.domain.utils.datetime_utils import now_utc
 from typing import Dict, Any, Optional
 
-from sqlalchemy import Column, String, DateTime, Integer, JSON, func, Index, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON as JSONB
+from sqlalchemy import Column, DateTime, String, Integer, JSON, func, Index, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
 
@@ -30,7 +29,7 @@ class AnalyticsEventModel(Base):
     
     __tablename__ = "analytics_events"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
     event_type = Column(String(100), nullable=False, index=True)
     event_data = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
     user_id = Column(String(100), nullable=True, index=True)
@@ -66,7 +65,7 @@ class AnalyticsAggregateModel(Base):
     
     __tablename__ = "analytics_aggregates"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
     aggregate_type = Column(String(50), nullable=False, index=True)
     dimensions = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
     metrics = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)
@@ -99,7 +98,7 @@ class AnalyticsJobModel(Base):
     
     __tablename__ = "analytics_jobs"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
     job_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default="pending", index=True)
     parameters = Column(MutableDict.as_mutable(JSONB), nullable=False, default=dict)

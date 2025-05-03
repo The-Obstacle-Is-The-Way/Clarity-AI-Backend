@@ -31,7 +31,6 @@ from app.infrastructure.security.auth_service import AuthenticationService
 from app.infrastructure.security.jwt_service import JWTService
 from app.infrastructure.security.password.hashing import pwd_context
 from app.domain.services.pat_service import PATService
-from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAlchemyUser
 
 # --- Presentation Layer Imports ---
 from app.main import create_application
@@ -223,58 +222,48 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def seed_test_data(test_db_session: AsyncSession):
-    """Fixture to seed the database with essential test users and provider."""
+    """Fixture to seed the database with essential test users."""
     logger.info("Seeding test data...")
-    # Import provider model here to avoid circular imports
-    from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel
     
-    # Hash passwords
-    hashed_password = pwd_context.hash(TEST_PASSWORD)
-    hashed_provider_password = pwd_context.hash(TEST_PROVIDER_PASSWORD)
-
-    # Create SQLAlchemy User entities
-    test_user = SQLAlchemyUser(
-        id=TEST_INTEGRATION_USER_ID,  # Use UUID object directly
-        username=TEST_USERNAME,
-        email=TEST_USERNAME,
-        password_hash=hashed_password,
-        is_active=True,
-        is_verified=True,
-        email_verified=True
-    )
-    
-    provider_user = SQLAlchemyUser(
-        id=TEST_PROVIDER_USER_ID,  # Use UUID object directly
-        username=TEST_PROVIDER_USERNAME,
-        email=TEST_PROVIDER_USERNAME,
-        password_hash=hashed_provider_password,
-        is_active=True,
-        is_verified=True,
-        email_verified=True
-    )
-    
-    # Add users to session and flush to get IDs
-    test_db_session.add(test_user)
-    test_db_session.add(provider_user)
-    await test_db_session.flush()
-    
-    # Create provider record linked to the provider user
-    provider = ProviderModel(
-        id=uuid.uuid4(),
-        user_id=TEST_PROVIDER_USER_ID,  # Link to provider user
-        specialty="Psychiatry",
-        license_number="TEST-12345",
-        npi_number="9876543210",
-        active=True
-    )
-    
-    # Add provider to session
-    test_db_session.add(provider)
-    
-    # Commit everything
+    # Create minimal test data - working around the PostgreSQL UUID vs SQLite compatibility issue
     try:
+        # Execute raw SQL to insert users directly, bypassing ORM mapping issues
+        # SQLite doesn't support UUID types natively, so we store them as strings
+        await test_db_session.execute(
+            """
+            INSERT INTO users (id, username, email, password_hash, is_active, is_verified, email_verified)
+            VALUES (:id1, :username1, :email1, :password1, 1, 1, 1),
+                  (:id2, :username2, :email2, :password2, 1, 1, 1)
+            """,
+            {
+                "id1": str(TEST_INTEGRATION_USER_ID),
+                "username1": TEST_USERNAME,
+                "email1": TEST_USERNAME,
+                "password1": pwd_context.hash(TEST_PASSWORD),
+                "id2": str(TEST_PROVIDER_USER_ID),
+                "username2": TEST_PROVIDER_USERNAME,
+                "email2": TEST_PROVIDER_USERNAME,
+                "password2": pwd_context.hash(TEST_PROVIDER_PASSWORD),
+            }
+        )
+        
+        # Insert provider data directly, avoiding the relationship constraint issue
+        await test_db_session.execute(
+            """
+            INSERT INTO providers (id, user_id, specialty, license_number, npi_number, active)
+            VALUES (:id, :user_id, :specialty, :license, :npi, 1)
+            """,
+            {
+                "id": str(uuid.uuid4()),
+                "user_id": str(TEST_PROVIDER_USER_ID),
+                "specialty": "Psychiatry",
+                "license": "TEST-12345",
+                "npi": "9876543210"
+            }
+        )
+        
         await test_db_session.commit()
-        logger.info(f"Test users and provider created and committed.")
+        logger.info("Test users and provider created via direct SQL inserts.")
     except Exception as e:
         logger.error(f"Error seeding test data: {e}")
         await test_db_session.rollback()

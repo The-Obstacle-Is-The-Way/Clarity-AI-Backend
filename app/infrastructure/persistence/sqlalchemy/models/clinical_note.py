@@ -11,8 +11,9 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
@@ -30,11 +31,11 @@ class ClinicalNoteModel(Base):
 
     __tablename__ = "clinical_notes"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
-    provider_id = Column(UUID(as_uuid=True), ForeignKey("providers.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    patient_id = Column(GUID, ForeignKey("patients.id"), nullable=False)
+    provider_id = Column(GUID, ForeignKey("providers.id"), nullable=False)
     appointment_id = Column(
-        UUID(as_uuid=True), ForeignKey("appointments.id"), nullable=True
+        GUID, ForeignKey("appointments.id"), nullable=True
     )
     note_type = Column(String(50), nullable=False)
     content = Column(Text, nullable=False)

@@ -11,8 +11,9 @@ from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
@@ -29,9 +30,9 @@ class MedicationModel(Base):
 
     __tablename__ = "medications"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
-    provider_id = Column(UUID(as_uuid=True), ForeignKey("providers.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    patient_id = Column(GUID, ForeignKey("patients.id"), nullable=False)
+    provider_id = Column(GUID, ForeignKey("providers.id"), nullable=False)
     name = Column(String(255), nullable=False)
     dosage = Column(String(100), nullable=False)
     frequency = Column(String(100), nullable=False)

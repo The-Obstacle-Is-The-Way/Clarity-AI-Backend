@@ -15,11 +15,14 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     String,
-    Text
+    Text,
+    Integer
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 # Assuming Base is correctly defined and imported from a central location like database.py
 # If not, adjust the import path accordingly.
@@ -36,12 +39,12 @@ class AuditLog(Base):
     """
     __tablename__ = "audit_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     event_type = Column(String(100), nullable=False, index=True)  # e.g., 'phi_access', 'auth_event', 'system_change'
     
     # Link to user table (nullable for system events without a specific user context)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True, index=True)
+    user_id = Column(GUID, ForeignKey('users.id'), nullable=True, index=True)
     # TEMP: Comment out relationship until User model is implemented
     # user = relationship("User") 
 

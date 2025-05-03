@@ -11,8 +11,9 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
@@ -30,8 +31,8 @@ class ProviderModel(Base):
 
     __tablename__ = "providers"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=False)
     specialty = Column(String(100), nullable=False)
     license_number = Column(String(100), nullable=False)
     npi_number = Column(String(20), nullable=True)
