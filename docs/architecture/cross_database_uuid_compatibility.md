@@ -3,15 +3,19 @@
 ## 1. Introduction
 
 ### 1.1 Purpose
+
 This document outlines a comprehensive solution for ensuring UUID compatibility across different database backends (PostgreSQL and SQLite) in the Clarity AI Backend. The current implementation uses PostgreSQL-specific UUID types which are incompatible with SQLite used in test environments, causing relationship integrity failures.
 
 ### 1.2 Problem Statement
+
 The codebase is experiencing test failures due to database UUID type incompatibility between production (PostgreSQL) and test (SQLite) environments. Specifically:
+
 - PostgreSQL uses native UUID types with `as_uuid=True`
 - SQLite has no native UUID support, requiring storage as strings or implementing custom types
 - This mismatch causes SQLAlchemy mapping failures, particularly evident in `UnmappedColumnError` errors during relationship synchronization
 
 ### 1.3 Business Impact
+
 - Unable to run reliable tests, blocking the development pipeline
 - Inconsistent handling of UUID fields across the codebase
 - Technical debt accumulating in the form of brittle workarounds
@@ -20,12 +24,15 @@ The codebase is experiencing test failures due to database UUID type incompatibi
 ## 2. Architectural Analysis
 
 ### 2.1 Current Implementation
+
 The current codebase presents multiple inconsistent approaches to UUID handling:
+
 - Some models use `PostgresUUID(as_uuid=True)` (User, Provider models)
 - Some models use `String(36)` with str(uuid) conversion (Patient model)
 - No standardized approach exists across the system
 
 ### 2.2 Technical Constraints
+
 - Must maintain compatibility with both PostgreSQL and SQLite
 - All existing data models with UUID columns must be updated
 - Foreign key relationships must be preserved
