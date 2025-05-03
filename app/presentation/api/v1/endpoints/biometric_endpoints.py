@@ -136,7 +136,18 @@ async def get_patient_id(
 
 async def require_role(required_role: str, current_user: User = Depends(get_current_user)):
     """Generic dependency to check if the user has a specific role."""
-    if not current_user or current_user.role != required_role:
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Case-insensitive role check
+    user_role_upper = current_user.role.upper() if current_user.role else ""
+    required_role_upper = required_role.upper()
+    
+    if user_role_upper != required_role_upper:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"This operation requires '{required_role}' privileges"
@@ -144,7 +155,18 @@ async def require_role(required_role: str, current_user: User = Depends(get_curr
 
 async def require_any_role(required_roles: list[str], current_user: User = Depends(get_current_user)):
     """Generic dependency to check if the user has any of the specified roles."""
-    if not current_user or current_user.role not in required_roles:
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Case-insensitive role check
+    user_role_upper = current_user.role.upper() if current_user.role else ""
+    upper_required_roles = [role.upper() for role in required_roles]
+    
+    if user_role_upper not in upper_required_roles:
         # Consider using AuthorizationError for more specific domain exception handling
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -153,7 +175,6 @@ async def require_any_role(required_roles: list[str], current_user: User = Depen
 
 
 async def require_clinician_role(
-    # role: str = Depends(get_current_user_role) # Depend on user object now
     current_user: User = Depends(get_current_user)
 ) -> None:
     """
@@ -165,19 +186,28 @@ async def require_clinician_role(
     Raises:
         HTTPException: If the user doesn't have the clinician or admin role
     """
-    allowed_roles = ["clinician", "admin"]
-    if not current_user or current_user.role not in allowed_roles:
-         # Using AuthorizationError might be better for consistency
+    from app.domain.enums.role import Role
+    
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Case-insensitive role check
+    user_role_upper = current_user.role.upper() if current_user.role else ""
+    allowed_roles = [Role.CLINICIAN.value, Role.ADMIN.value]
+    
+    if user_role_upper not in allowed_roles:
+        from app.domain.enums.role import Role
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"This operation requires one of the following roles: {', '.join(allowed_roles)}"
+            detail=f"This operation requires one of the following roles: {Role.CLINICIAN.value}, {Role.ADMIN.value}"
         )
-    # Alternative using the generic checker:
-    # await require_any_role(required_roles=["clinician", "admin"], current_user=current_user)
 
 
 async def require_admin_role(
-    # role: str = Depends(get_current_user_role) # Depend on user object now
     current_user: User = Depends(get_current_user)
 ) -> None:
     """
@@ -189,10 +219,20 @@ async def require_admin_role(
     Raises:
         HTTPException: If the user doesn't have the admin role
     """
-    if not current_user or current_user.role != "admin":
+    from app.domain.enums.role import Role
+    
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Case-insensitive role check
+    user_role_upper = current_user.role.upper() if current_user.role else ""
+    
+    if user_role_upper != Role.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This operation requires admin privileges"
+            detail=f"This operation requires {Role.ADMIN.value} privileges"
         )
-    # Alternative using the generic checker:
-    # await require_role(required_role="admin", current_user=current_user)

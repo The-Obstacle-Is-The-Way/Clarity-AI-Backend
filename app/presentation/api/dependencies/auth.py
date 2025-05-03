@@ -39,7 +39,6 @@ def get_jwt_service(
 # ``app.dependency_overrides``.
 # ---------------------------------------------------------------------------
 
-
 def get_authentication_service(
     auth_service: AuthenticationService | None = None,
 ) -> AuthenticationService:  # noqa: D401 – simple factory helper
@@ -168,10 +167,13 @@ async def verify_provider_access(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """Verify that the user has provider-level access (Clinician, Admin, Provider)."""
-    # Use string values from UserRole enum for comparison
-    allowed_roles = [UserRole.CLINICIAN.value, UserRole.ADMIN.value, UserRole.PROVIDER.value]
-    # Check primary role (string) and roles list (should contain strings)
-    if current_user.role not in allowed_roles and not any(r in allowed_roles for r in current_user.roles):
+    # Normalise for case-insensitive membership tests
+    allowed_roles = {role.value.upper() for role in (UserRole.CLINICIAN, UserRole.ADMIN, UserRole.PROVIDER)}
+
+    primary_role = (current_user.role or "").upper()
+    roles_set = {str(r).upper() for r in (current_user.roles or [])}
+
+    if primary_role not in allowed_roles and allowed_roles.isdisjoint(roles_set):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Provider, Clinician, or Admin access required",
@@ -183,9 +185,11 @@ async def verify_admin_access(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """Verify that the user has admin access level."""
-    admin_role_value = UserRole.ADMIN.value
-    # Check primary role (string) and roles list (strings)
-    if current_user.role != admin_role_value and admin_role_value not in current_user.roles:
+    admin_role_value = UserRole.ADMIN.value.upper()
+    primary_role = (current_user.role or "").upper()
+    roles_set = {str(r).upper() for r in (current_user.roles or [])}
+
+    if primary_role != admin_role_value and admin_role_value not in roles_set:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
@@ -196,13 +200,18 @@ async def verify_admin_access(
 def require_role(required_role: UserRole):
     """Factory function to create a dependency that requires a specific user role."""
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        required_role_value = required_role.value
-        # Check primary role (string) and roles list (strings)
-        if current_user.role != required_role_value and required_role_value not in current_user.roles:
+        # Normalise to uppercase strings for case-insensitive comparison
+        required_role_value = required_role.value.upper()
+
+        primary_role = (current_user.role or "").upper()
+        # Some code may store mixed-case entries in the *roles* list – normalise
+        roles_normalised = [str(r).upper() for r in (current_user.roles or [])]
+
+        if primary_role != required_role_value and required_role_value not in roles_normalised:
             logger.warning(f"User {current_user.id} with role {current_user.role} tried accessing resource requiring {required_role_value}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Operation not permitted. Requires {required_role_value} role."
+                detail=f"Operation not permitted. Requires {required_role.value} role."
             )
         return current_user
     return role_checker
@@ -217,8 +226,9 @@ async def get_patient_id(
     current_user: User = Depends(get_current_user)
 ) -> UUID:
     """Dependency to validate patient ID access."""
-    # Compare current_user.role (string) with the enum's value
-    if current_user.role == UserRole.PATIENT.value:
+    # Normalize for robust comparison
+    role_value = (current_user.role or "").upper()
+    if role_value == UserRole.PATIENT.value:
         # Ensure patient ID in path matches the authenticated user's ID (convert both to str)
         if str(current_user.id) != str(patient_id):
              logger.warning(f"Patient {current_user.id} attempted to access data for patient {patient_id}")
@@ -226,9 +236,8 @@ async def get_patient_id(
                  status_code=status.HTTP_403_FORBIDDEN,
                  detail="Patients can only access their own data."
              )
-    # Check if user has Clinician or Admin role (using enum values)
-    elif current_user.role not in [UserRole.CLINICIAN.value, UserRole.ADMIN.value] and \
-         not any(r in [UserRole.CLINICIAN.value, UserRole.ADMIN.value] for r in current_user.roles):
+    elif role_value not in {UserRole.CLINICIAN.value, UserRole.ADMIN.value} and \
+         all((str(r).upper() not in {UserRole.CLINICIAN.value, UserRole.ADMIN.value}) for r in (current_user.roles or [])):
         logger.error(f"User {current_user.id} with unexpected role {current_user.role} attempted patient data access.")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions.")
 
