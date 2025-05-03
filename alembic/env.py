@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Alembic environment configuration for NOVAMIND database migrations.
+Alembic environment configuration for Clarity-AI database migrations.
 
 This module configures the alembic environment for database migrations,
 ensuring proper integration with SQLAlchemy models and environment variables.
@@ -42,13 +42,12 @@ if config.config_file_name is not None:
 from app.infrastructure.database.base import Base  
 target_metadata = Base.metadata
 
-# Get database URL from environment variable or fallback to config
-# Ensure you set DATABASE_URL environment variable
-# Format: postgresql://user:password@host/database
+# Extract database connection details
 db_user = os.environ.get("DB_USER", "postgres")
-db_password = os.environ.get("DB_PASSWORD", "")  # Read password from environment
+db_password = os.environ.get("DB_PASSWORD", "postgres")
 db_host = os.environ.get("DB_HOST", "localhost")
-db_name = os.environ.get("DB_NAME", "novamind")
+db_port = os.environ.get("DB_PORT", "5432")
+db_name = os.environ.get("DB_NAME", "clarity_ai") # Default DB name
     
 if not db_password:
     print("WARNING: DB_PASSWORD environment variable not set. Alembic might fail.")

@@ -1,27 +1,31 @@
+version: '3.9'
+
 services:
   # Database for testing
-  novamind-db-test:
-    container_name: novamind-db-test
+  clarity-ai-db-test:
+    container_name: clarity-ai-db-test
     image: postgres:15-alpine
     ports:
       - "15432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: novamind_test
+      POSTGRES_DB: clarity_ai_test
     volumes:
-      - pg_data_test:/var/lib/postgresql/data
+      - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 5s
+    networks:
+      - test-network
 
   # Redis for caching and session management
-  novamind-redis-test:
-    container_name: novamind-redis-test
-    image: redis:alpine
+  clarity-ai-redis-test:
+    container_name: clarity-ai-redis-test
+    image: redis:7-alpine
     ports:
       - "16379:6379"
     volumes:
@@ -32,43 +36,47 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    networks:
+      - test-network
 
   # PgAdmin for database management (optional, for developer convenience)
-  novamind-pgadmin-test:
-    container_name: novamind-pgadmin-test
+  clarity-ai-pgadmin-test:
+    container_name: clarity-ai-pgadmin-test
     image: dpage/pgadmin4
     depends_on:
-      - novamind-db-test
+      - clarity-ai-db-test
     ports:
-      - "15050:80"
+      - "5051:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@novamind.com
+      PGADMIN_DEFAULT_EMAIL: admin@clarity-ai.com
       PGADMIN_DEFAULT_PASSWORD: admin
     volumes:
       - pgadmin_data_test:/var/lib/pgadmin
     restart: unless-stopped
+    networks:
+      - test-network
 
   # Quantum Neural Test Runner container with PITUITARY region support
-  novamind-test-runner:
-    container_name: novamind-test-runner
+  clarity-ai-test-runner:
+    container_name: clarity-ai-test-runner
     build:
-      context: .
-      dockerfile: Dockerfile.test
+      context: ..
+      dockerfile: deployment/Dockerfile
     # Enhanced with memory limits for neurotransmitter pathway modeling
     mem_limit: 1024M
     mem_reservation: 512M
     depends_on:
-      novamind-db-test:
+      clarity-ai-db-test:
         condition: service_healthy
-      novamind-redis-test:
-        condition: service_healthy
+      clarity-ai-redis-test:
+        condition: service_started # Or service_healthy if Redis has health checks
     volumes:
       - .:/app
       - test_results:/app/test-results
     environment:
       # Database configuration
-      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@novamind-db-test:5432/novamind_test
-      TEST_REDIS_URL: redis://novamind-redis-test:6379/0
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@clarity-ai-db-test:5432/clarity_ai_test
+      TEST_REDIS_URL: redis://clarity-ai-redis-test:6379/0
 
       # Python environment configuration
       PYTHONPATH: "/app:/app/backend"
@@ -86,12 +94,16 @@ services:
       # Clean architecture enforcement
       ENFORCE_CLEAN_ARCHITECTURE: "1"
 
+      # Add other necessary test environment variables
+      ENVIRONMENT: test
+      APP_VERSION: 0.1.0-test
+
     # Command can be overridden when running docker-compose
     # Default runs quantum neural singularity with hypothalamus-pituitary connectivity
     command: python -m scripts.core.quantum_runner all
 
 volumes:
-  pg_data_test:
+  postgres_test_data:
   redis_data_test:
   pgadmin_data_test:
   test_results:

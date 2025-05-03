@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-NOVAMIND FastAPI Application
-===========================
-Main entry point for the NOVAMIND psychiatric platform.
+Clarity-AI FastAPI Application
+=============================
+Main entry point for the Clarity-AI psychiatric platform.
 Implements HIPAA-compliant API with proper security measures.
 """
 
@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events.
     """
     # Startup
-    logger.info(f"Starting NOVAMIND API {settings.APP_VERSION} in {settings.ENVIRONMENT} environment")
+    logger.info(f"Starting Clarity-AI API {settings.APP_VERSION} in {settings.ENVIRONMENT} environment")
     
     # Initialize dependency injection container
     get_container()
@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("Shutting down NOVAMIND API")
+    logger.info("Shutting down Clarity-AI API")
 
 
 # Create FastAPI application
@@ -124,7 +124,7 @@ async def log_requests_middleware(request: Request, call_next: Callable) -> Resp
 # Exception handlers
 @app.exception_handler(NovaBaseException)
 async def base_exception_handler(request: Request, exc: NovaBaseException) -> JSONResponse:
-    """Handle all NOVAMIND custom exceptions."""
+    """Handle all Clarity-AI custom exceptions."""
     logger.warning(f"Application exception: {exc.__class__.__name__}: {str(exc)}")
     return JSONResponse(
         status_code=exc.status_code,
