@@ -13,13 +13,13 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule
 from app.domain.exceptions.repository import (
     DatabaseConnectionException,
     EntityNotFoundException,
     RepositoryError,
 )
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.infrastructure.persistence.sqlalchemy.mappers.biometric_rule_mapper import (
     map_rule_entity_to_model,
     map_rule_model_to_entity,
@@ -28,7 +28,7 @@ from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import Biom
 
 logger = logging.getLogger(__name__)
 
-class SQLAlchemyBiometricRuleRepository(BiometricAlertRuleRepository):
+class SQLAlchemyBiometricRuleRepository(IBiometricRuleRepository):
     """SQLAlchemy implementation of the BiometricRuleRepository."""
 
     def __init__(self, session: AsyncSession):
@@ -266,3 +266,10 @@ class SQLAlchemyBiometricRuleRepository(BiometricAlertRuleRepository):
             await self.session.rollback()
             logger.error(f"Unexpected error updating active status for rule {rule_id}: {e}")
             raise RepositoryError(f"Unexpected error updating status for rule {rule_id}: {e!s}") from e
+
+
+# Factory function for dependency injection
+def get_biometric_rule_repository(session: AsyncSession) -> IBiometricRuleRepository:
+    """Factory function to create an instance of SQLAlchemyBiometricRuleRepository."""
+    logger.debug("Creating SQLAlchemyBiometricRuleRepository instance via factory.")
+    return SQLAlchemyBiometricRuleRepository(session=session)

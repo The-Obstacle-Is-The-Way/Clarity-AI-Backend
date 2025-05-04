@@ -6,107 +6,52 @@ following clean architecture principles with proper separation of concerns.
 """
 
 from collections.abc import AsyncGenerator
+import logging
 
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# For test collection, we'll use sync engine if there's an issue with async
-# This is a compromise to allow tests to collect
-try:
-    # Attempt to create async engine
-    engine = create_async_engine(
-        settings.DATABASE_URL,
-        echo=getattr(settings, 'DB_ECHO_LOG', False),  # Default to False if not defined
-        future=True,
-        pool_pre_ping=True,
-    )
-    
-    # Create async sessionmaker
-    AsyncSessionLocal = sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-    
-    # Create sync engine for fallback/compatibility
-    sync_url = settings.DATABASE_URL.replace('aiosqlite', 'sqlite')
-    sync_engine = create_engine(sync_url, future=True, pool_pre_ping=True)
-    
-    # Create sync sessionmaker for fallback
-    SyncSessionLocal = sessionmaker(
-        sync_engine,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-    
-    # Use async session as primary
-    session_local = AsyncSessionLocal
-    is_async = True
-    
-except Exception as e:
-    # Fallback to sync engine if async fails (for test collection)
-    print(f"Warning: Failed to create async engine ({e!s}), falling back to sync engine")
-    
-    # Convert async URL to sync URL
-    if 'sqlite+aiosqlite' in settings.DATABASE_URL:
-        sync_url = settings.DATABASE_URL.replace('sqlite+aiosqlite', 'sqlite')
-    else:
-        sync_url = settings.DATABASE_URL
-    
-    # Create sync engine only
-    engine = create_engine(sync_url, future=True, pool_pre_ping=True)
-    
-    # Create sync sessionmaker
-    SyncSessionLocal = sessionmaker(
-        engine,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-    
-    # Only sync session available
-    session_local = SyncSessionLocal
-    AsyncSessionLocal = SyncSessionLocal  # For interface compatibility
-    is_async = False
+logger = logging.getLogger(__name__)
+
+logger.info(f"Attempting to create async engine with URL: {settings.DATABASE_URL}")
+
+if not settings.DATABASE_URL.startswith("sqlite+aiosqlite") and not settings.DATABASE_URL.startswith("postgresql+asyncpg"):
+    error_msg = f"DATABASE_URL is not configured for a known async driver: {settings.DATABASE_URL}"
+    logger.error(error_msg)
+    raise ValueError(error_msg)
+
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=getattr(settings, 'DB_ECHO_LOG', False),
+    future=True,
+    pool_pre_ping=True,
+)
+
+AsyncSessionLocal = sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+logger.info("Async database engine and sessionmaker configured successfully.")
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession | Session, None]:
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Dependency function to get a database session.
-    
-    This function creates a new database session for each request
-    and ensures that the session is properly closed when the request is complete,
-    even if an exception occurs. It adapts to both async and sync environments.
-    
+    Dependency function to get an async database session.
+
     Yields:
-        AsyncSession or Session: Session for database operations
+        AsyncSession: Session for async database operations
     """
-    if is_async:
-        async with AsyncSessionLocal() as session:
-            try:
-                yield session
-            finally:
-                await session.close()
-    else:
-        # For test collection with sync session
-        session = SyncSessionLocal()
+    logger.debug("Creating async session from AsyncSessionLocal")
+    async with AsyncSessionLocal() as session:
         try:
             yield session
-        finally:
-            session.close()
-
-
-def get_session() -> AsyncSession | Session:
-    """
-    Get a new database session for non-dependency injection contexts.
-    
-    Returns:
-        AsyncSession or Session: A new session for database operations
-    """
-    return AsyncSessionLocal()
+        except Exception as e:
+            logger.error(f"Rolling back session due to exception: {e}")
+            await session.rollback()
+            raise

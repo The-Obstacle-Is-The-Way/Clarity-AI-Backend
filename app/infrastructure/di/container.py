@@ -205,11 +205,19 @@ class DIContainer:
     def _register_real_services(self) -> None:
         """Register real implementations for production."""
         # Import repositories and their interfaces
+        # Import biometric rule repository
+        from app.core.interfaces.repositories.biometric_rule_repository import (
+            IBiometricRuleRepository,
+        )
         from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+        from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
+            get_biometric_rule_repository,
+        )
         from app.infrastructure.repositories.user_repository import get_user_repository
-        
+
         # Register repository factories
         self.register_repository_factory(IUserRepository, get_user_repository)
+        self.register_repository_factory(IBiometricRuleRepository, get_biometric_rule_repository)
         
         # Import services and their interfaces
         from app.core.interfaces.services.auth_service_interface import AuthServiceInterface

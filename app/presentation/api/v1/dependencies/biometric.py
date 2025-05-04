@@ -9,11 +9,13 @@ clean architecture principles.
 from typing import Annotated
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
+from app.core.dependencies.database import get_db_session
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
+from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
-from app.infrastructure.di.provider import get_service_instance
+from app.infrastructure.di.provider import get_repository_instance, get_service_instance
 
 
 def get_biometric_service() -> BiometricServiceInterface:
@@ -31,11 +33,15 @@ def get_alert_service() -> AlertServiceInterface:
     return get_service_instance(AlertServiceInterface)
 
 
-def get_biometric_rule_repository() -> BiometricRuleRepository:
+def get_biometric_rule_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> BiometricRuleRepository:
     """Dependency injector for BiometricRuleRepository."""
-    return get_service_instance(BiometricRuleRepository)
+    # Use the correct provider for repositories requiring a session
+    return get_repository_instance(BiometricRuleRepository, session)
 
 
 # Type aliases for cleaner dependency annotations
 BiometricServiceDep = Annotated[BiometricServiceInterface, Depends(get_biometric_service)]
 AlertServiceDep = Annotated[AlertServiceInterface, Depends(get_alert_service)]
+BiometricRuleRepoDep = Annotated[BiometricRuleRepository, Depends(get_biometric_rule_repository)]
