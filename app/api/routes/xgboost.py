@@ -44,18 +44,17 @@ router = APIRouter(
 )
 
 
-def get_xgboost_service(session: Annotated[AsyncSession, Depends(get_db_session)]) -> XGBoostInterface:
+def get_xgboost_service() -> XGBoostInterface:
     """
     Dependency to get the XGBoost service instance.
     
-    Explicitly depends on AsyncSession to help FastAPI introspection.
-    
     Args:
-        session: The database session (injected by Depends).
+        None
         
     Returns:
         XGBoostInterface: Instance of the XGBoost service
     """
+    # The DI container resolves the service, handling session injection internally if needed.
     return get_service_instance(XGBoostInterface)
 
 

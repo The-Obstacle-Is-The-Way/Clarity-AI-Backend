@@ -221,6 +221,19 @@ class DIContainer:
         self.register_factory(AuthServiceInterface, get_auth_service)
         self.register_factory(JWTServiceInterface, get_jwt_service)
         
+        # Import and register Biometric Event Processor
+        try:
+            from app.core.interfaces.services.biometric_event_processor_interface import (
+                IBiometricEventProcessor,
+            )
+            from app.core.services.biometric_event_processor import (
+                get_biometric_event_processor,
+            )
+            self.register_factory(IBiometricEventProcessor, get_biometric_event_processor)
+            logger.info("Registered BiometricEventProcessor factory in DI container.")
+        except ImportError:
+            logger.warning("Could not register BiometricEventProcessor (missing files?)")
+        
         # Register additional services
         try:
             from app.core.interfaces.services.analytics_service_interface import (
