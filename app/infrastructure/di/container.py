@@ -159,7 +159,7 @@ class DIContainer:
         from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 
         # Create and register generic mocks for all repository types
-        from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+        from app.core.interfaces.repositories.user_repository_interface import IUserRepository
         
         # Event repository
         mock_event_repo = MagicMock(spec=BaseRepositoryInterface)
@@ -167,7 +167,6 @@ class DIContainer:
         logger.info("Registered MOCK EventRepository in DI container.")
         
         # For test collection, register some common repository types
-        from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
         
         # Appointment repository
         mock_appointment_repo = MagicMock(spec=BaseRepositoryInterface)
@@ -205,11 +204,11 @@ class DIContainer:
     def _register_real_services(self) -> None:
         """Register real implementations for production."""
         # Import repositories and their interfaces
-        from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+        from app.core.interfaces.repositories.user_repository_interface import IUserRepository
         from app.infrastructure.repositories.user_repository import get_user_repository
         
         # Register repository factories
-        self.register_repository_factory(UserRepositoryInterface, get_user_repository)
+        self.register_repository_factory(IUserRepository, get_user_repository)
         
         # Import services and their interfaces
         from app.core.interfaces.services.auth_service_interface import AuthServiceInterface

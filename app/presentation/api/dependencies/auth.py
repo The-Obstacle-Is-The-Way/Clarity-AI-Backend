@@ -11,11 +11,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 # Correct service/factory imports
-from app.core.domain.entities.user import User
+from app.core.domain.entities.user import User, UserRole
 from app.core.errors.security_exceptions import InvalidCredentialsError
-from app.core.interfaces.repositories.patient_repository_interface import (
-    IPatientRepository,
-)
 from app.core.interfaces.repositories.user_repository_interface import (
     IUserRepository,
 )

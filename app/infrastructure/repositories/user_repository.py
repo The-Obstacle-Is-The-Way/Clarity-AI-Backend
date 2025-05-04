@@ -1,7 +1,7 @@
 """
 User repository implementation.
 
-This module implements the UserRepositoryInterface using SQLAlchemy ORM,
+This module implements the IUserRepository using SQLAlchemy ORM,
 following the Repository pattern from clean architecture principles.
 """
 
@@ -13,12 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.user import User
 from app.core.errors.base_exceptions import NotFoundException
-from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.infrastructure.persistence.sqlalchemy.models.user import (
+    User as UserModel,
+)
 
-
-class SqlAlchemyUserRepository(UserRepositoryInterface):
+class SqlAlchemyUserRepository(IUserRepository):
     """
-    SQLAlchemy implementation of the UserRepositoryInterface.
+    SQLAlchemy implementation of the IUserRepository.
     
     This class bridges the domain model with the database using SQLAlchemy ORM,
     ensuring proper separation of concerns by keeping domain logic free from
@@ -151,7 +153,7 @@ class SqlAlchemyUserRepository(UserRepositoryInterface):
         return 0
 
 
-def get_user_repository(session: AsyncSession) -> UserRepositoryInterface:
+def get_user_repository(session: AsyncSession) -> IUserRepository:
     """
     Factory function to create a UserRepository instance.
     
@@ -162,6 +164,6 @@ def get_user_repository(session: AsyncSession) -> UserRepositoryInterface:
         session: SQLAlchemy async session for database operations
         
     Returns:
-        An instance of UserRepositoryInterface
+        An instance of IUserRepository
     """
     return SqlAlchemyUserRepository(session)
