@@ -36,4 +36,27 @@ The current codebase suffers from a fractured and inconsistent API structure:
 * Python environment with `pytest` installed to run verification checks.
 * **CRITICAL:** Any previous, partially executed refactoring steps related to moving these files must be reverted or accounted for. The following steps assume the state described in the "Problem Statement".
 
+## 5. Refactoring Checklist
+
+* [x] Define `app/presentation/api/v1/routes/` as the canonical directory for V1 routers.
+* [x] Ensure target directory `app/presentation/api/v1/routes/` uses a flat structure (no subdirs for routers).
+* [x] Migrate router: `auth.py` from `app/api/routes/` to `app/presentation/api/v1/routes/`.
+* [x] Migrate router: `ml.py` from `app/api/routes/` to `app/presentation/api/v1/routes/`.
+* [x] Migrate router: `temporal_neurotransmitter.py` from `app/api/routes/` to `app/presentation/api/v1/routes/`.
+* [x] Migrate router: `xgboost.py` from `app/api/routes/` to `app/presentation/api/v1/routes/`.
+* [x] Migrate router: `analytics.py` from `app/presentation/api/v1/endpoints/` to `app/presentation/api/v1/routes/`.
+* [x] Migrate router: `biometric.py` from `app/api/routes/v1/endpoints/` to `app/presentation/api/v1/routes/`.
+* [x] Migrate router: `biometric_alerts_endpoint.py` to `biometric_alerts.py` from `app/presentation/api/v1/endpoints/` to `app/presentation/api/v1/routes/`.
+* [x] Update `app/presentation/api/v1/api_router.py` imports for migrated routers (`auth`, `ml`, `temporal_neurotransmitter`, `xgboost`, `analytics`, `biometric`, `biometric_alerts`).
+* [x] Verify and fix internal imports within all moved router files (`auth.py`, `ml.py`, etc.).
+* [x] Keep `digital_twin` import commented out in `api_router.py`.
+* [x] Delete legacy directory: `app/presentation/api/v1/endpoints/`.
+* [x] Delete legacy directory: `app/api/`.
+* [x] Implement `biometric_alert_rules.py` in `app/presentation/api/v1/routes/` (placeholder stubs added).
+* [x] Uncomment `biometric_alert_rules` in `api_router.py`.
+* [x] Implement `digital_twin.py` in `app/presentation/api/v1/routes/` (placeholder stubs added).
+* [x] Uncomment `digital_twin` in `api_router.py`.
+* [x] Run linters (`ruff check . --fix`, `ruff format .`) on all modified/affected files (ignoring E501 in placeholder comments).
+* [ ] Run tests (`pytest`) to confirm no `ModuleNotFoundError` and assess remaining failures.
+
 ---

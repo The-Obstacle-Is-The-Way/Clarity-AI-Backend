@@ -1,82 +1,59 @@
-"""
-Pytest configuration file for the application.
-
-This module provides fixtures and configuration for testing the application.
-"""
-
+# Corrected Import Block Start
+import datetime
 import logging
+import os
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
+import boto3
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from httpx import AsyncClient
+from jose import jwt
+from moto import mock_aws
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.api.dependencies import (
-    get_auth_service_provider,
-    get_jwt_service,
-    get_pat_service,
-    get_user_repository_provider,
-)
-from app.presentation.api.v1.routes import auth as auth_router
+from sqlalchemy.pool import NullPool, StaticPool
 
 # --- Core App/Config Imports ---
 from app.core.config.settings import Settings, get_settings
-from app.core.dependencies.database import get_db_session
-from app.core.interfaces.repositories.user_repository import IUserRepository
-from app.core.security import AuthenticationMiddleware
-
-# --- Domain Imports ---
-from app.domain.entities.user import User
-from app.domain.exceptions import AuthenticationError
-from app.domain.services.pat_service import PATService
-
-# --- Infrastructure Imports ---
-from app.infrastructure.database.base_class import Base
-from app.infrastructure.security.auth_service import AuthenticationService
-from app.infrastructure.security.jwt_service import JWTService
-from app.infrastructure.security.password.hashing import pwd_context
+from app.core.domain.entities.user_entity import Role, User
+from app.core.domain.services.auth_service import AuthService
+from app.core.domain.services.jwt_service import JWTService
+from app.core.domain.services.pat_service import PATService
+from app.infrastructure.database.db import Base, get_db_session
+from app.infrastructure.persistence.repositories.in_memory_user_repository import (
+    InMemoryUserRepository,
+)
+from app.infrastructure.persistence.repositories.user_repository import UserRepository
 
 # --- API Layer Imports ---
 from app.main import create_application
+from app.presentation.api.v1.api_router import api_router as api_v1_router
+from app.presentation.api.v1.dependencies import (
+    get_llm_service,
+    get_pat_service,
+    get_user_repository_provider,
+)
 
-# --- Test Utility Imports ---
-
+# Corrected Import Block End
 
 # Setup logging for tests
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # --- Global Test Constants ---
 TEST_USERNAME = "testuser@example.com"
-TEST_PASSWORD = "testpassword" 
-TEST_INVALID_PASSWORD = "wrongpassword" 
-TEST_INTEGRATION_USER_ID = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
-TEST_PROVIDER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-TEST_PROVIDER_USERNAME = "provider@example.com" 
-TEST_PROVIDER_PASSWORD = "ProviderPass567&"  
+TEST_PASSWORD = "testpassword"
+TEST_INVALID_PASSWORD = "invalidpassword"
+TEST_ADMIN_USERNAME = "admin@example.com"
+TEST_PROVIDER_USERNAME = "provider@example.com"
+TEST_PROVIDER_PASSWORD = "providerpassword"
 
-# --- Helper Functions --- 
-
+# --- Helper Functions ---
 def create_test_application(settings: Settings) -> FastAPI:
-    """
-    Create a minimal FastAPI application instance for testing.
-    
-    This function is a simplified version of the real create_application 
-    function in app_factory.py, bypassing problematic imports and dependencies
-    that aren't needed for testing.
-    
-    Args:
-        settings: Application settings
-        
-    Returns:
-        FastAPI application instance configured for testing
-    """
-    # Create a minimal FastAPI app with test-appropriate settings
     app = FastAPI(
         title=settings.PROJECT_NAME if hasattr(settings, "PROJECT_NAME") else "Test API",
         description="Test API for automated testing",
@@ -85,113 +62,67 @@ def create_test_application(settings: Settings) -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json"
     )
-    
     return app
 
-# --- Settings Fixtures --- 
-
+# --- Settings Fixtures ---
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
-    """Load test settings once per session by calling the core get_settings.
-    The core get_settings function now handles test environment detection.
-    """
     logger.info("Loading test settings via core get_settings()...")
-    # Call the correct get_settings from app.core.config.settings
     settings = get_settings()
     logger.info(
         f"Test Settings Loaded: {settings.model_dump(exclude={'JWT_SECRET_KEY'})}" 
     )
     return settings
 
-# --- Mock Service Fixtures --- 
-
+# --- Mock Service Fixtures ---
 @pytest.fixture(scope="function")
 def mock_jwt_service() -> AsyncMock:
-    """Provides a function-scoped AsyncMock for JWTService."""
-    mock = AsyncMock(spec=JWTService) # Add spec for better mocking
-    # Configure mock methods needed by login and potentially other tests
+    """Provide a mock JWT service."""
+    mock = AsyncMock(spec=JWTService)
     mock.create_access_token.return_value = "mock_access_token_for_test"
     mock.create_refresh_token.return_value = "mock_refresh_token_for_test"
-    # Configure verify_token for tests that might need token validation
     mock.verify_token.return_value = {
-        "sub": str(TEST_INTEGRATION_USER_ID), # Default user for verified tokens
+        "sub": str(uuid.uuid4()), 
         "roles": ["patient"]
     }
     logger.info("mock_jwt_service configured with token methods.")
     return mock
 
 @pytest.fixture(scope="function")
-def mock_auth_service() -> AsyncMock:
-    """Provides a function-scoped AsyncMock for AuthenticationService."""
-    mock = AsyncMock(spec=AuthenticationService)
-
-    # Define mock User objects (only need fields used by token creation)
-    mock_regular_user = User(
-        id=str(uuid.uuid4()), 
-        username=TEST_USERNAME, 
-        email=TEST_USERNAME, 
-        roles=["patient"], 
-        is_active=True
+def mock_auth_service(
+    mock_user_repository_override: Callable[[], UserRepository],
+    mock_jwt_service: AsyncMock
+) -> AsyncMock:
+    """Provide a mock authentication service."""
+    mock = AsyncMock(spec=AuthService)
+    mock.authenticate_user.side_effect = (
+        lambda username, password: \
+            User(id=str(uuid.uuid4()), username=username, role="patient", is_active=True) \
+            if username == TEST_USERNAME and password == TEST_PASSWORD \
+            else None
     )
-    mock_provider_user = User(
-        id=str(uuid.uuid4()), 
-        username=TEST_PROVIDER_USERNAME, 
-        email=TEST_PROVIDER_USERNAME, 
-        roles=["provider"], 
-        is_active=True
+    mock.create_user.return_value = None 
+    mock.get_current_active_user.return_value = User(
+        id=str(uuid.uuid4()), username=TEST_USERNAME, role="patient", is_active=True
     )
-
-    async def _mock_authenticate(username: str, password: str) -> User | None:
-        logger.info(f"Mock authenticate_user called with username: {username}")
-        if username == TEST_USERNAME and password == TEST_PASSWORD:
-            logger.info("Returning mock_regular_user")
-            return mock_regular_user
-        elif username == TEST_PROVIDER_USERNAME and password == TEST_PROVIDER_PASSWORD:
-            logger.info("Returning mock_provider_user")
-            return mock_provider_user
-        else:
-            logger.warning(f"Mock authentication failed for username: {username}")
-            raise AuthenticationError("Invalid username or password")
-
-    # Configure the mock's authenticate_user method
-    mock.authenticate_user.side_effect = _mock_authenticate
-    
-    # Configure create_token_pair if needed, assuming JWT mock handles token string generation
-    # For simplicity, assume JWTService mock handles actual token string generation
-    # based on the user object passed to it by the endpoint handler.
-    # If the endpoint *directly* calls auth_service.create_token_pair, 
-    # we'd mock that too. For now, focus on authenticate_user.
-    mock.create_token_pair.return_value = {
-        "access_token": "mock_access_token_from_auth_service",
-        "refresh_token": "mock_refresh_token_from_auth_service",
-        "token_type": "bearer"
-    }
-    logger.info("mock_auth_service configured with authenticate_user side effect and create_token_pair.")
+    mock.get_current_active_provider.return_value = User(
+        id=str(uuid.uuid4()), username=TEST_PROVIDER_USERNAME, role="provider", is_active=True
+    )
+    logger.info("mock_auth_service configured.")
     return mock
 
 @pytest.fixture(scope="function")
 def mock_pat_service() -> AsyncMock:
-    """Provides a function-scoped AsyncMock for PATService."""
-    mock = AsyncMock()
-    return mock
-
-@pytest.fixture(scope="function")
-def mock_analytics_service() -> AsyncMock:
-    """Provides a basic AsyncMock for the Analytics Service."""
-    mock = AsyncMock()
-    mock.process_event = AsyncMock(return_value=None)
-    mock.process_batch_events = AsyncMock(return_value=None)
+    """Provide a mock PAT service."""
+    mock = AsyncMock(spec=PATService)
+    mock.process_text_phi = AsyncMock(return_value="Processed text without PHI")
+    mock.process_notes = AsyncMock(return_value={"summary": "Mock summary"})
     mock.get_event_summary = AsyncMock(return_value={"total_events": 10})
     return mock
 
-# --- Mock Repository/DB Fixtures --- 
-
+# --- Mock Repository/DB Fixtures ---
 @pytest_asyncio.fixture(scope="function")
 async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Creates an isolated in-memory SQLite database session for each test function.
-    Ensures schema is created and rolled back after the test.
-    """
     database_url = "sqlite+aiosqlite:///:memory:"
     engine = create_async_engine(
         database_url,
@@ -220,251 +151,162 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
     await engine.dispose()
 
-
 @pytest_asyncio.fixture(scope="function")
 async def seed_test_data(test_db_session: AsyncSession) -> None:
-    """Fixture to seed the database with essential test users."""
     logger.info("Seeding test data...")
-    
-    # Create minimal test data - working around the PostgreSQL UUID vs SQLite compatibility issue
+
     try:
-        # Execute raw SQL to insert users directly, bypassing ORM mapping issues
-        # SQLite doesn't support UUID types natively, so we store them as strings
-        await test_db_session.execute(
-            """
-            INSERT INTO users (id, username, email, password_hash, is_active, is_verified, email_verified)
-            VALUES (:id1, :username1, :email1, :password1, 1, 1, 1),
-                  (:id2, :username2, :email2, :password2, 1, 1, 1)
-            """,
-            {
-                "id1": str(TEST_INTEGRATION_USER_ID),
-                "username1": TEST_USERNAME,
-                "email1": TEST_USERNAME,
-                "password1": pwd_context.hash(TEST_PASSWORD),
-                "id2": str(TEST_PROVIDER_USER_ID),
-                "username2": TEST_PROVIDER_USERNAME,
-                "email2": TEST_PROVIDER_USERNAME,
-                "password2": pwd_context.hash(TEST_PROVIDER_PASSWORD),
-            }
+        user_check = await test_db_session.execute(
+            text("SELECT 1 FROM users WHERE email = :email"),
+            {"email": TEST_USERNAME}
         )
-        
-        # Insert provider data directly, avoiding the relationship constraint issue
-        await test_db_session.execute(
-            """
-            INSERT INTO providers (id, user_id, specialty, license_number, npi_number, active)
-            VALUES (:id, :user_id, :specialty, :license, :npi, 1)
-            """,
-            {
-                "id": str(uuid.uuid4()),
-                "user_id": str(TEST_PROVIDER_USER_ID),
-                "specialty": "Psychiatry",
-                "license": "TEST-12345",
-                "npi": "9876543210"
-            }
+        if user_check.scalar_one_or_none() is None:
+            await test_db_session.execute(
+                text("""
+                    INSERT INTO users (id, username, email, hashed_password, role, is_active, is_verified)
+                    VALUES (:id, :username, :email, :password, 'patient', 1, 1)
+                """),
+                {
+                    "id": str(uuid.uuid4()),
+                    "username": TEST_USERNAME,
+                    "email": TEST_USERNAME,
+                    "password": "hashed_password",
+                }
+            )
+            logger.info(f"Seeded user: {TEST_USERNAME}")
+
+        provider_check = await test_db_session.execute(
+            text("SELECT 1 FROM users WHERE email = :email"),
+            {"email": TEST_PROVIDER_USERNAME}
         )
-        
+        if provider_check.scalar_one_or_none() is None:
+            await test_db_session.execute(
+                text("""
+                    INSERT INTO users (id, username, email, hashed_password, role, is_active, is_verified)
+                    VALUES (:id, :username, :email, :password, 'provider', 1, 1)
+                """),
+                {
+                    "id": str(uuid.uuid4()),
+                    "username": TEST_PROVIDER_USERNAME,
+                    "email": TEST_PROVIDER_USERNAME,
+                    "password": "hashed_password",
+                }
+            )
+            logger.info(f"Seeded provider: {TEST_PROVIDER_USERNAME}")
+
         await test_db_session.commit()
-        logger.info("Test users and provider created via direct SQL inserts.")
+        logger.info("Test data committed.")
+
     except Exception as e:
         logger.error(f"Error seeding test data: {e}")
         await test_db_session.rollback()
         raise
-    # No yield needed as this fixture just performs an action
 
+    logger.info("Seeding test data finished.")
 
-@pytest_asyncio.fixture(scope="function")
-async def mock_db_session_override(
-    test_db_session: AsyncSession
-) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
-    """Provides a fixture yielding the test_db_session for overriding get_db_session."""
-    async def _override() -> AsyncGenerator[AsyncSession, None]:
-        yield test_db_session
-    return _override
-
-@pytest_asyncio.fixture(scope="function")
-def mock_user_repository_override(
-) -> Callable[[], IUserRepository]: 
-    """Provides a factory function returning a mock IUserRepository."""
-    def factory() -> IUserRepository: 
-        mock_repo = AsyncMock()
-        # Configure get_user_by_username mock
-        async def mock_get_by_username(username: str) -> MagicMock | None:
-            if username == TEST_USERNAME:
-                mock_user = MagicMock()
-                mock_user.id = TEST_INTEGRATION_USER_ID
-                mock_user.username = TEST_USERNAME
-                mock_user.hashed_password = pwd_context.hash(TEST_PASSWORD)
-                mock_user.role = "patient"
-                mock_user.is_active = True
-                return mock_user
-            return None
-        mock_repo.get_user_by_username = AsyncMock(side_effect=mock_get_by_username)
-        mock_repo.get_user_by_id = AsyncMock(return_value=None)
-        mock_repo.create_user = AsyncMock(return_value=None)
-        # Add other necessary mock methods from IUserRepository if needed
-        # Example: mock_repo.get_by_id = AsyncMock(return_value=None) 
-        return mock_repo
-
-@pytest_asyncio.fixture(scope="function")
-def mock_pat_service_override(
-    mock_pat_service: AsyncMock
-) -> Callable[[], PATService]: 
-    """Provides a factory function returning the mock PATService."""
-    def factory() -> PATService:
-        return mock_pat_service
-    return factory
-
-# --- Application Fixture --- 
-
-@pytest_asyncio.fixture(scope="function")
-async def initialized_app(
-    test_settings: Settings, 
-    mock_db_session_override: Callable[[], AsyncGenerator[AsyncSession, None]], 
-    mock_user_repository_override: Callable[[], IUserRepository],
-    mock_pat_service_override: Callable[[], PATService], 
-    mock_jwt_service: AsyncMock,
-    mock_auth_service: AsyncMock,
-    mock_analytics_service: AsyncMock,
-    seed_test_data: None
-) -> AsyncGenerator[FastAPI, None]:
-    """
-    Creates a MINIMAL FastAPI app configured for endpoint tests, 
-    INCLUDING AuthenticationMiddleware and necessary overrides.
-    Scope is function to ensure isolation.
-    
-    Yields the app instance for use in tests.
-    """
-    # Create dependency overrides using the correct import (get_db_session not get_db)
-    dependency_overrides = {
-        get_settings: lambda: test_settings,
-        get_db_session: mock_db_session_override,  # Ensure this matches the imported dependency
-        get_pat_service: mock_pat_service_override, 
-        get_jwt_service: lambda: mock_jwt_service, 
-        get_auth_service_provider: lambda: mock_auth_service, 
-        get_user_repository_provider: mock_user_repository_override,
-        # get_analytics_service_provider: lambda: mock_analytics_service, 
-    }
-
-    app_instance = create_application(
-        settings=test_settings, 
-        dependency_overrides=dependency_overrides
-    )
-
-    public_paths = getattr(
-        test_settings, 
-        'AUTH_PUBLIC_PATHS', 
-        ['/docs', '/openapi.json', '/api/v1/auth/login', '/public']
-    )
-    app_instance.add_middleware(
-        AuthenticationMiddleware,
-        public_paths=public_paths
-    )
-
-    app_instance.include_router(
-        auth_router.router, 
-        prefix="/api/v1/auth", 
-        tags=["auth"]
-    )
-
-    # Optionally include other routers needed by specific test suites
-    # Example: 
-    # from app.presentation.api.v1.routers import analytics as analytics_router
-    # app_instance.include_router(
-    #     analytics_router.router, 
-    #     prefix="/api/v1/analytics", 
-    #     tags=["analytics"]
-    # )
-
-    yield app_instance
-
-# --- Async Client Fixture --- 
-
-@pytest_asyncio.fixture(scope="function")
-async def async_client(
-    initialized_app: FastAPI,
-) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Create a new httpx AsyncClient instance for tests using the initialized_app.
-    Ensures proper async context management.
-    """
-    async with AsyncClient(
-        app=initialized_app, base_url="http://testserver"
-    ) as client:
-        yield client
-
-# --- Authentication Header Fixture ---
-
-@pytest_asyncio.fixture(scope="function")
-async def auth_headers(
-    async_client: AsyncClient, 
-    test_settings: Settings 
-) -> dict[str, str]:
-    """Perform login and return authentication headers for test requests."""
-    login_data = {
-        "username": TEST_USERNAME, 
-        "password": TEST_PASSWORD,
-    }
-    # Use the API prefix from settings
-    login_url = f"{test_settings.API_V1_STR}/auth/login"
-    logger.info(f"Attempting login for auth_headers fixture via URL: {login_url}")
-    
-    response = await async_client.post(login_url, data=login_data)
-    
-    # Log response status and content for debugging
-    logger.info(f"Login response status: {response.status_code}")
-    try:
-        response_json = response.json()
-        logger.info(f"Login response JSON: {response_json}") 
-    except Exception as e:
-        logger.error(f"Failed to parse login response JSON: {e}")
-        logger.error(f"Login response text: {response.text}")
-        response_json = {}
-
-    if response.status_code != 200:
-        logger.error(f"Login failed with status {response.status_code}. Response: {response.text}")
-        # Optionally raise an error or return empty dict depending on test needs
-        pytest.fail(f"Login failed for auth_headers fixture: {response.status_code} - {response.text}")
-
-    access_token = response_json.get("access_token")
-    if not access_token:
-        pytest.fail("Access token not found in login response for auth_headers fixture.")
-        
-    headers = {"Authorization": f"Bearer {access_token}"}
-    logger.info("auth_headers fixture generated successfully.")
-    return headers
-
-@pytest_asyncio.fixture(scope="function")
-async def provider_token(
-    async_client: AsyncClient, 
-    test_settings: Settings 
+# Helper function for token creation
+def create_test_token(
+    settings: Settings,
+    subject: str,
+    role: Role,
+    expires_delta: datetime.timedelta | None = None,
 ) -> str:
-    """Perform login for a provider user and return the access token string."""
-    login_data = {
-        "username": TEST_PROVIDER_USERNAME, 
-        "password": TEST_PROVIDER_PASSWORD,
-        "remember_me": False  # Add remember_me field
+    """Helper function to create a JWT token."""
+    if expires_delta:
+        expire = datetime.datetime.now(datetime.timezone.utc) + expires_delta
+    else:
+        expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    to_encode = {
+        "sub": subject,
+        "role": role.value,
+        "exp": expire
     }
-    login_url = f"{test_settings.API_V1_STR}/auth/login"
-    logger.info(f"Attempting provider login for provider_token fixture via URL: {login_url}")
-    
-    response = await async_client.post(login_url, json=login_data) # Use json= instead of data=
-    
-    logger.info(f"Provider login response status: {response.status_code}")
-    try:
-        response_json = response.json()
-        logger.info(f"Provider login response JSON: {response_json}") 
-    except Exception as e:
-        logger.error(f"Failed to parse provider login response JSON: {e}")
-        logger.error(f"Provider login response text: {response.text}")
-        response_json = {}
+    return jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
 
-    if response.status_code != 200:
-        logger.error(f"Provider login failed: {response.status_code} - {response.text}")
-        pytest.fail(f"Provider login failed for provider_token fixture: {response.status_code} - {response.text}")
+# --- AWS Mock Fixtures (using moto) ---
+@pytest.fixture(scope='session')
+def aws_credentials() -> None: 
+    """Mocked AWS Credentials for moto."""
+    os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'
+    os.environ['AWS_SECURITY_TOKEN'] = 'testing'
+    os.environ['AWS_SESSION_TOKEN'] = 'testing'
+    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
-    access_token = response_json.get("access_token")
-    if not access_token:
-        pytest.fail("Access token not found in provider login response for provider_token fixture.")
-        
-    logger.info("provider_token fixture generated successfully.")
-    return access_token
+@pytest.fixture(scope='session')
+def s3_client(aws_credentials: None) -> 'boto3.client': 
+    """Mocked S3 client."""
+    with mock_aws():
+        yield boto3.client('s3', region_name='us-east-1')
+
+@pytest.fixture(scope='session')
+def bedrock_client(aws_credentials: None) -> 'boto3.client': 
+    """Mocked Bedrock client."""
+    with mock_aws():
+        yield boto3.client('bedrock', region_name='us-east-1')
+
+@pytest.fixture(scope='session')
+def bedrock_runtime_client(aws_credentials: None) -> 'boto3.client': 
+    """Mocked Bedrock Runtime client."""
+    with mock_aws():
+        yield boto3.client('bedrock-runtime', region_name='us-east-1')
+
+# If using Comprehend Medical
+@pytest.fixture(scope='session')
+def comprehend_medical_client(aws_credentials: None) -> 'boto3.client': 
+    """Mocked Comprehend Medical client."""
+    with mock_aws():
+        yield boto3.client('comprehendmedical', region_name='us-east-1')
+
+# Example: Create a mock S3 bucket if needed by tests
+@pytest.fixture(scope='session')
+def mock_s3_bucket(s3_client: 'boto3.client') -> str: 
+    """Create a mock S3 bucket for testing."""
+    bucket_name = "mock-clarity-data-bucket"
+    s3_client.create_bucket(Bucket=bucket_name)
+    return bucket_name
+
+# --- Debugging Fixture ---
+@pytest_asyncio.fixture
+async def initialized_app_fixture(
+    mock_user_repository: InMemoryUserRepository, settings: Settings
+) -> FastAPI: 
+    _app = create_application() 
+
+    _app.include_router(api_v1_router, prefix=settings.API_V1_STR)
+
+    test_db_url = settings.DATABASE_URL or "sqlite+aiosqlite:///:memory:"
+    engine = create_async_engine(
+        test_db_url,
+        poolclass=NullPool,
+        connect_args={"check_same_thread": False} 
+    )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async_session_factory = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+        async with async_session_factory() as session:
+            yield session
+
+    _app.dependency_overrides[get_db_session] = override_get_db_session
+
+    _app.dependency_overrides[get_user_repository_provider] = (
+        lambda: mock_user_repository
+    )
+    _app.dependency_overrides[get_llm_service] = lambda: AsyncMock() 
+    _app.dependency_overrides[get_pat_service] = lambda: AsyncMock() 
+
+    yield _app
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
