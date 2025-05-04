@@ -12,7 +12,7 @@ from sqlalchemy import select, and_, or_, between, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.alert import Alert, AlertStatus, AlertPriority, AlertType
-from app.core.domain.exceptions.security_exceptions import AuthenticationError
+from app.core.errors.security_exceptions import AuthenticationError
 from app.core.interfaces.repositories.alert_repository_interface import AlertRepositoryInterface
 from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
 from app.infrastructure.models.alert_model import AlertModel
