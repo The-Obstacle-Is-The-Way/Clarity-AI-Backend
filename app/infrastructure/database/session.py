@@ -1,57 +1,75 @@
-"""
-Database session management module.
-
-This module provides SQLAlchemy session management functionality
-following clean architecture principles with proper separation of concerns.
-"""
-
 from collections.abc import AsyncGenerator
 import logging
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
 from sqlalchemy.orm import sessionmaker
-
-from app.core.config import settings
+from fastapi import Request
 
 logger = logging.getLogger(__name__)
 
-logger.info(f"Attempting to create async engine with URL: {settings.DATABASE_URL}")
-
-if not settings.DATABASE_URL.startswith("sqlite+aiosqlite") and not settings.DATABASE_URL.startswith("postgresql+asyncpg"):
-    error_msg = f"DATABASE_URL is not configured for a known async driver: {settings.DATABASE_URL}"
-    logger.error(error_msg)
-    raise ValueError(error_msg)
-
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=getattr(settings, 'DB_ECHO_LOG', False),
-    future=True,
-    pool_pre_ping=True,
-)
-
-AsyncSessionLocal = sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
-
-logger.info("Async database engine and sessionmaker configured successfully.")
-
-
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+def create_db_engine_and_session(db_url: str, echo: bool = False) -> tuple[AsyncEngine, sessionmaker[AsyncSession]]:
     """
-    Dependency function to get an async database session.
+    Creates the SQLAlchemy async engine and sessionmaker.
+
+    Args:
+        db_url: The database connection URL.
+        echo: Whether to enable SQLAlchemy echo logging.
+
+    Returns:
+        A tuple containing the created AsyncEngine and sessionmaker.
+        
+    Raises:
+        ValueError: If the db_url is not for a known async driver.
+    """
+    logger.info(f"Creating DB engine and session for URL: {db_url}")
+    if not db_url.startswith(("sqlite+aiosqlite", "postgresql+asyncpg")):
+        error_msg = f"Database URL is not configured for a known async driver: {db_url}"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    engine = create_async_engine(
+        db_url,
+        echo=echo,
+        future=True,
+        pool_pre_ping=True,
+    )
+
+    session_local = sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+    logger.info("DB Engine and session_local created successfully.")
+    return engine, session_local
+
+async def get_async_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    """
+    FastAPI dependency function to get an async database session.
+
+    Retrieves the session factory (`sessionmaker` instance) stored in
+    `request.app.state.db_session_factory` during application startup.
+
+    Args:
+        request: The FastAPI Request object.
 
     Yields:
-        AsyncSession: Session for async database operations
+        AsyncSession: An active SQLAlchemy async session.
+        
+    Raises:
+        AttributeError: If `request.app.state.db_session_factory` is not set.
+        Exception: Re-raises exceptions during session operations after rollback.
     """
-    logger.debug("Creating async session from AsyncSessionLocal")
-    async with AsyncSessionLocal() as session:
+    session_factory = getattr(request.app.state, 'db_session_factory', None)
+    if not session_factory or not isinstance(session_factory, sessionmaker):
+        logger.error("Database session factory 'db_session_factory' not found in app.state or is not a sessionmaker.")
+        raise AttributeError("Database session factory not configured in application state.")
+
+    async with session_factory() as session:
         try:
             yield session
         except Exception as e:
-            logger.error(f"Rolling back session due to exception: {e}")
+            logger.error(f"Rolling back session due to exception: {e}", exc_info=True)
             await session.rollback()
             raise

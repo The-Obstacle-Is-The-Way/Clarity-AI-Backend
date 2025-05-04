@@ -12,8 +12,11 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from app.config.settings import Settings, get_settings
 
-# CORRECTED Import for database components
-from app.core.dependencies.database import init_db  # Corrected path for init_db
+# REMOVED Import for old database init
+# from app.core.dependencies.database import init_db
+
+# ADDED Import for the new database factory function
+from app.infrastructure.database.session import create_db_engine_and_session
 
 # MOVED logging_config import just before use
 from app.core.logging_config import LOGGING_CONFIG
@@ -41,17 +44,42 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Context manager to handle application startup and shutdown logic.
     """
     logger.info("Application startup: Initializing resources...")
+    settings = get_settings() # Get settings within lifespan
     
-    # Initialize Database
-    logger.info("Initializing database connection...")
-    await init_db() 
-    logger.info("Database connection initialized.")
+    # Initialize Database Engine and Session Factory
+    logger.info("Initializing database engine and session factory...")
+    try:
+        # Pass the DB URL and echo flag from settings
+        db_engine, db_session_factory = create_db_engine_and_session(
+            db_url=str(settings.DATABASE_URL), 
+            echo=getattr(settings, 'DB_ECHO_LOG', False)
+        )
+        # Store engine and factory in app state for access by dependencies
+        app.state.db_engine = db_engine
+        app.state.db_session_factory = db_session_factory
+        logger.info("Database engine and session factory initialized and stored in app.state.")
+        
+        # Optional: If you need to ensure tables are created (e.g., for tests without migrations)
+        # You might add a call like this, but it's generally discouraged for production startups.
+        # from app.infrastructure.database.base_class import Base
+        # async with db_engine.begin() as conn:
+        #     await conn.run_sync(Base.metadata.create_all)
+        # logger.info("Database tables checked/created (if using create_all).")
+
+    except Exception as e:
+        logger.exception("CRITICAL: Failed to initialize database connection.", exc_info=True)
+        # Depending on requirements, you might raise the exception to halt startup
+        # raise RuntimeError("Failed to initialize database") from e
+        # Or allow startup but log critical failure
 
     # Initialize Redis Pool
     logger.info("Initializing Redis connection pool...")
-    settings = get_settings()
-    await initialize_redis_pool(settings.REDIS_URL)
-    logger.info("Redis connection pool initialized.")
+    # settings = get_settings() # Settings already fetched above
+    try:
+        await initialize_redis_pool(str(settings.REDIS_URL))
+        logger.info("Redis connection pool initialized.")
+    except Exception as e:
+        logger.exception("Failed to initialize Redis connection pool.", exc_info=True)
 
     # You could add other startup logic here, like connecting to external services
     
@@ -61,9 +89,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # --- Shutdown Logic ---
     logger.info("Application shutdown: Cleaning up resources...")
     
-    # Close database connections (handled by SessionLocal usually, but good practice)
-    # await engine.dispose() # Typically not needed with async engines and session management
-    logger.info("Database resources cleaned (implicitly by session management).")
+    # Close database connections - Dispose the engine stored in app.state
+    if hasattr(app.state, 'db_engine'):
+        logger.info("Disposing database engine...")
+        await app.state.db_engine.dispose()
+        logger.info("Database engine disposed.")
+    else:
+        logger.warning("Database engine (app.state.db_engine) not found during shutdown.")
 
     # Close Redis Connection Pool
     logger.info("Closing Redis connection pool...")
