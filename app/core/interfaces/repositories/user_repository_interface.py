@@ -14,7 +14,7 @@ from uuid import UUID
 from app.core.domain.entities.user import User
 
 
-class UserRepositoryInterface(ABC):
+class IUserRepository(ABC):
     """
     Abstract interface for User entity repositories.
     

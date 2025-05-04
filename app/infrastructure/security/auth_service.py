@@ -12,7 +12,9 @@ from typing import Optional, Tuple
 
 from app.core.domain.entities.user import User
 from app.core.errors.security_exceptions import InvalidCredentialsError
-from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+from app.core.interfaces.repositories.user_repository_interface import (
+    IUserRepository,
+)
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.infrastructure.security.password_handler import PasswordHandler
 
@@ -29,7 +31,7 @@ class AuthenticationService(AuthServiceInterface):
     def __init__(
         self,
         password_handler: PasswordHandler,
-        user_repository: UserRepositoryInterface
+        user_repository: IUserRepository
     ):
         """
         Initialize the auth service with required dependencies.
@@ -275,6 +277,6 @@ def get_auth_service() -> AuthServiceInterface:
     
     container = get_container()
     password_handler = PasswordHandler()
-    user_repository = container.get(UserRepositoryInterface)
+    user_repository = container.get(IUserRepository)
     
     return AuthenticationService(password_handler, user_repository)

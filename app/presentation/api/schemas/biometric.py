@@ -13,7 +13,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field, validator
 
 from app.core.domain.entities.biometric import BiometricType
-from app.presentation.api.schemas.base import BaseModelConfig
+
+# Corrected import path for BaseModelConfig
+from app.presentation.api.schemas.xgboost import BaseModelConfig
 
 
 class BiometricBase(BaseModelConfig):

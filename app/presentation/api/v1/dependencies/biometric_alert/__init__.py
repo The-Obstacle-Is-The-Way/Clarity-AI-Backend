@@ -15,11 +15,14 @@ from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository impor
     BiometricAlertRepository,
 )
 # Removed faulty import from non-existent endpoints.biometric_alert_rules
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import ( 
-    BiometricRuleRepository,
+# Corrected import to use the actual implementation class name
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import (
+    SQLAlchemyBiometricAlertRuleRepository as BiometricRuleRepository,
 )
-from app.presentation.api.v1.dependencies.database import get_db_session
-from app.presentation.api.v1.dependencies.security import get_encryption_service
+# Corrected import path for get_db_session
+from app.core.dependencies.database import get_db_session
+# Corrected import path for get_encryption_service
+from app.presentation.api.dependencies.repository import get_encryption_service
 
 
 async def get_alert_repository(

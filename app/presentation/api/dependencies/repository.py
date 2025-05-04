@@ -9,7 +9,10 @@ This is a compatibility module that re-exports from database.py.
 from fastapi import Depends
 from typing import Callable, Type, TypeVar
 
-from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.services.encryption_service_interface import (
+    IEncryptionService,
+)
 from app.infrastructure.security.encryption_service import EncryptionService
 from app.infrastructure.di.container import get_container
 

@@ -13,8 +13,15 @@ from fastapi.security import OAuth2PasswordBearer
 # Correct service/factory imports
 from app.core.domain.entities.user import User
 from app.core.errors.security_exceptions import InvalidCredentialsError
-from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
-from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+from app.core.interfaces.repositories.patient_repository_interface import (
+    IPatientRepository,
+)
+from app.core.interfaces.repositories.user_repository_interface import (
+    IUserRepository,
+)
+from app.core.interfaces.services.auth_service_interface import (
+    AuthServiceInterface,
+)
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.infrastructure.repositories.user_repository import get_user_repository
 from app.infrastructure.security.auth_service import get_auth_service
@@ -24,7 +31,7 @@ from app.infrastructure.security.jwt_service import get_jwt_service
 
 AuthServiceDep = Annotated[AuthServiceInterface, Depends(get_auth_service)]
 JWTServiceDep = Annotated[JWTServiceInterface, Depends(get_jwt_service)]
-UserRepoDep = Annotated[UserRepositoryInterface, Depends(get_user_repository)]
+UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository)]
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
