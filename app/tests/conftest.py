@@ -270,9 +270,7 @@ def mock_s3_bucket(s3_client: "boto3.client") -> str:
 # --- Debugging Fixture ---
 @pytest_asyncio.fixture
 async def initialized_app_fixture(
-    test_db_session: AsyncSession, 
-    user_repository: UserRepository, 
-    settings: Settings
+    test_db_session: AsyncSession, user_repository: UserRepository, settings: Settings
 ) -> FastAPI:
     _app = create_application()
 
@@ -308,8 +306,7 @@ async def initialized_app_fixture(
 # --- Test User Fixtures ---
 @pytest.fixture
 async def test_patient_user(
-    test_db_session: AsyncSession, 
-    user_repository: UserRepository
+    test_db_session: AsyncSession, user_repository: UserRepository
 ) -> DomainUser:
     """Fixture for a test patient user."""
     return await create_user_in_db(
@@ -323,8 +320,7 @@ async def test_patient_user(
 
 @pytest.fixture
 async def test_provider_user(
-    test_db_session: AsyncSession, 
-    user_repository: UserRepository
+    test_db_session: AsyncSession, user_repository: UserRepository
 ) -> DomainUser:
     """Fixture for a test provider user."""
     return await create_user_in_db(
@@ -338,8 +334,7 @@ async def test_provider_user(
 
 @pytest.fixture
 async def test_admin_user(
-    test_db_session: AsyncSession, 
-    user_repository: UserRepository
+    test_db_session: AsyncSession, user_repository: UserRepository
 ) -> DomainUser:
     """Fixture for a test admin user."""
     return await create_user_in_db(
@@ -353,10 +348,10 @@ async def test_admin_user(
 
 @pytest.fixture
 async def user_with_custom_role(
-    test_db_session: AsyncSession, 
-    user_repository: UserRepository
+    test_db_session: AsyncSession, user_repository: UserRepository
 ) -> Callable[..., Awaitable[DomainUser]]:
     """Factory fixture to create users with specific roles."""
+
     async def _create_user(roles: set[UserRole], email_suffix: str = "custom") -> DomainUser:
         return await create_user_in_db(
             user_repo=user_repository,
@@ -365,6 +360,7 @@ async def user_with_custom_role(
             full_name=f"Test {email_suffix.capitalize()} User",
             roles=roles,
         )
+
     return _create_user
 
 
@@ -413,7 +409,7 @@ async def create_user_in_db(
 
     domain_user = DomainUser(
         id=user_id,
-        username=email.split('@')[0],  # Assuming username generation logic
+        username=email.split("@")[0],  # Assuming username generation logic
         email=email,
         password_hash=hashed_password,
         full_name=full_name,
@@ -427,6 +423,6 @@ async def create_user_in_db(
         failed_login_attempts=0,
         locked_until=None,
         mfa_secret=None,
-        mfa_backup_codes=None
+        mfa_backup_codes=None,
     )
     return await user_repo.create(domain_user)

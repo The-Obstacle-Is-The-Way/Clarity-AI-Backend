@@ -10,16 +10,16 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.interfaces.repositories.rule_repository_interface import RuleRepositoryInterface
-from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
+from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
+from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
 from app.infrastructure.di.provider import get_service_instance
 
 
 def get_biometric_service() -> BiometricServiceInterface:
     """
     Dependency for injecting the biometric service.
-    
+
     Returns:
         BiometricServiceInterface: Instance of the biometric service.
     """
@@ -31,9 +31,9 @@ def get_alert_service() -> AlertServiceInterface:
     return get_service_instance(AlertServiceInterface)
 
 
-def get_rule_repository() -> RuleRepositoryInterface:
-    """Dependency injector for RuleRepositoryInterface."""
-    return get_service_instance(RuleRepositoryInterface)
+def get_biometric_rule_repository() -> BiometricRuleRepository:
+    """Dependency injector for BiometricRuleRepository."""
+    return get_service_instance(BiometricRuleRepository)
 
 
 # Type aliases for cleaner dependency annotations

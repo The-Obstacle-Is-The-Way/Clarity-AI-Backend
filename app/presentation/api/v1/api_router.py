@@ -8,7 +8,6 @@ Aggregates all endpoint routers for this version.
 from fastapi import APIRouter
 
 # Corrected imports pointing to the canonical router location
-from app.presentation.api.v1.routes.actigraphy import router as actigraphy_router
 from app.presentation.api.v1.routes.analytics import router as analytics_router
 from app.presentation.api.v1.routes.auth import router as auth_router
 from app.presentation.api.v1.routes.biometric import router as biometric_router
@@ -32,7 +31,7 @@ api_v1_router = APIRouter()
 
 # Include routers using the new variable names
 api_v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-api_v1_router.include_router(actigraphy_router, prefix="/actigraphy", tags=["Actigraphy"])
+# api_v1_router.include_router(actigraphy_router, prefix="/actigraphy", tags=["Actigraphy"])
 api_v1_router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
 api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biometrics"])
 api_v1_router.include_router(
