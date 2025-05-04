@@ -15,7 +15,7 @@ from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, Al
 from app.core.exceptions.auth_exceptions import AuthenticationError
 from app.core.interfaces.repositories.alert_repository_interface import IAlertRepository
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
-from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import Alert as AlertModel
+from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import BiometricAlertModel as AlertModel
 from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import AlertRule as AlertRuleModel
 from app.infrastructure.models.user_model import UserModel
 
