@@ -13,6 +13,7 @@ from app.infrastructure.repositories.sqlalchemy.alert_repository import AlertRep
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import ( 
     BiometricAlertRepository,
 )
+# Removed faulty import from non-existent endpoints.biometric_alert_rules
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import ( 
     BiometricRuleRepository,
 )
