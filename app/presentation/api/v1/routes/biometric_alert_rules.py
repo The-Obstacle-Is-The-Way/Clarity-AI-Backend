@@ -12,13 +12,13 @@ from pydantic import UUID4
 
 from app.domain.entities.user import User as DomainUser
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
+from app.presentation.api.dependencies.biometric import get_biometric_rule_repository
 from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.schemas.alert import (
     AlertRuleCreateRequest,
     AlertRuleResponse,
     AlertRuleUpdateRequest,
 )
-from app.presentation.api.v1.dependencies.biometric import get_rule_repository
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ router = APIRouter(
 async def create_alert_rule(
     rule_data: AlertRuleCreateRequest,
     current_user: DomainUser = Depends(get_current_active_user),
-    rule_repo: BiometricRuleRepository = Depends(get_rule_repository),
+    rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
 ) -> AlertRuleResponse:
     """
     Create a new biometric alert rule for the current user.
@@ -69,7 +69,7 @@ async def create_alert_rule(
 )
 async def get_alert_rules(
     current_user: DomainUser = Depends(get_current_active_user),
-    rule_repo: BiometricRuleRepository = Depends(get_rule_repository),
+    rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> list[AlertRuleResponse]:
@@ -94,7 +94,7 @@ async def get_alert_rules(
 async def get_alert_rule(
     rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
     current_user: DomainUser = Depends(get_current_active_user),
-    rule_repo: BiometricRuleRepository = Depends(get_rule_repository),
+    rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
 ) -> AlertRuleResponse:
     """
     Get details for a specific biometric alert rule owned by the current user.
@@ -122,7 +122,7 @@ async def update_alert_rule(
     rule_data: AlertRuleUpdateRequest,
     rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
     current_user: DomainUser = Depends(get_current_active_user),
-    rule_repo: BiometricRuleRepository = Depends(get_rule_repository),
+    rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
 ) -> AlertRuleResponse:
     """
     Update an existing biometric alert rule owned by the current user.
@@ -149,7 +149,7 @@ async def update_alert_rule(
 async def delete_alert_rule(
     rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
     current_user: DomainUser = Depends(get_current_active_user),
-    rule_repo: BiometricRuleRepository = Depends(get_rule_repository),
+    rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
 ) -> None:
     """
     Delete a specific biometric alert rule owned by the current user.
