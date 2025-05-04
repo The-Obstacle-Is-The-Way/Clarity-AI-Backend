@@ -328,9 +328,10 @@ async def initialized_app(
     
     Yields the app instance for use in tests.
     """
+    # Create dependency overrides using the correct import (get_db_session not get_db)
     dependency_overrides = {
         get_settings: lambda: test_settings,
-        get_db_session: mock_db_session_override, 
+        get_db_session: mock_db_session_override,  # Ensure this matches the imported dependency
         get_pat_service: mock_pat_service_override, 
         get_jwt_service: lambda: mock_jwt_service, 
         get_auth_service_provider: lambda: mock_auth_service, 

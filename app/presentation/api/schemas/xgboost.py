@@ -153,10 +153,17 @@ class ModelInfoResponse(BaseModelConfig):
     performance_metrics: Optional[PerformanceMetrics] = None
 
 class SideEffectRisk(BaseModelConfig):
-    """Risk model for side effects."""
-    effect_name: str
-    severity: str  # mild, moderate, severe
-    likelihood: float  # 0-1 probability
+    """Risk model for side effects.
+    
+    Can be used in two formats:
+    1. Detail format with specific effect name, severity, and likelihood
+    2. Categorized format with common and rare side effects
+    """
+    effect_name: Optional[str] = None
+    severity: Optional[str] = None
+    likelihood: Optional[float] = None
+    common: Optional[List[str]] = Field(default_factory=list)
+    rare: Optional[List[str]] = Field(default_factory=list)
 
 class TreatmentResponseRequest(BaseModelConfig):
     """Request schema for treatment response predictions."""
@@ -186,8 +193,13 @@ class OutcomeTrajectory(BaseModelConfig):
     outcome_type: OutcomeType
     trajectory: List[OutcomeTrajectoryPoint]
 
-class ExpectedOutcome(BaseModelConfig): # Placeholder for ExpectedOutcome structure
-    outcome_details: List[OutcomeDetails]
+class ExpectedOutcome(BaseModelConfig):
+    """Expected outcome model for treatment response predictions."""
+    outcome_details: Optional[List[OutcomeDetails]] = None
+    symptom_improvement: Optional[str] = None
+    time_to_response: Optional[str] = None
+    sustained_response_likelihood: Optional[ResponseLikelihood] = None
+    functional_improvement: Optional[str] = None
 
 class TherapyDetails(BaseModelConfig):
     """Details about a therapy or treatment."""

@@ -130,24 +130,19 @@ def client():
                 }
             ),
             TreatmentResponseResponse(
-                prediction_id='pred-123',
                 patient_id='test-patient-123',
-                treatment_type=TreatmentType.THERAPY_CBT,
-                treatment_details={
-                    'therapy_type': 'CBT',
-                    'frequency': 'weekly',
-                    'frequency_per_week': 1,
-                    'duration_weeks': 12
-                },
+                treatment_id='cbt-treatment-001',
+                treatment_name='Cognitive Behavioral Therapy',
                 response_likelihood=ResponseLikelihood.MODERATE,
-                efficacy_score=0.75,
-                confidence=0.85,
-                expected_outcome=ExpectedOutcome(
-                    symptom_improvement='moderate',
-                    time_to_response='4-6 weeks',
-                    sustained_response_likelihood=ResponseLikelihood.MODERATE,
-                    functional_improvement='moderate'
-                ),
+                probability=0.75,
+                time_frame=TimeFrame.MEDIUM_TERM,
+                expected_outcomes=[
+                    OutcomeDetails(
+                        domain=OutcomeDomain.DEPRESSION,
+                        outcome_type=OutcomeType.SYMPTOM_REDUCTION,
+                        predicted_value=0.6
+                    )
+                ],
                 side_effect_risk=SideEffectRisk(
                     common=[],
                     rare=[]

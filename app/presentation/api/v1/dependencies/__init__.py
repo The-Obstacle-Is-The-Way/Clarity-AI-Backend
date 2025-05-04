@@ -28,7 +28,7 @@ from app.presentation.api.v1.dependencies.biometric import (
 )
 
 # Import alert repository from correct module
-from app.presentation.api.v1.dependencies.biometric_alert import get_alert_repository
+from app.presentation.api.v1.dependencies.biometric_alert import get_alert_repository, get_biometric_repository, get_rule_repository
 
 from app.presentation.api.v1.dependencies.digital_twin import (
     get_digital_twin_service

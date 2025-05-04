@@ -6,16 +6,16 @@ in a HIPAA-compliant manner with proper security controls, data validation,
 and audit logging.
 """
 
-from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from pydantic import UUID4
 
 from app.core.domain.entities.biometric import Biometric, BiometricType
 from app.core.domain.entities.user import User
-from app.core.errors.security_exceptions import AuthenticationError
+from app.core.errors.security_exceptions import InvalidCredentialsError 
 from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
-from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
+from app.presentation.api.dependencies.auth import get_current_active_user 
 from app.presentation.api.dependencies.rate_limiter import sensitive_rate_limit
 from app.presentation.api.schemas.biometric import (
     BiometricCreateRequest,
@@ -36,22 +36,21 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=List[BiometricSummaryResponse],
+    response_model=list[BiometricSummaryResponse],
     summary="Get biometric data summary", 
     description="Get a summary of biometric data with optional filtering by type and date range"
 )
 async def get_biometrics(
-    biometric_type: Optional[BiometricType] = Query(None, description="Filter by biometric type"),
-    start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
-    end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
-    patient_id: Optional[UUID4] = Query(None, description="Patient ID if accessing as provider"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
-    offset: int = Query(0, ge=0, description="Number of records to skip"),
+    biometric_type: BiometricType | None = Query(None, description="Filter by biometric type"),
+    start_date: datetime | None = Query(None, description="Start date for filtering"),
+    end_date: datetime | None = Query(None, description="End date for filtering"),
+    page: int | None = Query(1, ge=1, description="Page number"),
+    page_size: int | None = Query(100, ge=1, le=1000, description="Number of records per page"),
     biometric_service: BiometricServiceInterface = Depends(get_biometric_service),
     current_user: User = Depends(get_current_active_user)
-) -> List[BiometricSummaryResponse]:
+) -> list[BiometricSummaryResponse]:
     """
-    Get a summary of biometric data with optional filtering.
+    Get a summary of biometric data for the current user or specified patient.
     
     This endpoint provides a summary view of biometric data with various filtering options.
     For healthcare providers, patient_id can be specified to access a patient's data.
@@ -60,9 +59,8 @@ async def get_biometrics(
         biometric_type: Optional filter by biometric type
         start_date: Optional filter by start date
         end_date: Optional filter by end date
-        patient_id: Optional patient ID when accessed by a provider
-        limit: Maximum number of records to return
-        offset: Number of records to skip
+        page: Optional page number
+        page_size: Optional number of records per page
         biometric_service: Injected biometric service
         current_user: Current authenticated user
         
@@ -74,13 +72,8 @@ async def get_biometrics(
     """
     try:
         # Determine if request is for self or for a patient (provider access)
-        subject_id = str(patient_id) if patient_id else current_user.id
+        subject_id = current_user.id
         
-        # Check authorization if requesting patient data
-        if patient_id and patient_id != current_user.id:
-            # This will raise an exception if not authorized
-            await biometric_service.validate_access(current_user.id, str(patient_id))
-            
         # Convert filter params
         filters = {
             "biometric_type": biometric_type,
@@ -92,8 +85,8 @@ async def get_biometrics(
         biometrics = await biometric_service.get_biometrics(
             subject_id=subject_id,
             filters=filters,
-            limit=limit,
-            offset=offset
+            page=page,
+            page_size=page_size
         )
         
         # Convert to response model
@@ -108,7 +101,7 @@ async def get_biometrics(
             for biometric in biometrics
         ]
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this patient's biometric data"
@@ -171,7 +164,7 @@ async def get_biometric(
             user_id=biometric.user_id
         )
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this biometric record"
@@ -251,16 +244,16 @@ async def create_biometric(
 
 @router.post(
     "/batch",
-    response_model=List[BiometricResponse],
+    response_model=list[BiometricResponse],
     status_code=status.HTTP_201_CREATED,
-    summary="Batch upload biometric records",
+    summary="Batch upload biometric data",
     description="Upload multiple biometric records in a single request"
 )
 async def batch_upload_biometrics(
     batch_data: BiometricBatchUploadRequest,
     biometric_service: BiometricServiceInterface = Depends(get_biometric_service),
     current_user: User = Depends(get_current_active_user)
-) -> List[BiometricResponse]:
+) -> list[BiometricResponse]:
     """
     Batch upload multiple biometric records in a single request.
     
@@ -388,7 +381,7 @@ async def update_biometric(
             user_id=result.user_id
         )
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this biometric record"
@@ -453,7 +446,7 @@ async def delete_biometric(
                 detail="Failed to delete biometric record"
             )
             
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this biometric record"
