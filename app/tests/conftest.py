@@ -3,7 +3,7 @@ import datetime
 import logging
 import os
 import uuid
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable, Awaitable
 from unittest.mock import AsyncMock
 
 import boto3
@@ -19,18 +19,17 @@ from sqlalchemy.pool import NullPool, StaticPool
 
 # --- Core App/Config Imports ---
 from app.core.config.settings import Settings, get_settings
-from app.core.domain.entities.user import User, UserRole
+from app.core.domain.entities.user import User, UserRole, UserStatus
+from app.domain.entities.user import User as DomainUser
 from app.domain.services.pat_service import PATService
 from app.infrastructure.security.auth_service import AuthenticationService
 from app.infrastructure.security.jwt_service import JWTService
+from app.infrastructure.security.password_handler import PasswordHandler
 
 # Corrected database imports
 from app.infrastructure.database.base_class import Base
 from app.infrastructure.database.session import get_async_session
-from app.infrastructure.persistence.repositories.in_memory_user_repository import (
-    InMemoryUserRepository,
-)
-from app.infrastructure.persistence.repositories.user_repository import UserRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import UserRepository
 
 # --- API Layer Imports ---
 from app.main import create_application
@@ -92,7 +91,7 @@ def mock_jwt_service() -> AsyncMock:
 
 @pytest.fixture(scope="function")
 def mock_auth_service(
-    mock_user_repository_override: Callable[[], UserRepository], mock_jwt_service: AsyncMock
+    password_handler: PasswordHandler, user_repository: UserRepository
 ) -> AsyncMock:
     """Provide a mock authentication service."""
     mock = AsyncMock(spec=AuthenticationService)
@@ -271,7 +270,9 @@ def mock_s3_bucket(s3_client: "boto3.client") -> str:
 # --- Debugging Fixture ---
 @pytest_asyncio.fixture
 async def initialized_app_fixture(
-    mock_user_repository: InMemoryUserRepository, settings: Settings
+    test_db_session: AsyncSession, 
+    user_repository: UserRepository, 
+    settings: Settings
 ) -> FastAPI:
     _app = create_application()
 
@@ -293,7 +294,7 @@ async def initialized_app_fixture(
 
     _app.dependency_overrides[get_async_session] = override_get_async_session
 
-    _app.dependency_overrides[get_user_repository_provider] = lambda: mock_user_repository
+    _app.dependency_overrides[get_user_repository_provider] = lambda: user_repository
     _app.dependency_overrides[get_llm_service] = lambda: AsyncMock()
     _app.dependency_overrides[get_pat_service] = lambda: AsyncMock()
 
@@ -302,3 +303,130 @@ async def initialized_app_fixture(
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+
+
+# --- Test User Fixtures ---
+@pytest.fixture
+async def test_patient_user(
+    test_db_session: AsyncSession, 
+    user_repository: UserRepository
+) -> DomainUser:
+    """Fixture for a test patient user."""
+    return await create_user_in_db(
+        user_repo=user_repository,
+        email="testpatient@example.com",
+        password="password",
+        full_name="Test Patient",
+        roles={UserRole.PATIENT},
+    )
+
+
+@pytest.fixture
+async def test_provider_user(
+    test_db_session: AsyncSession, 
+    user_repository: UserRepository
+) -> DomainUser:
+    """Fixture for a test provider user."""
+    return await create_user_in_db(
+        user_repo=user_repository,
+        email="testprovider@example.com",
+        password="providerpassword",
+        full_name="Test Provider",
+        roles={UserRole.CLINICIAN},  # Example provider role
+    )
+
+
+@pytest.fixture
+async def test_admin_user(
+    test_db_session: AsyncSession, 
+    user_repository: UserRepository
+) -> DomainUser:
+    """Fixture for a test admin user."""
+    return await create_user_in_db(
+        user_repo=user_repository,
+        email="testadmin@example.com",
+        password="adminpassword",
+        full_name="Test Admin",
+        roles={UserRole.ADMIN},
+    )
+
+
+@pytest.fixture
+async def user_with_custom_role(
+    test_db_session: AsyncSession, 
+    user_repository: UserRepository
+) -> Callable[..., Awaitable[DomainUser]]:
+    """Factory fixture to create users with specific roles."""
+    async def _create_user(roles: set[UserRole], email_suffix: str = "custom") -> DomainUser:
+        return await create_user_in_db(
+            user_repo=user_repository,
+            email=f"test{email_suffix}@example.com",
+            password="password",
+            full_name=f"Test {email_suffix.capitalize()} User",
+            roles=roles,
+        )
+    return _create_user
+
+
+# --- Test Client and App Initialization ---
+@pytest.fixture(scope="session")
+def initialized_app(
+    settings: Settings,
+    test_db_session: AsyncSession,
+    user_repository: UserRepository,
+    mock_pat_service: AsyncMock,
+) -> FastAPI:
+    """Fixture to initialize the FastAPI application for testing."""
+    app = create_application()
+
+    # Define the provider function inline for clarity
+    def override_get_user_repository_provider() -> UserRepository:
+        return user_repository
+
+    # Override dependencies with test implementations or mocks
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_async_session] = lambda: test_db_session
+    app.dependency_overrides[get_pat_service] = lambda: mock_pat_service
+    # app.dependency_overrides[get_llm_service] = lambda: mock_llm_service # Keep commented if not needed now
+    # Override with the actual repository instance via the provider function
+    app.dependency_overrides[get_user_repository_provider] = override_get_user_repository_provider
+
+    # Setup for database (ensure tables are created)
+    # Note: Moved db setup logic inside test_db_session fixture usually
+
+    return app
+
+
+async def create_user_in_db(
+    user_repo: UserRepository,
+    email: str,
+    password: str,
+    full_name: str,
+    roles: set[UserRole],
+    user_id: uuid.UUID | None = None,
+    status: UserStatus = UserStatus.ACTIVE,
+    mfa_enabled: bool = False,
+) -> DomainUser:
+    """Create a user in the database using the repository."""
+    user_id = user_id or uuid.uuid4()
+    hashed_password = PasswordHandler().hash_password(password)
+
+    domain_user = DomainUser(
+        id=user_id,
+        username=email.split('@')[0],  # Assuming username generation logic
+        email=email,
+        password_hash=hashed_password,
+        full_name=full_name,
+        roles=roles,
+        status=status,
+        mfa_enabled=mfa_enabled,
+        # Add other necessary fields from DomainUser if needed
+        created_at=datetime.datetime.now(datetime.timezone.utc),
+        updated_at=datetime.datetime.now(datetime.timezone.utc),
+        last_login_at=None,
+        failed_login_attempts=0,
+        locked_until=None,
+        mfa_secret=None,
+        mfa_backup_codes=None
+    )
+    return await user_repo.create(domain_user)
