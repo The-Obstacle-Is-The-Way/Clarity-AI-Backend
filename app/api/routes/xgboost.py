@@ -9,9 +9,6 @@ the new presentation layer endpoints following SOLID principles.
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.dependencies.database import get_db_session
 
 # Import from the new clean architecture
 from app.core.domain.entities.user import User
@@ -102,8 +99,8 @@ async def get_model_info(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving model info: {e!s}"
-        )
+            detail=f"Error retrieving model info: {e!s}",
+        ) from e
 
 
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
@@ -143,8 +140,8 @@ async def predict_risk(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating risk prediction: {e!s}"
-        )
+            detail=f"Error generating risk prediction: {e!s}",
+        ) from e
 
 
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
@@ -198,8 +195,8 @@ async def predict_outcome(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating outcome prediction: {e!s}"
-        )
+            detail=f"Error generating outcome prediction: {e!s}",
+        ) from e
 
 
 @router.post("/treatment-response", response_model=TreatmentResponseResponse)
@@ -258,5 +255,5 @@ async def predict_treatment_response(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error predicting treatment response: {e!s}"
-        )
+            detail=f"Error predicting treatment response: {e!s}",
+        ) from e
