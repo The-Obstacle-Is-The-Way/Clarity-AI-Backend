@@ -203,11 +203,13 @@ def client():
                         OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.3)
                     ]
                 ),
-                outcome_details=OutcomeDetails(
-                    domain=OutcomeDomain.DEPRESSION,
-                    outcome_type=OutcomeType.SYMPTOM_REDUCTION,
-                    predicted_value=0.65
-                ),
+                expected_outcomes=[
+                    OutcomeDetails(
+                        domain=OutcomeDomain.DEPRESSION,
+                        outcome_type=OutcomeType.SYMPTOM_REDUCTION,
+                        predicted_value=0.65
+                    )
+                ],
                 timestamp=datetime.now()
             )
         ),
