@@ -23,7 +23,7 @@ from app.api.dependencies import (
     get_pat_service,
     get_user_repository_provider,
 )
-from app.api.routes import auth as auth_router
+from app.presentation.api.v1.routes import auth as auth_router
 
 # --- Core App/Config Imports ---
 from app.core.config.settings import Settings, get_settings
@@ -222,7 +222,7 @@ async def test_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def seed_test_data(test_db_session: AsyncSession):
+async def seed_test_data(test_db_session: AsyncSession) -> None:
     """Fixture to seed the database with essential test users."""
     logger.info("Seeding test data...")
     
