@@ -10,22 +10,32 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 
+# Domain / Repository imports
 from app.domain.entities.user import User as DomainUser
-from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
-from app.presentation.api.dependencies.biometric import get_biometric_rule_repository
-from app.presentation.api.dependencies.auth import get_current_active_user
+from app.domain.repositories.biometric_rule_repository import (
+    BiometricRuleRepository,
+)
+
+# Presentation layer imports
 from app.presentation.api.schemas.alert import (
     AlertRuleCreateRequest,
     AlertRuleResponse,
     AlertRuleUpdateRequest,
 )
+from app.presentation.api.dependencies.auth import get_current_active_user
+from app.presentation.api.v1.dependencies.biometric import (
+    get_biometric_rule_repository,
+)
 
 logger = logging.getLogger(__name__)
 
+# Assuming that biometric alert rule endpoints are protected and require an
+# authenticated user. We attach the authentication dependency at the router
+# level to avoid repeating it for every path operation function.
 router = APIRouter(
     prefix="/alert-rules",
     tags=["biometric-alert-rules"],
-    dependencies=[Depends(get_current_active_user)],  # Assuming rules are protected
+    dependencies=[Depends(get_current_active_user)],
 )
 
 
