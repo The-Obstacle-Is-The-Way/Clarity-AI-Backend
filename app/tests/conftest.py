@@ -23,9 +23,10 @@ from app.core.domain.entities.user import User, UserRole
 from app.domain.services.pat_service import PATService
 from app.infrastructure.security.auth_service import AuthenticationService
 from app.infrastructure.security.jwt_service import JWTService
+
 # Corrected database imports
 from app.infrastructure.database.base_class import Base
-from app.infrastructure.database.session import get_db_session
+from app.infrastructure.database.session import get_async_session
 from app.infrastructure.persistence.repositories.in_memory_user_repository import (
     InMemoryUserRepository,
 )
@@ -34,6 +35,7 @@ from app.infrastructure.persistence.repositories.user_repository import UserRepo
 # --- API Layer Imports ---
 from app.main import create_application
 from app.presentation.api.v1.api_router import api_router as api_v1_router
+from app.presentation.api.dependencies.services import get_pat_service
 from app.presentation.api.v1.dependencies import (
     get_llm_service,
     get_user_repository_provider,
@@ -285,11 +287,11 @@ async def initialized_app_fixture(
 
     async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_async_session() -> AsyncGenerator[AsyncSession, None]:
         async with async_session_factory() as session:
             yield session
 
-    _app.dependency_overrides[get_db_session] = override_get_db_session
+    _app.dependency_overrides[get_async_session] = override_get_async_session
 
     _app.dependency_overrides[get_user_repository_provider] = lambda: mock_user_repository
     _app.dependency_overrides[get_llm_service] = lambda: AsyncMock()
