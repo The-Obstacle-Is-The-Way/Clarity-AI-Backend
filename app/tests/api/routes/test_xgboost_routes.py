@@ -13,7 +13,6 @@ from fastapi.testclient import TestClient
 
 # Import directly from app.api.schemas to avoid routes import issues
 from app.presentation.api.schemas.xgboost import (
-    ExpectedOutcome,
     ModelInfoRequest,
     ModelInfoResponse,
     OutcomeDetails,
@@ -166,7 +165,7 @@ def client():
             OutcomePredictionRequest(
                 patient_id='test-patient-456',
                 outcome_type=OutcomeType.SYMPTOM_REDUCTION,
-                outcome_timeframe=TimeFrame(weeks=12),
+                outcome_timeframe=TimeFrame.MEDIUM_TERM,
                 clinical_data={
                     'age': 40,
                     'gender': 'male',
