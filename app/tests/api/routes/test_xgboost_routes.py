@@ -142,6 +142,17 @@ def client():
                         predicted_value=0.6
                     )
                 ],
+                outcome_trajectories=[
+                    OutcomeTrajectory(
+                        domain=OutcomeDomain.DEPRESSION,
+                        outcome_type=OutcomeType.SYMPTOM_REDUCTION,
+                        trajectory=[
+                            OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.1),
+                            OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.2),
+                            OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.3),
+                        ]
+                    )
+                ],
                 side_effect_risk=SideEffectRisk(
                     common=[],
                     rare=[]

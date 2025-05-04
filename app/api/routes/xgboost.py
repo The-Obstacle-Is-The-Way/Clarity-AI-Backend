@@ -10,6 +10,8 @@ from typing import Annotated, Dict, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.dependencies.database import get_db_session
 
 # Import from the new clean architecture
 from app.core.domain.entities.user import User, UserRole
@@ -42,10 +44,15 @@ router = APIRouter(
 )
 
 
-def get_xgboost_service() -> XGBoostInterface:
+def get_xgboost_service(session: Annotated[AsyncSession, Depends(get_db_session)]) -> XGBoostInterface:
     """
     Dependency to get the XGBoost service instance.
     
+    Explicitly depends on AsyncSession to help FastAPI introspection.
+    
+    Args:
+        session: The database session (injected by Depends).
+        
     Returns:
         XGBoostInterface: Instance of the XGBoost service
     """
