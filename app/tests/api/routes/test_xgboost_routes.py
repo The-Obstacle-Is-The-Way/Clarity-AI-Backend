@@ -164,25 +164,22 @@ def client():
             '/xgboost/outcome-prediction',
             OutcomePredictionRequest(
                 patient_id='test-patient-456',
-                outcome_type=OutcomeType.SYMPTOM_REDUCTION,
-                outcome_timeframe=TimeFrame.MEDIUM_TERM,
-                clinical_data={
+                timeframe_days=90,
+                features={
                     'age': 40,
                     'gender': 'male',
-                    'diagnosis': 'anxiety',
-                    'baseline_severity': 7.0,
-                    'recent_crisis': True
+                    'diagnosis': 'MDD',
+                    'baseline_phq9': 20,
+                    'current_medication': 'Sertraline',
                 },
                 treatment_plan={
                     'treatment_type': 'therapy_cbt',
                     'frequency': 'weekly',
-                    'duration_weeks': 12
                 }
             ),
             OutcomePredictionResponse(
                 prediction_id='test-prediction-789',
                 patient_id='test-patient-456',
-                outcome_type=OutcomeType.SYMPTOM_REDUCTION,
                 outcome_score=0.4,
                 time_frame_days=84,
                 confidence=0.75,
