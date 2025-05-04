@@ -5,11 +5,13 @@ This module implements security middleware components following clean architectu
 including authentication, authorization, request validation, and secure logging.
 """
 
+import logging
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
+
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from typing import Optional, Any, Dict, List
-import logging
-from uuid import uuid4
+
 
 # Logging middleware for HIPAA-compliant structured logging
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -94,8 +96,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(
         self, 
         app: FastAPI,
-        auth_service: Optional[Any] = None,
-        exclude_paths: Optional[list[str]] = None
+        auth_service: Any | None = None,
+        exclude_paths: list[str] | None = None
     ):
         """
         Initialize authentication middleware.

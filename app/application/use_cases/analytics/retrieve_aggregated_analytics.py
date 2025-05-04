@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Retrieve Aggregated Analytics Use Case.
 
@@ -6,14 +5,14 @@ This module contains the use case for retrieving and formatting aggregated
 analytics data for dashboards and reporting.
 """
 
-from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
+from typing import Any
 
-from app.core.utils.logging import get_logger
-from app.domain.entities.analytics import AnalyticsAggregate
 from app.application.interfaces.repositories.analytics_repository import AnalyticsRepository
 from app.application.interfaces.services.cache_service import CacheService
+from app.core.utils.logging import get_logger
+from app.domain.entities.analytics import AnalyticsAggregate
+from app.domain.utils.datetime_utils import UTC
 
 
 class RetrieveAggregatedAnalyticsUseCase:
@@ -44,11 +43,11 @@ class RetrieveAggregatedAnalyticsUseCase:
     async def execute(
         self,
         aggregate_type: str,
-        dimensions: List[str],
-        filters: Optional[Dict[str, Any]] = None,
-        time_range: Optional[Dict[str, Union[datetime, str]]] = None,
+        dimensions: list[str],
+        filters: dict[str, Any] | None = None,
+        time_range: dict[str, datetime | str] | None = None,
         use_cache: bool = True
-    ) -> List[AnalyticsAggregate]:
+    ) -> list[AnalyticsAggregate]:
         """
         Retrieve aggregated analytics data.
         
@@ -125,7 +124,7 @@ class RetrieveAggregatedAnalyticsUseCase:
         
         return aggregates
     
-    def _sanitize_dimensions(self, dimensions: List[str]) -> List[str]:
+    def _sanitize_dimensions(self, dimensions: list[str]) -> list[str]:
         """
         Sanitize and validate dimension names.
         
@@ -151,7 +150,7 @@ class RetrieveAggregatedAnalyticsUseCase:
             
         return sanitized
     
-    def _sanitize_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_filters(self, filters: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize and validate filter values.
         
@@ -194,7 +193,7 @@ class RetrieveAggregatedAnalyticsUseCase:
     
     def _resolve_time_range(
         self,
-        time_range: Optional[Dict[str, Union[datetime, str]]]
+        time_range: dict[str, datetime | str] | None
     ) -> tuple[datetime, datetime]:
         """
         Resolve and validate time range for the query.
@@ -249,8 +248,8 @@ class RetrieveAggregatedAnalyticsUseCase:
     def _generate_cache_key(
         self,
         aggregate_type: str,
-        dimensions: List[str],
-        filters: Dict[str, Any],
+        dimensions: list[str],
+        filters: dict[str, Any],
         start_time: datetime,
         end_time: datetime
     ) -> str:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Text preprocessing utilities for ML/AI services.
 
@@ -7,8 +6,7 @@ extracting entities, and formatting prompts for ML/AI models.
 """
 
 import re
-import json
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from app.infrastructure.logging.phi_logger import get_phi_logger
 
@@ -20,7 +18,7 @@ async def sanitize_text(
     text: str,
     detect_phi: bool = True,
     phi_detection_service = None
-) -> Tuple[str, bool]:
+) -> tuple[str, bool]:
     """
     Sanitize text to remove PHI.
     
@@ -54,12 +52,12 @@ async def sanitize_text(
                 logger.info("PHI detected and sanitized in text")
                 
         except Exception as e:
-            logger.warning(f"Error during PHI detection: {str(e)}")
+            logger.warning(f"Error during PHI detection: {e!s}")
     
     return sanitized, phi_detected
 
 
-def extract_clinical_entities(text: str) -> Dict[str, List[str]]:
+def extract_clinical_entities(text: str) -> dict[str, list[str]]:
     """
     Extract clinical entities from text.
     
@@ -138,7 +136,7 @@ def extract_clinical_entities(text: str) -> Dict[str, List[str]]:
 def format_as_clinical_prompt(
     text: str,
     analysis_type: str = "diagnostic_impression",
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 ) -> str:
     """
     Format text as a clinical prompt for ML models.
@@ -196,7 +194,7 @@ def format_as_clinical_prompt(
         context_section = "## Patient Context\n"
         
         # Add diagnoses if available
-        if "diagnoses" in context and context["diagnoses"]:
+        if context.get("diagnoses"):
             if isinstance(context["diagnoses"], list):
                 diagnoses_text = ", ".join(context["diagnoses"])
                 context_section += f"- Previous diagnoses: {diagnoses_text}\n"
@@ -204,7 +202,7 @@ def format_as_clinical_prompt(
                 context_section += f"- Previous diagnosis: {context['diagnoses']}\n"
         
         # Add medications if available
-        if "medications" in context and context["medications"]:
+        if context.get("medications"):
             if isinstance(context["medications"], list):
                 medications_text = ", ".join(context["medications"])
                 context_section += f"- Current medications: {medications_text}\n"
@@ -212,7 +210,7 @@ def format_as_clinical_prompt(
                 context_section += f"- Current medication: {context['medications']}\n"
         
         # Add treatment history if available
-        if "treatment_history" in context and context["treatment_history"]:
+        if context.get("treatment_history"):
             context_section += "- Treatment history: Patient has previous treatment experience\n"
         
         # Add a spacing line

@@ -3,12 +3,13 @@ Domain entity representing a Symptom Assessment.
 """
 from dataclasses import dataclass, field
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
-from typing import Dict, Any, Optional
-from uuid import UUID, uuid4
 from enum import Enum
+from typing import Any
+from uuid import UUID, uuid4
 
 from app.domain.entities.base_entity import BaseEntity
+from app.domain.utils.datetime_utils import now_utc
+
 
 class AssessmentType(str, Enum):
     PHQ9 = "PHQ-9"
@@ -23,11 +24,11 @@ class SymptomAssessment(BaseEntity):
     patient_id: UUID
     assessment_type: AssessmentType
     assessment_date: datetime # Date/time the assessment was completed
-    scores: Dict[str, Any] # e.g., {"total_score": 15, "q1": 2, "q2": 3, ...} or {"custom_symptom": "severity_level"}
+    scores: dict[str, Any] # e.g., {"total_score": 15, "q1": 2, "q2": 3, ...} or {"custom_symptom": "severity_level"}
     
     # Fields with defaults
     id: UUID = field(default_factory=uuid4)
-    source: Optional[str] = None # e.g., "Patient Reported", "Clinician Administered"
+    source: str | None = None # e.g., "Patient Reported", "Clinician Administered"
     created_at: datetime = field(default_factory=now_utc)
     last_updated: datetime = field(default_factory=now_utc) # Usually same as created_at for assessments
 

@@ -10,15 +10,15 @@ import os
 from typing import Optional
 
 from app.core.interfaces.aws_service_interface import AWSServiceFactory
-from app.infrastructure.aws.real_aws_services import RealAWSServiceFactory
 from app.infrastructure.aws.in_memory_aws_services import InMemoryAWSServiceFactory
+from app.infrastructure.aws.real_aws_services import RealAWSServiceFactory
 
 
 class AWSServiceFactoryProvider:
     """Provider for AWS service factories based on environment."""
 
     _instance: Optional["AWSServiceFactoryProvider"] = None
-    _aws_service_factory: Optional[AWSServiceFactory] = None
+    _aws_service_factory: AWSServiceFactory | None = None
 
     @classmethod
     def get_instance(cls) -> "AWSServiceFactoryProvider":
@@ -30,8 +30,8 @@ class AWSServiceFactoryProvider:
     @classmethod
     def initialize(
         cls, 
-        use_in_memory: Optional[bool] = None,
-        region_name: Optional[str] = None
+        use_in_memory: bool | None = None,
+        region_name: str | None = None
     ) -> None:
         """
         Initialize the provider with configuration.

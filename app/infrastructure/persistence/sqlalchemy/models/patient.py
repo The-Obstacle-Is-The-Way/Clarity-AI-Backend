@@ -5,34 +5,31 @@ This module defines the patient-related SQLAlchemy models.
 Encryption/decryption is handled by the repository layer.
 """
 
-import uuid
-from app.domain.utils.datetime_utils import now_utc, UTC
-from typing import Any, Dict, List, Optional, Union, cast
-import json
 import inspect
-from dateutil import parser
+import json
+import logging
+import uuid
+from typing import Any
 
-import sqlalchemy as sa
-from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer, ForeignKey
+from dateutil import parser
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
+# Use the core domain model, which has phone_number attribute
+from app.core.domain.entities.patient import Patient as DomainPatient
+from app.domain.utils.datetime_utils import UTC, now_utc
+from app.domain.value_objects.emergency_contact import EmergencyContact  # Import EmergencyContact
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.types import GUID
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.domain.value_objects.address import Address as AddressVO # Corrected import for AddressVO
-from app.domain.value_objects.contact_info import ContactInfo as ContactInfoVO # Import ContactInfo
-from app.domain.value_objects.name import Name as NameVO # Import Name
-from app.domain.value_objects.emergency_contact import EmergencyContact # Import EmergencyContact
-# Use the core domain model, which has phone_number attribute
-from app.core.domain.entities.patient import Patient as DomainPatient
 
-import logging
 logger = logging.getLogger(__name__)
 
 import dataclasses  # Add this import
+
 
 class Patient(Base):
     """
@@ -193,7 +190,7 @@ class Patient(Base):
              try:
                  uuid.UUID(str(created_by_id_obj)) # Validate format
                  model.user_id = str(created_by_id_obj) # Store as string
-             except (ValueError, TypeError) as e:
+             except (ValueError, TypeError):
                  logger.warning(f"[from_domain] Invalid format for created_by UUID string '{created_by_id_obj}'. Setting user_id to None.")
                  model.user_id = None
         else:
@@ -204,7 +201,7 @@ class Patient(Base):
         logger.debug(f"[from_domain] Mapped core metadata for {getattr(patient, 'id', 'NO_ID_YET')}")
 
         # --- Encryption Helpers ---
-        def _encrypt(value: Optional[Any], field_name: str) -> Optional[bytes]: # Added field_name for logging
+        def _encrypt(value: Any | None, field_name: str) -> bytes | None: # Added field_name for logging
             """Encrypts a value (assumed stringifiable), returns bytes or None."""
             if value is None:
                 # logger.debug(f"_encrypt: Value for '{field_name}' is None, returning None.")
@@ -240,7 +237,7 @@ class Patient(Base):
                 logger.error(f"_encrypt: Failed to encrypt '{field_name}' ('{str(value)[:50]}...'): {e}", exc_info=True)
                 return None # Return None or re-raise specific exception
 
-        async def _encrypt_serializable(data: Optional[Any], field_name: str) -> Optional[bytes]: # Added field_name
+        async def _encrypt_serializable(data: Any | None, field_name: str) -> bytes | None: # Added field_name
             """Serializes data to JSON string then encrypts, returns bytes or None."""
             if data is None:
                 # logger.debug(f"_encrypt_serializable: Data for '{field_name}' is None, returning None.")
@@ -404,7 +401,7 @@ class Patient(Base):
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
         
         # --- Decryption Helpers ---
-        async def _decrypt(encrypted_value: Optional[bytes]) -> Optional[str]:
+        async def _decrypt(encrypted_value: bytes | None) -> str | None:
             """Decrypts bytes value, returns string or None."""
             if encrypted_value is None:
                 return None
@@ -422,7 +419,7 @@ class Patient(Base):
         # Decrypt necessary fields
         first_name = await _decrypt(self._first_name)
         last_name = await _decrypt(self._last_name)
-        from datetime import date, datetime
+        from datetime import datetime
         # Decrypt and parse date_of_birth
         if self._dob:
             decrypted_dob_str = await _decrypt(self._dob)

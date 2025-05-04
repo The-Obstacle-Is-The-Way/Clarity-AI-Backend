@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Multi-Factor Authentication Service
 
@@ -9,11 +8,10 @@ beyond basic password authentication.
 import base64
 import hmac
 import logging
-import os
 import time
-from enum import Enum
-from typing import Dict, Optional, Tuple, List, Any
 import uuid
+from enum import Enum
+from typing import Any
 
 try:
     import pyotp
@@ -30,7 +28,6 @@ from io import BytesIO
 # ---------------------------------------------------------------------------
 # Configuration utilities
 # ---------------------------------------------------------------------------
-
 from app.config.settings import get_settings
 
 # Expose a *module‑level* "settings" attribute so that legacy tests can patch
@@ -78,8 +75,8 @@ class MFAService:
     
     def __init__(
         self,
-        secret_key: Optional[str] = None,
-        issuer_name: Optional[str] = None,
+        secret_key: str | None = None,
+        issuer_name: str | None = None,
         totp_digits: int = 6,
         totp_interval: int = 30,
         sms_code_length: int = 6,
@@ -126,7 +123,7 @@ class MFAService:
         """
         return pyotp.random_base32()
     
-    def setup_totp(self, user_id: str, user_email: str) -> Dict[str, Any]:
+    def setup_totp(self, user_id: str, user_email: str) -> dict[str, Any]:
         """
         Set up TOTP-based MFA for a user.
         
@@ -203,8 +200,8 @@ class MFAService:
             }
             
         except Exception as e:
-            logger.error(f"Error setting up TOTP for user: {str(e)}")
-            raise MFASetupException(f"Failed to set up TOTP: {str(e)}")
+            logger.error(f"Error setting up TOTP for user: {e!s}")
+            raise MFASetupException(f"Failed to set up TOTP: {e!s}")
     
     def verify_totp(self, secret_key: str, code: str) -> bool:
         """
@@ -265,8 +262,8 @@ class MFAService:
             return hmac.compare_digest(expected, code)
 
         except Exception as e:
-            logger.error(f"Error verifying TOTP code: {str(e)}")
-            raise MFAVerificationException(f"Failed to verify TOTP code: {str(e)}")
+            logger.error(f"Error verifying TOTP code: {e!s}")
+            raise MFAVerificationException(f"Failed to verify TOTP code: {e!s}")
     
     def generate_verification_code(self, length: int) -> str:
         """
@@ -283,7 +280,7 @@ class MFAService:
         digits = "0123456789"
         return "".join(random.choice(digits) for _ in range(length))
     
-    def setup_sms_mfa(self, user_id: str, phone_number: str) -> Dict[str, Any]:
+    def setup_sms_mfa(self, user_id: str, phone_number: str) -> dict[str, Any]:
         """
         Set up SMS-based MFA for a user.
         
@@ -312,10 +309,10 @@ class MFAService:
             }
             
         except Exception as e:
-            logger.error(f"Error setting up SMS MFA for user: {str(e)}")
-            raise MFASetupException(f"Failed to set up SMS MFA: {str(e)}")
+            logger.error(f"Error setting up SMS MFA for user: {e!s}")
+            raise MFASetupException(f"Failed to set up SMS MFA: {e!s}")
     
-    def setup_email_mfa(self, user_id: str, email: str) -> Dict[str, Any]:
+    def setup_email_mfa(self, user_id: str, email: str) -> dict[str, Any]:
         """
         Set up email-based MFA for a user.
         
@@ -344,8 +341,8 @@ class MFAService:
             }
             
         except Exception as e:
-            logger.error(f"Error setting up email MFA for user: {str(e)}")
-            raise MFASetupException(f"Failed to set up email MFA: {str(e)}")
+            logger.error(f"Error setting up email MFA for user: {e!s}")
+            raise MFASetupException(f"Failed to set up email MFA: {e!s}")
     
     def verify_code(self, code: str, expected_code: str, expires_at: int) -> bool:
         """
@@ -366,7 +363,7 @@ class MFAService:
         # Check if code matches
         return code == expected_code
     
-    def get_backup_codes(self, count: int = 10) -> List[str]:
+    def get_backup_codes(self, count: int = 10) -> list[str]:
         """
         Generate backup codes for MFA recovery.
         
@@ -404,7 +401,7 @@ class MFAService:
         # Return the hex digest
         return h.hexdigest()
     
-    def verify_backup_code(self, code: str, hashed_codes: List[str]) -> bool:
+    def verify_backup_code(self, code: str, hashed_codes: list[str]) -> bool:
         """
         Verify a backup code.
         
@@ -467,7 +464,7 @@ class MFAStrategy:
         """
         self.mfa_service = mfa_service
     
-    def setup(self, user_id: str, **kwargs) -> Dict[str, Any]:
+    def setup(self, user_id: str, **kwargs) -> dict[str, Any]:
         """
         Set up MFA for a user.
         
@@ -502,7 +499,7 @@ class MFAStrategy:
 class TOTPStrategy(MFAStrategy):
     """Strategy for TOTP-based MFA."""
     
-    def setup(self, user_id: str, **kwargs) -> Dict[str, Any]:
+    def setup(self, user_id: str, **kwargs) -> dict[str, Any]:
         """
         Set up TOTP-based MFA for a user.
         
@@ -544,7 +541,7 @@ class TOTPStrategy(MFAStrategy):
 class SMSStrategy(MFAStrategy):
     """Strategy for SMS-based MFA."""
     
-    def setup(self, user_id: str, **kwargs) -> Dict[str, Any]:
+    def setup(self, user_id: str, **kwargs) -> dict[str, Any]:
         """
         Set up SMS-based MFA for a user.
         
@@ -584,7 +581,7 @@ class SMSStrategy(MFAStrategy):
 class EmailStrategy(MFAStrategy):
     """Strategy for email-based MFA."""
     
-    def setup(self, user_id: str, **kwargs) -> Dict[str, Any]:
+    def setup(self, user_id: str, **kwargs) -> dict[str, Any]:
         """
         Set up email-based MFA for a user.
         

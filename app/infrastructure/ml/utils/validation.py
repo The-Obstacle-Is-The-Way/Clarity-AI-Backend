@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Validation utilities for ML models in the NOVAMIND system.
 
@@ -10,11 +9,10 @@ and HIPAA compliance across all ML services.
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
-import numpy as np
 import pandas as pd
-from pydantic import BaseModel, Field, ValidationError, validator
+from pydantic import ValidationError
 
 from app.infrastructure.logging.logger import get_logger
 
@@ -37,7 +35,7 @@ class ModelInputValidator:
     """
 
     @staticmethod
-    def validate_patient_id(patient_id: Union[str, uuid.UUID]) -> uuid.UUID:
+    def validate_patient_id(patient_id: str | uuid.UUID) -> uuid.UUID:
         """
         Validate a patient ID.
 
@@ -58,13 +56,13 @@ class ModelInputValidator:
             else:
                 raise ValueError("Patient ID must be a string or UUID")
         except (ValueError, AttributeError) as e:
-            logger.error(f"Invalid patient ID format: {str(e)}")
-            raise ValidationError(f"Invalid patient ID format: {str(e)}")
+            logger.error(f"Invalid patient ID format: {e!s}")
+            raise ValidationError(f"Invalid patient ID format: {e!s}")
 
     @staticmethod
     def validate_time_series_data(
-        data: Union[List[Dict[str, Any]], pd.DataFrame],
-        required_fields: List[str],
+        data: list[dict[str, Any]] | pd.DataFrame,
+        required_fields: list[str],
         date_field: str = "date",
         min_data_points: int = 5,
         max_missing_pct: float = 0.2,
@@ -120,7 +118,7 @@ class ModelInputValidator:
             try:
                 df[date_field] = pd.to_datetime(df[date_field])
             except Exception as e:
-                raise ValueError(f"Invalid date format in {date_field}: {str(e)}")
+                raise ValueError(f"Invalid date format in {date_field}: {e!s}")
 
             # Sort by date
             df = df.sort_values(by=date_field)
@@ -141,13 +139,13 @@ class ModelInputValidator:
             return df
 
         except (ValueError, KeyError, TypeError) as e:
-            logger.error(f"Time series validation error: {str(e)}")
-            raise ValidationError(f"Time series validation error: {str(e)}")
+            logger.error(f"Time series validation error: {e!s}")
+            raise ValidationError(f"Time series validation error: {e!s}")
 
     @staticmethod
     def validate_genetic_markers(
-        genetic_markers: Dict[str, Any], required_markers: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        genetic_markers: dict[str, Any], required_markers: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Validate genetic marker data.
 
@@ -188,13 +186,13 @@ class ModelInputValidator:
             return genetic_markers
 
         except (ValueError, TypeError) as e:
-            logger.error(f"Genetic marker validation error: {str(e)}")
-            raise ValidationError(f"Genetic marker validation error: {str(e)}")
+            logger.error(f"Genetic marker validation error: {e!s}")
+            raise ValidationError(f"Genetic marker validation error: {e!s}")
 
     @staticmethod
     def validate_medication_list(
-        medications: List[str], known_medications: Optional[List[str]] = None
-    ) -> List[str]:
+        medications: list[str], known_medications: list[str] | None = None
+    ) -> list[str]:
         """
         Validate a list of medications.
 
@@ -229,13 +227,13 @@ class ModelInputValidator:
             return medications
 
         except (ValueError, TypeError) as e:
-            logger.error(f"Medication list validation error: {str(e)}")
-            raise ValidationError(f"Medication list validation error: {str(e)}")
+            logger.error(f"Medication list validation error: {e!s}")
+            raise ValidationError(f"Medication list validation error: {e!s}")
 
     @staticmethod
     def validate_biometric_data(
-        biometric_data: List[Dict[str, Any]],
-        required_metrics: Optional[List[str]] = None,
+        biometric_data: list[dict[str, Any]],
+        required_metrics: list[str] | None = None,
         date_field: str = "date",
     ) -> pd.DataFrame:
         """
@@ -270,8 +268,8 @@ class ModelInputValidator:
             )
 
         except ValidationError as e:
-            logger.error(f"Biometric data validation error: {str(e)}")
-            raise ValidationError(f"Biometric data validation error: {str(e)}")
+            logger.error(f"Biometric data validation error: {e!s}")
+            raise ValidationError(f"Biometric data validation error: {e!s}")
 
     @staticmethod
     def validate_forecast_horizon(
@@ -306,8 +304,8 @@ class ModelInputValidator:
             return horizon_int
 
         except (ValueError, TypeError) as e:
-            logger.error(f"Forecast horizon validation error: {str(e)}")
-            raise ValidationError(f"Forecast horizon validation error: {str(e)}")
+            logger.error(f"Forecast horizon validation error: {e!s}")
+            raise ValidationError(f"Forecast horizon validation error: {e!s}")
 
 
 class ModelOutputValidator:
@@ -321,8 +319,8 @@ class ModelOutputValidator:
 
     @staticmethod
     def validate_forecast_output(
-        forecasts: Dict[str, Any], expected_length: int, required_metrics: List[str]
-    ) -> Dict[str, Any]:
+        forecasts: dict[str, Any], expected_length: int, required_metrics: list[str]
+    ) -> dict[str, Any]:
         """
         Validate forecast output.
 
@@ -365,15 +363,15 @@ class ModelOutputValidator:
             return forecasts
 
         except (ValueError, TypeError) as e:
-            logger.error(f"Forecast output validation error: {str(e)}")
-            raise ValidationError(f"Forecast output validation error: {str(e)}")
+            logger.error(f"Forecast output validation error: {e!s}")
+            raise ValidationError(f"Forecast output validation error: {e!s}")
 
     @staticmethod
     def validate_confidence_intervals(
-        intervals: Dict[str, Dict[str, List[float]]],
-        metrics: List[str],
+        intervals: dict[str, dict[str, list[float]]],
+        metrics: list[str],
         expected_length: int,
-    ) -> Dict[str, Dict[str, List[float]]]:
+    ) -> dict[str, dict[str, list[float]]]:
         """
         Validate confidence intervals.
 
@@ -418,7 +416,7 @@ class ModelOutputValidator:
 
                 # Check that lower bounds are less than or equal to upper bounds
                 for i, (lower, upper) in enumerate(
-                    zip(bounds["lower"], bounds["upper"])
+                    zip(bounds["lower"], bounds["upper"], strict=False)
                 ):
                     if lower > upper:
                         raise ValueError(
@@ -429,15 +427,15 @@ class ModelOutputValidator:
             return intervals
 
         except (ValueError, TypeError, KeyError) as e:
-            logger.error(f"Confidence interval validation error: {str(e)}")
-            raise ValidationError(f"Confidence interval validation error: {str(e)}")
+            logger.error(f"Confidence interval validation error: {e!s}")
+            raise ValidationError(f"Confidence interval validation error: {e!s}")
 
     @staticmethod
     def validate_medication_predictions(
-        predictions: Dict[str, Dict[str, Any]],
-        medications: List[str],
-        required_fields: Optional[List[str]] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+        predictions: dict[str, dict[str, Any]],
+        medications: list[str],
+        required_fields: list[str] | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """
         Validate medication prediction outputs.
 
@@ -493,13 +491,13 @@ class ModelOutputValidator:
             return predictions
 
         except (ValueError, TypeError, KeyError) as e:
-            logger.error(f"Medication prediction validation error: {str(e)}")
-            raise ValidationError(f"Medication prediction validation error: {str(e)}")
+            logger.error(f"Medication prediction validation error: {e!s}")
+            raise ValidationError(f"Medication prediction validation error: {e!s}")
 
     @staticmethod
     def validate_correlation_results(
-        correlations: Dict[str, Any], required_sections: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        correlations: dict[str, Any], required_sections: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Validate correlation analysis results.
 
@@ -569,13 +567,13 @@ class ModelOutputValidator:
             return correlations
 
         except (ValueError, TypeError, KeyError) as e:
-            logger.error(f"Correlation result validation error: {str(e)}")
-            raise ValidationError(f"Correlation result validation error: {str(e)}")
+            logger.error(f"Correlation result validation error: {e!s}")
+            raise ValidationError(f"Correlation result validation error: {e!s}")
 
     @staticmethod
     def validate_digital_twin_insights(
-        insights: Dict[str, Any], required_services: List[str], patient_id: uuid.UUID
-    ) -> Dict[str, Any]:
+        insights: dict[str, Any], required_services: list[str], patient_id: uuid.UUID
+    ) -> dict[str, Any]:
         """
         Validate Digital Twin insights.
 
@@ -635,8 +633,8 @@ class ModelOutputValidator:
             return insights
 
         except (ValueError, TypeError, KeyError) as e:
-            logger.error(f"Digital Twin insights validation error: {str(e)}")
-            raise ValidationError(f"Digital Twin insights validation error: {str(e)}")
+            logger.error(f"Digital Twin insights validation error: {e!s}")
+            raise ValidationError(f"Digital Twin insights validation error: {e!s}")
 
 
 class DataSanitizer:
@@ -649,7 +647,7 @@ class DataSanitizer:
     """
 
     @staticmethod
-    def sanitize_patient_id(patient_id: Union[str, uuid.UUID]) -> str:
+    def sanitize_patient_id(patient_id: str | uuid.UUID) -> str:
         """
         Sanitize a patient ID for logging or error messages.
 
@@ -703,8 +701,8 @@ class DataSanitizer:
 
     @staticmethod
     def sanitize_dict_for_logging(
-        data: Dict[str, Any], sensitive_keys: List[str]
-    ) -> Dict[str, Any]:
+        data: dict[str, Any], sensitive_keys: list[str]
+    ) -> dict[str, Any]:
         """
         Sanitize a dictionary for logging by removing or masking sensitive fields.
 

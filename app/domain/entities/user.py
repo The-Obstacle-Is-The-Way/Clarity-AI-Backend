@@ -13,14 +13,11 @@ with attributes and behaviors.
 # Python 3.9 compatibility layer
 from __future__ import annotations
 
-from uuid import UUID
-from typing import Union, List, Optional
 from datetime import datetime
+from uuid import UUID
 
 # Import ConfigDict for V2 style config
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
-
-from app.domain.enums.role import Role as DomainRole
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 # Add testing flag to detect when we're in a test environment
 _IN_TEST_MODE = False
@@ -39,49 +36,49 @@ class User(BaseModel):
     and is independent of persistence concerns.
     """
     # Core identification fields
-    id: Union[str, UUID] = Field(..., description="Unique identifier for the user")
+    id: str | UUID = Field(..., description="Unique identifier for the user")
     username: str = Field(default="test_user", description="Username for login")
     email: EmailStr = Field(..., description="Email address of the user")
     
     # Backward compatibility for tests - some tests use full_name
-    full_name: Optional[str] = Field(default=None, description="Full name of the user (for backward compatibility)")
+    full_name: str | None = Field(default=None, description="Full name of the user (for backward compatibility)")
     
     # Security-related fields
     hashed_password: str = Field(default="hashed_password_for_testing", description="Hashed password for the user")
-    password_changed_at: Optional[datetime] = Field(default=None, description="When password was last changed")
+    password_changed_at: datetime | None = Field(default=None, description="When password was last changed")
     is_active: bool = Field(default=True, description="Whether the user account is active")
     is_verified: bool = Field(default=False, description="Whether the user account is verified")
     email_verified: bool = Field(default=False, description="Whether the email address is verified")
     failed_login_attempts: int = Field(default=0, description="Number of consecutive failed login attempts")
-    account_locked_until: Optional[datetime] = Field(default=None, description="When account lockout expires")
+    account_locked_until: datetime | None = Field(default=None, description="When account lockout expires")
     
     # Roles and permissions
     # Maintaining compatibility with existing code that expects 'roles' array
-    roles: List[Union[str, object]] = Field(default_factory=list, description="User roles for authorization")
-    role: Optional[str] = Field(default=None, description="Primary role of the user")
+    roles: list[str | object] = Field(default_factory=list, description="User roles for authorization")
+    role: str | None = Field(default=None, description="Primary role of the user")
     
     # Profile data
-    first_name: Optional[str] = Field(default=None, description="First name of the user")
-    last_name: Optional[str] = Field(default=None, description="Last name of the user")
-    full_name: Optional[str] = Field(default=None, description="Full name of the user")
+    first_name: str | None = Field(default=None, description="First name of the user")
+    last_name: str | None = Field(default=None, description="Last name of the user")
+    full_name: str | None = Field(default=None, description="Full name of the user")
     
     # Audit fields
-    created_at: Optional[datetime] = Field(default=None, description="When the user was created")
-    updated_at: Optional[datetime] = Field(default=None, description="When the user was last updated")
-    last_login: Optional[datetime] = Field(default=None, description="When the user last logged in")
+    created_at: datetime | None = Field(default=None, description="When the user was created")
+    updated_at: datetime | None = Field(default=None, description="When the user was last updated")
+    last_login: datetime | None = Field(default=None, description="When the user last logged in")
     
     # Extended data
-    preferences: Optional[dict] = Field(default=None, description="User preferences (UI settings, etc.)")
+    preferences: dict | None = Field(default=None, description="User preferences (UI settings, etc.)")
     
     # Additional metadata
-    created_at: Optional[datetime] = Field(default=None, description="When the user was created")
-    updated_at: Optional[datetime] = Field(default=None, description="When the user was last updated")
-    last_login_at: Optional[datetime] = Field(default=None, description="When the user last logged in")
+    created_at: datetime | None = Field(default=None, description="When the user was created")
+    updated_at: datetime | None = Field(default=None, description="When the user was last updated")
+    last_login_at: datetime | None = Field(default=None, description="When the user last logged in")
     
     # Audit and compliance
-    last_password_reset_request: Optional[datetime] = Field(default=None, description="When password reset was last requested")
-    terms_agreed_at: Optional[datetime] = Field(default=None, description="When the user agreed to the terms")
-    privacy_policy_agreed_at: Optional[datetime] = Field(default=None, description="When the user agreed to the privacy policy")
+    last_password_reset_request: datetime | None = Field(default=None, description="When password reset was last requested")
+    terms_agreed_at: datetime | None = Field(default=None, description="When the user agreed to the terms")
+    privacy_policy_agreed_at: datetime | None = Field(default=None, description="When the user agreed to the privacy policy")
     
     # Model configuration - extra allows for arbitrary fields during testing
     model_config = ConfigDict(from_attributes=True, extra="ignore")
@@ -119,7 +116,7 @@ class User(BaseModel):
 
     @field_validator("id", mode="before")
     @classmethod
-    def _coerce_id(cls, value):  # noqa: D401 – simple coercion helper
+    def _coerce_id(cls, value):
         """Coerce UUID → str to keep a consistent internal representation."""
         if isinstance(value, UUID):
             return str(value)

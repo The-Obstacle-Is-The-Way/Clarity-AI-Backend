@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy models for user data.
 
@@ -12,26 +11,25 @@ Architectural Note:
 - Repository classes should handle conversion between domain and persistence models
 """
 
-import uuid
-from typing import Any, Dict, List, Optional, Union
 import enum
-from datetime import datetime, timedelta
 import json
+import logging
+import uuid
+from datetime import timedelta
+from typing import Any
 
-import sqlalchemy as sa
-from sqlalchemy import Column, String, Text, DateTime, Boolean, Integer, ForeignKey, Enum, JSON
-from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB
-from sqlalchemy.types import TypeDecorator, TEXT
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import TEXT, TypeDecorator
+
+from app.domain.utils.datetime_utils import now_utc
 
 # Import the canonical Base and registry
-from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, Base, TimestampMixin
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
 from app.infrastructure.persistence.sqlalchemy.types import GUID
 
-from app.domain.utils.datetime_utils import now_utc, UTC
-
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -202,7 +200,7 @@ class User(Base, TimestampMixin, AuditMixin):
             return False
         return self.account_locked_until > now_utc()
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert user to dictionary representation suitable for API responses."""
         return {
             "id": str(self.id),

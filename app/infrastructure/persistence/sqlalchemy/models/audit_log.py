@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy model for Audit Logs.
 
@@ -7,19 +6,9 @@ tracking access and modifications to sensitive data and system events.
 """
 
 import uuid
-from datetime import datetime
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    String,
-    Text,
-    Integer
-)
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.infrastructure.persistence.sqlalchemy.types import GUID

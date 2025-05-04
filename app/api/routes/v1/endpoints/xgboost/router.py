@@ -6,16 +6,16 @@ including risk assessment, treatment response prediction, and digital twin simul
 """
 
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from app.core.services.ml.xgboost.enums import ResponseLevel, RiskLevel, ModelType
-from app.core.services.ml.xgboost.interface import XGBoostInterface
 from app.api.dependencies import get_current_user
 from app.api.routes.xgboost import get_xgboost_service
+from app.core.services.ml.xgboost.enums import ModelType, ResponseLevel, RiskLevel
+from app.core.services.ml.xgboost.interface import XGBoostInterface
 
 router = APIRouter(
     prefix="/xgboost",
@@ -27,8 +27,8 @@ class RiskPredictionRequest(BaseModel):
     """Request schema for risk prediction."""
     patient_id: UUID = Field(..., description="Patient UUID")
     risk_type: str = Field(..., description="Type of risk to predict")
-    clinical_data: Dict[str, Any] = Field(..., description="Clinical data for the prediction")
-    time_frame_days: Optional[int] = Field(30, description="Time frame for prediction in days")
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for the prediction")
+    time_frame_days: int | None = Field(30, description="Time frame for prediction in days")
 
 
 class RiskPredictionResponse(BaseModel):
@@ -39,7 +39,7 @@ class RiskPredictionResponse(BaseModel):
     risk_score: float
     confidence: float
     prediction_time: datetime
-    explanations: Optional[Dict[str, Any]] = None
+    explanations: dict[str, Any] | None = None
 
 
 @router.post("/predict/risk", response_model=RiskPredictionResponse)
@@ -47,7 +47,7 @@ async def predict_risk(
     request: RiskPredictionRequest,
     xgboost_service: XGBoostInterface = Depends(get_xgboost_service),
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Predict risk level for a patient.
     
@@ -79,8 +79,8 @@ class TreatmentResponseRequest(BaseModel):
     """Request schema for treatment response prediction."""
     patient_id: UUID = Field(..., description="Patient UUID")
     treatment_id: UUID = Field(..., description="Treatment UUID")
-    clinical_data: Dict[str, Any] = Field(..., description="Clinical data for the prediction")
-    response_level: Optional[ResponseLevel] = Field(ResponseLevel.DETAILED, description="Level of response detail")
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for the prediction")
+    response_level: ResponseLevel | None = Field(ResponseLevel.DETAILED, description="Level of response detail")
 
 
 class TreatmentResponsePrediction(BaseModel):
@@ -88,9 +88,9 @@ class TreatmentResponsePrediction(BaseModel):
     patient_id: UUID
     treatment_id: UUID
     response_probability: float
-    expected_outcome: Dict[str, Any]
+    expected_outcome: dict[str, Any]
     prediction_time: datetime
-    explanations: Optional[Dict[str, Any]] = None
+    explanations: dict[str, Any] | None = None
 
 
 @router.post("/predict/treatment-response", response_model=TreatmentResponsePrediction)
@@ -98,7 +98,7 @@ async def predict_treatment_response(
     request: TreatmentResponseRequest,
     xgboost_service: XGBoostInterface = Depends(get_xgboost_service),
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Predict treatment response for a patient.
     
@@ -133,7 +133,7 @@ async def get_model_info(
     model_type: ModelType,
     xgboost_service: XGBoostInterface = Depends(get_xgboost_service),
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get information about a specific XGBoost model.
     
@@ -162,10 +162,10 @@ async def get_model_info(
 
 @router.post("/digital-twin/simulate")
 async def simulate_digital_twin(
-    simulation_request: Dict[str, Any],
+    simulation_request: dict[str, Any],
     xgboost_service: XGBoostInterface = Depends(get_xgboost_service),
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Simulate treatment scenarios using a digital twin.
     

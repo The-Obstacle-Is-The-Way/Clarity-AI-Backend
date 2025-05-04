@@ -7,12 +7,12 @@ strict validation of all input and output data for HIPAA compliance.
 """
 
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, validator
+from pydantic import Field, validator
 
-from app.core.domain.entities.alert import AlertType, AlertPriority, AlertStatus
+from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.presentation.api.schemas.base import BaseModelConfig
 
 
@@ -22,7 +22,7 @@ class AlertBase(BaseModelConfig):
     timestamp: datetime
     priority: AlertPriority
     message: str = Field(..., min_length=1, max_length=500)
-    data: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    data: dict[str, Any] | None = Field(default_factory=dict)
 
     @validator("timestamp")
     def validate_timestamp(cls, v):
@@ -34,17 +34,17 @@ class AlertBase(BaseModelConfig):
 
 class AlertCreateRequest(AlertBase):
     """Request schema for creating a new alert."""
-    patient_id: Optional[str] = None  # For provider-created alerts
+    patient_id: str | None = None  # For provider-created alerts
 
 
 class AlertUpdateRequest(BaseModelConfig):
     """Request schema for updating an existing alert."""
-    status: Optional[AlertStatus] = None
-    priority: Optional[AlertPriority] = None
-    message: Optional[str] = Field(None, min_length=1, max_length=500)
-    data: Optional[Dict[str, Any]] = None
-    resolved_at: Optional[datetime] = None
-    resolution_notes: Optional[str] = Field(None, min_length=1, max_length=1000)
+    status: AlertStatus | None = None
+    priority: AlertPriority | None = None
+    message: str | None = Field(None, min_length=1, max_length=500)
+    data: dict[str, Any] | None = None
+    resolved_at: datetime | None = None
+    resolution_notes: str | None = Field(None, min_length=1, max_length=1000)
 
     @validator("resolved_at")
     def validate_resolved_at(cls, v, values):
@@ -59,14 +59,14 @@ class AlertResponse(AlertBase):
     id: UUID
     status: AlertStatus
     user_id: str  # The ID of the patient this alert belongs to
-    resolved_at: Optional[datetime] = None
-    resolution_notes: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolution_notes: str | None = None
 
 
 class AlertsFilterParams(BaseModelConfig):
     """Filter parameters for querying alerts."""
-    status: Optional[AlertStatus] = None
-    priority: Optional[AlertPriority] = None
-    alert_type: Optional[AlertType] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    status: AlertStatus | None = None
+    priority: AlertPriority | None = None
+    alert_type: AlertType | None = None
+    start_date: str | None = None
+    end_date: str | None = None

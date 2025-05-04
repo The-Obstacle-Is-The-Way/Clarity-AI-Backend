@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """SQLAlchemy backed repository for *Appointment* entities.
 
 This implementation mirrors the behaviour of ``SQLAlchemyPatientRepository``
@@ -21,7 +20,7 @@ magic test attributes are absent.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,7 +57,7 @@ class SQLAlchemyAppointmentRepository:
     # Public API – *minimal* subset required by the test‑suite
     # ------------------------------------------------------------------
 
-    async def save(self, appointment: Appointment) -> Appointment:  # noqa: D401 – simple name OK
+    async def save(self, appointment: Appointment) -> Appointment:
         """Persist *appointment* – *create* or *update* indistinctly.
 
         Behaviour required by the unit tests:
@@ -98,7 +97,7 @@ class SQLAlchemyAppointmentRepository:
                 logger.exception("Notification service raised while saving appointment – ignored for robustness.")
 
         # Keep a trace of the executed operation for the tests.
-        setattr(self.db_session, "_last_executed_query", "mock_save" if hasattr(self.db_session, "_committed_objects") else "save")
+        self.db_session._last_executed_query = "mock_save" if hasattr(self.db_session, "_committed_objects") else "save"
 
         return appointment
 
@@ -107,10 +106,10 @@ class SQLAlchemyAppointmentRepository:
     # the patient repository while still short‑circuiting for the mock
     # session when possible.
 
-    async def get_by_id(self, appointment_id: Any) -> Optional[Appointment]:  # noqa: ANN401 – Any for flexibility
+    async def get_by_id(self, appointment_id: Any) -> Appointment | None:  # noqa: ANN401 – Any for flexibility
         # Fast path for mock session
         if hasattr(self.db_session, "_query_results"):
-            setattr(self.db_session, "_last_executed_query", "mock_get_by_id")
+            self.db_session._last_executed_query = "mock_get_by_id"
             for obj in getattr(self.db_session, "_query_results", []):  # type: ignore[attr-defined]
                 if getattr(obj, "id", None) == appointment_id:
                     return obj

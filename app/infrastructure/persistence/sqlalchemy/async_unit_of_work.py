@@ -6,19 +6,19 @@ ensuring transactional integrity for PHI data operations according to HIPAA requ
 """
 
 import logging
-from typing import Optional, Type, Dict, Any
+from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.interfaces.unit_of_work import (
-    IUnitOfWork, 
-    IUserRepository,
-    IPatientRepository, 
+    IBiometricAlertRepository,
+    IBiometricRuleRepository,
+    IBiometricTwinRepository,
     IDigitalTwinRepository,
-    IBiometricRuleRepository, 
-    IBiometricAlertRepository, 
-    IBiometricTwinRepository
+    IPatientRepository,
+    IUnitOfWork,
+    IUserRepository,
 )
 from app.domain.exceptions import RepositoryError
 
@@ -34,12 +34,12 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
     def __init__(
         self, 
         session_factory: async_sessionmaker[AsyncSession],
-        user_repository_cls: Type[IUserRepository],
-        patient_repository_cls: Type[IPatientRepository],
-        digital_twin_repository_cls: Type[IDigitalTwinRepository],
-        biometric_rule_repository_cls: Type[IBiometricRuleRepository],
-        biometric_alert_repository_cls: Type[IBiometricAlertRepository],
-        biometric_twin_repository_cls: Type[IBiometricTwinRepository]
+        user_repository_cls: type[IUserRepository],
+        patient_repository_cls: type[IPatientRepository],
+        digital_twin_repository_cls: type[IDigitalTwinRepository],
+        biometric_rule_repository_cls: type[IBiometricRuleRepository],
+        biometric_alert_repository_cls: type[IBiometricAlertRepository],
+        biometric_twin_repository_cls: type[IBiometricTwinRepository]
     ):
         """
         Initialize the Unit of Work with repository factories.
@@ -54,7 +54,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             biometric_twin_repository_cls: Biometric twin repository class
         """
         self.session_factory = session_factory
-        self._session: Optional[AsyncSession] = None
+        self._session: AsyncSession | None = None
         
         # Store repository classes
         self._user_repository_cls = user_repository_cls
@@ -65,7 +65,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
         self._biometric_twin_repository_cls = biometric_twin_repository_cls
         
         # Repository instances - lazily initialized
-        self._repositories: Dict[str, Any] = {}
+        self._repositories: dict[str, Any] = {}
         
         # Transaction state
         self._transaction_started = False
@@ -85,9 +85,9 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
 
     async def __aexit__(
         self, 
-        exc_type: Optional[Type[BaseException]], 
-        exc_val: Optional[BaseException], 
-        exc_tb: Optional[Any]
+        exc_type: type[BaseException] | None, 
+        exc_val: BaseException | None, 
+        exc_tb: Any | None
     ) -> None:
         """
         Exit the async context manager, handling commit or rollback based on exceptions.
@@ -114,7 +114,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             logger.error(f"Error during transaction cleanup: {e}")
             if self._session and self._transaction_started:
                 await self._session.rollback()
-            raise RepositoryError(f"Database error during transaction: {str(e)}") from e
+            raise RepositoryError(f"Database error during transaction: {e!s}") from e
         finally:
             if self._session:
                 await self._session.close()
@@ -142,7 +142,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             await self._session.begin()
         except SQLAlchemyError as e:
             logger.error(f"Error during commit: {e}")
-            raise RepositoryError(f"Failed to commit transaction: {str(e)}") from e
+            raise RepositoryError(f"Failed to commit transaction: {e!s}") from e
 
     async def rollback(self) -> None:
         """
@@ -163,7 +163,7 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             await self._session.begin()
         except SQLAlchemyError as e:
             logger.error(f"Error during rollback: {e}")
-            raise RepositoryError(f"Failed to roll back transaction: {str(e)}") from e
+            raise RepositoryError(f"Failed to roll back transaction: {e!s}") from e
 
     # Repository properties
     @property

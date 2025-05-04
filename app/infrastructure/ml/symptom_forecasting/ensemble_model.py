@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Ensemble model for psychiatric symptom forecasting in the NOVAMIND system.
 
@@ -11,26 +10,19 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
 
 import numpy as np
-import pandas as pd
-import torch
-import torch.nn as nn
-import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from app.infrastructure.logging.logger import get_logger
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.ml.base.base_model import BaseModel
-from app.infrastructure.ml.base.model_metrics import ModelMetrics
 from app.infrastructure.ml.symptom_forecasting.transformer_model import (
     SymptomTransformerModel,
 )
-from app.infrastructure.ml.symptom_forecasting.xgboost_model import XGBoostSymptomModel # Corrected class name
+
 # from app.infrastructure.ml.utils.preprocessing import DataPreprocessor # Removed unused import
-from app.infrastructure.ml.utils.serialization import ModelSerializer
 
 
 class SymptomForecastingEnsemble(BaseModel):
@@ -47,11 +39,11 @@ class SymptomForecastingEnsemble(BaseModel):
         self,
         model_name: str = "symptom_forecasting_ensemble",
         version: str = "1.0.0",
-        model_path: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
-        transformer_config: Optional[Dict[str, Any]] = None,
-        xgboost_config: Optional[Dict[str, Any]] = None,
-        ensemble_weights: Optional[Dict[str, float]] = None,
+        model_path: str | None = None,
+        logger: logging.Logger | None = None,
+        transformer_config: dict[str, Any] | None = None,
+        xgboost_config: dict[str, Any] | None = None,
+        ensemble_weights: dict[str, float] | None = None,
     ):
         """
         Initialize the symptom forecasting ensemble model.
@@ -119,7 +111,7 @@ class SymptomForecastingEnsemble(BaseModel):
         try:
             # Load ensemble metadata
             meta_path = f"{self.model_path}/ensemble.meta.json"
-            with open(meta_path, "r") as f:
+            with open(meta_path) as f:
                 metadata = json.load(f)
 
             # Update ensemble attributes from metadata
@@ -144,10 +136,10 @@ class SymptomForecastingEnsemble(BaseModel):
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to load ensemble model: {str(e)}")
+            self.logger.error(f"Failed to load ensemble model: {e!s}")
             raise
 
-    def save(self, path: Optional[str] = None) -> str:
+    def save(self, path: str | None = None) -> str:
         """
         Save the ensemble model to storage.
 
@@ -197,10 +189,10 @@ class SymptomForecastingEnsemble(BaseModel):
             return save_path
 
         except Exception as e:
-            self.logger.error(f"Failed to save ensemble model: {str(e)}")
+            self.logger.error(f"Failed to save ensemble model: {e!s}")
             raise
 
-    def preprocess(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def preprocess(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Preprocess input data for prediction.
 
@@ -228,10 +220,10 @@ class SymptomForecastingEnsemble(BaseModel):
             return preprocessed_data
 
         except Exception as e:
-            self.logger.error(f"Error during preprocessing: {str(e)}")
-            raise ValueError(f"Failed to preprocess data: {str(e)}")
+            self.logger.error(f"Error during preprocessing: {e!s}")
+            raise ValueError(f"Failed to preprocess data: {e!s}")
 
-    def predict(self, preprocessed_data: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, preprocessed_data: dict[str, Any]) -> dict[str, Any]:
         """
         Generate predictions using the ensemble model.
 
@@ -274,10 +266,10 @@ class SymptomForecastingEnsemble(BaseModel):
             return {"ensemble": ensemble_predictions, "models": model_predictions}
 
         except Exception as e:
-            self.logger.error(f"Error during prediction: {str(e)}")
-            raise ValueError(f"Failed to generate predictions: {str(e)}")
+            self.logger.error(f"Error during prediction: {e!s}")
+            raise ValueError(f"Failed to generate predictions: {e!s}")
 
-    def postprocess(self, predictions: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess(self, predictions: dict[str, Any]) -> dict[str, Any]:
         """
         Postprocess model predictions.
 
@@ -331,7 +323,7 @@ class SymptomForecastingEnsemble(BaseModel):
                 # Determine risk level based on forecast and uncertainty
                 risk_levels = []
                 for i, (forecast, lower, upper) in enumerate(
-                    zip(ensemble_forecast, lower_bound, upper_bound)
+                    zip(ensemble_forecast, lower_bound, upper_bound, strict=False)
                 ):
                     # High risk if forecast is high or uncertainty is high
                     if forecast >= 7 or (upper - lower) > 4:
@@ -359,12 +351,12 @@ class SymptomForecastingEnsemble(BaseModel):
             return results
 
         except Exception as e:
-            self.logger.error(f"Error during postprocessing: {str(e)}")
-            raise ValueError(f"Failed to postprocess predictions: {str(e)}")
+            self.logger.error(f"Error during postprocessing: {e!s}")
+            raise ValueError(f"Failed to postprocess predictions: {e!s}")
 
     def evaluate(
-        self, test_data: Dict[str, Any], test_labels: Dict[str, Any]
-    ) -> Dict[str, float]:
+        self, test_data: dict[str, Any], test_labels: dict[str, Any]
+    ) -> dict[str, float]:
         """
         Evaluate the ensemble model on test data.
 
@@ -446,17 +438,17 @@ class SymptomForecastingEnsemble(BaseModel):
             return metrics
 
         except Exception as e:
-            self.logger.error(f"Error during evaluation: {str(e)}")
-            raise ValueError(f"Failed to evaluate model: {str(e)}")
+            self.logger.error(f"Error during evaluation: {e!s}")
+            raise ValueError(f"Failed to evaluate model: {e!s}")
 
     def train(
         self,
-        training_data: Dict[str, Any],
-        validation_data: Optional[Dict[str, Any]] = None,
-        symptom_types: Optional[List[str]] = None,
+        training_data: dict[str, Any],
+        validation_data: dict[str, Any] | None = None,
+        symptom_types: list[str] | None = None,
         forecast_horizon: int = 30,
         optimize_weights: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Train the ensemble model.
 
@@ -518,10 +510,10 @@ class SymptomForecastingEnsemble(BaseModel):
             return training_metrics
 
         except Exception as e:
-            self.logger.error(f"Error during training: {str(e)}")
-            raise ValueError(f"Failed to train model: {str(e)}")
+            self.logger.error(f"Error during training: {e!s}")
+            raise ValueError(f"Failed to train model: {e!s}")
 
-    def _optimize_weights(self, validation_data: Dict[str, Any]) -> None:
+    def _optimize_weights(self, validation_data: dict[str, Any]) -> None:
         """
         Optimize ensemble weights based on validation performance.
 
@@ -580,16 +572,16 @@ class SymptomForecastingEnsemble(BaseModel):
             self.logger.info(f"Optimized ensemble weights: {self.ensemble_weights}")
 
         except Exception as e:
-            self.logger.error(f"Error during weight optimization: {str(e)}")
-            raise ValueError(f"Failed to optimize weights: {str(e)}")
+            self.logger.error(f"Error during weight optimization: {e!s}")
+            raise ValueError(f"Failed to optimize weights: {e!s}")
 
     def forecast_symptoms(
         self,
         patient_id: UUID,
-        symptom_history: List[Dict[str, Any]],
-        patient_data: Optional[Dict[str, Any]] = None,
+        symptom_history: list[dict[str, Any]],
+        patient_data: dict[str, Any] | None = None,
         forecast_days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate symptom forecasts for a patient.
 
@@ -644,5 +636,5 @@ class SymptomForecastingEnsemble(BaseModel):
             return processed_results
 
         except Exception as e:
-            self.logger.error(f"Error during symptom forecasting: {str(e)}")
-            raise ValueError(f"Failed to forecast symptoms: {str(e)}")
+            self.logger.error(f"Error during symptom forecasting: {e!s}")
+            raise ValueError(f"Failed to forecast symptoms: {e!s}")

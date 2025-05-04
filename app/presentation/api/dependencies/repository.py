@@ -6,18 +6,16 @@ following clean architecture principles with proper dependency injection pattern
 This is a compatibility module that re-exports from database.py.
 """
 
-from fastapi import Depends
-from typing import Callable, Type, TypeVar
+from typing import TypeVar
 
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.encryption_service_interface import (
     IEncryptionService,
 )
-from app.infrastructure.security.encryption_service import EncryptionService
 from app.infrastructure.di.container import get_container
+from app.infrastructure.security.encryption_service import EncryptionService
 
 # Re-export from database.py for backward compatibility
-from app.presentation.api.dependencies.database import get_repository, DatabaseSessionDep
+from app.presentation.api.dependencies.database import DatabaseSessionDep, get_repository
 
 # Maintain backward compatibility with existing imports
 get_repository_dependency = get_repository

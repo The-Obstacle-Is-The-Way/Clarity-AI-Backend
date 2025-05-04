@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy implementation of the BiometricTwinStateRepository.
 
@@ -6,17 +5,17 @@ This module provides a concrete implementation of the BiometricTwinRepository
 interface using SQLAlchemy ORM for database operations.
 """
 
-from datetime import datetime
-from typing import Dict, List, Optional, Set, Any, Union
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.domain.entities.biometric_twin import BiometricTwinState, BiometricDataPoint
+from app.domain.entities.biometric_twin import BiometricDataPoint, BiometricTwinState
 from app.domain.repositories.biometric_twin_repository import BiometricTwinRepository
 from app.infrastructure.persistence.sqlalchemy.models.biometric_twin_model import (
-    BiometricTwinModel, BiometricDataPointModel
+    BiometricDataPointModel,
+    BiometricTwinModel,
 )
 
 
@@ -37,7 +36,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         """
         self.session = session
     
-    def get_by_id(self, twin_id: UUID) -> Optional[BiometricTwinState]:
+    def get_by_id(self, twin_id: UUID) -> BiometricTwinState | None:
         """
         Retrieve a BiometricTwin by its ID.
         
@@ -56,7 +55,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return self._map_to_entity(twin_model)
     
-    def get_by_patient_id(self, patient_id: UUID) -> Optional[BiometricTwinState]:
+    def get_by_patient_id(self, patient_id: UUID) -> BiometricTwinState | None:
         """
         Retrieve a BiometricTwin by the associated patient ID.
         
@@ -137,7 +136,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return twin_deleted > 0
     
-    def list_by_connected_device(self, device_id: str) -> List[BiometricTwinState]:
+    def list_by_connected_device(self, device_id: str) -> list[BiometricTwinState]:
         """
         List all BiometricTwin entities connected to a specific device.
         
@@ -154,7 +153,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
         
         return [self._map_to_entity(model) for model in twin_models]
     
-    def list_all(self, limit: int = 100, offset: int = 0) -> List[BiometricTwinState]:
+    def list_all(self, limit: int = 100, offset: int = 0) -> list[BiometricTwinState]:
         """
         List all BiometricTwin entities with pagination.
         
@@ -341,7 +340,7 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             # Convert to string as fallback
             return str(value), "string"
     
-    def _deserialize_value(self, value: str, value_type: str) -> Union[str, float, int, Dict]:
+    def _deserialize_value(self, value: str, value_type: str) -> str | float | int | dict:
         """
         Deserialize a value from the database.
         

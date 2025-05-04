@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ML Services Package.
 
@@ -9,17 +8,19 @@ This package provides mental health machine learning services including:
 - PAT: Patient Assessment Tool for clinical evaluation
 """
 
-from app.core.services.ml.factory import MLServiceFactory, MLServiceCache
+from app.core.services.ml.factory import MLServiceCache, MLServiceFactory
+from app.core.services.ml.interface import (
+    BaseMLInterface as MLService,  # Keep alias if needed elsewhere for now
+)
 from app.core.services.ml.interface import (
     DigitalTwinInterface,
     MentaLLaMAInterface,
-    BaseMLInterface as MLService, # Keep alias if needed elsewhere for now
-    PHIDetectionInterface, # Corrected: Remove alias
+    PHIDetectionInterface,  # Corrected: Remove alias
 )
+
 # from app.core.services.ml.mentalllama import MentaLLaMA # REMOVE: No such module in core.services.ml
 # from app.core.services.ml.mock import MockMentaLLaMA # REMOVE: Use infrastructure layer for real/mock services
-from app.core.services.ml.pat import PATInterface, PATService, MockPATService
-
+from app.core.services.ml.pat import MockPATService, PATInterface, PATService
 
 __all__ = [
     # Interfaces

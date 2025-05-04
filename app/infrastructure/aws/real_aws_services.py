@@ -5,49 +5,51 @@ This module provides implementations of the AWS service interfaces
 using the real boto3 library for production use.
 """
 
+from typing import Any
+
 import boto3
 import botocore.exceptions
-from typing import Any, Dict, List, Optional, Union, BinaryIO
+
 json_module = __import__("json")
 
 from app.core.interfaces.aws_service_interface import (
+    AWSServiceFactory,
+    AWSSessionServiceInterface,
+    BedrockRuntimeServiceInterface,
+    BedrockServiceInterface,
+    ComprehendMedicalServiceInterface,
     DynamoDBServiceInterface,
     S3ServiceInterface,
-    SageMakerServiceInterface,
     SageMakerRuntimeServiceInterface,
-    ComprehendMedicalServiceInterface,
-    BedrockServiceInterface,
-    BedrockRuntimeServiceInterface,
-    AWSSessionServiceInterface,
-    AWSServiceFactory
+    SageMakerServiceInterface,
 )
 
 
 class RealDynamoDBService(DynamoDBServiceInterface):
     """Real DynamoDB service implementation using boto3."""
 
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._resource = boto3.resource("dynamodb", region_name=region_name)
 
-    def scan_table(self, table_name: str) -> Dict[str, List[Dict[str, Any]]]:
+    def scan_table(self, table_name: str) -> dict[str, list[dict[str, Any]]]:
         """Scan a DynamoDB table and return all items."""
         table = self._resource.Table(table_name)
         return table.scan()
 
-    def put_item(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
+    def put_item(self, table_name: str, item: dict[str, Any]) -> dict[str, Any]:
         """Put an item into a DynamoDB table."""
         table = self._resource.Table(table_name)
         return table.put_item(Item=item)
         
-    def get_item(self, table_name: str, key: Dict[str, Any]) -> Dict[str, Any]:
+    def get_item(self, table_name: str, key: dict[str, Any]) -> dict[str, Any]:
         """Get an item from a DynamoDB table."""
         table = self._resource.Table(table_name)
         return table.get_item(Key=key)
         
     def query(self, table_name: str, key_condition_expression: str, 
-              expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+              expression_attribute_values: dict[str, Any]) -> dict[str, Any]:
         """Query items from a DynamoDB table."""
         table = self._resource.Table(table_name)
         return table.query(
@@ -59,7 +61,7 @@ class RealDynamoDBService(DynamoDBServiceInterface):
 class RealS3Service(S3ServiceInterface):
     """Real S3 service implementation using boto3."""
 
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._client = boto3.client("s3", region_name=region_name)
@@ -76,15 +78,15 @@ class RealS3Service(S3ServiceInterface):
             # Re-raise for unexpected errors
             raise
 
-    def put_object(self, bucket_name: str, key: str, body: bytes) -> Dict[str, Any]:
+    def put_object(self, bucket_name: str, key: str, body: bytes) -> dict[str, Any]:
         """Upload an object to S3."""
         return self._client.put_object(Bucket=bucket_name, Key=key, Body=body)
         
-    def get_object(self, bucket_name: str, key: str) -> Dict[str, Any]:
+    def get_object(self, bucket_name: str, key: str) -> dict[str, Any]:
         """Get an object from S3."""
         return self._client.get_object(Bucket=bucket_name, Key=key)
         
-    def list_objects(self, bucket_name: str, prefix: Optional[str] = None) -> Dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         params = {"Bucket": bucket_name}
         if prefix is not None:
@@ -99,17 +101,17 @@ class RealS3Service(S3ServiceInterface):
 class RealSageMakerService(SageMakerServiceInterface):
     """Real SageMaker service implementation using boto3."""
 
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._client = boto3.client("sagemaker", region_name=region_name)
 
-    def list_endpoints(self) -> List[Dict[str, Any]]:
+    def list_endpoints(self) -> list[dict[str, Any]]:
         """List all SageMaker endpoints."""
         response = self._client.list_endpoints()
         return response.get("Endpoints", [])
 
-    def describe_endpoint(self, endpoint_name: str) -> Dict[str, Any]:
+    def describe_endpoint(self, endpoint_name: str) -> dict[str, Any]:
         """Get information about a SageMaker endpoint."""
         return self._client.describe_endpoint(EndpointName=endpoint_name)
 
@@ -117,7 +119,7 @@ class RealSageMakerService(SageMakerServiceInterface):
 class RealSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
     """Real SageMaker runtime service implementation using boto3."""
 
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._client = boto3.client("sagemaker-runtime", region_name=region_name)
@@ -128,7 +130,7 @@ class RealSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
         content_type: str, 
         body: bytes,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Invoke a SageMaker endpoint."""
         return self._client.invoke_endpoint(
             EndpointName=endpoint_name,
@@ -141,20 +143,20 @@ class RealSageMakerRuntimeService(SageMakerRuntimeServiceInterface):
 class RealComprehendMedicalService(ComprehendMedicalServiceInterface):
     """Real AWS Comprehend Medical service implementation using boto3."""
     
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._client = boto3.client("comprehendmedical", region_name=region_name)
         
-    def detect_entities(self, text: str) -> Dict[str, Any]:
+    def detect_entities(self, text: str) -> dict[str, Any]:
         """Detect medical entities in text."""
         return self._client.detect_entities_v2(Text=text)
         
-    def detect_phi(self, text: str) -> Dict[str, Any]:
+    def detect_phi(self, text: str) -> dict[str, Any]:
         """Detect PHI (Protected Health Information) in text."""
         return self._client.detect_phi(Text=text)
         
-    def infer_icd10_cm(self, text: str) -> Dict[str, Any]:
+    def infer_icd10_cm(self, text: str) -> dict[str, Any]:
         """Infer ICD-10-CM codes from medical text."""
         return self._client.infer_icd10_cm(Text=text)
 
@@ -162,21 +164,21 @@ class RealComprehendMedicalService(ComprehendMedicalServiceInterface):
 class RealBedrockService(BedrockServiceInterface):
     """Real AWS Bedrock service implementation using boto3."""
     
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._client = boto3.client("bedrock", region_name=region_name)
     
-    def list_foundation_models(self) -> Dict[str, Any]:
+    def list_foundation_models(self) -> dict[str, Any]:
         """List available foundation models."""
         return self._client.list_foundation_models()
     
     def invoke_model(
         self,
         model_id: str,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Invoke a foundation model."""
         # Convert dict to JSON string if needed
         if isinstance(body, dict):
@@ -192,7 +194,7 @@ class RealBedrockService(BedrockServiceInterface):
 class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
     """Real AWS Bedrock runtime service implementation using boto3."""
     
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._client = boto3.client("bedrock-runtime", region_name=region_name)
@@ -200,11 +202,11 @@ class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
     def invoke_model(
         self,
         model_id: str,
-        body: Union[str, Dict[str, Any], bytes],
-        content_type: Optional[str] = None,
-        accept: Optional[str] = None,
+        body: str | dict[str, Any] | bytes,
+        content_type: str | None = None,
+        accept: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Invoke a foundation model."""
         # Handle different body types
         if isinstance(body, dict):
@@ -223,11 +225,11 @@ class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
     def invoke_model_with_response_stream(
         self,
         model_id: str,
-        body: Union[str, Dict[str, Any], bytes],
-        content_type: Optional[str] = None,
-        accept: Optional[str] = None,
+        body: str | dict[str, Any] | bytes,
+        content_type: str | None = None,
+        accept: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Invoke a foundation model with streaming response."""
         # Handle different body types
         if isinstance(body, dict):
@@ -247,17 +249,17 @@ class RealBedrockRuntimeService(BedrockRuntimeServiceInterface):
 class RealAWSSessionService(AWSSessionServiceInterface):
     """Real AWS session service implementation using boto3."""
     
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         self._session = boto3.session.Session(region_name=region_name)
         self._sts_client = self._session.client("sts")
     
-    def get_caller_identity(self) -> Dict[str, Any]:
+    def get_caller_identity(self) -> dict[str, Any]:
         """Get the AWS identity information for the caller."""
         return self._sts_client.get_caller_identity()
     
-    def get_available_regions(self, service_name: str) -> List[str]:
+    def get_available_regions(self, service_name: str) -> list[str]:
         """Get available regions for a specific AWS service."""
         return self._session.get_available_regions(service_name)
     
@@ -269,7 +271,7 @@ class RealAWSSessionService(AWSSessionServiceInterface):
 class RealAWSServiceFactory(AWSServiceFactory):
     """Factory for creating real AWS service implementations."""
 
-    def __init__(self, region_name: Optional[str] = None):
+    def __init__(self, region_name: str | None = None):
         """Initialize with optional region name."""
         self.region_name = region_name
         

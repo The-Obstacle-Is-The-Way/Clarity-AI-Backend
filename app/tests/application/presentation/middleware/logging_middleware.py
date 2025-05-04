@@ -8,14 +8,13 @@ It implements HIPAA-compliant logging by sanitizing PHI from logs.
 import json
 import time
 import uuid
-from typing import Optional, Union
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from app.core.utils.logging import get_logger
-from app.core.utils.data_transformation import DataAnonymizer  # For PHI anonymization
 from app.core.config.settings import get_settings
+from app.core.utils.data_transformation import DataAnonymizer  # For PHI anonymization
+from app.core.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -31,7 +30,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: FastAPI,
-        exclude_paths: Optional[list[str]] = None,
+        exclude_paths: list[str] | None = None,
         log_request_body: bool = False,
         log_response_body: bool = False,
     ):

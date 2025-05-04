@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 """Use case for updating an existing patient."""
 
-from app.domain.services.patient_service import PatientService
 from app.domain.entities.patient import Patient
+from app.domain.services.patient_service import PatientService
 
 
 class UpdatePatientUseCase:

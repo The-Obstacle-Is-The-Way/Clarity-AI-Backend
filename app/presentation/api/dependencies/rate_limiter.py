@@ -7,13 +7,12 @@ Rate limiting is a key component for API security and reliability.
 """
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from enum import Enum
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
 from app.infrastructure.di.container import get_container
@@ -76,9 +75,9 @@ class RateLimitState:
     
     def __init__(self):
         """Initialize empty rate limit state storage."""
-        self._state: Dict[str, Dict[str, Union[int, float]]] = {}
+        self._state: dict[str, dict[str, int | float]] = {}
     
-    def get_state(self, key: str) -> Dict[str, Union[int, float]]:
+    def get_state(self, key: str) -> dict[str, int | float]:
         """
         Get current state for a rate limit key.
         
@@ -93,7 +92,7 @@ class RateLimitState:
             self._state[key] = {"count": 0, "last_reset": now}
         return self._state[key]
     
-    def increment(self, key: str, reset_after: int) -> Tuple[int, int]:
+    def increment(self, key: str, reset_after: int) -> tuple[int, int]:
         """
         Increment the counter for a key and reset if needed.
         
@@ -137,8 +136,8 @@ class RateLimitDependency:
     
     def __init__(
         self,
-        config: Union[RateLimitConfig, List[RateLimitConfig]],
-        key_func: Optional[Callable[[Request], str]] = None
+        config: RateLimitConfig | list[RateLimitConfig],
+        key_func: Callable[[Request], str] | None = None
     ):
         """
         Initialize rate limiter with configuration.
@@ -162,7 +161,7 @@ class RateLimitDependency:
     async def __call__(
         self,
         request: Request,
-        credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
+        credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False))
     ) -> None:
         """
         Apply rate limiting to the request.
@@ -227,7 +226,7 @@ class RateLimitDependency:
     def _get_key(
         self,
         request: Request,
-        credentials: Optional[HTTPAuthorizationCredentials],
+        credentials: HTTPAuthorizationCredentials | None,
         scope: str
     ) -> str:
         """

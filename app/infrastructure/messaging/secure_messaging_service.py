@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Secure Messaging Service
 
@@ -7,17 +6,15 @@ communication between patients and providers.
 """
 
 import base64
-import json
 import time
 import uuid
-from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 
 class MessageStatus(Enum):
@@ -175,7 +172,7 @@ class SecureMessagingService:
             
             return encrypted_key
         except Exception as e:
-            raise MessageEncryptionException(f"Failed to encrypt symmetric key: {str(e)}")
+            raise MessageEncryptionException(f"Failed to encrypt symmetric key: {e!s}")
     
     def _decrypt_symmetric_key(
         self,
@@ -215,7 +212,7 @@ class SecureMessagingService:
             
             return symmetric_key
         except Exception as e:
-            raise MessageDecryptionException(f"Failed to decrypt symmetric key: {str(e)}")
+            raise MessageDecryptionException(f"Failed to decrypt symmetric key: {e!s}")
     
     def _encrypt_message(self, message: str, symmetric_key: bytes) -> bytes:
         """
@@ -240,7 +237,7 @@ class SecureMessagingService:
             
             return encrypted_message
         except Exception as e:
-            raise MessageEncryptionException(f"Failed to encrypt message: {str(e)}")
+            raise MessageEncryptionException(f"Failed to encrypt message: {e!s}")
     
     def _decrypt_message(self, encrypted_message: bytes, symmetric_key: bytes) -> str:
         """
@@ -265,13 +262,13 @@ class SecureMessagingService:
             
             return decrypted_message.decode('utf-8')
         except Exception as e:
-            raise MessageDecryptionException(f"Failed to decrypt message: {str(e)}")
+            raise MessageDecryptionException(f"Failed to decrypt message: {e!s}")
     
     def encrypt_message_for_recipient(
         self,
         message: str,
         recipient_public_key: bytes
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Encrypt a message for a recipient.
         
@@ -307,7 +304,7 @@ class SecureMessagingService:
     
     def decrypt_message(
         self,
-        message_package: Dict[str, Any],
+        message_package: dict[str, Any],
         private_key: bytes
     ) -> str:
         """
@@ -339,7 +336,7 @@ class SecureMessagingService:
             # Decrypt the message
             return self._decrypt_message(encrypted_message, symmetric_key)
         except Exception as e:
-            raise MessageDecryptionException(f"Failed to decrypt message: {str(e)}")
+            raise MessageDecryptionException(f"Failed to decrypt message: {e!s}")
     
     def create_message(
         self,
@@ -350,8 +347,8 @@ class SecureMessagingService:
         recipient_public_key: bytes,
         message_type: MessageType = MessageType.TEXT,
         priority: MessagePriority = MessagePriority.NORMAL,
-        attachments: Optional[List[Dict[str, Any]]] = None
-    ) -> Dict[str, Any]:
+        attachments: list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Create a new message.
         
@@ -404,9 +401,9 @@ class SecureMessagingService:
     
     def send_message(
         self,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         message_repository
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a message.
         
@@ -429,13 +426,13 @@ class SecureMessagingService:
             # Save the message
             return message_repository.save(message)
         except Exception as e:
-            raise MessageSendException(f"Failed to send message: {str(e)}")
+            raise MessageSendException(f"Failed to send message: {e!s}")
     
     async def mark_as_delivered(
         self,
         message_id: str,
         message_repository
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Mark a message as delivered.
         
@@ -465,13 +462,13 @@ class SecureMessagingService:
             # Save the message
             return await message_repository.save(message)
         except Exception as e:
-            raise SecureMessagingException(f"Failed to mark message as delivered: {str(e)}")
+            raise SecureMessagingException(f"Failed to mark message as delivered: {e!s}")
     
     async def mark_as_read(
         self,
         message_id: str,
         message_repository
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Mark a message as read.
         
@@ -501,14 +498,14 @@ class SecureMessagingService:
             # Save the message
             return await message_repository.save(message)
         except Exception as e:
-            raise SecureMessagingException(f"Failed to mark message as read: {str(e)}")
+            raise SecureMessagingException(f"Failed to mark message as read: {e!s}")
     
     async def delete_message(
         self,
         message_id: str,
         user_id: str,
         message_repository
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Delete a message.
         
@@ -546,4 +543,4 @@ class SecureMessagingService:
             # Save the message
             return await message_repository.save(message)
         except Exception as e:
-            raise SecureMessagingException(f"Failed to delete message: {str(e)}")
+            raise SecureMessagingException(f"Failed to delete message: {e!s}")

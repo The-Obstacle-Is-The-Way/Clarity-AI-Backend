@@ -5,10 +5,8 @@ Used for standalone tests without database dependencies.
 
 from collections.abc import Callable
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, List, Optional
+from typing import Any
 from uuid import UUID
-from abc import ABC, abstractmethod
 
 from app.domain.entities.digital_twin.biometric_rule import (
     BiometricRule,
@@ -16,6 +14,7 @@ from app.domain.entities.digital_twin.biometric_rule import (
     RuleCondition,
     RuleOperator,
 )
+from app.domain.utils.datetime_utils import UTC
 
 
 class ClinicalRuleEngine:

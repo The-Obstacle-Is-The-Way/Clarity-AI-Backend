@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Analytics Repository Interface.
 
@@ -6,10 +5,10 @@ This module defines the interface for accessing and manipulating analytics data,
 ensuring a proper separation between the application and infrastructure layers.
 """
 
-from typing import Dict, Any, List, Optional, Protocol
 from datetime import datetime
+from typing import Any, Protocol
 
-from app.domain.entities.analytics import AnalyticsEvent, AnalyticsAggregate
+from app.domain.entities.analytics import AnalyticsAggregate, AnalyticsEvent
 
 
 class AnalyticsRepository(Protocol):
@@ -32,7 +31,7 @@ class AnalyticsRepository(Protocol):
         """
         ...
     
-    async def save_events(self, events: List[AnalyticsEvent]) -> List[AnalyticsEvent]:
+    async def save_events(self, events: list[AnalyticsEvent]) -> list[AnalyticsEvent]:
         """
         Save multiple analytics events in a batch.
         
@@ -44,7 +43,7 @@ class AnalyticsRepository(Protocol):
         """
         ...
     
-    async def get_event(self, event_id: str) -> Optional[AnalyticsEvent]:
+    async def get_event(self, event_id: str) -> AnalyticsEvent | None:
         """
         Retrieve a specific analytics event by ID.
         
@@ -58,12 +57,12 @@ class AnalyticsRepository(Protocol):
     
     async def get_events(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[AnalyticsEvent]:
+    ) -> list[AnalyticsEvent]:
         """
         Retrieve analytics events that match the specified criteria.
         
@@ -82,11 +81,11 @@ class AnalyticsRepository(Protocol):
     async def get_aggregates(
         self,
         aggregate_type: str,
-        dimensions: List[str],
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
-    ) -> List[AnalyticsAggregate]:
+        dimensions: list[str],
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None
+    ) -> list[AnalyticsAggregate]:
         """
         Retrieve aggregated analytics data grouped by specified dimensions.
         
@@ -104,9 +103,9 @@ class AnalyticsRepository(Protocol):
     
     async def delete_events(
         self,
-        event_ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        older_than: Optional[datetime] = None
+        event_ids: list[str] | None = None,
+        filters: dict[str, Any] | None = None,
+        older_than: datetime | None = None
     ) -> int:
         """
         Delete analytics events matching the specified criteria.

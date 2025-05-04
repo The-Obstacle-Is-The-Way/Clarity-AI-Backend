@@ -6,16 +6,15 @@ into the patient's digital twin, enabling advanced analysis and personalized
 treatment recommendations based on physiological and neurological patterns.
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.biometric_twin import BiometricDataPoint
 from app.domain.entities.biometric_twin_enhanced import BiometricTwin
 from app.domain.exceptions import DomainError
 from app.domain.repositories.biometric_twin_repository import BiometricTwinRepository
+from app.domain.utils.datetime_utils import UTC
 
 
 class BiometricIntegrationService:
@@ -329,7 +328,7 @@ class BiometricIntegrationService:
             )
             
             if len(primary_data) < 5:  # Need sufficient data for correlation
-                return {data_type: 0.0 for data_type in secondary_data_types}
+                return dict.fromkeys(secondary_data_types, 0.0)
             
             # Calculate correlations
             correlations = {}

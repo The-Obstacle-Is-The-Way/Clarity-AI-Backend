@@ -6,12 +6,10 @@ security practices including secure password hashing and HIPAA-compliant
 authentication workflows.
 """
 
-from datetime import datetime, timedelta
 import secrets
-from typing import Optional, Tuple
+from datetime import datetime, timedelta
 
 from app.core.domain.entities.user import User
-from app.core.errors.security_exceptions import InvalidCredentialsError
 from app.core.interfaces.repositories.user_repository_interface import (
     IUserRepository,
 )
@@ -43,7 +41,7 @@ class AuthenticationService(AuthServiceInterface):
         self._password_handler = password_handler
         self._user_repository = user_repository
     
-    async def authenticate_user(self, username_or_email: str, password: str) -> Optional[User]:
+    async def authenticate_user(self, username_or_email: str, password: str) -> User | None:
         """
         Authenticate a user with username/email and password.
         
@@ -126,7 +124,7 @@ class AuthenticationService(AuthServiceInterface):
         """
         return self._password_handler.hash_password(password)
     
-    async def change_password(self, user: User, current_password: str, new_password: str) -> Tuple[bool, Optional[str]]:
+    async def change_password(self, user: User, current_password: str, new_password: str) -> tuple[bool, str | None]:
         """
         Change a user's password after verifying the current password.
         
@@ -154,9 +152,9 @@ class AuthenticationService(AuthServiceInterface):
             await self._user_repository.update(user)
             return (True, None)
         except Exception as e:
-            return (False, f"Failed to update password: {str(e)}")
+            return (False, f"Failed to update password: {e!s}")
     
-    async def reset_password(self, user: User, token: str, new_password: str) -> Tuple[bool, Optional[str]]:
+    async def reset_password(self, user: User, token: str, new_password: str) -> tuple[bool, str | None]:
         """
         Reset a user's password using a reset token.
         
@@ -187,7 +185,7 @@ class AuthenticationService(AuthServiceInterface):
             await self._user_repository.update(user)
             return (True, None)
         except Exception as e:
-            return (False, f"Failed to reset password: {str(e)}")
+            return (False, f"Failed to reset password: {e!s}")
     
     async def generate_reset_token(self, user: User) -> str:
         """

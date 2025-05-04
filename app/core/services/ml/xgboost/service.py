@@ -2,14 +2,16 @@
 XGBoost ML Service Implementation.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
+
 from app.domain.interfaces.ml_service_interface import MLServiceInterface
+
 
 class XGBoostService(MLServiceInterface):
     """Concrete implementation of MLServiceInterface for XGBoost models."""
     
-    async def predict(self, patient_id: UUID, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """
         Execute prediction using XGBoost model.
         
@@ -30,7 +32,7 @@ class XGBoostService(MLServiceInterface):
             "features_used": list(features.keys())
         }
     
-    async def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    async def get_model_info(self, model_type: str) -> dict[str, Any]:
         """
         Get information about available XGBoost models.
         
@@ -55,7 +57,7 @@ class XGBoostService(MLServiceInterface):
             ]
         }
     
-    async def healthcheck(self) -> Dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """
         Check health status of XGBoost service.
         

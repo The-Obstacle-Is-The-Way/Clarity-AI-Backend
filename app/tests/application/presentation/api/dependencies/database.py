@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Database Dependencies for FastAPI.
 
@@ -7,26 +6,30 @@ to be injected into FastAPI endpoints.
 """
 
 from collections.abc import AsyncGenerator, Callable
-from typing import Optional, Any, TypeVar
+from typing import Any, TypeVar
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session as get_session_from_config
 from app.config.settings import get_settings
+from app.infrastructure.persistence.sqlalchemy.config.database import (
+    get_db_session as get_session_from_config,
+)
+
 settings = get_settings()
 
 from app.infrastructure.logging.logger import get_logger
+
 logger = get_logger(__name__)
 
 # Repository interfaces
-from app.core.interfaces.repositories.base import IRepository
 from app.core.interfaces.repositories.user_repository import IUserRepository
-from app.core.interfaces.repositories.patient_repository import IPatientRepository
 
 # Import biometric repository interfaces - these might need to be created if they don't exist
 try:
-    from app.core.interfaces.repositories.biometric_alert_repository import IBiometricAlertRepository
+    from app.core.interfaces.repositories.biometric_alert_repository import (
+        IBiometricAlertRepository,
+    )
     from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
 except ImportError:
     # If these interfaces don't exist yet, use placeholders for now
@@ -37,10 +40,10 @@ except ImportError:
     IBiometricRuleRepository = Any
 
 # Import concrete repository implementations
-from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
-
 # For biometric alert and rule repositories, we'll use Any as placeholder if they don't exist yet
-from typing import Any, cast
+from typing import Any
+
+from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 
 # Try to import concrete repository implementations, use placeholders if not found
 try:

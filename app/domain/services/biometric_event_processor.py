@@ -7,14 +7,13 @@ and trigger clinical interventions when concerning patterns emerge.
 
 from collections.abc import Callable
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
 from enum import Enum
-from typing import Any, List, Optional, Dict
+from typing import Any
 from uuid import UUID, uuid4  # Corrected import, add uuid4 for test BiometricAlert
-from abc import ABC, abstractmethod
 
 from app.domain.entities.biometric_twin import BiometricDataPoint
 from app.domain.exceptions import ValidationError
+from app.domain.utils.datetime_utils import UTC
 
 
 class AlertPriority(Enum):
@@ -70,7 +69,7 @@ class AlertRule:
         self.updated_at = self.created_at
         self.is_active = is_active
     
-    def evaluate(self, data_point: BiometricDataPoint, context: Optional[Dict[str, Any]] = None) -> bool:
+    def evaluate(self, data_point: BiometricDataPoint, context: dict[str, Any] | None = None) -> bool:
         """
         Evaluate the rule against a biometric data point.
         
@@ -771,7 +770,7 @@ class ClinicalRuleEngine:
         
         # Apply parameters to the template
         for key, value in condition_template.items():
-            if isinstance(value, str) and (value.startswith("$") or value.startswith("${") and value.endswith("}")):
+            if isinstance(value, str) and (value.startswith("$") or (value.startswith("${") and value.endswith("}"))):
                 # Extract parameter name (handle both ${name} and $name formats)
                 if value.startswith("${") and value.endswith("}"):
                     param_name = value[2:-1]

@@ -6,9 +6,9 @@ in test environments, including direct authentication bypasses for integration t
 """
 
 import logging
-import pytest
 from collections.abc import Awaitable, Callable
 
+import pytest
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED

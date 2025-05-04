@@ -10,10 +10,17 @@ Run with: python -m app.demo.run_digital_twin_demo
 import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from app.domain.entities.patient import Gender, Diagnosis, DiagnosisStatus, Medication, MedicationStatus, Patient
+from app.domain.entities.patient import (
+    Diagnosis,
+    DiagnosisStatus,
+    Gender,
+    Medication,
+    MedicationStatus,
+    Patient,
+)
 from app.infrastructure.factories.mock_digital_twin_factory import MockDigitalTwinFactory
 
 

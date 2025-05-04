@@ -4,7 +4,8 @@ XGBoost service constants.
 This module defines constants used by the XGBoost service implementations.
 """
 
-from enum import Enum, auto
+from enum import Enum
+
 
 class ModelType(str, Enum):
     """Types of XGBoost models available in the system."""

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /mnt/c/Users/JJ/Desktop/NOVAMIND-WEB/Novamind-Backend/app/infrastructure/ml_services/digital_twin_integration/service.py
 
@@ -8,14 +7,10 @@ and provides a unified interface for the domain layer.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
-import asyncio
-
 # Use canonical config path
-from app.config.settings import get_settings
 from app.domain.entities.digital_twin.digital_twin import DigitalTwin
 from app.domain.interfaces.ml_services import (
     BiometricCorrelationService,
@@ -23,7 +18,6 @@ from app.domain.interfaces.ml_services import (
     PharmacogenomicsService,
     SymptomForecastingService,
 )
-from app.infrastructure.ml_services.base import BaseMLService
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +59,9 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
     async def generate_digital_twin(
         self,
         patient_id: UUID,
-        clinical_data: Dict[str, Any],
-        biometric_data: Optional[Dict[str, Any]] = None,
-        genetic_data: Optional[Dict[str, Any]] = None,
+        clinical_data: dict[str, Any],
+        biometric_data: dict[str, Any] | None = None,
+        genetic_data: dict[str, Any] | None = None,
     ) -> DigitalTwin:
         """
         Generate a comprehensive Digital Twin for a patient.
@@ -118,12 +112,12 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
 
         except Exception as e:
             logger.error(
-                f"Error generating Digital Twin for patient {patient_id}: {str(e)}"
+                f"Error generating Digital Twin for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to generate Digital Twin: {str(e)}")
+            raise RuntimeError(f"Failed to generate Digital Twin: {e!s}")
 
     async def update_digital_twin(
-        self, digital_twin_id: UUID, new_data: Dict[str, Any]
+        self, digital_twin_id: UUID, new_data: dict[str, Any]
     ) -> DigitalTwin:
         """
         Update an existing Digital Twin with new data.
@@ -185,12 +179,12 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
             return digital_twin
 
         except Exception as e:
-            logger.error(f"Error updating Digital Twin {digital_twin_id}: {str(e)}")
-            raise RuntimeError(f"Failed to update Digital Twin: {str(e)}")
+            logger.error(f"Error updating Digital Twin {digital_twin_id}: {e!s}")
+            raise RuntimeError(f"Failed to update Digital Twin: {e!s}")
 
     async def generate_comprehensive_insights(
         self, patient_id: UUID, digital_twin_id: UUID
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate comprehensive insights from a patient's Digital Twin.
 
@@ -237,13 +231,13 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
 
         except Exception as e:
             logger.error(
-                f"Error generating insights for patient {patient_id}: {str(e)}"
+                f"Error generating insights for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to generate comprehensive insights: {str(e)}")
+            raise RuntimeError(f"Failed to generate comprehensive insights: {e!s}")
 
     async def _generate_symptom_forecast(
-        self, patient_id: UUID, clinical_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, clinical_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate symptom forecast using the Symptom Forecasting Service."""
         logger.debug(f"Generating symptom forecast for patient {patient_id}")
 
@@ -260,9 +254,9 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
     async def _analyze_biometric_correlations(
         self,
         patient_id: UUID,
-        biometric_data: Dict[str, Any],
-        clinical_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        biometric_data: dict[str, Any],
+        clinical_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """Analyze biometric correlations using the Biometric Correlation Service."""
         logger.debug(f"Analyzing biometric correlations for patient {patient_id}")
 
@@ -293,9 +287,9 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
     async def _generate_pharmacogenomic_insights(
         self,
         patient_id: UUID,
-        genetic_data: Dict[str, Any],
-        clinical_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        genetic_data: dict[str, Any],
+        clinical_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """Generate pharmacogenomic insights using the Pharmacogenomics Service."""
         logger.debug(f"Generating pharmacogenomic insights for patient {patient_id}")
 
@@ -327,10 +321,10 @@ class DigitalTwinIntegrationServiceImpl(DigitalTwinIntegrationService):
     def _create_digital_twin(
         self,
         patient_id: UUID,
-        symptom_forecast: Optional[Dict[str, Any]] = None,
-        biometric_analysis: Optional[Dict[str, Any]] = None,
-        pharmacogenomic_insights: Optional[Dict[str, Any]] = None,
-        digital_twin_id: Optional[UUID] = None,
+        symptom_forecast: dict[str, Any] | None = None,
+        biometric_analysis: dict[str, Any] | None = None,
+        pharmacogenomic_insights: dict[str, Any] | None = None,
+        digital_twin_id: UUID | None = None,
     ) -> DigitalTwin:
         """Create a DigitalTwin entity from the various insights."""
         # Note: In a real implementation, we would create a proper DigitalTwin entity

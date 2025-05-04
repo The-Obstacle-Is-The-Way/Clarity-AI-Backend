@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Gene-Medication Interaction Model for the NOVAMIND Digital Twin.
 
@@ -11,19 +10,15 @@ import json
 import logging
 import os
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
 
 import joblib
 import numpy as np
-import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier
 
-from app.core.exceptions.base_exceptions import ModelExecutionError
-from app.domain.exceptions import ValidationError
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.ml.base.base_model import BaseModel
-from app.infrastructure.ml.utils.serialization import ModelSerializer
 
 
 class GeneMedicationModel(BaseModel):
@@ -39,10 +34,10 @@ class GeneMedicationModel(BaseModel):
         self,
         model_name: str = "gene_medication_model",
         version: str = "1.0.0",
-        model_path: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
-        gene_markers: Optional[List[str]] = None,
-        medications: Optional[List[str]] = None,
+        model_path: str | None = None,
+        logger: logging.Logger | None = None,
+        gene_markers: list[str] | None = None,
+        medications: list[str] | None = None,
     ):
         """
         Initialize the gene-medication model.
@@ -119,7 +114,7 @@ class GeneMedicationModel(BaseModel):
         try:
             # Load model metadata
             meta_path = os.path.join(self.model_path, "metadata.json")
-            with open(meta_path, "r") as f:
+            with open(meta_path) as f:
                 metadata = json.load(f)
 
             # Update model attributes from metadata
@@ -143,7 +138,7 @@ class GeneMedicationModel(BaseModel):
 
             # Load interaction database
             db_path = os.path.join(self.model_path, "interaction_db.json")
-            with open(db_path, "r") as f:
+            with open(db_path) as f:
                 self.interaction_db = json.load(f)
 
             self.logger.info(
@@ -151,10 +146,10 @@ class GeneMedicationModel(BaseModel):
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to load gene-medication model: {str(e)}")
+            self.logger.error(f"Failed to load gene-medication model: {e!s}")
             raise
 
-    def save(self, path: Optional[str] = None) -> str:
+    def save(self, path: str | None = None) -> str:
         """
         Save the model to storage.
 
@@ -215,10 +210,10 @@ class GeneMedicationModel(BaseModel):
             return save_path
 
         except Exception as e:
-            self.logger.error(f"Failed to save gene-medication model: {str(e)}")
+            self.logger.error(f"Failed to save gene-medication model: {e!s}")
             raise
 
-    def preprocess(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def preprocess(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Preprocess input data for prediction.
 
@@ -275,10 +270,10 @@ class GeneMedicationModel(BaseModel):
             }
 
         except Exception as e:
-            self.logger.error(f"Error during preprocessing: {str(e)}")
-            raise ValueError(f"Failed to preprocess data: {str(e)}")
+            self.logger.error(f"Error during preprocessing: {e!s}")
+            raise ValueError(f"Failed to preprocess data: {e!s}")
 
-    def predict(self, preprocessed_data: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, preprocessed_data: dict[str, Any]) -> dict[str, Any]:
         """
         Generate predictions using the model.
 
@@ -350,10 +345,10 @@ class GeneMedicationModel(BaseModel):
             }
 
         except Exception as e:
-            self.logger.error(f"Error during prediction: {str(e)}")
-            raise ValueError(f"Failed to generate predictions: {str(e)}")
+            self.logger.error(f"Error during prediction: {e!s}")
+            raise ValueError(f"Failed to generate predictions: {e!s}")
 
-    def postprocess(self, predictions: Dict[str, Any]) -> Dict[str, Any]:
+    def postprocess(self, predictions: dict[str, Any]) -> dict[str, Any]:
         """
         Postprocess model predictions.
 
@@ -387,12 +382,12 @@ class GeneMedicationModel(BaseModel):
             return results
 
         except Exception as e:
-            self.logger.error(f"Error during postprocessing: {str(e)}")
-            raise ValueError(f"Failed to postprocess predictions: {str(e)}")
+            self.logger.error(f"Error during postprocessing: {e!s}")
+            raise ValueError(f"Failed to postprocess predictions: {e!s}")
 
     def _analyze_interactions(
-        self, medication: str, genetic_markers: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, medication: str, genetic_markers: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Analyze interactions between a medication and genetic markers.
 
@@ -433,8 +428,8 @@ class GeneMedicationModel(BaseModel):
         return interactions
 
     def _generate_recommendations(
-        self, medication_predictions: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, medication_predictions: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate medication recommendations based on predictions.
 
@@ -538,7 +533,7 @@ class GeneMedicationModel(BaseModel):
         return recommendations
 
     def _generate_recommendation_rationale(
-        self, medication: str, prediction: Dict[str, Any], avoid: bool = False
+        self, medication: str, prediction: dict[str, Any], avoid: bool = False
     ) -> str:
         """
         Generate rationale for medication recommendation.
@@ -581,8 +576,8 @@ class GeneMedicationModel(BaseModel):
         return rationale
 
     def _generate_genetic_insights(
-        self, genetic_markers: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, genetic_markers: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Generate insights based on genetic markers.
 
@@ -710,9 +705,9 @@ class GeneMedicationModel(BaseModel):
 
     def train(
         self,
-        training_data: Dict[str, Any],
-        validation_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        training_data: dict[str, Any],
+        validation_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Train the model on the provided data.
 
@@ -793,15 +788,15 @@ class GeneMedicationModel(BaseModel):
             return metrics
 
         except Exception as e:
-            self.logger.error(f"Error during training: {str(e)}")
-            raise ValueError(f"Failed to train model: {str(e)}")
+            self.logger.error(f"Error during training: {e!s}")
+            raise ValueError(f"Failed to train model: {e!s}")
 
     def predict_medication_responses(
         self,
         patient_id: UUID,
-        patient_data: Dict[str, Any],
-        medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any],
+        medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Predict medication responses for a patient.
 
@@ -841,5 +836,5 @@ class GeneMedicationModel(BaseModel):
             return processed_results
 
         except Exception as e:
-            self.logger.error(f"Error during medication response prediction: {str(e)}")
-            raise ValueError(f"Failed to predict medication responses: {str(e)}")
+            self.logger.error(f"Error during medication response prediction: {e!s}")
+            raise ValueError(f"Failed to predict medication responses: {e!s}")

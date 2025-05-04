@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 AWS Bedrock PAT Implementation.
 
@@ -7,14 +6,12 @@ This module provides an implementation of the PAT interface using AWS Bedrock.
 
 import json
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import boto3
-from botocore.exceptions import ClientError
 
 from app.core.services.ml.pat_interface import PATInterface
 from app.core.utils.logging import get_logger
-
 
 # Create logger
 logger = get_logger(__name__)
@@ -38,7 +35,7 @@ class BedrockPAT(PATInterface):
         self.bucket_name = ""
         self.table_name = ""
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -109,7 +106,7 @@ class BedrockPAT(PATInterface):
             
             return True
         except Exception as e:
-            logger.error(f"Health check failed: {str(e)}")
+            logger.error(f"Health check failed: {e!s}")
             return False
     
     def shutdown(self) -> None:
@@ -133,8 +130,8 @@ class BedrockPAT(PATInterface):
     def _store_actigraphy_data(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        metadata: Dict[str, Any]
+        readings: list[dict[str, Any]],
+        metadata: dict[str, Any]
     ) -> str:
         """
         Store actigraphy data in S3.
@@ -193,14 +190,14 @@ class BedrockPAT(PATInterface):
     def analyze_actigraphy(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Dict[str, str],
-        analysis_types: List[str],
+        device_info: dict[str, str],
+        analysis_types: list[str],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze actigraphy data using the PAT model.
         
@@ -274,7 +271,7 @@ class BedrockPAT(PATInterface):
                 results["results"][analysis_type] = response_body
                 
             except Exception as e:
-                logger.error(f"Error processing analysis type {analysis_type}: {str(e)}")
+                logger.error(f"Error processing analysis type {analysis_type}: {e!s}")
                 results["results"][analysis_type] = {
                     "error": str(e),
                     "status": "failed"
@@ -293,7 +290,7 @@ class BedrockPAT(PATInterface):
                     }
                 )
             except Exception as e:
-                logger.error(f"Error storing results in DynamoDB: {str(e)}")
+                logger.error(f"Error storing results in DynamoDB: {e!s}")
         
         return results
     
@@ -303,7 +300,7 @@ class BedrockPAT(PATInterface):
         start_date: str,
         end_date: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get sleep metrics for a patient over a specified time period.
         
@@ -350,7 +347,7 @@ class BedrockPAT(PATInterface):
                 return sleep_metrics
                 
             except Exception as e:
-                logger.error(f"Error querying sleep metrics: {str(e)}")
+                logger.error(f"Error querying sleep metrics: {e!s}")
                 return {
                     "patient_id": patient_id,
                     "start_date": start_date,
@@ -372,7 +369,7 @@ class BedrockPAT(PATInterface):
         start_date: str,
         end_date: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get activity metrics for a patient over a specified time period.
         
@@ -419,7 +416,7 @@ class BedrockPAT(PATInterface):
                 return activity_metrics
                 
             except Exception as e:
-                logger.error(f"Error querying activity metrics: {str(e)}")
+                logger.error(f"Error querying activity metrics: {e!s}")
                 return {
                     "patient_id": patient_id,
                     "start_date": start_date,
@@ -438,10 +435,10 @@ class BedrockPAT(PATInterface):
     def detect_anomalies(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        baseline_period: Optional[Dict[str, str]] = None,
+        readings: list[dict[str, Any]],
+        baseline_period: dict[str, str] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect anomalies in actigraphy data compared to baseline or population norms.
         
@@ -492,7 +489,7 @@ class BedrockPAT(PATInterface):
             return result
             
         except Exception as e:
-            logger.error(f"Error detecting anomalies: {str(e)}")
+            logger.error(f"Error detecting anomalies: {e!s}")
             return {
                 "patient_id": patient_id,
                 "error": str(e),
@@ -502,10 +499,10 @@ class BedrockPAT(PATInterface):
     def predict_mood_state(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        historical_context: Optional[Dict[str, Any]] = None,
+        readings: list[dict[str, Any]],
+        historical_context: dict[str, Any] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict mood state based on actigraphy patterns.
         
@@ -557,7 +554,7 @@ class BedrockPAT(PATInterface):
             return result
             
         except Exception as e:
-            logger.error(f"Error predicting mood state: {str(e)}")
+            logger.error(f"Error predicting mood state: {e!s}")
             return {
                 "patient_id": patient_id,
                 "error": str(e),
@@ -568,9 +565,9 @@ class BedrockPAT(PATInterface):
         self,
         patient_id: str,
         profile_id: str,
-        actigraphy_analysis: Dict[str, Any],
+        actigraphy_analysis: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Integrate actigraphy analysis with digital twin profile.
         
@@ -621,7 +618,7 @@ class BedrockPAT(PATInterface):
             return result
             
         except Exception as e:
-            logger.error(f"Error integrating with digital twin: {str(e)}")
+            logger.error(f"Error integrating with digital twin: {e!s}")
             return {
                 "patient_id": patient_id,
                 "profile_id": profile_id,

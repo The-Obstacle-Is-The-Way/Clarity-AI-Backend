@@ -2,17 +2,17 @@
 Interface for the Patient Repository.
 """
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 from app.domain.entities.patient import Patient
+
 
 # Rename class to match import in DI container -> Renaming back to PatientRepository
 class PatientRepository(ABC): # Renamed from PatientRepositoryInterface
     """Abstract base class defining the patient repository interface."""
 
     @abstractmethod
-    async def get_by_id(self, patient_id: UUID) -> Optional[Patient]:
+    async def get_by_id(self, patient_id: UUID) -> Patient | None:
         """Retrieve a patient by their ID."""
         pass
 
@@ -22,7 +22,7 @@ class PatientRepository(ABC): # Renamed from PatientRepositoryInterface
         pass
 
     @abstractmethod
-    async def update(self, patient: Patient) -> Optional[Patient]:
+    async def update(self, patient: Patient) -> Patient | None:
         """Update an existing patient record."""
         pass
 
@@ -32,7 +32,7 @@ class PatientRepository(ABC): # Renamed from PatientRepositoryInterface
         pass
 
     @abstractmethod
-    async def list_all(self, limit: int = 100, offset: int = 0) -> List[Patient]:
+    async def list_all(self, limit: int = 100, offset: int = 0) -> list[Patient]:
         """List all patients with pagination."""
         pass
 

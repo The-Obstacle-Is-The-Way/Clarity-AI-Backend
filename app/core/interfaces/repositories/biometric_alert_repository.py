@@ -1,7 +1,6 @@
 """Interface definition for Biometric Alert Repository."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 # Import BiometricAlert entity from domain
@@ -16,12 +15,12 @@ class IBiometricAlertRepository(ABC):
     """Repository interface for BiometricAlert entities."""
 
     @abstractmethod
-    async def get_by_id(self, alert_id: UUID) -> Optional[BiometricAlert]:
+    async def get_by_id(self, alert_id: UUID) -> BiometricAlert | None:
         """Retrieve a biometric alert by its unique ID."""
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID, limit: int = 100, skip: int = 0) -> List[BiometricAlert]:
+    async def get_by_patient_id(self, patient_id: UUID, limit: int = 100, skip: int = 0) -> list[BiometricAlert]:
         """Retrieve biometric alerts for a specific patient."""
         pass
 

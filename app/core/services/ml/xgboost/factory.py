@@ -3,7 +3,6 @@ XGBoost ML Service Factory.
 """
 
 import logging
-from typing import Any, Dict, Optional, Type, Union
 from functools import lru_cache
 
 from app.core.services.ml.xgboost.interface import XGBoostInterface
@@ -77,7 +76,7 @@ def create_xgboost_service(
     
     return instance
 
-def register_implementation(name: str, implementation_class: Type[XGBoostInterface]) -> None:
+def register_implementation(name: str, implementation_class: type[XGBoostInterface]) -> None:
     """
     Register a new XGBoost service implementation.
     

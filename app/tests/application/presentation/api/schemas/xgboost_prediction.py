@@ -5,8 +5,9 @@ This module defines the request and response models for the XGBoost prediction A
 endpoints, providing strict validation and documentation of the API contract.
 """
 
-from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ClinicalData(BaseModel):
@@ -16,23 +17,23 @@ class ClinicalData(BaseModel):
         ..., ge=0, le=27, 
         description="Severity score (0-27 scale). Higher values indicate greater symptom severity."
     )
-    phq9_score: Optional[int] = Field(
+    phq9_score: int | None = Field(
         None, ge=0, le=27, 
         description="PHQ-9 depression score (0-27 scale). Higher values indicate more severe depression."
     )
-    gad7_score: Optional[int] = Field(
+    gad7_score: int | None = Field(
         None, ge=0, le=21, 
         description="GAD-7 anxiety score (0-21 scale). Higher values indicate more severe anxiety."
     )
-    sleep_quality: Optional[float] = Field(
+    sleep_quality: float | None = Field(
         None, ge=0.0, le=1.0, 
         description="Sleep quality score (0-1 scale). Higher values indicate better sleep quality."
     )
-    medication_adherence: Optional[float] = Field(
+    medication_adherence: float | None = Field(
         None, ge=0.0, le=1.0, 
         description="Medication adherence rate (0-1 scale). Higher values indicate better adherence."
     )
-    previous_episodes: Optional[int] = Field(
+    previous_episodes: int | None = Field(
         None, ge=0, 
         description="Number of previous psychiatric episodes."
     )
@@ -54,19 +55,19 @@ class ClinicalData(BaseModel):
 class DemographicData(BaseModel):
     """Demographic data for prediction."""
     
-    age_range: Optional[str] = Field(
+    age_range: str | None = Field(
         None, 
         description="Age range (e.g., '18-24', '25-34', '35-44', '45-54', '55-64', '65+')"
     )
-    biological_sex: Optional[str] = Field(
+    biological_sex: str | None = Field(
         None, 
         description="Biological sex (e.g., 'male', 'female', 'other')"
     )
-    education_level: Optional[str] = Field(
+    education_level: str | None = Field(
         None, 
         description="Education level (e.g., 'high_school', 'bachelors', 'masters', 'doctoral')"
     )
-    employment_status: Optional[str] = Field(
+    employment_status: str | None = Field(
         None, 
         description="Employment status (e.g., 'employed', 'unemployed', 'student', 'retired')"
     )
@@ -86,15 +87,15 @@ class DemographicData(BaseModel):
 class TemporalData(BaseModel):
     """Temporal data for prediction."""
     
-    time_of_day: Optional[str] = Field(
+    time_of_day: str | None = Field(
         None, 
         description="Time of day (e.g., 'morning', 'afternoon', 'evening', 'night')"
     )
-    day_of_week: Optional[int] = Field(
+    day_of_week: int | None = Field(
         None, ge=0, le=6, 
         description="Day of week (0-6, where 0 is Monday)"
     )
-    season: Optional[str] = Field(
+    season: str | None = Field(
         None, 
         description="Season (e.g., 'spring', 'summer', 'fall', 'winter')"
     )
@@ -122,11 +123,11 @@ class TreatmentDetails(BaseModel):
         description="Class of the treatment (e.g., 'SSRI', 'SNRI', 'CBT')",
         alias="class"
     )
-    dosage: Optional[str] = Field(
+    dosage: str | None = Field(
         None, 
         description="Dosage information for medications (e.g., '50mg daily')"
     )
-    duration: Optional[str] = Field(
+    duration: str | None = Field(
         None, 
         description="Duration of treatment (e.g., '12 weeks')"
     )
@@ -147,19 +148,19 @@ class TreatmentDetails(BaseModel):
 class GeneticData(BaseModel):
     """Genetic data for prediction."""
     
-    cyp2d6_status: Optional[str] = Field(
+    cyp2d6_status: str | None = Field(
         None, 
         description="CYP2D6 metabolizer status (e.g., 'normal', 'poor', 'rapid', 'ultrarapid')"
     )
-    cyp2c19_status: Optional[str] = Field(
+    cyp2c19_status: str | None = Field(
         None, 
         description="CYP2C19 metabolizer status (e.g., 'normal', 'poor', 'rapid', 'ultrarapid')"
     )
-    cyp1a2_status: Optional[str] = Field(
+    cyp1a2_status: str | None = Field(
         None, 
         description="CYP1A2 metabolizer status (e.g., 'normal', 'poor', 'rapid', 'ultrarapid')"
     )
-    cyp3a4_status: Optional[str] = Field(
+    cyp3a4_status: str | None = Field(
         None, 
         description="CYP3A4 metabolizer status (e.g., 'normal', 'poor', 'rapid', 'ultrarapid')"
     )
@@ -179,7 +180,7 @@ class GeneticData(BaseModel):
 class TreatmentHistory(BaseModel):
     """Treatment history for prediction."""
     
-    previous_treatments: List[Dict[str, Any]] = Field(
+    previous_treatments: list[dict[str, Any]] = Field(
         default_factory=list,
         description="List of previous treatments and their outcomes"
     )
@@ -212,7 +213,7 @@ class TreatmentHistory(BaseModel):
 class TreatmentPlan(BaseModel):
     """Treatment plan for prediction."""
     
-    treatments: List[Dict[str, Any]] = Field(
+    treatments: list[dict[str, Any]] = Field(
         ...,
         description="List of planned treatments"
     )
@@ -220,11 +221,11 @@ class TreatmentPlan(BaseModel):
         ...,
         description="Treatment plan intensity (LOW, MODERATE, HIGH)"
     )
-    duration: Optional[str] = Field(
+    duration: str | None = Field(
         None,
         description="Planned duration of treatment (e.g., '12 weeks')"
     )
-    goals: Optional[List[str]] = Field(
+    goals: list[str] | None = Field(
         None,
         description="Treatment goals"
     )
@@ -270,19 +271,19 @@ class TreatmentPlan(BaseModel):
 class SocialDeterminants(BaseModel):
     """Social determinants of health for prediction."""
     
-    support_network_score: Optional[float] = Field(
+    support_network_score: float | None = Field(
         None, ge=0.0, le=1.0,
         description="Support network score (0-1 scale). Higher values indicate stronger support."
     )
-    access_to_care: Optional[float] = Field(
+    access_to_care: float | None = Field(
         None, ge=0.0, le=1.0,
         description="Access to care score (0-1 scale). Higher values indicate better access."
     )
-    housing_stability: Optional[float] = Field(
+    housing_stability: float | None = Field(
         None, ge=0.0, le=1.0,
         description="Housing stability score (0-1 scale). Higher values indicate more stable housing."
     )
-    financial_stability: Optional[float] = Field(
+    financial_stability: float | None = Field(
         None, ge=0.0, le=1.0,
         description="Financial stability score (0-1 scale). Higher values indicate more stable finances."
     )
@@ -302,7 +303,7 @@ class SocialDeterminants(BaseModel):
 class Comorbidities(BaseModel):
     """Comorbidities for prediction."""
     
-    conditions: List[Dict[str, Any]] = Field(
+    conditions: list[dict[str, Any]] = Field(
         default_factory=list,
         description="List of comorbid conditions"
     )
@@ -344,15 +345,15 @@ class RiskPredictionRequest(BaseModel):
         ...,
         description="Clinical data for prediction"
     )
-    demographic_data: Optional[DemographicData] = Field(
+    demographic_data: DemographicData | None = Field(
         None,
         description="Demographic data for prediction"
     )
-    temporal_data: Optional[TemporalData] = Field(
+    temporal_data: TemporalData | None = Field(
         None,
         description="Temporal data for prediction"
     )
-    confidence_threshold: Optional[float] = Field(
+    confidence_threshold: float | None = Field(
         None, ge=0.0, le=1.0,
         description="Confidence threshold for prediction (0-1 scale)"
     )
@@ -409,11 +410,11 @@ class TreatmentResponseRequest(BaseModel):
         ...,
         description="Clinical data for prediction"
     )
-    genetic_data: Optional[GeneticData] = Field(
+    genetic_data: GeneticData | None = Field(
         None,
         description="Genetic data for prediction"
     )
-    treatment_history: Optional[TreatmentHistory] = Field(
+    treatment_history: TreatmentHistory | None = Field(
         None,
         description="Treatment history for prediction"
     )
@@ -471,11 +472,11 @@ class OutcomePredictionRequest(BaseModel):
         ...,
         description="Planned treatment regimen"
     )
-    social_determinants: Optional[SocialDeterminants] = Field(
+    social_determinants: SocialDeterminants | None = Field(
         None,
         description="Social determinants of health"
     )
-    comorbidities: Optional[Comorbidities] = Field(
+    comorbidities: Comorbidities | None = Field(
         None,
         description="Comorbid conditions"
     )
@@ -658,19 +659,19 @@ class RiskPredictionResponse(BaseModel):
         ...,
         description="Whether prediction meets confidence threshold"
     )
-    contributing_factors: List[str] = Field(
+    contributing_factors: list[str] = Field(
         ...,
         description="Factors contributing to risk"
     )
-    recommended_actions: List[str] = Field(
+    recommended_actions: list[str] = Field(
         ...,
         description="Recommended clinical actions"
     )
-    detailed_factors: Optional[Dict[str, Any]] = Field(
+    detailed_factors: dict[str, Any] | None = Field(
         None,
         description="Detailed analysis of contributing factors"
     )
-    detailed_actions: Optional[Dict[str, Any]] = Field(
+    detailed_actions: dict[str, Any] | None = Field(
         None,
         description="Detailed recommended actions"
     )
@@ -734,19 +735,19 @@ class TreatmentResponseResponse(BaseModel):
         ...,
         description="Expected timeframe for response"
     )
-    side_effects_risk: Dict[str, float] = Field(
+    side_effects_risk: dict[str, float] = Field(
         ...,
         description="Risk of side effects"
     )
-    alternatives: List[Dict[str, Any]] = Field(
+    alternatives: list[dict[str, Any]] = Field(
         ...,
         description="Alternative treatment options"
     )
-    detailed_side_effects: Optional[Dict[str, Any]] = Field(
+    detailed_side_effects: dict[str, Any] | None = Field(
         None,
         description="Detailed analysis of side effects"
     )
-    detailed_alternatives: Optional[Dict[str, Any]] = Field(
+    detailed_alternatives: dict[str, Any] | None = Field(
         None,
         description="Detailed alternative options"
     )
@@ -812,23 +813,23 @@ class OutcomePredictionResponse(BaseModel):
         ...,
         description="Timeframe for prediction"
     )
-    outcomes: Dict[str, float] = Field(
+    outcomes: dict[str, float] = Field(
         ...,
         description="Predicted outcomes for various measures"
     )
-    expected_trajectory: Dict[str, Any] = Field(
+    expected_trajectory: dict[str, Any] = Field(
         ...,
         description="Expected clinical trajectory over time"
     )
-    key_factors: List[str] = Field(
+    key_factors: list[str] = Field(
         ...,
         description="Key factors affecting outcomes"
     )
-    suggested_adjustments: List[str] = Field(
+    suggested_adjustments: list[str] = Field(
         ...,
         description="Suggested adjustments to treatment plan"
     )
-    detailed_trajectory: Optional[Dict[str, Any]] = Field(
+    detailed_trajectory: dict[str, Any] | None = Field(
         None,
         description="Detailed trajectory analysis"
     )
@@ -893,7 +894,7 @@ class FeatureImportanceResponse(BaseModel):
         ...,
         description="Timestamp of feature importance calculation"
     )
-    features: List[Dict[str, Any]] = Field(
+    features: list[dict[str, Any]] = Field(
         ...,
         description="List of features with importance scores"
     )
@@ -968,11 +969,11 @@ class DigitalTwinIntegrationResponse(BaseModel):
         ...,
         description="Status of integration (SUCCESS, PARTIAL, FAILED)"
     )
-    digital_twin_components_updated: List[str] = Field(
+    digital_twin_components_updated: list[str] = Field(
         ...,
         description="Components of digital twin that were updated"
     )
-    insights_generated: List[str] = Field(
+    insights_generated: list[str] = Field(
         ...,
         description="Clinical insights generated from integration"
     )
@@ -1022,11 +1023,11 @@ class ModelInfoResponse(BaseModel):
         ...,
         description="Model description"
     )
-    features: List[str] = Field(
+    features: list[str] = Field(
         ...,
         description="Features used by the model"
     )
-    performance_metrics: Dict[str, float] = Field(
+    performance_metrics: dict[str, float] = Field(
         ...,
         description="Performance metrics"
     )

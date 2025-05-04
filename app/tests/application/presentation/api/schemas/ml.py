@@ -1,15 +1,13 @@
-# -*- coding: utf-8 -*-
 """
 ML API Schemas.
 
 This module defines Pydantic schemas for ML API requests and responses.
 """
 
-from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ServiceHealthResponse(BaseModel):
@@ -41,11 +39,11 @@ class MentaLLaMAProcessRequest(BaseModel):
         description="Text to process",
         min_length=1
     )
-    model_type: Optional[MentaLLaMAModelType] = Field(
+    model_type: MentaLLaMAModelType | None = Field(
         default=MentaLLaMAModelType.GENERAL,
         description="Type of model to use for processing"
     )
-    options: Optional[Dict[str, Any]] = Field(
+    options: dict[str, Any] | None = Field(
         default=None,
         description="Additional processing options"
     )
@@ -65,7 +63,7 @@ class MentaLLaMAProcessResponse(BaseModel):
     timestamp: str = Field(
         description="Timestamp of the processing"
     )
-    content: Optional[str] = Field(
+    content: str | None = Field(
         default=None,
         description="Processed content (for text responses)"
     )
@@ -81,7 +79,7 @@ class DepressionDetectionRequest(BaseModel):
         description="Text to analyze for depression signals",
         min_length=1
     )
-    options: Optional[Dict[str, Any]] = Field(
+    options: dict[str, Any] | None = Field(
         default=None,
         description="Additional processing options"
     )
@@ -112,7 +110,7 @@ class DepressionAnalysis(BaseModel):
         ge=0,
         le=1
     )
-    key_indicators: List[DepressionSignal] = Field(
+    key_indicators: list[DepressionSignal] = Field(
         description="Key indicators of depression"
     )
 
@@ -120,10 +118,10 @@ class DepressionAnalysis(BaseModel):
 class DepressionRecommendations(BaseModel):
     """Model for depression recommendations."""
     
-    suggested_assessments: List[str] = Field(
+    suggested_assessments: list[str] = Field(
         description="Suggested formal assessments"
     )
-    discussion_points: List[str] = Field(
+    discussion_points: list[str] = Field(
         description="Suggested topics for clinical follow-up"
     )
 
@@ -136,7 +134,7 @@ class DepressionDetectionResponse(BaseModel):
     depression_signals: DepressionAnalysis = Field(
         description="Depression signals analysis"
     )
-    analysis: Dict[str, Any] = Field(
+    analysis: dict[str, Any] = Field(
         description="Detailed analysis"
     )
     recommendations: DepressionRecommendations = Field(
@@ -170,11 +168,11 @@ class RiskAssessmentRequest(BaseModel):
         description="Text to analyze for risk signals",
         min_length=1
     )
-    risk_type: Optional[RiskType] = Field(
+    risk_type: RiskType | None = Field(
         default=None,
         description="Type of risk to assess"
     )
-    options: Optional[Dict[str, Any]] = Field(
+    options: dict[str, Any] | None = Field(
         default=None,
         description="Additional processing options"
     )
@@ -218,7 +216,7 @@ class RiskAssessmentAnalysis(BaseModel):
         ge=0,
         le=1
     )
-    identified_risks: List[IdentifiedRisk] = Field(
+    identified_risks: list[IdentifiedRisk] = Field(
         description="Identified risks"
     )
 
@@ -226,13 +224,13 @@ class RiskAssessmentAnalysis(BaseModel):
 class RiskAssessmentRecommendations(BaseModel):
     """Model for risk assessment recommendations."""
     
-    immediate_actions: List[str] = Field(
+    immediate_actions: list[str] = Field(
         description="Immediate actions for high/imminent risk"
     )
-    clinical_follow_up: List[str] = Field(
+    clinical_follow_up: list[str] = Field(
         description="Recommended clinical steps"
     )
-    screening_tools: List[str] = Field(
+    screening_tools: list[str] = Field(
         description="Relevant formal assessments"
     )
 
@@ -245,7 +243,7 @@ class RiskAssessmentResponse(BaseModel):
     risk_assessment: RiskAssessmentAnalysis = Field(
         description="Risk assessment analysis"
     )
-    analysis: Dict[str, Any] = Field(
+    analysis: dict[str, Any] = Field(
         description="Detailed analysis"
     )
     recommendations: RiskAssessmentRecommendations = Field(
@@ -269,7 +267,7 @@ class SentimentAnalysisRequest(BaseModel):
         description="Text to analyze for sentiment",
         min_length=1
     )
-    options: Optional[Dict[str, Any]] = Field(
+    options: dict[str, Any] | None = Field(
         default=None,
         description="Additional processing options"
     )
@@ -294,7 +292,7 @@ class Emotion(BaseModel):
 class EmotionalAnalysis(BaseModel):
     """Model for emotional analysis."""
     
-    primary_emotions: List[Emotion] = Field(
+    primary_emotions: list[Emotion] = Field(
         description="Primary emotions detected"
     )
     emotional_range: str = Field(
@@ -334,7 +332,7 @@ class SentimentAnalysisResponse(BaseModel):
     emotions: EmotionalAnalysis = Field(
         description="Emotional analysis"
     )
-    analysis: Dict[str, Any] = Field(
+    analysis: dict[str, Any] = Field(
         description="Detailed analysis"
     )
     model: str = Field(
@@ -368,11 +366,11 @@ class WellnessAnalysisRequest(BaseModel):
         description="Text to analyze for wellness dimensions",
         min_length=1
     )
-    dimensions: Optional[List[WellnessDimension]] = Field(
+    dimensions: list[WellnessDimension] | None = Field(
         default=None,
         description="List of dimensions to analyze"
     )
-    options: Optional[Dict[str, Any]] = Field(
+    options: dict[str, Any] | None = Field(
         default=None,
         description="Additional processing options"
     )
@@ -392,13 +390,13 @@ class WellnessDimensionAnalysis(BaseModel):
     summary: str = Field(
         description="Brief summary of findings"
     )
-    strengths: List[str] = Field(
+    strengths: list[str] = Field(
         description="Positive aspects identified"
     )
-    challenges: List[str] = Field(
+    challenges: list[str] = Field(
         description="Areas of concern"
     )
-    evidence: List[str] = Field(
+    evidence: list[str] = Field(
         description="Evidence from text"
     )
 
@@ -406,13 +404,13 @@ class WellnessDimensionAnalysis(BaseModel):
 class WellnessRecommendations(BaseModel):
     """Model for wellness recommendations."""
     
-    clinical_focus_areas: List[str] = Field(
+    clinical_focus_areas: list[str] = Field(
         description="Suggested clinical priorities"
     )
-    suggested_resources: List[str] = Field(
+    suggested_resources: list[str] = Field(
         description="Potentially helpful resources"
     )
-    assessment_tools: List[str] = Field(
+    assessment_tools: list[str] = Field(
         description="Relevant formal assessments"
     )
 
@@ -422,10 +420,10 @@ class WellnessAnalysisResponse(BaseModel):
     
     model_config = {"protected_namespaces": ()}
     
-    wellness_dimensions: List[WellnessDimensionAnalysis] = Field(
+    wellness_dimensions: list[WellnessDimensionAnalysis] = Field(
         description="Wellness dimensions analysis"
     )
-    analysis: Dict[str, Any] = Field(
+    analysis: dict[str, Any] = Field(
         description="Detailed analysis"
     )
     recommendations: WellnessRecommendations = Field(
@@ -457,7 +455,7 @@ class PHIDetectionRequest(BaseModel):
         description="Text to analyze for PHI",
         min_length=1
     )
-    detection_level: Optional[DetectionLevel] = Field(
+    detection_level: DetectionLevel | None = Field(
         default=DetectionLevel.MODERATE,
         description="Detection level"
     )
@@ -485,7 +483,7 @@ class PHIDetected(BaseModel):
 class PHIDetectionResponse(BaseModel):
     """Response model for PHI detection."""
     
-    phi_detected: List[PHIDetected] = Field(
+    phi_detected: list[PHIDetected] = Field(
         description="Detected PHI"
     )
     detection_level: DetectionLevel = Field(
@@ -510,11 +508,11 @@ class PHIRedactionRequest(BaseModel):
         description="Text to redact PHI from",
         min_length=1
     )
-    replacement: Optional[str] = Field(
+    replacement: str | None = Field(
         default="[REDACTED]",
         description="Replacement text for redacted PHI"
     )
-    detection_level: Optional[DetectionLevel] = Field(
+    detection_level: DetectionLevel | None = Field(
         default=DetectionLevel.MODERATE,
         description="Detection level"
     )
@@ -557,11 +555,11 @@ class GenerateDigitalTwinRequest(BaseModel):
     patient_id: str = Field(
         description="ID of the patient"
     )
-    patient_data: Optional[Dict[str, Any]] = Field(
+    patient_data: dict[str, Any] | None = Field(
         default=None,
         description="Additional patient data for Digital Twin generation"
     )
-    options: Optional[Dict[str, Any]] = Field(
+    options: dict[str, Any] | None = Field(
         default=None,
         description="Additional generation options"
     )
@@ -583,7 +581,7 @@ class DigitalTwinDimension(BaseModel):
         ge=0,
         le=1
     )
-    key_features: List[str] = Field(
+    key_features: list[str] = Field(
         description="Key features of this dimension"
     )
 
@@ -611,10 +609,10 @@ class GenerateDigitalTwinResponse(BaseModel):
     version: str = Field(
         description="Version of the Digital Twin model"
     )
-    metrics: Dict[str, Any] = Field(
+    metrics: dict[str, Any] = Field(
         description="Model metrics"
     )
-    dimensions: List[DigitalTwinDimension] = Field(
+    dimensions: list[DigitalTwinDimension] = Field(
         description="Digital Twin dimensions"
     )
     clinical_summary: str = Field(
@@ -636,15 +634,15 @@ class CreateSessionRequest(BaseModel):
     therapist_id: str = Field(
         description="ID of the therapist"
     )
-    patient_id: Optional[str] = Field(
+    patient_id: str | None = Field(
         default=None,
         description="ID of the patient (optional for anonymous sessions)"
     )
-    session_type: Optional[DigitalTwinSessionType] = Field(
+    session_type: DigitalTwinSessionType | None = Field(
         default=DigitalTwinSessionType.THERAPY,
         description="Type of session"
     )
-    session_params: Optional[Dict[str, Any]] = Field(
+    session_params: dict[str, Any] | None = Field(
         default=None,
         description="Additional session parameters"
     )
@@ -668,11 +666,11 @@ class CreateSessionResponse(BaseModel):
     therapist_id: str = Field(
         description="ID of the therapist"
     )
-    patient_id: Optional[str] = Field(
+    patient_id: str | None = Field(
         default=None,
         description="ID of the patient"
     )
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None,
         description="Model used for the session"
     )
@@ -701,14 +699,14 @@ class DigitalTwinMessage(BaseModel):
     sender_type: str = Field(
         description="Type of sender"
     )
-    sender_id: Optional[str] = Field(
+    sender_id: str | None = Field(
         default=None,
         description="ID of the sender"
     )
     timestamp: str = Field(
         description="Timestamp of the message"
     )
-    params: Optional[Dict[str, Any]] = Field(
+    params: dict[str, Any] | None = Field(
         default=None,
         description="Additional message parameters"
     )
@@ -723,7 +721,7 @@ class GetSessionResponse(BaseModel):
     therapist_id: str = Field(
         description="ID of the therapist"
     )
-    patient_id: Optional[str] = Field(
+    patient_id: str | None = Field(
         default=None,
         description="ID of the patient"
     )
@@ -747,11 +745,11 @@ class GetSessionResponse(BaseModel):
         description="Number of insights generated for the session",
         ge=0
     )
-    messages: Optional[List[DigitalTwinMessage]] = Field(
+    messages: list[DigitalTwinMessage] | None = Field(
         default=None,
         description="Session messages"
     )
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None,
         description="Model used for the session"
     )
@@ -776,15 +774,15 @@ class SendMessageRequest(BaseModel):
         description="Message content",
         min_length=1
     )
-    sender_type: Optional[SenderType] = Field(
+    sender_type: SenderType | None = Field(
         default=SenderType.USER,
         description="Type of sender"
     )
-    sender_id: Optional[str] = Field(
+    sender_id: str | None = Field(
         default=None,
         description="ID of the sender"
     )
-    message_params: Optional[Dict[str, Any]] = Field(
+    message_params: dict[str, Any] | None = Field(
         default=None,
         description="Additional message parameters"
     )
@@ -809,7 +807,7 @@ class DigitalTwinResponse(BaseModel):
         default=SenderType.DIGITAL_TWIN,
         description="Type of sender"
     )
-    sender_id: Optional[str] = Field(
+    sender_id: str | None = Field(
         default=None,
         description="ID of the sender (Digital Twin)"
     )
@@ -835,7 +833,7 @@ class EndSessionRequest(BaseModel):
     session_id: str = Field(
         description="ID of the session"
     )
-    end_reason: Optional[str] = Field(
+    end_reason: str | None = Field(
         default=None,
         description="Reason for ending the session"
     )
@@ -844,27 +842,27 @@ class EndSessionRequest(BaseModel):
 class SessionSummary(BaseModel):
     """Model for Digital Twin session summary."""
     
-    key_themes: Optional[List[str]] = Field(
+    key_themes: list[str] | None = Field(
         default=None,
         description="Key themes identified in the session"
     )
-    emotional_patterns: Optional[Dict[str, Any]] = Field(
+    emotional_patterns: dict[str, Any] | None = Field(
         default=None,
         description="Emotional patterns observed"
     )
-    therapeutic_insights: Optional[List[str]] = Field(
+    therapeutic_insights: list[str] | None = Field(
         default=None,
         description="Therapeutic insights generated"
     )
-    progress_indicators: Optional[Dict[str, float]] = Field(
+    progress_indicators: dict[str, float] | None = Field(
         default=None,
         description="Progress indicators"
     )
-    suggested_focus_areas: Optional[List[str]] = Field(
+    suggested_focus_areas: list[str] | None = Field(
         default=None,
         description="Suggested focus areas for future sessions"
     )
-    session_metrics: Optional[Dict[str, Any]] = Field(
+    session_metrics: dict[str, Any] | None = Field(
         default=None,
         description="Session metrics"
     )
@@ -913,7 +911,7 @@ class GetInsightsRequest(BaseModel):
     session_id: str = Field(
         description="ID of the session"
     )
-    insight_type: Optional[InsightType] = Field(
+    insight_type: InsightType | None = Field(
         default=None,
         description="Type of insights to retrieve"
     )
@@ -925,13 +923,13 @@ class SessionInsight(BaseModel):
     type: InsightType = Field(
         description="Type of insight"
     )
-    data: Dict[str, Any] = Field(
+    data: dict[str, Any] = Field(
         description="Insight data"
     )
     timestamp: str = Field(
         description="Timestamp of the insight"
     )
-    confidence: Optional[float] = Field(
+    confidence: float | None = Field(
         default=None,
         description="Confidence score for the insight (0-1)",
         ge=0,
@@ -958,6 +956,6 @@ class GetInsightsResponse(BaseModel):
     session_status: str = Field(
         description="Status of the session"
     )
-    insights: List[SessionInsight] = Field(
+    insights: list[SessionInsight] = Field(
         description="Session insights"
     )

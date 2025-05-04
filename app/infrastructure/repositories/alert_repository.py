@@ -5,19 +5,20 @@ This module provides the implementation of the alert repository interface,
 ensuring HIPAA compliance and proper data handling for alerts.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
-from sqlalchemy import select, between, desc
+from sqlalchemy import between, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.exceptions.auth_exceptions import AuthenticationError
 from app.core.interfaces.repositories.alert_repository_interface import IAlertRepository
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
-from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import BiometricAlertModel as AlertModel
-from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel as AlertRuleModel
 from app.infrastructure.models.user_model import UserModel
+from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import (
+    BiometricAlertModel as AlertModel,
+)
 
 
 class AlertRepository(IAlertRepository):
@@ -74,7 +75,7 @@ class AlertRepository(IAlertRepository):
         
         return alert
     
-    async def get_by_id(self, alert_id: str, user_id: str) -> Optional[Alert]:
+    async def get_by_id(self, alert_id: str, user_id: str) -> Alert | None:
         """
         Get an alert by its ID with access control.
         
@@ -174,11 +175,11 @@ class AlertRepository(IAlertRepository):
     async def get_alerts(
         self,
         user_id: str,
-        status: Optional[AlertStatus] = None,
-        priority: Optional[AlertPriority] = None,
-        alert_type: Optional[AlertType] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        status: AlertStatus | None = None,
+        priority: AlertPriority | None = None,
+        alert_type: AlertType | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
         limit: int = 100,
         offset: int = 0
     ) -> Sequence[Alert]:

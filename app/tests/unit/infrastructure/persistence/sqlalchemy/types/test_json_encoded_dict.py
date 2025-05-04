@@ -5,8 +5,7 @@ Tests the ability to store and retrieve dictionary data through SQLAlchemy
 with JSON serialization for different database dialects.
 """
 
-import pytest
-from sqlalchemy import Column, create_engine, MetaData, Table
+from sqlalchemy import Column, MetaData, Table, create_engine
 from sqlalchemy.orm import Session, registry
 
 from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict

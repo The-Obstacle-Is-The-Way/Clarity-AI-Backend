@@ -1,19 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 Mock PAT Implementation.
 
 This module provides a mock implementation of the PAT interface for testing purposes.
 """
 
-import json
+import random
 import time
 from datetime import datetime, timedelta
-import random
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from app.core.services.ml.pat_interface import PATInterface
 from app.core.utils.logging import get_logger
-
 
 # Create logger
 logger = get_logger(__name__)
@@ -31,7 +28,7 @@ class MockPAT(PATInterface):
         self.config = {}
         self.initialized = False
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -67,7 +64,7 @@ class MockPAT(PATInterface):
         if not self.initialized:
             raise RuntimeError("MockPAT service not initialized")
     
-    def _generate_mock_sleep_data(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+    def _generate_mock_sleep_data(self, start_date: str, end_date: str) -> list[dict[str, Any]]:
         """
         Generate mock sleep data for testing.
         
@@ -116,7 +113,7 @@ class MockPAT(PATInterface):
         
         return sleep_data
     
-    def _generate_mock_activity_data(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+    def _generate_mock_activity_data(self, start_date: str, end_date: str) -> list[dict[str, Any]]:
         """
         Generate mock activity data for testing.
         
@@ -165,14 +162,14 @@ class MockPAT(PATInterface):
     def analyze_actigraphy(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Dict[str, str],
-        analysis_types: List[str],
+        device_info: dict[str, str],
+        analysis_types: list[str],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze actigraphy data using the PAT model.
         
@@ -283,7 +280,7 @@ class MockPAT(PATInterface):
         start_date: str,
         end_date: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get sleep metrics for a patient over a specified time period.
         
@@ -321,7 +318,7 @@ class MockPAT(PATInterface):
         start_date: str,
         end_date: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get activity metrics for a patient over a specified time period.
         
@@ -356,10 +353,10 @@ class MockPAT(PATInterface):
     def detect_anomalies(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        baseline_period: Optional[Dict[str, str]] = None,
+        readings: list[dict[str, Any]],
+        baseline_period: dict[str, str] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect anomalies in actigraphy data compared to baseline or population norms.
         
@@ -438,10 +435,10 @@ class MockPAT(PATInterface):
     def predict_mood_state(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        historical_context: Optional[Dict[str, Any]] = None,
+        readings: list[dict[str, Any]],
+        historical_context: dict[str, Any] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict mood state based on actigraphy patterns.
         
@@ -528,9 +525,9 @@ class MockPAT(PATInterface):
         self,
         patient_id: str,
         profile_id: str,
-        actigraphy_analysis: Dict[str, Any],
+        actigraphy_analysis: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Integrate actigraphy analysis with digital twin profile.
         

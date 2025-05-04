@@ -11,26 +11,15 @@ import logging
 import os
 import re
 import time
-import typing
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Protocol, Set, Tuple, Union
+from typing import Any, Protocol
 
 import boto3
 import botocore
-from botocore.exceptions import ClientError
-
-# --- Mock/Test Imports ---
-# These should ideally only be used in testing contexts or via dependency injection
-from app.infrastructure.aws.in_memory_boto3 import client as boto3_mock_client
-from app.infrastructure.aws.in_memory_boto3 import resource as boto3_mock_resource
 
 # --- Core Layer Imports ---
-from app.core.config.settings import Settings
-from app.core.domain.entities.ml.prediction_metadata import PredictionMetadata
-from app.core.domain.prediction_result import PredictionResult
 from app.core.enums.model_type import ModelType
-from app.core.enums.prediction_type import PredictionCategory
 from app.core.enums.privacy_level import PrivacyLevel
 from app.core.exceptions import (
     ConfigurationError,
@@ -43,22 +32,21 @@ from app.core.exceptions.base_exceptions import (
     ResourceNotFoundError,
 )
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
+from app.core.services.aws.interfaces import AWSServiceFactoryInterface
 from app.core.services.ml.xgboost.enums import RiskLevel
 from app.core.services.ml.xgboost.events import EventType, Observer
 from app.core.services.ml.xgboost.exceptions import (
     DataPrivacyError,
-    FeatureValidationError,
-    ModelInvocationError,
     ModelNotFoundError,
-    ModelTimeoutError,
     PredictionError,
-    SerializationError,
     ValidationError,
 )
 
+# --- Mock/Test Imports ---
+# These should ideally only be used in testing contexts or via dependency injection
+
 # --- Infrastructure Imports ---
-from app.infrastructure.integrations.aws.sagemaker import SageMakerEndpoint
-from app.core.services.aws.interfaces import AWSServiceFactoryInterface
+
 
 # Helper function to safely get attributes from objects or dicts
 def safe_get(obj, key, default=None):
@@ -101,7 +89,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._predictions_table = None
         self._logger = logging.getLogger(__name__)
 
-    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """Generic prediction method required by MLServiceInterface.
         
         Args:
@@ -166,7 +154,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._privacy_level = PrivacyLevel.STANDARD
         self._audit_table_name = None
         # Observer pattern support
-        self._observers: Dict[Union[EventType, str], Set[Observer]] = {}
+        self._observers: dict[EventType | str, set[Observer]] = {}
         # Logger
         self._logger = logging.getLogger(__name__)
 
@@ -174,13 +162,13 @@ class AWSXGBoostService(XGBoostInterface):
     def is_initialized(self) -> bool:
         return True
 
-    async def get_available_models(self) -> List[Dict[str, Any]]:
+    async def get_available_models(self) -> list[dict[str, Any]]:
         return []
 
-    async def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    async def get_model_info(self, model_type: str) -> dict[str, Any]:
         return {"model_type": model_type, "version": "aws-mock", "info": "AWS mock model info"}
 
-    async def integrate_with_digital_twin(self, patient_id: str, profile_id: str, prediction_id: str) -> Dict[str, Any]:
+    async def integrate_with_digital_twin(self, patient_id: str, profile_id: str, prediction_id: str) -> dict[str, Any]:
         return {"patient_id": patient_id, "profile_id": profile_id, "prediction_id": prediction_id, "status": "integrated (aws-mock)"}
 
         """Initialize a new AWS XGBoost service."""
@@ -201,12 +189,12 @@ class AWSXGBoostService(XGBoostInterface):
         self._audit_table_name = None
         
         # Observer pattern support
-        self._observers: Dict[Union[EventType, str], Set[Observer]] = {}
+        self._observers: dict[EventType | str, set[Observer]] = {}
         
         # Logger
         self._logger = logging.getLogger(__name__)
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         # Remove pytest stub: configuration should be provided explicitly
 
         """
@@ -266,7 +254,7 @@ class AWSXGBoostService(XGBoostInterface):
             
             except Exception as e:
                 self._logger.error(f"Failed to get DynamoDB resource/table from factory: {e}")
-                raise ConfigurationError(f"Failed to initialize DynamoDB predictions table via factory: {str(e)}") from e
+                raise ConfigurationError(f"Failed to initialize DynamoDB predictions table via factory: {e!s}") from e
             # Validate AWS resources: DynamoDB table, S3 bucket, and SageMaker access
             try:
                 self._validate_aws_services()
@@ -304,11 +292,11 @@ class AWSXGBoostService(XGBoostInterface):
                 raise
             # Wrap other errors as configuration issues
             raise ConfigurationError(
-                f"Failed to initialize AWS XGBoost service: {str(e)}",
+                f"Failed to initialize AWS XGBoost service: {e!s}",
                 details=str(e)
             ) from e
     
-    def register_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
         
@@ -322,7 +310,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._observers[event_key].add(observer)
         self._logger.debug(f"Observer registered for event type {event_type}")
     
-    def unregister_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
         
@@ -337,7 +325,7 @@ class AWSXGBoostService(XGBoostInterface):
                 del self._observers[event_key]
             self._logger.debug(f"Observer unregistered for event type {event_type}")
     
-    def _validate_prediction_params(self, risk_type, patient_id: str, clinical_data: Dict[str, Any]) -> None:
+    def _validate_prediction_params(self, risk_type, patient_id: str, clinical_data: dict[str, Any]) -> None:
         """
         Validate parameters for risk prediction.
         Raises ValidationError for invalid inputs.
@@ -356,15 +344,14 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         risk_type: str,
-        features: Optional[Dict[str, Any]] = None,
-        clinical_data: Optional[Dict[str, Any]] = None,
-        time_frame_days: Optional[int] = None,
+        features: dict[str, Any] | None = None,
+        clinical_data: dict[str, Any] | None = None,
+        time_frame_days: int | None = None,
         **kwargs
     ) -> Any:
         """
         Predict risk level using a risk model.
         """
-        from types import SimpleNamespace
         # Ensure service initialized
         self._ensure_initialized()
 
@@ -522,10 +509,10 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
         
@@ -610,11 +597,11 @@ class AWSXGBoostService(XGBoostInterface):
     def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
+        outcome_timeframe: dict[str, int],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict clinical outcomes based on treatment plan.
         
@@ -708,7 +695,7 @@ class AWSXGBoostService(XGBoostInterface):
         patient_id: str,
         model_type: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
         
@@ -784,7 +771,7 @@ class AWSXGBoostService(XGBoostInterface):
         patient_id: str,
         profile_id: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Integrate prediction with digital twin profile.
         
@@ -869,7 +856,7 @@ class AWSXGBoostService(XGBoostInterface):
                     details=str(e)
                 ) from e
     
-    def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    def get_model_info(self, model_type: str) -> dict[str, Any]:
         """
         Get information about a model.
         
@@ -978,7 +965,7 @@ class AWSXGBoostService(XGBoostInterface):
                     details=str(e)
                 ) from e
     
-    def _validate_aws_config(self, config: Dict[str, Any]) -> None:
+    def _validate_aws_config(self, config: dict[str, Any]) -> None:
         """
         Validate AWS configuration parameters.
         
@@ -1055,7 +1042,7 @@ class AWSXGBoostService(XGBoostInterface):
             self._logger.error(f"Unexpected error initializing AWS clients: {e}")
             
             raise ExternalServiceException(
-                f"Failed to initialize AWS clients: {str(e)}",
+                f"Failed to initialize AWS clients: {e!s}",
                 service="AWS",
                 error_type="UnexpectedError",
                 details=str(e)
@@ -1200,7 +1187,7 @@ class AWSXGBoostService(XGBoostInterface):
         
         return endpoint_name
     
-    def _invoke_endpoint(self, endpoint_name: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _invoke_endpoint(self, endpoint_name: str, input_data: dict[str, Any]) -> dict[str, Any]:
         """
         Invoke a SageMaker endpoint with input data.
         
@@ -1331,19 +1318,19 @@ class AWSXGBoostService(XGBoostInterface):
             except json.JSONDecodeError as e:
                 self._logger.error(
                     f"Failed to parse response from endpoint: endpoint={endpoint_name}, "
-                    f"request_id={request_id}, error={str(e)}"
+                    f"request_id={request_id}, error={e!s}"
                 )
                 
                 # Don't retry for malformed responses
                 raise PredictionError(
-                    f"Failed to parse model response: {str(e)}",
+                    f"Failed to parse model response: {e!s}",
                     model_type=endpoint_name
                 ) from e
             
             except Exception as e:
                 self._logger.error(
                     f"Unexpected error during endpoint invocation: endpoint={endpoint_name}, "
-                    f"request_id={request_id}, error={str(e)}"
+                    f"request_id={request_id}, error={e!s}"
                 )
                 
                 # Only retry for certain exceptions, not for all
@@ -1359,14 +1346,14 @@ class AWSXGBoostService(XGBoostInterface):
                 
                 # For unexpected errors, raise a generic service error
                 raise ExternalServiceException(
-                    f"Unexpected error during endpoint invocation: {str(e)}",
+                    f"Unexpected error during endpoint invocation: {e!s}",
                     service="SageMaker",
                     error_type="UnexpectedError",
                     details=str(e)
                 ) from e
     
-    def _log_audit_record(self, endpoint_name: str, input_data: Dict[str, Any],
-                          result: Dict[str, Any], request_id: str = None) -> None:
+    def _log_audit_record(self, endpoint_name: str, input_data: dict[str, Any],
+                          result: dict[str, Any], request_id: str = None) -> None:
         """
         Log an audit record of the prediction request and response.
         
@@ -1443,15 +1430,15 @@ class AWSXGBoostService(XGBoostInterface):
         
         except Exception as e:
             # Don't fail the operation if audit logging fails, but log it properly
-            self._logger.error(f"Failed to log audit record: error={str(e)}, request_id={request_id}")
+            self._logger.error(f"Failed to log audit record: error={e!s}, request_id={request_id}")
             
             # Attempt to write to local audit log as fallback
             try:
                 self._log_audit_fallback(endpoint_name, input_data, request_id)
             except Exception as fallback_error:
-                self._logger.error(f"Audit fallback logging also failed: {str(fallback_error)}")
+                self._logger.error(f"Audit fallback logging also failed: {fallback_error!s}")
     
-    def _log_audit_fallback(self, endpoint_name: str, input_data: Dict[str, Any], request_id: str) -> None:
+    def _log_audit_fallback(self, endpoint_name: str, input_data: dict[str, Any], request_id: str) -> None:
         """
         Fallback method for audit logging when DynamoDB is unavailable.
         
@@ -1479,7 +1466,7 @@ class AWSXGBoostService(XGBoostInterface):
         with open(fallback_log, "a") as f:
             f.write(json.dumps(sanitized_record) + "\n")
     
-    def _sanitize_data_for_audit(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_data_for_audit(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize data for audit logging, removing all PHI and sensitive details.
         
@@ -1603,7 +1590,7 @@ class AWSXGBoostService(XGBoostInterface):
         else:
             return "unknown"
     
-    def _check_phi_in_data(self, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def _check_phi_in_data(self, data: dict[str, Any]) -> tuple[bool, list[str]]:
         """
         Check for PHI in data based on privacy level setting.
         
@@ -1738,7 +1725,7 @@ class AWSXGBoostService(XGBoostInterface):
         # No PHI detected
         return False, []
     
-    def _extract_strings(self, data: Any, result: List[str]) -> None:
+    def _extract_strings(self, data: Any, result: list[str]) -> None:
         """
         Extract all string values from a nested data structure.
         
@@ -1755,7 +1742,7 @@ class AWSXGBoostService(XGBoostInterface):
             for item in data:
                 self._extract_strings(item, result)
     
-    def _notify_observers(self, event_type: EventType, data: Dict[str, Any]) -> None:
+    def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
         """
         Notify observers of an event.
         
@@ -1787,9 +1774,9 @@ class AWSXGBoostService(XGBoostInterface):
     def _validate_outcome_params(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any]
+        outcome_timeframe: dict[str, int],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any]
     ) -> None:
         """
         Validate outcome prediction parameters.
@@ -1841,7 +1828,7 @@ class AWSXGBoostService(XGBoostInterface):
         if not treatment_plan:
             raise ValidationError("Treatment plan cannot be empty", field="treatment_plan")
     
-    def _calculate_timeframe_days(self, timeframe: Dict[str, int]) -> int:
+    def _calculate_timeframe_days(self, timeframe: dict[str, int]) -> int:
         """
         Calculate total days from a timeframe.
         
@@ -1962,10 +1949,9 @@ class AWSXGBoostService(XGBoostInterface):
             "confidence": item.get("confidence"),
             # keep other fields if necessary
         }
-        from types import SimpleNamespace
         return SimpleNamespace(**result)
 
-    def validate_prediction(self, prediction_id: str, status: str, validator_notes: Optional[str] = None) -> bool:
+    def validate_prediction(self, prediction_id: str, status: str, validator_notes: str | None = None) -> bool:
         """
         Validate or update the status of a prediction.
         Calls internal update method.
@@ -1978,7 +1964,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._update_prediction(prediction_id, updates)
         return True
 
-    def _update_prediction(self, prediction_id: str, updates: Dict[str, Any]) -> None:
+    def _update_prediction(self, prediction_id: str, updates: dict[str, Any]) -> None:
         """
         Internal method to update a prediction record in DynamoDB.
         """
@@ -2000,13 +1986,13 @@ class AWSXGBoostService(XGBoostInterface):
             else:
                 raise ExternalServiceException(f"Failed to update prediction: {e.response.get('Error', {}).get('Message', str(e))}") from e
 
-    def healthcheck(self) -> Dict[str, Any]:
+    def healthcheck(self) -> dict[str, Any]:
         """
         Perform health check for AWS resources and endpoints.
         Returns status dict.
         """
         self._ensure_initialized()
-        components: Dict[str, Any] = {}
+        components: dict[str, Any] = {}
         # DynamoDB
         try:
             self._predictions_table.scan()
@@ -2027,7 +2013,7 @@ class AWSXGBoostService(XGBoostInterface):
         except botocore.exceptions.ClientError as e:
             components["s3"] = {"status": "unhealthy", "error": e.response.get("Error", {}).get("Message", str(e))}
         # SageMaker
-        models: Dict[str, str] = {}
+        models: dict[str, str] = {}
         try:
             resp = self._sagemaker.list_endpoints()
             components["sagemaker"] = {"status": "healthy"}

@@ -5,8 +5,9 @@ This module provides fixtures and configuration for correctly handling
 async tests with mock objects throughout the test suite.
 """
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from app.tests.utils.async_test_helpers import SafeAsyncMock
 

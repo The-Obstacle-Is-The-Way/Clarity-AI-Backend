@@ -3,11 +3,10 @@ Mock implementation of DigitalTwinRepository for testing.
 Uses in-memory storage rather than actual database.
 """
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
-from app.domain.entities.digital_twin_enums import ClinicalSignificance # Corrected import path
 from app.domain.entities.digital_twin import DigitalTwinState
+from app.domain.entities.digital_twin_enums import ClinicalSignificance  # Corrected import path
 from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
 
 
@@ -19,9 +18,9 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
     
     def __init__(self):
         """Initialize the mock repository with empty storage."""
-        self._storage: Dict[UUID, List[DigitalTwinState]] = {}
+        self._storage: dict[UUID, list[DigitalTwinState]] = {}
     
-    async def get_by_id(self, digital_twin_id: UUID) -> Optional[DigitalTwinState]:
+    async def get_by_id(self, digital_twin_id: UUID) -> DigitalTwinState | None:
         """
         Retrieve a Digital Twin state by its ID.
         
@@ -37,7 +36,7 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
                     return state
         return None
     
-    async def get_latest_for_patient(self, patient_id: UUID) -> Optional[DigitalTwinState]:
+    async def get_latest_for_patient(self, patient_id: UUID) -> DigitalTwinState | None:
         """
         Retrieve the latest Digital Twin state for a patient.
         
@@ -55,10 +54,10 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
     async def get_history_for_patient(
         self, 
         patient_id: UUID, 
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100
-    ) -> List[DigitalTwinState]:
+    ) -> list[DigitalTwinState]:
         """
         Retrieve historical Digital Twin states for a patient.
         
@@ -127,7 +126,7 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
         return state_copy
     
     # Alias for non-enhanced tests
-    async def get_latest_state(self, patient_id: UUID) -> Optional[DigitalTwinState]:
+    async def get_latest_state(self, patient_id: UUID) -> DigitalTwinState | None:
         """
         Retrieve the latest Digital Twin state for a patient (alias for get_latest_for_patient).
         """
@@ -136,10 +135,10 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
     async def find_by_clinical_significance(
         self,
         significance_level: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100
-    ) -> List[Tuple[UUID, DigitalTwinState]]:
+    ) -> list[tuple[UUID, DigitalTwinState]]:
         """
         Find Digital Twin states with specified clinical significance.
         
@@ -185,7 +184,7 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
         return results
     
     # Implement abstract interface methods for compatibility
-    async def get_by_patient_id(self, patient_id: UUID) -> Optional[DigitalTwinState]:  # type: ignore
+    async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwinState | None:  # type: ignore
         """Alias for retrieving the latest Digital Twin state by patient ID."""
         return await self.get_latest_for_patient(patient_id)
 
@@ -193,7 +192,7 @@ class MockDigitalTwinRepository(DigitalTwinRepository):
         """Create a new Digital Twin state (alias for save)."""
         return await self.save(twin)
 
-    async def update(self, twin: DigitalTwinState) -> Optional[DigitalTwinState]:
+    async def update(self, twin: DigitalTwinState) -> DigitalTwinState | None:
         """Update an existing Digital Twin state (alias for save)."""
         return await self.save(twin)
 

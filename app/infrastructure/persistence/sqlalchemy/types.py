@@ -1,8 +1,9 @@
 import json
-from typing import Any, Optional, List
-from sqlalchemy import TypeDecorator, Text
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY
+
 from sqlalchemy import Float as sa_Float
+from sqlalchemy import Text, TypeDecorator
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+
 
 class JSONEncodedDict(TypeDecorator):
     """Represents an immutable structure as a json-encoded string.
@@ -25,7 +26,7 @@ class JSONEncodedDict(TypeDecorator):
             # Use Text for other dialects (like SQLite)
             return dialect.type_descriptor(Text())
 
-    def process_bind_param(self, value: Optional[dict], dialect) -> Optional[str]:
+    def process_bind_param(self, value: dict | None, dialect) -> str | None:
         """Serialize Python dict to JSON string before saving."""
         if dialect.name == 'postgresql':
             # PostgreSQL handles JSONB directly
@@ -34,7 +35,7 @@ class JSONEncodedDict(TypeDecorator):
             return json.dumps(value)
         return None
 
-    def process_result_value(self, value: Optional[str], dialect) -> Optional[dict]:
+    def process_result_value(self, value: str | None, dialect) -> dict | None:
         """Deserialize JSON string to Python dict after loading."""
         if dialect.name == 'postgresql':
             # PostgreSQL returns dict directly from JSONB
@@ -62,7 +63,7 @@ class StringListDecorator(TypeDecorator):
         else:
             return dialect.type_descriptor(Text())
 
-    def process_bind_param(self, value: Optional[List[str]], dialect) -> Optional[str]:
+    def process_bind_param(self, value: list[str] | None, dialect) -> str | None:
         if dialect.name == 'postgresql':
             # PostgreSQL handles ARRAY directly
             return value 
@@ -71,7 +72,7 @@ class StringListDecorator(TypeDecorator):
             return json.dumps(value)
         return None
 
-    def process_result_value(self, value: Optional[str], dialect) -> Optional[List[str]]:
+    def process_result_value(self, value: str | None, dialect) -> list[str] | None:
         if dialect.name == 'postgresql':
             # PostgreSQL returns list directly from ARRAY
             return value 
@@ -103,7 +104,7 @@ class FloatListDecorator(TypeDecorator):
             # Use TEXT for SQLite
             return dialect.type_descriptor(Text())
 
-    def process_bind_param(self, value: Optional[List[float]], dialect) -> Optional[str]:
+    def process_bind_param(self, value: list[float] | None, dialect) -> str | None:
         if dialect.name == 'postgresql':
             # PostgreSQL handles ARRAY(Float) directly
             return value
@@ -112,7 +113,7 @@ class FloatListDecorator(TypeDecorator):
             return json.dumps(value)
         return None
 
-    def process_result_value(self, value: Optional[str], dialect) -> Optional[List[float]]:
+    def process_result_value(self, value: str | None, dialect) -> list[float] | None:
         if dialect.name == 'postgresql':
             # PostgreSQL returns list directly from ARRAY(Float)
             return value

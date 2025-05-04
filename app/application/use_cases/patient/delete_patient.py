@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Use case for deleting a patient."""
 
 from app.domain.services.patient_service import PatientService

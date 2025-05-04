@@ -11,7 +11,6 @@ from __future__ import annotations
 
 # Re‑export the public shim so callers can simply `from app.infrastructure.aws
 # import client, resource`.
-
-from .in_memory_boto3 import client, resource  # noqa: F401 – re‑export for convenience
+from .in_memory_boto3 import client, resource
 
 __all__: list[str] = ["client", "resource"]

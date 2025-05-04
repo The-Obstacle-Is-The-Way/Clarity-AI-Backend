@@ -6,10 +6,10 @@ and analyzing actigraphy data to track patient physical activity patterns.
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_current_user
@@ -24,18 +24,18 @@ class ActigraphyDataPoint(BaseModel):
     """Model for a single actigraphy data point."""
     timestamp: datetime = Field(..., description="Time of the measurement")
     activity_level: float = Field(..., description="Activity level value")
-    step_count: Optional[int] = Field(None, description="Number of steps taken")
-    energy_expenditure: Optional[float] = Field(None, description="Estimated energy expenditure in calories")
-    heart_rate: Optional[int] = Field(None, description="Heart rate if available")
-    sleep_state: Optional[str] = Field(None, description="Sleep state if applicable")
-    metadata: Dict[str, Any] = Field(default={}, description="Additional metadata")
+    step_count: int | None = Field(None, description="Number of steps taken")
+    energy_expenditure: float | None = Field(None, description="Estimated energy expenditure in calories")
+    heart_rate: int | None = Field(None, description="Heart rate if available")
+    sleep_state: str | None = Field(None, description="Sleep state if applicable")
+    metadata: dict[str, Any] = Field(default={}, description="Additional metadata")
 
 
 class ActigraphyDataSeries(BaseModel):
     """Model for a series of actigraphy data points."""
     patient_id: UUID = Field(..., description="Patient ID")
     device_id: UUID = Field(..., description="Device ID")
-    data_points: List[ActigraphyDataPoint] = Field(..., description="Actigraphy data points")
+    data_points: list[ActigraphyDataPoint] = Field(..., description="Actigraphy data points")
     start_time: datetime = Field(..., description="Start time of the series")
     end_time: datetime = Field(..., description="End time of the series")
     source: str = Field(..., description="Source of the data (e.g., 'fitbit', 'apple_watch')")
@@ -49,8 +49,8 @@ class ActigraphySummary(BaseModel):
     total_steps: int
     total_energy_expenditure: float
     activity_duration_minutes: int
-    sleep_duration_minutes: Optional[int] = None
-    sleep_quality_score: Optional[float] = None
+    sleep_duration_minutes: int | None = None
+    sleep_quality_score: float | None = None
     activity_score: float
 
 
@@ -58,7 +58,7 @@ class ActigraphySummary(BaseModel):
 async def upload_actigraphy_data(
     data: ActigraphyDataSeries,
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Upload actigraphy data for a patient.
     
@@ -81,11 +81,11 @@ async def upload_actigraphy_data(
 @router.get("/patient/{patient_id}")
 async def get_patient_actigraphy(
     patient_id: UUID,
-    start_date: Optional[datetime] = Query(None),
-    end_date: Optional[datetime] = Query(None),
-    aggregation: Optional[str] = Query("daily"),
+    start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None),
+    aggregation: str | None = Query("daily"),
     current_user: Any = Depends(get_current_user)
-) -> List[ActigraphySummary]:
+) -> list[ActigraphySummary]:
     """
     Get actigraphy data for a specific patient.
     
@@ -124,7 +124,7 @@ async def analyze_activity_patterns(
     patient_id: UUID,
     timeframe_days: int = Query(30, ge=1, le=365),
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Analyze activity patterns for a patient.
     
@@ -157,7 +157,7 @@ async def analyze_activity_patterns(
 async def get_device_status(
     device_id: UUID,
     current_user: Any = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get status of an actigraphy device.
     

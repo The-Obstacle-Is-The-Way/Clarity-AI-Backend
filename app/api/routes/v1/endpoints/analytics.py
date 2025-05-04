@@ -5,9 +5,10 @@ This module provides endpoints for retrieving analytics data related to
 patient treatment, outcomes, and clinical metrics.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any, List
+from typing import Any
 from uuid import UUID
+
+from fastapi import APIRouter
 
 router = APIRouter(
     prefix="/analytics",
@@ -16,7 +17,7 @@ router = APIRouter(
 
 
 @router.get("/metrics")
-async def get_metrics() -> Dict[str, Any]:
+async def get_metrics() -> dict[str, Any]:
     """
     Get system-wide analytics metrics.
     
@@ -32,7 +33,7 @@ async def get_metrics() -> Dict[str, Any]:
 
 
 @router.get("/patient/{patient_id}")
-async def get_patient_analytics(patient_id: UUID) -> Dict[str, Any]:
+async def get_patient_analytics(patient_id: UUID) -> dict[str, Any]:
     """
     Get analytics data for a specific patient.
     

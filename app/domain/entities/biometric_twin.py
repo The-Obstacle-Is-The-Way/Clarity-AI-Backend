@@ -5,15 +5,13 @@ This module defines the domain entities for the biometric twin feature,
 including biometric data points and related concepts.
 """
 
-from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, ClassVar, Union, Optional
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing_extensions import Annotated
+from pydantic import BaseModel, Field, field_validator
+
+from app.domain.utils.datetime_utils import UTC
 
 
 class BiometricDataPoint(BaseModel):
@@ -27,11 +25,11 @@ class BiometricDataPoint(BaseModel):
     scores for reliability assessment.
     """
     
-    data_id: Union[UUID, str] = Field(
+    data_id: UUID | str = Field(
         ..., 
         description="Unique identifier for the data point"
     )
-    patient_id: Optional[UUID] = Field(
+    patient_id: UUID | None = Field(
         ..., 
         description="ID of the patient this data belongs to"
     )
@@ -51,11 +49,11 @@ class BiometricDataPoint(BaseModel):
         ..., 
         description="Source of the data (e.g., apple_watch, fitbit, manual_entry)"
     )
-    metadata: Optional[dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         None, 
         description="Additional contextual information about the data point"
     )
-    confidence: Optional[float] = Field(
+    confidence: float | None = Field(
         None, 
         description="Confidence score for the data point (0.0 to 1.0)"
     )
@@ -78,7 +76,7 @@ class BiometricDataPoint(BaseModel):
     
     @field_validator('confidence')
     @classmethod
-    def validate_confidence(cls, v: Optional[float]) -> Optional[float]:
+    def validate_confidence(cls, v: float | None) -> float | None:
         """Validate that the confidence score is between 0 and 1."""
         if v is not None and (v < 0.0 or v > 1.0):
             raise ValueError("Confidence score must be between 0.0 and 1.0")

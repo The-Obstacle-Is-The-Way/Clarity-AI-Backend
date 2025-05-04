@@ -5,13 +5,13 @@ This middleware adds standard security headers to HTTP responses to protect
 against common web vulnerabilities like XSS, clickjacking, and MIME sniffing.
 """
 
+
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
-from typing import Dict, Optional, List
 
-from app.core.utils.logging import get_logger
 from app.core.config.settings import get_settings
+from app.core.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -27,9 +27,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: FastAPI,
-        csp_policy: Optional[str] = None,
+        csp_policy: str | None = None,
         hsts_max_age: int = 31536000,  # 1 year
-        exempt_paths: Optional[List[str]] = None,
+        exempt_paths: list[str] | None = None,
     ):
         """
         Initialize the security headers middleware.

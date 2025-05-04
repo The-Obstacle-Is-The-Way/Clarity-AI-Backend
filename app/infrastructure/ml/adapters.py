@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Adapters for ML Services in NOVAMIND.
 
@@ -8,8 +7,7 @@ proper separation of concerns.
 """
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.domain.interfaces.ml_service_interface import (
@@ -51,9 +49,9 @@ class SymptomForecastingAdapter(SymptomForecastingInterface):
     async def forecast_symptoms(
         self,
         patient_id: UUID,
-        symptom_history: List[Dict[str, Any]],
+        symptom_history: list[dict[str, Any]],
         forecast_days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Forecast patient symptoms based on historical data.
 
@@ -72,8 +70,8 @@ class SymptomForecastingAdapter(SymptomForecastingInterface):
         )
 
     async def detect_symptom_patterns(
-        self, patient_id: UUID, symptom_history: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, symptom_history: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Detect patterns in patient symptom history.
 
@@ -88,7 +86,7 @@ class SymptomForecastingAdapter(SymptomForecastingInterface):
             patient_id=patient_id, symptom_history=symptom_history
         )
 
-    async def get_model_status(self, patient_id: UUID) -> Dict[str, Any]:
+    async def get_model_status(self, patient_id: UUID) -> dict[str, Any]:
         """
         Get the status of a patient's symptom forecasting model.
 
@@ -122,9 +120,9 @@ class BiometricCorrelationAdapter(BiometricCorrelationInterface):
     async def analyze_correlations(
         self,
         patient_id: UUID,
-        biometric_data: List[Dict[str, Any]],
-        mental_health_indicators: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        biometric_data: list[dict[str, Any]],
+        mental_health_indicators: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         """
         Analyze correlations between biometric data and mental health indicators.
 
@@ -145,9 +143,9 @@ class BiometricCorrelationAdapter(BiometricCorrelationInterface):
     async def detect_anomalies(
         self,
         patient_id: UUID,
-        biometric_data: List[Dict[str, Any]],
-        mental_health_indicators: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        biometric_data: list[dict[str, Any]],
+        mental_health_indicators: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         """
         Detect anomalies in biometric data and mental health indicators.
 
@@ -165,7 +163,7 @@ class BiometricCorrelationAdapter(BiometricCorrelationInterface):
             mental_health_indicators=mental_health_indicators,
         )
 
-    async def get_model_status(self, patient_id: UUID) -> Dict[str, Any]:
+    async def get_model_status(self, patient_id: UUID) -> dict[str, Any]:
         """
         Get the status of a patient's biometric correlation model.
 
@@ -199,9 +197,9 @@ class PharmacogenomicsAdapter(PharmacogenomicsInterface):
     async def predict_medication_responses(
         self,
         patient_id: UUID,
-        patient_data: Dict[str, Any],
-        medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any],
+        medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Predict patient responses to psychiatric medications.
 
@@ -218,8 +216,8 @@ class PharmacogenomicsAdapter(PharmacogenomicsInterface):
         )
 
     async def analyze_gene_medication_interactions(
-        self, patient_id: UUID, patient_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Analyze interactions between patient's genetic markers and medications.
 
@@ -235,8 +233,8 @@ class PharmacogenomicsAdapter(PharmacogenomicsInterface):
         )
 
     async def predict_side_effects(
-        self, patient_id: UUID, patient_data: Dict[str, Any], medications: List[str]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any], medications: list[str]
+    ) -> dict[str, Any]:
         """
         Predict potential side effects for specified medications.
 
@@ -255,10 +253,10 @@ class PharmacogenomicsAdapter(PharmacogenomicsInterface):
     async def recommend_treatment_plan(
         self,
         patient_id: UUID,
-        patient_data: Dict[str, Any],
+        patient_data: dict[str, Any],
         diagnosis: str,
-        current_medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        current_medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Recommend a personalized treatment plan based on genetic markers and diagnosis.
 
@@ -298,8 +296,8 @@ class DigitalTwinServiceAdapter(DigitalTwinServiceInterface):
         logging.info("DigitalTwinServiceAdapter initialized")
 
     async def generate_comprehensive_patient_insights(
-        self, patient_id: UUID, patient_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate comprehensive insights for a patient using all ML services.
 
@@ -315,8 +313,8 @@ class DigitalTwinServiceAdapter(DigitalTwinServiceInterface):
         )
 
     async def update_digital_twin(
-        self, patient_id: UUID, patient_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Update the Digital Twin with new patient data.
 
@@ -331,7 +329,7 @@ class DigitalTwinServiceAdapter(DigitalTwinServiceInterface):
             patient_id=patient_id, patient_data=patient_data
         )
 
-    async def get_digital_twin_status(self, patient_id: UUID) -> Dict[str, Any]:
+    async def get_digital_twin_status(self, patient_id: UUID) -> dict[str, Any]:
         """
         Get the status of a patient's Digital Twin.
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 FastAPI router for biometric alert rules endpoints.
 
@@ -6,25 +5,24 @@ This module provides API endpoints for managing biometric alert rules,
 including creating, retrieving, updating and deleting rules.
 """
 
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
 from uuid import UUID
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 
 from app.domain.exceptions import EntityNotFoundError, RepositoryError, ValidationError
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
-from app.domain.services.clinical_rule_engine import ClinicalRuleEngine, BiometricRule, AlertPriority
+from app.domain.services.clinical_rule_engine import ClinicalRuleEngine
 from app.infrastructure.di.container import get_service
-from app.presentation.api.v1.dependencies import get_rule_repository
 from app.presentation.api.schemas.biometric_alert import (
-    AlertPriorityEnum,
     AlertRuleCreateSchema,
     AlertRuleListResponseSchema,
     AlertRuleResponseSchema,
-    AlertRuleTemplateResponseSchema,
     AlertRuleUpdateSchema,
 )
 from app.presentation.api.schemas.user import UserResponseSchema
+from app.presentation.api.v1.dependencies import get_rule_repository
 from app.presentation.dependencies.auth import get_current_user
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Body
 
 router = APIRouter(
     prefix="/biometric-alerts/rules",
@@ -55,7 +53,7 @@ def get_clinical_rule_engine() -> ClinicalRuleEngine:
     description="Retrieve all alert rules with optional filtering."
 )
 async def get_alert_rules(
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient ID"),
+    patient_id: UUID | None = Query(None, description="Filter by patient ID"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Number of items per page"),
     rule_repository: BiometricRuleRepository = Depends(get_rule_repository),
@@ -93,7 +91,7 @@ async def get_alert_rules(
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving alert rules: {str(e)}"
+            detail=f"Error retrieving alert rules: {e!s}"
         )
 
 
@@ -166,12 +164,12 @@ async def create_alert_rule(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid rule data: {str(e)}"
+            detail=f"Invalid rule data: {e!s}"
         )
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating alert rule: {str(e)}"
+            detail=f"Error creating alert rule: {e!s}"
         )
 
 
@@ -214,7 +212,7 @@ async def get_alert_rule(
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving alert rule: {str(e)}"
+            detail=f"Error retrieving alert rule: {e!s}"
         )
 
 
@@ -288,7 +286,7 @@ async def update_alert_rule(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid rule data: {str(e)}"
+            detail=f"Invalid rule data: {e!s}"
         )
     except EntityNotFoundError as e:
         raise HTTPException(
@@ -298,7 +296,7 @@ async def update_alert_rule(
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating alert rule: {str(e)}"
+            detail=f"Error updating alert rule: {e!s}"
         )
 
 
@@ -345,7 +343,7 @@ async def delete_alert_rule(
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting alert rule: {str(e)}"
+            detail=f"Error deleting alert rule: {e!s}"
         )
 
 
@@ -374,12 +372,12 @@ async def create_alert_rule_from_template(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid rule data: {str(e)}"
+            detail=f"Invalid rule data: {e!s}"
         )
     except RepositoryError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating alert rule: {str(e)}"
+            detail=f"Error creating alert rule: {e!s}"
         )
 
 # New endpoint to force a validation error for unit tests
@@ -396,7 +394,7 @@ async def force_validation_error(
 # Moved outside the /rules prefix to match test expectations
 @router.get(
     "/rule-templates",
-    response_model=Dict[str, Any],  # Using Dict to match expected response format
+    response_model=dict[str, Any],  # Using Dict to match expected response format
     status_code=status.HTTP_200_OK,
     summary="Get rule templates",
     description="Retrieve all available rule templates."
@@ -428,5 +426,5 @@ async def get_rule_templates(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving rule templates: {str(e)}"
+            detail=f"Error retrieving rule templates: {e!s}"
         )

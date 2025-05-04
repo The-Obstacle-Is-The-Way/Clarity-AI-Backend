@@ -7,28 +7,26 @@ including field-level encryption, key rotation, and HIPAA-compliant data protect
 
 import base64
 import json
-import os
 import logging
-from typing import Dict, Any, Union
+import os
+from typing import Any, Dict, Union
 
 # Core encryption service
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
-    encrypt_value,
     decrypt_value,
-    get_encryption_key
+    encrypt_value,
+    get_encryption_key,
 )
 
 # Field-level encryption utilities
-from app.infrastructure.security.encryption.field_encryptor import (
-    FieldEncryptor
-)
+from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 # PHI specific encryption functions
-def encrypt_phi(data: Union[Dict[str, Any], str]) -> Union[Dict[str, Any], str]:
+def encrypt_phi(data: dict[str, Any] | str) -> dict[str, Any] | str:
     """Encrypt PHI data with HIPAA-compliant encryption.
     
     Args:
@@ -45,7 +43,7 @@ def encrypt_phi(data: Union[Dict[str, Any], str]) -> Union[Dict[str, Any], str]:
         # For simple string values, use the encrypt_value function
         return encrypt_value(str(data))
 
-def decrypt_phi(encrypted_data: Union[Dict[str, Any], str]) -> Union[Dict[str, Any], str]:
+def decrypt_phi(encrypted_data: dict[str, Any] | str) -> dict[str, Any] | str:
     """Decrypt PHI data that was encrypted with encrypt_phi.
     
     Args:
@@ -96,15 +94,15 @@ def generate_phi_key() -> str:
 # Set default exports to maintain clean imports across the codebase
 __all__ = [
     'BaseEncryptionService',
-    'encrypt_value',
-    'decrypt_value',
-    'get_encryption_key',
     'FieldEncryptor',
-    'encrypt_phi',
-    'decrypt_phi',
-    'encrypt_field',
     'decrypt_field',
-    'generate_phi_key'
+    'decrypt_phi',
+    'decrypt_value',
+    'encrypt_field',
+    'encrypt_phi',
+    'encrypt_value',
+    'generate_phi_key',
+    'get_encryption_key'
 ]
 
 # Potentially import from encryption_service if needed elsewhere

@@ -1,30 +1,30 @@
-# -*- coding: utf-8 -*-
 """
 Authentication related dependencies.
 """
 
 import logging
-from typing import Optional
 
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings  # Added for JWT settings
+from app.domain.entities.user import User as DomainUser
+from app.domain.exceptions import (
+    AuthenticationError,
+    InvalidTokenError,
+    # Add other relevant exceptions from this module if needed
+    TokenExpiredError,
+)
+from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
+from app.infrastructure.database.session import get_db  # Assuming get_db provides AsyncSession
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+    UserRepository as SqlAlchemyUserRepositoryImpl,
+)
 
 # Domain/Infrastructure Services & Repositories
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.domain.exceptions import (
-    AuthenticationError, 
-    TokenExpiredError, 
-    InvalidTokenError,
-    # Add other relevant exceptions from this module if needed
-)
 from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import UserRepository as SqlAlchemyUserRepositoryImpl
-from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
-from app.core.config import settings # Added for JWT settings
-from app.domain.entities.user import User as DomainUser
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.infrastructure.database.session import get_db # Assuming get_db provides AsyncSession
 
 logger = logging.getLogger(__name__)
 

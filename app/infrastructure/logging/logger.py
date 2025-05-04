@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Logging configuration module.
 
@@ -6,11 +5,11 @@ This module provides a configured logger that follows HIPAA compliance
 requirements for logging in healthcare applications.
 """
 
+import json
 import logging
 import sys
-from typing import Dict, Any, Optional
-import json
 from datetime import datetime
+from typing import Any
 
 from app.core.config import settings
 
@@ -88,7 +87,7 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-def format_log_message(message: str, source: str, additional_data: Optional[Dict[str, Any]] = None) -> str:
+def format_log_message(message: str, source: str, additional_data: dict[str, Any] | None = None) -> str:
     """
     Format a log message as a JSON string.
 

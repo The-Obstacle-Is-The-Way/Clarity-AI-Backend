@@ -1,11 +1,12 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class Name(BaseModel):
     """Represents a person's name as a value object."""
     first_name: str = Field(..., description="The person's first name.")
     last_name: str = Field(..., description="The person's last name.")
-    middle_name: Optional[str] = Field(None, description="The person's middle name (optional).")
+    middle_name: str | None = Field(None, description="The person's middle name (optional).")
 
     # V2 Config
     model_config = ConfigDict(frozen=True)  # Value objects should be immutable

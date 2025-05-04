@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Application constants.
 
@@ -6,8 +5,7 @@ This module defines constants used throughout the application,
 including enums, cache keys, and other static values.
 """
 
-from enum import Enum, auto
-from typing import Dict, Any
+from enum import Enum
 
 
 class Environment(str, Enum):

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 User repository implementation using SQLAlchemy.
 
@@ -9,25 +8,22 @@ ARCHITECTURAL NOTE: This is the canonical SQLAlchemy implementation of the UserR
 All other implementations should be considered deprecated.
 """
 
-import uuid
-from typing import List, Optional, Dict, Any, Union, cast
 import logging
-from datetime import datetime
+import uuid
 
-from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy import update, delete, and_, or_, func
+from sqlalchemy.future import select
 
 # Domain imports
 from app.domain.entities.user import User as DomainUser
 from app.domain.repositories.user_repository import UserRepository as UserRepositoryInterface
-from app.domain.enums.role import Role
 from app.domain.utils.datetime_utils import now_utc
+from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
 
 # Infrastructure imports
-from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
-from app.infrastructure.persistence.sqlalchemy.mappers.user_mapper import UserMapper
+from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
+from app.infrastructure.persistence.sqlalchemy.models.user import UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +87,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             await self._db_session.rollback()
             raise
     
-    async def get_by_id(self, user_id: Union[str, uuid.UUID]) -> Optional[DomainUser]:
+    async def get_by_id(self, user_id: str | uuid.UUID) -> DomainUser | None:
         """
         Retrieve a user by their ID.
         
@@ -117,7 +113,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             logger.error(f"Error retrieving user by ID {user_id}: {e}")
             raise
     
-    async def get_by_username(self, username: str) -> Optional[DomainUser]:
+    async def get_by_username(self, username: str) -> DomainUser | None:
         """
         Retrieve a user by their username.
         
@@ -141,7 +137,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             logger.error(f"Database error when retrieving user by username {username}: {e}")
             raise
     
-    async def get_by_email(self, email: str) -> Optional[DomainUser]:
+    async def get_by_email(self, email: str) -> DomainUser | None:
         """
         Retrieve a user by their email address.
         
@@ -211,7 +207,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             await self._db_session.rollback()
             raise
     
-    async def delete(self, user_id: Union[str, uuid.UUID]) -> bool:
+    async def delete(self, user_id: str | uuid.UUID) -> bool:
         """
         Delete a user from the database.
         
@@ -244,7 +240,7 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             await self._db_session.rollback()
             raise
     
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[DomainUser]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[DomainUser]:
         """
         Retrieve a list of users from the database.
         
@@ -270,11 +266,11 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             raise
             
     # Maintain backward compatibility with existing code that might call list_users
-    async def list_users(self, skip: int = 0, limit: int = 100) -> List[DomainUser]:
+    async def list_users(self, skip: int = 0, limit: int = 100) -> list[DomainUser]:
         """Alias for list_all to maintain backward compatibility."""
         return await self.list_all(skip, limit)
             
-    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[DomainUser]:
+    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[DomainUser]:
         """
         Get users by role.
         

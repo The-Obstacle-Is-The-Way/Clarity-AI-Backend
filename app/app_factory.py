@@ -1,39 +1,34 @@
-# -*- coding: utf-8 -*-
 import logging
 import logging.config
-import os
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Callable, Any, Dict
+from typing import Any
 
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from sentry_sdk.integrations.logging import LoggingIntegration
-from starlette.middleware.base import BaseHTTPMiddleware
-
-# CORRECTED Import for database components
-from app.infrastructure.database.session import session_local, engine # Assuming session_local is the factory
-from app.core.dependencies.database import init_db # Corrected path for init_db
-
-# CORRECTED Import for the canonical V1 API router
-from app.presentation.api.v1.api_router import api_v1_router
 
 from app.config.settings import Settings, get_settings
-# REMOVED incorrect import for exception handlers
-# from app.core.exceptions.handlers import add_exception_handlers 
-from app.infrastructure.cache.redis_cache import close_redis_connection, initialize_redis_pool
-from app.infrastructure.persistence.sqlalchemy.unit_of_work import UnitOfWork
-from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter
-from app.core.security import AuthenticationMiddleware, PHIMiddleware
-from app.core.security.middleware import LoggingMiddleware
-from app.core.security.rate_limiting import RateLimitingMiddleware
-from app.core.security.headers import SecurityHeadersMiddleware
-from app.api.dependencies import setup_rate_limiting
+
+# CORRECTED Import for database components
+from app.core.dependencies.database import init_db  # Corrected path for init_db
 
 # MOVED logging_config import just before use
 from app.core.logging_config import LOGGING_CONFIG
+from app.core.security import AuthenticationMiddleware
+from app.core.security.headers import SecurityHeadersMiddleware
+from app.core.security.middleware import LoggingMiddleware
+from app.core.security.rate_limiting import RateLimitingMiddleware
+
+# REMOVED incorrect import for exception handlers
+# from app.core.exceptions.handlers import add_exception_handlers 
+from app.infrastructure.cache.redis_cache import close_redis_connection, initialize_redis_pool
+from app.infrastructure.security.rate_limiting.limiter import create_rate_limiter
+
+# CORRECTED Import for the canonical V1 API router
+from app.presentation.api.v1.api_router import api_v1_router
 
 # Setup logging
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -82,7 +77,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 def create_application(
     settings: Settings | None = None,
     *,
-    dependency_overrides: Dict[Callable[..., Any], Callable[..., Any]] | None = None,
+    dependency_overrides: dict[Callable[..., Any], Callable[..., Any]] | None = None,
 ) -> FastAPI:
     """
     Factory function to create and configure the FastAPI application instance.

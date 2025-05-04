@@ -1,8 +1,6 @@
 """
 Repository implementation for temporal sequence storage and retrieval.
 """
-from datetime import datetime
-from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -11,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.entities.temporal_sequence import TemporalSequence
 from app.domain.repositories.temporal_repository import TemporalSequenceRepository
 from app.infrastructure.models.temporal_sequence_model import (
+    TemporalDataPointModel,
     TemporalSequenceModel,
-    TemporalDataPointModel
 )
 
 
@@ -48,7 +46,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         
         # Create data point models
         data_points = []
-        for i, (timestamp, values) in enumerate(zip(sequence.timestamps, sequence.values)):
+        for i, (timestamp, values) in enumerate(zip(sequence.timestamps, sequence.values, strict=False)):
             data_point = TemporalDataPointModel(
                 sequence_id=sequence.sequence_id,
                 timestamp=timestamp,
@@ -64,7 +62,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         
         return sequence.sequence_id
     
-    async def get_by_id(self, sequence_id: UUID) -> Optional[TemporalSequence]:
+    async def get_by_id(self, sequence_id: UUID) -> TemporalSequence | None:
         """
         Retrieve a temporal sequence by ID.
         
@@ -103,7 +101,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             sequence_metadata=sequence_model.sequence_metadata
         )
     
-    async def get_by_patient_id(self, patient_id: UUID) -> List[TemporalSequence]:
+    async def get_by_patient_id(self, patient_id: UUID) -> list[TemporalSequence]:
         """
         Get all temporal sequences for a patient.
         
@@ -175,7 +173,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         patient_id: UUID, 
         feature_name: str,
         limit: int = 10
-    ) -> Optional[TemporalSequence]:
+    ) -> TemporalSequence | None:
         """
         Get the most recent temporal sequence containing a specific feature.
         
@@ -205,7 +203,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             def __getattr__(self, name):
                 return getattr(self._query, name)
             def __repr__(self):
-                return f"{repr(self._query)}.limit({self._limit_val})"
+                return f"{self._query!r}.limit({self._limit_val})"
         wrapped_query = _LimitQueryWrapper(base_query, limit)
         sequence_models = await self.session.execute(wrapped_query)
         sequence_models = sequence_models.scalars().all()

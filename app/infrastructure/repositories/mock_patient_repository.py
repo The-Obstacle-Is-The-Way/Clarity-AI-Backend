@@ -2,10 +2,9 @@
 Mock implementation of PatientRepository for testing.
 Uses in-memory storage rather than actual database.
 """
-from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
-from app.domain.entities.patient import Patient # Removed Gender import
+from app.domain.entities.patient import Patient  # Removed Gender import
 from app.domain.repositories.patient_repository import PatientRepository
 
 
@@ -17,9 +16,9 @@ class MockPatientRepository(PatientRepository):
     
     def __init__(self):
         """Initialize the mock repository with empty storage."""
-        self._storage: Dict[UUID, Patient] = {}
+        self._storage: dict[UUID, Patient] = {}
     
-    async def get_by_id(self, patient_id: UUID) -> Optional[Patient]:
+    async def get_by_id(self, patient_id: UUID) -> Patient | None:
         """
         Retrieve a patient by ID.
         
@@ -31,7 +30,7 @@ class MockPatientRepository(PatientRepository):
         """
         return self._storage.get(patient_id)
     
-    async def get_all(self, limit: int = 100, offset: int = 0) -> List[Patient]:
+    async def get_all(self, limit: int = 100, offset: int = 0) -> list[Patient]:
         """
         Retrieve all patients with pagination.
         
@@ -81,7 +80,7 @@ class MockPatientRepository(PatientRepository):
             return True
         return False
     
-    async def find_by_name(self, name: str) -> List[Patient]:
+    async def find_by_name(self, name: str) -> list[Patient]:
         """
         Find patients by name (partial match).
         
@@ -102,7 +101,7 @@ class MockPatientRepository(PatientRepository):
         
         return matching_patients
     
-    async def find_by_diagnosis(self, diagnosis_code: str) -> List[Patient]:
+    async def find_by_diagnosis(self, diagnosis_code: str) -> list[Patient]:
         """
         Find patients by diagnosis code.
         
@@ -122,7 +121,7 @@ class MockPatientRepository(PatientRepository):
         
         return matching_patients
     
-    async def find_by_medication(self, medication_name: str) -> List[Patient]:
+    async def find_by_medication(self, medication_name: str) -> list[Patient]:
         """
         Find patients by medication name.
         
@@ -149,10 +148,10 @@ class MockPatientRepository(PatientRepository):
         """Create a new patient record (alias for save)."""
         return await self.save(patient)
 
-    async def update(self, patient: Patient) -> Optional[Patient]:
+    async def update(self, patient: Patient) -> Patient | None:
         """Update an existing patient record (alias for save)."""
         return await self.save(patient)
 
-    async def list_all(self, limit: int = 100, offset: int = 0) -> List[Patient]:
+    async def list_all(self, limit: int = 100, offset: int = 0) -> list[Patient]:
         """List all patients with pagination (alias for get_all)."""
         return await self.get_all(limit=limit, offset=offset)

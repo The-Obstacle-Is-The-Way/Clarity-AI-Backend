@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Cache Service Interface.
 
@@ -8,7 +7,7 @@ while maintaining a consistent API.
 """
 
 import abc
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class CacheService(abc.ABC):
@@ -38,7 +37,7 @@ class CacheService(abc.ABC):
         self, 
         key: str, 
         value: Any, 
-        expiration: Optional[int] = None
+        expiration: int | None = None
     ) -> bool:
         """
         Set a value in the cache.

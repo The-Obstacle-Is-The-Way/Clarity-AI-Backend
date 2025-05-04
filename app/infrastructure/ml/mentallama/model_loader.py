@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 MentaLLaMA Model Loader.
 
@@ -8,18 +7,15 @@ models, handling text generation, and model management.
 
 import asyncio
 import json
-import logging
-import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-import aiohttp
 import httpx
-import numpy as np
 
 # Use canonical config path
 from app.config.settings import get_settings
+
 settings = get_settings()
 from app.core.exceptions.ml_exceptions import MentalLLaMAInferenceError, ModelLoadingError
 from app.core.logging.phi_logger import get_phi_safe_logger
@@ -37,8 +33,8 @@ class GenerationParameters:
     top_p: float = 0.95
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
-    stop_sequences: Optional[List[str]] = None
-    system_prompt: Optional[str] = None
+    stop_sequences: list[str] | None = None
+    system_prompt: str | None = None
 
 
 class MentaLLaMAModelLoader:
@@ -51,9 +47,9 @@ class MentaLLaMAModelLoader:
     
     def __init__(
         self,
-        model_name: Optional[str] = None,
-        endpoint_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        model_name: str | None = None,
+        endpoint_url: str | None = None,
+        api_key: str | None = None,
         inference_mode: str = "api",
         timeout: float = 60.0
     ):
@@ -103,8 +99,8 @@ class MentaLLaMAModelLoader:
         try:
             # Dynamically import modules only when using local inference
             # to avoid unnecessary dependencies for API inference
-            from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
             
             logger.info(f"Loading MentaLLaMA model locally: {self.model_name}")
             
@@ -129,7 +125,7 @@ class MentaLLaMAModelLoader:
             logger.info(f"MentaLLaMA model loaded locally on {device}")
             
         except Exception as e:
-            error_msg = f"Failed to load MentaLLaMA model locally: {str(e)}"
+            error_msg = f"Failed to load MentaLLaMA model locally: {e!s}"
             logger.error(error_msg)
             raise ModelLoadingError(error_msg)
     
@@ -149,7 +145,7 @@ class MentaLLaMAModelLoader:
             logger.info(f"API client set up for endpoint: {self.endpoint_url}")
             
         except Exception as e:
-            error_msg = f"Failed to set up API client: {str(e)}"
+            error_msg = f"Failed to set up API client: {e!s}"
             logger.error(error_msg)
             raise ModelLoadingError(error_msg)
     
@@ -170,16 +166,16 @@ class MentaLLaMAModelLoader:
             logger.info(f"SageMaker client set up for endpoint: {self.endpoint_url}")
             
         except Exception as e:
-            error_msg = f"Failed to set up SageMaker client: {str(e)}"
+            error_msg = f"Failed to set up SageMaker client: {e!s}"
             logger.error(error_msg)
             raise ModelLoadingError(error_msg)
     
     async def generate_text(
         self,
         prompt: str,
-        params: Optional[GenerationParameters] = None,
+        params: GenerationParameters | None = None,
         safety_filter: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using the model.
         
@@ -212,7 +208,7 @@ class MentaLLaMAModelLoader:
         prompt: str,
         params: GenerationParameters,
         safety_filter: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using local model.
         
@@ -292,7 +288,7 @@ class MentaLLaMAModelLoader:
             }
             
         except Exception as e:
-            error_msg = f"Error during local text generation: {str(e)}"
+            error_msg = f"Error during local text generation: {e!s}"
             logger.error(error_msg)
             raise MentalLLaMAInferenceError(error_msg)
     
@@ -301,7 +297,7 @@ class MentaLLaMAModelLoader:
         prompt: str,
         params: GenerationParameters,
         safety_filter: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using API endpoint.
         
@@ -378,7 +374,7 @@ class MentaLLaMAModelLoader:
             return result
             
         except Exception as e:
-            error_msg = f"Error during API text generation: {str(e)}"
+            error_msg = f"Error during API text generation: {e!s}"
             logger.error(error_msg)
             raise MentalLLaMAInferenceError(error_msg)
     
@@ -387,7 +383,7 @@ class MentaLLaMAModelLoader:
         prompt: str,
         params: GenerationParameters,
         safety_filter: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using SageMaker endpoint.
         
@@ -465,7 +461,7 @@ class MentaLLaMAModelLoader:
             return result
             
         except Exception as e:
-            error_msg = f"Error during SageMaker text generation: {str(e)}"
+            error_msg = f"Error during SageMaker text generation: {e!s}"
             logger.error(error_msg)
             raise MentalLLaMAInferenceError(error_msg)
     

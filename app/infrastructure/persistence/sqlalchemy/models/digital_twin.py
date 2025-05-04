@@ -8,15 +8,14 @@ providing mapping between domain entities and the database schema.
 import json
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Any
 
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Integer, JSON
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.types import GUID
-
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 class BiometricDataPointModel(Base):
@@ -51,14 +50,14 @@ class BiometricDataPointModel(Base):
         self.value_json = json.dumps(value)
     
     @hybrid_property
-    def metadata_dict(self) -> Dict[str, Any]:
+    def metadata_dict(self) -> dict[str, Any]:
         """Get the metadata as a dictionary."""
         if self.metadata_json:
             return json.loads(self.metadata_json)
         return {}
     
     @metadata_dict.setter
-    def metadata_dict(self, metadata: Dict[str, Any]) -> None:
+    def metadata_dict(self, metadata: dict[str, Any]) -> None:
         """Set the metadata, serializing to JSON."""
         if metadata:
             self.metadata_json = json.dumps(metadata)
@@ -88,14 +87,14 @@ class BiometricTimeseriesModel(Base):
     data_points = relationship("BiometricDataPointModel", back_populates="timeseries", cascade="all, delete-orphan")
     
     @hybrid_property
-    def physiological_range(self) -> Optional[Dict[str, float]]:
+    def physiological_range(self) -> dict[str, float] | None:
         """Get the physiological range as a dictionary."""
         if self.physiological_range_json:
             return json.loads(self.physiological_range_json)
         return None
     
     @physiological_range.setter
-    def physiological_range(self, range_data: Optional[Dict[str, float]]) -> None:
+    def physiological_range(self, range_data: dict[str, float] | None) -> None:
         """Set the physiological range, serializing to JSON."""
         if range_data:
             self.physiological_range_json = json.dumps(range_data)

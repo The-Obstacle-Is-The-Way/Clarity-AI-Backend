@@ -7,10 +7,10 @@ concierge psychiatry practice, following the Domain-Driven Design pattern.
 
 from dataclasses import dataclass
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
 from uuid import UUID
 
 from app.domain.entities.clinical_note import NoteType
+from app.domain.utils.datetime_utils import UTC
 
 
 @dataclass

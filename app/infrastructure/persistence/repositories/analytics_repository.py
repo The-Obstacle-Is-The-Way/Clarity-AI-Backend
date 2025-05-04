@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy Analytics Repository Implementation.
 
@@ -6,22 +5,21 @@ This module implements the AnalyticsRepository interface using SQLAlchemy
 as the ORM for database operations.
 """
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
+from datetime import datetime
+from typing import Any
 
-from sqlalchemy import select, func, and_, or_, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities.analytics import AnalyticsEvent, AnalyticsAggregate
 from app.application.interfaces.repositories.analytics_repository import AnalyticsRepository
-from app.infrastructure.persistence.sqlalchemy.models.analytics import (
-    AnalyticsEventModel,
-    AnalyticsAggregateModel
-)
 from app.core.utils.logging import get_logger
-
+from app.domain.entities.analytics import AnalyticsAggregate, AnalyticsEvent
+from app.domain.utils.datetime_utils import UTC
+from app.infrastructure.persistence.sqlalchemy.models.analytics import (
+    AnalyticsAggregateModel,
+    AnalyticsEventModel,
+)
 
 logger = get_logger(__name__)
 
@@ -83,10 +81,10 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             )
             
         except SQLAlchemyError as e:
-            self._logger.error(f"Error saving analytics event: {str(e)}")
+            self._logger.error(f"Error saving analytics event: {e!s}")
             raise
     
-    async def save_events(self, events: List[AnalyticsEvent]) -> List[AnalyticsEvent]:
+    async def save_events(self, events: list[AnalyticsEvent]) -> list[AnalyticsEvent]:
         """
         Save multiple analytics events in a batch.
         
@@ -134,10 +132,10 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             return result
             
         except SQLAlchemyError as e:
-            self._logger.error(f"Error saving batch of analytics events: {str(e)}")
+            self._logger.error(f"Error saving batch of analytics events: {e!s}")
             raise
     
-    async def get_event(self, event_id: str) -> Optional[AnalyticsEvent]:
+    async def get_event(self, event_id: str) -> AnalyticsEvent | None:
         """
         Get a specific analytics event by ID.
         
@@ -171,17 +169,17 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             )
             
         except SQLAlchemyError as e:
-            self._logger.error(f"Error retrieving analytics event: {str(e)}")
+            self._logger.error(f"Error retrieving analytics event: {e!s}")
             raise
     
     async def get_events(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None
-    ) -> List[AnalyticsEvent]:
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int | None = None,
+        offset: int | None = None
+    ) -> list[AnalyticsEvent]:
         """
         Get analytics events matching the specified criteria.
         
@@ -247,17 +245,17 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             ]
             
         except SQLAlchemyError as e:
-            self._logger.error(f"Error retrieving analytics events: {str(e)}")
+            self._logger.error(f"Error retrieving analytics events: {e!s}")
             raise
     
     async def get_aggregates(
         self,
         aggregate_type: str,
-        dimensions: List[str],
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
-    ) -> List[AnalyticsAggregate]:
+        dimensions: list[str],
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None
+    ) -> list[AnalyticsAggregate]:
         """
         Get aggregated analytics data.
         
@@ -298,16 +296,16 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
                 return []
                 
         except SQLAlchemyError as e:
-            self._logger.error(f"Error retrieving analytics aggregates: {str(e)}")
+            self._logger.error(f"Error retrieving analytics aggregates: {e!s}")
             raise
     
     async def _get_count_aggregates(
         self,
-        dimensions: List[str],
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
-    ) -> List[AnalyticsAggregate]:
+        dimensions: list[str],
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None
+    ) -> list[AnalyticsAggregate]:
         """
         Get count aggregates grouped by dimensions.
         
@@ -393,7 +391,7 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
     async def save_aggregate(
         self,
         aggregate: AnalyticsAggregate,
-        ttl_seconds: Optional[int] = None
+        ttl_seconds: int | None = None
     ) -> AnalyticsAggregate:
         """
         Save a pre-computed aggregate for faster retrieval.
@@ -430,5 +428,5 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             )
             
         except SQLAlchemyError as e:
-            self._logger.error(f"Error saving analytics aggregate: {str(e)}")
+            self._logger.error(f"Error saving analytics aggregate: {e!s}")
             raise

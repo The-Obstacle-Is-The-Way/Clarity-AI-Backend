@@ -5,10 +5,8 @@ This module provides REST API endpoints for managing digital twin models
 in a HIPAA-compliant manner with proper security controls, data validation, and audit logging.
 """
 
-from typing import Dict, Any, List, Optional
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 
 from app.core.domain.entities.digital_twin import DigitalTwin, TwinType
@@ -22,7 +20,7 @@ from app.presentation.api.schemas.digital_twin import (
     DigitalTwinResponse,
     DigitalTwinUpdateRequest,
     TwinSimulationRequest,
-    TwinSimulationResponse
+    TwinSimulationResponse,
 )
 from app.presentation.api.v1.dependencies.digital_twin import get_digital_twin_service
 
@@ -36,19 +34,19 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=List[DigitalTwinResponse],
+    response_model=list[DigitalTwinResponse],
     summary="Get digital twins", 
     description="Get a list of digital twins with optional filtering"
 )
 async def get_digital_twins(
-    twin_type: Optional[TwinType] = Query(None, description="Filter by twin type"),
-    patient_id: Optional[UUID4] = Query(None, description="Patient ID if accessing as provider"),
+    twin_type: TwinType | None = Query(None, description="Filter by twin type"),
+    patient_id: UUID4 | None = Query(None, description="Patient ID if accessing as provider"),
     include_details: bool = Query(False, description="Include detailed twin data"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     digital_twin_service: DigitalTwinServiceInterface = Depends(get_digital_twin_service),
     current_user: User = Depends(get_current_active_user)
-) -> List[DigitalTwinResponse]:
+) -> list[DigitalTwinResponse]:
     """
     Get a list of digital twins with optional filtering.
     

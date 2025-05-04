@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Database Settings Configuration.
 
@@ -6,12 +5,10 @@ This module provides configuration settings specific to database connections,
 including connection pooling, credentials, and other database-specific options.
 """
 
-import os
-from typing import Dict, Any, Optional, List
 from urllib.parse import quote_plus
 
+from pydantic import ConfigDict, field_validator
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator, ConfigDict
 
 
 class DatabaseSettings(BaseSettings):
@@ -38,8 +35,8 @@ class DatabaseSettings(BaseSettings):
     
     # SQLAlchemy settings
     ECHO_SQL: bool = False
-    SSL_MODE: Optional[str] = None
-    SSL_CA_CERT: Optional[str] = None
+    SSL_MODE: str | None = None
+    SSL_CA_CERT: str | None = None
     
     # Default schema
     DEFAULT_SCHEMA: str = "public"

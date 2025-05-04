@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PHI Detection Service.
 
@@ -6,16 +5,15 @@ This module provides a service for detecting and redacting Protected Health Info
 (PHI) in text data, ensuring HIPAA compliance for all content stored and logged.
 """
 
-import re
 import os
-import yaml
-import logging
-from typing import Dict, List, Set, Pattern, Optional, Tuple, Union
+import re
 from dataclasses import dataclass
+from re import Pattern
 
+import yaml
+
+from app.core.exceptions.ml_exceptions import PHISecurityError
 from app.core.utils.logging import get_logger
-from app.core.exceptions.ml_exceptions import PHIDetectionError, PHISecurityError
-
 
 logger = get_logger(__name__)
 
@@ -33,7 +31,7 @@ class PHIPattern:
     description: str
     category: str
     risk_level: str = "high"  # Default risk level is high
-    regex: Optional[Pattern] = None
+    regex: Pattern | None = None
     
     def __post_init__(self):
         """Compile the regex pattern after initialization."""
@@ -57,7 +55,7 @@ class PHIDetectionService:
     methods to detect and redact PHI in text data.
     """
     
-    def __init__(self, pattern_file: Optional[str] = None):
+    def __init__(self, pattern_file: str | None = None):
         """
         Initialize the PHI detection service.
         
@@ -68,7 +66,7 @@ class PHIDetectionService:
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
             "phi_patterns.yaml"
         )
-        self.patterns: List[PHIPattern] = []
+        self.patterns: list[PHIPattern] = []
         self._initialized = False
         
     def initialize(self) -> None:
@@ -109,7 +107,7 @@ class PHIDetectionService:
             PHIDetectionError: If patterns cannot be loaded
         """
         try:
-            with open(self.pattern_file, "r") as f:
+            with open(self.pattern_file) as f:
                 config = yaml.safe_load(f)
                 
             self.patterns = []
@@ -137,7 +135,7 @@ class PHIDetectionService:
             # Load some basic default patterns
             self.patterns = self._get_default_patterns()
             
-    def _get_default_patterns(self) -> List[PHIPattern]:
+    def _get_default_patterns(self) -> list[PHIPattern]:
         """
         Get default PHI patterns.
         
@@ -218,9 +216,9 @@ class PHIDetectionService:
             return False
         except Exception as e:
             logger.error(f"Error detecting PHI: {e}")
-            raise PHISecurityError(f"Failed to detect PHI: {str(e)}")
+            raise PHISecurityError(f"Failed to detect PHI: {e!s}")
         
-    def detect_phi(self, text: str) -> List[Dict]:
+    def detect_phi(self, text: str) -> list[dict]:
         """
         Detect PHI in text and return details of matches.
         
@@ -262,7 +260,7 @@ class PHIDetectionService:
             return results
         except Exception as e:
             logger.error(f"Error detecting PHI: {e}")
-            raise PHISecurityError(f"Failed to detect PHI details: {str(e)}")
+            raise PHISecurityError(f"Failed to detect PHI details: {e!s}")
     
     def redact_phi(self, text: str, replacement: str = "[REDACTED]") -> str:
         """
@@ -304,7 +302,7 @@ class PHIDetectionService:
             return redacted_text
         except Exception as e:
             logger.error(f"Error redacting PHI: {e}")
-            raise PHISecurityError(f"Failed to redact PHI: {str(e)}")
+            raise PHISecurityError(f"Failed to redact PHI: {e!s}")
     
     def anonymize_phi(self, text: str) -> str:
         """
@@ -351,7 +349,7 @@ class PHIDetectionService:
             return anonymized_text
         except Exception as e:
             logger.error(f"Error anonymizing PHI: {e}")
-            raise PHISecurityError(f"Failed to anonymize PHI: {str(e)}")
+            raise PHISecurityError(f"Failed to anonymize PHI: {e!s}")
     
     def _get_synthetic_replacement(self, category: str, original: str) -> str:
         """
@@ -380,7 +378,7 @@ class PHIDetectionService:
         # Use category-specific replacement or a generic one
         return replacements.get(category, f"REDACTED_{category.upper()}")
     
-    def get_phi_types(self) -> List[str]:
+    def get_phi_types(self) -> list[str]:
         """
         Get a list of all PHI types loaded in the service.
         
@@ -390,7 +388,7 @@ class PHIDetectionService:
         self.ensure_initialized()
         return [pattern.name for pattern in self.patterns]
     
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """
         Get statistics about the loaded PHI patterns.
         

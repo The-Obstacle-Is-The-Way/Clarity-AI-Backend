@@ -5,9 +5,7 @@ This module defines the interface contracts for XGBoost-based ML services,
 following clean architecture principles and the dependency inversion principle.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
-
-from app.core.enums.privacy_level import PrivacyLevel
+from typing import Any
 
 
 class XGBoostInterface(ABC):
@@ -19,7 +17,7 @@ class XGBoostInterface(ABC):
     """
     
     @abstractmethod
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the XGBoost service with configuration.
         
@@ -39,7 +37,7 @@ class XGBoostInterface(ABC):
         pass
     
     @abstractmethod
-    def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    def predict(self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """
         Generic prediction method required for all ML services.
         
@@ -59,11 +57,11 @@ class XGBoostInterface(ABC):
         self,
         patient_id: str,
         risk_type: str,
-        features: Optional[Dict[str, Any]] = None,
-        clinical_data: Optional[Dict[str, Any]] = None,
-        time_frame_days: Optional[int] = None,
+        features: dict[str, Any] | None = None,
+        clinical_data: dict[str, Any] | None = None,
+        time_frame_days: int | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict risk level using a risk model.
         
@@ -85,10 +83,10 @@ class XGBoostInterface(ABC):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
         
@@ -108,11 +106,11 @@ class XGBoostInterface(ABC):
     def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
+        outcome_timeframe: dict[str, int],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict clinical outcomes based on treatment plan.
         
@@ -134,7 +132,7 @@ class XGBoostInterface(ABC):
         patient_id: str,
         model_type: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
         
@@ -149,7 +147,7 @@ class XGBoostInterface(ABC):
         pass
     
     @abstractmethod
-    def get_available_models(self) -> List[Dict[str, Any]]:
+    def get_available_models(self) -> list[dict[str, Any]]:
         """
         Get a list of available models.
         
@@ -159,7 +157,7 @@ class XGBoostInterface(ABC):
         pass
     
     @abstractmethod
-    def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    def get_model_info(self, model_type: str) -> dict[str, Any]:
         """
         Get information about a model.
         

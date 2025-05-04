@@ -6,17 +6,14 @@ Implements a clean architecture approach with properly isolated mock service cal
 to ensure reliable and maintainable test infrastructure.
 """
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
-from starlette.responses import JSONResponse
-from typing import Any, Dict, List, Optional
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
-from app.core.services.ml.xgboost.constants import ModelType, EndpointType
-from app.core.exceptions.base_exceptions import ValidationError
-from app.core.services.ml.xgboost.factory import get_xgboost_service
-from app.core.services.ml.xgboost.interface import XGBoostInterface
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
+
 from app.core.exceptions.data_privacy import DataPrivacyError
+from app.core.services.ml.xgboost.interface import XGBoostInterface
 from app.infrastructure.services.mock_xgboost_service import MockXGBoostService
 
 # Initialize a global mock service for consistent behavior across tests
@@ -39,7 +36,7 @@ def get_service() -> XGBoostInterface:
 
 @router.post("/predict/risk")
 async def predict_risk(
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
 ):
     """Test endpoint for risk prediction.
@@ -125,7 +122,7 @@ async def predict_risk(
 
 @router.post("/predict/treatment-response")
 async def predict_treatment_response(
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
 ):
     """Test endpoint for treatment response prediction.
@@ -183,7 +180,7 @@ async def predict_treatment_response(
 
 @router.post("/predict/outcome")
 async def predict_outcome(
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
 ):
     """Test endpoint for outcome prediction.
@@ -320,7 +317,7 @@ async def get_feature_importance(
 @router.post("/integrate/{prediction_id}")
 async def integrate_with_digital_twin(
     prediction_id: str = Path(...),
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
 ):
     """Test endpoint for integrating predictions with digital twin.

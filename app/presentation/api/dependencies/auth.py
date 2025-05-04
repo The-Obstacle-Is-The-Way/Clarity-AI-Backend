@@ -5,7 +5,7 @@ This module provides FastAPI dependency functions required for handling
 authentication and authorization within the API endpoints.
 """
 
-from typing import Annotated, Optional, Union
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -112,7 +112,7 @@ async def get_optional_user(
     token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)),
     jwt_service: JWTServiceDep = None,
     user_repo: UserRepoDep = None,
-) -> Optional[User]:
+) -> User | None:
     """Dependency to get the current user if authenticated, or None if not."""
     if not token:
         return None

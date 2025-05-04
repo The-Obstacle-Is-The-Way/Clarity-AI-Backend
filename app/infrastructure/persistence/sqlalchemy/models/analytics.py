@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy models for analytics.
 
@@ -7,14 +6,13 @@ mapping domain entities to database tables.
 """
 
 import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc
 
-from sqlalchemy import Column, DateTime, String, Integer, JSON, func, Index, ForeignKey
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String
 from sqlalchemy.ext.mutable import MutableDict
 
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 class AnalyticsEventModel(Base):

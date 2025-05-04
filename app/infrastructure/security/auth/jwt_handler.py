@@ -7,11 +7,11 @@ for use in authentication throughout the application.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Any, Union
+from typing import Any
 
-from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from pydantic import ValidationError
 
 # Import settings for JWT configuration
@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def create_access_token(
-    data: Dict[str, Any], 
-    expires_delta: Optional[timedelta] = None
+    data: dict[str, Any], 
+    expires_delta: timedelta | None = None
 ) -> str:
     """
     Create a new JWT access token.
@@ -59,7 +59,7 @@ def create_access_token(
         logger.error(f"Token generation failed: {e}")
         raise ValueError(f"Token generation failed: {e}")
 
-def decode_token(token: str) -> Dict[str, Any]:
+def decode_token(token: str) -> dict[str, Any]:
     """
     Decode and validate a JWT token.
     
@@ -85,7 +85,7 @@ def decode_token(token: str) -> Dict[str, Any]:
         logger.warning(f"JWT token validation failed: {e}")
         raise
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict[str, Any]:
     """
     Get the current authenticated user from a JWT token.
     

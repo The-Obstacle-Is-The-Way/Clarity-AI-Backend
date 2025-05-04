@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Text Generation Service Implementation.
 
@@ -6,16 +5,17 @@ This module implements HIPAA-compliant specialized text generation
 services for clinical documentation, patient education, and more.
 """
 
-import time
-import uuid
 import logging
+import time
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
+from app.core.exceptions import (
+    ModelNotFoundError,
+    ServiceUnavailableError,
+)
 from app.core.services.ml.interface import TextGenerationInterface
-from app.core.exceptions import ServiceUnavailableError, ModelNotFoundError, ExternalServiceException, InvalidRequestError
 from app.infrastructure.security.phi.phi_service import PHIService
-from app.core.services.ml.base import BaseMLService
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class TextGenerationService(TextGenerationInterface):
         self._config = {}
         self._model_configs = {}
 
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the text generation service with configuration.
         
@@ -141,12 +141,12 @@ class TextGenerationService(TextGenerationInterface):
     def generate_text(
         self,
         prompt: str,
-        context: Optional[str] = None,
+        context: str | None = None,
         max_tokens: int = 500,
         temperature: float = 0.7,
         model_type: str = "clinical_summary",
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using the specified model type.
         
@@ -224,9 +224,9 @@ class TextGenerationService(TextGenerationInterface):
     def _prepare_context(
         self, 
         prompt: str, 
-        context: Optional[str], 
+        context: str | None, 
         system_prompt: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Prepare context for MentaLLaMA processing.
         

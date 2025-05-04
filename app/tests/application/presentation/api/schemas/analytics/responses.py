@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Analytics API response schemas.
 
@@ -6,9 +5,10 @@ This module defines the Pydantic schemas for formatting responses from
 the analytics endpoints in the Novamind Digital Twin platform.
 """
 
-from typing import Dict, List, Any, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AnalyticsEventResponse(BaseModel):
@@ -31,19 +31,19 @@ class AnalyticsEventResponse(BaseModel):
         examples=["page_view", "feature_usage", "session_start"]
     )
     
-    event_data: Dict[str, Any] = Field(
+    event_data: dict[str, Any] = Field(
         ...,
         description="Sanitized payload containing details about the event",
         examples=[{"page": "/dashboard", "time_on_page": 45}]
     )
     
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         None,
         description="Identifier of the user who triggered the event (if available)",
         examples=["provider-123", "admin-456"]
     )
     
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None,
         description="Identifier of the session in which the event occurred",
         examples=["session-789-xyz"]
@@ -82,7 +82,7 @@ class AnalyticsEventsBatchResponse(BaseModel):
     events in a single request, with processing statistics.
     """
     
-    batch_id: Optional[str] = Field(
+    batch_id: str | None = Field(
         None,
         description="Identifier for this batch of events (if provided)"
     )
@@ -105,7 +105,7 @@ class AnalyticsEventsBatchResponse(BaseModel):
         ge=0
     )
     
-    events: List[AnalyticsEventResponse] = Field(
+    events: list[AnalyticsEventResponse] = Field(
         ...,
         description="List of successfully processed events",
         max_items=1000
@@ -158,13 +158,13 @@ class MetricValue(BaseModel):
         examples=["integer", "float", "string", "boolean", "timestamp"]
     )
     
-    format: Optional[str] = Field(
+    format: str | None = Field(
         None,
         description="Formatting hint for display (e.g., 'percentage', 'currency')",
         examples=["percentage", "currency:USD", "duration:seconds", "filesize"]
     )
     
-    confidence: Optional[float] = Field(
+    confidence: float | None = Field(
         None,
         description="Confidence level in the metric (0-1, if applicable)",
         ge=0,
@@ -180,13 +180,13 @@ class AnalyticsAggregateResponse(BaseModel):
     result used in analytics dashboards and reports.
     """
     
-    dimensions: Dict[str, Any] = Field(
+    dimensions: dict[str, Any] = Field(
         ...,
         description="Dimensions used for grouping the data",
         examples=[{"event_type": "page_view"}, {"user_role": "provider", "date": "2025-03-30"}]
     )
     
-    metrics: Dict[str, MetricValue] = Field(
+    metrics: dict[str, MetricValue] = Field(
         ...,
         description="Calculated metrics for this aggregate group",
         examples=[{
@@ -202,7 +202,7 @@ class AnalyticsAggregateResponse(BaseModel):
         }]
     )
     
-    time_period: Optional[Dict[str, datetime]] = Field(
+    time_period: dict[str, datetime] | None = Field(
         None,
         description="Optional time range for this aggregate"
     )
@@ -216,7 +216,7 @@ class AnalyticsAggregatesListResponse(BaseModel):
     containing multiple aggregated results.
     """
     
-    aggregates: List[AnalyticsAggregateResponse] = Field(
+    aggregates: list[AnalyticsAggregateResponse] = Field(
         ...,
         description="List of analytics aggregates"
     )
@@ -227,7 +227,7 @@ class AnalyticsAggregatesListResponse(BaseModel):
         ge=0
     )
     
-    query_info: Dict[str, Any] = Field(
+    query_info: dict[str, Any] = Field(
         ...,
         description="Information about the query performed",
         examples=[{

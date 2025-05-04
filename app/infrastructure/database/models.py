@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 Database Models for Novamind Digital Twin Backend.
 
 This module contains the SQLAlchemy models for the database.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Batch Process Analytics Use Case.
 
@@ -7,15 +6,15 @@ asynchronously, providing efficient processing of large volumes of events.
 """
 
 import asyncio
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
+from typing import Any
 
-from app.core.utils.logging import get_logger
-from app.domain.entities.analytics import AnalyticsEvent, AnalyticsBatch
 from app.application.interfaces.repositories.analytics_repository import AnalyticsRepository
 from app.application.interfaces.services.cache_service import CacheService
 from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+from app.core.utils.logging import get_logger
+from app.domain.entities.analytics import AnalyticsBatch, AnalyticsEvent
+from app.domain.utils.datetime_utils import UTC
 
 
 class BatchProcessAnalyticsUseCase:
@@ -30,7 +29,7 @@ class BatchProcessAnalyticsUseCase:
         self, 
         analytics_repository: AnalyticsRepository,
         cache_service: CacheService,
-        event_processor: Optional[ProcessAnalyticsEventUseCase] = None
+        event_processor: ProcessAnalyticsEventUseCase | None = None
     ) -> None:
         """
         Initialize the use case with required dependencies.
@@ -56,8 +55,8 @@ class BatchProcessAnalyticsUseCase:
     
     async def execute(
         self, 
-        events: List[Dict[str, Any]],
-        batch_id: Optional[str] = None
+        events: list[dict[str, Any]],
+        batch_id: str | None = None
     ) -> AnalyticsBatch:
         """
         Process a batch of analytics events asynchronously.
@@ -120,7 +119,7 @@ class BatchProcessAnalyticsUseCase:
         
         return batch
     
-    async def _process_chunk(self, events: List[Dict[str, Any]]) -> List[Optional[AnalyticsEvent]]:
+    async def _process_chunk(self, events: list[dict[str, Any]]) -> list[AnalyticsEvent | None]:
         """
         Process a chunk of events concurrently.
         
@@ -174,7 +173,7 @@ class BatchProcessAnalyticsUseCase:
                     result = await task
                     results.append(result)
                 except Exception as e:
-                    self.logger.error(f"Failed to process event: {str(e)}")
+                    self.logger.error(f"Failed to process event: {e!s}")
                     results.append(None)
         
         return results
@@ -182,11 +181,11 @@ class BatchProcessAnalyticsUseCase:
     async def _safe_process_event(
         self, 
         event_type: str,
-        event_data: Dict[str, Any],
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None
-    ) -> Optional[AnalyticsEvent]:
+        event_data: dict[str, Any],
+        user_id: str | None = None,
+        session_id: str | None = None,
+        timestamp: datetime | None = None
+    ) -> AnalyticsEvent | None:
         """
         Safely process a single event, catching and logging any exceptions.
         
@@ -211,7 +210,7 @@ class BatchProcessAnalyticsUseCase:
         except Exception as e:
             # Log error but continue processing other events
             self.logger.error(
-                f"Error processing analytics event: {str(e)}",
+                f"Error processing analytics event: {e!s}",
                 {
                     "event_type": event_type,
                     "session_id": session_id

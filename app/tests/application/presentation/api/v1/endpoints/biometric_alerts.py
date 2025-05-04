@@ -1,34 +1,33 @@
 import uuid
 from datetime import datetime, timezone
-from fastapi import status
-from typing import Optional, Any, List
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 
 # Import core exceptions
-from app.core.exceptions.base_exceptions import PersistenceError, EntityNotFoundError
-from app.application.services.biometric_alert_service import BiometricAlertService
+from app.core.exceptions.base_exceptions import EntityNotFoundError, PersistenceError
 from app.core.utils.logging import get_logger
 from app.domain.entities.biometric_alert import (
     AlertPriority,
+)
+from app.domain.entities.biometric_alert import (
     AlertStatusEnum as DomainAlertStatusEnum,
 )
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
 # Import general dependencies
 from app.presentation.api.dependencies.auth import get_current_user
+from app.presentation.api.schemas.user import UserResponseSchema
+
 # Import v1-specific dependencies
 from app.presentation.api.v1.dependencies import (
     get_alert_repository,
 )
-
 from app.presentation.api.v1.schemas.biometric_alert_schemas import (
     AlertAcknowledgementRequest,
-    BiometricAlertResponse,
     BiometricAlertListResponse,
+    BiometricAlertResponse,
 )
-from app.presentation.api.schemas.user import UserResponseSchema
 
 # Define the correct Enum type for path parameter
 AlertStatusPath = DomainAlertStatusEnum
@@ -52,10 +51,10 @@ router = APIRouter(
     description="Retrieve all biometric alerts with optional filtering."
 )
 async def get_alerts(
-    status: Optional[AlertStatusPath] = Query(None, description="Filter by alert status"),
-    priority: Optional[AlertPriority] = Query(None, description="Filter by alert priority"),
-    start_date: Optional[datetime] = Query(None, description="Filter by start date"),
-    end_date: Optional[datetime] = Query(None, description="Filter by end date"),
+    status: AlertStatusPath | None = Query(None, description="Filter by alert status"),
+    priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
+    start_date: datetime | None = Query(None, description="Filter by start date"),
+    end_date: datetime | None = Query(None, description="Filter by end date"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Number of items per page"),
     repository: BiometricAlertRepository = Depends(get_alert_repository),
@@ -160,7 +159,7 @@ async def get_alerts(
     except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving biometric alerts: {str(e)}"
+            detail=f"Error retrieving biometric alerts: {e!s}"
         )
 
 
@@ -172,9 +171,9 @@ async def get_alerts(
 )
 async def get_patient_alerts(
     patient_id: UUID = Path(..., description="ID of the patient"),
-    status: Optional[AlertStatusPath] = Query(None, description="Filter by alert status"),
-    start_date: Optional[datetime] = Query(None, description="Filter by start date"),
-    end_date: Optional[datetime] = Query(None, description="Filter by end date"),
+    status: AlertStatusPath | None = Query(None, description="Filter by alert status"),
+    start_date: datetime | None = Query(None, description="Filter by start date"),
+    end_date: datetime | None = Query(None, description="Filter by end date"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Number of items per page"),
     repository: BiometricAlertRepository = Depends(get_alert_repository),
@@ -278,7 +277,7 @@ async def get_patient_alerts(
     except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving biometric alerts: {str(e)}"
+            detail=f"Error retrieving biometric alerts: {e!s}"
         )
 
 
@@ -392,7 +391,7 @@ async def get_patient_alert_summary(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving patient alert summary: {str(e)}"
+            detail=f"Error retrieving patient alert summary: {e!s}"
         )
 
 
@@ -520,5 +519,5 @@ async def update_alert_status(
     except PersistenceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating biometric alert status: {str(e)}"
+            detail=f"Error updating biometric alert status: {e!s}"
         )

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Mock PAT (Physical Activity Tracking) Service Implementation.
 
@@ -14,20 +13,17 @@ Follows SOLID principles:
 import datetime
 import logging
 import math
-import random
-import numpy as np
 import uuid
-from typing import Dict, List, Any, Optional, Union
+from typing import Any
 
-from app.core.services.ml.pat.pat_interface import PATInterface
+import numpy as np
+
 from app.core.exceptions.base_exceptions import (
     InitializationError,
-    ValidationError,
     ResourceNotFoundError,
-    AuthorizationError,
-    AnalysisError,
-    IntegrationError
+    ValidationError,
 )
+from app.core.services.ml.pat.pat_interface import PATInterface
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +36,7 @@ class MockPATService(PATInterface):
     that stores data in memory for testing and development purposes.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         # Constructor, following DI principle
         self._initialized = False
         self._config = {}
@@ -144,7 +140,7 @@ class MockPATService(PATInterface):
         """
         return self._mock_delay_ms
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """Initialize the service with configuration.
         
         Args:
@@ -209,9 +205,9 @@ class MockPATService(PATInterface):
         self,
         patient_id: str,
         assessment_type: str,
-        clinician_id: Optional[str] = None,
-        initial_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        clinician_id: str | None = None,
+        initial_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Create a new patient assessment."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -256,7 +252,7 @@ class MockPATService(PATInterface):
             "template_id": template_id
         }
     
-    def get_assessment(self, assessment_id: str) -> Dict[str, Any]:
+    def get_assessment(self, assessment_id: str) -> dict[str, Any]:
         """Get information about an assessment."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -285,8 +281,8 @@ class MockPATService(PATInterface):
     def update_assessment(
         self,
         assessment_id: str,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update an assessment with new data."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -319,8 +315,8 @@ class MockPATService(PATInterface):
     def complete_assessment(
         self,
         assessment_id: str,
-        completion_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        completion_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Complete an assessment."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -358,9 +354,9 @@ class MockPATService(PATInterface):
     def analyze_assessment(
         self,
         assessment_id: str,
-        analysis_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        analysis_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Analyze an assessment."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -402,10 +398,10 @@ class MockPATService(PATInterface):
     def get_assessment_history(
         self,
         patient_id: str,
-        assessment_type: Optional[str] = None,
-        limit: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        assessment_type: str | None = None,
+        limit: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Get assessment history for a patient."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -446,9 +442,9 @@ class MockPATService(PATInterface):
         self,
         name: str,
         form_type: str,
-        fields: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        fields: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Create a new assessment form template."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -479,7 +475,7 @@ class MockPATService(PATInterface):
     def get_form_template(
         self,
         template_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get a form template."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -495,10 +491,10 @@ class MockPATService(PATInterface):
     
     def list_form_templates(
         self,
-        form_type: Optional[str] = None,
-        limit: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        form_type: str | None = None,
+        limit: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """List available form templates."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -531,9 +527,9 @@ class MockPATService(PATInterface):
     def calculate_score(
         self,
         assessment_id: str,
-        scoring_method: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        scoring_method: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Calculate score for an assessment."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -563,9 +559,9 @@ class MockPATService(PATInterface):
     def generate_report(
         self,
         assessment_id: str,
-        report_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        report_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Generate a report for an assessment."""
         if not self._initialized:
             raise Exception("Service not initialized")
@@ -714,7 +710,7 @@ class MockPATService(PATInterface):
         
         return template_id
     
-    def _generate_mock_scores(self, assessment: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_mock_scores(self, assessment: dict[str, Any]) -> dict[str, Any]:
         """Generate mock scores for an assessment."""
         scores = {}
         
@@ -780,14 +776,14 @@ class MockPATService(PATInterface):
     def analyze_actigraphy(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Dict[str, Any],
-        analysis_types: List[str],
+        device_info: dict[str, Any],
+        analysis_types: list[str],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze actigraphy data and return insights.
         
         This method validates inputs, creates a structured analysis result, and stores it for later retrieval.
@@ -898,9 +894,9 @@ class MockPATService(PATInterface):
         return result
     
     def _validate_actigraphy_inputs(
-        self, patient_id: str, readings: List[Dict[str, Any]], 
-        sampling_rate_hz: float, device_info: Dict[str, Any], 
-        analysis_types: List[str]
+        self, patient_id: str, readings: list[dict[str, Any]], 
+        sampling_rate_hz: float, device_info: dict[str, Any], 
+        analysis_types: list[str]
     ) -> None:
         """Validate inputs for actigraphy analysis.
         
@@ -952,7 +948,7 @@ class MockPATService(PATInterface):
             if not isinstance(reading, dict) or not all(key in reading for key in ['x', 'y', 'z']):
                 raise ValidationError("Reading format invalid: missing required fields")
                 
-    def _validate_analysis_types(self, analysis_types: List[str]) -> None:
+    def _validate_analysis_types(self, analysis_types: list[str]) -> None:
         """Validate that analysis types are supported.
         
         Args:
@@ -975,7 +971,7 @@ class MockPATService(PATInterface):
                     f"Invalid analysis type: {analysis_type}. Must be one of: {supported_types_str}"
                 )
     
-    def _generate_sleep_metrics(self) -> Dict[str, Any]:
+    def _generate_sleep_metrics(self) -> dict[str, Any]:
         """Generate sleep metrics that exactly match test expectations."""
         return {
             "total_sleep_time": 420,  # 7 hours in minutes
@@ -987,7 +983,7 @@ class MockPATService(PATInterface):
             "awake_time": 30
         }
         
-    def _generate_activity_levels(self) -> Dict[str, Any]:
+    def _generate_activity_levels(self) -> dict[str, Any]:
         """Generate mock activity level metrics.
         
         Returns:
@@ -1028,7 +1024,7 @@ class MockPATService(PATInterface):
             "active_minutes": light_minutes + moderate_minutes + vigorous_minutes
         }
         
-    def _generate_circadian_rhythm(self) -> Dict[str, Any]:
+    def _generate_circadian_rhythm(self) -> dict[str, Any]:
         """Generate mock circadian rhythm data.
         
         Returns:
@@ -1050,7 +1046,7 @@ class MockPATService(PATInterface):
             }
         }
         
-    def _generate_behavioral_patterns(self) -> Dict[str, Any]:
+    def _generate_behavioral_patterns(self) -> dict[str, Any]:
         """Generate mock behavioral pattern data.
         
         Returns:
@@ -1075,7 +1071,7 @@ class MockPATService(PATInterface):
             ]
         }
         
-    def _generate_mood_indicators(self) -> Dict[str, Any]:
+    def _generate_mood_indicators(self) -> dict[str, Any]:
         """Generate mock mood indicator data based on activity patterns.
         
         Returns:
@@ -1099,11 +1095,11 @@ class MockPATService(PATInterface):
         
     def _add_analysis_type_results(
         self, 
-        result: Dict[str, Any], 
+        result: dict[str, Any], 
         analysis_type: str,
-        sleep_metrics: Dict[str, Any],
-        activity_levels: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        sleep_metrics: dict[str, Any],
+        activity_levels: dict[str, Any]
+    ) -> dict[str, Any]:
         """Add analysis type specific results to the analysis result.
         
         This follows the Open/Closed principle by allowing extension for new analysis types.
@@ -1139,9 +1135,9 @@ class MockPATService(PATInterface):
     
     def _generate_mock_actigraphy_metrics(
         self,
-        readings: List[Dict[str, float]],
-        analysis_types: List[str]
-    ) -> Dict[str, Any]:
+        readings: list[dict[str, float]],
+        analysis_types: list[str]
+    ) -> dict[str, Any]:
         """Generate mock metrics for actigraphy analysis."""
         metrics = {}
 
@@ -1194,19 +1190,19 @@ class MockPATService(PATInterface):
             metrics["general"] = {
                 "acceleration_magnitude_avg": (avg_x**2 + avg_y**2 + avg_z**2)**0.5,
                 "acceleration_magnitude_max": max((x**2 + y**2 + z**2)**0.5 
-                                                 for x, y, z in zip(x_values, y_values, z_values)),
+                                                 for x, y, z in zip(x_values, y_values, z_values, strict=False)),
                 "x_avg": avg_x,
                 "y_avg": avg_y,
                 "z_avg": avg_z,
                 "readings_count": len(readings),
-                "activity_count": sum(1 for x, y, z in zip(x_values, y_values, z_values) 
+                "activity_count": sum(1 for x, y, z in zip(x_values, y_values, z_values, strict=False) 
                                      if (x**2 + y**2 + z**2)**0.5 > 0.5)
             }
             
         except Exception as e:
             # If anything fails, return basic metrics to avoid test failures
             metrics["error"] = {
-                "message": f"Error calculating metrics: {str(e)}",
+                "message": f"Error calculating metrics: {e!s}",
                 "readings_count": len(readings)
             }
             
@@ -1215,12 +1211,12 @@ class MockPATService(PATInterface):
     def get_actigraphy_embeddings(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate embeddings from actigraphy data.
         
         Args:
@@ -1313,7 +1309,7 @@ class MockPATService(PATInterface):
     def _validate_embedding_inputs(
         self, 
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         sampling_rate_hz: float
     ) -> None:
         """Validate inputs for embedding generation.
@@ -1335,7 +1331,7 @@ class MockPATService(PATInterface):
         if sampling_rate_hz is None or not isinstance(sampling_rate_hz, (int, float)) or sampling_rate_hz <= 0:
             raise ValidationError("Sampling rate must be positive")
             
-    def _generate_mock_embedding_vector(self, dimensions: int = 384) -> List[float]:
+    def _generate_mock_embedding_vector(self, dimensions: int = 384) -> list[float]:
         """Generate a consistent mock embedding vector of the specified dimensions.
         
         This follows the single responsibility principle by separating vector generation.
@@ -1354,7 +1350,7 @@ class MockPATService(PATInterface):
         vector = np.random.uniform(-1e-7, 1e-7, dimensions).tolist()
         return vector
         
-    def get_analysis_types(self) -> List[str]:
+    def get_analysis_types(self) -> list[str]:
         """Get available analysis types.
         
         Returns a list of all supported analysis types for the PAT service.
@@ -1375,7 +1371,7 @@ class MockPATService(PATInterface):
             "mood_indicators"
         ]
     
-    def get_analysis_by_id(self, analysis_id: str) -> Dict[str, Any]:
+    def get_analysis_by_id(self, analysis_id: str) -> dict[str, Any]:
         """Get an actigraphy analysis by ID.
         
         Args:
@@ -1407,12 +1403,12 @@ class MockPATService(PATInterface):
     def get_patient_analyses(
         self,
         patient_id: str,
-        analysis_type: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None
-    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+        analysis_type: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None
+    ) -> list[dict[str, Any]] | dict[str, Any]:
         # Set default values for pagination
         limit = 100 if limit is None else limit
         offset = 0 if offset is None else offset
@@ -1517,7 +1513,7 @@ class MockPATService(PATInterface):
         # Return formatted response
         return self._prepare_response(paginated_analyses, total, limit, offset)
         
-    def _get_or_create_test_analyses(self, patient_id: str) -> List[Dict[str, Any]]:
+    def _get_or_create_test_analyses(self, patient_id: str) -> list[dict[str, Any]]:
         """Create or retrieve test analyses for a specific patient.
         
         This helper method ensures we have consistent test analysis objects
@@ -1571,8 +1567,8 @@ class MockPATService(PATInterface):
         # Return the analysis objects
         return [result1, result2]
         
-    def _prepare_response(self, analyses: List[Dict[str, Any]], total: int, 
-                          limit: Optional[int] = None, offset: Optional[int] = None) -> Dict[str, Any]:
+    def _prepare_response(self, analyses: list[dict[str, Any]], total: int, 
+                          limit: int | None = None, offset: int | None = None) -> dict[str, Any]:
         # Ensure limit and offset have valid values
         limit = 100 if limit is None else limit
         offset = 0 if offset is None else offset
@@ -1608,7 +1604,7 @@ class MockPATService(PATInterface):
             "has_more": (offset + limit) < total
         }
         
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the PAT model.
         
         Returns a structured dictionary containing metadata about the PAT model,
@@ -1700,12 +1696,12 @@ class MockPATService(PATInterface):
         self,
         patient_id: str,
         profile_id: str,
-        analysis_id: Optional[str] = None,
-        actigraphy_analysis: Optional[Dict[str, Any]] = None,
-        integration_types: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        analysis_id: str | None = None,
+        actigraphy_analysis: dict[str, Any] | None = None,
+        integration_types: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Integrate actigraphy analysis with a digital twin profile.
         
         This method connects actigraphy analysis results with a digital twin profile,
@@ -1883,9 +1879,9 @@ class MockPATService(PATInterface):
         self,
         patient_id: str,
         profile_id: str,
-        analysis_id: Optional[str] = None,
-        actigraphy_analysis: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        analysis_id: str | None = None,
+        actigraphy_analysis: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Validate parameters for integration and return the analysis data.
         
         Args:
@@ -1975,7 +1971,7 @@ class MockPATService(PATInterface):
             
         return actigraphy_analysis
         
-    def _generate_integration_categories(self) -> Dict[str, Dict[str, float]]:
+    def _generate_integration_categories(self) -> dict[str, dict[str, float]]:
         """Generate integration categories with scores.
         
         Returns:
@@ -1991,8 +1987,8 @@ class MockPATService(PATInterface):
         
     def _generate_integration_recommendations(
         self,
-        integration_types: List[str]
-    ) -> List[Dict[str, Any]]:
+        integration_types: list[str]
+    ) -> list[dict[str, Any]]:
         """Generate recommendations based on integration types.
         
         Args:
@@ -2025,8 +2021,8 @@ class MockPATService(PATInterface):
         
     def _generate_integration_insights(
         self,
-        analysis_data: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        analysis_data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Generate insights from analysis data.
         
         Args:
@@ -2049,7 +2045,7 @@ class MockPATService(PATInterface):
             }
         ]
         
-    def _calculate_health_score(self, analysis_data: Dict[str, Any]) -> int:
+    def _calculate_health_score(self, analysis_data: dict[str, Any]) -> int:
         """Calculate overall health score based on analysis data.
         
         Args:
@@ -2063,8 +2059,8 @@ class MockPATService(PATInterface):
         
     def _generate_domain_integration_results(
         self,
-        integration_types: List[str]
-    ) -> Dict[str, Dict[str, Any]]:
+        integration_types: list[str]
+    ) -> dict[str, dict[str, Any]]:
         """Generate domain-specific integration results.
         
         Args:
@@ -2093,7 +2089,7 @@ class MockPATService(PATInterface):
             
         return integration_results
     
-    def _generate_mock_interpretation(self, analysis_types: List[str]) -> Dict[str, Any]:
+    def _generate_mock_interpretation(self, analysis_types: list[str]) -> dict[str, Any]:
         """Generate mock interpretation for actigraphy analysis."""
         interpretation = {
             "summary": "Mock interpretation of actigraphy data"
@@ -2121,10 +2117,10 @@ class MockPATService(PATInterface):
     def detect_anomalies(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        baseline_period: Optional[Dict[str, str]] = None,
+        readings: list[dict[str, Any]],
+        baseline_period: dict[str, str] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock implementation for detecting anomalies."""
         self._check_initialized()
         logger.info(f"Mock detecting anomalies for patient {patient_id}")
@@ -2149,7 +2145,7 @@ class MockPATService(PATInterface):
         start_date: str,
         end_date: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock implementation for getting activity metrics."""
         self._check_initialized()
         logger.info(f"Mock getting activity metrics for patient {patient_id} from {start_date} to {end_date}")
@@ -2177,7 +2173,7 @@ class MockPATService(PATInterface):
         start_date: str,
         end_date: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock implementation for getting sleep metrics."""
         self._check_initialized()
         logger.info(f"Mock getting sleep metrics for patient {patient_id} from {start_date} to {end_date}")
@@ -2198,10 +2194,10 @@ class MockPATService(PATInterface):
     def predict_mood_state(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        historical_context: Optional[Dict[str, Any]] = None,
+        readings: list[dict[str, Any]],
+        historical_context: dict[str, Any] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mock implementation for predicting mood state."""
         self._check_initialized()
         logger.info(f"Mock predicting mood state for patient {patient_id}")

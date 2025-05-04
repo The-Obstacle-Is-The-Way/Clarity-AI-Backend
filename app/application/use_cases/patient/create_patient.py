@@ -1,10 +1,7 @@
-# -*- coding: utf-8 -*-
 # app/application/use_cases/patient/create_patient.py
 # Placeholder for the create patient use case
 # This use case handles the business logic for creating a new patient in the system
 
-from typing import Optional
-from uuid import UUID
 
 from app.domain.entities.patient import Patient
 from app.domain.repositories.patient_repository import PatientRepository

@@ -8,7 +8,6 @@ of concerns according to SOLID principles.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Union
 from uuid import UUID
 
 from app.core.domain.entities.user import User
@@ -24,7 +23,7 @@ class IUserRepository(ABC):
     """
     
     @abstractmethod
-    async def get_by_id(self, user_id: Union[str, UUID]) -> Optional[User]:
+    async def get_by_id(self, user_id: str | UUID) -> User | None:
         """
         Retrieve a user by their unique ID.
         
@@ -37,7 +36,7 @@ class IUserRepository(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         """
         Retrieve a user by their email address.
         
@@ -50,7 +49,7 @@ class IUserRepository(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         """
         Retrieve a user by their username.
         
@@ -95,7 +94,7 @@ class IUserRepository(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def delete(self, user_id: Union[str, UUID]) -> bool:
+    async def delete(self, user_id: str | UUID) -> bool:
         """
         Delete a user from the repository.
         
@@ -108,7 +107,7 @@ class IUserRepository(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         """
         List all users with pagination.
         

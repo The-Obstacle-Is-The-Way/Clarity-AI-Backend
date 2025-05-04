@@ -6,9 +6,9 @@ and defines the port for repository implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
 
 # Import DigitalTwin entity - use Any as fallback if import fails
 try:
@@ -22,12 +22,12 @@ class IDigitalTwinRepository(ABC):
     """Abstract base class for digital twin data persistence operations."""
 
     @abstractmethod
-    async def get_by_id(self, twin_id: UUID) -> Optional[DigitalTwin]:
+    async def get_by_id(self, twin_id: UUID) -> DigitalTwin | None:
         """Retrieve a digital twin by its unique ID."""
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID) -> Optional[DigitalTwin]:
+    async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Retrieve the digital twin for a specific patient."""
         pass
     
@@ -47,26 +47,26 @@ class IDigitalTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[DigitalTwin]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[DigitalTwin]:
         """List all digital twins with pagination."""
         pass
     
     @abstractmethod
-    async def update_twin_state(self, patient_id: UUID, state_updates: Dict[str, Any]) -> DigitalTwin:
+    async def update_twin_state(self, patient_id: UUID, state_updates: dict[str, Any]) -> DigitalTwin:
         """Update specific aspects of a digital twin's state."""
         pass
     
     @abstractmethod
     async def get_twin_history(self, patient_id: UUID, 
-                              start_time: Optional[datetime] = None, 
-                              end_time: Optional[datetime] = None,
-                              limit: int = 100) -> List[Dict[str, Any]]:
+                              start_time: datetime | None = None, 
+                              end_time: datetime | None = None,
+                              limit: int = 100) -> list[dict[str, Any]]:
         """Get historical state changes for a digital twin."""
         pass
     
     @abstractmethod
     async def create_session(self, patient_id: UUID, session_type: str, 
-                           metadata: Optional[Dict[str, Any]] = None) -> str:
+                           metadata: dict[str, Any] | None = None) -> str:
         """Create a new interaction session with the digital twin. Returns session ID."""
         pass
     

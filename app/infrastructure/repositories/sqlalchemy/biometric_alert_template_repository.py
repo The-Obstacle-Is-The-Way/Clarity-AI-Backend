@@ -2,13 +2,15 @@
 SQLAlchemy implementation of the BiometricAlertTemplateRepository.
 """
 
-from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
+)
+
 # Import the actual Template model when it's defined
 # from app.infrastructure.database.models import BiometricAlertTemplateModel 
 
@@ -20,7 +22,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
     def __init__(self, db_session: Session):
         self.db = db_session
 
-    async def get_all_templates(self) -> List[Dict[str, Any]]:
+    async def get_all_templates(self) -> list[dict[str, Any]]:
         """
         Retrieve all available biometric alert templates (Placeholder).
         """
@@ -31,7 +33,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
         print("SQLAlchemyBiometricAlertTemplateRepository.get_all_templates (placeholder)")
         return []
     
-    async def get_template_by_id(self, template_id: UUID) -> Optional[Dict[str, Any]]:
+    async def get_template_by_id(self, template_id: UUID) -> dict[str, Any] | None:
         """
         Retrieve a template by its ID (Placeholder).
         """
@@ -42,7 +44,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
         print(f"SQLAlchemyBiometricAlertTemplateRepository.get_template_by_id({template_id}) (placeholder)")
         return None
 
-    async def get_templates_by_category(self, category: str) -> List[Dict[str, Any]]:
+    async def get_templates_by_category(self, category: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by category (Placeholder).
         """
@@ -50,7 +52,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
         print(f"SQLAlchemyBiometricAlertTemplateRepository.get_templates_by_category({category}) (placeholder)")
         return []
 
-    async def get_templates_by_metric_type(self, metric_type: str) -> List[Dict[str, Any]]:
+    async def get_templates_by_metric_type(self, metric_type: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by metric type (Placeholder).
         """
@@ -58,7 +60,7 @@ class SQLAlchemyBiometricAlertTemplateRepository(BiometricAlertTemplateRepositor
         print(f"SQLAlchemyBiometricAlertTemplateRepository.get_templates_by_metric_type({metric_type}) (placeholder)")
         return []
 
-    async def save_template(self, template: Dict[str, Any]) -> Dict[str, Any]:
+    async def save_template(self, template: dict[str, Any]) -> dict[str, Any]:
         """
         Save a template definition (Placeholder).
         """

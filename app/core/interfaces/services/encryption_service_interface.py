@@ -7,7 +7,7 @@ The encryption service ensures HIPAA compliance through data protection.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 
 class IEncryptionService(ABC):
@@ -20,7 +20,7 @@ class IEncryptionService(ABC):
     """
     
     @abstractmethod
-    def encrypt(self, data: Union[str, bytes], context: Optional[Dict[str, Any]] = None) -> bytes:
+    def encrypt(self, data: str | bytes, context: dict[str, Any] | None = None) -> bytes:
         """
         Encrypt data with optional context.
         
@@ -34,7 +34,7 @@ class IEncryptionService(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def decrypt(self, encrypted_data: bytes, context: Optional[Dict[str, Any]] = None) -> bytes:
+    def decrypt(self, encrypted_data: bytes, context: dict[str, Any] | None = None) -> bytes:
         """
         Decrypt previously encrypted data with optional context.
         

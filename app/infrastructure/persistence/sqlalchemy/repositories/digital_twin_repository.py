@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
 # app/infrastructure/persistence/sqlalchemy/repositories/digital_twin_repository.py
 # Placeholder for digital twin repository implementation
 
 import json
 import logging
-from typing import Optional, List, cast
 from uuid import UUID
 
 import sqlalchemy
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
 
 from app.domain.entities.digital_twin import (
     DigitalTwin,
@@ -18,6 +15,7 @@ from app.domain.entities.digital_twin import (
     DigitalTwinState,
 )
 from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
+
 # Import the SQLAlchemy model
 from app.infrastructure.persistence.sqlalchemy.models.digital_twin import (
     DigitalTwinModel,
@@ -61,7 +59,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         # Convert dataclass to dict
         return config.__dict__
 
-    def _deserialize_config(self, config_json: Optional[dict]) -> DigitalTwinConfiguration:
+    def _deserialize_config(self, config_json: dict | None) -> DigitalTwinConfiguration:
         """Deserialize JSON dict to Configuration dataclass."""
         if config_json is None:
             return DigitalTwinConfiguration() # Return default if no data
@@ -82,7 +80,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
                 state_dict["predicted_phq9_trajectory"] = None
         return state_dict
 
-    def _deserialize_state(self, state_json: Optional[dict]) -> DigitalTwinState:
+    def _deserialize_state(self, state_json: dict | None) -> DigitalTwinState:
         """Deserialize JSON dict to State dataclass."""
         if state_json is None:
             return DigitalTwinState() # Return default if no data
@@ -114,7 +112,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             logger.error(f"Unexpected error adding DigitalTwin: {e}", exc_info=True)
             raise
 
-    async def get_by_id(self, twin_id: UUID) -> Optional[DigitalTwin]:
+    async def get_by_id(self, twin_id: UUID) -> DigitalTwin | None:
         """Get a digital twin by its unique ID."""
         stmt = select(DigitalTwinModel).where(DigitalTwinModel.id == str(twin_id))
         result = await self.session.execute(stmt)
@@ -123,7 +121,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
             return self._to_entity(model)
         return None
 
-    async def get_by_patient_id(self, patient_id: UUID) -> Optional[DigitalTwin]:
+    async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Get a digital twin by the patient's ID."""
         stmt = select(DigitalTwinModel).where(DigitalTwinModel.patient_id == str(patient_id))
         result = await self.session.execute(stmt)
@@ -166,7 +164,7 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         logger.warning(f"DigitalTwin with ID {twin_id} not found for deletion.")
         return False
 
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[DigitalTwin]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[DigitalTwin]:
         """List all digital twins with pagination."""
         stmt = select(DigitalTwinModel).offset(skip).limit(limit)
         result = await self.session.execute(stmt)

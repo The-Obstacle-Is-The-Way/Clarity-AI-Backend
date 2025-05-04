@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Standardized metrics calculation for ML models in the NOVAMIND system.
 
@@ -7,7 +6,7 @@ for machine learning models used in the Digital Twin system, ensuring consistent
 evaluation across all ML services.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from sklearn import metrics
@@ -26,9 +25,9 @@ class ModelMetrics:
     def calculate_classification_metrics(
         y_true: np.ndarray,
         y_pred: np.ndarray,
-        y_prob: Optional[np.ndarray] = None,
+        y_prob: np.ndarray | None = None,
         average: str = "weighted",
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Calculate standard metrics for classification models.
 
@@ -83,7 +82,7 @@ class ModelMetrics:
     @staticmethod
     def calculate_regression_metrics(
         y_true: np.ndarray, y_pred: np.ndarray
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Calculate standard metrics for regression models.
 
@@ -109,7 +108,7 @@ class ModelMetrics:
     @staticmethod
     def calculate_time_series_metrics(
         y_true: np.ndarray, y_pred: np.ndarray, multivariate: bool = False
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Calculate metrics specifically for time series forecasting models.
 
@@ -174,8 +173,8 @@ class ModelMetrics:
 
     @staticmethod
     def calculate_pharmacogenomics_metrics(
-        y_true: np.ndarray, y_pred: np.ndarray, medication_classes: List[str]
-    ) -> Dict[str, Any]:
+        y_true: np.ndarray, y_pred: np.ndarray, medication_classes: list[str]
+    ) -> dict[str, Any]:
         """
         Calculate metrics specifically for pharmacogenomics models.
 
@@ -207,9 +206,9 @@ class ModelMetrics:
     def calculate_biometric_correlation_metrics(
         true_correlations: np.ndarray,
         predicted_correlations: np.ndarray,
-        biometric_features: List[str],
-        mental_health_indicators: List[str],
-    ) -> Dict[str, Any]:
+        biometric_features: list[str],
+        mental_health_indicators: list[str],
+    ) -> dict[str, Any]:
         """
         Calculate metrics for biometric correlation models.
 

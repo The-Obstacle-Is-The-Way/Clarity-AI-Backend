@@ -6,10 +6,10 @@ all functionality to the definitive aws_service.py implementation.
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Set, Union
+from typing import Any
 
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService
-from app.core.services.ml.xgboost.interface import XGBoostInterface, ModelType, EventType, Observer
+from app.core.services.ml.xgboost.interface import EventType, Observer, XGBoostInterface
 from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class AWSXGBoostService(XGBoostInterface):
         """Initialize the compatibility layer to use the definitive implementation."""
         super().__init__()
         
-    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """Generic prediction method required by MLServiceInterface.
         
         Args:
@@ -63,7 +63,7 @@ class AWSXGBoostService(XGBoostInterface):
         """Check if the service is initialized."""
         return self._impl.is_initialized
 
-    async def initialize(self, config: Dict[str, Any]) -> None:
+    async def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the XGBoost service with configuration.
         
@@ -77,9 +77,9 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         risk_type: str,
-        clinical_data: Dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict risk level using a risk model.
         
@@ -103,10 +103,10 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
         
@@ -131,11 +131,11 @@ class AWSXGBoostService(XGBoostInterface):
     async def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
+        outcome_timeframe: dict[str, int],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict clinical outcomes based on treatment plan.
         
@@ -160,9 +160,9 @@ class AWSXGBoostService(XGBoostInterface):
     async def get_feature_importance(
         self,
         model_type: str,
-        patient_id: Optional[str] = None,
+        patient_id: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get feature importance for a specific model type.
         
@@ -180,7 +180,7 @@ class AWSXGBoostService(XGBoostInterface):
             **kwargs
         )
 
-    async def get_prediction(self, prediction_id: str) -> Dict[str, Any]:
+    async def get_prediction(self, prediction_id: str) -> dict[str, Any]:
         """
         Get a stored prediction by ID.
         
@@ -192,7 +192,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         return await self._impl.get_prediction(prediction_id)
 
-    async def get_available_models(self) -> List[Dict[str, Any]]:
+    async def get_available_models(self) -> list[dict[str, Any]]:
         """
         Get list of available XGBoost models.
         
@@ -201,7 +201,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         return await self._impl.get_available_models()
 
-    async def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    async def get_model_info(self, model_type: str) -> dict[str, Any]:
         """
         Get information about a specific model.
         
@@ -213,7 +213,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         return await self._impl.get_model_info(model_type)
 
-    async def healthcheck(self) -> Dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """
         Perform a health check of the XGBoost service.
         
@@ -222,7 +222,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         return await self._impl.healthcheck()
 
-    async def integrate_with_digital_twin(self, patient_id: str, profile_id: str, prediction_id: str) -> Dict[str, Any]:
+    async def integrate_with_digital_twin(self, patient_id: str, profile_id: str, prediction_id: str) -> dict[str, Any]:
         """
         Integrate XGBoost predictions with a patient's digital twin.
         
@@ -240,7 +240,7 @@ class AWSXGBoostService(XGBoostInterface):
             prediction_id=prediction_id
         )
 
-    async def register_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    async def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
         
@@ -250,7 +250,7 @@ class AWSXGBoostService(XGBoostInterface):
         """
         await self._canonical.register_observer(event_type, observer)
 
-    async def unregister_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    async def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
         

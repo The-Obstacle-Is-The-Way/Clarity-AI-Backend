@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ML Service Configuration for NOVAMIND.
 
@@ -7,7 +6,7 @@ following Clean Architecture principles and ensuring proper separation of concer
 """
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 from app.domain.interfaces.ml_service_interface import (
     BiometricCorrelationInterface,
@@ -42,7 +41,7 @@ class MLServiceConfig:
     concerns and testability.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize the ML service configuration.
 
@@ -150,7 +149,7 @@ class MLServiceConfig:
         service = self.create_digital_twin_integration_service()
         return DigitalTwinServiceAdapter(service)
 
-    def create_all_adapters(self) -> Dict[str, Any]:
+    def create_all_adapters(self) -> dict[str, Any]:
         """
         Create all adapters.
 

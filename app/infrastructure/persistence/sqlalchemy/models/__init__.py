@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """SQLAlchemy models package.
 
 This package contains all SQLAlchemy ORM models used by the application.
@@ -11,15 +10,17 @@ IMPORTANT: This module follows a specific import pattern to prevent circular imp
 """
 
 # First import the Base class to establish registry
-from .base import Base
 from app.infrastructure.persistence.sqlalchemy.registry import ensure_all_models_registered
 
-# Then import models in dependency order (models with no dependencies first)
-from .user import User, UserRole
+from .base import Base
 
 # Then import models that depend on User
 from .patient import Patient
 from .provider import ProviderModel
+
+# Then import models in dependency order (models with no dependencies first)
+from .user import User, UserRole
+
 # from .audit_log import AuditLogModel
 # from .biometric_alert_model import BiometricAlertModel
 # from .biometric_rule import BiometricRuleModel
@@ -27,13 +28,13 @@ from .provider import ProviderModel
 # from .digital_twin import DigitalTwinModel
 
 __all__ = [
+    "AppointmentModel",
     "Base",
+    "ClinicalNoteModel",
+    "MedicationModel",
+    "Patient",
+    "ProviderModel",
     "User",
     "UserRole",
-    "ProviderModel",
-    "Patient",
-    "AppointmentModel",
-    "MedicationModel",
-    "ClinicalNoteModel",
     # Add other model names here
 ]

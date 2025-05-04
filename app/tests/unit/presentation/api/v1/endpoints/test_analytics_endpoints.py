@@ -8,12 +8,11 @@ and process in a HIPAA-compliant manner.
 
 import json
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from fastapi import BackgroundTasks, status
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
 # Correctly import router and endpoint functions/models we need to test or mock
 # Avoid importing the dependency provider (get_analytics_service) itself if possible
@@ -48,7 +47,6 @@ from app.application.use_cases.analytics.batch_process_analytics import BatchPro
 from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
 
 # Import the middleware class for patching
-from app.presentation.middleware.authentication_middleware import AuthenticationMiddleware
 
 # --- Test Fixtures ---
 

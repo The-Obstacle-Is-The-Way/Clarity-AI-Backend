@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy models for BiometricTwin entities.
 
@@ -10,15 +9,15 @@ that prevents SQLAlchemy conflicts during testing.
 """
 
 import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc
-from sqlalchemy import Column, String, DateTime, Boolean, Float, ForeignKey, JSON
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.domain.utils.datetime_utils import now_utc
 
 # Import the shared base class to ensure consistent registry
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 class BiometricTwinModel(Base):
@@ -83,4 +82,4 @@ class BiometricDataPointModel(Base):
 
 
 # Export the models in a safe way that helps prevent registry conflicts in tests
-__all__ = ['BiometricTwinModel', 'BiometricDataPointModel']
+__all__ = ['BiometricDataPointModel', 'BiometricTwinModel']

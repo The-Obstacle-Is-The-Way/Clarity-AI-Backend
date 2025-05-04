@@ -5,9 +5,9 @@ This module provides API endpoints for user authentication, including
 login, token refresh, and registration functionality.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any
-from app.api.dependencies import get_jwt_service, get_authentication_service
+from typing import Any
+
+from fastapi import APIRouter
 
 # Create router with appropriate prefix and tags
 router = APIRouter(
@@ -17,7 +17,7 @@ router = APIRouter(
 
 
 @router.post("/login")
-async def login() -> Dict[str, Any]:
+async def login() -> dict[str, Any]:
     """
     Authenticate a user and return access and refresh tokens.
     
@@ -33,7 +33,7 @@ async def login() -> Dict[str, Any]:
 
 
 @router.post("/refresh")
-async def refresh_token() -> Dict[str, Any]:
+async def refresh_token() -> dict[str, Any]:
     """
     Refresh an access token using a valid refresh token.
     
@@ -48,7 +48,7 @@ async def refresh_token() -> Dict[str, Any]:
 
 
 @router.post("/register")
-async def register() -> Dict[str, Any]:
+async def register() -> dict[str, Any]:
     """
     Register a new user account.
     

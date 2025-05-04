@@ -5,10 +5,9 @@ This module defines the core class that maps the relationship between
 neurotransmitters across different brain regions and their effects.
 """
 import uuid
+from collections import defaultdict
 from enum import Enum, auto
 from uuid import UUID
-from typing import Dict, List, Optional, Set
-from collections import defaultdict
 
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
@@ -16,7 +15,6 @@ from app.domain.entities.digital_twin_enums import (
     Neurotransmitter,
 )
 from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
-from app.domain.entities.temporal_sequence import TemporalSequence
 
 
 class ReceptorType(Enum):
@@ -169,7 +167,7 @@ class NeurotransmitterMapping:
     brain regions, how they're produced, and the clinical effects observed.
     """
     
-    def __init__(self, patient_id: Optional[UUID] = None):
+    def __init__(self, patient_id: UUID | None = None):
         """Initialize a new neurotransmitter mapping.
 
         Args:
@@ -177,16 +175,16 @@ class NeurotransmitterMapping:
         """
         self.patient_id: UUID = patient_id if patient_id else uuid.uuid4()
         # For test compatibility: list of receptor profiles
-        self.receptor_profiles: List[ReceptorProfile] = []
+        self.receptor_profiles: list[ReceptorProfile] = []
 
         # Maps BrainRegion to dict of Neurotransmitter -> ReceptorProfile
-        self.receptor_map: Dict[BrainRegion, Dict[Neurotransmitter, ReceptorProfile]] = {}
+        self.receptor_map: dict[BrainRegion, dict[Neurotransmitter, ReceptorProfile]] = {}
 
         # Maps BrainRegion to list of Neurotransmitters it produces
-        self.production_map: Dict[BrainRegion, Set[Neurotransmitter]] = {}
+        self.production_map: dict[BrainRegion, set[Neurotransmitter]] = {}
         
         # Maps BrainRegion to dict of BrainRegion -> connectivity strength
-        self.brain_region_connectivity: Dict[BrainRegion, Dict[BrainRegion, float]] = defaultdict(lambda: defaultdict(float))
+        self.brain_region_connectivity: dict[BrainRegion, dict[BrainRegion, float]] = defaultdict(lambda: defaultdict(float))
 
     def add_receptor_profile(self, profile: ReceptorProfile) -> None:
         """
@@ -512,7 +510,7 @@ class NeurotransmitterMapping:
         }
 
 
-def create_default_neurotransmitter_mapping(patient_id: Optional[UUID] = None) -> NeurotransmitterMapping:
+def create_default_neurotransmitter_mapping(patient_id: UUID | None = None) -> NeurotransmitterMapping:
     """
     Create a default neurotransmitter mapping with scientific defaults.
     

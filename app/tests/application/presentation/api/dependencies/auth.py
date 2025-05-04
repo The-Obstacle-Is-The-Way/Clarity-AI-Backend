@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Auth Dependencies.
 
@@ -6,22 +5,24 @@ This module provides authentication and authorization dependencies
 for FastAPI routes, including JWT validation and user resolution.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Any
 from uuid import UUID
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer, SecurityScopes
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config.settings import get_settings, Settings
-from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
+
+from app.config.settings import Settings, get_settings
+from app.core.interfaces.repositories.user_repository import IUserRepository
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.entities.user import User
 from app.domain.enums.role import Role as UserRole
 from app.domain.exceptions import AuthenticationError
-from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.infrastructure.logging.logger import get_logger
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.infrastructure.security.jwt.jwt_service import JWTService
+
 from .database import get_repository
+
 
 # --- JWT Service Dependency --- 
 def get_jwt_service(
@@ -41,7 +42,7 @@ def get_jwt_service(
 
 def get_authentication_service(
     auth_service: AuthenticationService | None = None,
-) -> AuthenticationService:  # noqa: D401 – simple factory helper
+) -> AuthenticationService:
     """Return the application's *AuthenticationService* instance.
 
     The indirection layer exists primarily for the benefit of **unit‑tests**
@@ -58,7 +59,9 @@ def get_authentication_service(
     try:
         # Lazy import inside the function body to avoid potential circular
         # dependencies during application start‑up.
-        from app.infrastructure.di.container import container as _container  # pylint: disable=import-outside-toplevel
+        from app.infrastructure.di.container import (
+            container as _container,  # pylint: disable=import-outside-toplevel
+        )
 
         return _container.resolve(AuthenticationService)  # type: ignore[attr-defined]
     except Exception:  # pragma: no cover – best‑effort fallback
@@ -75,8 +78,8 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_token_from_header(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> Optional[str]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security)
+) -> str | None:
     """
     Extract JWT token from Authorization header.
     
@@ -115,7 +118,7 @@ async def get_current_user(
         user = await jwt_service.get_user_from_token(token)
         if user is None:
             # Covers cases like token valid but user deleted/not found or repo not configured
-            logger.warning(f"get_user_from_token returned None for token.")
+            logger.warning("get_user_from_token returned None for token.")
             raise credentials_exception # Raise 401
 
         # Optional: Scope validation (if using OAuth scopes defined in endpoints)
@@ -145,9 +148,9 @@ async def get_current_user(
 
 
 async def get_optional_user(
-    token: Optional[str] = Depends(get_token_from_header),
+    token: str | None = Depends(get_token_from_header),
     jwt_service: IJwtService = Depends(get_jwt_service)
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Get user data from JWT token without requiring authentication."""
     if token is None:
         return None
@@ -156,10 +159,10 @@ async def get_optional_user(
         payload = await jwt_service.decode_token(token)
         return payload
     except AuthenticationError:
-        logger.debug(f"Optional authentication failed: Invalid/Expired Token")
+        logger.debug("Optional authentication failed: Invalid/Expired Token")
         return None
     except Exception as e:
-        logger.debug(f"Optional authentication failed ({type(e).__name__}): {str(e)}")
+        logger.debug(f"Optional authentication failed ({type(e).__name__}): {e!s}")
         return None
 
 

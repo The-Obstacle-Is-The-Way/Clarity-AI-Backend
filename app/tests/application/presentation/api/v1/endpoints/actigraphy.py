@@ -6,30 +6,12 @@ generation, and integration with digital twins.
 """
 
 import logging
+import uuid
+from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Body, HTTPException, Query, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from datetime import datetime
-import uuid
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
-# Adjust imports based on new location under presentation/
-from app.presentation.api.schemas.actigraphy import (
-    AnalysesList,
-    AnalysisResult,
-    AnalyzeActigraphyRequest,
-    AnalyzeActigraphyResponse,
-    EmbeddingResult,
-    GetActigraphyEmbeddingsRequest,
-    IntegrateWithDigitalTwinRequest,
-    IntegrationResult,
-    AnalysisType,
-)
-# Assuming standard dependency injection setup within presentation layer
-from app.presentation.api.dependencies.auth import get_current_user  
-from app.presentation.api.v1.dependencies.actigraphy import (
-    validate_get_actigraphy_embeddings_request,
-)
 # Assuming core/services paths remain stable or adjust if moved
 from app.core.services.ml.pat import (
     AuthorizationError,
@@ -40,6 +22,24 @@ from app.core.services.ml.pat import (
     PATServiceFactory,
     ResourceNotFoundError,
     ValidationError,
+)
+
+# Assuming standard dependency injection setup within presentation layer
+from app.presentation.api.dependencies.auth import get_current_user
+
+# Adjust imports based on new location under presentation/
+from app.presentation.api.schemas.actigraphy import (
+    AnalysesList,
+    AnalysisResult,
+    AnalysisType,
+    AnalyzeActigraphyRequest,
+    AnalyzeActigraphyResponse,
+    EmbeddingResult,
+    GetActigraphyEmbeddingsRequest,
+    IntegrateWithDigitalTwinRequest,
+)
+from app.presentation.api.v1.dependencies.actigraphy import (
+    validate_get_actigraphy_embeddings_request,
 )
 
 # Set up logging with no PHI
@@ -96,7 +96,7 @@ async def get_pat_service() -> PATInterface:
         return service
     
     except InitializationError as e:
-        logger.error(f"Failed to initialize PAT service: {str(e)}")
+        logger.error(f"Failed to initialize PAT service: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="PAT service is currently unavailable"
@@ -220,7 +220,7 @@ async def get_analysis_status(
         return payload
     
     except ResourceNotFoundError as e:
-        logger.warning(f"Analysis not found: {str(e)}")
+        logger.warning(f"Analysis not found: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Analysis not found: {analysis_id}"
@@ -230,7 +230,7 @@ async def get_analysis_status(
         raise HTTPException(status_code=e.status_code, detail=e.detail) from e
     
     except Exception as e:
-        logger.error(f"Unexpected error in get_analysis_by_id: {str(e)}")
+        logger.error(f"Unexpected error in get_analysis_by_id: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while retrieving the analysis"
@@ -338,17 +338,17 @@ async def get_actigraphy_embeddings(
         return payload
     
     except ValidationError as e:
-        logger.warning(f"Validation error in get_actigraphy_embeddings: {str(e)}")
+        logger.warning(f"Validation error in get_actigraphy_embeddings: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     
     except EmbeddingError as e:
-        logger.error(f"Embedding error in get_actigraphy_embeddings: {str(e)}")
+        logger.error(f"Embedding error in get_actigraphy_embeddings: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Embedding generation failed: {str(e)}"
+            detail=f"Embedding generation failed: {e!s}"
         )
     
     except HTTPException as e:
@@ -611,31 +611,31 @@ async def integrate_with_digital_twin(
         }
     
     except ValidationError as e:
-        logger.warning(f"Validation error in integrate_with_digital_twin: {str(e)}")
+        logger.warning(f"Validation error in integrate_with_digital_twin: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     
     except ResourceNotFoundError as e:
-        logger.warning(f"Resource not found in integrate_with_digital_twin: {str(e)}")
+        logger.warning(f"Resource not found in integrate_with_digital_twin: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
         )
     
     except AuthorizationError as e:
-        logger.warning(f"Authorization error in integrate_with_digital_twin: {str(e)}")
+        logger.warning(f"Authorization error in integrate_with_digital_twin: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e)
         )
     
     except IntegrationError as e:
-        logger.error(f"Integration error in integrate_with_digital_twin: {str(e)}")
+        logger.error(f"Integration error in integrate_with_digital_twin: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Integration failed: {str(e)}"
+            detail=f"Integration failed: {e!s}"
         )
     
     except HTTPException as e:

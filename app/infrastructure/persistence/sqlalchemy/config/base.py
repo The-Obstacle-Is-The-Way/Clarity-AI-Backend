@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy base configuration.
 
@@ -6,13 +5,11 @@ This module provides the declarative base for SQLAlchemy models
 and other shared SQLAlchemy-related functionality.
 """
 
-from typing import Any
 
+from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import declarative_base  # Updated import path for SQLAlchemy 2.0
 from sqlalchemy.sql import func
-from sqlalchemy import Column, DateTime, Integer
-
 
 # Create declarative base with async attributes support
 Base = declarative_base(cls=AsyncAttrs)
@@ -62,7 +59,7 @@ class BaseSQLModel(Base):
         attrs = []
         for key, value in self.__dict__.items():
             if not key.startswith("_"):
-                attrs.append(f"{key}={repr(value)}")
+                attrs.append(f"{key}={value!r}")
                 
         return f"{self.__class__.__name__}({', '.join(attrs)})"
     

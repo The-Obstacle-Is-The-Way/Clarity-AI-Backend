@@ -4,9 +4,11 @@ Database connection utilities for SQLAlchemy.
 This module provides the database engine, session management,
 and connection utilities for the application.
 """
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+
 # Monkey-patch AsyncSession.execute to accept raw SQL strings as text()
 _orig_async_execute = _AsyncSession.execute
 async def _async_execute(self, statement, *args, **kwargs):
@@ -14,14 +16,15 @@ async def _async_execute(self, statement, *args, **kwargs):
         statement = text(statement)
     return await _orig_async_execute(self, statement, *args, **kwargs)
 _AsyncSession.execute = _async_execute
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from contextlib import asynccontextmanager
-import os
 import logging
+import os
+from contextlib import asynccontextmanager
+
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Use the new canonical config location
-from app.config.settings import get_settings, Settings
+from app.config.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +36,9 @@ Base.metadata.is_bound = lambda: True
 # --- Engine and Session Factory Creation (Deferred) ---
 
 # Global variable to hold the engine once created
-_engine: Optional[AsyncEngine] = None
+_engine: AsyncEngine | None = None
 
-def get_engine(settings: Optional[Settings] = None) -> AsyncEngine:
+def get_engine(settings: Settings | None = None) -> AsyncEngine:
     """Gets or creates the SQLAlchemy async engine."""
     global _engine
     # Ensure TESTING env var for test suite
@@ -82,9 +85,9 @@ def get_engine(settings: Optional[Settings] = None) -> AsyncEngine:
     return _engine
 
 # Global variable for session factory
-_async_session_local: Optional[sessionmaker] = None
+_async_session_local: sessionmaker | None = None
 
-def get_session_local(engine: Optional[AsyncEngine] = None) -> sessionmaker:
+def get_session_local(engine: AsyncEngine | None = None) -> sessionmaker:
     """Gets or creates the async session factory."""
     global _async_session_local
     # If called with explicit engine, always recreate the session factory

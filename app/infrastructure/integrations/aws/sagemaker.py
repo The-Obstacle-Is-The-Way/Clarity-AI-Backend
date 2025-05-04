@@ -6,13 +6,11 @@ AWS SageMaker services following clean architecture principles.
 """
 import json
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
 
-from app.core.domain.prediction_result import PredictionResult
 from app.core.services.ml.xgboost.exceptions import (
     ModelInvocationError,
     ModelTimeoutError,
@@ -20,7 +18,6 @@ from app.core.services.ml.xgboost.exceptions import (
     SerializationError,
     ServiceConnectionError,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +35,10 @@ class SageMakerEndpoint:
     def __init__(
         self,
         endpoint_name: str,
-        client: Optional[Any] = None,
+        client: Any | None = None,
         content_type: str = "application/json",
         accept_type: str = "application/json",
-        region_name: Optional[str] = None,
+        region_name: str | None = None,
     ):
         """
         Initialize a SageMaker endpoint adapter.
@@ -58,7 +55,7 @@ class SageMakerEndpoint:
         self.accept_type = accept_type
         self._client = client or boto3.client("sagemaker-runtime", region_name=region_name)
         
-    def invoke(self, input_data: Union[Dict[str, Any], List[Any], str, bytes]) -> Dict[str, Any]:
+    def invoke(self, input_data: dict[str, Any] | list[Any] | str | bytes) -> dict[str, Any]:
         """
         Invoke the SageMaker endpoint with input data.
         
@@ -130,7 +127,7 @@ class SageMakerEndpoint:
                 cause=str(e)
             )
             
-    def _serialize_input(self, input_data: Union[Dict[str, Any], List[Any], str, bytes]) -> bytes:
+    def _serialize_input(self, input_data: dict[str, Any] | list[Any] | str | bytes) -> bytes:
         """
         Serialize input data to the appropriate format.
         
@@ -158,13 +155,13 @@ class SageMakerEndpoint:
                 )
         except (TypeError, ValueError) as e:
             raise SerializationError(
-                f"Failed to serialize input data: {str(e)}",
+                f"Failed to serialize input data: {e!s}",
                 data_type=type(input_data).__name__,
                 format_type=self.content_type,
                 cause=str(e)
             )
             
-    def _parse_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    def _parse_response(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Parse the SageMaker endpoint response.
         
@@ -196,7 +193,7 @@ class SageMakerEndpoint:
             
         except (json.JSONDecodeError, UnicodeDecodeError) as e:
             raise SerializationError(
-                f"Failed to parse response: {str(e)}",
+                f"Failed to parse response: {e!s}",
                 data_type="response",
                 format_type=response.get("ContentType", "unknown"),
                 cause=str(e)
@@ -213,10 +210,10 @@ class SageMakerFactory:
     
     def __init__(
         self,
-        region_name: Optional[str] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
+        region_name: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        aws_session_token: str | None = None,
     ):
         """
         Initialize a new SageMaker factory.

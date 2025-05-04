@@ -12,18 +12,18 @@ import json
 import logging
 import re
 import time
-from typing import Callable, Dict, List, Optional, Pattern, Set, Union, cast
+from collections.abc import Callable
+from re import Pattern
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp
 
 from app.core.domain.exceptions.phi_exceptions import PHIInUrlError, PHISanitizationError
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 from app.infrastructure.di.container import get_container
 from app.infrastructure.security.encryption_service import EncryptionService
-
 
 # Configure PHI audit logger
 phi_audit_logger = logging.getLogger("phi_audit")
@@ -43,8 +43,8 @@ class PHIMiddleware(BaseHTTPMiddleware):
     def __init__(
         self, 
         app: ASGIApp,
-        phi_patterns: Optional[List[Pattern]] = None,
-        exempt_paths: Optional[Set[str]] = None
+        phi_patterns: list[Pattern] | None = None,
+        exempt_paths: set[str] | None = None
     ):
         """
         Initialize PHI middleware with patterns to detect and paths to exempt.
@@ -125,7 +125,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             
             return response
             
-        except PHIInUrlError as e:
+        except PHIInUrlError:
             # Log PHI attempt violation
             phi_audit_logger.warning(
                 f"PHI detected in URL: {request.method} {request.url.path} "
@@ -139,7 +139,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             # Log sanitization failure
             phi_audit_logger.error(
                 f"Failed to sanitize PHI: {request.method} {request.url.path} "
-                f"from {client_ip} - error: {str(e)}"
+                f"from {client_ip} - error: {e!s}"
             )
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -149,7 +149,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             # Log any other exceptions
             phi_audit_logger.error(
                 f"PHI middleware error: {request.method} {request.url.path} "
-                f"from {client_ip} - error: {str(e)}"
+                f"from {client_ip} - error: {e!s}"
             )
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -220,7 +220,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
                             headers=dict(response.headers)
                         )
             except Exception as e:
-                raise PHISanitizationError(f"Failed to sanitize response: {str(e)}")
+                raise PHISanitizationError(f"Failed to sanitize response: {e!s}")
                 
         return response
 

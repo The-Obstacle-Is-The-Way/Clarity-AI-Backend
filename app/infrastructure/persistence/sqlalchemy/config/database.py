@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy database connection configuration.
 
@@ -7,12 +6,12 @@ for the SQLAlchemy ORM, configured according to the application settings.
 """
 
 import os
-from typing import Optional, Callable, Dict, Any, AsyncGenerator, Annotated
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool, QueuePool, FallbackAsyncAdaptedQueuePool
-from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import FallbackAsyncAdaptedQueuePool, NullPool
 
 # Use canonical config path
 from app.config.settings import Settings, get_settings
@@ -39,7 +38,7 @@ class Database:
     providing controlled access to database sessions.
     """
     
-    def __init__(self, settings: Optional[Settings] = None):
+    def __init__(self, settings: Settings | None = None):
         """
         Initialize the database with main application settings.
         

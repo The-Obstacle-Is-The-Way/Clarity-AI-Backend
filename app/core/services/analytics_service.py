@@ -6,10 +6,10 @@ data analysis capabilities while adhering to HIPAA compliance
 and clean architecture principles.
 """
 
+import json
 import logging
 from datetime import datetime, timedelta
-import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
@@ -42,10 +42,10 @@ class AnalyticsService(AnalyticsServiceInterface):
     async def track_event(
         self,
         event_type: str,
-        event_data: Dict[str, Any],
-        user_id: Optional[Union[str, UUID]] = None,
-        session_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None
+        event_data: dict[str, Any],
+        user_id: str | UUID | None = None,
+        session_id: str | None = None,
+        timestamp: datetime | None = None
     ) -> bool:
         """
         Track an analytics event.
@@ -92,16 +92,16 @@ class AnalyticsService(AnalyticsServiceInterface):
             logger.debug(f"Analytics event tracked: {event_type}")
             return True
         except Exception as e:
-            logger.error(f"Failed to track analytics event: {str(e)}")
+            logger.error(f"Failed to track analytics event: {e!s}")
             return False
     
     async def get_user_metrics(
         self,
-        user_id: Union[str, UUID],
+        user_id: str | UUID,
         start_date: datetime,
         end_date: datetime,
-        metrics: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        metrics: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get metrics for a specific user.
         
@@ -130,9 +130,9 @@ class AnalyticsService(AnalyticsServiceInterface):
         self,
         start_date: datetime,
         end_date: datetime,
-        metrics: Optional[List[str]] = None,
+        metrics: list[str] | None = None,
         granularity: str = "day"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get system-wide metrics.
         
@@ -164,8 +164,8 @@ class AnalyticsService(AnalyticsServiceInterface):
         self,
         start_date: datetime,
         end_date: datetime,
-        group_by: Optional[str] = None
-    ) -> Dict[str, Any]:
+        group_by: str | None = None
+    ) -> dict[str, Any]:
         """
         Generate a usage report for the platform.
         
@@ -213,7 +213,7 @@ class AnalyticsService(AnalyticsServiceInterface):
         start_date: datetime,
         end_date: datetime,
         granularity: str = "day"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get usage statistics for a specific feature.
         
@@ -253,7 +253,7 @@ class AnalyticsService(AnalyticsServiceInterface):
             }
         }
     
-    def _sanitize_event_data(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_event_data(self, event_data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize event data to remove PHI for HIPAA compliance.
         
@@ -277,7 +277,7 @@ class AnalyticsService(AnalyticsServiceInterface):
         
         return sanitized
     
-    def _remove_phi_recursive(self, data: Any, phi_fields: List[str]) -> None:
+    def _remove_phi_recursive(self, data: Any, phi_fields: list[str]) -> None:
         """
         Recursively remove PHI fields from nested data structures.
         

@@ -4,20 +4,23 @@ MentaLLaMA service implementation.
 This module implements the MentaLLaMA service interface.
 """
 
-import uuid
 import json
-import os
-from typing import Dict, Any, List, Optional
+import uuid
+from typing import Any
+
 import requests
+
+from app.config.settings import get_settings
+from app.core.patterns.observer import Subject  # Corrected import path for Subject
 
 # Removed incorrect import of domain service: from app.domain.services.mentallama_service import MentaLLaMAService
 from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
-from app.core.patterns.observer import Subject # Corrected import path for Subject
-from app.config.settings import get_settings
-settings = get_settings()
-from app.core.utils.logging import get_logger # Corrected import path for get_logger
-from app.core.services.ml.interface import MentaLLaMAInterface # Corrected import path and interface name
 
+settings = get_settings()
+from app.core.services.ml.interface import (
+    MentaLLaMAInterface,  # Corrected import path and interface name
+)
+from app.core.utils.logging import get_logger  # Corrected import path for get_logger
 
 logger = get_logger(__name__)
 
@@ -41,8 +44,8 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
     def __init__(
         self,
         clinical_note_repository: ClinicalNoteRepository,
-        api_key: Optional[str] = None,
-        api_url: Optional[str] = None
+        api_key: str | None = None,
+        api_url: str | None = None
     ):
         """
         Initialize the MentaLLaMA service.
@@ -68,7 +71,7 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
         patient_id: uuid.UUID,
         provider_id: uuid.UUID,
         content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze a clinical note and extract insights.
         
@@ -137,13 +140,13 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
                     "error": str(e)
                 }
             )
-            raise ValueError(f"Error analyzing clinical note: {str(e)}")
+            raise ValueError(f"Error analyzing clinical note: {e!s}")
     
     def search_patient_notes(
         self,
         patient_id: uuid.UUID,
         query: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search clinical notes for a patient.
         
@@ -209,12 +212,12 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
                     "error": str(e)
                 }
             )
-            raise ValueError(f"Error searching patient notes: {str(e)}")
+            raise ValueError(f"Error searching patient notes: {e!s}")
     
     def generate_patient_summary(
         self,
         patient_id: uuid.UUID
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a summary of a patient's clinical history.
         
@@ -275,12 +278,12 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
                     "error": str(e)
                 }
             )
-            raise ValueError(f"Error generating patient summary: {str(e)}")
+            raise ValueError(f"Error generating patient summary: {e!s}")
     
     def generate_treatment_suggestions(
         self,
         patient_id: uuid.UUID
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generate treatment suggestions for a patient.
         
@@ -341,12 +344,12 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
                     "error": str(e)
                 }
             )
-            raise ValueError(f"Error generating treatment suggestions: {str(e)}")
+            raise ValueError(f"Error generating treatment suggestions: {e!s}")
     
     def extract_brain_region_data(
         self,
         patient_id: uuid.UUID
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """
         Extract brain region data from a patient's clinical notes.
         
@@ -407,12 +410,12 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
                     "error": str(e)
                 }
             )
-            raise ValueError(f"Error extracting brain region data: {str(e)}")
+            raise ValueError(f"Error extracting brain region data: {e!s}")
     
     def _call_mentallama_api(
         self,
         endpoint: str,
-        payload: Dict[str, Any]
+        payload: dict[str, Any]
     ) -> Any:
         """
         Call the MentaLLaMA API.
@@ -455,4 +458,4 @@ class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
                     "error": str(e)
                 }
             )
-            raise ValueError(f"Error calling MentaLLaMA API: {str(e)}")
+            raise ValueError(f"Error calling MentaLLaMA API: {e!s}")

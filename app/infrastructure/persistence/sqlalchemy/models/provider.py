@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy model for Provider entity.
 
@@ -8,17 +7,12 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.types import GUID
-
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
-
-
-
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 class ProviderModel(Base):

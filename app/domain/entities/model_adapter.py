@@ -6,19 +6,16 @@ different implementations of Digital Twin entities.
 """
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Set, Union
+from typing import Any
 from uuid import UUID, uuid4
 
-from app.domain.entities.digital_twin_enums import (
-    BrainRegion,
-    Neurotransmitter,
-    ClinicalSignificance,
-    DigitalTwinState as DigitalTwinStateEnum
-)
 from app.domain.entities.digital_twin_entity import (
     ClinicalInsight,
-    TemporalPattern,
-    NeuralConnection
+)
+from app.domain.entities.digital_twin_enums import (
+    BrainRegion,
+    ClinicalSignificance,
+    Neurotransmitter,
 )
 
 
@@ -43,7 +40,7 @@ class BrainRegionStateAdapter:
     region: BrainRegion
     activation_level: float  # 0.0 to 1.0
     confidence: float  # 0.0 to 1.0
-    related_symptoms: List[str] = field(default_factory=list)
+    related_symptoms: list[str] = field(default_factory=list)
     clinical_significance: ClinicalSignificance = ClinicalSignificance.NONE
     
     def __post_init__(self):
@@ -142,22 +139,22 @@ class DigitalTwinStateAdapter:
     """
     patient_id: UUID
     timestamp: datetime
-    brain_regions: Dict[BrainRegion, BrainRegionStateAdapter] = field(default_factory=dict)
-    neurotransmitters: Dict[Neurotransmitter, NeurotransmitterStateAdapter] = field(default_factory=dict)
-    neural_connections: List[NeuralConnectionAdapter] = field(default_factory=list)
-    clinical_insights: List[ClinicalInsight] = field(default_factory=list)
-    temporal_patterns: List[TemporalPatternAdapter] = field(default_factory=list)
+    brain_regions: dict[BrainRegion, BrainRegionStateAdapter] = field(default_factory=dict)
+    neurotransmitters: dict[Neurotransmitter, NeurotransmitterStateAdapter] = field(default_factory=dict)
+    neural_connections: list[NeuralConnectionAdapter] = field(default_factory=list)
+    clinical_insights: list[ClinicalInsight] = field(default_factory=list)
+    temporal_patterns: list[TemporalPatternAdapter] = field(default_factory=list)
     update_source: str = None
     version: int = 1
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    biomarkers: Dict[str, float] = field(default_factory=dict)
-    predicted_states: Dict[str, Any] = field(default_factory=dict)
-    treatment_responses: Dict[str, Any] = field(default_factory=dict)
-    confidence_scores: Dict[str, float] = field(default_factory=dict)
-    active_treatments: Set[str] = field(default_factory=set)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    biomarkers: dict[str, float] = field(default_factory=dict)
+    predicted_states: dict[str, Any] = field(default_factory=dict)
+    treatment_responses: dict[str, Any] = field(default_factory=dict)
+    confidence_scores: dict[str, float] = field(default_factory=dict)
+    active_treatments: set[str] = field(default_factory=set)
     
     def __post_init__(self):
         """Ensure proper enum conversion after initialization."""

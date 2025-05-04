@@ -5,7 +5,7 @@ This module defines value objects for physiological ranges,
 providing validation and comparison of biometric measurements.
 """
 
-from typing import Dict, Optional, Any, ClassVar
+from typing import ClassVar, Optional
 
 
 class PhysiologicalRange:
@@ -17,7 +17,7 @@ class PhysiologicalRange:
     """
     
     # Class-level default ranges for common biometric types
-    DEFAULT_RANGES: ClassVar[Dict[str, Dict[str, float]]] = {
+    DEFAULT_RANGES: ClassVar[dict[str, dict[str, float]]] = {
         "heart_rate": {
             "min": 60.0,
             "max": 100.0,
@@ -148,7 +148,7 @@ class PhysiologicalRange:
         else:
             return "abnormal"
     
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """
         Convert to dictionary representation.
         
@@ -163,7 +163,7 @@ class PhysiologicalRange:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, float]) -> "PhysiologicalRange":
+    def from_dict(cls, data: dict[str, float]) -> "PhysiologicalRange":
         """
         Create a PhysiologicalRange from a dictionary.
         

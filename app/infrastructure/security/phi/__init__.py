@@ -8,29 +8,26 @@ clean architecture principles.
 
 from enum import Enum
 
-# Core PHI protection components
-from .sanitizer import (
-    PHISanitizer,
-    SanitizedLogger,
-    get_sanitized_logger,
-    RedactionStrategy,
-    PatternRepository,
-    redact_ssn,
-    redact_phone,
-    redact_email,
-    redact_name,
-    redact_address
-)
-
 # Middleware for API protection
-from .middleware import (
-    PHIMiddleware,
-    add_phi_middleware,
-    get_phi_middleware
-)
+from .middleware import PHIMiddleware, add_phi_middleware, get_phi_middleware
 
 # PHI detection patterns
 from .patterns import PHI_PATTERNS
+
+# Core PHI protection components
+from .sanitizer import (
+    PatternRepository,
+    PHISanitizer,
+    RedactionStrategy,
+    SanitizedLogger,
+    get_sanitized_logger,
+    redact_address,
+    redact_email,
+    redact_name,
+    redact_phone,
+    redact_ssn,
+)
+
 
 # PHI types for categorization
 class PHIType(str, Enum):
@@ -49,19 +46,12 @@ class PHIType(str, Enum):
     CREDIT_CARD = "CREDIT_CARD"
 
 # PHI Service
-from .phi_service import (
-    PHIService,
-    RedactionMode,
-    sanitize_phi,
-    contains_phi,
-    get_phi_service
-)
+# PHI Code Analysis
+from .code_analyzer import CodeSeverity, PHICodeAnalyzer
 
 # PHI Auditing
 from .phi_auditor import PHIAuditHandler
-
-# PHI Code Analysis
-from .code_analyzer import PHICodeAnalyzer, CodeSeverity
+from .phi_service import PHIService, RedactionMode, contains_phi, get_phi_service, sanitize_phi
 
 __all__ = [
     # Core components

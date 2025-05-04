@@ -5,21 +5,19 @@ This module contains implementations of methods that should be added or
 modified in the AWSXGBoostService class to fix test failures.
 """
 
-from typing import Dict, Any, List, Optional, Union, Tuple, Set
 import json
-import logging
 from datetime import datetime
-from enum import Enum
+from typing import Any
 
 from app.core.services.ml.xgboost.exceptions import (
-    ValidationError,
+    ConfigurationError,
     DataPrivacyError,
     ModelNotFoundError,
-    ConfigurationError
+    ValidationError,
 )
 
 
-def validate_aws_config(self, config: Dict[str, Any]) -> None:
+def validate_aws_config(self, config: dict[str, Any]) -> None:
     """
     Validate the AWS configuration.
     
@@ -65,7 +63,7 @@ def validate_aws_config(self, config: Dict[str, Any]) -> None:
     self._model_mappings = model_mappings
 
 
-async def predict_risk(self, patient_id: str, risk_type: str, clinical_data: Dict[str, Any]) -> Dict[str, Any]:
+async def predict_risk(self, patient_id: str, risk_type: str, clinical_data: dict[str, Any]) -> dict[str, Any]:
     """
     Predict risk for a patient based on clinical data.
     
@@ -123,11 +121,11 @@ async def predict_risk(self, patient_id: str, risk_type: str, clinical_data: Dic
         response = await self._invoke_endpoint(endpoint_name, payload)
         return response
     except Exception as e:
-        self._logger.error(f"Error predicting risk: {str(e)}")
+        self._logger.error(f"Error predicting risk: {e!s}")
         raise
 
 
-def _check_phi_in_data(self, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def _check_phi_in_data(self, data: dict[str, Any]) -> tuple[bool, list[str]]:
     """
     Check for potential PHI in data.
     
@@ -158,7 +156,7 @@ def _check_phi_in_data(self, data: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return bool(phi_fields), phi_fields
 
 
-async def _invoke_endpoint(self, endpoint_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+async def _invoke_endpoint(self, endpoint_name: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
     Invoke a SageMaker endpoint with the provided payload.
     
@@ -189,11 +187,11 @@ async def _invoke_endpoint(self, endpoint_name: str, payload: Dict[str, Any]) ->
         
         return result
     except Exception as e:
-        self._logger.error(f"Error invoking endpoint {endpoint_name}: {str(e)}")
+        self._logger.error(f"Error invoking endpoint {endpoint_name}: {e!s}")
         raise
 
 
-async def healthcheck(self) -> Dict[str, Any]:
+async def healthcheck(self) -> dict[str, Any]:
     """
     Check the health of the service and its dependencies.
     
@@ -267,7 +265,7 @@ async def healthcheck(self) -> Dict[str, Any]:
         
         return health_status
     except Exception as e:
-        self._logger.error(f"Error in healthcheck: {str(e)}")
+        self._logger.error(f"Error in healthcheck: {e!s}")
         return {
             "status": "unhealthy",
             "error": str(e)

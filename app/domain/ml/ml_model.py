@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -33,13 +33,13 @@ class MLModel:
     
     # Fields with defaults
     model_id: UUID = field(default_factory=uuid.uuid4)
-    description: Optional[str] = None
-    artifact_path: Optional[str] = None  # Path to model file(s)
-    parameters: Dict[str, Any] = field(default_factory=dict)  # Hyperparameters, config
-    metrics: Dict[str, float] = field(default_factory=dict)  # Performance metrics
+    description: str | None = None
+    artifact_path: str | None = None  # Path to model file(s)
+    parameters: dict[str, Any] = field(default_factory=dict)  # Hyperparameters, config
+    metrics: dict[str, float] = field(default_factory=dict)  # Performance metrics
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = field(default_factory=dict) # Other metadata
+    metadata: dict[str, Any] = field(default_factory=dict) # Other metadata
 
     def __post_init__(self):
         if not self.name:

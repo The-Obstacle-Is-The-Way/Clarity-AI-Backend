@@ -33,7 +33,6 @@ from app.presentation.api.schemas.xgboost import (
     TreatmentResponseRequest,
     TreatmentResponseResponse,
     TreatmentType,
-    VisualizationType,
 )
 
 # Use mock router instead of direct import

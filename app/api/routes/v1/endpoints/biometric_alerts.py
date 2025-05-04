@@ -5,10 +5,11 @@ This module provides endpoints for managing alerts triggered by
 biometric data readings that fall outside of expected ranges.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any, List
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter
 
 router = APIRouter(
     prefix="/biometric-alerts",
@@ -17,7 +18,7 @@ router = APIRouter(
 
 
 @router.get("/")
-async def get_alerts() -> List[Dict[str, Any]]:
+async def get_alerts() -> list[dict[str, Any]]:
     """
     Get all active biometric alerts.
     
@@ -29,7 +30,7 @@ async def get_alerts() -> List[Dict[str, Any]]:
 
 
 @router.get("/{alert_id}")
-async def get_alert(alert_id: UUID) -> Dict[str, Any]:
+async def get_alert(alert_id: UUID) -> dict[str, Any]:
     """
     Get details for a specific alert.
     
@@ -52,7 +53,7 @@ async def get_alert(alert_id: UUID) -> Dict[str, Any]:
 
 
 @router.post("/")
-async def create_alert() -> Dict[str, Any]:
+async def create_alert() -> dict[str, Any]:
     """
     Create a new biometric alert.
     
@@ -67,7 +68,7 @@ async def create_alert() -> Dict[str, Any]:
 
 
 @router.put("/{alert_id}/status")
-async def update_alert_status(alert_id: UUID) -> Dict[str, Any]:
+async def update_alert_status(alert_id: UUID) -> dict[str, Any]:
     """
     Update the status of an alert.
     

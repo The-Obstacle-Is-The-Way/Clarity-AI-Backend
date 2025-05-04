@@ -20,19 +20,21 @@ values untouched – caller wins.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, date
-from typing import Any, Optional, Dict, Union
+from datetime import date, datetime
+from typing import Any
 from uuid import UUID
+
 from app.domain.value_objects.emergency_contact import EmergencyContact
+
 
 @dataclass
 class ContactInfo:
     """Contact information for a patient, supporting HIPAA-compliant access patterns."""
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ContactInfo':
+    def from_dict(cls, data: dict[str, Any]) -> ContactInfo:
         """Create a ContactInfo instance from a dictionary."""
         if not data:
             return cls()
@@ -41,7 +43,7 @@ class ContactInfo:
             phone=data.get('phone')
         )
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary, excluding None values."""
         return {k: v for k, v in {
             'email': self.email,
@@ -108,39 +110,39 @@ class Patient:
     date_of_birth: datetime | str
 
     # Fields WITH defaults can follow
-    id: Optional[UUID] = None
+    id: UUID | None = None
     # Gender is optional in integration scenarios
-    gender: Optional[str] = None
+    gender: str | None = None
     
     # Constructor parameter for contact_info - a critical field for tests
     # This is handled in __post_init__ and not stored directly
-    _contact_info_param: Optional[Union[Dict[str, Any], ContactInfo]] = field(default=None, repr=False)
+    _contact_info_param: dict[str, Any] | ContactInfo | None = field(default=None, repr=False)
 
     # ------------------------------------------------------------------
     # Dual‑API identification fields
     # ------------------------------------------------------------------
 
     # Full patient name (optional – may be derived from first_name/last_name)
-    name: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
     # ------------------------------------------------------------------
     # Contact & administrative info
     # ------------------------------------------------------------------
 
     # Legacy fields for backwards compatibility - these store the actual data for contact_info
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    insurance_number: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    insurance_number: str | None = None
     # Extra PHI fields referenced in legacy security tests
-    ssn: Optional[str] = None
-    medical_record_number: Optional[str] = None
+    ssn: str | None = None
+    medical_record_number: str | None = None
     # Additional PHI & administrative fields
-    emergency_contact: Optional[EmergencyContact] = None
-    insurance: Optional[dict[str, Any]] = None
-    insurance_info: Optional[dict[str, Any]] = None
+    emergency_contact: EmergencyContact | None = None
+    insurance: dict[str, Any] | None = None
+    insurance_info: dict[str, Any] | None = None
     active: bool = True
     created_by: Any = None
 
@@ -169,7 +171,7 @@ class Patient:
     # Post‑initialisation normalisation helpers
     # ------------------------------------------------------------------
     
-    def __post_init__(self) -> None:  # noqa: C901 – complexity is acceptable here
+    def __post_init__(self) -> None:
         """Normalise fields and ensure correct data types."""
         
         # Handle contact_info parameter from constructor
@@ -233,12 +235,12 @@ class Patient:
     # Compatibility methods for both Pydantic v1 and v2 support
     # ------------------------------------------------------------------
     
-    def model_copy(self, *, update: dict = None, deep: bool = False, **kwargs) -> 'Patient':
+    def model_copy(self, *, update: dict = None, deep: bool = False, **kwargs) -> Patient:
         """Compatibility method similar to Pydantic v1's copy() but for dataclasses.
         
         Allows tests using model_copy() to work with this domain entity.
         """
-        from copy import deepcopy, copy
+        from copy import copy, deepcopy
         # Create a new instance with the same attributes
         if deep:
             data = deepcopy(self.__dict__)
@@ -310,9 +312,7 @@ class Patient:
 
     def __repr__(self) -> str:  # pragma: no cover – trivial
         return (
-            "Patient(id={!r}, name={!r}, first_name={!r}, last_name={!r})".format(
-                self.id, self.name, self.first_name, self.last_name
-            )
+            f"Patient(id={self.id!r}, name={self.name!r}, first_name={self.first_name!r}, last_name={self.last_name!r})"
         )
 
     # Hashing: we consider the *id* to be the immutable primary key.

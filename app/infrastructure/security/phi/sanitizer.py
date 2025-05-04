@@ -7,12 +7,11 @@ functionality to detect and redact Protected Health Information (PHI) in accorda
 with HIPAA requirements.
 """
 
-import re
-import json
-import logging
 import hashlib
+import logging
+import re
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union, Pattern, Tuple
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -31,10 +30,10 @@ class PHIPattern:
     def __init__(
         self,
         name: str,
-        regex: Optional[str] = None,
-        exact_match: Optional[List[str]] = None,
-        fuzzy_match: Optional[List[str]] = None,
-        context_patterns: Optional[List[str]] = None,
+        regex: str | None = None,
+        exact_match: list[str] | None = None,
+        fuzzy_match: list[str] | None = None,
+        context_patterns: list[str] | None = None,
         strategy: RedactionStrategy = RedactionStrategy.FULL,
     ):
         """
@@ -110,7 +109,7 @@ class PatternRepository:
 
     def __init__(self):
         """Initialize with default patterns."""
-        self._patterns: List[PHIPattern] = []
+        self._patterns: list[PHIPattern] = []
         self._initialize_default_patterns()
 
     def _initialize_default_patterns(self):
@@ -199,7 +198,7 @@ class PatternRepository:
         """Add a pattern to the repository."""
         self._patterns.append(pattern)
 
-    def get_patterns(self) -> List[PHIPattern]:
+    def get_patterns(self) -> list[PHIPattern]:
         """Get all patterns in the repository."""
         return self._patterns
 
@@ -298,7 +297,7 @@ class RedactorFactory:
 class PHISanitizer:
     """Sanitizer for PHI in text and structured data."""
 
-    def __init__(self, pattern_repository: Optional[PatternRepository] = None):
+    def __init__(self, pattern_repository: PatternRepository | None = None):
         """
         Initialize the PHI sanitizer.
         
@@ -385,7 +384,7 @@ class PHISanitizer:
         
         return sanitized
 
-    def sanitize_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def sanitize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize PHI in a dictionary.
         
@@ -523,7 +522,7 @@ class PHISanitizer:
                 
         return sanitized
 
-    def sanitize_list(self, data: List[Any]) -> List[Any]:
+    def sanitize_list(self, data: list[Any]) -> list[Any]:
         """
         Sanitize PHI in a list.
         
@@ -631,7 +630,7 @@ class PHISanitizer:
 class SanitizedLogger:
     """Logger that sanitizes PHI in log messages."""
     
-    def __init__(self, logger_name: str, sanitizer: Optional[PHISanitizer] = None):
+    def __init__(self, logger_name: str, sanitizer: PHISanitizer | None = None):
         """
         Initialize a sanitized logger.
         
@@ -642,7 +641,7 @@ class SanitizedLogger:
         self.logger = logging.getLogger(logger_name)
         self.sanitizer = sanitizer or PHISanitizer()
         
-    def _sanitize_args(self, *args) -> List[Any]:
+    def _sanitize_args(self, *args) -> list[Any]:
         """Sanitize args for logging."""
         sanitized_args = []
         for arg in args:
@@ -656,7 +655,7 @@ class SanitizedLogger:
                 sanitized_args.append(arg)
         return sanitized_args
         
-    def _sanitize_kwargs(self, **kwargs) -> Dict[str, Any]:
+    def _sanitize_kwargs(self, **kwargs) -> dict[str, Any]:
         """Sanitize kwargs for logging."""
         sanitized_kwargs = {}
         for key, value in kwargs.items():

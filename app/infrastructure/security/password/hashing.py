@@ -5,7 +5,6 @@ This module uses passlib with bcrypt for robust password hashing and verificatio
 aligning with HIPAA Security Rule requirements for access control.
 """
 
-from typing import Tuple, Optional
 
 from passlib.context import CryptContext
 

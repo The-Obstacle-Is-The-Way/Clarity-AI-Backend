@@ -4,17 +4,12 @@ Application Service for Digital Twin operations.
 This service orchestrates the use cases related to managing digital twins,
 interacting with repositories and potentially other domain services.
 """
-from uuid import UUID
-from typing import Optional
 import logging
-from datetime import datetime
-from typing import Any, Dict, List
+from uuid import UUID
 
 # Import domain entities and repository interfaces
-from app.domain.entities.digital_twin import DigitalTwin, DigitalTwinConfiguration, DigitalTwinState
+from app.domain.entities.digital_twin import DigitalTwin
 from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
-from app.domain.services.digital_twin_service import DigitalTwinService
-from app.domain.exceptions import DomainError, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +22,7 @@ class DigitalTwinApplicationService:
         # self.digital_twin_service = digital_twin_service # Removed incorrect injection
         logger.info("DigitalTwinApplicationService initialized.")
 
-    async def create_twin(self, patient_id: UUID, initial_config: Optional[dict] = None) -> DigitalTwin:
+    async def create_twin(self, patient_id: UUID, initial_config: dict | None = None) -> DigitalTwin:
         """Creates a new digital twin for a patient."""
         logger.info(f"Attempting to create digital twin for patient {patient_id}")
         existing = await self.repo.get_by_patient_id(patient_id)
@@ -47,12 +42,12 @@ class DigitalTwinApplicationService:
         logger.info(f"Successfully created digital twin {created_twin.id} for patient {patient_id}")
         return created_twin
 
-    async def get_twin_by_patient_id(self, patient_id: UUID) -> Optional[DigitalTwin]:
+    async def get_twin_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Retrieves a digital twin by patient ID."""
         logger.debug(f"Retrieving digital twin for patient {patient_id}")
         return await self.repo.get_by_patient_id(patient_id)
 
-    async def update_twin_configuration(self, patient_id: UUID, config_data: dict) -> Optional[DigitalTwin]:
+    async def update_twin_configuration(self, patient_id: UUID, config_data: dict) -> DigitalTwin | None:
         """Updates the configuration of a specific digital twin."""
         logger.info(f"Updating configuration for digital twin of patient {patient_id}")
         twin = await self.repo.get_by_patient_id(patient_id)

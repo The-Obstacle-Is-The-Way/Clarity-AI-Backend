@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """Use case for retrieving a patient by ID."""
 
-from app.domain.services.patient_service import PatientService
 from app.domain.entities.patient import Patient
-from app.domain.exceptions.patient_exceptions import PatientNotFoundError
+from app.domain.services.patient_service import PatientService
 
 
 class GetPatientByIdUseCase:

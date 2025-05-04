@@ -6,7 +6,7 @@ the Observer pattern in the XGBoost service.
 """
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 
 
 class EventType(Enum):
@@ -56,7 +56,7 @@ class Observer(ABC):
     """
     
     @abstractmethod
-    def update(self, event_type: EventType, data: Dict[str, Any]) -> None:
+    def update(self, event_type: EventType, data: dict[str, Any]) -> None:
         """
         Update method called when an observed event occurs.
         

@@ -6,28 +6,20 @@ related to patient analytics and insights in the concierge psychiatry practice.
 """
 
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, List, Dict, Optional, Tuple
+from typing import Any
 from uuid import UUID
-import pandas as pd
-import numpy as np
 
-from app.domain.exceptions import ValidationError
-from app.domain.repositories.temporal_repository import EventRepository
-from app.domain.repositories.appointment_repository import IAppointmentRepository
-from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
-from app.domain.repositories.medication_repository import MedicationRepository
-from app.domain.repositories.patient_repository import PatientRepository
-from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
+from app.domain.entities.analytics import AnalyticsEvent
 
 # Domain Models and Entities
-from app.domain.entities.appointment import Appointment
-from app.domain.entities.clinical_note import ClinicalNote
-from app.domain.entities.medication import Medication
-from app.domain.entities.patient import Patient
-from app.domain.entities.digital_twin import DigitalTwin
-from app.domain.entities.symptom_assessment import SymptomAssessment
-from app.domain.entities.analytics import AnalyticsEvent, AnalyticsAggregate
+from app.domain.exceptions import ValidationError
+from app.domain.repositories.appointment_repository import IAppointmentRepository
+from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
+from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
+from app.domain.repositories.medication_repository import MedicationRepository
+from app.domain.repositories.patient_repository import PatientRepository
+from app.domain.repositories.temporal_repository import EventRepository
+from app.domain.utils.datetime_utils import UTC
 
 
 class AnalyticsService:

@@ -1,16 +1,17 @@
-# -*- coding: utf-8 -*-
 """
 Dependency providers for repositories.
 """
-from typing import AsyncGenerator
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import necessary components
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository,
+)
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+
 # Import the actual dependency provider for encryption service if one exists, else mock it for now
 # from app.presentation.api.dependencies.security import get_encryption_service # Example
 

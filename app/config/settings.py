@@ -5,14 +5,20 @@ This module handles configuration settings for various environments (development
 testing, production) in a secure and consistent way, supporting HIPAA compliance.
 """
 
+import json  # Ensure json is imported for the validator
 import os
 from functools import lru_cache
-from typing import Optional, Dict, Any, List, Union
-import json # Ensure json is imported for the validator
+from typing import Any
 
+from pydantic import (
+    ConfigDict,
+    Field,
+    PostgresDsn,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator, model_validator, PostgresDsn, SecretStr, HttpUrl, ConfigDict
-
 
 # --- ML Settings Sub-Models ---
 
@@ -20,22 +26,22 @@ class MentalLlamaSettings(BaseSettings):
     model_config = ConfigDict(env_prefix='MENTALLAMA_') # Prefix for env vars
 
     provider: str = Field(default="openai", json_schema_extra={"env": "PROVIDER"}) # openai, azure, local, custom
-    openai_api_key: Optional[SecretStr] = Field(default=None, json_schema_extra={"env": "OPENAI_API_KEY"})
-    openai_organization: Optional[str] = Field(default=None, json_schema_extra={"env": "OPENAI_ORGANIZATION"})
-    azure_api_key: Optional[SecretStr] = Field(default=None, json_schema_extra={"env": "AZURE_API_KEY"})
-    azure_endpoint: Optional[str] = Field(default=None, json_schema_extra={"env": "AZURE_ENDPOINT"}) # Store as str, validate if needed
-    azure_deployment: Optional[str] = Field(default=None, json_schema_extra={"env": "AZURE_DEPLOYMENT"})
-    azure_api_version: Optional[str] = Field(default="2023-05-15", json_schema_extra={"env": "AZURE_API_VERSION"})
-    local_url: Optional[str] = Field(default=None, json_schema_extra={"env": "LOCAL_URL"}) # Store as str, validate if needed
-    custom_url: Optional[str] = Field(default=None, json_schema_extra={"env": "CUSTOM_URL"}) # Store as str, validate if needed
-    custom_api_key: Optional[SecretStr] = Field(default=None, json_schema_extra={"env": "CUSTOM_API_KEY"})
+    openai_api_key: SecretStr | None = Field(default=None, json_schema_extra={"env": "OPENAI_API_KEY"})
+    openai_organization: str | None = Field(default=None, json_schema_extra={"env": "OPENAI_ORGANIZATION"})
+    azure_api_key: SecretStr | None = Field(default=None, json_schema_extra={"env": "AZURE_API_KEY"})
+    azure_endpoint: str | None = Field(default=None, json_schema_extra={"env": "AZURE_ENDPOINT"}) # Store as str, validate if needed
+    azure_deployment: str | None = Field(default=None, json_schema_extra={"env": "AZURE_DEPLOYMENT"})
+    azure_api_version: str | None = Field(default="2023-05-15", json_schema_extra={"env": "AZURE_API_VERSION"})
+    local_url: str | None = Field(default=None, json_schema_extra={"env": "LOCAL_URL"}) # Store as str, validate if needed
+    custom_url: str | None = Field(default=None, json_schema_extra={"env": "CUSTOM_URL"}) # Store as str, validate if needed
+    custom_api_key: SecretStr | None = Field(default=None, json_schema_extra={"env": "CUSTOM_API_KEY"})
     request_timeout: int = Field(default=60, json_schema_extra={"env": "REQUEST_TIMEOUT"})
     # Example: {"mentallama-clinical": "gpt-4", "mentallama-psychiatry": "azure-deployment-name"}
-    model_mappings: Dict[str, str] = Field(default_factory=dict, json_schema_extra={"env": "MODEL_MAPPINGS"}) # Need validation if env var is string
+    model_mappings: dict[str, str] = Field(default_factory=dict, json_schema_extra={"env": "MODEL_MAPPINGS"}) # Need validation if env var is string
 
     @field_validator("model_mappings", mode='before')
     @classmethod
-    def parse_model_mappings(cls, v: Union[str, Dict]) -> Dict[str, str]:
+    def parse_model_mappings(cls, v: str | dict) -> dict[str, str]:
         if isinstance(v, str):
             try:
                 return json.loads(v)
@@ -103,7 +109,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="INFO", json_schema_extra={"env": "LOG_LEVEL"})
     
     # Cache Configuration
-    REDIS_URL: Optional[str] = Field(default="redis://localhost:6379/0", json_schema_extra={"env": "REDIS_URL"})
+    REDIS_URL: str | None = Field(default="redis://localhost:6379/0", json_schema_extra={"env": "REDIS_URL"})
     REDIS_TIMEOUT: int = Field(default=5, json_schema_extra={"env": "REDIS_TIMEOUT"}) # Connection timeout in seconds
     PROJECT_NAME: str = Field(default="Novamind Digital Twin", json_schema_extra={"env": "PROJECT_NAME"})
     # Environment
@@ -118,7 +124,7 @@ class Settings(BaseSettings):
     ENABLE_PHI_AUDITING: bool = Field(default=True, json_schema_extra={"env": "ENABLE_PHI_AUDITING"})
 
     # Optional Static File Serving
-    STATIC_DIR: Optional[str] = Field(default=None, json_schema_extra={"env": "STATIC_DIR"})
+    STATIC_DIR: str | None = Field(default=None, json_schema_extra={"env": "STATIC_DIR"})
 
     # Security settings
     SECRET_KEY: SecretStr = Field(
@@ -144,7 +150,7 @@ class Settings(BaseSettings):
     
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         """Parse CORS origins from environment variable."""
         if isinstance(v, str):
             # Handle comma-separated string
@@ -163,11 +169,11 @@ class Settings(BaseSettings):
         raise ValueError(f"Invalid BACKEND_CORS_ORIGINS: {v}")
     
     # PHI Middleware Configuration
-    PHI_EXCLUDE_PATHS: List[str] = Field(
+    PHI_EXCLUDE_PATHS: list[str] = Field(
         default=["/docs", "/openapi.json", "/health", "/static"],
         json_schema_extra={"env": "PHI_EXCLUDE_PATHS"}
     )
-    PHI_WHITELIST_PATTERNS: Optional[Dict[str, List[str]]] = Field(
+    PHI_WHITELIST_PATTERNS: dict[str, list[str]] | None = Field(
         default=None, 
         json_schema_extra={"env": "PHI_WHITELIST_PATTERNS"}
     )
@@ -178,7 +184,7 @@ class Settings(BaseSettings):
     
     @field_validator("PHI_WHITELIST_PATTERNS", mode='before')
     @classmethod
-    def parse_phi_whitelist(cls, v: Union[str, Dict, None]) -> Optional[Dict[str, List[str]]]:
+    def parse_phi_whitelist(cls, v: str | dict | None) -> dict[str, list[str]] | None:
          if isinstance(v, str):
              try:
                  return json.loads(v)
@@ -188,7 +194,7 @@ class Settings(BaseSettings):
 
     @field_validator("PHI_EXCLUDE_PATHS", mode='before')
     @classmethod
-    def parse_phi_exclude(cls, v: Union[str, List[str]]) -> List[str]:
+    def parse_phi_exclude(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str):
             if v.startswith('[') and v.endswith(']'):
                 try:
@@ -218,7 +224,7 @@ class Settings(BaseSettings):
     # Database SSL settings
     DATABASE_SSL_ENABLED: bool = Field(default=False, json_schema_extra={"env": "DATABASE_SSL_ENABLED"})
     DATABASE_SSL_MODE: str = Field(default="require", json_schema_extra={"env": "DATABASE_SSL_MODE"})
-    DATABASE_SSL_CA: Optional[str] = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
+    DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
     DATABASE_SSL_VERIFY: bool = Field(default=True, json_schema_extra={"env": "DATABASE_SSL_VERIFY"})
     POSTGRES_PASSWORD: SecretStr = Field(default="postgres", json_schema_extra={"env": "POSTGRES_PASSWORD"}) # Use SecretStr
     POSTGRES_DB: str = Field(default="novamind", json_schema_extra={"env": "POSTGRES_DB"})
@@ -226,8 +232,8 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = Field(default=5, json_schema_extra={"env": "DB_POOL_SIZE"})
     DB_MAX_OVERFLOW: int = Field(default=10, json_schema_extra={"env": "DB_MAX_OVERFLOW"})
     DATABASE_ECHO: bool = Field(default=False, json_schema_extra={"env": "DATABASE_ECHO"}) # Added DB Echo
-    DATABASE_SSL_MODE: Optional[str] = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_MODE"}) # Added SSL
-    DATABASE_SSL_CA: Optional[str] = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
+    DATABASE_SSL_MODE: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_MODE"}) # Added SSL
+    DATABASE_SSL_CA: str | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_CA"})
     
     @model_validator(mode="after")
     def _set_debug_env(cls, values):  # type: ignore
@@ -262,16 +268,16 @@ class Settings(BaseSettings):
         return self.BACKEND_CORS_ORIGINS
     # SQLAlchemy compatibility
     @property
-    def SQLALCHEMY_DATABASE_URI(self) -> Optional[str]:
+    def SQLALCHEMY_DATABASE_URI(self) -> str | None:
         """Alias for DATABASE_URL for compatibility."""
         return self.DATABASE_URL
-    DATABASE_SSL_VERIFY: Optional[bool] = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_VERIFY"})
+    DATABASE_SSL_VERIFY: bool | None = Field(default=None, json_schema_extra={"env": "DATABASE_SSL_VERIFY"})
     DATABASE_ENCRYPTION_ENABLED: bool = Field(default=False, json_schema_extra={"env": "DATABASE_ENCRYPTION_ENABLED"})
     DATABASE_AUDIT_ENABLED: bool = Field(default=False, json_schema_extra={"env": "DATABASE_AUDIT_ENABLED"})
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def assemble_db_connection(cls, v: Union[str, None], info: Any) -> Union[str, None]:
+    def assemble_db_connection(cls, v: str | None, info: Any) -> str | None:
         if isinstance(v, str) and v:
             # If DATABASE_URL is explicitly set, use it directly
             return v
@@ -292,8 +298,8 @@ class Settings(BaseSettings):
         return None
 
     # Encryption Settings
-    ENCRYPTION_KEY: Optional[SecretStr] = Field(default=None, json_schema_extra={"env": "ENCRYPTION_KEY"}) # Use SecretStr
-    PREVIOUS_ENCRYPTION_KEY: Optional[SecretStr] = Field(default=None, json_schema_extra={"env": "PREVIOUS_ENCRYPTION_KEY"}) # Use SecretStr
+    ENCRYPTION_KEY: SecretStr | None = Field(default=None, json_schema_extra={"env": "ENCRYPTION_KEY"}) # Use SecretStr
+    PREVIOUS_ENCRYPTION_KEY: SecretStr | None = Field(default=None, json_schema_extra={"env": "PREVIOUS_ENCRYPTION_KEY"}) # Use SecretStr
     ENCRYPTION_SALT: str = Field(default="novamind-salt", json_schema_extra={"env": "ENCRYPTION_SALT"})
     
     # Other settings
@@ -311,7 +317,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode='before')
     @classmethod
-    def assemble_database_url(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def assemble_database_url(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Assemble DATABASE_URL from components if DATABASE_URL is not explicitly set."""
         # Check if DATABASE_URL is missing and if postgres components are provided
         if values.get('DATABASE_URL') is None and values.get('POSTGRES_DB'):
@@ -352,7 +358,7 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Return the singleton Settings instance, loading based on pydantic-settings defaults.
 

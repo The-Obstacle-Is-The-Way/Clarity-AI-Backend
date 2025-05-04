@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Symptom Forecasting Model Service for the NOVAMIND Digital Twin.
 
@@ -8,15 +7,15 @@ quantification, following Clean Architecture principles.
 """
 
 import asyncio
-import json
 import logging
 import os
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 import numpy as np
+
+from app.domain.utils.datetime_utils import UTC
 
 # Removed import for exceptions as they are not available
 # from app.domain.exceptions import ModelInferenceError, ValidationError
@@ -38,10 +37,10 @@ class SymptomForecastingService:
     def __init__(
         self,
         model_dir: str,
-        transformer_model_path: Optional[str] = None,
-        xgboost_model_path: Optional[str] = None,
-        feature_names: Optional[List[str]] = None,
-        target_names: Optional[List[str]] = None,
+        transformer_model_path: str | None = None,
+        xgboost_model_path: str | None = None,
+        feature_names: list[str] | None = None,
+        target_names: list[str] | None = None,
     ):
         """
         Initialize the symptom forecasting service.
@@ -79,7 +78,7 @@ class SymptomForecastingService:
         logging.info("Symptom Forecasting Service initialized")
 
     async def preprocess_patient_data(
-        self, patient_id: UUID, data: Dict[str, Any]
+        self, patient_id: UUID, data: dict[str, Any]
     ) -> np.ndarray:
         """
         Preprocess patient data for model input.
@@ -127,16 +126,16 @@ class SymptomForecastingService:
             return features_array
 
         except Exception as e:
-            logging.error(f"Error preprocessing patient data: {str(e)}")
-            raise Exception(f"Failed to preprocess patient data: {str(e)}")
+            logging.error(f"Error preprocessing patient data: {e!s}")
+            raise Exception(f"Failed to preprocess patient data: {e!s}")
 
     async def forecast_symptoms(
         self,
         patient_id: UUID,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         horizon: int = 14,
         use_ensemble: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate symptom forecasts for a patient.
 
@@ -216,16 +215,16 @@ class SymptomForecastingService:
             return forecast_results
 
         except Exception as e:
-            logging.error(f"Error forecasting symptoms: {str(e)}")
-            raise Exception(f"Failed to forecast symptoms: {str(e)}")
+            logging.error(f"Error forecasting symptoms: {e!s}")
+            raise Exception(f"Failed to forecast symptoms: {e!s}")
 
     async def evaluate_treatment_impact(
         self,
         patient_id: UUID,
-        baseline_data: Dict[str, Any],
-        treatment_options: List[Dict[str, Any]],
+        baseline_data: dict[str, Any],
+        treatment_options: list[dict[str, Any]],
         horizon: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Evaluate the potential impact of different treatment options.
 
@@ -345,12 +344,12 @@ class SymptomForecastingService:
             }
 
         except Exception as e:
-            logging.error(f"Error evaluating treatment impact: {str(e)}")
-            raise Exception(f"Failed to evaluate treatment impact: {str(e)}")
+            logging.error(f"Error evaluating treatment impact: {e!s}")
+            raise Exception(f"Failed to evaluate treatment impact: {e!s}")
 
     async def detect_symptom_patterns(
-        self, patient_id: UUID, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Detect patterns in symptom time series data.
 
@@ -454,10 +453,10 @@ class SymptomForecastingService:
             }
 
         except Exception as e:
-            logging.error(f"Error detecting symptom patterns: {str(e)}")
-            raise Exception(f"Failed to detect symptom patterns: {str(e)}")
+            logging.error(f"Error detecting symptom patterns: {e!s}")
+            raise Exception(f"Failed to detect symptom patterns: {e!s}")
 
-    def get_service_info(self) -> Dict[str, Any]:
+    def get_service_info(self) -> dict[str, Any]:
         """
         Get information about the service.
 

@@ -5,7 +5,7 @@ This module defines custom exceptions that are raised by the PAT service
 to provide clean error handling and meaningful error messages.
 """
 
-from typing import Optional, Any, Dict, List
+from typing import Any
 
 
 class PATServiceError(Exception):
@@ -23,7 +23,7 @@ class PATServiceError(Exception):
         self.details = kwargs
         super().__init__(message)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert exception to a dictionary for serialization.
         
@@ -40,7 +40,7 @@ class PATServiceError(Exception):
 class ValidationError(PATServiceError):
     """Exception raised when validation of input data fails."""
     
-    def __init__(self, message: str, field: Optional[str] = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a validation error.
         
@@ -61,7 +61,7 @@ class ValidationError(PATServiceError):
 class InitializationError(PATServiceError):
     """Exception raised when initialization of a service or component fails."""
     
-    def __init__(self, message: str, component: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, component: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize an initialization error.
         
@@ -82,7 +82,7 @@ class InitializationError(PATServiceError):
 class AnalysisError(PATServiceError):
     """Exception raised when analysis of patient data fails."""
     
-    def __init__(self, message: str, analysis_type: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, analysis_type: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize an analysis error.
         
@@ -103,7 +103,7 @@ class AnalysisError(PATServiceError):
 class DataPrivacyError(PATServiceError):
     """Exception raised when PHI is detected in data."""
     
-    def __init__(self, message: str, field: Optional[str] = None, phi_type: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, phi_type: str | None = None, **kwargs):
         """
         Initialize a data privacy error.
         
@@ -124,7 +124,7 @@ class DataPrivacyError(PATServiceError):
 class ResourceNotFoundError(PATServiceError):
     """Exception raised when a requested resource is not found."""
     
-    def __init__(self, message: str, resource_type: Optional[str] = None, resource_id: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, resource_type: str | None = None, resource_id: str | None = None, **kwargs):
         """
         Initialize a resource not found error.
         
@@ -145,7 +145,7 @@ class ResourceNotFoundError(PATServiceError):
 class AnalysisNotFoundError(ResourceNotFoundError):
     """Exception raised when a requested analysis is not found."""
     
-    def __init__(self, message: str, analysis_id: Optional[str] = None, patient_id: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, analysis_id: str | None = None, patient_id: str | None = None, **kwargs):
         """
         Initialize an analysis not found error.
         
@@ -167,7 +167,7 @@ class AnalysisNotFoundError(ResourceNotFoundError):
 class ServiceConnectionError(PATServiceError):
     """Exception raised when a connection to an external service fails."""
     
-    def __init__(self, message: str, service_name: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, service_name: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize a service connection error.
         
@@ -188,7 +188,7 @@ class ServiceConnectionError(PATServiceError):
 class ConfigurationError(PATServiceError):
     """Exception raised when there is a configuration error."""
     
-    def __init__(self, message: str, field: Optional[str] = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a configuration error.
         
@@ -213,7 +213,7 @@ class InvalidConfigurationError(ConfigurationError):
     are present but invalid or incompatible with the operation being performed.
     """
     
-    def __init__(self, message: str, field: Optional[str] = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize an invalid configuration error.
         
@@ -234,7 +234,7 @@ class InvalidConfigurationError(ConfigurationError):
 class IntegrationError(PATServiceError):
     """Exception raised when integration with another system fails."""
     
-    def __init__(self, message: str, system_name: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, system_name: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize an integration error.
         
@@ -255,7 +255,7 @@ class IntegrationError(PATServiceError):
 class AuthorizationError(PATServiceError):
     """Exception raised when an operation is not authorized."""
     
-    def __init__(self, message: str, user_id: Optional[str] = None, resource_id: Optional[str] = None, action: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, user_id: str | None = None, resource_id: str | None = None, action: str | None = None, **kwargs):
         """
         Initialize an authorization error.
         
@@ -278,7 +278,7 @@ class AuthorizationError(PATServiceError):
 class EmbeddingError(PATServiceError):
     """Exception raised when embedding generation fails."""
     
-    def __init__(self, message: str, model_id: Optional[str] = None, data_type: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, model_id: str | None = None, data_type: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize an embedding error.
         

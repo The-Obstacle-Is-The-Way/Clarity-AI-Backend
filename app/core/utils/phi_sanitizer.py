@@ -7,16 +7,12 @@ various data formats to maintain HIPAA compliance.
 Direct implementation using the consolidated PHISanitizer.
 """
 
-import re
 import logging
-from typing import Any, Dict, List, Optional, Union, Tuple
+import re
+from typing import Any
 
 # Import directly from the consolidated implementation
-from app.infrastructure.security.phi import (
-    PHISanitizer,
-    PHIType,
-    get_sanitized_logger
-)
+from app.infrastructure.security.phi import PHISanitizer, PHIType, get_sanitized_logger
 
 
 class PHIDetector:
@@ -51,7 +47,7 @@ class PHIDetector:
         return PHIDetector._sanitizer.contains_phi(text)
     
     @staticmethod
-    def detect_phi_types(text: str) -> List[Tuple[PHIType, str]]:
+    def detect_phi_types(text: str) -> list[tuple[PHIType, str]]:
         """
         Detect specific PHI types in text.
         
@@ -103,8 +99,8 @@ class PHISanitizer:
     
     @staticmethod
     def sanitize_string(text: str, 
-                      sensitivity: Optional[str] = None,
-                      replacement_template: Optional[str] = None) -> str:
+                      sensitivity: str | None = None,
+                      replacement_template: str | None = None) -> str:
         """
         Sanitize a string by redacting all PHI.
         
@@ -153,7 +149,7 @@ class PHISanitizer:
         return sanitized
     
     @staticmethod
-    def sanitize_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    def sanitize_dict(data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize a dictionary by redacting PHI in all string values.
         
@@ -221,7 +217,7 @@ class PHISanitizer:
         return result
     
     @staticmethod
-    def sanitize_list(data: List[Any]) -> List[Any]:
+    def sanitize_list(data: list[Any]) -> list[Any]:
         """
         Sanitize a list by redacting PHI in all string values.
         

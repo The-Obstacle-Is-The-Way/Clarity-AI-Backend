@@ -7,9 +7,10 @@ following the Strategy and Template Method patterns from GOF.
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class RuleEvaluationResult(BaseModel):
@@ -23,11 +24,11 @@ class RuleEvaluationResult(BaseModel):
         ..., 
         description="Confidence level of the rule evaluation (0-1)"
     )
-    details: Dict[str, Any] = Field(
+    details: dict[str, Any] = Field(
         default_factory=dict, 
         description="Additional details about the evaluation"
     )
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         None, 
         description="ISO timestamp when the rule was evaluated"
     )
@@ -56,7 +57,7 @@ class RuleTemplate(ABC):
         self.severity = severity
     
     @abstractmethod
-    async def evaluate(self, context: Dict[str, Any]) -> RuleEvaluationResult:
+    async def evaluate(self, context: dict[str, Any]) -> RuleEvaluationResult:
         """
         Evaluate the rule against the provided context.
         
@@ -83,7 +84,7 @@ class AlertRuleTemplate(RuleTemplate):
         description: str, 
         severity: str,
         alert_type: str,
-        recipients: List[str] = None
+        recipients: list[str] = None
     ):
         """
         Initialize an alert rule template.

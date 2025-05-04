@@ -7,13 +7,13 @@ no PHI is accidentally logged in plain text.
 """
 
 import os
-from typing import Dict, Any
+from typing import Any
 
 # Get log level from environment or default to INFO
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Define a standard logging configuration dictionary
-LOGGING_CONFIG: Dict[str, Any] = {
+LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -96,6 +96,6 @@ if not os.path.exists(log_dir):
         # Add file handlers to all loggers if we can create the log directory
         for logger_name in LOGGING_CONFIG["loggers"]:
             LOGGING_CONFIG["loggers"][logger_name]["handlers"].extend(["file_handler", "error_file_handler"])
-    except (OSError, IOError):
+    except OSError:
         # If we can't create log directory, just use console logging
         pass

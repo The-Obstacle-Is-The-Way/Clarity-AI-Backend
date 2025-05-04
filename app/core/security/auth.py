@@ -4,10 +4,8 @@ Authentication and authorization module.
 This module provides functions for user authentication and authorization.
 """
 
-from typing import Optional, Union, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from unittest.mock import MagicMock
 
 # Create a mock OAuth2 scheme for testing
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

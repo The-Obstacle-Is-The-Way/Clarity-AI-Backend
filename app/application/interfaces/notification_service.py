@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 # app/application/interfaces/notification_service.py
 # Interface for notification services
 # Following Dependency Inversion Principle and ensuring HIPAA compliance
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 
@@ -17,7 +16,7 @@ class NotificationService(ABC):
 
     @abstractmethod
     async def send_appointment_reminder(
-        self, recipient_id: UUID, appointment_data: Dict[str, Any]
+        self, recipient_id: UUID, appointment_data: dict[str, Any]
     ) -> bool:
         """
         Send an appointment reminder notification
@@ -56,7 +55,7 @@ class NotificationService(ABC):
         pass
 
     @abstractmethod
-    async def get_notification_preferences(self, user_id: UUID) -> Dict[str, Any]:
+    async def get_notification_preferences(self, user_id: UUID) -> dict[str, Any]:
         """
         Get notification preferences for a user
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Analytics API Endpoints
 
@@ -6,26 +5,39 @@ This module provides API endpoints for accessing analytics data from the NOVAMIN
 These endpoints follow HIPAA compliance guidelines and implement caching and rate limiting.
 """
 
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional
-from uuid import UUID
 import json
+from datetime import datetime, timedelta, timezone
+from typing import Any
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status, BackgroundTasks, Response, Request # Added Response and Request
+from fastapi import (  # Added Response and Request
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import JSONResponse
+
+from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
+
+# Ensure AnalyticsService is NOT imported at the top level
+# Import the specific use cases needed for event processing
+from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+from app.infrastructure.cache.redis_cache import RedisCache  # Removed get_cache_service
+from app.infrastructure.di.container import get_service  # Import the DI helper
 
 # Defer service import entirely
 # from app.domain.services.analytics_service import AnalyticsService 
 # Removed import of non-existent get_jwt_service
-from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access, verify_admin_access
-from app.infrastructure.cache.redis_cache import RedisCache # Removed get_cache_service
+from app.presentation.api.dependencies.auth import (
+    get_current_user,
+    verify_provider_access,
+)
 from app.presentation.api.dependencies.services import get_cache_service
-from app.infrastructure.di.container import get_service # Import the DI helper
-# Ensure AnalyticsService is NOT imported at the top level
-
-# Import the specific use cases needed for event processing
-from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
-from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
 
 # Create router
 _v1_router = APIRouter(
@@ -54,16 +66,16 @@ def get_analytics_service_dependency():
     # from app.domain.services.analytics_service import AnalyticsService # Example type hint import
     return get_service("app.domain.services.analytics_service.AnalyticsService")
 
-@_v1_router.get("/patient/{patient_id}/treatment-outcomes", response_model=Dict[str, Any])
+@_v1_router.get("/patient/{patient_id}/treatment-outcomes", response_model=dict[str, Any])
 async def get_patient_treatment_outcomes(
     patient_id: UUID,
     background_tasks: BackgroundTasks,
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=90)),
-    end_date: Optional[datetime] = Query(default=None),
+    end_date: datetime | None = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    user: Optional[Dict[str, Any]] = Depends(get_current_user)
-) -> Dict[str, Any]:
+    user: dict[str, Any] | None = Depends(get_current_user)
+) -> dict[str, Any]:
     """
     Get treatment outcomes analytics for a specific patient.
     
@@ -123,7 +135,7 @@ async def _process_treatment_outcomes(
     cache_service: RedisCache,
     patient_id: UUID, 
     start_date: datetime, 
-    end_date: Optional[datetime],
+    end_date: datetime | None,
     cache_key: str
 ):
     """
@@ -169,11 +181,11 @@ async def _process_treatment_outcomes(
         )
 
 
-@_v1_router.get("/status/{job_id}", response_model=Dict[str, Any])
+@_v1_router.get("/status/{job_id}", response_model=dict[str, Any])
 async def get_analytics_job_status(
     job_id: str,
     cache_service: RedisCache = Depends(get_cache_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Check the status of an asynchronous analytics job.
     
@@ -193,17 +205,17 @@ async def get_analytics_job_status(
     return status
 
 
-@_v1_router.get("/practice-metrics", response_model=Dict[str, Any])
+@_v1_router.get("/practice-metrics", response_model=dict[str, Any])
 async def get_practice_metrics(
     background_tasks: BackgroundTasks,
     start_date: datetime = Query(default=datetime.now(timezone.utc) - timedelta(days=30)),
-    end_date: Optional[datetime] = Query(default=None),
-    provider_id: Optional[UUID] = Query(default=None),
-    metric_type: Optional[str] = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    provider_id: UUID | None = Query(default=None),
+    metric_type: str | None = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    user: Optional[Dict[str, Any]] = Depends(get_current_user)
-) -> Dict[str, Any]:
+    user: dict[str, Any] | None = Depends(get_current_user)
+) -> dict[str, Any]:
     """
     Get practice-wide metrics and analytics.
     
@@ -257,9 +269,9 @@ async def _process_practice_metrics(
     analytics_service: Any, # Keep correct type here
     cache_service: RedisCache,
     start_date: datetime,
-    end_date: Optional[datetime],
-    provider_id: Optional[UUID],
-    metric_type: Optional[str],
+    end_date: datetime | None,
+    provider_id: UUID | None,
+    metric_type: str | None,
     cache_key: str
 ):
     """
@@ -307,14 +319,14 @@ async def _process_practice_metrics(
         )
 
 
-@_v1_router.get("/diagnosis-distribution", response_model=List[Dict[str, Any]])
+@_v1_router.get("/diagnosis-distribution", response_model=list[dict[str, Any]])
 async def get_diagnosis_distribution(
-    start_date: Optional[datetime] = Query(default=None),
-    end_date: Optional[datetime] = Query(default=None),
-    provider_id: Optional[UUID] = Query(default=None),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    provider_id: UUID | None = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Get the distribution of diagnoses across patients.
     
@@ -356,18 +368,18 @@ async def get_diagnosis_distribution(
     return results
 
 
-@_v1_router.get("/medications/{medication_name}/effectiveness", response_model=Dict[str, Any])
+@_v1_router.get("/medications/{medication_name}/effectiveness", response_model=dict[str, Any])
 async def get_medication_effectiveness(
     medication_name: str,
     background_tasks: BackgroundTasks,
-    diagnosis_code: Optional[str] = Query(default=None),
-    start_date: Optional[datetime] = Query(default=None),
-    end_date: Optional[datetime] = Query(default=None),
-    min_effectiveness_score: Optional[float] = Query(default=None),
+    diagnosis_code: str | None = Query(default=None),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+    min_effectiveness_score: float | None = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    user: Optional[Dict[str, Any]] = Depends(get_current_user)
-) -> Dict[str, Any]:
+    user: dict[str, Any] | None = Depends(get_current_user)
+) -> dict[str, Any]:
     """
     Analyze the effectiveness of a specific medication.
     
@@ -425,10 +437,10 @@ async def _process_medication_effectiveness(
     analytics_service: Any, # Keep correct type here
     cache_service: RedisCache,
     medication_name: str,
-    diagnosis_code: Optional[str],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
-    min_effectiveness_score: Optional[float],
+    diagnosis_code: str | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
+    min_effectiveness_score: float | None,
     cache_key: str
 ):
     """
@@ -478,17 +490,17 @@ async def _process_medication_effectiveness(
         )
 
 
-@_v1_router.get("/treatment-comparison/{diagnosis_code}", response_model=Dict[str, Any])
+@_v1_router.get("/treatment-comparison/{diagnosis_code}", response_model=dict[str, Any])
 async def get_treatment_comparison(
     diagnosis_code: str,
     background_tasks: BackgroundTasks,
-    treatments: List[str] = Query(...),
-    start_date: Optional[datetime] = Query(default=None),
-    end_date: Optional[datetime] = Query(default=None),
+    treatments: list[str] = Query(...),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-    user: Optional[Dict[str, Any]] = Depends(get_current_user)
-) -> Dict[str, Any]:
+    user: dict[str, Any] | None = Depends(get_current_user)
+) -> dict[str, Any]:
     """
     Compare the effectiveness of different treatments for a specific diagnosis.
     
@@ -543,9 +555,9 @@ async def _process_treatment_comparison(
     analytics_service: Any, # Keep correct type here
     cache_service: RedisCache,
     diagnosis_code: str,
-    treatments: List[str],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
+    treatments: list[str],
+    start_date: datetime | None,
+    end_date: datetime | None,
     cache_key: str
 ):
     """
@@ -593,11 +605,11 @@ async def _process_treatment_comparison(
         )
 
 
-@_v1_router.get("/patient-risk-stratification", response_model=List[Dict[str, Any]])
+@_v1_router.get("/patient-risk-stratification", response_model=list[dict[str, Any]])
 async def get_patient_risk_stratification(
     analytics_service: Any = Depends(get_analytics_service_dependency),
     cache_service: RedisCache = Depends(get_cache_service),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Stratify patients by risk level based on clinical data.
     
@@ -640,9 +652,9 @@ events_router = APIRouter(
 @events_router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 async def record_analytics_event(
     request: Request,
-    event_data: Dict[str, Any],
+    event_data: dict[str, Any],
     background_tasks: BackgroundTasks,
-    user: Optional[Dict[str, Any]] = Depends(get_current_user)
+    user: dict[str, Any] | None = Depends(get_current_user)
 ) -> Response:
     """
     Record an analytics event.
@@ -695,9 +707,9 @@ async def record_analytics_event(
 @events_router.post("/batch", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 async def record_analytics_batch(
     request: Request,
-    batch_data: Dict[str, List[Dict[str, Any]]],
+    batch_data: dict[str, list[dict[str, Any]]],
     background_tasks: BackgroundTasks,
-    user: Optional[Dict[str, Any]] = Depends(get_current_user),
+    user: dict[str, Any] | None = Depends(get_current_user),
 ) -> Response:
     """
     Record a batch of analytics events.

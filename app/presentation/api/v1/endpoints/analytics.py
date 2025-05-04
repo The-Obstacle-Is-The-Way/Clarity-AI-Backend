@@ -5,9 +5,10 @@ This module provides endpoints for retrieving analytics data related to
 patient treatment, outcomes, and clinical metrics.
 """
 
-from uuid import UUID
-from typing import Any
 import logging
+from typing import Any
+from uuid import UUID
+
 from fastapi import APIRouter
 
 # TODO: Import actual dependencies when implementing endpoints

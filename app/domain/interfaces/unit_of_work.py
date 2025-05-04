@@ -7,7 +7,7 @@ security requirements.
 """
 
 import abc
-from typing import Any, Dict, ContextManager
+from typing import Any, ContextManager
 
 
 class UnitOfWork(abc.ABC):
@@ -85,7 +85,7 @@ class UnitOfWork(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def set_metadata(self, metadata: Dict[str, Any]) -> None:
+    def set_metadata(self, metadata: dict[str, Any]) -> None:
         """
         Set metadata for the current transaction.
         

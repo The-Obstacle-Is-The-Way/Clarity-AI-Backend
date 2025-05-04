@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Analytics API schemas module.
 
@@ -7,24 +6,23 @@ endpoints in the Novamind Digital Twin platform.
 """
 
 from app.presentation.api.schemas.analytics.requests import (
+    AnalyticsAggregationRequest,
     AnalyticsEventCreateRequest,
     AnalyticsEventsBatchRequest,
-    AnalyticsAggregationRequest
 )
-
 from app.presentation.api.schemas.analytics.responses import (
+    AnalyticsAggregateResponse,
+    AnalyticsAggregatesListResponse,
     AnalyticsEventResponse,
     AnalyticsEventsBatchResponse,
-    AnalyticsAggregateResponse,
-    AnalyticsAggregatesListResponse
 )
 
 __all__ = [
-    'AnalyticsEventCreateRequest',
-    'AnalyticsEventsBatchRequest',
-    'AnalyticsAggregationRequest',
-    'AnalyticsEventResponse',
-    'AnalyticsEventsBatchResponse',
     'AnalyticsAggregateResponse',
     'AnalyticsAggregatesListResponse',
+    'AnalyticsAggregationRequest',
+    'AnalyticsEventCreateRequest',
+    'AnalyticsEventResponse',
+    'AnalyticsEventsBatchRequest',
+    'AnalyticsEventsBatchResponse',
 ]

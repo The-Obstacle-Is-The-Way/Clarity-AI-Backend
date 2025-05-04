@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Core Validation Utilities.
 
@@ -7,7 +6,7 @@ PHI detection logic has been moved to infrastructure.
 """
 
 import re
-from typing import List, Optional, Union, Dict, Any, Pattern
+from typing import Any
 
 
 def validate_us_phone(phone_number: str) -> bool:

@@ -4,7 +4,6 @@ Defines the contract for data access operations related to Biometric Rule entiti
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 # Import BiometricRule entity - use Any as fallback if import fails
@@ -19,12 +18,12 @@ class IBiometricRuleRepository(ABC):
     """Abstract base class for biometric rule data persistence operations."""
 
     @abstractmethod
-    async def get_by_id(self, rule_id: UUID) -> Optional[BiometricRule]:
+    async def get_by_id(self, rule_id: UUID) -> BiometricRule | None:
         """Retrieve a biometric rule by its unique ID."""
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID, limit: int = 100, skip: int = 0) -> List[BiometricRule]:
+    async def get_by_patient_id(self, patient_id: UUID, limit: int = 100, skip: int = 0) -> list[BiometricRule]:
         """Retrieve biometric rules for a specific patient."""
         pass
 
@@ -44,11 +43,11 @@ class IBiometricRuleRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[BiometricRule]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[BiometricRule]:
         """List all biometric rules with pagination."""
         pass
     
     @abstractmethod
-    async def get_active_rules(self, patient_id: Optional[UUID] = None) -> List[BiometricRule]:
+    async def get_active_rules(self, patient_id: UUID | None = None) -> list[BiometricRule]:
         """Retrieve active (enabled) rules, optionally filtered by patient."""
         pass

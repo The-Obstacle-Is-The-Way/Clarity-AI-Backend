@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Redis-backed Rate Limiter Service
 
@@ -10,11 +9,10 @@ import logging
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, Tuple, Union
 
-from fastapi import Request, Response, status
+from fastapi import Request, Response
 
-from app.infrastructure.cache.redis_cache import RedisCache, InMemoryFallback
+from app.infrastructure.cache.redis_cache import InMemoryFallback, RedisCache
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -117,8 +115,8 @@ class DistributedRateLimiter:
         self,
         identifier: str,
         limit_type: RateLimitType = RateLimitType.DEFAULT,
-        user_id: Optional[str] = None,
-    ) -> Tuple[bool, Dict[str, Union[int, float, str]]]:
+        user_id: str | None = None,
+    ) -> tuple[bool, dict[str, int | float | str]]:
         """
         Check if a request should be rate limited.
         
@@ -278,11 +276,11 @@ class DistributedRateLimiter:
             
         except Exception as e:
             # If something goes wrong, log and don't rate limit
-            logger.error(f"Error in rate limiter: {str(e)}")
-            return False, {"allowed": True, "reason": f"Error: {str(e)}"}
+            logger.error(f"Error in rate limiter: {e!s}")
+            return False, {"allowed": True, "reason": f"Error: {e!s}"}
     
     async def apply_rate_limit_headers(
-        self, response: Response, rate_limit_info: Dict[str, Union[int, float, str]]
+        self, response: Response, rate_limit_info: dict[str, int | float | str]
     ) -> None:
         """
         Apply rate limit headers to the response.
@@ -308,8 +306,8 @@ class DistributedRateLimiter:
         self,
         request: Request,
         limit_type: RateLimitType = RateLimitType.DEFAULT,
-        user_id: Optional[str] = None,
-    ) -> Tuple[bool, Dict[str, Union[int, float, str]]]:
+        user_id: str | None = None,
+    ) -> tuple[bool, dict[str, int | float | str]]:
         """
         Process a request for rate limiting.
         
@@ -348,7 +346,7 @@ class DistributedRateLimiter:
 # rate_limiter = DistributedRateLimiter() # COMMENTED OUT: Avoid module-level instantiation
 
 # Singleton instance holder
-_default_rate_limiter: Optional[DistributedRateLimiter] = None
+_default_rate_limiter: DistributedRateLimiter | None = None
 
 def get_rate_limiter() -> DistributedRateLimiter:
     """

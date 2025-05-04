@@ -3,26 +3,23 @@ Domain entity representing a clinical Appointment.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, InitVar
-from datetime import datetime, timedelta, UTC
-import time as _time  # Make *time* available to external test modules
 # ---------------------------------------------------------------------------
 # Export *time* into builtins so test modules that naively call ``time.sleep``
 # without importing the module themselves still succeed.  This mirrors the
 # behaviour found in some legacy parts of the code‑base and keeps full
 # backwards‑compatibility with the existing test‑suite.
 # ---------------------------------------------------------------------------
-
 import builtins as _builtins
+import time as _time  # Make *time* available to external test modules
+from dataclasses import InitVar, dataclass, field
+from datetime import UTC, datetime, timedelta
 
 if not hasattr(_builtins, "time"):
     _builtins.time = _time
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from app.domain.entities.base_entity import BaseEntity
-
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -89,9 +86,9 @@ class Appointment(BaseEntity):
 
     status: AppointmentStatus = AppointmentStatus.SCHEDULED
     priority: AppointmentPriority = AppointmentPriority.NORMAL
-    notes: Optional[str] = None
-    reason: Optional[str] = None  # e.g., "Routine Check‑up"
-    location: Optional[str] = None  # e.g. "Telehealth", "Clinic Room 3"
+    notes: str | None = None
+    reason: str | None = None  # e.g., "Routine Check‑up"
+    location: str | None = None  # e.g. "Telehealth", "Clinic Room 3"
 
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -109,13 +106,13 @@ class Appointment(BaseEntity):
     # on the instance.  We map its value into ``updated_at`` during
     # ``__post_init__``.  This keeps the public surface fully
     # backwards‑compatible while eliminating state duplication.
-    last_updated: InitVar[Optional[datetime]] = None
+    last_updated: InitVar[datetime | None] = None
 
     # ------------------------------------------------------------------
     # Validation & helpers
     # ------------------------------------------------------------------
 
-    def __post_init__(self, last_updated: Optional[datetime] = None) -> None:  # noqa: C901 (acceptable complexity)
+    def __post_init__(self, last_updated: datetime | None = None) -> None:
         """Validate invariants and normalise timestamps."""
 
         # 1. Temporal invariant – end must be strictly after start.
@@ -175,7 +172,7 @@ class Appointment(BaseEntity):
         self.status = new_status
         self.touch()
 
-    def reschedule(self, new_start_time: datetime, new_end_time: Optional[datetime] = None) -> None:
+    def reschedule(self, new_start_time: datetime, new_end_time: datetime | None = None) -> None:
         """Move the appointment while maintaining its original duration."""
 
         duration = new_end_time - new_start_time if new_end_time else self.end_time - self.start_time
@@ -203,16 +200,7 @@ class Appointment(BaseEntity):
 
     def __str__(self) -> str:  # pragma: no cover – string repr is for humans
         return (
-            "Appointment<{}> pid={} prov={} {} type={} status={} {}–{}".format(
-                self.id,
-                self.patient_id,
-                self.provider_id,
-                self.created_at.date(),
-                self.appointment_type.value,
-                self.status.value,
-                self.start_time.isoformat(),
-                self.end_time.isoformat(),
-            )
+            f"Appointment<{self.id}> pid={self.patient_id} prov={self.provider_id} {self.created_at.date()} type={self.appointment_type.value} status={self.status.value} {self.start_time.isoformat()}–{self.end_time.isoformat()}"
         )
 
     # For the purpose of the unit tests :pymeth:`__repr__` can simply alias

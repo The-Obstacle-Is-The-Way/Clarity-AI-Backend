@@ -6,7 +6,7 @@ following clean architecture principles with proper domain abstractions.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import Any
 from uuid import UUID
 
 
@@ -19,7 +19,7 @@ class BiometricAlertTemplateRepository(ABC):
     """
     
     @abstractmethod
-    async def get_all_templates(self) -> List[Dict[str, Any]]:
+    async def get_all_templates(self) -> list[dict[str, Any]]:
         """
         Retrieve all available biometric alert templates.
         
@@ -32,7 +32,7 @@ class BiometricAlertTemplateRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_template_by_id(self, template_id: UUID) -> Optional[Dict[str, Any]]:
+    async def get_template_by_id(self, template_id: UUID) -> dict[str, Any] | None:
         """
         Retrieve a template by its ID.
         
@@ -48,7 +48,7 @@ class BiometricAlertTemplateRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_templates_by_category(self, category: str) -> List[Dict[str, Any]]:
+    async def get_templates_by_category(self, category: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by category.
         
@@ -64,7 +64,7 @@ class BiometricAlertTemplateRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_templates_by_metric_type(self, metric_type: str) -> List[Dict[str, Any]]:
+    async def get_templates_by_metric_type(self, metric_type: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by metric type.
         
@@ -80,7 +80,7 @@ class BiometricAlertTemplateRepository(ABC):
         pass
     
     @abstractmethod
-    async def save_template(self, template: Dict[str, Any]) -> Dict[str, Any]:
+    async def save_template(self, template: dict[str, Any]) -> dict[str, Any]:
         """
         Save a template definition.
         

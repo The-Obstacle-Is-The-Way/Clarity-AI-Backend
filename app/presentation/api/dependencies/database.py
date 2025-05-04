@@ -5,7 +5,8 @@ This module provides FastAPI dependency functions for database access,
 following clean architecture principles with proper dependency injection patterns.
 """
 
-from typing import Annotated, AsyncGenerator, Callable, Type, TypeVar
+from collections.abc import AsyncGenerator, Callable
+from typing import Annotated, TypeVar
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +33,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-def get_repository(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
+def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     """
     Factory function that creates a dependency for getting a repository instance.
     

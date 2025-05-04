@@ -6,7 +6,7 @@ that analyze patient data to provide clinical insights and predictions.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from app.core.domain.entities.digital_twin import DigitalTwin
 from app.core.domain.entities.patient import Patient
@@ -34,10 +34,10 @@ class PATInterface(ABC):
     async def analyze_patient(
         self, 
         patient_id: str, 
-        data: Dict[str, Any],
+        data: dict[str, Any],
         include_risk_factors: bool = True,
         include_recommendations: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze patient data to extract clinical insights.
         
@@ -58,8 +58,8 @@ class PATInterface(ABC):
         patient_id: str,
         risk_type: str,
         timeframe_days: int,
-        data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Predict specific risk factors for a patient.
         
@@ -78,7 +78,7 @@ class PATInterface(ABC):
     async def create_digital_twin(
         self, 
         patient: Patient,
-        include_features: List[str] = None
+        include_features: list[str] = None
     ) -> DigitalTwin:
         """
         Create a digital twin model for a patient.
@@ -96,7 +96,7 @@ class PATInterface(ABC):
     async def update_digital_twin(
         self,
         digital_twin_id: str,
-        new_data: Dict[str, Any]
+        new_data: dict[str, Any]
     ) -> DigitalTwin:
         """
         Update an existing digital twin with new patient data.
@@ -111,7 +111,7 @@ class PATInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the underlying models used by the PAT service.
         

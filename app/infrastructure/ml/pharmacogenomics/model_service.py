@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pharmacogenomics Model Service for the NOVAMIND Digital Twin.
 
@@ -8,20 +7,15 @@ based on genetic markers, following Clean Architecture principles and ensuring
 HIPAA compliance.
 """
 
-import asyncio
-import json
 import logging
 import os
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Union
+from datetime import datetime
+from typing import Any
 from uuid import UUID
-
-import numpy as np
-import pandas as pd
 
 from app.core.exceptions.base_exceptions import ModelExecutionError
 from app.domain.exceptions import ValidationError
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.ml.pharmacogenomics.treatment_model import PharmacogenomicsModel
 
 
@@ -38,9 +32,9 @@ class PharmacogenomicsService:
     def __init__(
         self,
         model_dir: str,
-        model_path: Optional[str] = None,
-        gene_markers: Optional[List[str]] = None,
-        medications: Optional[List[str]] = None,
+        model_path: str | None = None,
+        gene_markers: list[str] | None = None,
+        medications: list[str] | None = None,
     ):
         """
         Initialize the pharmacogenomics service.
@@ -90,9 +84,9 @@ class PharmacogenomicsService:
     async def predict_medication_responses(
         self,
         patient_id: UUID,
-        patient_data: Dict[str, Any],
-        medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any],
+        medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Predict patient responses to psychiatric medications.
 
@@ -142,14 +136,14 @@ class PharmacogenomicsService:
             return predictions
 
         except Exception as e:
-            logging.error(f"Error predicting medication responses: {str(e)}")
+            logging.error(f"Error predicting medication responses: {e!s}")
             raise ModelExecutionError(
-                f"Failed to predict medication responses: {str(e)}"
+                f"Failed to predict medication responses: {e!s}"
             )
 
     async def _generate_medication_insights(
-        self, medication_predictions: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, medication_predictions: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Generate insights from medication predictions.
 
@@ -213,8 +207,8 @@ class PharmacogenomicsService:
         return insights
 
     async def analyze_gene_medication_interactions(
-        self, patient_id: UUID, patient_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Analyze interactions between patient's genetic markers and medications.
 
@@ -264,14 +258,14 @@ class PharmacogenomicsService:
             return interactions
 
         except Exception as e:
-            logging.error(f"Error analyzing gene-medication interactions: {str(e)}")
+            logging.error(f"Error analyzing gene-medication interactions: {e!s}")
             raise ModelExecutionError(
-                f"Failed to analyze gene-medication interactions: {str(e)}"
+                f"Failed to analyze gene-medication interactions: {e!s}"
             )
 
     async def _generate_interaction_recommendations(
-        self, interactions: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, interactions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Generate recommendations based on gene-medication interactions.
 
@@ -336,8 +330,8 @@ class PharmacogenomicsService:
         return recommendations
 
     async def predict_side_effects(
-        self, patient_id: UUID, patient_data: Dict[str, Any], medications: List[str]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any], medications: list[str]
+    ) -> dict[str, Any]:
         """
         Predict potential side effects for specified medications.
 
@@ -390,12 +384,12 @@ class PharmacogenomicsService:
             }
 
         except Exception as e:
-            logging.error(f"Error predicting side effects: {str(e)}")
-            raise ModelExecutionError(f"Failed to predict side effects: {str(e)}")
+            logging.error(f"Error predicting side effects: {e!s}")
+            raise ModelExecutionError(f"Failed to predict side effects: {e!s}")
 
     async def _identify_common_side_effects(
-        self, side_effect_predictions: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, side_effect_predictions: dict[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Identify common side effects across multiple medications.
 
@@ -446,9 +440,9 @@ class PharmacogenomicsService:
 
     async def _generate_side_effect_insights(
         self,
-        side_effect_predictions: Dict[str, Dict[str, Any]],
-        common_effects: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        side_effect_predictions: dict[str, dict[str, Any]],
+        common_effects: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         """
         Generate insights from side effect predictions.
 
@@ -542,10 +536,10 @@ class PharmacogenomicsService:
     async def recommend_treatment_plan(
         self,
         patient_id: UUID,
-        patient_data: Dict[str, Any],
+        patient_data: dict[str, Any],
         diagnosis: str,
-        current_medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        current_medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Recommend a personalized treatment plan based on genetic markers and diagnosis.
 
@@ -654,17 +648,17 @@ class PharmacogenomicsService:
             }
 
         except Exception as e:
-            logging.error(f"Error recommending treatment plan: {str(e)}")
-            raise ModelExecutionError(f"Failed to recommend treatment plan: {str(e)}")
+            logging.error(f"Error recommending treatment plan: {e!s}")
+            raise ModelExecutionError(f"Failed to recommend treatment plan: {e!s}")
 
     async def _generate_treatment_recommendations(
         self,
         diagnosis: str,
-        diagnosis_meds: Dict[str, List[str]],
-        predictions: Dict[str, Any],
-        interactions: Dict[str, Any],
-        current_medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        diagnosis_meds: dict[str, list[str]],
+        predictions: dict[str, Any],
+        interactions: dict[str, Any],
+        current_medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate treatment recommendations based on predictions and interactions.
 
@@ -852,7 +846,7 @@ class PharmacogenomicsService:
 
         return {"by_line": recommendations, "summary": summary}
 
-    def get_service_info(self) -> Dict[str, Any]:
+    def get_service_info(self) -> dict[str, Any]:
         """
         Get information about the service.
 

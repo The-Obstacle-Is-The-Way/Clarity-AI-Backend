@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Digital Twin State Enumeration.
 

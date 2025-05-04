@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 User Repository Provider for FastAPI.
 
@@ -8,10 +7,10 @@ ensuring proper handling of database connections and avoiding response model iss
 
 from fastapi import Depends
 
-from app.domain.repositories.user_repository import UserRepository
-from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
 from app.core.utils.logging import get_logger
+from app.domain.repositories.user_repository import UserRepository
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
+from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 
 logger = get_logger(__name__)
 

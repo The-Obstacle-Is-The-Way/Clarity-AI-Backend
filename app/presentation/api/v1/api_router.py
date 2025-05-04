@@ -9,13 +9,13 @@ from fastapi import APIRouter
 
 # Import individual endpoint routers
 from .endpoints import analytics, auth
+
 # Import routers from subdirectories (assuming a 'router' object in each)
 from .endpoints.actigraphy import router as actigraphy_router
 from .endpoints.biometric import router as biometric_router
 from .endpoints.biometric_alerts import router as biometric_alerts_router
 from .endpoints.digital_twins import router as digital_twins_router
 from .endpoints.xgboost import router as xgboost_router
-
 
 # Create the main router for API v1
 api_v1_router = APIRouter()

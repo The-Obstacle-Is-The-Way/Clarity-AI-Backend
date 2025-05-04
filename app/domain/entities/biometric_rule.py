@@ -3,10 +3,11 @@ Domain entities related to Biometric Rules for the Digital Twin.
 """
 from dataclasses import dataclass, field
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
 from enum import Enum
-from typing import List, Any, Optional, Dict
+from typing import Any
 from uuid import UUID, uuid4
+
+from app.domain.utils.datetime_utils import now_utc
 
 
 class AlertPriority(Enum):
@@ -75,13 +76,13 @@ class RuleCondition:
     handles both patterns seamlessly.
     """
     # We'll declare metric_name as Optional to handle initialization patterns where data_type is used instead
-    metric_name: Optional[str] = None  # e.g., 'heart_rate', 'phq9_score'
+    metric_name: str | None = None  # e.g., 'heart_rate', 'phq9_score'
     operator: RuleOperator = RuleOperator.GREATER_THAN  # Default for tests
     threshold_value: Any = None  # Can be numeric, string, etc. depending on metric
-    data_type: Optional[str] = None  # Used by tests instead of metric_name
+    data_type: str | None = None  # Used by tests instead of metric_name
     # Additional parameters for advanced condition configuration
-    time_window_hours: Optional[int] = None  # Time window for aggregation (e.g., last 24h)
-    aggregation_method: Optional[str] = None  # e.g., 'avg', 'max', 'min', 'count'
+    time_window_hours: int | None = None  # Time window for aggregation (e.g., last 24h)
+    aggregation_method: str | None = None  # e.g., 'avg', 'max', 'min', 'count'
     
     def __post_init__(self):
         """Validate and normalize the condition data after initialization."""
@@ -122,15 +123,15 @@ class BiometricRule:
     """
     name: str
     id: UUID = field(default_factory=uuid4)
-    description: Optional[str] = None
-    patient_id: Optional[UUID] = None  # Null for global rules
-    provider_id: Optional[UUID] = None # Who created/manages the rule
+    description: str | None = None
+    patient_id: UUID | None = None  # Null for global rules
+    provider_id: UUID | None = None # Who created/manages the rule
     is_active: bool = True
     priority: AlertPriority = AlertPriority.MEDIUM  # Modern field name
-    conditions: List[RuleCondition] = field(default_factory=list)
+    conditions: list[RuleCondition] = field(default_factory=list)
     logical_operator: LogicalOperator = LogicalOperator.AND # How to combine conditions
     # For tests that use data_type instead of a list of conditions
-    data_type: Optional[str] = None
+    data_type: str | None = None
     
     def __init__(self, **kwargs):
         """Enhanced initialization to handle test/domain parameter mapping.
@@ -157,7 +158,7 @@ class BiometricRule:
         self.is_active = False
         return self
     
-    def update_conditions(self, conditions: List[Dict], logical_operator: Optional[LogicalOperator] = None):
+    def update_conditions(self, conditions: list[dict], logical_operator: LogicalOperator | None = None):
         """Update the conditions and logical operator for this rule.
         
         This is a domain behavior method expected by tests and the ClinicalRuleEngine.

@@ -8,7 +8,9 @@ access to resources based on user roles.
 # Import from correct file name using the correct class name
 # from app.infrastructure.security.rbac.rbac import RoleBasedAccessControl
 # from app.infrastructure.security.rbac.rbac_service import RoleBasedAccessControl
-from app.infrastructure.security.rbac.rbac_service import RBACService # Import the actual service class
+from app.infrastructure.security.rbac.rbac_service import (
+    RBACService,  # Import the actual service class
+)
 
 # Imports seem potentially incorrect - RoleAccessManager might be in rbac_service? RoleManager in roles.py?
 # from app.infrastructure.security.rbac.role_access import RoleAccessManager 

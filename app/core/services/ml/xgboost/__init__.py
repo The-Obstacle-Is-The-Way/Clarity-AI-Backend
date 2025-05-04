@@ -9,34 +9,31 @@ The module is designed following the Strategy pattern, with multiple
 implementations (AWS, mock) that can be selected based on configuration.
 """
 
-import os
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, Optional
 
-# Re-export interfaces and enums
-from app.core.services.ml.xgboost.interface import (
-    XGBoostInterface,
-    ModelType,
-)
+# Re-export implementations for direct access if needed
+from app.core.services.ml.xgboost.aws import AWSXGBoostService
 
 # Import enums for type information
 from app.core.services.ml.xgboost.enums import (
     PredictionType,
+    ResponseLevel,
     RiskLevel,
     TreatmentCategory,
-    ResponseLevel
 )
 
 # Re-export exceptions
 from app.core.services.ml.xgboost.exceptions import (
-    XGBoostServiceError,
-    ValidationError,
+    ConfigurationError,
     DataPrivacyError,
-    ResourceNotFoundError,
     ModelNotFoundError,
     PredictionError,
+    ResourceNotFoundError,
     ServiceConnectionError,
-    ConfigurationError
+    ValidationError,
+    XGBoostServiceError,
 )
 
 # Re-export factory functions
@@ -44,10 +41,12 @@ from app.core.services.ml.xgboost.factory import (
     get_xgboost_service,
 )
 
-# Re-export implementations for direct access if needed
-from app.core.services.ml.xgboost.aws import AWSXGBoostService
+# Re-export interfaces and enums
+from app.core.services.ml.xgboost.interface import (
+    ModelType,
+    XGBoostInterface,
+)
 from app.core.services.ml.xgboost.mock import MockXGBoostService
-
 
 # Logger for this module
 logger = logging.getLogger(__name__)
@@ -146,12 +145,12 @@ def create_xgboost_service_from_env() -> XGBoostInterface:
             raise
         else:
             raise ConfigurationError(
-                f"Failed to create XGBoost service: {str(e)}",
+                f"Failed to create XGBoost service: {e!s}",
                 details=str(e)
             ) from e
 
 
-def _get_aws_config_from_env() -> Dict[str, Any]:
+def _get_aws_config_from_env() -> dict[str, Any]:
     """
     Get AWS configuration from environment variables.
     
@@ -204,7 +203,7 @@ def _get_aws_config_from_env() -> Dict[str, Any]:
         ) from e
 
 
-def _get_mock_config_from_env() -> Dict[str, Any]:
+def _get_mock_config_from_env() -> dict[str, Any]:
     """
     Get mock configuration from environment variables.
     

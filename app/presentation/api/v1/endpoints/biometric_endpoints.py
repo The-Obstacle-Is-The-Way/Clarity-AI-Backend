@@ -8,21 +8,21 @@ and audit logging.
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 
 from app.core.domain.entities.biometric import Biometric, BiometricType
 from app.core.domain.entities.user import User
-from app.core.errors.security_exceptions import InvalidCredentialsError 
+from app.core.errors.security_exceptions import InvalidCredentialsError
 from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
-from app.presentation.api.dependencies.auth import get_current_active_user 
+from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.dependencies.rate_limiter import sensitive_rate_limit
 from app.presentation.api.schemas.biometric import (
+    BiometricBatchUploadRequest,
     BiometricCreateRequest,
     BiometricResponse,
     BiometricSummaryResponse,
     BiometricUpdateRequest,
-    BiometricBatchUploadRequest
 )
 from app.presentation.api.v1.dependencies.biometric import get_biometric_service
 

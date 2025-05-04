@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 JWT (JSON Web Token) Service for authentication.
 
@@ -6,28 +5,27 @@ This service handles token creation, validation, and management according to
 HIPAA security standards and best practices for healthcare applications.
 """
 
-import time
 import uuid
-import secrets
-from typing import Dict, Optional, Any, List, Tuple, Union
 from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError, ExpiredSignatureError
-from fastapi import Depends, HTTPException, status
-from pydantic import BaseModel
+from typing import Any
 from uuid import UUID
 
+from jose import ExpiredSignatureError, JWTError, jwt
+from pydantic import BaseModel
+
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.domain.exceptions import AuthenticationError
 from app.domain.entities.user import User
+from app.domain.exceptions import AuthenticationError
+
 try:
     from app.core.interfaces.repositories.user_repository import IUserRepository
 except ImportError:
     IUserRepository = Any
-from app.config.settings import Settings, get_settings
-from app.infrastructure.logging.logger import get_logger
+from app.config.settings import Settings
 
 # Import necessary exceptions from domain layer
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -43,9 +41,9 @@ class TokenPayload(BaseModel):
     iat: int        # Issued at time (Unix timestamp)
     jti: str | UUID # JWT ID
     iss: str | None = None # Issuer
-    aud: str | List[str] | None = None # Audience
+    aud: str | list[str] | None = None # Audience
     type: str       # Token type (e.g., 'access', 'refresh')
-    roles: List[str] | None = [] # User roles
+    roles: list[str] | None = [] # User roles
     # Add other custom claims as needed
     # permissions: List[str] | None = []
 
@@ -59,7 +57,7 @@ class JWTService(IJwtService):
     Implements IJwtService.
     """
     
-    def __init__(self, settings: Settings, user_repository: Optional[IUserRepository] = None):
+    def __init__(self, settings: Settings, user_repository: IUserRepository | None = None):
         """
         Initialize the JWT service with application settings.
         
@@ -94,16 +92,16 @@ class JWTService(IJwtService):
 
         # Token blacklist for revoked tokens
         # In production, this should be stored in Redis or similar
-        self._token_blacklist: Dict[str, datetime] = {}
+        self._token_blacklist: dict[str, datetime] = {}
         
         logger.info(f"JWT service initialized with algorithm {self.algorithm}")
 
     async def create_access_token(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         *,
-        expires_delta: Optional[timedelta] = None,
-        expires_delta_minutes: Optional[int] = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
     ) -> str:
         """
         Create a new access token.
@@ -125,10 +123,10 @@ class JWTService(IJwtService):
 
     async def create_refresh_token(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         *,
-        expires_delta: Optional[timedelta] = None,
-        expires_delta_minutes: Optional[int] = None,
+        expires_delta: timedelta | None = None,
+        expires_delta_minutes: int | None = None,
     ) -> str:
         """
         Create a new refresh token.
@@ -151,7 +149,7 @@ class JWTService(IJwtService):
 
     async def _create_token(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         token_type: str,
         expires_delta_minutes: int,
     ) -> str:
@@ -215,7 +213,7 @@ class JWTService(IJwtService):
         # Check blacklist first
         logger.debug("Checking token against blacklist...")
         if self._is_token_blacklisted(token):
-            logger.warning(f"Attempted use of blacklisted token.")
+            logger.warning("Attempted use of blacklisted token.")
             raise AuthenticationError("Token has been revoked.") # Or a specific RevokedTokenException
 
         try:
@@ -264,7 +262,7 @@ class JWTService(IJwtService):
 
         return payload
 
-    async def get_user_from_token(self, token: str) -> Optional[User]:
+    async def get_user_from_token(self, token: str) -> User | None:
         """Decode the token and fetch the user from the repository."""
         logger.debug("Attempting to get user from token...")
         if not self.user_repository:
@@ -272,7 +270,7 @@ class JWTService(IJwtService):
             return None
         
         try:
-            logger.debug(f"Decoding token to extract user payload...")
+            logger.debug("Decoding token to extract user payload...")
             payload: TokenPayload = await self.decode_token(token) # Re-uses the validation logic
             logger.debug(f"Token decoded successfully. Payload: {payload}")
 
@@ -308,7 +306,7 @@ class JWTService(IJwtService):
             logger.exception(f"Unexpected error retrieving user from token: {e}")
             raise AuthenticationError("Failed to retrieve user information from token.")
 
-    def get_token_payload_subject(self, payload: TokenPayload) -> Optional[str]:
+    def get_token_payload_subject(self, payload: TokenPayload) -> str | None:
         """Extracts the subject ('sub') claim from the token payload.
         Returns None if the subject is missing or invalid.
         """
@@ -382,7 +380,7 @@ class JWTService(IJwtService):
             except KeyError:
                 pass # Already removed
 
-    def _make_payload_serializable(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _make_payload_serializable(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Ensure all values in payload are JSON serializable (e.g., converts UUID)."""
         serializable = {}
         for key, value in payload.items():

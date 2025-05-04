@@ -6,7 +6,7 @@ principles. These exceptions represent domain-specific error conditions related
 to security features like authentication, authorization, and access control.
 """
 
-from typing import Optional
+
 from app.core.errors.base_exceptions import BaseAppException
 
 
@@ -22,19 +22,19 @@ class InvalidCredentialsError(SecurityException):
     This could be due to incorrect password, expired token, 
     or malformed authentication data.
     """
-    def __init__(self, message: str = "Invalid authentication credentials provided", detail: Optional[dict] = None):
+    def __init__(self, message: str = "Invalid authentication credentials provided", detail: dict | None = None):
         super().__init__(message, detail=detail)
 
 
 class TokenExpiredError(InvalidCredentialsError):
     """Exception raised when an authentication token has expired."""
-    def __init__(self, message: str = "Authentication token has expired", detail: Optional[dict] = None):
+    def __init__(self, message: str = "Authentication token has expired", detail: dict | None = None):
         super().__init__(message, detail=detail)
 
 
 class TokenValidationError(InvalidCredentialsError):
     """Exception raised when token validation fails for reasons other than expiration."""
-    def __init__(self, message: str = "Authentication token validation failed", detail: Optional[dict] = None):
+    def __init__(self, message: str = "Authentication token validation failed", detail: dict | None = None):
         super().__init__(message, detail=detail)
 
 
@@ -45,8 +45,8 @@ class InsufficientPermissionsError(SecurityException):
     This represents an authorization failure rather than an authentication failure.
     """
     def __init__(self, message: str = "Insufficient permissions to perform this action", 
-                 required_permissions: Optional[list] = None, 
-                 detail: Optional[dict] = None):
+                 required_permissions: list | None = None, 
+                 detail: dict | None = None):
         if required_permissions:
             if detail is None:
                 detail = {}
@@ -56,15 +56,15 @@ class InsufficientPermissionsError(SecurityException):
 
 class SessionExpiredError(SecurityException):
     """Exception raised when a user's session has expired (HIPAA compliance)."""
-    def __init__(self, message: str = "Your session has expired, please login again", detail: Optional[dict] = None):
+    def __init__(self, message: str = "Your session has expired, please login again", detail: dict | None = None):
         super().__init__(message, detail=detail)
 
 
 class RateLimitExceededError(SecurityException):
     """Exception raised when API rate limits are exceeded."""
     def __init__(self, message: str = "Rate limit exceeded", 
-                 retry_after: Optional[int] = None,
-                 detail: Optional[dict] = None):
+                 retry_after: int | None = None,
+                 detail: dict | None = None):
         if retry_after:
             if detail is None:
                 detail = {}

@@ -7,7 +7,7 @@ across different model implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 
 class BaseMLModel(ABC):
@@ -43,7 +43,7 @@ class BaseMLModel(ABC):
         pass
     
     @abstractmethod
-    async def predict(self, input_data: Any) -> Dict[str, Any]:
+    async def predict(self, input_data: Any) -> dict[str, Any]:
         """
         Make predictions using the model.
         
@@ -59,7 +59,7 @@ class BaseMLModel(ABC):
         pass
     
     @abstractmethod
-    async def evaluate(self, test_data: Any) -> Dict[str, float]:
+    async def evaluate(self, test_data: Any) -> dict[str, float]:
         """
         Evaluate the model on test data.
         
@@ -98,7 +98,7 @@ class BaseMLModel(ABC):
         pass
     
     @abstractmethod
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """
         Get metadata about the model.
         

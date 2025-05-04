@@ -6,14 +6,15 @@ based on the authenticated user attached to `request.state.user`.
 """
 
 import logging
-from typing import List, Sequence
+from collections.abc import Sequence
 
-from fastapi import Request, HTTPException, status, Depends
+from fastapi import Depends, HTTPException, Request, status
+
+from app.domain.entities.user import User  # Import User entity
 
 # Use absolute paths for services and domain types
 from app.infrastructure.security.rbac.rbac_service import RBACService
-from app.infrastructure.security.rbac.roles import Role # Import Role enum
-from app.domain.entities.user import User # Import User entity
+from app.infrastructure.security.rbac.roles import Role  # Import Role enum
 
 # This assumes RBACService is provided via FastAPI's dependency injection system.
 # You would need to setup a provider for RBACService in your main application.

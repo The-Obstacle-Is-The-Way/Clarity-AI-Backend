@@ -3,7 +3,7 @@ Domain entity representing metadata associated with a machine learning predictio
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -16,7 +16,7 @@ class PredictionMetadata(BaseModel):
     model_id: str = Field(..., description="Identifier of the model used for the prediction.")
     model_version: str = Field(..., description="Version of the model used.")
     timestamp: datetime = Field(..., description="Timestamp when the prediction was generated.")
-    input_features_summary: Optional[Dict[str, Any]] = Field(
+    input_features_summary: dict[str, Any] | None = Field(
         None, description="Summary or hash of the input features used."
     )
     # Add other relevant metadata fields as needed

@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 # app/application/use_cases/appointment/create_appointment.py
 # Placeholder for the create appointment use case
 # This use case handles the business logic for creating a new appointment in the system
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from app.domain.entities.appointment import Appointment
@@ -30,7 +28,7 @@ class CreateAppointmentUseCase:
         start_time: datetime,
         end_time: datetime,
         appointment_type: str,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> Appointment:
         """
         Execute the use case to create a new appointment

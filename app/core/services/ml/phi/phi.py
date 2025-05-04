@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PHI Detection Service Implementation.
 
@@ -8,9 +7,7 @@ Protected Health Information (PHI) to ensure HIPAA compliance.
 
 import json
 import re
-from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Pattern, Set, Tuple, Union
+from typing import Any
 
 from app.core.exceptions import (
     InvalidConfigurationError,
@@ -19,7 +16,7 @@ from app.core.exceptions import (
 )
 from app.core.services.ml.interface import PHIDetectionInterface
 from app.core.utils.logging import get_logger
-
+from app.domain.utils.datetime_utils import now_utc
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -42,7 +39,7 @@ class MockPHIDetection(PHIDetectionInterface):
         self._detection_levels = {"strict", "moderate", "relaxed"}
         self._default_level = "moderate"
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -84,10 +81,10 @@ class MockPHIDetection(PHIDetectionInterface):
             logger.info("Mock PHI detection service initialized")
             
         except Exception as e:
-            logger.error(f"Failed to initialize mock PHI detection service: {str(e)}")
+            logger.error(f"Failed to initialize mock PHI detection service: {e!s}")
             self._initialized = False
             self._config = None
-            raise InvalidConfigurationError(f"Failed to initialize mock PHI detection service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize mock PHI detection service: {e!s}")
     
     def _load_default_patterns(self) -> None:
         """Load default PHI detection patterns."""
@@ -199,8 +196,8 @@ class MockPHIDetection(PHIDetectionInterface):
     def detect_phi(
         self,
         text: str,
-        detection_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        detection_level: str | None = None
+    ) -> dict[str, Any]:
         """
         Detect PHI in text.
         
@@ -269,8 +266,8 @@ class MockPHIDetection(PHIDetectionInterface):
         self,
         text: str,
         replacement: str = "[REDACTED]",
-        detection_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        detection_level: str | None = None
+    ) -> dict[str, Any]:
         """
         Redact PHI from text.
         
@@ -351,7 +348,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
             self._openai_available = False
             logger.warning("OpenAI package not installed. Install with: pip install openai>=1.0.0")
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -407,13 +404,13 @@ class OpenAIPHIDetection(PHIDetectionInterface):
             logger.info("OpenAI PHI detection service initialized")
             
         except Exception as e:
-            logger.error(f"Failed to initialize OpenAI PHI detection service: {str(e)}")
+            logger.error(f"Failed to initialize OpenAI PHI detection service: {e!s}")
             self._initialized = False
             self._config = None
             self._client = None
-            raise InvalidConfigurationError(f"Failed to initialize OpenAI PHI detection service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize OpenAI PHI detection service: {e!s}")
     
-    def _get_config_value(self, key: str) -> Optional[str]:
+    def _get_config_value(self, key: str) -> str | None:
         """
         Get configuration value from config or environment variable.
         
@@ -445,8 +442,8 @@ class OpenAIPHIDetection(PHIDetectionInterface):
             # Test API connection with a minimal request
             self._client.models.list(limit=1)
         except Exception as e:
-            logger.error(f"Failed to connect to OpenAI API: {str(e)}")
-            raise InvalidConfigurationError(f"Failed to connect to OpenAI API: {str(e)}")
+            logger.error(f"Failed to connect to OpenAI API: {e!s}")
+            raise InvalidConfigurationError(f"Failed to connect to OpenAI API: {e!s}")
     
     def is_healthy(self) -> bool:
         """
@@ -482,8 +479,8 @@ class OpenAIPHIDetection(PHIDetectionInterface):
     def detect_phi(
         self,
         text: str,
-        detection_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        detection_level: str | None = None
+    ) -> dict[str, Any]:
         """
         Detect PHI in text.
         
@@ -560,7 +557,7 @@ class OpenAIPHIDetection(PHIDetectionInterface):
                 return self._fallback_service.detect_phi(text, detection_level)
                 
         except Exception as e:
-            logger.error(f"Failed to detect PHI with OpenAI: {str(e)}")
+            logger.error(f"Failed to detect PHI with OpenAI: {e!s}")
             logger.info("Falling back to rule-based PHI detection")
             return self._fallback_service.detect_phi(text, detection_level)
     
@@ -615,8 +612,8 @@ Do not include any explanations or notes outside of the JSON structure."""
         self,
         text: str,
         replacement: str = "[REDACTED]",
-        detection_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        detection_level: str | None = None
+    ) -> dict[str, Any]:
         """
         Redact PHI from text.
         
@@ -674,6 +671,6 @@ Do not include any explanations or notes outside of the JSON structure."""
             return response
             
         except Exception as e:
-            logger.error(f"Failed to redact PHI with OpenAI: {str(e)}")
+            logger.error(f"Failed to redact PHI with OpenAI: {e!s}")
             logger.info("Falling back to rule-based PHI redaction")
             return self._fallback_service.redact_phi(text, replacement, detection_level)

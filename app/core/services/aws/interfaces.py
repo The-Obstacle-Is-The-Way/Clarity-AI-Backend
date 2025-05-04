@@ -1,5 +1,6 @@
 # app/core/services/aws/interfaces.py
-from typing import Protocol, Any
+from typing import Any, Protocol
+
 
 class AWSServiceFactoryInterface(Protocol):
     """Interface for a factory that provides AWS service clients/resources."""

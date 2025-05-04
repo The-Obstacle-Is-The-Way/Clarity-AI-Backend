@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Use Case Dependencies for FastAPI.
 
@@ -8,10 +7,11 @@ into FastAPI endpoints, following the Dependency Injection pattern.
 
 from fastapi import Depends
 
-from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
 from app.application.use_cases.analytics.batch_process_analytics import BatchProcessAnalyticsUseCase
-from app.application.use_cases.analytics.retrieve_aggregated_analytics import RetrieveAggregatedAnalyticsUseCase
-
+from app.application.use_cases.analytics.process_analytics_event import ProcessAnalyticsEventUseCase
+from app.application.use_cases.analytics.retrieve_aggregated_analytics import (
+    RetrieveAggregatedAnalyticsUseCase,
+)
 from app.presentation.api.dependencies.repositories import (
     get_analytics_repository,
 )

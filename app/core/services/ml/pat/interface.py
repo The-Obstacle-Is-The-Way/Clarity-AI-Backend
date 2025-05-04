@@ -6,7 +6,7 @@ which provides actigraphy analysis and embedding generation capabilities.
 """
 
 import abc
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class PATInterface(abc.ABC):
@@ -18,7 +18,7 @@ class PATInterface(abc.ABC):
     """
     
     @abc.abstractmethod
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """Initialize the PAT service with configuration.
         
         Args:
@@ -33,13 +33,13 @@ class PATInterface(abc.ABC):
     def analyze_actigraphy(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Dict[str, Any],
-        analysis_types: List[str]
-    ) -> Dict[str, Any]:
+        device_info: dict[str, Any],
+        analysis_types: list[str]
+    ) -> dict[str, Any]:
         """Analyze actigraphy data and return insights.
         
         Args:
@@ -65,11 +65,11 @@ class PATInterface(abc.ABC):
     def get_actigraphy_embeddings(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str,
         sampling_rate_hz: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate embeddings from actigraphy data.
         
         Args:
@@ -90,7 +90,7 @@ class PATInterface(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def get_analysis_by_id(self, analysis_id: str) -> Dict[str, Any]:
+    def get_analysis_by_id(self, analysis_id: str) -> dict[str, Any]:
         """Retrieve an analysis by its ID.
         
         Args:
@@ -111,7 +111,7 @@ class PATInterface(abc.ABC):
         patient_id: str,
         limit: int = 10,
         offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Retrieve analyses for a patient.
         
         Args:
@@ -128,7 +128,7 @@ class PATInterface(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the PAT model.
         
         Returns:
@@ -145,7 +145,7 @@ class PATInterface(abc.ABC):
         patient_id: str,
         profile_id: str,
         analysis_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Integrate actigraphy analysis with a digital twin profile.
         
         Args:

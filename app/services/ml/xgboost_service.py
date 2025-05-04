@@ -8,5 +8,3 @@ DO NOT USE THIS IN NEW CODE - use app.application.services.ml.xgboost_service in
 """
 
 # Re-export from the clean architecture location
-from app.application.services.ml.xgboost_service import XGBoostService
-from app.domain.interfaces.ml import XGBoostInterface

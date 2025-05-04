@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PHI Detection Service Implementation.
 
@@ -9,10 +8,8 @@ This implementation follows the clean architecture pattern with dependency injec
 using abstracted AWS service interfaces instead of direct boto3 calls.
 """
 
-import re
-from typing import Any, Dict, List, Optional
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
+from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -22,13 +19,13 @@ from app.core.exceptions import (
     ServiceUnavailableError,
 )
 from app.core.interfaces.aws_service_interface import (
+    AWSServiceFactory,
     ComprehendMedicalServiceInterface,
-    AWSServiceFactory
 )
 from app.core.services.ml.interface import PHIDetectionInterface
 from app.core.utils.logging import get_logger
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
-
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -46,7 +43,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
     to get the Comprehend Medical service, allowing for better testability.
     """
     
-    def __init__(self, aws_service_factory: Optional[AWSServiceFactory] = None) -> None:
+    def __init__(self, aws_service_factory: AWSServiceFactory | None = None) -> None:
         """
         Initialize PHI detection service.
         
@@ -57,13 +54,13 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
         self._initialized = False
         self._config = None
         self._aws_service_factory = aws_service_factory or get_aws_service_factory()
-        self._comprehend_medical_service: Optional[ComprehendMedicalServiceInterface] = None
+        self._comprehend_medical_service: ComprehendMedicalServiceInterface | None = None
         
         # Audit logging for HIPAA compliance
-        self._last_operation_timestamp: Optional[str] = None
+        self._last_operation_timestamp: str | None = None
         self._audit_log_enabled = True
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -91,17 +88,17 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
                 logger.info("PHI detection service initialized successfully")
                 
             except Exception as factory_error:
-                logger.error(f"Failed to get Comprehend Medical service from factory: {str(factory_error)}")
+                logger.error(f"Failed to get Comprehend Medical service from factory: {factory_error!s}")
                 raise InvalidConfigurationError(
-                    f"Failed to get Comprehend Medical service: {str(factory_error)}"
+                    f"Failed to get Comprehend Medical service: {factory_error!s}"
                 )
                 
         except Exception as e:
-            logger.error(f"Failed to initialize PHI detection service: {str(e)}")
+            logger.error(f"Failed to initialize PHI detection service: {e!s}")
             self._initialized = False
             self._config = None
             self._comprehend_medical_service = None
-            raise InvalidConfigurationError(f"Failed to initialize PHI detection service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize PHI detection service: {e!s}")
     
     def is_healthy(self) -> bool:
         """
@@ -143,7 +140,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
         if not text or not isinstance(text, str):
             raise InvalidRequestError("Text must be a non-empty string")
             
-    def _record_audit_log(self, operation: str, details: Dict[str, Any]) -> None:
+    def _record_audit_log(self, operation: str, details: dict[str, Any]) -> None:
         """
         Record audit log for HIPAA compliance.
         
@@ -163,7 +160,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             f"with metadata: {details}"
         )
     
-    def detect_phi(self, text: str) -> Dict[str, Any]:
+    def detect_phi(self, text: str) -> dict[str, Any]:
         """
         Detect PHI in text.
         
@@ -214,13 +211,13 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             return result
             
         except (BotoCoreError, ClientError) as e:
-            logger.error(f"Error detecting PHI: {str(e)}")
-            raise ServiceUnavailableError(f"Error detecting PHI: {str(e)}")
+            logger.error(f"Error detecting PHI: {e!s}")
+            raise ServiceUnavailableError(f"Error detecting PHI: {e!s}")
         except Exception as e:
-            logger.error(f"Unexpected error during PHI detection: {str(e)}")
-            raise ServiceUnavailableError(f"Unexpected error during PHI detection: {str(e)}")
+            logger.error(f"Unexpected error during PHI detection: {e!s}")
+            raise ServiceUnavailableError(f"Unexpected error during PHI detection: {e!s}")
     
-    def redact_phi(self, text: str) -> Dict[str, Any]:
+    def redact_phi(self, text: str) -> dict[str, Any]:
         """
         Redact PHI in text.
         
@@ -314,5 +311,5 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             # Pass through service errors
             raise
         except Exception as e:
-            logger.error(f"Unexpected error during PHI redaction: {str(e)}")
-            raise ServiceUnavailableError(f"Unexpected error during PHI redaction: {str(e)}")
+            logger.error(f"Unexpected error during PHI redaction: {e!s}")
+            raise ServiceUnavailableError(f"Unexpected error during PHI redaction: {e!s}")

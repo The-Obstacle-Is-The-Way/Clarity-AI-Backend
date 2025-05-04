@@ -7,7 +7,7 @@ representing physiological measurements captured from patients.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class BiometricType(str, Enum):
@@ -47,12 +47,12 @@ class Biometric:
     
     def __init__(
         self,
-        id: Optional[str],
+        id: str | None,
         biometric_type: BiometricType,
         timestamp: datetime,
-        value: Dict[str, Any],
-        device_id: Optional[str],
-        metadata: Dict[str, Any],
+        value: dict[str, Any],
+        device_id: str | None,
+        metadata: dict[str, Any],
         user_id: str
     ):
         """
@@ -111,7 +111,7 @@ class Biometric:
             if "systolic" not in self.value or "diastolic" not in self.value:
                 raise ValueError("Blood pressure must include 'systolic' and 'diastolic' values")
                 
-    def get_summary_value(self) -> Dict[str, Any]:
+    def get_summary_value(self) -> dict[str, Any]:
         """
         Get a summarized version of the biometric value.
         
@@ -135,7 +135,7 @@ class Biometric:
         # Default summary is the entire value
         return self.value
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert entity to dictionary.
         
@@ -153,7 +153,7 @@ class Biometric:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Biometric":
+    def from_dict(cls, data: dict[str, Any]) -> "Biometric":
         """
         Create entity from dictionary.
         

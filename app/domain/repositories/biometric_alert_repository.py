@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID
 
-from app.domain.services.biometric_event_processor import BiometricAlert, AlertPriority
+from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
 
 
 class BiometricAlertRepository(ABC):

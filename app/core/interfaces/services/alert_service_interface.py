@@ -9,7 +9,7 @@ Alerts are critical for clinical monitoring and intervention triggers.
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -34,13 +34,13 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def create_alert(
         self,
-        patient_id: Union[str, UUID],
+        patient_id: str | UUID,
         alert_type: str,
         severity: AlertSeverity,
         description: str,
-        source_data: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        source_data: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> tuple[bool, str | None, str | None]:
         """
         Create a new clinical alert for a patient.
         
@@ -60,16 +60,16 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def get_alerts(
         self,
-        patient_id: Optional[Union[str, UUID]] = None,
-        provider_id: Optional[Union[str, UUID]] = None,
-        alert_type: Optional[str] = None,
-        severity: Optional[AlertSeverity] = None,
-        status: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        patient_id: str | UUID | None = None,
+        provider_id: str | UUID | None = None,
+        alert_type: str | None = None,
+        severity: AlertSeverity | None = None,
+        status: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve alerts with optional filtering.
         
@@ -92,11 +92,11 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def update_alert_status(
         self,
-        alert_id: Union[str, UUID],
+        alert_id: str | UUID,
         status: str,
-        resolution_notes: Optional[str] = None,
-        resolved_by: Optional[Union[str, UUID]] = None
-    ) -> Tuple[bool, Optional[str]]:
+        resolution_notes: str | None = None,
+        resolved_by: str | UUID | None = None
+    ) -> tuple[bool, str | None]:
         """
         Update the status of an alert.
         
@@ -114,11 +114,11 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def evaluate_biometric_data(
         self,
-        patient_id: Union[str, UUID],
+        patient_id: str | UUID,
         data_type: str,
         data_value: Any,
-        timestamp: Optional[datetime] = None
-    ) -> List[Dict[str, Any]]:
+        timestamp: datetime | None = None
+    ) -> list[dict[str, Any]]:
         """
         Evaluate biometric data against alert rules and generate alerts if needed.
         
@@ -136,10 +136,10 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def get_alert_summary(
         self,
-        patient_id: Union[str, UUID],
+        patient_id: str | UUID,
         start_time: datetime,
         end_time: datetime
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get a summary of alerts for a patient within a time range.
         

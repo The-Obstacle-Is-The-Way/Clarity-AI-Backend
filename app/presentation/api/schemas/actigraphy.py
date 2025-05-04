@@ -7,8 +7,9 @@ providing request/response schema validation for the API contract.
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
 
 
 class AnalysisType(str, Enum):
@@ -38,11 +39,11 @@ class ActigraphyDataPoint(BaseSchema):
     """Individual actigraphy data point schema."""
     timestamp: datetime
     activity_count: int
-    steps: Optional[int] = None
-    heart_rate: Optional[int] = None
-    light_level: Optional[float] = None
-    temperature: Optional[float] = None
-    position: Optional[str] = None
+    steps: int | None = None
+    heart_rate: int | None = None
+    light_level: float | None = None
+    temperature: float | None = None
+    position: str | None = None
     
     
 class ActigraphyUploadRequest(BaseSchema):
@@ -53,8 +54,8 @@ class ActigraphyUploadRequest(BaseSchema):
     start_time: datetime
     end_time: datetime
     timezone: str
-    data_points: List[ActigraphyDataPoint]
-    metadata: Optional[Dict[str, Any]] = None
+    data_points: list[ActigraphyDataPoint]
+    metadata: dict[str, Any] | None = None
 
 
 class ActigraphyUploadResponse(BaseSchema):
@@ -68,10 +69,10 @@ class ActigraphyUploadResponse(BaseSchema):
 class ActigraphyAnalysisRequest(BaseSchema):
     """Schema for requesting analysis of existing actigraphy data."""
     patient_id: str
-    analysis_types: List[AnalysisType]
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    parameters: Optional[Dict[str, Any]] = None
+    analysis_types: list[AnalysisType]
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    parameters: dict[str, Any] | None = None
 
 
 class SleepMetrics(BaseSchema):
@@ -80,7 +81,7 @@ class SleepMetrics(BaseSchema):
     sleep_efficiency: float  # percentage
     sleep_latency: float  # in minutes
     wake_after_sleep_onset: float  # in minutes
-    sleep_stage_duration: Dict[SleepStage, float]  # in minutes
+    sleep_stage_duration: dict[SleepStage, float]  # in minutes
     number_of_awakenings: int
 
 
@@ -90,7 +91,7 @@ class ActivityMetrics(BaseSchema):
     active_minutes: float
     sedentary_minutes: float
     energy_expenditure: float  # in calories
-    peak_activity_times: List[datetime]
+    peak_activity_times: list[datetime]
 
 
 class CircadianMetrics(BaseSchema):
@@ -106,17 +107,17 @@ class ActigraphyAnalysisResult(BaseSchema):
     """Results of a specific type of actigraphy analysis."""
     analysis_type: AnalysisType
     analysis_time: datetime
-    sleep_metrics: Optional[SleepMetrics] = None
-    activity_metrics: Optional[ActivityMetrics] = None
-    circadian_metrics: Optional[CircadianMetrics] = None
-    raw_results: Optional[Dict[str, Any]] = None
+    sleep_metrics: SleepMetrics | None = None
+    activity_metrics: ActivityMetrics | None = None
+    circadian_metrics: CircadianMetrics | None = None
+    raw_results: dict[str, Any] | None = None
 
 
 class ActigraphyAnalysisResponse(BaseSchema):
     """Schema for actigraphy analysis response."""
     patient_id: str
-    time_range: Dict[str, datetime]
-    results: List[ActigraphyAnalysisResult]
+    time_range: dict[str, datetime]
+    results: list[ActigraphyAnalysisResult]
 
 
 class ActigraphySummaryRequest(BaseSchema):
@@ -141,5 +142,5 @@ class ActigraphySummaryResponse(BaseSchema):
     """Schema for actigraphy summary response."""
     patient_id: str
     interval: str
-    summaries: List[DailySummary]
-    trends: Dict[str, float]  # e.g., "sleep_trend": 0.05 (positive trend)
+    summaries: list[DailySummary]
+    trends: dict[str, float]  # e.g., "sleep_trend": 0.05 (positive trend)

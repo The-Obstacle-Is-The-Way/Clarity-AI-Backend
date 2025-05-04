@@ -5,7 +5,7 @@ This module defines standardized privacy level classifications used across the s
 Following clean architecture principles, these enums exist in the core domain layer
 to ensure consistent HIPAA compliance and data privacy enforcement.
 """
-from enum import Enum, auto
+from enum import Enum
 
 
 class PrivacyLevel(Enum):

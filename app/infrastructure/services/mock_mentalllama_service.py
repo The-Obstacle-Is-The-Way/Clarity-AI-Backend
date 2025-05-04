@@ -3,12 +3,9 @@ Mock implementation of MentalLLaMAService for testing.
 Provides synthetic NLP analysis without requiring the actual MentalLLaMA-33B model.
 """
 from datetime import datetime
-from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
-from app.domain.entities.digital_twin import (
-    BrainRegion, ClinicalInsight, ClinicalSignificance
-)
+from app.domain.entities.digital_twin import BrainRegion, ClinicalInsight, ClinicalSignificance
 from app.domain.services.mentalllama_service import MentalLLaMAService
 
 
@@ -22,8 +19,8 @@ class MockMentalLLaMAService(MentalLLaMAService):
         self, 
         patient_id: UUID, 
         note_text: str,
-        context: Optional[Dict] = None
-    ) -> List[ClinicalInsight]:
+        context: dict | None = None
+    ) -> list[ClinicalInsight]:
         """
         Analyze clinical notes using MentalLLaMA-33B to extract insights.
         
@@ -127,11 +124,11 @@ class MockMentalLLaMAService(MentalLLaMAService):
     async def generate_treatment_recommendations(
         self,
         patient_id: UUID,
-        diagnosis_codes: List[str],
-        current_medications: List[str],
+        diagnosis_codes: list[str],
+        current_medications: list[str],
         clinical_history: str,
-        digital_twin_state_id: Optional[UUID] = None
-    ) -> List[Dict]:
+        digital_twin_state_id: UUID | None = None
+    ) -> list[dict]:
         """
         Generate treatment recommendations based on patient information.
         
@@ -202,9 +199,9 @@ class MockMentalLLaMAService(MentalLLaMAService):
     async def analyze_risk_factors(
         self,
         patient_id: UUID,
-        clinical_data: Dict,
-        digital_twin_state_id: Optional[UUID] = None
-    ) -> Dict:
+        clinical_data: dict,
+        digital_twin_state_id: UUID | None = None
+    ) -> dict:
         """
         Analyze risk factors from patient data using NLP techniques.
         
@@ -284,7 +281,7 @@ class MockMentalLLaMAService(MentalLLaMAService):
         patient_id: UUID,
         query: str,
         limit: int = 10
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Perform semantic search across patient records.
         
@@ -347,8 +344,8 @@ class MockMentalLLaMAService(MentalLLaMAService):
     async def summarize_patient_history(
         self,
         patient_id: UUID,
-        time_range: Optional[str] = "all",
-        focus_areas: Optional[List[str]] = None
+        time_range: str | None = "all",
+        focus_areas: list[str] | None = None
     ) -> str:
         """
         Generate a concise summary of patient history.

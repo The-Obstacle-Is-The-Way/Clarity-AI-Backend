@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Biometric Correlation Model Service for the NOVAMIND Digital Twin.
 
@@ -7,21 +6,19 @@ providing analysis of relationships between biometric data and mental health ind
 following Clean Architecture principles and HIPAA compliance requirements.
 """
 
-import asyncio
-import json
 import logging
 import os
-import pandas as pd
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 import numpy as np
+import pandas as pd
 
 # Import relevant exceptions from core layer as a temporary workaround
 from app.core.exceptions.base_exceptions import ModelExecutionError
 from app.domain.exceptions import ValidationError
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.ml.biometric_correlation.lstm_model import (
     BiometricCorrelationModel,
 )
@@ -40,9 +37,9 @@ class BiometricCorrelationService:
     def __init__(
         self,
         model_dir: str,
-        model_path: Optional[str] = None,
-        biometric_features: Optional[List[str]] = None,
-        mental_health_indicators: Optional[List[str]] = None,
+        model_path: str | None = None,
+        biometric_features: list[str] | None = None,
+        mental_health_indicators: list[str] | None = None,
     ):
         """
         Initialize the biometric correlation service.
@@ -91,7 +88,7 @@ class BiometricCorrelationService:
 
         logging.info("Biometric Correlation Service initialized")
 
-    def _validate_biometric_data(self, data: Dict[str, Any]) -> bool:
+    def _validate_biometric_data(self, data: dict[str, Any]) -> bool:
         """Validate biometric data structure.
         
         Args:
@@ -135,7 +132,7 @@ class BiometricCorrelationService:
             
         return True
         
-    def _preprocess_biometric_data(self, data: Dict[str, Any], lookback_days: int = 30) -> Dict[str, pd.DataFrame]:
+    def _preprocess_biometric_data(self, data: dict[str, Any], lookback_days: int = 30) -> dict[str, pd.DataFrame]:
         """Preprocess biometric data for correlation analysis.
         
         This method converts biometric time series data into pandas DataFrames for analysis,
@@ -181,7 +178,7 @@ class BiometricCorrelationService:
             return result
         
         # Standard production path for real data
-        result: Dict[str, pd.DataFrame] = {}
+        result: dict[str, pd.DataFrame] = {}
         
         # Handle edge cases
         if data is None:
@@ -224,13 +221,13 @@ class BiometricCorrelationService:
                     df = df.sort_values("timestamp")
                     result[feature_name] = df
             except Exception as e:
-                logging.warning(f"Error processing {feature_name}: {str(e)}")
+                logging.warning(f"Error processing {feature_name}: {e!s}")
                 
         return result
     
     async def preprocess_biometric_data(
-        self, patient_id: UUID, data: Dict[str, Any]
-    ) -> Dict[str, np.ndarray]:
+        self, patient_id: UUID, data: dict[str, Any]
+    ) -> dict[str, np.ndarray]:
         """
         Preprocess biometric data for model input.
 
@@ -304,12 +301,12 @@ class BiometricCorrelationService:
             }
 
         except Exception as e:
-            logging.error(f"Error preprocessing biometric data: {str(e)}")
-            raise ValidationError(f"Failed to preprocess biometric data: {str(e)}")
+            logging.error(f"Error preprocessing biometric data: {e!s}")
+            raise ValidationError(f"Failed to preprocess biometric data: {e!s}")
 
     async def analyze_correlations(
-        self, patient_id: UUID, biometric_data: Dict[str, Any], lookback_days: int = 30, correlation_threshold: float = 0.3
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, biometric_data: dict[str, Any], lookback_days: int = 30, correlation_threshold: float = 0.3
+    ) -> dict[str, Any]:
         """
         Analyze correlations between biometric data and mental health indicators.
 
@@ -373,7 +370,7 @@ class BiometricCorrelationService:
                     }
             except Exception as preprocess_error:
                 # Handle preprocessing errors
-                logging.error(f"Error preprocessing biometric data: {str(preprocess_error)}")
+                logging.error(f"Error preprocessing biometric data: {preprocess_error!s}")
                 return {
                     "patient_id": str(patient_id),
                     "error": str(preprocess_error),
@@ -425,10 +422,10 @@ class BiometricCorrelationService:
                 
             except Exception as model_error:
                 # Handle model errors gracefully
-                logging.error(f"Model error in correlation analysis: {str(model_error)}")
+                logging.error(f"Model error in correlation analysis: {model_error!s}")
                 return {
                     "patient_id": str(patient_id),
-                    "error": f"Model error: {str(model_error)}",
+                    "error": f"Model error: {model_error!s}",
                     "correlations": [],
                     "insights": [],
                     "timestamp": datetime.now(UTC).isoformat()
@@ -438,15 +435,15 @@ class BiometricCorrelationService:
             # Re-raise validation errors
             raise ve
         except Exception as e:
-            logging.error(f"Error analyzing correlations: {str(e)}")
-            raise ModelExecutionError(f"Failed to analyze correlations: {str(e)}")
+            logging.error(f"Error analyzing correlations: {e!s}")
+            raise ModelExecutionError(f"Failed to analyze correlations: {e!s}")
 
     async def _calculate_lag_correlations(
         self,
         biometric_data: np.ndarray,
         mental_health_data: np.ndarray,
         max_lag: int = 7,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate lag correlations between biometric data and mental health indicators.
 
@@ -504,11 +501,11 @@ class BiometricCorrelationService:
 
     async def _generate_insights(
         self,
-        key_indicators: Dict[str, Any],
-        lag_correlations: Dict[str, Any],
-        biometric_features: List[str],
-        mental_health_indicators: List[str],
-    ) -> List[Dict[str, Any]]:
+        key_indicators: dict[str, Any],
+        lag_correlations: dict[str, Any],
+        biometric_features: list[str],
+        mental_health_indicators: list[str],
+    ) -> list[dict[str, Any]]:
         """
         Generate insights from correlation analysis.
 
@@ -584,8 +581,8 @@ class BiometricCorrelationService:
         return insights
 
     async def detect_anomalies(
-        self, patient_id: UUID, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Detect anomalies in biometric data that may indicate mental health changes.
 
@@ -642,15 +639,15 @@ class BiometricCorrelationService:
             return results
 
         except Exception as e:
-            logging.error(f"Error detecting anomalies: {str(e)}")
-            raise ModelExecutionError(f"Failed to detect anomalies: {str(e)}")
+            logging.error(f"Error detecting anomalies: {e!s}")
+            raise ModelExecutionError(f"Failed to detect anomalies: {e!s}")
 
     async def _analyze_mental_health_changes(
         self,
-        biometric_anomalies: Dict[str, Any],
+        biometric_anomalies: dict[str, Any],
         mental_health_data: np.ndarray,
-        timestamps: List[str],
-    ) -> Dict[str, Any]:
+        timestamps: list[str],
+    ) -> dict[str, Any]:
         """
         Analyze mental health changes following biometric anomalies.
 
@@ -719,11 +716,11 @@ class BiometricCorrelationService:
 
     async def _generate_anomaly_insights(
         self,
-        biometric_anomalies: Dict[str, Any],
-        mental_health_changes: Dict[str, Any],
-        biometric_features: List[str],
-        mental_health_indicators: List[str],
-    ) -> List[Dict[str, Any]]:
+        biometric_anomalies: dict[str, Any],
+        mental_health_changes: dict[str, Any],
+        biometric_features: list[str],
+        mental_health_indicators: list[str],
+    ) -> list[dict[str, Any]]:
         """
         Generate insights from anomaly detection.
 
@@ -809,8 +806,8 @@ class BiometricCorrelationService:
         return insights
 
     async def recommend_monitoring_plan(
-        self, patient_id: UUID, correlation_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, correlation_results: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Recommend a personalized biometric monitoring plan based on correlation analysis.
 
@@ -905,12 +902,12 @@ class BiometricCorrelationService:
             }
 
         except Exception as e:
-            logging.error(f"Error generating monitoring recommendations: {str(e)}")
+            logging.error(f"Error generating monitoring recommendations: {e!s}")
             raise ModelExecutionError(
-                f"Failed to generate monitoring recommendations: {str(e)}"
+                f"Failed to generate monitoring recommendations: {e!s}"
             )
 
-    def get_service_info(self) -> Dict[str, Any]:
+    def get_service_info(self) -> dict[str, Any]:
         """Get information about the service."""
         return {
             "name": "Biometric Correlation Service",

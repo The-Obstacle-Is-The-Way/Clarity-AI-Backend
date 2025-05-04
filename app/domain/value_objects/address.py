@@ -2,7 +2,6 @@
 """Address value object."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -17,19 +16,19 @@ class Address:
     city: str
     state: str
     zip_code: str
-    country: Optional[str] = "USA"
+    country: str | None = "USA"
 
     def __init__(
         self,
         *,
-        street: Optional[str] = None,
-        line1: Optional[str] = None,
-        line2: Optional[str] = None,
+        street: str | None = None,
+        line1: str | None = None,
+        line2: str | None = None,
         city: str,
         state: str,
-        zip_code: Optional[str] = None,
-        postal_code: Optional[str] = None,
-        country: Optional[str] = "USA",
+        zip_code: str | None = None,
+        postal_code: str | None = None,
+        country: str | None = "USA",
     ):
         """
         Initialize Address, allowing either 'street' or 'line1', and 'zip_code' or 'postal_code'.

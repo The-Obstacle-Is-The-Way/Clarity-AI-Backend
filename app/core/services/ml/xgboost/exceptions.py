@@ -5,7 +5,7 @@ This module defines custom exceptions that are raised by the XGBoost service
 to provide clean error handling and meaningful error messages.
 """
 
-from typing import Optional, Any, Dict
+from typing import Any
 
 
 class XGBoostServiceError(Exception):
@@ -23,7 +23,7 @@ class XGBoostServiceError(Exception):
         self.details = kwargs
         super().__init__(message)
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert exception to a dictionary for serialization.
         
@@ -40,7 +40,7 @@ class XGBoostServiceError(Exception):
 class ValidationError(XGBoostServiceError):
     """Exception raised when request validation fails."""
     
-    def __init__(self, message: str, field: Optional[str] = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a validation error.
         
@@ -61,7 +61,7 @@ class ValidationError(XGBoostServiceError):
 class DataPrivacyError(XGBoostServiceError):
     """Exception raised when PHI is detected in data."""
     
-    def __init__(self, message: str, field: Optional[str] = None, phi_type: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, phi_type: str | None = None, **kwargs):
         """
         Initialize a data privacy error.
         
@@ -82,7 +82,7 @@ class DataPrivacyError(XGBoostServiceError):
 class ResourceNotFoundError(XGBoostServiceError):
     """Exception raised when a requested resource is not found."""
     
-    def __init__(self, message: str, resource_type: Optional[str] = None, resource_id: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, resource_type: str | None = None, resource_id: str | None = None, **kwargs):
         """
         Initialize a resource not found error.
         
@@ -103,7 +103,7 @@ class ResourceNotFoundError(XGBoostServiceError):
 class ModelNotFoundError(ResourceNotFoundError):
     """Exception raised when a requested ML model is not found."""
     
-    def __init__(self, message: str, model_type: Optional[str] = None, model_version: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, model_type: str | None = None, model_version: str | None = None, **kwargs):
         """
         Initialize a model not found error.
         
@@ -126,7 +126,7 @@ class ModelNotFoundError(ResourceNotFoundError):
 class PredictionError(XGBoostServiceError):
     """Exception raised when a prediction fails."""
     
-    def __init__(self, message: str, model_type: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, model_type: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize a prediction error.
         
@@ -147,7 +147,7 @@ class PredictionError(XGBoostServiceError):
 class ServiceConnectionError(XGBoostServiceError):
     """Exception raised when a connection to an external service fails."""
     
-    def __init__(self, message: str, service_name: Optional[str] = None, cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, service_name: str | None = None, cause: str | None = None, **kwargs):
         """
         Initialize a service connection error.
         
@@ -168,7 +168,7 @@ class ServiceConnectionError(XGBoostServiceError):
 class ConfigurationError(XGBoostServiceError):
     """Exception raised when there is a configuration error."""
     
-    def __init__(self, message: str, field: Optional[str] = None, value: Any = None, **kwargs):
+    def __init__(self, message: str, field: str | None = None, value: Any = None, **kwargs):
         """
         Initialize a configuration error.
         
@@ -189,7 +189,7 @@ class ConfigurationError(XGBoostServiceError):
 class ServiceConfigurationError(XGBoostServiceError):
     """Exception raised when there is a configuration error with an external service."""
     
-    def __init__(self, message: str, service_name: Optional[str] = None, config_key: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, service_name: str | None = None, config_key: str | None = None, **kwargs):
         """
         Initialize a service configuration error.
         
@@ -210,7 +210,7 @@ class ServiceConfigurationError(XGBoostServiceError):
 class ServiceUnavailableError(XGBoostServiceError):
     """Exception raised when an external service is unavailable."""
     
-    def __init__(self, message: str, service_name: Optional[str] = None, retry_after: Optional[int] = None, **kwargs):
+    def __init__(self, message: str, service_name: str | None = None, retry_after: int | None = None, **kwargs):
         """
         Initialize a service unavailable error.
         
@@ -231,7 +231,7 @@ class ServiceUnavailableError(XGBoostServiceError):
 class ThrottlingError(XGBoostServiceError):
     """Exception raised when requests are being throttled by an external service."""
     
-    def __init__(self, message: str, service_name: Optional[str] = None, retry_after: Optional[int] = None, **kwargs):
+    def __init__(self, message: str, service_name: str | None = None, retry_after: int | None = None, **kwargs):
         """
         Initialize a throttling error.
         
@@ -252,7 +252,7 @@ class ThrottlingError(XGBoostServiceError):
 class FeatureValidationError(ValidationError):
     """Exception raised when feature validation fails for ML prediction."""
     
-    def __init__(self, message: str, feature_name: Optional[str] = None, expected_type: Optional[str] = None, 
+    def __init__(self, message: str, feature_name: str | None = None, expected_type: str | None = None, 
                  actual_value: Any = None, **kwargs):
         """
         Initialize a feature validation error.
@@ -276,8 +276,8 @@ class FeatureValidationError(ValidationError):
 class ModelInvocationError(XGBoostServiceError):
     """Exception raised when model invocation fails but the service itself is working."""
     
-    def __init__(self, message: str, model_type: Optional[str] = None, endpoint_name: Optional[str] = None,
-                 status_code: Optional[int] = None, **kwargs):
+    def __init__(self, message: str, model_type: str | None = None, endpoint_name: str | None = None,
+                 status_code: int | None = None, **kwargs):
         """
         Initialize a model invocation error.
         
@@ -300,8 +300,8 @@ class ModelInvocationError(XGBoostServiceError):
 class ModelTimeoutError(XGBoostServiceError):
     """Exception raised when a model invocation times out."""
     
-    def __init__(self, message: str, model_type: Optional[str] = None, endpoint_name: Optional[str] = None,
-                 timeout_seconds: Optional[int] = None, **kwargs):
+    def __init__(self, message: str, model_type: str | None = None, endpoint_name: str | None = None,
+                 timeout_seconds: int | None = None, **kwargs):
         """
         Initialize a model timeout error.
         
@@ -324,8 +324,8 @@ class ModelTimeoutError(XGBoostServiceError):
 class SerializationError(XGBoostServiceError):
     """Exception raised when data serialization or deserialization fails."""
     
-    def __init__(self, message: str, data_type: Optional[str] = None, format_type: Optional[str] = None,
-                 cause: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, data_type: str | None = None, format_type: str | None = None,
+                 cause: str | None = None, **kwargs):
         """
         Initialize a serialization error.
         

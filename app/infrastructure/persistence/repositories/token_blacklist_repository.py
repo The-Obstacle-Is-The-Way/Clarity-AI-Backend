@@ -5,11 +5,9 @@ This module provides a repository for managing blacklisted tokens.
 """
 
 from datetime import datetime
-from typing import Dict, Set, List, Optional
-import logging
 
-from app.domain.interfaces.token_repository import ITokenRepository
 from app.domain.exceptions.repository import RepositoryException
+from app.domain.interfaces.token_repository import ITokenRepository
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,15 +25,15 @@ class TokenBlacklistRepository(ITokenRepository):
         """Initialize the token blacklist repository."""
         # In-memory storage for blacklisted tokens
         # Structure: {token: expiry_datetime}
-        self._token_blacklist: Dict[str, datetime] = {}
+        self._token_blacklist: dict[str, datetime] = {}
         
         # User token mapping for quick revocation of all user tokens
         # Structure: {user_id: set(tokens)}
-        self._user_tokens: Dict[str, Set[str]] = {}
+        self._user_tokens: dict[str, set[str]] = {}
         
         # Session token mapping for quick revocation of all session tokens
         # Structure: {session_id: set(tokens)}
-        self._session_tokens: Dict[str, Set[str]] = {}
+        self._session_tokens: dict[str, set[str]] = {}
         
         logger.info("TokenBlacklistRepository initialized")
 
@@ -54,8 +52,8 @@ class TokenBlacklistRepository(ITokenRepository):
             self._token_blacklist[token] = expires_at
             logger.debug(f"Token blacklisted until {expires_at.isoformat()}")
         except Exception as e:
-            logger.error(f"Failed to blacklist token: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist token: {str(e)}")
+            logger.error(f"Failed to blacklist token: {e!s}")
+            raise RepositoryException(f"Failed to blacklist token: {e!s}")
 
     async def is_blacklisted(self, token: str) -> bool:
         """
@@ -83,8 +81,8 @@ class TokenBlacklistRepository(ITokenRepository):
                 
             return True
         except Exception as e:
-            logger.error(f"Failed to check token blacklist: {str(e)}")
-            raise RepositoryException(f"Failed to check token blacklist: {str(e)}")
+            logger.error(f"Failed to check token blacklist: {e!s}")
+            raise RepositoryException(f"Failed to check token blacklist: {e!s}")
 
     async def blacklist_user_tokens(self, user_id: str) -> None:
         """
@@ -109,8 +107,8 @@ class TokenBlacklistRepository(ITokenRepository):
                 logger.info(f"Blacklisted {len(self._user_tokens[user_id])} tokens for user {user_id}")
                 
         except Exception as e:
-            logger.error(f"Failed to blacklist user tokens: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist user tokens: {str(e)}")
+            logger.error(f"Failed to blacklist user tokens: {e!s}")
+            raise RepositoryException(f"Failed to blacklist user tokens: {e!s}")
 
     async def blacklist_session_tokens(self, session_id: str) -> None:
         """
@@ -135,8 +133,8 @@ class TokenBlacklistRepository(ITokenRepository):
                 logger.info(f"Blacklisted {len(self._session_tokens[session_id])} tokens for session {session_id}")
                 
         except Exception as e:
-            logger.error(f"Failed to blacklist session tokens: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist session tokens: {str(e)}")
+            logger.error(f"Failed to blacklist session tokens: {e!s}")
+            raise RepositoryException(f"Failed to blacklist session tokens: {e!s}")
 
     async def cleanup_expired_tokens(self) -> int:
         """
@@ -176,10 +174,10 @@ class TokenBlacklistRepository(ITokenRepository):
             return len(expired_tokens)
             
         except Exception as e:
-            logger.error(f"Failed to cleanup expired tokens: {str(e)}")
-            raise RepositoryException(f"Failed to cleanup expired tokens: {str(e)}")
+            logger.error(f"Failed to cleanup expired tokens: {e!s}")
+            raise RepositoryException(f"Failed to cleanup expired tokens: {e!s}")
 
-    async def get_active_sessions(self, user_id: str) -> List[str]:
+    async def get_active_sessions(self, user_id: str) -> list[str]:
         """
         Get all active sessions for a user.
 
@@ -201,8 +199,8 @@ class TokenBlacklistRepository(ITokenRepository):
             return []
             
         except Exception as e:
-            logger.error(f"Failed to get active sessions: {str(e)}")
-            raise RepositoryException(f"Failed to get active sessions: {str(e)}")
+            logger.error(f"Failed to get active sessions: {e!s}")
+            raise RepositoryException(f"Failed to get active sessions: {e!s}")
             
     def add_token_to_user(self, user_id: str, token: str) -> None:
         """

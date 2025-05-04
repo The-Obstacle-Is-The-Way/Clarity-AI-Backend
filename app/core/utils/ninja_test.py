@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Ninja Test Module - For testing security patterns and edge cases.
 
@@ -9,13 +8,13 @@ and best practices for secure coding.
 
 import hashlib
 import secrets
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class NinjaSecurityTester:
     """Security testing utilities for the Novamind platform."""
 
-    def __init__(self, salt: Optional[bytes] = None):
+    def __init__(self, salt: bytes | None = None):
         """Initialize the security tester with an optional salt."""
         self.salt = salt or secrets.token_bytes(32)
 
@@ -34,7 +33,7 @@ class NinjaSecurityTester:
         hash_obj.update(data.encode())
         return hash_obj.hexdigest()
 
-    def test_pattern_detection(self, text: str) -> Dict[str, Any]:
+    def test_pattern_detection(self, text: str) -> dict[str, Any]:
         """
         Test PHI pattern detection in text.
 

@@ -5,10 +5,11 @@ This module provides endpoints for recording, retrieving, and analyzing
 patient biometric data across various measurement types.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any, List
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 router = APIRouter(
@@ -26,11 +27,11 @@ class BiometricDataPoint(BaseModel):
     unit: str = Field(..., description="Unit of measurement")
     timestamp: datetime = Field(..., description="When the measurement was taken")
     source: str = Field(..., description="Source of the measurement (device, manual, etc.)")
-    metadata: Dict[str, Any] = Field(default={}, description="Additional metadata")
+    metadata: dict[str, Any] = Field(default={}, description="Additional metadata")
 
 
 @router.get("/")
-async def get_biometrics() -> List[BiometricDataPoint]:
+async def get_biometrics() -> list[BiometricDataPoint]:
     """
     Retrieve a list of biometric measurements.
     
@@ -87,7 +88,7 @@ async def create_biometric() -> BiometricDataPoint:
 
 
 @router.get("/patient/{patient_id}")
-async def get_patient_biometrics(patient_id: UUID) -> List[BiometricDataPoint]:
+async def get_patient_biometrics(patient_id: UUID) -> list[BiometricDataPoint]:
     """
     Retrieve all biometric measurements for a specific patient.
     
@@ -105,7 +106,7 @@ async def get_patient_biometrics(patient_id: UUID) -> List[BiometricDataPoint]:
 async def get_patient_biometric_type(
     patient_id: UUID,
     biometric_type: str
-) -> List[BiometricDataPoint]:
+) -> list[BiometricDataPoint]:
     """
     Retrieve biometric measurements of a specific type for a patient.
     

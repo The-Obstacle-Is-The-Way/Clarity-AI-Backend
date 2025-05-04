@@ -6,14 +6,11 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID
 
-from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
-from app.domain.entities.patient import Patient
 from app.domain.entities.digital_twin_entity import ClinicalInsight
 from app.domain.entities.knowledge_graph import (
     KnowledgeGraphEdge,
     KnowledgeGraphNode,
 )
-from app.infrastructure.ml.mentallama.service import MentaLLaMA # Corrected import to match class name
 
 
 class EnhancedMentalLLaMAService(ABC):

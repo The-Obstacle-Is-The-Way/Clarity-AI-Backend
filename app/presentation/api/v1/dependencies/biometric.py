@@ -10,8 +10,8 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
+from app.core.interfaces.services.biometric_service_interface import BiometricServiceInterface
 from app.infrastructure.di.provider import get_service_instance
 
 

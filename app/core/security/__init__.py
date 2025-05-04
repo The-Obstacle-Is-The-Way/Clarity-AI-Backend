@@ -6,13 +6,20 @@ including authentication, authorization, and data protection mechanisms.
 Implements HIPAA-compliant security controls following clean architecture principles.
 """
 
-from typing import List, Optional, Dict, Any, Union
 from enum import Enum
-from fastapi import Request, HTTPException, status
+from typing import Any, Dict, List, Optional, Union
+
+from fastapi import HTTPException, Request, status
 
 # Import middleware components
 from app.core.security.middleware import AuthenticationMiddleware, LoggingMiddleware
-from app.core.security.rate_limiting import RateLimitingMiddleware, get_rate_limiter_service, RateLimitStrategy, RateLimitConfig
+from app.core.security.rate_limiting import (
+    RateLimitConfig,
+    RateLimitingMiddleware,
+    RateLimitStrategy,
+    get_rate_limiter_service,
+)
+
 
 # PHI protection mechanism
 class PHIMiddleware:
@@ -76,7 +83,7 @@ def has_role(user: Any, role: str) -> bool:
     return True
 
 # HIPAA compliance verification
-def verify_hipaa_compliance(data: Dict[str, Any]) -> Dict[str, Any]:
+def verify_hipaa_compliance(data: dict[str, Any]) -> dict[str, Any]:
     """
     Verify that a data payload is HIPAA compliant.
 
@@ -92,7 +99,7 @@ def verify_hipaa_compliance(data: Dict[str, Any]) -> Dict[str, Any]:
     # Stub implementation for test collection
     return data
 
-def verify_input_sanitization(data: Dict[str, Any]) -> Dict[str, Any]:
+def verify_input_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize input data to prevent injection attacks.
 
@@ -105,7 +112,7 @@ def verify_input_sanitization(data: Dict[str, Any]) -> Dict[str, Any]:
     # Stub implementation for test collection
     return data
 
-def verify_output_sanitization(data: Dict[str, Any]) -> Dict[str, Any]:
+def verify_output_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize output data to prevent information disclosure.
 
@@ -122,11 +129,11 @@ __all__ = [
     "AuthenticationMiddleware",
     "LoggingMiddleware",
     "PHIMiddleware",
-    "RateLimitingMiddleware",
-    "get_rate_limiter_service",
-    "RateLimitStrategy",
     "RateLimitConfig",
+    "RateLimitStrategy",
+    "RateLimitingMiddleware",
     "check_permission",
+    "get_rate_limiter_service",
     "has_role",
     "verify_hipaa_compliance",
     "verify_input_sanitization",

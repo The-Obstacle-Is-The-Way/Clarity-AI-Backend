@@ -5,10 +5,7 @@ This module contains the ClinicalDocumentationService, which encapsulates comple
 related to clinical notes and documentation in the concierge psychiatry practice.
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from app.domain.utils.datetime_utils import UTC
 from uuid import UUID
 
 from app.domain.entities.clinical_note import (
@@ -21,6 +18,7 @@ from app.domain.entities.clinical_note import (
 from app.domain.repositories.appointment_repository import AppointmentRepository
 from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
 from app.domain.repositories.patient_repository import PatientRepository
+from app.domain.utils.datetime_utils import UTC
 
 
 class UnauthorizedAccessError(Exception):

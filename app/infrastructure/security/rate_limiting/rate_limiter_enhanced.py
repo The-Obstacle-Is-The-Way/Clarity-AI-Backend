@@ -5,19 +5,18 @@ This module provides enhanced rate limiting capabilities for protecting APIs fro
 It supports both in-memory and Redis-based rate limiting with configurable thresholds.
 """
 
-from abc import ABC, abstractmethod
-import sys
 import logging
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple, Any, cast
+from enum import Enum
+from typing import Any
+from unittest.mock import AsyncMock
 
 import redis
 from pydantic import BaseModel
-import asyncio
-from enum import Enum
-from unittest.mock import AsyncMock
 
 from app.config.settings import get_settings
+
 settings = get_settings()
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ class RateLimitConfig(BaseModel):
     
     requests: int
     window_seconds: int
-    block_seconds: Optional[int] = None
+    block_seconds: int | None = None
     
     @property
     def requests_per_period(self) -> int:
@@ -67,7 +66,7 @@ class RateLimiter(ABC):
     """
     
     @abstractmethod
-    def check_rate_limit(self, key: str, config: Any = None, user_id: Optional[str] = None) -> Any:
+    def check_rate_limit(self, key: str, config: Any = None, user_id: str | None = None) -> Any:
         """
         Check if a request should be rate limited.
         
@@ -101,8 +100,8 @@ class InMemoryRateLimiter(RateLimiter):
     
     def __init__(self):
         """Initialize the in-memory rate limiter."""
-        self._request_logs: Dict[str, List[datetime]] = {}
-        self._blocked_until: Dict[str, datetime] = {}
+        self._request_logs: dict[str, list[datetime]] = {}
+        self._blocked_until: dict[str, datetime] = {}
     
     def _clean_old_requests(self, key: str, window_seconds: int) -> None:
         """
@@ -178,7 +177,7 @@ class RedisRateLimiter(RateLimiter):
     Suitable for production, multi-instance deployments.
     """
     
-    def __init__(self, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: redis.Redis | None = None):
         """
         Initialize the Redis rate limiter.
         
@@ -188,7 +187,7 @@ class RedisRateLimiter(RateLimiter):
         self._redis = redis_client
         # Default configurations for different rate limit types
         # Values here can be adjusted or loaded from settings
-        self.configs: Dict[RateLimitType, RateLimitConfig] = {
+        self.configs: dict[RateLimitType, RateLimitConfig] = {
             RateLimitType.DEFAULT: RateLimitConfig(requests=10, window_seconds=60),
             RateLimitType.LOGIN: RateLimitConfig(requests=10, window_seconds=60),
         }
@@ -217,7 +216,7 @@ class RedisRateLimiter(RateLimiter):
         """
         return f"ratelimit:blocked:{key}"
     
-    def check_rate_limit(self, key: str, config: Any = None, user_id: Optional[str] = None) -> Any:
+    def check_rate_limit(self, key: str, config: Any = None, user_id: str | None = None) -> Any:
         """
         Check if a request should be rate limited.
         
@@ -308,7 +307,7 @@ class RedisRateLimiter(RateLimiter):
             logger.error(f"Redis error in rate limiter: {e}")
             return True
     
-    async def _check_rate_limit_pipeline(self, identifier: str, limit_type: RateLimitType, user_id: Optional[str]) -> Tuple[bool, Dict[str, Any]]:
+    async def _check_rate_limit_pipeline(self, identifier: str, limit_type: RateLimitType, user_id: str | None) -> tuple[bool, dict[str, Any]]:
         """
         Advanced async pipeline-based rate limit check with user scoping.
         """

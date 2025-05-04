@@ -5,12 +5,11 @@ This module provides the application service layer implementation for XGBoost fu
 following clean architecture principles.
 """
 
-from typing import Dict, Any, List, Optional
-from fastapi import Depends
+from typing import Any
 from uuid import UUID
 
-from app.domain.interfaces.ml import XGBoostInterface
 from app.core.exceptions.base_exceptions import ModelExecutionError
+from app.domain.interfaces.ml import XGBoostInterface
 
 
 class XGBoostService(XGBoostInterface):
@@ -26,7 +25,7 @@ class XGBoostService(XGBoostInterface):
         """Initialize the XGBoost service with necessary dependencies."""
         super().__init__()
     
-    async def predict_risk(self, patient_id: UUID, features: Dict[str, Any]) -> Dict[str, Any]:
+    async def predict_risk(self, patient_id: UUID, features: dict[str, Any]) -> dict[str, Any]:
         """
         Predict risk factors for a patient using XGBoost models.
         
@@ -53,14 +52,14 @@ class XGBoostService(XGBoostInterface):
                 "model_version": "1.0.0"
             }
         except Exception as e:
-            raise ModelExecutionError(f"Risk prediction failed: {str(e)}")
+            raise ModelExecutionError(f"Risk prediction failed: {e!s}")
     
     async def predict_treatment_response(
         self, 
         patient_id: UUID, 
         medication_id: str,
-        features: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        features: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Predict patient response to a specific treatment using XGBoost models.
         
@@ -89,9 +88,9 @@ class XGBoostService(XGBoostInterface):
                 "model_version": "1.0.0"
             }
         except Exception as e:
-            raise ModelExecutionError(f"Treatment response prediction failed: {str(e)}")
+            raise ModelExecutionError(f"Treatment response prediction failed: {e!s}")
     
-    async def get_feature_importance(self, model_id: str) -> List[Dict[str, Any]]:
+    async def get_feature_importance(self, model_id: str) -> list[dict[str, Any]]:
         """
         Get feature importance for a specific XGBoost model.
         
@@ -114,4 +113,4 @@ class XGBoostService(XGBoostInterface):
                 {"feature": "genetic_markers", "importance": 0.05}
             ]
         except Exception as e:
-            raise ModelExecutionError(f"Feature importance retrieval failed: {str(e)}")
+            raise ModelExecutionError(f"Feature importance retrieval failed: {e!s}")

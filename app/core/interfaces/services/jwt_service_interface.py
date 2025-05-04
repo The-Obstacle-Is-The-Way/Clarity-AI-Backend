@@ -7,7 +7,7 @@ following clean architecture principles with clear separation of concerns.
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from app.core.domain.entities.user import User
 
@@ -24,8 +24,8 @@ class JWTServiceInterface(ABC):
     @abstractmethod
     def create_access_token(
         self, 
-        data: Dict[str, Any], 
-        expires_delta: Optional[timedelta] = None
+        data: dict[str, Any], 
+        expires_delta: timedelta | None = None
     ) -> str:
         """
         Create a new JWT access token.
@@ -42,8 +42,8 @@ class JWTServiceInterface(ABC):
     @abstractmethod
     def create_refresh_token(
         self, 
-        data: Dict[str, Any], 
-        expires_delta: Optional[timedelta] = None
+        data: dict[str, Any], 
+        expires_delta: timedelta | None = None
     ) -> str:
         """
         Create a new JWT refresh token.
@@ -58,7 +58,7 @@ class JWTServiceInterface(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def decode_token(self, token: str) -> Dict[str, Any]:
+    def decode_token(self, token: str) -> dict[str, Any]:
         """
         Decode and validate a JWT token.
         
@@ -74,7 +74,7 @@ class JWTServiceInterface(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def generate_tokens_for_user(self, user: User) -> Dict[str, str]:
+    def generate_tokens_for_user(self, user: User) -> dict[str, str]:
         """
         Generate both access and refresh tokens for a user.
         
@@ -118,7 +118,7 @@ class JWTServiceInterface(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def get_token_expiration(self, token: str) -> Optional[datetime]:
+    def get_token_expiration(self, token: str) -> datetime | None:
         """
         Get the expiration time of a token.
         

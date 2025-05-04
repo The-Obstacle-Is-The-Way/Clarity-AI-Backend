@@ -2,20 +2,19 @@
 Mock implementation of XGBoostInterface for testing.
 Provides synthetic predictions without requiring the actual XGBoost model.
 """
-from datetime import datetime, timedelta
-import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
 import random
+import uuid
+from datetime import datetime
+from typing import Any
 
-from app.core.services.ml.xgboost.interface import XGBoostInterface
 from app.core.services.ml.xgboost.constants import ModelType
 from app.core.services.ml.xgboost.exceptions import (
-    XGBoostServiceError,
-    ValidationError,
     ModelNotFoundError,
     ResourceNotFoundError,
-    ServiceUnavailableError
+    ValidationError,
 )
+from app.core.services.ml.xgboost.interface import XGBoostInterface
+
 
 class MockXGBoostService(XGBoostInterface):
     """
@@ -28,7 +27,7 @@ class MockXGBoostService(XGBoostInterface):
         self._features = {}  # Store feature importance data
         self._initialized = True
     
-    async def predict(self, patient_id: Any, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: Any, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """
         Required implementation of the generic predict method from MLServiceInterface.
         This is a unified entry point that delegates to specific prediction methods based on model_type.
@@ -87,9 +86,9 @@ class MockXGBoostService(XGBoostInterface):
         self, 
         patient_id: str, 
         risk_type: str, 
-        clinical_data: Dict[str, Any],
-        time_frame_days: Optional[int] = None
-    ) -> Dict[str, Any]:
+        clinical_data: dict[str, Any],
+        time_frame_days: int | None = None
+    ) -> dict[str, Any]:
         """Mock implementation of risk prediction."""
         # Validate input
         if not patient_id:
@@ -129,9 +128,9 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Mock implementation of treatment response prediction."""
         # Validate input
         if not patient_id:
@@ -171,12 +170,12 @@ class MockXGBoostService(XGBoostInterface):
     async def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, Any],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
-        social_determinants: Optional[Dict[str, Any]] = None,
-        comorbidities: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        outcome_timeframe: dict[str, Any],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
+        social_determinants: dict[str, Any] | None = None,
+        comorbidities: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Mock implementation of outcome prediction."""
         # Validate input
         if not patient_id:
@@ -216,8 +215,8 @@ class MockXGBoostService(XGBoostInterface):
     
     async def get_model_info(
         self, 
-        model_type: Union[str, ModelType]
-    ) -> Dict[str, Any]:
+        model_type: str | ModelType
+    ) -> dict[str, Any]:
         """Mock implementation of model info retrieval."""
         # Convert enum to string if needed
         if isinstance(model_type, ModelType):
@@ -269,10 +268,10 @@ class MockXGBoostService(XGBoostInterface):
     
     async def get_feature_importance(
         self,
-        model_type: Union[str, ModelType],
+        model_type: str | ModelType,
         prediction_id: str,
-        patient_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        patient_id: str | None = None
+    ) -> dict[str, Any]:
         """Mock implementation of feature importance retrieval."""
         # Validate input
         if not prediction_id:
@@ -306,8 +305,8 @@ class MockXGBoostService(XGBoostInterface):
         patient_id: str,
         profile_id: str,
         prediction_id: str,
-        additional_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        additional_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Mock implementation of digital twin integration."""
         # Validate input
         if not patient_id:
@@ -337,7 +336,7 @@ class MockXGBoostService(XGBoostInterface):
             "message": "Successfully integrated prediction with digital twin"
         }
     
-    async def healthcheck(self) -> Dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """Check service health."""
         return {
             "status": "healthy",

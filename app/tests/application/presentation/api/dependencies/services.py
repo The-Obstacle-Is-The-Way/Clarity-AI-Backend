@@ -5,14 +5,18 @@ This module exposes a named DI provider so that unit tests may override
 the PAT service via FastAPI's dependency_overrides.
 """
 import logging
-from fastapi import HTTPException, Depends, status
+
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.services.ml.pat import PATInterface, PATServiceFactory, InitializationError
-from app.application.services.digital_twin_service import DigitalTwinApplicationService
-from app.infrastructure.persistence.repositories.digital_twin_repository import DigitalTwinRepository
-from app.core.dependencies.database import get_db_session
-from app.infrastructure.cache.redis_cache import RedisCache
+
 from app.application.interfaces.services.cache_service import CacheService
+from app.application.services.digital_twin_service import DigitalTwinApplicationService
+from app.core.dependencies.database import get_db_session
+from app.core.services.ml.pat import InitializationError, PATInterface, PATServiceFactory
+from app.infrastructure.cache.redis_cache import RedisCache
+from app.infrastructure.persistence.repositories.digital_twin_repository import (
+    DigitalTwinRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ async def get_pat_service() -> PATInterface:
         service.initialize({"mock_delay_ms": 100})
         return service
     except InitializationError as e:
-        logger.error(f"Failed to initialize PAT service: {str(e)}")
+        logger.error(f"Failed to initialize PAT service: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="PAT service is currently unavailable"
@@ -35,7 +39,7 @@ async def get_pat_service() -> PATInterface:
 
 async def get_digital_twin_service(
     session: AsyncSession = Depends(get_db_session),
-) -> DigitalTwinApplicationService:  # noqa: D401 – factory function
+) -> DigitalTwinApplicationService:
     """Provide a fully‑wired ``DigitalTwinApplicationService`` instance.
 
     The repository is constructed with the request‑scoped SQLAlchemy
@@ -47,7 +51,7 @@ async def get_digital_twin_service(
     return DigitalTwinApplicationService(repository)
 
 
-async def get_cache_service() -> CacheService:  # noqa: D401 – factory function
+async def get_cache_service() -> CacheService:
     """Return a lazily‑connected Redis‑backed cache service instance.
 
     The Redis client initialises itself on first use so we simply return

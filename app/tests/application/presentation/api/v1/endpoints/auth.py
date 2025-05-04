@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Authentication endpoints for the Novamind API.
 
@@ -6,25 +5,21 @@ These endpoints handle user authentication and token management
 with HIPAA-compliant security measures.
 """
 
-from typing import Dict, Optional, Any
-from datetime import datetime, timedelta
-from uuid import UUID
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Cookie
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field, EmailStr, SecretStr
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, EmailStr, Field
 
-from app.core.domain.entities.user import User
-from app.domain.repositories.user_repository import UserRepository
-from app.infrastructure.repositories.user_repository import get_user_repository
-from app.infrastructure.security.jwt.jwt_service import JWTService  # Removed get_jwt_service import
-from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.password.hashing import verify_password, get_password_hash
-from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.presentation.api.dependencies.auth import get_current_user, get_optional_user # Removed get_admin_user
-from app.presentation.api.dependencies.auth_service import get_auth_service_provider
-from app.core.utils.logging import get_logger
 from app.config.settings import get_settings
+from app.core.domain.entities.user import User
+from app.core.utils.logging import get_logger
+from app.domain.repositories.user_repository import UserRepository
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.presentation.api.dependencies.auth import (  # Removed get_admin_user
+    get_current_user,
+    get_optional_user,
+)
+from app.presentation.api.dependencies.auth_service import get_auth_service_provider
 from app.presentation.api.dependencies.user_repository import get_user_repository_provider
 
 # Initialize router
@@ -58,8 +53,8 @@ class UserResponse(BaseModel):
     """User data response model with no sensitive information."""
     id: str
     email: EmailStr
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
     roles: list[str] = []
     is_active: bool = True
 
@@ -161,7 +156,7 @@ async def login(
         raise
     except Exception as e:
         # Log the error but don't expose details to client
-        logger.error(f"Login error: {str(e)}")
+        logger.error(f"Login error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication failed",
@@ -180,8 +175,8 @@ async def login(
 async def refresh_token(
     request: Request,
     response: Response,
-    refresh_data: Optional[RefreshRequest] = None,
-    refresh_token: Optional[str] = Cookie(None, alias="refresh_token"),
+    refresh_data: RefreshRequest | None = None,
+    refresh_token: str | None = Cookie(None, alias="refresh_token"),
     auth_service: AuthenticationService = Depends(get_auth_service_provider),
 ):
     """
@@ -249,7 +244,7 @@ async def refresh_token(
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
     except Exception as e:
-        logger.warning(f"Token refresh failed: {str(e)}")
+        logger.warning(f"Token refresh failed: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
@@ -267,8 +262,8 @@ async def refresh_token(
 async def logout(
     request: Request,
     response: Response,
-    access_token: Optional[str] = Depends(get_current_user),
-    refresh_token: Optional[str] = Cookie(None, alias="refresh_token"),
+    access_token: str | None = Depends(get_current_user),
+    refresh_token: str | None = Cookie(None, alias="refresh_token"),
     auth_service: AuthenticationService = Depends(get_auth_service_provider)
 ):
     """
@@ -294,7 +289,7 @@ async def logout(
         try:
             await auth_service.logout(tokens_to_revoke)
         except Exception as e:
-            logger.warning(f"Error during token revocation: {str(e)}")
+            logger.warning(f"Error during token revocation: {e!s}")
     
     # Clear auth cookies regardless of revocation success
     response.delete_cookie(key="access_token", path="/")
@@ -347,7 +342,7 @@ async def get_current_user_profile(
         raise
     except Exception as e:
         # Log unexpected errors
-        logger.error(f"Error retrieving user profile for user ID {current_user.id if current_user else 'UNKNOWN'}: {str(e)}", exc_info=True)
+        logger.error(f"Error retrieving user profile for user ID {current_user.id if current_user else 'UNKNOWN'}: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve user profile"
@@ -356,13 +351,13 @@ async def get_current_user_profile(
 
 @router.get(
     "/session-info",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Get session information",
     description="Return information about the current authentication session",
     response_description="Session information"
 )
 async def get_session_info(
-    user_data: Optional[Dict[str, Any]] = Depends(get_optional_user),
+    user_data: dict[str, Any] | None = Depends(get_optional_user),
 ):
     """
     Get information about the current session.

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PHI Middleware for FastAPI.
 
@@ -8,19 +7,18 @@ ensuring HIPAA compliance at the API layer.
 """
 
 import json
-import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Set, Union, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response, JSONResponse
+from fastapi import FastAPI
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
-from fastapi import FastAPI, HTTPException
 
 # Import infrastructure PHI components
-from app.infrastructure.security.phi import PHIService, PHIType, get_sanitized_logger
-
+from app.infrastructure.security.phi import PHIService, get_sanitized_logger
 
 # Use PHI-sanitized logger
 logger = get_sanitized_logger(__name__)
@@ -37,10 +35,10 @@ class PHIMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        phi_service: Optional[PHIService] = None,
+        phi_service: PHIService | None = None,
         redaction_text: str = "[REDACTED {phi_type}]",
-        exclude_paths: Optional[List[str]] = None,
-        whitelist_patterns: Optional[Dict[str, List[str]]] = None,
+        exclude_paths: list[str] | None = None,
+        whitelist_patterns: dict[str, list[str]] | None = None,
         audit_mode: bool = False,
     ):
         """
@@ -121,7 +119,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         """
         return any(path.startswith(excluded) for excluded in self.exclude_paths)
     
-    def _get_whitelists_for_path(self, path: str) -> List[re.Pattern]:
+    def _get_whitelists_for_path(self, path: str) -> list[re.Pattern]:
         """
         Get the compiled whitelist patterns for a path.
         
@@ -374,8 +372,8 @@ class PHIMiddleware(BaseHTTPMiddleware):
 
 def add_phi_middleware(
     app: FastAPI,
-    exclude_paths: Optional[List[str]] = None,
-    whitelist_patterns: Optional[Dict[str, List[str]]] = None,
+    exclude_paths: list[str] | None = None,
+    whitelist_patterns: dict[str, list[str]] | None = None,
     audit_mode: bool = False,
 ) -> None:
     """

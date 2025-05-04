@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Core exceptions package.
 
@@ -6,48 +5,47 @@ This package contains all exceptions used throughout the application.
 """
 
 from app.core.exceptions.base_exceptions import (
+    AnalysisError,
     ApplicationError,
     AuthenticationException,
-    AuthorizationException,
     AuthorizationError,
+    AuthorizationException,
     BaseException,
     BusinessRuleException,
     ConfigurationError,
     DatabaseException,
+    EmbeddingError,
     ExternalServiceException,
+    HIPAAComplianceError,
     InitializationError,
+    IntegrationError,
     InvalidConfigurationError,
     PersistenceError,
-    ResourceNotFoundException,
     ResourceNotFoundError,
+    ResourceNotFoundException,
     SecurityException,
-    ValidationException,
-    ValidationError,
-    HIPAAComplianceError,
     ServiceProviderError,
-    AnalysisError,
-    EmbeddingError,
-    IntegrationError,
+    ValidationError,
+    ValidationException,
 )
-
-
 from app.core.exceptions.ml_exceptions import (
+    DigitalTwinError,
     InvalidRequestError,
+    MentalLLaMAInferenceError,
+    MentalLLaMAServiceError,
     MLServiceError,
     ModelNotFoundError,
-    ServiceUnavailableError,
     PHIDetectionError,
-    MentalLLaMAServiceError,
-    MentalLLaMAInferenceError,
+    ServiceUnavailableError,
     XGBoostServiceError,
-    DigitalTwinError,
 )
 
 __all__ = [
+    "AnalysisError",
     "ApplicationError",
     "AuthenticationException",
-    "AuthorizationException",
     "AuthorizationError",
+    "AuthorizationException",
     "BaseException",
     "BusinessRuleException",
     "ConfigurationError",
@@ -65,15 +63,14 @@ __all__ = [
     "MentalLLaMAInferenceError",
     "MentalLLaMAServiceError",
     "ModelNotFoundError",
-    "PersistenceError",
     "PHIDetectionError",
-    "ResourceNotFoundException",
+    "PersistenceError",
     "ResourceNotFoundError",
+    "ResourceNotFoundException",
     "SecurityException",
-    "ServiceUnavailableError",
     "ServiceProviderError",
-    "ValidationException",
+    "ServiceUnavailableError",
     "ValidationError",
+    "ValidationException",
     "XGBoostServiceError",
-    "AnalysisError",
 ]

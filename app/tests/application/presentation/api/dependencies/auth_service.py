@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Authentication Service Provider for FastAPI.
 
@@ -6,21 +5,18 @@ This module provides a clean dependency interface for the AuthenticationService,
 ensuring proper handling of database connections and avoiding response model issues.
 """
 
-from typing import Dict, Any, Optional, Callable, AsyncGenerator, Annotated, Type
 from fastapi import Depends
+
+from app.infrastructure.logging.logger import get_logger
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
 
 # Use infrastructure implementation of user repository
 # Use the concrete SqlAlchemy implementation
 from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
-from app.infrastructure.security.jwt.jwt_service import JWTService
-from app.presentation.api.dependencies.auth import get_jwt_service
-from app.core.interfaces.repositories.user_repository import IUserRepository
-from app.presentation.api.dependencies.user_repository import get_user_repository_provider
-from app.infrastructure.di.container import container
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
+from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-from app.infrastructure.logging.logger import get_logger
+from app.presentation.api.dependencies.auth import get_jwt_service
 
 logger = get_logger(__name__)
 

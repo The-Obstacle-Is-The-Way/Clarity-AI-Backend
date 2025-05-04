@@ -16,6 +16,7 @@ from app.core.interfaces.unit_of_work import IUnitOfWork
 
 # Application Test Utilities (Mock Implementations)
 from app.tests.utils.repository_factory import (
+    REPOSITORY_MAP,
     MockBiometricAlertRepository,
     MockBiometricRuleRepository,
     MockBiometricTwinRepository,
@@ -23,8 +24,7 @@ from app.tests.utils.repository_factory import (
     MockPatientRepository,
     MockUnitOfWork,
     MockUserRepository,
-    REPOSITORY_MAP,
-    RepositoryFactory
+    RepositoryFactory,
 )
 
 logger = logging.getLogger(__name__)

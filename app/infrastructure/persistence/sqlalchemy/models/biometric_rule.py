@@ -6,13 +6,13 @@ using SQLAlchemy ORM. It represents the database schema and mapping for
 biometric rules in the Novamind platform.
 """
 
-from datetime import datetime
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Column, String, Boolean, Text, ForeignKey, DateTime, JSON
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
 
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 class BiometricRuleModel(Base):

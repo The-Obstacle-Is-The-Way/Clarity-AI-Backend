@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 MentaLLaMA Mock Service.
 
@@ -6,17 +5,16 @@ This module provides a mock implementation of the MentaLLaMA service,
 used for testing without requiring the actual OpenAI API dependency.
 """
 
-import json
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
+
+# Import exceptions used in interface methods if needed
+from app.core.exceptions import InvalidRequestError, ServiceUnavailableError
 
 # Import the interface
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.utils.logging import get_logger
+from app.infrastructure.ml.mentallama.models import MentaLLaMAResult
 from app.infrastructure.ml.phi_detection import PHIDetectionService
-from app.infrastructure.ml.mentallama.models import MentaLLaMAResult, MentaLLaMAError, MentaLLaMAConnectionError
-# Import exceptions used in interface methods if needed
-from app.core.exceptions import InitializationError, ServiceUnavailableError, InvalidRequestError, ModelNotFoundError
-
 
 logger = get_logger(__name__)
 
@@ -33,7 +31,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def __init__(
         self,
         phi_detection_service: PHIDetectionService,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         api_endpoint: str = "https://api.mentallama.com/v1",
         model_name: str = "mentallama-7b",
         temperature: float = 0.7
@@ -57,7 +55,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
 
     # --- Implement MentaLLaMAInterface Methods ---
 
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """Initialize the mock service."""
         # Optionally use config to update parameters
         self._api_key = config.get("api_key", self._api_key)
@@ -95,9 +93,9 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def process( # Removed async
         self,
         text: str,
-        model_type: Optional[str] = None, # model_type might map to analysis_type
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        model_type: str | None = None, # model_type might map to analysis_type
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Mock processing text - delegates to analyze_text."""
         self._ensure_initialized()
         if not text:
@@ -118,8 +116,8 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def detect_depression( # Removed async
         self,
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Mock depression detection."""
         self._ensure_initialized()
         if not text:
@@ -196,7 +194,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             }
         )
         
-    def _generate_general_analysis(self, text: str) -> Dict[str, Any]:
+    def _generate_general_analysis(self, text: str) -> dict[str, Any]:
         """
         Generate mock general analysis.
         
@@ -222,7 +220,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             }
         }
         
-    def _generate_risk_assessment(self, text: str) -> Dict[str, Any]:
+    def _generate_risk_assessment(self, text: str) -> dict[str, Any]:
         """
         Generate mock risk assessment.
         
@@ -250,7 +248,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             ]
         }
         
-    def _generate_treatment_recommendation(self, text: str) -> Dict[str, Any]:
+    def _generate_treatment_recommendation(self, text: str) -> dict[str, Any]:
         """
         Generate mock treatment recommendation.
         

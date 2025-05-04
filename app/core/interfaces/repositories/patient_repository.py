@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Patient Repository Interface.
 
@@ -10,7 +9,7 @@ on this abstraction. This ensures decoupling and testability.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from app.core.domain.entities.patient import Patient
 
@@ -35,7 +34,7 @@ class IPatientRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, patient_id: str) -> Optional[Patient]:
+    async def get_by_id(self, patient_id: str) -> Patient | None:
         """
         Retrieves a patient by their unique identifier.
 
@@ -51,7 +50,7 @@ class IPatientRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_all(self, limit: int = 100, offset: int = 0) -> List[Patient]:
+    async def get_all(self, limit: int = 100, offset: int = 0) -> list[Patient]:
         """
         Retrieves a list of all patients, with pagination.
 
@@ -101,7 +100,7 @@ class IPatientRepository(ABC):
         pass
 
     @abstractmethod
-    async def find_by_criteria(self, criteria: Dict[str, Any]) -> List[Patient]:
+    async def find_by_criteria(self, criteria: dict[str, Any]) -> list[Patient]:
         """
         Finds patients based on specific criteria.
 

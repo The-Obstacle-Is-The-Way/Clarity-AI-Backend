@@ -2,24 +2,28 @@
 Service responsible for user authentication logic.
 """
 
-import logging
-from typing import Optional, Dict, Any, Tuple, List, Union
 import uuid
-from datetime import datetime, timedelta
 
 from app.domain.entities.user import User
+from app.domain.enums.role import Role
+
+# CORRECTED import: Use EntityNotFoundError
+from app.domain.exceptions import (
+    AuthenticationError,
+    EntityNotFoundError,
+    InvalidTokenError,
+    TokenExpiredError,
+)
+
 # Import password service and user repository interface (adjust path as needed)
-from app.infrastructure.security.password.hashing import verify_password
 # from app.domain.repositories.user_repository import UserRepository # Example
 from app.domain.repositories.user_repository import UserRepository
-from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.infrastructure.security.jwt.jwt_service import JWTService
-# CORRECTED Import: Use UserModel from infrastructure, and Role from domain
-from app.infrastructure.models.user_model import UserModel 
-from app.domain.enums.role import Role 
-# CORRECTED import: Use EntityNotFoundError
-from app.domain.exceptions import AuthenticationError, EntityNotFoundError, InvalidTokenError, TokenExpiredError 
 from app.infrastructure.logging.logger import get_logger
+
+# CORRECTED Import: Use UserModel from infrastructure, and Role from domain
+from app.infrastructure.models.user_model import UserModel
+from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.password.password_handler import PasswordHandler
 
 logger = get_logger(__name__)
 
@@ -51,7 +55,7 @@ class AuthenticationService:
         self.jwt_service = jwt_service
         logger.info("AuthenticationService initialized with dependencies.")
 
-    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
+    async def authenticate_user(self, username: str, password: str) -> User | None:
         """
         Authenticates a user based on username and password.
 
@@ -92,12 +96,12 @@ class AuthenticationService:
         except EntityNotFoundError:
             logger.warning(f"User not found: {username}")
             return None
-        except AuthenticationError as e:
+        except AuthenticationError:
             # Re-raise authentication-specific errors
             raise
         except Exception as e:
             logger.error(f"Unexpected error during authentication: {e}", exc_info=True)
-            raise AuthenticationError(f"Authentication error: {str(e)}")
+            raise AuthenticationError(f"Authentication error: {e!s}")
 
     async def get_user_by_id(self, user_id: str) -> User:
         """
@@ -142,7 +146,7 @@ class AuthenticationService:
             raise
         except Exception as e:
             logger.error(f"Error retrieving user by ID: {e}", exc_info=True)
-            raise RuntimeError(f"Failed to retrieve user data for {user_id}: {str(e)}")
+            raise RuntimeError(f"Failed to retrieve user data for {user_id}: {e!s}")
     
     def _map_user_model_to_domain(self, user_model: UserModel) -> User:
         """
@@ -182,7 +186,7 @@ class AuthenticationService:
             return user
         except Exception as e:
             logger.error(f"Error mapping user model to domain: {e}", exc_info=True)
-            raise RuntimeError(f"Failed to process user data: {str(e)}")
+            raise RuntimeError(f"Failed to process user data: {e!s}")
 
     async def create_access_token(self, user: User) -> str:
         """
@@ -210,7 +214,7 @@ class AuthenticationService:
             return token
         except Exception as e:
             logger.error(f"Error creating access token: {e}", exc_info=True)
-            raise AuthenticationError(f"Failed to create access token: {str(e)}")
+            raise AuthenticationError(f"Failed to create access token: {e!s}")
 
     async def create_refresh_token(self, user: User) -> str:
         """
@@ -233,9 +237,9 @@ class AuthenticationService:
             return token
         except Exception as e:
             logger.error(f"Error creating refresh token: {e}", exc_info=True)
-            raise AuthenticationError(f"Failed to create refresh token: {str(e)}")
+            raise AuthenticationError(f"Failed to create refresh token: {e!s}")
 
-    async def create_token_pair(self, user: User) -> Dict[str, str]:
+    async def create_token_pair(self, user: User) -> dict[str, str]:
         """
         Create both access and refresh tokens for a user.
         
@@ -254,7 +258,7 @@ class AuthenticationService:
             "token_type": "bearer"
         }
 
-    async def refresh_token(self, refresh_token: str) -> Dict[str, str]:
+    async def refresh_token(self, refresh_token: str) -> dict[str, str]:
         """
         Refresh the access token using a valid refresh token.
         
@@ -299,9 +303,9 @@ class AuthenticationService:
             raise AuthenticationError("User not found for the provided token")
         except Exception as e:
             logger.error(f"Error refreshing token: {e}", exc_info=True)
-            raise AuthenticationError(f"Failed to refresh token: {str(e)}")
+            raise AuthenticationError(f"Failed to refresh token: {e!s}")
 
-    async def validate_token(self, token: str) -> Tuple[User, List[str]]:
+    async def validate_token(self, token: str) -> tuple[User, list[str]]:
         """
         Validate a token and return the associated user and permissions.
         
@@ -360,7 +364,7 @@ class AuthenticationService:
             raise
         except Exception as e:
             logger.error(f"Error validating token: {e}", exc_info=True)
-            raise AuthenticationError(f"Failed to validate token: {str(e)}")
+            raise AuthenticationError(f"Failed to validate token: {e!s}")
 
     async def revoke_token(self, token: str) -> bool:
         """
@@ -378,7 +382,7 @@ class AuthenticationService:
             logger.error(f"Error revoking token: {e}", exc_info=True)
             return False
 
-    async def logout(self, tokens: Union[str, List[str]]) -> bool:
+    async def logout(self, tokens: str | list[str]) -> bool:
         """
         Logout user by revoking their tokens.
         

@@ -5,9 +5,8 @@ This module provides initialization functions for AWS services
 to be used during application startup.
 """
 
-import os
 import logging
-from typing import Optional
+import os
 
 from app.infrastructure.aws.service_factory_provider import AWSServiceFactoryProvider
 
@@ -16,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 def initialize_aws_services(
     app_env: str = None, 
-    region: Optional[str] = None,
-    force_in_memory: Optional[bool] = None
+    region: str | None = None,
+    force_in_memory: bool | None = None
 ) -> None:
     """
     Initialize AWS services based on environment.

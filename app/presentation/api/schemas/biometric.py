@@ -7,10 +7,10 @@ strict validation of all input and output data.
 """
 
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, validator
+from pydantic import Field, validator
 
 from app.core.domain.entities.biometric import BiometricType
 
@@ -22,8 +22,8 @@ class BiometricBase(BaseModelConfig):
     """Base schema for biometric data with common fields."""
     biometric_type: BiometricType
     timestamp: datetime
-    device_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    device_id: str | None = None
+    metadata: dict[str, Any] | None = Field(default_factory=dict)
 
     @validator("timestamp")
     def validate_timestamp(cls, v):
@@ -35,22 +35,22 @@ class BiometricBase(BaseModelConfig):
 
 class BiometricCreateRequest(BiometricBase):
     """Request schema for creating a new biometric record."""
-    value: Dict[str, Any] = Field(..., description="Biometric measurements")
+    value: dict[str, Any] = Field(..., description="Biometric measurements")
 
 
 class BiometricUpdateRequest(BaseModelConfig):
     """Request schema for updating an existing biometric record."""
-    biometric_type: Optional[BiometricType] = None
-    timestamp: Optional[datetime] = None
-    value: Optional[Dict[str, Any]] = None
-    device_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    biometric_type: BiometricType | None = None
+    timestamp: datetime | None = None
+    value: dict[str, Any] | None = None
+    device_id: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class BiometricResponse(BiometricBase):
     """Response schema for a detailed biometric record."""
     id: UUID
-    value: Dict[str, Any] = Field(..., description="Biometric measurements")
+    value: dict[str, Any] = Field(..., description="Biometric measurements")
     user_id: UUID
 
 
@@ -59,8 +59,8 @@ class BiometricSummaryResponse(BaseModelConfig):
     id: UUID
     biometric_type: BiometricType
     timestamp: datetime
-    device_id: Optional[str] = None
-    summary_value: Dict[str, Any] = Field(..., description="Summarized biometric values")
+    device_id: str | None = None
+    summary_value: dict[str, Any] = Field(..., description="Summarized biometric values")
 
 
 class BiometricBatchItem(BiometricCreateRequest):
@@ -70,4 +70,4 @@ class BiometricBatchItem(BiometricCreateRequest):
 
 class BiometricBatchUploadRequest(BaseModelConfig):
     """Request schema for batch uploading multiple biometric records."""
-    records: List[BiometricBatchItem] = Field(..., min_items=1, max_items=100)
+    records: list[BiometricBatchItem] = Field(..., min_items=1, max_items=100)

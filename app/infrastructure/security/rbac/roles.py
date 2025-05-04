@@ -4,8 +4,7 @@ Role definitions for the Novamind Digital Twin Platform.
 This module defines the available roles and permissions in the system.
 Roles are used for authorization and access control throughout the application.
 """
-from enum import Enum, auto
-from typing import Set, Dict, List, Optional
+from enum import Enum
 
 
 class Role(str, Enum):
@@ -35,7 +34,7 @@ class Role(str, Enum):
 
 
 # Permission mapping by role
-ROLE_PERMISSIONS: Dict[Role, List[str]] = {
+ROLE_PERMISSIONS: dict[Role, list[str]] = {
     Role.USER: [
         "view_own_data",
         "update_own_profile",
@@ -90,7 +89,7 @@ ROLE_PERMISSIONS: Dict[Role, List[str]] = {
 }
 
 
-def get_permissions_for_role(role: Role) -> List[str]:
+def get_permissions_for_role(role: Role) -> list[str]:
     """
     Get the list of permissions for a specific role.
     
@@ -103,7 +102,7 @@ def get_permissions_for_role(role: Role) -> List[str]:
     return ROLE_PERMISSIONS.get(role, [])
 
 
-def get_all_permissions_for_roles(roles: List[Role]) -> List[str]:
+def get_all_permissions_for_roles(roles: list[Role]) -> list[str]:
     """
     Get the combined set of permissions for multiple roles.
     
@@ -119,7 +118,7 @@ def get_all_permissions_for_roles(roles: List[Role]) -> List[str]:
     return list(all_permissions)
 
 
-def has_permission(roles: List[Role], permission: str) -> bool:
+def has_permission(roles: list[Role], permission: str) -> bool:
     """
     Check if a user with the given roles has a specific permission.
     

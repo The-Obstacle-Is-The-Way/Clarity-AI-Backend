@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 LSTM Model for Biometric Correlation Analysis.
 
@@ -6,16 +5,16 @@ This module implements the LSTM-based model for analyzing correlations
 between biometric data and mental health indicators.
 """
 
-import os
 import logging
+import os
+from typing import Any
+
 import numpy as np
-from typing import Dict, List, Optional, Any, Tuple
 
 # Mock TensorFlow/Keras functions for testing environments
 try:
-    from tensorflow.keras.models import load_model
     from tensorflow.keras.layers import LSTM, Dense, Dropout
-    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.models import Sequential, load_model
 except ImportError:
     # Create a mock load_model function for testing
     def load_model(model_path):
@@ -74,7 +73,7 @@ class BiometricCorrelationModel:
     
     def __init__(
         self,
-        model_path: Optional[str] = None,
+        model_path: str | None = None,
         input_dim: int = 10,
         output_dim: int = 5,
         sequence_length: int = 24,
@@ -120,7 +119,7 @@ class BiometricCorrelationModel:
         # Mark as initialized
         self.is_initialized = True
     
-    async def analyze_correlations(self, input_data=None) -> Dict[str, Any]:
+    async def analyze_correlations(self, input_data=None) -> dict[str, Any]:
         """
         Analyze correlations between biometric data and mental health indicators.
         
@@ -170,7 +169,7 @@ class BiometricCorrelationModel:
     
     async def identify_key_biometric_indicators(
         self, biometric_data: np.ndarray, mental_health_data: np.ndarray
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Identify key biometric indicators that correlate with mental health.
         
@@ -218,7 +217,7 @@ class BiometricCorrelationModel:
     
     async def detect_biometric_anomalies(
         self, biometric_data: np.ndarray, window_size: int = 7
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect anomalies in biometric data.
         

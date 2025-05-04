@@ -5,29 +5,26 @@ This module provides the repository implementation for digital twin entities,
 bridging between the domain model and the database.
 """
 
-import uuid
 import logging
+import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union, cast
 
-from sqlalchemy import desc
-from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, joinedload
 
 from app.domain.entities.biometric_twin_enhanced import (
-    BiometricTwin,
-    BiometricTimeseriesData,
     BiometricDataPoint,
+    BiometricSource,
+    BiometricTimeseriesData,
+    BiometricTwin,
     BiometricType,
-    BiometricSource
 )
 from app.domain.value_objects.physiological_ranges import PhysiologicalRange
 from app.infrastructure.persistence.sqlalchemy.models.digital_twin import (
-    DigitalTwinModel,
+    BiometricDataPointModel,
     BiometricTimeseriesModel,
-    BiometricDataPointModel
+    DigitalTwinModel,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +46,7 @@ class DigitalTwinRepository:
         """
         self.session = session
     
-    async def get_by_id(self, twin_id: str) -> Optional[BiometricTwin]:
+    async def get_by_id(self, twin_id: str) -> BiometricTwin | None:
         """
         Get a digital twin by ID.
         
@@ -76,7 +73,7 @@ class DigitalTwinRepository:
             logger.error(f"Error retrieving digital twin by ID {twin_id}: {e}")
             return None
     
-    async def get_by_patient_id(self, patient_id: str) -> Optional[BiometricTwin]:
+    async def get_by_patient_id(self, patient_id: str) -> BiometricTwin | None:
         """
         Get a digital twin by patient ID.
         

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Mock ML Service Implementation.
 
@@ -7,12 +6,10 @@ These mock implementations follow the interfaces defined in interface.py
 and provide realistic responses for testing without requiring actual ML models.
 """
 
-import json
 import random
 import re
-from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Union
+from datetime import datetime
+from typing import Any
 
 from app.core.exceptions import (
     InvalidConfigurationError,
@@ -22,7 +19,7 @@ from app.core.exceptions import (
 )
 from app.core.services.ml.interface import MentaLLaMAInterface, PHIDetectionInterface
 from app.core.utils.logging import get_logger
-
+from app.domain.utils.datetime_utils import UTC
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -50,7 +47,7 @@ class MockMentaLLaMA(MentaLLaMAInterface): # Uncommented class definition
         self._sessions = {}
         self._digital_twins = {}
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -74,10 +71,10 @@ class MockMentaLLaMA(MentaLLaMAInterface): # Uncommented class definition
             logger.info("Mock MentaLLaMA service initialized")
             
         except Exception as e:
-            logger.error(f"Failed to initialize mock MentaLLaMA service: {str(e)}")
+            logger.error(f"Failed to initialize mock MentaLLaMA service: {e!s}")
             self._initialized = False
             self._config = None
-            raise InvalidConfigurationError(f"Failed to initialize mock MentaLLaMA service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize mock MentaLLaMA service: {e!s}")
     
     def _load_default_mock_responses(self) -> None:
         """Load default mock responses for various model types."""
@@ -90,7 +87,7 @@ class MockMentaLLaMA(MentaLLaMAInterface): # Uncommented class definition
             "digital_twin": self._create_digital_twin_response(),
         }
     
-    def _create_general_response(self) -> Dict[str, Any]:
+    def _create_general_response(self) -> dict[str, Any]:
         """Create a default mock response for general model type."""
         return {
             "content": """Based on the provided text, I've identified several patterns that may be clinically relevant:
@@ -111,7 +108,7 @@ Remember that this is a preliminary analysis based solely on the language patter
             "timestamp": datetime.now(UTC).isoformat() + "Z"
         }
     
-    def _create_depression_detection_response(self) -> Dict[str, Any]:
+    def _create_depression_detection_response(self) -> dict[str, Any]:
         """Create a default mock response for depression detection model type."""
         return {
             "depression_signals": {
@@ -150,7 +147,7 @@ Remember that this is a preliminary analysis based solely on the language patter
             "timestamp": datetime.now(UTC).isoformat() + "Z"
         }
     
-    def _create_risk_assessment_response(self) -> Dict[str, Any]:
+    def _create_risk_assessment_response(self) -> dict[str, Any]:
         """Create a default mock response for risk assessment model type."""
         return {
             "risk_assessment": {
@@ -182,7 +179,7 @@ Remember that this is a preliminary analysis based solely on the language patter
             "timestamp": datetime.now(UTC).isoformat() + "Z"
         }
     
-    def _create_sentiment_analysis_response(self) -> Dict[str, Any]:
+    def _create_sentiment_analysis_response(self) -> dict[str, Any]:
         """Create a default mock response for sentiment analysis model type."""
         return {
             "sentiment": {
@@ -223,7 +220,7 @@ Remember that this is a preliminary analysis based solely on the language patter
             "timestamp": datetime.now(UTC).isoformat() + "Z"
         }
     
-    def _create_wellness_dimensions_response(self) -> Dict[str, Any]:
+    def _create_wellness_dimensions_response(self) -> dict[str, Any]:
         """Create a default mock response for wellness dimensions model type."""
         return {
             "wellness_dimensions": [
@@ -269,7 +266,7 @@ Remember that this is a preliminary analysis based solely on the language patter
             "timestamp": datetime.now(UTC).isoformat() + "Z"
         }
     
-    def _create_digital_twin_response(self) -> Dict[str, Any]:
+    def _create_digital_twin_response(self) -> dict[str, Any]:
         """Create a default mock response for digital twin model type."""
         return {
             "digital_twin_model": {
@@ -324,9 +321,9 @@ Remember that this is a preliminary analysis based solely on the language patter
     def process(
         self, 
         text: str,
-        model_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        model_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA model.
         
@@ -385,8 +382,8 @@ Remember that this is a preliminary analysis based solely on the language patter
     def detect_depression(
         self, 
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Detect depression signals in text.
         
@@ -409,9 +406,9 @@ Remember that this is a preliminary analysis based solely on the language patter
     def assess_risk(
         self, 
         text: str,
-        risk_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        risk_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Assess risk in text.
         
@@ -448,8 +445,8 @@ Remember that this is a preliminary analysis based solely on the language patter
     def analyze_sentiment(
         self, 
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze sentiment in text.
         
@@ -472,9 +469,9 @@ Remember that this is a preliminary analysis based solely on the language patter
     def analyze_wellness_dimensions(
         self, 
         text: str,
-        dimensions: Optional[List[str]] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        dimensions: list[str] | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze wellness dimensions in text.
         
@@ -513,9 +510,9 @@ Remember that this is a preliminary analysis based solely on the language patter
     def generate_digital_twin(
         self,
         patient_id: str,
-        patient_data: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Generate or update a digital twin model for a patient.
         
@@ -596,10 +593,10 @@ Remember that this is a preliminary analysis based solely on the language patter
     def create_digital_twin_session(
         self,
         therapist_id: str,
-        patient_id: Optional[str] = None,
-        session_type: Optional[str] = None,
-        session_params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        patient_id: str | None = None,
+        session_type: str | None = None,
+        session_params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Create a new Digital Twin session.
         
@@ -658,7 +655,7 @@ Remember that this is a preliminary analysis based solely on the language patter
         
         return result
     
-    def get_digital_twin_session(self, session_id: str) -> Dict[str, Any]:
+    def get_digital_twin_session(self, session_id: str) -> dict[str, Any]:
         """
         Get information about a Digital Twin session.
         
@@ -705,10 +702,10 @@ Remember that this is a preliminary analysis based solely on the language patter
         self,
         session_id: str,
         message: str,
-        sender_type: Optional[str] = None,
-        sender_id: Optional[str] = None,
-        message_params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        sender_type: str | None = None,
+        sender_id: str | None = None,
+        message_params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Send a message to a Digital Twin session.
         
@@ -843,8 +840,8 @@ Remember that this is a preliminary analysis based solely on the language patter
     def end_digital_twin_session(
         self,
         session_id: str,
-        end_reason: Optional[str] = None
-    ) -> Dict[str, Any]:
+        end_reason: str | None = None
+    ) -> dict[str, Any]:
         """
         End a Digital Twin session.
         
@@ -903,7 +900,7 @@ Remember that this is a preliminary analysis based solely on the language patter
         
         return result
     
-    def _generate_session_summary(self, session: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_session_summary(self, session: dict[str, Any]) -> dict[str, Any]:
         """
         Generate a mock session summary.
         
@@ -1058,8 +1055,8 @@ Remember that this is a preliminary analysis based solely on the language patter
     def get_session_insights(
         self,
         session_id: str,
-        insight_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+        insight_type: str | None = None
+    ) -> dict[str, Any]:
         """
         Get insights from a Digital Twin session.
         
@@ -1242,7 +1239,7 @@ class MockPHIDetection(PHIDetectionInterface):
             ("DATE", re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{1,2}-\d{1,2}-\d{2,4}\b|\b[A-Z][a-z]{2,8} \d{1,2}, \d{4}\b")),
         ]
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -1257,10 +1254,10 @@ class MockPHIDetection(PHIDetectionInterface):
             self._initialized = True
             logger.info("Mock PHI detection service initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize mock PHI detection service: {str(e)}")
+            logger.error(f"Failed to initialize mock PHI detection service: {e!s}")
             self._initialized = False
             self._config = None
-            raise InvalidConfigurationError(f"Failed to initialize mock PHI detection service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize mock PHI detection service: {e!s}")
     
     def is_healthy(self) -> bool:
         """
@@ -1280,8 +1277,8 @@ class MockPHIDetection(PHIDetectionInterface):
     def detect_phi(
         self,
         text: str,
-        detection_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        detection_level: str | None = None
+    ) -> dict[str, Any]:
         """
         Detect PHI in text.
         
@@ -1338,8 +1335,8 @@ class MockPHIDetection(PHIDetectionInterface):
         self,
         text: str,
         replacement: str = "[REDACTED]",
-        detection_level: Optional[str] = None
-    ) -> Dict[str, Any]:
+        detection_level: str | None = None
+    ) -> dict[str, Any]:
         """
         Redact PHI from text.
         

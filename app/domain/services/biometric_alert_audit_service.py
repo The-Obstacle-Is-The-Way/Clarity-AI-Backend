@@ -6,16 +6,16 @@ comprehensive records are maintained for regulatory compliance and
 clinical oversight.
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
+
+from app.domain.interfaces.alert_observer import AlertObserver
+from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
 # Import only BiometricAlert
 from app.domain.services.biometric_event_processor import BiometricAlert
-from app.domain.interfaces.alert_observer import AlertObserver
-from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+from app.domain.utils.datetime_utils import UTC
 
 
 class BiometricAlertAuditService(AlertObserver):

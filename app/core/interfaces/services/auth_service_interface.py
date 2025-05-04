@@ -7,7 +7,6 @@ and dependency inversion.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
 
 from app.core.domain.entities.user import User
 
@@ -22,7 +21,7 @@ class AuthServiceInterface(ABC):
     """
     
     @abstractmethod
-    async def authenticate_user(self, username_or_email: str, password: str) -> Optional[User]:
+    async def authenticate_user(self, username_or_email: str, password: str) -> User | None:
         """
         Authenticate a user with username/email and password.
         
@@ -76,7 +75,7 @@ class AuthServiceInterface(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def change_password(self, user: User, current_password: str, new_password: str) -> Tuple[bool, Optional[str]]:
+    async def change_password(self, user: User, current_password: str, new_password: str) -> tuple[bool, str | None]:
         """
         Change a user's password after verifying the current password.
         
@@ -91,7 +90,7 @@ class AuthServiceInterface(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def reset_password(self, user: User, token: str, new_password: str) -> Tuple[bool, Optional[str]]:
+    async def reset_password(self, user: User, token: str, new_password: str) -> tuple[bool, str | None]:
         """
         Reset a user's password using a reset token.
         

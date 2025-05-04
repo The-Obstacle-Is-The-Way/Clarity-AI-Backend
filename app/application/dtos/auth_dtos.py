@@ -5,9 +5,10 @@ This module contains the DTOs used for authentication and authorization flows,
 providing clean data structures for token management and user sessions.
 """
 
-from typing import Dict, List, Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr, validator
+from typing import Any
+
+from pydantic import BaseModel, EmailStr, validator
 
 
 class TokenPairDTO(BaseModel):
@@ -24,7 +25,7 @@ class LoginResponseDTO(BaseModel):
     refresh_token: str
     token_type: str
     expires_in: int
-    user: Dict[str, Any]
+    user: dict[str, Any]
 
 
 class UserSessionDTO(BaseModel):

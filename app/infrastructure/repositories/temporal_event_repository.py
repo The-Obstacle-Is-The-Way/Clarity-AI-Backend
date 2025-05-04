@@ -1,12 +1,10 @@
 """
 Repository implementation for temporal event storage and retrieval.
 """
-from typing import List, Optional
 from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.domain.entities.temporal_events import CorrelatedEvent, EventChain
 from app.domain.repositories.temporal_repository import EventRepository
@@ -55,7 +53,7 @@ class SqlAlchemyEventRepository(EventRepository):
         
         return event.event_id
     
-    async def get_event_by_id(self, event_id: UUID) -> Optional[CorrelatedEvent]:
+    async def get_event_by_id(self, event_id: UUID) -> CorrelatedEvent | None:
         """
         Get an event by its ID.
         
@@ -75,7 +73,7 @@ class SqlAlchemyEventRepository(EventRepository):
         
         return self._model_to_entity(event_model)
     
-    async def get_events_by_correlation_id(self, correlation_id: UUID) -> List[CorrelatedEvent]:
+    async def get_events_by_correlation_id(self, correlation_id: UUID) -> list[CorrelatedEvent]:
         """
         Get all events with the specified correlation ID.
         
@@ -132,9 +130,9 @@ class SqlAlchemyEventRepository(EventRepository):
     async def get_patient_events(
         self, 
         patient_id: UUID, 
-        event_type: Optional[str] = None,
+        event_type: str | None = None,
         limit: int = 100
-    ) -> List[CorrelatedEvent]:
+    ) -> list[CorrelatedEvent]:
         """
         Get events associated with a patient.
         

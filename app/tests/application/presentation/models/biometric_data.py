@@ -6,8 +6,9 @@ related to biometric data in the digital twin system.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, Field, validator, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BiometricDataInput(BaseModel):
@@ -19,7 +20,7 @@ class BiometricDataInput(BaseModel):
         example="heart_rate"
     )
     
-    value: Union[float, int, Dict[str, Any]] = Field(
+    value: float | int | dict[str, Any] = Field(
         ...,
         description="Measurement value, can be numeric or structured data",
         example=72.5
@@ -37,7 +38,7 @@ class BiometricDataInput(BaseModel):
         example="2025-04-10T14:30:00"
     )
     
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional additional information about the reading",
         example={"device": "fitbit", "activity": "resting"}
@@ -80,7 +81,7 @@ class BiometricDataOutput(BaseModel):
         example="2025-04-10T14:30:00"
     )
     
-    value: Union[float, int, Dict[str, Any]] = Field(
+    value: float | int | dict[str, Any] = Field(
         ...,
         description="Measurement value, can be numeric or structured data",
         example=72.5
@@ -92,7 +93,7 @@ class BiometricDataOutput(BaseModel):
         example="wearable"
     )
     
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional additional information about the reading",
         example={"device": "fitbit", "activity": "resting"}
@@ -114,20 +115,20 @@ class BiometricDataOutput(BaseModel):
 class BiometricHistoryParams(BaseModel):
     """API model for biometric history query parameters."""
     
-    start_time: Optional[datetime] = Field(
+    start_time: datetime | None = Field(
         default=None,
         description="Start time for filtering data",
         example="2025-04-01T00:00:00"
     )
     
-    end_time: Optional[datetime] = Field(
+    end_time: datetime | None = Field(
         default=None,
         description="End time for filtering data",
         example="2025-04-11T00:00:00"
     )
     
     @field_validator("end_time")
-    def validate_time_range(cls, end_time: Optional[datetime], values: Dict[str, Any]) -> Optional[datetime]:
+    def validate_time_range(cls, end_time: datetime | None, values: dict[str, Any]) -> datetime | None:
         """Ensure end_time is after start_time if both are provided."""
         start_time = values.get("start_time")
         if start_time and end_time and end_time < start_time:
@@ -170,7 +171,7 @@ class PhysiologicalRangeModel(BaseModel):
     )
     
     @field_validator("max")
-    def validate_max(cls, max_val: float, values: Dict[str, Any]) -> float:
+    def validate_max(cls, max_val: float, values: dict[str, Any]) -> float:
         """Ensure max is greater than min."""
         min_val = values.get("min")
         if min_val is not None and max_val <= min_val:
@@ -178,7 +179,7 @@ class PhysiologicalRangeModel(BaseModel):
         return max_val
     
     @field_validator("critical_min")
-    def validate_critical_min(cls, critical_min: float, values: Dict[str, Any]) -> float:
+    def validate_critical_min(cls, critical_min: float, values: dict[str, Any]) -> float:
         """Ensure critical_min is less than or equal to min."""
         min_val = values.get("min")
         if min_val is not None and critical_min > min_val:
@@ -186,7 +187,7 @@ class PhysiologicalRangeModel(BaseModel):
         return critical_min
     
     @field_validator("critical_max")
-    def validate_critical_max(cls, critical_max: float, values: Dict[str, Any]) -> float:
+    def validate_critical_max(cls, critical_max: float, values: dict[str, Any]) -> float:
         """Ensure critical_max is greater than or equal to max."""
         max_val = values.get("max")
         if max_val is not None and critical_max < max_val:

@@ -6,10 +6,9 @@ the application, ensuring proper type safety and domain logic encapsulation.
 """
 
 from enum import Enum
-from typing import List, Optional
 
 # Import ConfigDict for V2 style config
-from pydantic import BaseModel, UUID4, Field, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict
 
 
 class UserRole(str, Enum):
@@ -26,10 +25,10 @@ class User(BaseModel):
     id: UUID4 | str | None = None
     email: str
     hashed_password: str | None = None
-    roles: List[UserRole] = []
+    roles: list[UserRole] = []
     is_active: bool = True
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
 
     # V2 Config
     model_config = ConfigDict(from_attributes=True)

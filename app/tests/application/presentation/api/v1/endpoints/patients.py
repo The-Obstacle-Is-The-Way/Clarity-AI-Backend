@@ -16,16 +16,11 @@ dependency‑override techniques.
 
 from __future__ import annotations
 
-from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
-from typing import Any, Dict, Optional
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Test‑environment helpers
 # ---------------------------------------------------------------------------
-
 # The test-suite makes heavy use of `unittest.mock.MagicMock` – most notably
 # for the `PatientModel` class as well as the SQLAlchemy session.  Unfortunately
 # that means equality checks such as
@@ -34,8 +29,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 # instance.  We patch `MagicMock.__eq__` once so that these comparisons resolve
 # to a string‑based comparison which maintains backwards‑compatibility without
 # touching the tests themselves.
-
 from unittest.mock import MagicMock
+
+from fastapi import APIRouter, HTTPException, status
+
+from app.domain.utils.datetime_utils import now_utc
 
 
 def _patched_eq(self: MagicMock, other: object) -> bool:  # type: ignore[override]
@@ -92,12 +90,12 @@ def _magicmock_call(self: MagicMock, *args: Any, **kwargs: Any):  # type: ignore
 
         obj = SimpleNamespace(**kwargs)
 
-        def _asdict() -> Dict[str, Any]:  # type: ignore[override]
+        def _asdict() -> dict[str, Any]:  # type: ignore[override]
             return vars(obj)
 
         # Attach duck‑typed helpers expected by Pydantic / FastAPI.
-        setattr(obj, "dict", _asdict)  # type: ignore[attr-defined]
-        setattr(obj, "model_dump", _asdict)  # For Pydantic v2 compatibility
+        obj.dict = _asdict  # type: ignore[attr-defined]
+        obj.model_dump = _asdict  # For Pydantic v2 compatibility
 
         return obj
 
@@ -116,7 +114,7 @@ MagicMock.__call__ = _magicmock_call  # type: ignore[assignment]
 # level ensures all such instances inherit the enhanced behaviour.
 
 
-def _session_add(self: MagicMock, patient_obj: Any) -> None:  # noqa: D401 – documented via docstring
+def _session_add(self: MagicMock, patient_obj: Any) -> None:
     """Persist *patient_obj* into the in‑memory store.
 
     The object may be either a mapping or an arbitrary object exposing the
@@ -153,14 +151,14 @@ class _QueryProxy:
 
     def __init__(self, model: Any):
         self._model = model
-        self._filters: Dict[str, Any] = {}
+        self._filters: dict[str, Any] = {}
 
     # pylint: disable=unused-argument
-    def filter_by(self, **kwargs: Any):  # noqa: D401 – chainable stub
+    def filter_by(self, **kwargs: Any):
         self._filters.update(kwargs)
         return self
 
-    def first(self):  # noqa: D401 – returns first match
+    def first(self):
         patient_id = self._filters.get("id")
         if patient_id is None:
             return None
@@ -180,13 +178,13 @@ def _session_query(self: MagicMock, model: Any) -> _QueryProxy:  # type: ignore[
     return _QueryProxy(model)
 
 
-def _session_refresh(self: MagicMock, obj: Any) -> None:  # noqa: D401 – mimic Session.refresh
+def _session_refresh(self: MagicMock, obj: Any) -> None:
     """Bring *obj* up‑to‑date with the in‑memory store."""
 
     if obj is None or not hasattr(obj, "id"):
         return
 
-    record = _get_patient(getattr(obj, "id"))
+    record = _get_patient(obj.id)
     if not record:
         return
 
@@ -207,7 +205,7 @@ MagicMock._nova_patient_patch = True  # type: ignore[attr-defined]
 # In‑memory persistence layer
 # ---------------------------------------------------------------------------
 
-_PATIENT_STORE: Dict[str, Dict[str, Any]] = {}
+_PATIENT_STORE: dict[str, dict[str, Any]] = {}
 
 
 def _now_iso() -> str:
@@ -215,11 +213,11 @@ def _now_iso() -> str:
     return now_utc().date().isoformat()
 
 
-def _get_patient(patient_id: str) -> Optional[Dict[str, Any]]:
+def _get_patient(patient_id: str) -> dict[str, Any] | None:
     return _PATIENT_STORE.get(patient_id)
 
 
-def _save_patient(data: Dict[str, Any]) -> None:
+def _save_patient(data: dict[str, Any]) -> None:
     # Ensure we do **not** mutate the caller's dict.
     _PATIENT_STORE[data["id"]] = dict(data)
 
@@ -239,7 +237,7 @@ router = APIRouter()
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_patient_endpoint(patient_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_patient_endpoint(patient_data: dict[str, Any]) -> dict[str, Any]:
     """Create a new patient.
 
     The spec (derived from tests) only requires id, medical_record_number, name,
@@ -262,7 +260,7 @@ async def create_patient_endpoint(patient_data: Dict[str, Any]) -> Dict[str, Any
 
 
 @router.get("/{patient_id}", status_code=status.HTTP_200_OK)
-async def get_patient_endpoint(patient_id: str) -> Dict[str, Any]:
+async def get_patient_endpoint(patient_id: str) -> dict[str, Any]:
     """Retrieve a patient by ID."""
 
     patient = _get_patient(patient_id)
@@ -292,7 +290,7 @@ async def get_patient_endpoint(patient_id: str) -> Dict[str, Any]:
 
 
 @router.patch("/{patient_id}", status_code=status.HTTP_200_OK)
-async def update_patient_endpoint(patient_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+async def update_patient_endpoint(patient_id: str, update_data: dict[str, Any]) -> dict[str, Any]:
     """Update an existing patient."""
 
     patient = _get_patient(patient_id)

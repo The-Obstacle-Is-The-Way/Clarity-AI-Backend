@@ -2,15 +2,16 @@
 XGBoost ML Service API Router.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Body, Request
+from typing import Any
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request
 from fastapi.responses import JSONResponse
-from uuid import UUID
-from typing import Dict, Any, Optional
+
+from app.core.exceptions.data_privacy import DataPrivacyError
 
 # Local imports
 from app.core.services.ml.xgboost.factory import get_xgboost_service
 from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.core.exceptions.data_privacy import DataPrivacyError
 
 # Initialize router with v1 prefix to match the test expectations
 router = APIRouter(prefix="/api/v1/xgboost", tags=["XGBoost"])
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/api/v1/xgboost", tags=["XGBoost"])
 async def data_privacy_exception_handler(request: Request, exc: DataPrivacyError):
     return JSONResponse(
         status_code=400,
-        content={"message": f"PHI detected: {str(exc)}", "privacy_violation": True},
+        content={"message": f"PHI detected: {exc!s}", "privacy_violation": True},
     )
 
 def get_service() -> XGBoostInterface:
@@ -29,9 +30,9 @@ def get_service() -> XGBoostInterface:
 
 @router.post("/predict/risk")
 async def predict_risk(
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Execute risk prediction using XGBoost model.
     
@@ -64,13 +65,13 @@ async def predict_risk(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Risk prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Risk prediction failed: {e!s}")
 
 @router.post("/predict/treatment-response")
 async def predict_treatment_response(
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Execute treatment response prediction using XGBoost model.
     
@@ -103,13 +104,13 @@ async def predict_treatment_response(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Treatment response prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Treatment response prediction failed: {e!s}")
 
 @router.post("/predict/outcome")
 async def predict_outcome(
-    request: Dict[str, Any] = Body(...),
+    request: dict[str, Any] = Body(...),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Execute outcome prediction using XGBoost model.
     
@@ -144,13 +145,13 @@ async def predict_outcome(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Outcome prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Outcome prediction failed: {e!s}")
 
 @router.get("/models/{model_type}")
 async def get_model_info(
     model_type: str,
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get information about available XGBoost models.
     
@@ -163,13 +164,13 @@ async def get_model_info(
     try:
         return await service.get_model_info(model_type)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get model info: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get model info: {e!s}")
 
 @router.get("/models/{model_type}/info")
 async def get_model_info_alt(
     model_type: str,
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Alternative endpoint for model info to match integration test paths.
     
@@ -182,13 +183,13 @@ async def get_model_info_alt(
     try:
         return await service.get_model_info(model_type)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get model info: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get model info: {e!s}")
 
 @router.get("/info/{model_type}")
 async def get_model_info_v1(
     model_type: str = Path(..., description="Type of model to get info for"),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get information about available XGBoost models via POST request.
     
@@ -204,14 +205,14 @@ async def get_model_info_v1(
         result = await service.get_model_info(model_type)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get model info: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get model info: {e!s}")
 
 @router.get("/explain/{model_type}/{prediction_id}")
 async def get_feature_importance_v1(
     model_type: str = Path(..., description="Type of model"),
     prediction_id: str = Path(..., description="ID of the prediction to explain"),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get feature importance for a prediction (path format 1).
     
@@ -235,13 +236,13 @@ async def get_feature_importance_v1(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get feature importance: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get feature importance: {e!s}")
 
 @router.get("/predictions/{prediction_id}/feature-importance")
 async def get_feature_importance_v2(
     prediction_id: str = Path(..., description="ID of the prediction to explain"),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get feature importance for a prediction (path format 2).
     
@@ -265,14 +266,14 @@ async def get_feature_importance_v2(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get feature importance: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get feature importance: {e!s}")
 
 @router.post("/integrate/{prediction_id}")
 async def integrate_with_digital_twin(
     prediction_id: str = Path(..., description="ID of the prediction to integrate"),
-    request: Dict[str, Any] = Body(default={}),
+    request: dict[str, Any] = Body(default={}),
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Integrate a prediction with a digital twin.
     
@@ -299,12 +300,12 @@ async def integrate_with_digital_twin(
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to integrate with digital twin: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to integrate with digital twin: {e!s}")
 
 @router.get("/health")
 async def healthcheck(
     service: XGBoostInterface = Depends(get_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Check health status of XGBoost service.
     
@@ -314,4 +315,4 @@ async def healthcheck(
     try:
         return await service.healthcheck()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {e!s}")

@@ -12,21 +12,30 @@ integration tests.
 
 from __future__ import annotations
 
-from types import ModuleType
 import sys
+from types import ModuleType
 from typing import Optional
 
 # Added imports
 from fastapi import Depends
 from sqlalchemy.orm import Session
+
 from app.core.dependencies.database import get_db_session
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import SQLAlchemyBiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_template_repository import SQLAlchemyBiometricAlertTemplateRepository
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import SQLAlchemyBiometricAlertRepository
+from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
+)
 from app.domain.services.biometric_event_processor import BiometricEventProcessor
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import (
+    SQLAlchemyBiometricAlertRepository,
+)
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import (
+    SQLAlchemyBiometricAlertRuleRepository,
+)
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_template_repository import (
+    SQLAlchemyBiometricAlertTemplateRepository,
+)
 
 
 def _lazy_submodule(name: str) -> ModuleType:  # pragma: no cover – helper
@@ -43,7 +52,7 @@ def _lazy_submodule(name: str) -> ModuleType:  # pragma: no cover – helper
 ml = _lazy_submodule(__name__ + ".ml")
 
 
-def get_mentallama_service():  # noqa: D401 – simple factory
+def get_mentallama_service():
     """Return a stub MentalLLaMA service suitable for tests."""
 
     try:

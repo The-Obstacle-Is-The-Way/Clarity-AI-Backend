@@ -1,5 +1,4 @@
 
-# -*- coding: utf-8 -*-
 """
 Patch for MFAService to fix backup code generation.
 """

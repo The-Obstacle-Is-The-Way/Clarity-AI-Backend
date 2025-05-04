@@ -6,21 +6,24 @@ This module provides dependency injection for biometric alert related services.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Corrected import path for get_db_session
+from app.core.dependencies.database import get_db_session
 from app.core.interfaces.repositories.alert_repository_interface import IAlertRepository
 from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+
 # Corrected import path for AlertRepository
 from app.infrastructure.repositories.alert_repository import AlertRepository
-from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import ( 
+from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import (
     BiometricAlertRepository,
 )
+
 # Removed faulty import from non-existent endpoints.biometric_alert_rules
 # Corrected import to use the actual implementation class name
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import (
     SQLAlchemyBiometricAlertRuleRepository as BiometricRuleRepository,
 )
-# Corrected import path for get_db_session
-from app.core.dependencies.database import get_db_session
+
 # Corrected import path for get_encryption_service
 from app.presentation.api.dependencies.repository import get_encryption_service
 

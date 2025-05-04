@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Patient Entity Module.
 
@@ -9,9 +8,8 @@ It is designed to be persistence-agnostic, following Clean Architecture principl
 
 import uuid
 from datetime import date, datetime
-from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class Patient(BaseModel):
@@ -37,8 +35,8 @@ class Patient(BaseModel):
     first_name: str = Field(..., min_length=1, description="Patient's first name")
     last_name: str = Field(..., min_length=1, description="Patient's last name")
     date_of_birth: date = Field(..., description="Patient's date of birth")
-    email: Optional[EmailStr] = Field(None, description="Patient's email address")
-    phone_number: Optional[str] = Field(None, description="Patient's phone number")
+    email: EmailStr | None = Field(None, description="Patient's email address")
+    phone_number: str | None = Field(None, description="Patient's phone number")
 
     model_config = {
         'from_attributes': True,  # Renamed from orm_mode

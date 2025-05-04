@@ -6,9 +6,8 @@ delegating to consolidated PHI sanitization components where appropriate.
 """
 
 import re
-import ast
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Union, Any
+from typing import Any
 
 from app.infrastructure.security.phi.sanitizer import PHISanitizer
 
@@ -47,7 +46,7 @@ class PHIFinding:
         self.message = message
         self.severity = severity
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary representation.
         
@@ -79,7 +78,7 @@ class PHICodeAnalyzer:
     while delegating to the consolidated PHI sanitization system.
     """
     
-    def __init__(self, sanitizer: Optional[PHISanitizer] = None, phi_service=None):
+    def __init__(self, sanitizer: PHISanitizer | None = None, phi_service=None):
         """
         Initialize the PHI code analyzer.
         
@@ -115,7 +114,7 @@ class PHICodeAnalyzer:
              "Database query might expose PHI", CodeSeverity.INFO),
         ]
     
-    def analyze_file(self, file_path: str) -> List[PHIFinding]:
+    def analyze_file(self, file_path: str) -> list[PHIFinding]:
         """
         Analyze a file for potential PHI leaks.
         
@@ -128,7 +127,7 @@ class PHICodeAnalyzer:
         findings = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
                 lines = content.splitlines()
             
@@ -148,13 +147,13 @@ class PHICodeAnalyzer:
                 file_path=file_path,
                 line_number=0,
                 code_snippet="",
-                message=f"Error analyzing file: {str(e)}",
+                message=f"Error analyzing file: {e!s}",
                 severity=CodeSeverity.INFO
             ))
         
         return findings
     
-    def analyze_directory(self, directory_path: str, exclude_dirs: Optional[List[str]] = None) -> List[PHIFinding]:
+    def analyze_directory(self, directory_path: str, exclude_dirs: list[str] | None = None) -> list[PHIFinding]:
         """
         Analyze all Python files in a directory for potential PHI leaks.
         
@@ -169,7 +168,7 @@ class PHICodeAnalyzer:
         # scan the directory and call analyze_file on each Python file
         return []
     
-    def analyze_code_string(self, code: str, file_path: str = "<string>") -> List[PHIFinding]:
+    def analyze_code_string(self, code: str, file_path: str = "<string>") -> list[PHIFinding]:
         """
         Analyze a code string for potential PHI leaks.
         
@@ -196,7 +195,7 @@ class PHICodeAnalyzer:
         
         return findings
     
-    def analyze_ast(self, code: str, file_path: str = "<string>") -> List[PHIFinding]:
+    def analyze_ast(self, code: str, file_path: str = "<string>") -> list[PHIFinding]:
         """
         Analyze abstract syntax tree for deeper PHI leak detection.
         

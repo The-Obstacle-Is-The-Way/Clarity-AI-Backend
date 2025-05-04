@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Repository Dependencies for FastAPI.
 
@@ -9,7 +8,9 @@ into FastAPI endpoints, following the Dependency Injection pattern.
 from fastapi import Depends
 
 from app.application.interfaces.repositories.analytics_repository import AnalyticsRepository
-from app.infrastructure.persistence.repositories.analytics_repository import SQLAlchemyAnalyticsRepository
+from app.infrastructure.persistence.repositories.analytics_repository import (
+    SQLAlchemyAnalyticsRepository,
+)
 from app.presentation.api.dependencies.database import get_db_session
 
 

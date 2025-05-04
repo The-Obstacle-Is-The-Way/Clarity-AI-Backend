@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Process Analytics Event Use Case.
 
@@ -7,13 +6,13 @@ in real-time as they are received from the frontend or other sources.
 """
 
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, Any, Optional
+from typing import Any
 
-from app.core.utils.logging import get_logger
-from app.domain.entities.analytics import AnalyticsEvent
 from app.application.interfaces.repositories.analytics_repository import AnalyticsRepository
 from app.application.interfaces.services.cache_service import CacheService
+from app.core.utils.logging import get_logger
+from app.domain.entities.analytics import AnalyticsEvent
+from app.domain.utils.datetime_utils import UTC
 
 
 class ProcessAnalyticsEventUseCase:
@@ -44,10 +43,10 @@ class ProcessAnalyticsEventUseCase:
     async def execute(
         self, 
         event_type: str,
-        event_data: Dict[str, Any],
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None
+        event_data: dict[str, Any],
+        user_id: str | None = None,
+        session_id: str | None = None,
+        timestamp: datetime | None = None
     ) -> AnalyticsEvent:
         """
         Process a single analytics event.

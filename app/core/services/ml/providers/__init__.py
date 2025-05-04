@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ML Service Providers Package.
 
@@ -10,7 +9,6 @@ This module serves as the package initialization for ML service providers.
 from app.core.services.ml.providers.aws_bedrock import (
     AWSBedrockMentaLLaMA,
 )
-
 
 # Updated __all__ to reflect the available class
 __all__ = [

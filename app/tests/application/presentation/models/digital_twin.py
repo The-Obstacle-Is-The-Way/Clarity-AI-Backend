@@ -6,8 +6,8 @@ related to the digital twin system.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.presentation.models.biometric_data import BiometricDataOutput, PhysiologicalRangeModel
 
@@ -27,7 +27,7 @@ class BiometricTimeseriesOutput(BaseModel):
         example="bpm"
     )
     
-    data_points: List[BiometricDataOutput] = Field(
+    data_points: list[BiometricDataOutput] = Field(
         ...,
         description="Time series of biometric measurements",
         example=[{
@@ -38,7 +38,7 @@ class BiometricTimeseriesOutput(BaseModel):
         }]
     )
     
-    physiological_range: Optional[PhysiologicalRangeModel] = Field(
+    physiological_range: PhysiologicalRangeModel | None = Field(
         default=None,
         description="Normal and critical ranges for this biometric",
         example={
@@ -92,7 +92,7 @@ class DigitalTwinOutput(BaseModel):
         example="patient-123"
     )
     
-    timeseries_data: Dict[str, BiometricTimeseriesOutput] = Field(
+    timeseries_data: dict[str, BiometricTimeseriesOutput] = Field(
         ...,
         description="Biometric timeseries data by type",
         example={
@@ -208,7 +208,7 @@ class DigitalTwinSummary(BaseModel):
         example="patient-123"
     )
     
-    latest_readings: Dict[str, BiometricDataOutput] = Field(
+    latest_readings: dict[str, BiometricDataOutput] = Field(
         ...,
         description="Latest reading for each biometric type",
         example={

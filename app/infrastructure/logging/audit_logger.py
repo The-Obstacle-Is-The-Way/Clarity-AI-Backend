@@ -5,19 +5,17 @@ This module provides comprehensive audit logging for all PHI access and
 modifications, ensuring compliance with HIPAA Security Rule § 164.312(b).
 """
 
+import datetime
 import json
 import logging
 import os
-import datetime
-import tempfile
-import uuid
 import re
-from typing import Any, Dict, Optional, Union
+import tempfile
+from typing import Any
 
 # Corrected import path
 # from app.config.settings import settings # Keep only get_settings
 from app.config.settings import get_settings
-from app.domain.interfaces.audit_service import AuditService
 
 # Load settings once
 settings = get_settings()
@@ -45,7 +43,7 @@ class AuditLogger:
     _configured = False
     
     @classmethod
-    def setup(cls, log_dir: Optional[str] = None) -> None:
+    def setup(cls, log_dir: str | None = None) -> None:
         """
         Set up the audit logger with appropriate handlers.
         
@@ -94,7 +92,7 @@ class AuditLogger:
         cls._logger.info(f"HIPAA audit logging initialized (dir: {audit_log_dir})")
     
     @classmethod
-    def log_transaction(cls, metadata: Dict[str, Any]) -> None:
+    def log_transaction(cls, metadata: dict[str, Any]) -> None:
         """
         Log a transaction for audit purposes.
         
@@ -132,7 +130,7 @@ class AuditLogger:
         cls._logger.info(f"PHI_ACCESS: {message}")
     
     @classmethod
-    def log_phi_access(cls, user_id: str, patient_id: str, action: str, details: Optional[Dict[str, Any]] = None) -> None:
+    def log_phi_access(cls, user_id: str, patient_id: str, action: str, details: dict[str, Any] | None = None) -> None:
         """
         Log PHI access for audit purposes.
         
@@ -153,7 +151,7 @@ class AuditLogger:
         cls.log_transaction(metadata)
     
     @classmethod
-    def log_security_event(cls, event_type: str, user_id: Optional[str] = None, details: Optional[Dict[str, Any]] = None) -> None:
+    def log_security_event(cls, event_type: str, user_id: str | None = None, details: dict[str, Any] | None = None) -> None:
         """
         Log a security event for audit purposes.
         
@@ -229,7 +227,7 @@ PHI_PATTERNS = [
     (r'\b\d{4}-\d{1,2}-\d{1,2}\b', '[REDACTED-DATE]')
 ]
 
-def sanitize_phi(text: Union[str, Dict, list]) -> Union[str, Dict, list]:
+def sanitize_phi(text: str | dict | list) -> str | dict | list:
     """
     Sanitize PHI from text or structured data.
     

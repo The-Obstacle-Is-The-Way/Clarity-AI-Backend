@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 OpenAI ML Service Implementation.
 
@@ -8,8 +7,7 @@ This module provides OpenAI-based implementation of MentaLLaMA services.
 import json
 import os
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from app.core.exceptions import (
     InvalidConfigurationError,
@@ -19,7 +17,7 @@ from app.core.exceptions import (
 )
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.utils.logging import get_logger
-
+from app.domain.utils.datetime_utils import UTC
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -50,7 +48,7 @@ class OpenAIMentaLLaMA(MentaLLaMAInterface):
             self._openai_available = False
             logger.warning("OpenAI package not installed. Install with: pip install openai>=1.0.0")
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -98,13 +96,13 @@ class OpenAIMentaLLaMA(MentaLLaMAInterface):
             logger.info("OpenAI MentaLLaMA service initialized")
             
         except Exception as e:
-            logger.error(f"Failed to initialize OpenAI MentaLLaMA service: {str(e)}")
+            logger.error(f"Failed to initialize OpenAI MentaLLaMA service: {e!s}")
             self._initialized = False
             self._config = None
             self._client = None
-            raise InvalidConfigurationError(f"Failed to initialize OpenAI MentaLLaMA service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize OpenAI MentaLLaMA service: {e!s}")
     
-    def _get_config_value(self, key: str) -> Optional[str]:
+    def _get_config_value(self, key: str) -> str | None:
         """
         Get configuration value from config or environment variable.
         
@@ -114,7 +112,6 @@ class OpenAIMentaLLaMA(MentaLLaMAInterface):
         Returns:
             Configuration value or None if not found
         """
-        import os
         
         # Try to get from config
         value = self._config.get(key)
@@ -229,8 +226,8 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             # Test API connection with a minimal request
             self._client.models.list(limit=1)
         except Exception as e:
-            logger.error(f"Failed to connect to OpenAI API: {str(e)}")
-            raise InvalidConfigurationError(f"Failed to connect to OpenAI API: {str(e)}")
+            logger.error(f"Failed to connect to OpenAI API: {e!s}")
+            raise InvalidConfigurationError(f"Failed to connect to OpenAI API: {e!s}")
     
     def is_healthy(self) -> bool:
         """
@@ -259,9 +256,9 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
     def process(
         self, 
         text: str,
-        model_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        model_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA model.
         
@@ -341,10 +338,10 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
             return result
             
         except Exception as e:
-            logger.error(f"Failed to process text with OpenAI: {str(e)}")
-            raise ServiceUnavailableError(f"Failed to process text: {str(e)}")
+            logger.error(f"Failed to process text with OpenAI: {e!s}")
+            raise ServiceUnavailableError(f"Failed to process text: {e!s}")
     
-    def _get_system_prompt(self, model_type: str) -> Optional[str]:
+    def _get_system_prompt(self, model_type: str) -> str | None:
         """
         Get system prompt for model type.
         
@@ -359,8 +356,8 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
     def detect_depression(
         self, 
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Detect depression signals in text.
         
@@ -417,9 +414,9 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
     def assess_risk(
         self, 
         text: str,
-        risk_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        risk_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Assess risk in text.
         
@@ -485,8 +482,8 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
     def analyze_sentiment(
         self, 
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze sentiment in text.
         
@@ -545,9 +542,9 @@ Maintain a balanced, strengths-based approach while acknowledging challenges. Em
     def analyze_wellness_dimensions(
         self, 
         text: str,
-        dimensions: Optional[List[str]] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        dimensions: list[str] | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze wellness dimensions in text.
         

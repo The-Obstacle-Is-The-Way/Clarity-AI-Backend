@@ -1,17 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 Minimal placeholder XGBoost schemas for integration tests.
 Replace with real schemas as needed for production.
 """
+from typing import Any
+
 from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict, List
+
 
 class RiskPredictionRequest(BaseModel):
     """Request model for patient risk prediction."""
     patient_id: str = Field(..., description="Patient identifier")
     risk_type: str = Field(..., description="Type of risk to predict (e.g., relapse)")
-    patient_data: Dict[str, Any] = Field(..., description="Patient-provided data (e.g., demographics)")
-    clinical_data: Dict[str, Any] = Field(..., description="Clinical data for prediction")
+    patient_data: dict[str, Any] = Field(..., description="Patient-provided data (e.g., demographics)")
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data for prediction")
     time_frame_days: int = Field(..., description="Time frame in days for risk prediction")
 
 class RiskPredictionResponse(BaseModel):
@@ -19,8 +20,8 @@ class RiskPredictionResponse(BaseModel):
     risk_level: str
     risk_score: float
     confidence: float
-    details: Optional[str] = None
-    time_frame_days: Optional[int] = None
+    details: str | None = None
+    time_frame_days: int | None = None
 
 class TreatmentResponseRequest(BaseModel):
     patient_id: str = Field(...)
@@ -77,6 +78,6 @@ class ModelInfoResponse(BaseModel):
     model_type: str = Field(..., description="Type of model")
     version: str = Field(..., description="Model version")
     performance_metrics: PerformanceMetricsSchema = Field(..., description="Model performance metrics")
-    features: List[FeatureSchema] = Field(..., description="Model features and their importance")
+    features: list[FeatureSchema] = Field(..., description="Model features and their importance")
     description: str = Field(..., description="Model description")
 

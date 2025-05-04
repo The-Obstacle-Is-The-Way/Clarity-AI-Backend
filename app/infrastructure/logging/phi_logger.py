@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HIPAA-Compliant PHI Logger
 
@@ -6,13 +5,17 @@ This module provides specialized logging for handling Protected Health Informati
 ensuring HIPAA compliance by automatically sanitizing sensitive data.
 """
 
-import datetime
 import logging
 import os
-from typing import Any, Dict, Optional, Union
+from typing import Any
+
 from app.config.settings import get_settings
+
 settings = get_settings()
-from app.infrastructure.security.phi.log_sanitizer import PHIFormatter, LogSanitizer, LogSanitizerConfig # Import LogSanitizer and LogSanitizerConfig
+from app.infrastructure.security.phi.log_sanitizer import (  # Import LogSanitizer and LogSanitizerConfig
+    LogSanitizerConfig,
+    PHIFormatter,
+)
 
 
 class PHILogger:
@@ -23,7 +26,7 @@ class PHILogger:
     logging options for different levels of sensitivity.
     """
 
-    def __init__(self, name: str = "novamind.phi", log_path: Optional[str] = None):
+    def __init__(self, name: str = "novamind.phi", log_path: str | None = None):
         """
         Initialize the PHI logger with redaction and secure output.
 
@@ -41,7 +44,7 @@ class PHILogger:
         # Ensure no logs with PHI go to the console
         self._setup_handlers(log_path)
 
-    def _setup_handlers(self, log_path: Optional[str]) -> None:
+    def _setup_handlers(self, log_path: str | None) -> None:
         """
         Set up secure logging handlers with PHI redaction.
 
@@ -188,9 +191,9 @@ class PHILogger:
     def log_phi_action(
         self,
         action_type: str,
-        user_info: Dict[str, Any],
-        resource_info: Dict[str, Any],
-        details: Optional[str] = None,
+        user_info: dict[str, Any],
+        resource_info: dict[str, Any],
+        details: str | None = None,
         success: bool = True,
     ) -> None:
         """
@@ -231,7 +234,7 @@ class PHILogger:
 
 
 def get_phi_logger(
-    name: str = "novamind.phi", log_path: Optional[str] = None
+    name: str = "novamind.phi", log_path: str | None = None
 ) -> PHILogger:
     """
     Factory function to get a PHI logger instance.

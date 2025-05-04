@@ -8,7 +8,7 @@ and test data generation capabilities into a single cohesive module.
 
 import asyncio
 import os
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-from app.config.settings import get_settings
 from app.core.dependencies.database import get_session
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 

@@ -8,4 +8,3 @@ DO NOT USE THIS IN NEW CODE - use app.core.security.middleware instead.
 """
 
 # Re-export from the new location
-from app.core.security.middleware import AuthenticationMiddleware

@@ -5,7 +5,7 @@ Pure domain interface with no infrastructure dependencies.
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from app.domain.entities.digital_twin import ClinicalInsight # Corrected import path
+from app.domain.entities.digital_twin import ClinicalInsight  # Corrected import path
 
 
 class MentalLLaMAService(ABC):

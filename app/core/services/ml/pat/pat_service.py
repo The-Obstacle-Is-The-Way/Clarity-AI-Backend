@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PAT (Patient Assessment Tool) Service Implementation.
 
@@ -10,14 +9,14 @@ import datetime
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from app.core.services.ml.pat.pat_interface import PATInterface
 from app.core.exceptions import (
     InvalidRequestError,
     ModelNotFoundError,
     ServiceUnavailableError,
 )
+from app.core.services.ml.pat.pat_interface import PATInterface
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class PATService(PATInterface):
     patient assessments for mental health evaluation.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the PAT service."""
         self._initialized = False
         self._config = config or {}
@@ -40,7 +39,7 @@ class PATService(PATInterface):
         # Initialize default templates
         self._init_default_templates()
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """Initialize the service with configuration."""
         self._config.update(config)
         logger.info("Initializing PAT service with config: %s", json.dumps({k: "***" if "key" in k.lower() or "secret" in k.lower() else v for k, v in self._config.items()}))
@@ -73,9 +72,9 @@ class PATService(PATInterface):
         self,
         patient_id: str,
         assessment_type: str,
-        clinician_id: Optional[str] = None,
-        initial_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        clinician_id: str | None = None,
+        initial_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Create a new patient assessment."""
         self._ensure_initialized()
         
@@ -137,7 +136,7 @@ class PATService(PATInterface):
             "template": self._form_templates[template_id]
         }
     
-    def get_assessment(self, assessment_id: str) -> Dict[str, Any]:
+    def get_assessment(self, assessment_id: str) -> dict[str, Any]:
         """Get information about an assessment."""
         self._ensure_initialized()
         
@@ -172,8 +171,8 @@ class PATService(PATInterface):
     def update_assessment(
         self,
         assessment_id: str,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update an assessment with new data."""
         self._ensure_initialized()
         
@@ -223,8 +222,8 @@ class PATService(PATInterface):
     def complete_assessment(
         self,
         assessment_id: str,
-        completion_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        completion_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Complete an assessment."""
         self._ensure_initialized()
         
@@ -280,9 +279,9 @@ class PATService(PATInterface):
     def analyze_assessment(
         self,
         assessment_id: str,
-        analysis_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        analysis_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Analyze an assessment."""
         self._ensure_initialized()
         
@@ -333,10 +332,10 @@ class PATService(PATInterface):
     def get_assessment_history(
         self,
         patient_id: str,
-        assessment_type: Optional[str] = None,
-        limit: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        assessment_type: str | None = None,
+        limit: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Get assessment history for a patient."""
         self._ensure_initialized()
         
@@ -396,9 +395,9 @@ class PATService(PATInterface):
         self,
         name: str,
         form_type: str,
-        fields: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        fields: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Create a new assessment form template."""
         self._ensure_initialized()
         
@@ -439,7 +438,7 @@ class PATService(PATInterface):
     def get_form_template(
         self,
         template_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get a form template."""
         self._ensure_initialized()
         
@@ -456,10 +455,10 @@ class PATService(PATInterface):
     
     def list_form_templates(
         self,
-        form_type: Optional[str] = None,
-        limit: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        form_type: str | None = None,
+        limit: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """List available form templates."""
         self._ensure_initialized()
         
@@ -500,9 +499,9 @@ class PATService(PATInterface):
     def calculate_score(
         self,
         assessment_id: str,
-        scoring_method: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        scoring_method: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Calculate score for an assessment."""
         self._ensure_initialized()
         
@@ -550,9 +549,9 @@ class PATService(PATInterface):
     def generate_report(
         self,
         assessment_id: str,
-        report_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        report_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Generate a report for an assessment."""
         self._ensure_initialized()
         
@@ -711,8 +710,8 @@ class PATService(PATInterface):
     
     def _calculate_completion_percentage(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]]
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None
     ) -> float:
         """Calculate the completion percentage of an assessment."""
         if not template:
@@ -729,7 +728,7 @@ class PATService(PATInterface):
         
         return (completed_fields / len(required_fields)) * 100
     
-    def _update_assessment_flags(self, assessment: Dict[str, Any]) -> None:
+    def _update_assessment_flags(self, assessment: dict[str, Any]) -> None:
         """Update flags based on assessment data."""
         flags = []
         template = self._form_templates.get(assessment["template_id"])
@@ -765,7 +764,7 @@ class PATService(PATInterface):
         
         assessment["flags"] = flags
     
-    def _calculate_scores(self, assessment: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_scores(self, assessment: dict[str, Any]) -> dict[str, Any]:
         """Calculate scores for an assessment."""
         scores = {}
         template = self._form_templates.get(assessment["template_id"])
@@ -823,17 +822,17 @@ class PATService(PATInterface):
     
     def _calculate_standard_scores(
         self,
-        assessment: Dict[str, Any],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate standard scores for an assessment."""
         return self._calculate_scores(assessment)
     
     def _calculate_clinical_scores(
         self,
-        assessment: Dict[str, Any],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate clinical scores for an assessment."""
         scores = self._calculate_scores(assessment)
         
@@ -861,9 +860,9 @@ class PATService(PATInterface):
     
     def _calculate_custom_scores(
         self,
-        assessment: Dict[str, Any],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate custom scores for an assessment based on provided options."""
         scores = self._calculate_scores(assessment)
         
@@ -873,9 +872,9 @@ class PATService(PATInterface):
     
     def _generate_assessment_summary(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None
+    ) -> dict[str, Any]:
         """Generate a summary of an assessment."""
         summary = {
             "assessment_type": assessment["assessment_type"],
@@ -891,7 +890,7 @@ class PATService(PATInterface):
             summary["completion_time"] = round(completion_time, 1)
         
         # Add score summaries
-        if "scores" in assessment and assessment["scores"]:
+        if assessment.get("scores"):
             summary["scores"] = assessment["scores"]
         
         # Add flags
@@ -906,9 +905,9 @@ class PATService(PATInterface):
     
     def _generate_recommendations(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None
+    ) -> dict[str, Any]:
         """Generate recommendations based on assessment results."""
         recommendations = {
             "follow_up": None,
@@ -948,10 +947,10 @@ class PATService(PATInterface):
     
     def _perform_general_analysis(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None,
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform general analysis of an assessment."""
         result = {
             "summary": self._generate_assessment_summary(assessment, template),
@@ -967,10 +966,10 @@ class PATService(PATInterface):
     
     def _perform_clinical_analysis(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None,
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform clinical analysis of an assessment."""
         # Start with general analysis
         result = self._perform_general_analysis(assessment, template, options)
@@ -988,9 +987,9 @@ class PATService(PATInterface):
     
     def _perform_temporal_analysis(
         self,
-        assessment: Dict[str, Any],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform temporal analysis of an assessment, comparing with previous assessments."""
         result = {
             "trend": "stable",
@@ -1004,9 +1003,9 @@ class PATService(PATInterface):
     
     def _perform_comparative_analysis(
         self,
-        assessment: Dict[str, Any],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform comparative analysis, comparing with population norms or other patients."""
         result = {
             "population_comparison": {},
@@ -1020,10 +1019,10 @@ class PATService(PATInterface):
     
     def _generate_summary_report(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None,
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate a summary report for an assessment."""
         report = {
             "title": f"{template['name'] if template else 'Assessment'} Summary Report",
@@ -1034,7 +1033,7 @@ class PATService(PATInterface):
         }
         
         # Add scores if available
-        if "scores" in assessment and assessment["scores"]:
+        if assessment.get("scores"):
             report["scores"] = assessment["scores"]
         
         # Add recommendations if completed
@@ -1045,10 +1044,10 @@ class PATService(PATInterface):
     
     def _generate_detailed_report(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None,
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate a detailed report for an assessment."""
         # Start with summary report
         report = self._generate_summary_report(assessment, template, options)
@@ -1059,10 +1058,10 @@ class PATService(PATInterface):
     
     def _generate_clinical_report(
         self,
-        assessment: Dict[str, Any],
-        template: Optional[Dict[str, Any]],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        template: dict[str, Any] | None,
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate a clinical report for an assessment."""
         # Start with detailed report
         report = self._generate_detailed_report(assessment, template, options)
@@ -1073,9 +1072,9 @@ class PATService(PATInterface):
     
     def _generate_progress_report(
         self,
-        assessment: Dict[str, Any],
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        assessment: dict[str, Any],
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """Generate a progress report showing changes over time."""
         report = {
             "title": "Treatment Progress Report",

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Mock Provider for MentaLLaMA.
 
@@ -8,14 +7,14 @@ to use in development and testing environments.
 
 import json
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from app.core.exceptions import (
-    InvalidConfigurationError, 
+    InvalidConfigurationError,
     InvalidRequestError,
-    ModelNotFoundError,
     ServiceUnavailableError,
 )
+
 # Import the proper interface
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.utils.logging import get_logger
@@ -39,7 +38,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         self._available_models = {}
         self._model_mappings = {}
         
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -65,11 +64,11 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             logger.info("MockMentaLLaMA service initialized successfully")
             
         except InvalidConfigurationError as e:
-            logger.error(f"Failed to initialize MockMentaLLaMA service: {str(e)}")
+            logger.error(f"Failed to initialize MockMentaLLaMA service: {e!s}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error during initialization: {str(e)}")
-            raise InvalidConfigurationError(f"Failed to initialize: {str(e)}")
+            logger.error(f"Unexpected error during initialization: {e!s}")
+            raise InvalidConfigurationError(f"Failed to initialize: {e!s}")
             
     def is_healthy(self) -> bool:
         """
@@ -89,9 +88,9 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def process(
         self, 
         prompt: str,
-        model_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        model_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA model.
         
@@ -144,8 +143,8 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def detect_depression(
         self, 
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Detect depression signals in text.
         
@@ -187,7 +186,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             
         return result
     
-    def depression_detection(self, text: str) -> Dict[str, Any]:
+    def depression_detection(self, text: str) -> dict[str, Any]:
         """
         Detect depression signals in text (alias for detect_depression).
         
@@ -199,7 +198,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         """
         return self.detect_depression(text)
         
-    def risk_assessment(self, text: str) -> Dict[str, Any]:
+    def risk_assessment(self, text: str) -> dict[str, Any]:
         """
         Assess risk level based on text.
         
@@ -229,7 +228,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         else:
             return self._risk_assessment_responses["low_risk"]
             
-    def sentiment_analysis(self, text: str) -> Dict[str, Any]:
+    def sentiment_analysis(self, text: str) -> dict[str, Any]:
         """
         Analyze sentiment in text.
         
@@ -260,7 +259,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         else:
             return self._sentiment_analysis_responses["neutral"]
             
-    def wellness_dimensions(self, text: str) -> Dict[str, Any]:
+    def wellness_dimensions(self, text: str) -> dict[str, Any]:
         """
         Analyze wellness dimensions in text.
         
@@ -289,7 +288,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         else:
             return self._wellness_dimensions_responses["unbalanced"]
             
-    def _parse_depression_detection_result(self, response_text: str) -> Dict[str, Any]:
+    def _parse_depression_detection_result(self, response_text: str) -> dict[str, Any]:
         """
         Parse depression detection result from response text.
         
@@ -346,8 +345,8 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             logger.info("Mock MentaLLaMA service initialized")
             
         except Exception as e:
-            logger.error(f"Failed to initialize Mock MentaLLaMA service: {str(e)}")
-            raise InvalidConfigurationError(f"Failed to initialize Mock MentaLLaMA service: {str(e)}")
+            logger.error(f"Failed to initialize Mock MentaLLaMA service: {e!s}")
+            raise InvalidConfigurationError(f"Failed to initialize Mock MentaLLaMA service: {e!s}")
     
     def _setup_mock_responses(self) -> None:
         """Set up mock responses for different tasks."""
@@ -558,10 +557,10 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         self,
         prompt: str,
         model: str = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate mock text response.
         
@@ -612,7 +611,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             return result
             
         except Exception as e:
-            logger.error(f"Mock generation failed: {str(e)}")
+            logger.error(f"Mock generation failed: {e!s}")
             # Even in mock, return a proper error response
             return {
                 "text": self._general_responses["error"],

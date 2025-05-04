@@ -5,14 +5,18 @@ This module implements the JWTServiceInterface using production-ready
 JWT handling with proper security practices for healthcare applications.
 """
 
-from datetime import datetime, timedelta
 import os
-from typing import Any, Dict, Optional
+from datetime import datetime, timedelta
+from typing import Any
 
 from jose import JWTError, jwt
 
 from app.core.domain.entities.user import User
-from app.core.errors.security_exceptions import InvalidCredentialsError, TokenExpiredError, TokenValidationError
+from app.core.errors.security_exceptions import (
+    InvalidCredentialsError,
+    TokenExpiredError,
+    TokenValidationError,
+)
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 
 
@@ -47,8 +51,8 @@ class JWTService(JWTServiceInterface):
     
     def create_access_token(
         self, 
-        data: Dict[str, Any], 
-        expires_delta: Optional[timedelta] = None
+        data: dict[str, Any], 
+        expires_delta: timedelta | None = None
     ) -> str:
         """
         Create a new JWT access token.
@@ -75,8 +79,8 @@ class JWTService(JWTServiceInterface):
     
     def create_refresh_token(
         self, 
-        data: Dict[str, Any], 
-        expires_delta: Optional[timedelta] = None
+        data: dict[str, Any], 
+        expires_delta: timedelta | None = None
     ) -> str:
         """
         Create a new JWT refresh token.
@@ -101,7 +105,7 @@ class JWTService(JWTServiceInterface):
         # Encode and sign the token
         return jwt.encode(to_encode, self._secret_key, algorithm=self._algorithm)
     
-    def decode_token(self, token: str) -> Dict[str, Any]:
+    def decode_token(self, token: str) -> dict[str, Any]:
         """
         Decode and validate a JWT token.
         
@@ -129,9 +133,9 @@ class JWTService(JWTServiceInterface):
             if "expired" in str(e).lower():
                 raise TokenExpiredError("Token has expired") from e
             else:
-                raise TokenValidationError(f"Invalid token: {str(e)}") from e
+                raise TokenValidationError(f"Invalid token: {e!s}") from e
     
-    def generate_tokens_for_user(self, user: User) -> Dict[str, str]:
+    def generate_tokens_for_user(self, user: User) -> dict[str, str]:
         """
         Generate both access and refresh tokens for a user.
         
@@ -203,7 +207,7 @@ class JWTService(JWTServiceInterface):
         except InvalidCredentialsError:
             return False
     
-    def get_token_expiration(self, token: str) -> Optional[datetime]:
+    def get_token_expiration(self, token: str) -> datetime | None:
         """
         Get the expiration time of a token.
         

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pydantic schemas for biometric alerts API endpoints.
 
@@ -7,11 +6,12 @@ API endpoints, ensuring proper validation and documentation of the API contract.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union, ClassVar
-from uuid import UUID
 from enum import Enum
+from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
 
 # Define AlertPriorityEnum based on domain AlertPriority
 class AlertPriorityEnum(str, Enum):
@@ -27,10 +27,10 @@ class AlertRuleCreate(BaseModel):
     name: str = Field(..., description="Name of the rule")
     description: str = Field(..., description="Description of the rule")
     priority: str = Field(..., description="Priority level of the rule (urgent, warning, informational)")
-    condition: Optional[Dict[str, Any]] = Field(None, description="Condition that triggers the alert")
-    template_id: Optional[str] = Field(None, description="ID of the template to use for creating the rule")
-    parameters: Optional[Dict[str, Any]] = Field(None, description="Parameters for the template")
-    patient_id: Optional[UUID] = Field(None, description="Optional ID of the patient this rule applies to")
+    condition: dict[str, Any] | None = Field(None, description="Condition that triggers the alert")
+    template_id: str | None = Field(None, description="ID of the template to use for creating the rule")
+    parameters: dict[str, Any] | None = Field(None, description="Parameters for the template")
+    patient_id: UUID | None = Field(None, description="Optional ID of the patient this rule applies to")
     
     @field_validator("priority")
     @classmethod
@@ -52,15 +52,15 @@ class AlertRuleCreate(BaseModel):
 class AlertRuleUpdate(BaseModel):
     """Request model for updating an alert rule."""
     
-    name: Optional[str] = Field(None, description="Name of the rule")
-    description: Optional[str] = Field(None, description="Description of the rule")
-    priority: Optional[str] = Field(None, description="Priority level of the rule (urgent, warning, informational)")
-    condition: Optional[Dict[str, Any]] = Field(None, description="Condition that triggers the alert")
-    is_active: Optional[bool] = Field(None, description="Whether the rule is active")
+    name: str | None = Field(None, description="Name of the rule")
+    description: str | None = Field(None, description="Description of the rule")
+    priority: str | None = Field(None, description="Priority level of the rule (urgent, warning, informational)")
+    condition: dict[str, Any] | None = Field(None, description="Condition that triggers the alert")
+    is_active: bool | None = Field(None, description="Whether the rule is active")
     
     @field_validator("priority")
     @classmethod
-    def validate_priority(cls, v: Optional[str]) -> Optional[str]:
+    def validate_priority(cls, v: str | None) -> str | None:
         """Validate that the priority is one of the allowed values."""
         if v is not None:
             allowed_values = ["urgent", "warning", "informational"]
@@ -76,9 +76,9 @@ class AlertRuleResponse(BaseModel):
     name: str = Field(..., description="Name of the rule")
     description: str = Field(..., description="Description of the rule")
     priority: str = Field(..., description="Priority level of the rule (urgent, warning, informational)")
-    condition: Dict[str, Any] = Field(..., description="Condition that triggers the alert")
+    condition: dict[str, Any] = Field(..., description="Condition that triggers the alert")
     created_by: UUID = Field(..., description="ID of the user who created the rule")
-    patient_id: Optional[UUID] = Field(None, description="Optional ID of the patient this rule applies to")
+    patient_id: UUID | None = Field(None, description="Optional ID of the patient this rule applies to")
     created_at: datetime = Field(..., description="Timestamp of when the rule was created")
     updated_at: datetime = Field(..., description="Timestamp of when the rule was last updated")
     is_active: bool = Field(..., description="Whether the rule is active")
@@ -87,7 +87,7 @@ class AlertRuleResponse(BaseModel):
 class AlertRuleListResponse(BaseModel):
     """Response model for a list of alert rules."""
     
-    rules: List[AlertRuleResponse] = Field(..., description="List of alert rules")
+    rules: list[AlertRuleResponse] = Field(..., description="List of alert rules")
     count: int = Field(..., description="Number of alert rules")
 
 
@@ -97,14 +97,14 @@ class AlertRuleTemplateResponse(BaseModel):
     template_id: str = Field(..., description="Unique identifier for the template")
     name: str = Field(..., description="Name of the template")
     description: str = Field(..., description="Description of the template")
-    required_parameters: List[str] = Field(..., description="List of required parameters for the template")
-    condition_template: Dict[str, Any] = Field(..., description="Template for the condition")
+    required_parameters: list[str] = Field(..., description="List of required parameters for the template")
+    condition_template: dict[str, Any] = Field(..., description="Template for the condition")
 
 
 class AlertRuleTemplateListResponse(BaseModel):
     """Response model for a list of alert rule templates."""
     
-    templates: List[AlertRuleTemplateResponse] = Field(..., description="List of alert rule templates")
+    templates: list[AlertRuleTemplateResponse] = Field(..., description="List of alert rule templates")
     count: int = Field(..., description="Number of alert rule templates")
 
 
@@ -129,22 +129,22 @@ class BiometricAlertResponse(BaseModel):
     message: str = Field(..., description="Alert message")
     created_at: datetime = Field(..., description="Timestamp of when the alert was created")
     acknowledged: bool = Field(..., description="Whether the alert has been acknowledged")
-    acknowledged_at: Optional[datetime] = Field(None, description="Timestamp of when the alert was acknowledged")
-    acknowledged_by: Optional[UUID] = Field(None, description="ID of the user who acknowledged the alert")
-    data_point: Dict[str, Any] = Field(..., description="Biometric data point that triggered the alert")
+    acknowledged_at: datetime | None = Field(None, description="Timestamp of when the alert was acknowledged")
+    acknowledged_by: UUID | None = Field(None, description="ID of the user who acknowledged the alert")
+    data_point: dict[str, Any] = Field(..., description="Biometric data point that triggered the alert")
 
 
 class BiometricAlertListResponse(BaseModel):
     """Response model for a list of biometric alerts."""
     
-    alerts: List[BiometricAlertResponse] = Field(..., description="List of biometric alerts")
+    alerts: list[BiometricAlertResponse] = Field(..., description="List of biometric alerts")
     count: int = Field(..., description="Number of biometric alerts")
 
 
 class AlertAcknowledgementRequest(BaseModel):
     """Request model for acknowledging an alert."""
     
-    notes: Optional[str] = Field(None, description="Optional notes about the acknowledgement")
+    notes: str | None = Field(None, description="Optional notes about the acknowledgement")
 
 # Update forward references for all models in this file
 AlertRuleCreate.update_forward_refs()

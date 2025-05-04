@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base Repository Interface.
 
@@ -7,7 +6,7 @@ following clean architecture principles.
 """
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Optional, List, Any
+from typing import Any, Generic, TypeVar
 
 # Entity type variable
 T = TypeVar('T')
@@ -22,12 +21,12 @@ class IRepository(Generic[T], ABC):
     """
     
     @abstractmethod
-    async def get_by_id(self, id: Any) -> Optional[T]:
+    async def get_by_id(self, id: Any) -> T | None:
         """Retrieve an entity by its unique identifier."""
         pass
     
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[T]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[T]:
         """Retrieve a collection of entities with pagination support."""
         pass
     

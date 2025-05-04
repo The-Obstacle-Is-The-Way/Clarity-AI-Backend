@@ -3,12 +3,13 @@
 Provides utilities for dynamically registering API routes in the FastAPI application.
 """
 
-from fastapi import APIRouter, FastAPI
-from typing import List, Optional
 import importlib
 import logging
 import os
 import pkgutil
+from typing import List, Optional
+
+from fastapi import APIRouter, FastAPI
 
 
 def setup_routers(app: FastAPI) -> None:

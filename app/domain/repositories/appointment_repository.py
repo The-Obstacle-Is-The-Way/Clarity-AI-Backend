@@ -2,17 +2,17 @@
 Interface for the Appointment Repository.
 """
 from abc import ABC, abstractmethod
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
 from app.domain.entities.appointment import Appointment, AppointmentStatus
+
 
 class IAppointmentRepository(ABC):
     """Abstract base class defining the appointment repository interface."""
 
     @abstractmethod
-    async def get_by_id(self, appointment_id: UUID) -> Optional[Appointment]:
+    async def get_by_id(self, appointment_id: UUID) -> Appointment | None:
         """Retrieve an appointment by its ID."""
         pass
 
@@ -22,7 +22,7 @@ class IAppointmentRepository(ABC):
         pass
 
     @abstractmethod
-    async def update(self, appointment: Appointment) -> Optional[Appointment]:
+    async def update(self, appointment: Appointment) -> Appointment | None:
         """Update an existing appointment."""
         pass
 
@@ -35,10 +35,10 @@ class IAppointmentRepository(ABC):
     async def list_by_patient_id(
         self,
         patient_id: UUID,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        status: Optional[AppointmentStatus] = None
-    ) -> List[Appointment]:
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        status: AppointmentStatus | None = None
+    ) -> list[Appointment]:
         """List appointments for a specific patient, optionally filtered by date range and status."""
         pass
 
@@ -46,10 +46,10 @@ class IAppointmentRepository(ABC):
     async def list_by_provider_id(
         self,
         provider_id: UUID,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        status: Optional[AppointmentStatus] = None
-    ) -> List[Appointment]:
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        status: AppointmentStatus | None = None
+    ) -> list[Appointment]:
         """List appointments for a specific provider, optionally filtered by date range and status."""
         pass
 
@@ -59,8 +59,8 @@ class IAppointmentRepository(ABC):
         provider_id: UUID,
         start_time: datetime,
         end_time: datetime,
-        exclude_appointment_id: Optional[UUID] = None
-    ) -> List[Appointment]:
+        exclude_appointment_id: UUID | None = None
+    ) -> list[Appointment]:
         """Find appointments for a provider that overlap with a given time slot, excluding a specific appointment."""
         pass
 
@@ -76,5 +76,5 @@ class IAppointmentRepository(ABC):
 # duplicating code.
 
 
-AppointmentRepository = IAppointmentRepository  # noqa: N816 (keep historical camel‑case)
+AppointmentRepository = IAppointmentRepository
 

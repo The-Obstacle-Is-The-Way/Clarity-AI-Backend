@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Application Configuration for NOVAMIND.
 
@@ -6,10 +5,8 @@ This module configures the main application components and dependencies,
 following Clean Architecture principles and ensuring proper separation of concerns.
 """
 
-import os
-from typing import Any, Dict
+from typing import Any
 
-from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
 from app.domain.repositories.patient_repository import PatientRepository
 from app.domain.services.digital_twin_service import DigitalTwinService
 from app.infrastructure.config.ml_service_config import MLServiceConfig
@@ -31,7 +28,7 @@ class AppConfig:
     concerns and testability.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize the application configuration.
 
@@ -75,7 +72,7 @@ class AppConfig:
         )
         return self.digital_twin_service
 
-    def create_application(self) -> Dict[str, Any]:
+    def create_application(self) -> dict[str, Any]:
         """
         Create the main application components.
 

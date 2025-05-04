@@ -7,40 +7,37 @@ HIPAA compliance and security considerations.
 """
 
 import json
-import uuid
 import logging
 import os
 import re
 import time
+import uuid
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Set, Union, Tuple
+from typing import Any
 
 import botocore.exceptions
-from app.domain.utils.datetime_utils import UTC, now_utc
 
-from app.core.interfaces.aws_service_interface import AWSServiceFactory
 from app.core.services.aws.interfaces import AWSServiceFactoryInterface
-from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
-
-from app.core.services.ml.xgboost.interface import (
-    XGBoostInterface,
-    ModelType,
-    EventType,
-    Observer,
-    PrivacyLevel
-)
-
-from app.presentation.api.schemas.xgboost import RiskLevel
 from app.core.services.ml.xgboost.exceptions import (
-    ValidationError,
+    ConfigurationError,
     DataPrivacyError,
-    ResourceNotFoundError,
     ModelNotFoundError,
     PredictionError,
+    ResourceNotFoundError,
+    ServiceConfigurationError,
     ServiceConnectionError,
-    ConfigurationError,
-    ServiceConfigurationError
+    ValidationError,
 )
+from app.core.services.ml.xgboost.interface import (
+    EventType,
+    ModelType,
+    Observer,
+    PrivacyLevel,
+    XGBoostInterface,
+)
+from app.domain.utils.datetime_utils import UTC, now_utc
+from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
+from app.presentation.api.schemas.xgboost import RiskLevel
 
 
 class AWSXGBoostService(XGBoostInterface):
@@ -52,7 +49,7 @@ class AWSXGBoostService(XGBoostInterface):
     with clean architecture principles and SOLID design.
     """
 
-    def __init__(self, aws_service_factory: Optional[AWSServiceFactoryInterface] = None):
+    def __init__(self, aws_service_factory: AWSServiceFactoryInterface | None = None):
         """
         Initialize a new AWS XGBoost service.
         
@@ -64,7 +61,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._factory = aws_service_factory  # Alias for compatibility with both naming conventions
         self._logger = logging.getLogger(__name__)
         
-    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """Generic prediction method required by MLServiceInterface.
         
         Args:
@@ -141,7 +138,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._initialized = False
         
         # Observer pattern support
-        self._observers: Dict[Union[EventType, str], Set[Observer]] = {}
+        self._observers: dict[EventType | str, set[Observer]] = {}
         
         # Logger
         self._logger = logging.getLogger(__name__)
@@ -151,7 +148,7 @@ class AWSXGBoostService(XGBoostInterface):
         """Check if the service is initialized."""
         return self._initialized
 
-    async def initialize(self, config: Dict[str, Any]) -> None:
+    async def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the AWS XGBoost service with configuration.
         
@@ -211,10 +208,10 @@ class AWSXGBoostService(XGBoostInterface):
             self._notify_observers(EventType.INITIALIZATION, {"status": "success"})
             self._logger.info("AWS XGBoost service initialized successfully")
         except Exception as e:
-            self._logger.error(f"Failed to initialize AWS XGBoost service: {str(e)}")
-            raise ConfigurationError(f"Failed to initialize AWS XGBoost service: {str(e)}")
+            self._logger.error(f"Failed to initialize AWS XGBoost service: {e!s}")
+            raise ConfigurationError(f"Failed to initialize AWS XGBoost service: {e!s}")
         
-    async def register_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    async def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
         
@@ -228,7 +225,7 @@ class AWSXGBoostService(XGBoostInterface):
         self._observers[event_type].add(observer)
         self._logger.debug(f"Observer {observer} registered for event type {event_type}")
     
-    async def unregister_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    async def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
         
@@ -244,9 +241,9 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         risk_type: str,
-        clinical_data: Dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict risk level using a risk model.
         
@@ -351,7 +348,7 @@ class AWSXGBoostService(XGBoostInterface):
                     ) from e
                 else:
                     raise PredictionError(
-                        f"Failed to get prediction from SageMaker: {str(e)}"
+                        f"Failed to get prediction from SageMaker: {e!s}"
                     ) from e
             
             # Extract prediction values
@@ -414,7 +411,7 @@ class AWSXGBoostService(XGBoostInterface):
         except (ValidationError, DataPrivacyError, ResourceNotFoundError, 
                 ModelNotFoundError, PredictionError, ServiceConnectionError) as e:
             # These are expected exceptions, just log and re-raise
-            self._logger.warning(f"Prediction error for patient {patient_id}, risk type {risk_type}: {str(e)}")
+            self._logger.warning(f"Prediction error for patient {patient_id}, risk type {risk_type}: {e!s}")
             self._notify_observers(EventType.ERROR, {
                 "patient_id": patient_id,
                 "model_type": risk_type,
@@ -425,7 +422,7 @@ class AWSXGBoostService(XGBoostInterface):
             
         except Exception as e:
             # Unexpected exception, log more details
-            self._logger.error(f"Unexpected error in predict_risk for patient {patient_id}: {str(e)}", exc_info=True)
+            self._logger.error(f"Unexpected error in predict_risk for patient {patient_id}: {e!s}", exc_info=True)
             self._notify_observers(EventType.ERROR, {
                 "patient_id": patient_id,
                 "model_type": risk_type,
@@ -433,9 +430,9 @@ class AWSXGBoostService(XGBoostInterface):
                 "error_type": "UnexpectedError"
             })
             # Wrap in PredictionError to maintain interface contract
-            raise PredictionError(f"Unexpected error in prediction: {str(e)}") from e
+            raise PredictionError(f"Unexpected error in prediction: {e!s}") from e
     
-    async def _extract_features_for_model(self, clinical_data: Dict[str, Any]) -> Dict[str, List[float]]:
+    async def _extract_features_for_model(self, clinical_data: dict[str, Any]) -> dict[str, list[float]]:
         """
         Extract features from clinical data for model input.
         
@@ -473,8 +470,8 @@ class AWSXGBoostService(XGBoostInterface):
         return {"features": features}
     
     async def _store_prediction(self, prediction_id: str, patient_id: str, 
-                                model_type: str, input_data: Dict[str, Any],
-                                output_data: Dict[str, Any]) -> None:
+                                model_type: str, input_data: dict[str, Any],
+                                output_data: dict[str, Any]) -> None:
         """
         Store prediction data for audit and tracking purposes.
         
@@ -489,7 +486,7 @@ class AWSXGBoostService(XGBoostInterface):
         # For this implementation, we'll just log it
         self._logger.info(f"Storing prediction {prediction_id} for patient {patient_id}")
             
-    def _notify_observers(self, event_type: EventType, data: Dict[str, Any]) -> None:
+    def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
         """
         Notify all observers registered for a specific event type.
         
@@ -513,7 +510,7 @@ class AWSXGBoostService(XGBoostInterface):
                 except Exception as e:
                     self._logger.error(f"Error notifying wildcard observer {observer} for event {event_type}: {e}")
 
-    async def get_available_models(self) -> List[Dict[str, Any]]:
+    async def get_available_models(self) -> list[dict[str, Any]]:
         """
         Get a list of available models.
 
@@ -579,10 +576,10 @@ class AWSXGBoostService(XGBoostInterface):
             
             return health_status
         except Exception as e:
-            self._logger.error(f"Failed to get available models: {str(e)}")
+            self._logger.error(f"Failed to get available models: {e!s}")
             return []
 
-    async def get_available_models(self) -> List[Dict[str, Any]]:
+    async def get_available_models(self) -> list[dict[str, Any]]:
         """
         Get a list of available models.
 
@@ -620,17 +617,17 @@ class AWSXGBoostService(XGBoostInterface):
             return available_models
         
         except Exception as e:
-            self._logger.error(f"Failed to get available models: {str(e)}")
+            self._logger.error(f"Failed to get available models: {e!s}")
             return []
     
     async def predict_treatment_response(
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
         
@@ -713,11 +710,11 @@ class AWSXGBoostService(XGBoostInterface):
     async def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
+        outcome_timeframe: dict[str, int],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict clinical outcomes based on treatment plan.
         
@@ -809,7 +806,7 @@ class AWSXGBoostService(XGBoostInterface):
         patient_id: str,
         model_type: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
         
@@ -878,7 +875,7 @@ class AWSXGBoostService(XGBoostInterface):
             feature_importance = await self._invoke_endpoint(endpoint_name, payload)
             return feature_importance
         except Exception as e:
-            self._logger.error(f"Failed to get feature importance: {str(e)}")
+            self._logger.error(f"Failed to get feature importance: {e!s}")
             # Fallback to synthetic feature importance
             return self._generate_synthetic_feature_importance(prediction)
     
@@ -887,7 +884,7 @@ class AWSXGBoostService(XGBoostInterface):
         patient_id: str,
         profile_id: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Integrate prediction with digital twin profile.
         
@@ -956,7 +953,7 @@ class AWSXGBoostService(XGBoostInterface):
         
         return integration_result
     
-    def _generate_synthetic_feature_importance(self, prediction: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_synthetic_feature_importance(self, prediction: dict[str, Any]) -> dict[str, Any]:
         """
         Generate synthetic feature importance when no explanation endpoint is available.
         
@@ -977,7 +974,7 @@ class AWSXGBoostService(XGBoostInterface):
         
         # Sort features by importance
         feature_importance = sorted(
-            zip(features, normalized_scores),
+            zip(features, normalized_scores, strict=False),
             key=lambda x: x[1],
             reverse=True
         )
@@ -993,7 +990,7 @@ class AWSXGBoostService(XGBoostInterface):
             "timestamp": datetime.now(UTC).isoformat()
         }
     
-    def _get_prediction_summary(self, prediction: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_prediction_summary(self, prediction: dict[str, Any]) -> dict[str, Any]:
         """
         Extract a summary of the prediction for digital twin integration.
         
@@ -1015,7 +1012,7 @@ class AWSXGBoostService(XGBoostInterface):
             "contributing_factors": result.get("contributing_factors", [])
         }
                 
-    async def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    async def get_model_info(self, model_type: str) -> dict[str, Any]:
         """
         Get information about a model.
         
@@ -1067,14 +1064,14 @@ class AWSXGBoostService(XGBoostInterface):
             error_code = e.response.get("Error", {}).get("Code", "")
             if error_code == "ValidationException" or error_code == "ResourceNotFound":
                 raise ModelNotFoundError(f"Model not found: {model_type}")
-            raise ServiceConnectionError(f"Failed to get model info: {str(e)}")
+            raise ServiceConnectionError(f"Failed to get model info: {e!s}")
         
         except Exception as e:
-            self._logger.error(f"Failed to get model info: {str(e)}")
-            raise ServiceConnectionError(f"Failed to get model info: {str(e)}")
+            self._logger.error(f"Failed to get model info: {e!s}")
+            raise ServiceConnectionError(f"Failed to get model info: {e!s}")
             # Already handled above with ServiceConnectionError from e
 
-    async def healthcheck(self) -> Dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """
         Perform a health check of the XGBoost service.
         
@@ -1160,7 +1157,7 @@ class AWSXGBoostService(XGBoostInterface):
                 "error": str(e)
             }
 
-    def _validate_aws_config(self, config: Dict[str, Any]) -> None:
+    def _validate_aws_config(self, config: dict[str, Any]) -> None:
         """
         Validate the AWS configuration.
         
@@ -1221,7 +1218,7 @@ class AWSXGBoostService(XGBoostInterface):
         except Exception as e:
             self._logger.error(f"Failed to initialize AWS clients: {e}")
             raise ServiceConnectionError(
-                f"Failed to initialize AWS clients: {str(e)}",
+                f"Failed to initialize AWS clients: {e!s}",
                 service="AWS",
                 error_type="ClientInitialization",
                 details=str(e)
@@ -1289,9 +1286,9 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         risk_type: str,
-        clinical_data: Dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict risk level using a risk model.
         
@@ -1398,12 +1395,12 @@ class AWSXGBoostService(XGBoostInterface):
         except Exception as e:
             self._logger.error(f"Prediction error: {e}")
             raise PredictionError(
-                f"Prediction failed: {str(e)}",
+                f"Prediction failed: {e!s}",
                 model=risk_type,
                 details=str(e)
             ) from e
             
-    def _validate_no_phi(self, data: Dict[str, Any]) -> None:
+    def _validate_no_phi(self, data: dict[str, Any]) -> None:
         """
         Validate that data contains no PHI (Protected Health Information).
         
@@ -1447,7 +1444,7 @@ class AWSXGBoostService(XGBoostInterface):
             # For example, checking for names, addresses, dates of birth, etc.
             pass
 
-    def _get_endpoint_for_risk_type(self, risk_type: str) -> Optional[str]:
+    def _get_endpoint_for_risk_type(self, risk_type: str) -> str | None:
         """
         Get the SageMaker endpoint name for a risk type.
         
@@ -1483,8 +1480,8 @@ class AWSXGBoostService(XGBoostInterface):
         prediction_id: str,
         patient_id: str,
         risk_type: str,
-        clinical_data: Dict[str, Any],
-        prediction: Dict[str, Any]
+        clinical_data: dict[str, Any],
+        prediction: dict[str, Any]
     ) -> None:
         """
         Store prediction in DynamoDB.
@@ -1547,10 +1544,10 @@ class AWSXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
         
@@ -1665,12 +1662,12 @@ class AWSXGBoostService(XGBoostInterface):
         except Exception as e:
             self._logger.error(f"Prediction error: {e}")
             raise PredictionError(
-                f"Prediction failed: {str(e)}",
+                f"Prediction failed: {e!s}",
                 model=treatment_type,
                 details=str(e)
             ) from e
             
-    def _get_endpoint_for_treatment_type(self, treatment_type: str) -> Optional[str]:
+    def _get_endpoint_for_treatment_type(self, treatment_type: str) -> str | None:
         """
         Get the SageMaker endpoint name for a treatment type.
         
@@ -1689,9 +1686,9 @@ class AWSXGBoostService(XGBoostInterface):
         prediction_id: str,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
-        prediction: Dict[str, Any]
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
+        prediction: dict[str, Any]
     ) -> None:
         """
         Store treatment prediction in DynamoDB.

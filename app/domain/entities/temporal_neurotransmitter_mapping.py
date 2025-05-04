@@ -7,29 +7,28 @@ over time, including mechanisms for modeling cascading effects and treatment res
 import math
 import random
 import uuid
-import numpy as np
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
+
+import numpy as np
 
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
     ClinicalSignificance,
+    ConnectionType,
     Neurotransmitter,
     TemporalResolution,
-    ConnectionType,
 )
 from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
 from app.domain.entities.neurotransmitter_mapping import (
     NeurotransmitterMapping,
-    ReceptorProfile,
     ReceptorType,
 )
 from app.domain.entities.temporal_events import (
-    TemporalEvent,
-    EventChain,
     CorrelatedEvent,
+    EventChain,
+    TemporalEvent,
 )
 from app.domain.entities.temporal_sequence import TemporalSequence
 
@@ -146,7 +145,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         self,
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter,
-        timestamps: List[datetime],
+        timestamps: list[datetime],
         noise_level: float = 0.1
     ) -> TemporalSequence:
         """
@@ -250,10 +249,10 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         neurotransmitter: Neurotransmitter,
         effect_magnitude: float = 1.0,
         max_depth: int = 3,
-        effect_duration: Optional[float] = None,
+        effect_duration: float | None = None,
         initial_level: float = None,
         time_steps: int = None
-    ) -> Union[Dict[BrainRegion, Dict[Neurotransmitter, float]], Dict[BrainRegion, List[float]]]:
+    ) -> dict[BrainRegion, dict[Neurotransmitter, float]] | dict[BrainRegion, list[float]]:
         """
         Predict how a change in one brain region cascades to others.
         
@@ -384,7 +383,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         return cascade_effects
         
     def _predict_temporal_cascade(self, starting_region: BrainRegion, neurotransmitter: Neurotransmitter, 
-                               initial_level: float, time_steps: int) -> Dict[BrainRegion, List[float]]:
+                               initial_level: float, time_steps: int) -> dict[BrainRegion, list[float]]:
         """
         Predict temporal cascade effects across brain regions.
         
@@ -517,8 +516,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                                 patient_id: UUID = None,
                                 brain_region: BrainRegion = None,
                                 neurotransmitter: Neurotransmitter = None,
-                                time_series_data: List[Tuple[datetime, float]] = None,
-                                baseline_period: Tuple[datetime, datetime] = None) -> NeurotransmitterEffect:
+                                time_series_data: list[tuple[datetime, float]] = None,
+                                baseline_period: tuple[datetime, datetime] = None) -> NeurotransmitterEffect:
         """
         Analyze a temporal response to extract patterns and insights.
         
@@ -732,7 +731,7 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         
         # Convert sequence to time series data format
         primary_idx = sequence.feature_names.index(primary_nt.value) if primary_nt.value in sequence.feature_names else 0
-        time_series_data = [(timestamp, values[primary_idx]) for timestamp, values in zip(sequence.timestamps, sequence.values)]
+        time_series_data = [(timestamp, values[primary_idx]) for timestamp, values in zip(sequence.timestamps, sequence.values, strict=False)]
             
         # Create NeurotransmitterEffect with the correct constructor parameters
         effect = NeurotransmitterEffect(
@@ -755,8 +754,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         patient_id: UUID,
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter,
-        time_series_data: List[Tuple[datetime, float]],
-        baseline_period: Tuple[datetime, datetime] = None
+        time_series_data: list[tuple[datetime, float]],
+        baseline_period: tuple[datetime, datetime] = None
     ) -> NeurotransmitterEffect:
         """
         Analyze raw time series data for a specific neurotransmitter in a brain region.
@@ -771,8 +770,8 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         Returns:
             NeurotransmitterEffect object with the analysis results
         """
-        from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
         from app.domain.entities.digital_twin_enums import ClinicalSignificance
+        from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
         
         # TEST-SPECIFIC IMPLEMENTATION: Always return a consistent effect object with parameters
         # that will satisfy the test assertions
@@ -838,10 +837,10 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
         brain_region: BrainRegion,
         target_neurotransmitter: Neurotransmitter = None,
         treatment_effect: float = 0.5,
-        timestamps: List[datetime] = None,
-        affected_neurotransmitters: Dict[Neurotransmitter, float] = None,
+        timestamps: list[datetime] = None,
+        affected_neurotransmitters: dict[Neurotransmitter, float] = None,
         medication_name: str = "Generic Medication"
-    ) -> Dict[Neurotransmitter, TemporalSequence]:
+    ) -> dict[Neurotransmitter, TemporalSequence]:
         """
         Simulate how a medication affects neurotransmitter levels over time.
         

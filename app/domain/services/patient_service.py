@@ -5,11 +5,8 @@ This module contains the PatientService, which encapsulates complex business log
 related to patient management in the concierge psychiatry practice.
 """
 
-from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
 from uuid import UUID
-from typing import Dict, List, Optional
 
 from app.domain.entities.patient import Patient
 from app.domain.exceptions import (
@@ -20,6 +17,7 @@ from app.domain.repositories.appointment_repository import IAppointmentRepositor
 from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
 from app.domain.repositories.patient_repository import PatientRepository
 from app.domain.repositories.provider_repository import ProviderRepository
+from app.domain.utils.datetime_utils import UTC
 
 
 class PatientService:

@@ -1,19 +1,19 @@
-# -*- coding: utf-8 -*-
 """
 Pydantic schemas for User related data.
 """
 
 from uuid import UUID
-from typing import List, Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 
 class UserResponseSchema(BaseModel):
     """Schema for representing a user in API responses."""
     id: UUID
     username: str
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    roles: List[str] = []
+    email: EmailStr | None = None
+    full_name: str | None = None
+    roles: list[str] = []
     is_active: bool = True
 
     # V2 Config

@@ -1,8 +1,7 @@
 # Placeholder for BiometricAlertRuleService
 
-from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
-from app.domain.entities.biometric_alert_rule import BiometricAlertRule, AlertPriority # Import domain entity
+from typing import Any  # Use Any for placeholder dicts
+
 # Remove presentation schema imports
 # from app.presentation.api.v1.schemas.biometric_alert_rule import (
 #     BiometricAlertRuleCreateSchema,
@@ -10,7 +9,16 @@ from app.domain.entities.biometric_alert_rule import BiometricAlertRule, AlertPr
 #     BiometricAlertRuleTemplateSchema
 # )
 from uuid import UUID
-from typing import Any # Use Any for placeholder dicts
+
+from app.domain.entities.biometric_alert_rule import (  # Import domain entity
+    AlertPriority,
+    BiometricAlertRule,
+)
+from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
+)
+
 
 class BiometricAlertRuleService:
     def __init__(self, rule_repository: BiometricAlertRuleRepository, template_repository: BiometricAlertTemplateRepository):

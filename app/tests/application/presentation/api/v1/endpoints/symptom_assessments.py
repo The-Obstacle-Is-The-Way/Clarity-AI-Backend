@@ -4,27 +4,32 @@ API Endpoints for Symptom Assessment Records.
 Provides endpoints for creating and retrieving symptom assessment data
 (e.g., PHQ-9, GAD-7 scores).
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.domain.entities.symptom_assessment import AssessmentType  # For query param validation
+
+# Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
+from app.domain.entities.user import User
+
+# from app.application.services.symptom_assessment_service import SymptomAssessmentService # Use this when service layer is built
+from app.domain.repositories.symptom_assessment_repository import (
+    ISymptomAssessmentRepository,  # Temporary direct repo access
+)
+from app.domain.utils.datetime_utils import now_utc
+
+# Import dependencies
+from app.presentation.api.dependencies.auth import (
+    get_current_user,  #, require_role # Add role check if needed
+)
 
 # Import schemas
 from app.presentation.api.schemas.symptom_assessment import (
     SymptomAssessmentCreate,
     SymptomAssessmentResponse,
-    SymptomAssessmentListQuery
 )
-from app.domain.entities.symptom_assessment import AssessmentType # For query param validation
-
-# Import dependencies
-from app.presentation.api.dependencies.auth import get_current_user #, require_role # Add role check if needed
-from app.infrastructure.di.container import get_container # Assuming a DI container exists
-# from app.application.services.symptom_assessment_service import SymptomAssessmentService # Use this when service layer is built
-from app.domain.repositories.symptom_assessment_repository import ISymptomAssessmentRepository # Temporary direct repo access
-# Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
-from app.domain.entities.user import User
 
 # Initialize router
 router = APIRouter()
@@ -73,7 +78,7 @@ async def record_symptom_assessment(
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not authorized to record this assessment.")
 
     try:
-        from app.domain.entities.symptom_assessment import SymptomAssessment # Import entity
+        from app.domain.entities.symptom_assessment import SymptomAssessment  # Import entity
         
         new_assessment_entity = SymptomAssessment(**assessment_data.model_dump())
 
@@ -85,7 +90,7 @@ async def record_symptom_assessment(
         
         created_assessment = await repo.create(new_assessment_entity)
         return created_assessment
-    except Exception as e:
+    except Exception:
         # Log error
         # logger.error(f"Failed to record symptom assessment: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to record symptom assessment")
@@ -108,8 +113,9 @@ async def get_symptom_assessment(
     # Mock get_by_id for now
     async def mock_get_id(ass_id):
         if str(ass_id) == "123e4567-e89b-12d3-a456-426614174004": # Example ID
-             from app.domain.entities.symptom_assessment import SymptomAssessment, AssessmentType
              from uuid import uuid4
+
+             from app.domain.entities.symptom_assessment import AssessmentType, SymptomAssessment
              return SymptomAssessment(
                  id=UUID("123e4567-e89b-12d3-a456-426614174004"),
                  patient_id=uuid4(),
@@ -137,16 +143,16 @@ async def get_symptom_assessment(
 
 @router.get(
     "",
-    response_model=List[SymptomAssessmentResponse],
+    response_model=list[SymptomAssessmentResponse],
     summary="List Symptom Assessments for Patient",
     description="Retrieve a list of symptom assessments for a specific patient, optionally filtered.",
 )
 async def list_symptom_assessments(
     patient_id: UUID = Query(..., description="ID of the patient whose assessments to list"), # Require patient_id for listing
-    assessment_type: Optional[AssessmentType] = Query(None, description="Filter by assessment type"),
-    start_date: Optional[datetime] = Query(None, description="Filter by assessment start date (inclusive)"),
-    end_date: Optional[datetime] = Query(None, description="Filter by assessment end date (exclusive)"),
-    source: Optional[str] = Query(None, description="Filter by assessment source"),
+    assessment_type: AssessmentType | None = Query(None, description="Filter by assessment type"),
+    start_date: datetime | None = Query(None, description="Filter by assessment start date (inclusive)"),
+    end_date: datetime | None = Query(None, description="Filter by assessment end date (exclusive)"),
+    source: str | None = Query(None, description="Filter by assessment source"),
     limit: int = Query(50, ge=1, le=200, description="Maximum assessments to return"),
     offset: int = Query(0, ge=0, description="Number of assessments to skip"),
     current_user: User = Depends(get_current_user),
@@ -190,6 +196,5 @@ async def list_symptom_assessments(
 # Note: Update/Delete are usually not applicable to assessments.
 
 # Need uuid4 for mock create
-from uuid import uuid4
 # Need UUID for example get mock
-from uuid import UUID
+from uuid import UUID, uuid4

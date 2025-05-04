@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Redis Cache Implementation.
 
@@ -6,11 +5,10 @@ This module provides a Redis-based implementation of the CacheService
 interface for efficient caching in a distributed environment.
 """
 
-import json
 import asyncio
+import json
 import logging
-import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Optional dependency handling
@@ -41,7 +39,7 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
         async def get(self, key: str):
             return self._store.get(key)
 
-        async def set(self, key: str, value: Any, ex: Optional[int] = None):
+        async def set(self, key: str, value: Any, ex: int | None = None):
             self._store[key] = value
             if ex is not None:
                 # Implement TTL via naive time check stored alongside value
@@ -63,7 +61,7 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
 
         # Connection helper --------------------------------------------------
         @classmethod
-        async def from_url(cls, *_args, **_kwargs):  # noqa: D401 – factory
+        async def from_url(cls, *_args, **_kwargs):
             return cls()
 
     # Expose the shim under the name we attempted to import so that the rest
@@ -88,10 +86,10 @@ class RedisCache(CacheService):
     suitable for production use in a distributed environment.
     """
     
-    _client: Optional[aioredis.Redis] = None
+    _client: aioredis.Redis | None = None
     _lock = asyncio.Lock()
 
-    def __init__(self, connection_url: Optional[str] = None):
+    def __init__(self, connection_url: str | None = None):
         """
         Initialize RedisCache.
 
@@ -142,7 +140,7 @@ class RedisCache(CacheService):
             logger.info(f"Connected to Redis at {self.redis_url}")
             
         except Exception as e:
-            logger.error(f"Failed to connect to Redis: {str(e)}")
+            logger.error(f"Failed to connect to Redis: {e!s}")
             # Fallback to an in-memory implementation for development
             self._client = InMemoryFallback()
             logger.warning("Using in-memory fallback for cache (not for production)")
@@ -174,14 +172,14 @@ class RedisCache(CacheService):
                 return value
                 
         except Exception as e:
-            logger.error(f"Error retrieving key {key} from cache: {str(e)}")
+            logger.error(f"Error retrieving key {key} from cache: {e!s}")
             return None
             
     async def set(
         self, 
         key: str, 
         value: Any, 
-        expiration: Optional[int] = None
+        expiration: int | None = None
     ) -> bool:
         """
         Set a value in the cache.
@@ -211,7 +209,7 @@ class RedisCache(CacheService):
             return True
             
         except Exception as e:
-            logger.error(f"Error setting key {key} in cache: {str(e)}")
+            logger.error(f"Error setting key {key} in cache: {e!s}")
             return False
             
     async def delete(self, key: str) -> int:
@@ -230,7 +228,7 @@ class RedisCache(CacheService):
         try:
             return await self._client.delete(key)
         except Exception as e:
-            logger.error(f"Error deleting key {key} from cache: {str(e)}")
+            logger.error(f"Error deleting key {key} from cache: {e!s}")
             return 0
             
     async def exists(self, key: str) -> bool:
@@ -249,7 +247,7 @@ class RedisCache(CacheService):
         try:
             return bool(await self._client.exists(key))
         except Exception as e:
-            logger.error(f"Error checking if key {key} exists in cache: {str(e)}")
+            logger.error(f"Error checking if key {key} exists in cache: {e!s}")
             return False
             
     async def increment(self, key: str) -> int:
@@ -270,7 +268,7 @@ class RedisCache(CacheService):
         try:
             return await self._client.incr(key)
         except Exception as e:
-            logger.error(f"Error incrementing key {key} in cache: {str(e)}")
+            logger.error(f"Error incrementing key {key} in cache: {e!s}")
             return 0
             
     async def expire(self, key: str, seconds: int) -> bool:
@@ -290,7 +288,7 @@ class RedisCache(CacheService):
         try:
             return bool(await self._client.expire(key, seconds))
         except Exception as e:
-            logger.error(f"Error setting expiration for key {key} in cache: {str(e)}")
+            logger.error(f"Error setting expiration for key {key} in cache: {e!s}")
             return False
             
     async def ttl(self, key: str) -> int:
@@ -310,7 +308,7 @@ class RedisCache(CacheService):
         try:
             return await self._client.ttl(key)
         except Exception as e:
-            logger.error(f"Error getting TTL for key {key} in cache: {str(e)}")
+            logger.error(f"Error getting TTL for key {key} in cache: {e!s}")
             return -2
             
     async def close(self) -> None:
@@ -326,7 +324,7 @@ class RedisCache(CacheService):
             await self._client.close()
             self._client = None
         except Exception as e:
-            logger.error(f"Error closing Redis connection: {str(e)}")
+            logger.error(f"Error closing Redis connection: {e!s}")
 
 
 class InMemoryFallback:
@@ -339,8 +337,8 @@ class InMemoryFallback:
     
     def __init__(self):
         """Initialize the in-memory cache."""
-        self._cache: Dict[str, Any] = {}
-        self._expirations: Dict[str, float] = {} # Store expiration timestamps
+        self._cache: dict[str, Any] = {}
+        self._expirations: dict[str, float] = {} # Store expiration timestamps
 
     async def _check_expired(self, key: str):
         """Check if a key has expired and remove it if so."""
@@ -356,7 +354,7 @@ class InMemoryFallback:
             return None
         return self._cache.get(key)
         
-    async def set(self, key: str, value: Any, ex: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, ex: int | None = None) -> bool:
         """Set a value in the cache."""
         self._cache[key] = value
         if ex is not None:
@@ -431,8 +429,8 @@ class InMemoryFallback:
         logger.debug("InMemoryFallback closed (cleared).")
 
 # Global Redis connection pool and cache instance for application-wide use
-_redis_pool: Optional[aioredis.Redis] = None
-_cache_instance: Optional[RedisCache] = None
+_redis_pool: aioredis.Redis | None = None
+_cache_instance: RedisCache | None = None
 
 async def get_cache_service() -> CacheService:
     """
@@ -452,7 +450,7 @@ async def get_cache_service() -> CacheService:
     return _cache_instance
 
 
-async def initialize_redis_pool(redis_url: Optional[str] = None) -> None:
+async def initialize_redis_pool(redis_url: str | None = None) -> None:
     """
     Initialize the global Redis connection pool for application-wide use.
     
@@ -491,7 +489,7 @@ async def initialize_redis_pool(redis_url: Optional[str] = None) -> None:
         logger.info(f"Global Redis pool initialized at {effective_redis_url}")
         
     except Exception as e:
-        logger.error(f"Failed to initialize Redis pool: {str(e)}")
+        logger.error(f"Failed to initialize Redis pool: {e!s}")
         # In production, this might be critical enough to re-raise
         # For development/testing, we can fallback to an in-memory implementation
         if getattr(settings, "ENVIRONMENT", "").lower() == "production":
@@ -513,6 +511,6 @@ async def close_redis_connection() -> None:
             await _redis_pool.close()
             logger.info("Global Redis pool closed.")
         except Exception as e:
-            logger.error(f"Error closing Redis pool: {str(e)}")
+            logger.error(f"Error closing Redis pool: {e!s}")
         finally:
             _redis_pool = None

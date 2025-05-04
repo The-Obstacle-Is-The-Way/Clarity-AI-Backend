@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Rate Limiter Dependency Module.
 
@@ -6,11 +5,14 @@ This module provides FastAPI dependencies for rate limiting,
 ensuring proper protection against abuse and API overload.
 """
 
-from typing import Optional, Any
-from fastapi import Request, HTTPException as FastAPIHTTPException
+from typing import Any
+
+from fastapi import HTTPException as FastAPIHTTPException
+from fastapi import Request
 from starlette import status
 
 from app.infrastructure.security.rate_limiting.limiter import RateLimiter
+
 
 # Subclass HTTPException to customize string representation for tests
 class HTTPException(FastAPIHTTPException):
@@ -24,19 +26,19 @@ class RateLimitDependency:
     Supports both dependency injection via Depends and decorator usage.
     """
     # Class-level default limiter for decorator usage when no limiter is provided
-    _default_limiter: Optional[RateLimiter] = None
+    _default_limiter: RateLimiter | None = None
     def __init__(
         self,
         requests: int = 10,
         window_seconds: int = 60,
-        block_seconds: Optional[int] = 300,
-        limiter: Optional[RateLimiter] = None,
+        block_seconds: int | None = 300,
+        limiter: RateLimiter | None = None,
         scope_key: str = "default",
         error_message: str = "Rate limit exceeded. Please try again later.",
         *,
         # Aliases for compatibility with older endpoint code
-        max_requests: Optional[int] = None,
-        api_tier: Optional[str] = None,
+        max_requests: int | None = None,
+        api_tier: str | None = None,
         **_: Any,
     ):
         # Support legacy/alias parameters
@@ -137,7 +139,7 @@ class RateLimitDependency:
 def rate_limit(
     requests: int = 10,
     window_seconds: int = 60,
-    block_seconds: Optional[int] = 300,
+    block_seconds: int | None = 300,
     scope_key: str = "standard"
 ) -> RateLimitDependency:
     """Factory for standard rate limit dependency."""
@@ -151,7 +153,7 @@ def rate_limit(
 def sensitive_rate_limit(
     requests: int = 5,
     window_seconds: int = 60,
-    block_seconds: Optional[int] = 300,
+    block_seconds: int | None = 300,
     error_message: str = "Too many attempts. Please try again later.",
     scope_key: str = "sensitive"
 ) -> RateLimitDependency:
@@ -167,7 +169,7 @@ def sensitive_rate_limit(
 def admin_rate_limit(
     requests: int = 100,
     window_seconds: int = 60,
-    block_seconds: Optional[int] = None,
+    block_seconds: int | None = None,
     scope_key: str = "admin"
 ) -> RateLimitDependency:
     """Factory for admin operation rate limit dependency."""

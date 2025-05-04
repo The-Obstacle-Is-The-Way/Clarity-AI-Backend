@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Clinical Analysis API Endpoints.
 
@@ -7,26 +6,23 @@ using the MentaLLaMA service with HIPAA compliance.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 
 from app.core.exceptions.ml_exceptions import (
     AnalysisError,
     InvalidAnalysisTypeError,
     MentalLLaMAInferenceError,
-    ModelLoadingError
+    ModelLoadingError,
 )
 from app.infrastructure.ml.mentallama import MentaLLaMAService
-from app.presentation.api.v1.dependencies.ml import get_mentallama_service
 from app.presentation.api.schemas.ml_schemas import (
-    AnalysisType,
     ClinicalAnalysisRequest,
     ClinicalAnalysisResponse,
-    PHIDetectionResponse
+    PHIDetectionResponse,
 )
-
+from app.presentation.api.v1.dependencies.ml import get_mentallama_service
 
 logger = logging.getLogger(__name__)
 
@@ -95,28 +91,28 @@ async def analyze_clinical_text(
         return result
         
     except InvalidAnalysisTypeError as e:
-        logger.warning(f"Invalid analysis type: {str(e)}")
+        logger.warning(f"Invalid analysis type: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid analysis type: {str(e)}",
+            detail=f"Invalid analysis type: {e!s}",
         )
         
     except ModelLoadingError as e:
-        logger.error(f"Model loading error: {str(e)}")
+        logger.error(f"Model loading error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Service temporarily unavailable. Please try again later.",
         )
         
     except MentalLLaMAInferenceError as e:
-        logger.error(f"Inference error: {str(e)}")
+        logger.error(f"Inference error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Analysis processing error. Please try again.",
         )
         
     except AnalysisError as e:
-        logger.error(f"Analysis error: {str(e)}")
+        logger.error(f"Analysis error: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Analysis failed. Please try again.",
@@ -125,7 +121,7 @@ async def analyze_clinical_text(
     except Exception as e:
         # Generic catch for unexpected errors - log details for debugging
         # but return a generic message to the client
-        logger.error(f"Unexpected error in clinical analysis: {str(e)}")
+        logger.error(f"Unexpected error in clinical analysis: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred. Please try again later.",
@@ -146,9 +142,9 @@ async def analyze_clinical_text(
 )
 async def detect_phi_in_text(
     text: str,
-    anonymize: Optional[bool] = False,
+    anonymize: bool | None = False,
     mentallama_service: MentaLLaMAService = Depends(get_mentallama_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Detect PHI in text with optional anonymization.
     
@@ -188,7 +184,7 @@ async def detect_phi_in_text(
         return result
         
     except Exception as e:
-        logger.error(f"Error in PHI detection: {str(e)}")
+        logger.error(f"Error in PHI detection: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="PHI detection failed. Please try again.",

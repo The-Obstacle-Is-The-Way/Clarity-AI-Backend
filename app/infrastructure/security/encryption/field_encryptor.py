@@ -7,7 +7,7 @@ following HIPAA requirements while maintaining clean architectural principles.
 
 import copy
 import logging
-from typing import Dict, Any, List, Optional, Union, Set
+from typing import Any
 
 # Import our enhanced BaseEncryptionService
 from .base_encryption_service import BaseEncryptionService
@@ -33,7 +33,7 @@ class FieldEncryptor:
              raise TypeError("encryption_service must be an instance of BaseEncryptionService")
         self._encryption = encryption_service
     
-    def encrypt_fields(self, data: Union[Dict[str, Any], List[Any]], fields: List[str]) -> Union[Dict[str, Any], List[Any]]:
+    def encrypt_fields(self, data: dict[str, Any] | list[Any], fields: list[str]) -> dict[str, Any] | list[Any]:
         """Encrypt specific fields in a data structure (dict or list).
         
         Args:
@@ -55,7 +55,7 @@ class FieldEncryptor:
             
         return result
     
-    def decrypt_fields(self, data: Union[Dict[str, Any], List[Any]], fields: List[str]) -> Union[Dict[str, Any], List[Any]]:
+    def decrypt_fields(self, data: dict[str, Any] | list[Any], fields: list[str]) -> dict[str, Any] | list[Any]:
         """Decrypt specific fields in a data structure (dict or list).
         
         Args:
@@ -77,7 +77,7 @@ class FieldEncryptor:
             
         return result
     
-    def _process_field(self, data: Union[Dict[str, Any], List[Any]], field_path: str, encrypt: bool) -> None:
+    def _process_field(self, data: dict[str, Any] | list[Any], field_path: str, encrypt: bool) -> None:
         """Recursively process a field path for encryption or decryption.
 
         Handles nested dictionaries and lists.
@@ -130,7 +130,7 @@ class FieldEncryptor:
         
         # else: data is not a dict or list, cannot navigate further
 
-    def _encrypt_or_decrypt_value(self, obj: Dict[str, Any], field: str, value: Any, encrypt: bool) -> None:
+    def _encrypt_or_decrypt_value(self, obj: dict[str, Any], field: str, value: Any, encrypt: bool) -> None:
         """Encrypt or decrypt a specific field's value using the BaseEncryptionService.
         
         Modifies the `obj` dictionary in place.
@@ -169,7 +169,7 @@ class FieldEncryptor:
             # Keep original value in case of error during processing
             pass # Keep obj[field] as it was
     
-    def encrypt_phi_fields(self, data: Dict[str, Any], phi_fields: Set[str]) -> Dict[str, Any]:
+    def encrypt_phi_fields(self, data: dict[str, Any], phi_fields: set[str]) -> dict[str, Any]:
         """Encrypt all PHI fields in a data structure.
         
         This is a convenience method for encrypting all PHI fields in a single call.
@@ -183,7 +183,7 @@ class FieldEncryptor:
         """
         return self.encrypt_fields(data, list(phi_fields))
     
-    def decrypt_phi_fields(self, data: Dict[str, Any], phi_fields: Set[str]) -> Dict[str, Any]:
+    def decrypt_phi_fields(self, data: dict[str, Any], phi_fields: set[str]) -> dict[str, Any]:
         """Decrypt all PHI fields in a data structure.
         
         This is a convenience method for decrypting all PHI fields in a single call.

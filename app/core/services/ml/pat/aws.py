@@ -13,18 +13,14 @@ from typing import Any
 import boto3
 from boto3.resources.base import ServiceResource
 from botocore.client import BaseClient
-from botocore.exceptions import (
-    ClientError,
-    NoCredentialsError,
-    PartialCredentialsError
-)
+from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
 from app.core.config import settings
 from app.core.exceptions.base_exceptions import (
     AuthorizationException,
     ConfigurationError,
     ExternalServiceException,
-    ResourceNotFoundError
+    ResourceNotFoundError,
 )
 from app.core.interfaces.ml.pat_interface import PATServiceInterface
 from app.infrastructure.logging.logger import get_logger

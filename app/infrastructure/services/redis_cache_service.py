@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Redis Cache Service Implementation.
 
@@ -8,16 +7,14 @@ distributed operations.
 """
 
 import json
-from typing import Any, Optional, Dict, List, Union
-from datetime import datetime, timedelta
+from typing import Any
 
-import redis.asyncio as redis # Already correct, no change needed, but confirming
+import redis.asyncio as redis  # Already correct, no change needed, but confirming
 from redis.asyncio.connection import ConnectionPool
 from redis.exceptions import RedisError
 
 from app.application.interfaces.services.cache_service import CacheService
 from app.core.utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -34,7 +31,7 @@ class RedisCacheService(CacheService):
         self,
         host: str,
         port: int,
-        password: Optional[str] = None,
+        password: str | None = None,
         ssl: bool = False,
         prefix: str = "novamind:"
     ):
@@ -56,7 +53,7 @@ class RedisCacheService(CacheService):
             ssl=ssl,
             decode_responses=True
         )
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
         self._logger = logger
     
     async def _get_redis(self) -> redis.Redis:
@@ -111,7 +108,7 @@ class RedisCacheService(CacheService):
                 return value
                 
         except RedisError as e:
-            self._logger.error(f"Redis error in get operation: {str(e)}")
+            self._logger.error(f"Redis error in get operation: {e!s}")
             # Return None instead of raising - cache failures shouldn't break functionality
             return None
     
@@ -119,7 +116,7 @@ class RedisCacheService(CacheService):
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None
+        ttl: int | None = None
     ) -> bool:
         """
         Set a value in the cache with optional TTL.
@@ -150,7 +147,7 @@ class RedisCacheService(CacheService):
                 return await client.set(prefixed_key, value)
                 
         except RedisError as e:
-            self._logger.error(f"Redis error in set operation: {str(e)}")
+            self._logger.error(f"Redis error in set operation: {e!s}")
             return False
     
     async def delete(self, key: str) -> bool:
@@ -174,7 +171,7 @@ class RedisCacheService(CacheService):
             return result > 0
             
         except RedisError as e:
-            self._logger.error(f"Redis error in delete operation: {str(e)}")
+            self._logger.error(f"Redis error in delete operation: {e!s}")
             return False
     
     async def increment(self, key: str, increment: int = 1) -> int:
@@ -198,7 +195,7 @@ class RedisCacheService(CacheService):
             return await client.incrby(prefixed_key, increment)
             
         except RedisError as e:
-            self._logger.error(f"Redis error in increment operation: {str(e)}")
+            self._logger.error(f"Redis error in increment operation: {e!s}")
             # Return a high value to prevent rate limit bypassing on error
             return 999999
     
@@ -223,10 +220,10 @@ class RedisCacheService(CacheService):
             return await client.expire(prefixed_key, seconds)
             
         except RedisError as e:
-            self._logger.error(f"Redis error in expire operation: {str(e)}")
+            self._logger.error(f"Redis error in expire operation: {e!s}")
             return False
     
-    async def get_hash(self, key: str) -> Dict[str, Any]:
+    async def get_hash(self, key: str) -> dict[str, Any]:
         """
         Get all fields in a hash.
         
@@ -256,14 +253,14 @@ class RedisCacheService(CacheService):
             return parsed_result
             
         except RedisError as e:
-            self._logger.error(f"Redis error in get_hash operation: {str(e)}")
+            self._logger.error(f"Redis error in get_hash operation: {e!s}")
             return {}
     
     async def set_hash(
         self,
         key: str,
-        values: Dict[str, Any],
-        ttl: Optional[int] = None
+        values: dict[str, Any],
+        ttl: int | None = None
     ) -> bool:
         """
         Set multiple fields in a hash.
@@ -303,7 +300,7 @@ class RedisCacheService(CacheService):
             return True
             
         except RedisError as e:
-            self._logger.error(f"Redis error in set_hash operation: {str(e)}")
+            self._logger.error(f"Redis error in set_hash operation: {e!s}")
             return False
             
     async def exists(self, key: str) -> bool:
@@ -324,7 +321,7 @@ class RedisCacheService(CacheService):
             return result > 0
             
         except RedisError as e:
-            self._logger.error(f"Redis error in exists operation: {str(e)}")
+            self._logger.error(f"Redis error in exists operation: {e!s}")
             return False
             
     async def ttl(self, key: str) -> int:
@@ -345,7 +342,7 @@ class RedisCacheService(CacheService):
             return await client.ttl(prefixed_key)
             
         except RedisError as e:
-            self._logger.error(f"Redis error in ttl operation: {str(e)}")
+            self._logger.error(f"Redis error in ttl operation: {e!s}")
             return -2  # Same as Redis behavior for non-existent keys
             
     async def close(self) -> None:
@@ -361,4 +358,4 @@ class RedisCacheService(CacheService):
                 self._redis = None
                 
             except RedisError as e:
-                self._logger.error(f"Redis error in close operation: {str(e)}")
+                self._logger.error(f"Redis error in close operation: {e!s}")

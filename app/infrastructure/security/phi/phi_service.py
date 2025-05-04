@@ -6,10 +6,9 @@ Protected Health Information in accordance with HIPAA Security Rule requirements
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .sanitizer import PHISanitizer, get_sanitized_logger
-from . import PHIType
 
 # Configure logger
 logger = get_sanitized_logger(__name__)
@@ -34,7 +33,7 @@ class PHIService:
         """Initialize with the consolidated PHI sanitizer."""
         self._sanitizer = PHISanitizer()
     
-    def sanitize(self, data: Any, sensitivity: Optional[str] = None) -> Any:
+    def sanitize(self, data: Any, sensitivity: str | None = None) -> Any:
         """
         Sanitize any data type by redacting PHI.
         
@@ -71,7 +70,7 @@ class PHIService:
         """
         return self._sanitizer.sanitize_text(text)
     
-    def sanitize_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def sanitize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize all string values in a dictionary.
         
@@ -83,7 +82,7 @@ class PHIService:
         """
         return self._sanitizer.sanitize_dict(data)
     
-    def sanitize_list(self, data: List[Any]) -> List[Any]:
+    def sanitize_list(self, data: list[Any]) -> list[Any]:
         """
         Sanitize all values in a list.
         

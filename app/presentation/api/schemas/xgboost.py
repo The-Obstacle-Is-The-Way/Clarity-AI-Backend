@@ -1,7 +1,8 @@
-from enum import Enum
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 # --- Enums (defined here for API contract) ---
 
@@ -83,10 +84,10 @@ class RiskPredictionRequest(BaseModelConfig):
     """Request model for risk prediction."""
     risk_type: RiskType
     patient_id: str
-    patient_data: Dict[str, Any] = Field(..., description="Patient demographic and baseline data")
-    clinical_data: Dict[str, Any] = Field(..., description="Clinical data and measurements")
+    patient_data: dict[str, Any] = Field(..., description="Patient demographic and baseline data")
+    clinical_data: dict[str, Any] = Field(..., description="Clinical data and measurements")
     include_explainability: bool = False
-    visualization_type: Optional[VisualizationType] = None
+    visualization_type: VisualizationType | None = None
     
     # For backward compatibility with legacy code
     @property
@@ -95,7 +96,7 @@ class RiskPredictionRequest(BaseModelConfig):
         return self.clinical_data.get("duration_months", 6) 
     
     @property
-    def features(self) -> Dict[str, Any]:
+    def features(self) -> dict[str, Any]:
         """Combine patient_data and clinical_data for legacy code."""
         return {**self.patient_data, **self.clinical_data}
 
@@ -107,15 +108,15 @@ class RiskPredictionResponse(BaseModelConfig):
     risk_probability: float = Field(ge=0, le=1)
     risk_level: str
     risk_score: float = Field(ge=0, le=1)
-    risk_factors: Dict[str, float] = Field(default_factory=dict)
+    risk_factors: dict[str, float] = Field(default_factory=dict)
     confidence: float = Field(ge=0, le=1)
     timestamp: str
     time_frame_days: int
     # Fields for backward compatibility
     timeframe_months: int = 1
     prediction_date: datetime = Field(default_factory=datetime.now)
-    feature_importance: Optional[Dict[str, float]] = None
-    visualization_data: Optional[Dict[str, Any]] = None
+    feature_importance: dict[str, float] | None = None
+    visualization_data: dict[str, Any] | None = None
     model_version: str = "1.0"
     
     class Config:
@@ -123,11 +124,11 @@ class RiskPredictionResponse(BaseModelConfig):
 
 class ModelInfoRequest(BaseModelConfig):
     """Request schema for retrieving model information."""
-    model_id: Optional[str] = None
+    model_id: str | None = None
     include_metrics: bool = False
     include_features: bool = False
     include_history: bool = False
-    version: Optional[str] = None
+    version: str | None = None
 
 class PerformanceMetrics(BaseModelConfig):
     """Performance metrics for ML models."""
@@ -135,10 +136,10 @@ class PerformanceMetrics(BaseModelConfig):
     precision: float = Field(ge=0.0, le=1.0, description="Precision metric")
     recall: float = Field(ge=0.0, le=1.0, description="Recall/sensitivity metric")
     f1_score: float = Field(ge=0.0, le=1.0, description="F1 score (harmonic mean of precision and recall)")
-    auc_roc: Optional[float] = Field(None, ge=0.0, le=1.0, description="Area under ROC curve")
-    specificity: Optional[float] = Field(None, ge=0.0, le=1.0, description="Specificity metric")
-    confusion_matrix: Optional[Dict[str, int]] = None
-    cross_validation_scores: Optional[List[float]] = None
+    auc_roc: float | None = Field(None, ge=0.0, le=1.0, description="Area under ROC curve")
+    specificity: float | None = Field(None, ge=0.0, le=1.0, description="Specificity metric")
+    confusion_matrix: dict[str, int] | None = None
+    cross_validation_scores: list[float] | None = None
 
 class ModelInfoResponse(BaseModelConfig):
     """Response model for model information."""
@@ -147,10 +148,10 @@ class ModelInfoResponse(BaseModelConfig):
     model_version: str
     creation_date: datetime
     training_dataset_size: int
-    trained_for_domains: List[str]
-    supports_features: List[str]
+    trained_for_domains: list[str]
+    supports_features: list[str]
     description: str
-    performance_metrics: Optional[PerformanceMetrics] = None
+    performance_metrics: PerformanceMetrics | None = None
 
 class SideEffectRisk(BaseModelConfig):
     """Risk model for side effects.
@@ -159,87 +160,87 @@ class SideEffectRisk(BaseModelConfig):
     1. Detail format with specific effect name, severity, and likelihood
     2. Categorized format with common and rare side effects
     """
-    effect_name: Optional[str] = None
-    severity: Optional[str] = None
-    likelihood: Optional[float] = None
-    common: Optional[List[str]] = Field(default_factory=list)
-    rare: Optional[List[str]] = Field(default_factory=list)
+    effect_name: str | None = None
+    severity: str | None = None
+    likelihood: float | None = None
+    common: list[str] | None = Field(default_factory=list)
+    rare: list[str] | None = Field(default_factory=list)
 
 class TreatmentResponseRequest(BaseModelConfig):
     """Request schema for treatment response predictions."""
     patient_id: str
     treatment_type: TreatmentType
-    treatment_id: Optional[str] = None
-    treatment_name: Optional[str] = None
-    time_frame: Optional[TimeFrame] = None
+    treatment_id: str | None = None
+    treatment_name: str | None = None
+    time_frame: TimeFrame | None = None
     include_side_effects: bool = True
-    features: Dict[str, Any] = Field(default_factory=dict)
-    baseline_severity: Optional[float] = None  # For test compatibility
+    features: dict[str, Any] = Field(default_factory=dict)
+    baseline_severity: float | None = None  # For test compatibility
 
 class OutcomeDetails(BaseModelConfig):
     domain: OutcomeDomain
     outcome_type: OutcomeType
-    predicted_value: Optional[float] = None
-    probability: Optional[float] = None
-    confidence_interval: Optional[List[float]] = None
+    predicted_value: float | None = None
+    probability: float | None = None
+    confidence_interval: list[float] | None = None
 
 class OutcomeTrajectoryPoint(BaseModelConfig):
     time_point: datetime # Or int/float representing weeks/months
     predicted_value: float
-    confidence_interval: Optional[List[float]] = None
+    confidence_interval: list[float] | None = None
 
 class OutcomeTrajectory(BaseModelConfig):
     domain: OutcomeDomain
     outcome_type: OutcomeType
-    trajectory: List[OutcomeTrajectoryPoint]
+    trajectory: list[OutcomeTrajectoryPoint]
 
 class ExpectedOutcome(BaseModelConfig):
     """Expected outcome model for treatment response predictions."""
-    outcome_details: Optional[List[OutcomeDetails]] = None
-    symptom_improvement: Optional[str] = None
-    time_to_response: Optional[str] = None
-    sustained_response_likelihood: Optional[ResponseLikelihood] = None
-    functional_improvement: Optional[str] = None
+    outcome_details: list[OutcomeDetails] | None = None
+    symptom_improvement: str | None = None
+    time_to_response: str | None = None
+    sustained_response_likelihood: ResponseLikelihood | None = None
+    functional_improvement: str | None = None
 
 class TherapyDetails(BaseModelConfig):
     """Details about a therapy or treatment."""
     therapy_id: str = "therapy_default_id"
     therapy_name: str = "Default Therapy Name"
-    description: Optional[str] = None
-    typical_duration: Optional[int] = None
-    typical_frequency: Optional[int] = None
-    therapy_type: Optional[str] = None
+    description: str | None = None
+    typical_duration: int | None = None
+    typical_frequency: int | None = None
+    therapy_type: str | None = None
     is_medication: bool = False
-    dosage: Optional[str] = None
-    side_effects: Optional[List[str]] = None
-    duration_weeks: Optional[int] = None  # For test compatibility
+    dosage: str | None = None
+    side_effects: list[str] | None = None
+    duration_weeks: int | None = None  # For test compatibility
 
 class OutcomePredictionRequest(BaseModelConfig):
     """Request schema for clinical outcome predictions."""
     patient_id: str
     timeframe_days: int = Field(ge=1, le=365, description="Prediction timeframe in days")
-    prediction_domains: Optional[List[OutcomeDomain]] = None
-    prediction_types: Optional[List[OutcomeType]] = None
+    prediction_domains: list[OutcomeDomain] | None = None
+    prediction_types: list[OutcomeType] | None = None
     include_trajectories: bool = False
     include_recommendations: bool = False
-    features: Dict[str, Any] = Field(..., description="Patient features for outcome prediction")
+    features: dict[str, Any] = Field(..., description="Patient features for outcome prediction")
 
 class OutcomePredictionResponse(BaseModelConfig):
     """Response schema for clinical outcome predictions."""
     patient_id: str
-    expected_outcomes: List[OutcomeDetails]
-    outcome_trajectories: Optional[List[OutcomeTrajectory]] = None
-    response_likelihood: Optional[ResponseLikelihood] = None
-    recommended_therapies: Optional[List[TherapyDetails]] = None
+    expected_outcomes: list[OutcomeDetails]
+    outcome_trajectories: list[OutcomeTrajectory] | None = None
+    response_likelihood: ResponseLikelihood | None = None
+    recommended_therapies: list[TherapyDetails] | None = None
 
 class TreatmentResponseResponse(BaseModelConfig):
     """Response schema for treatment response predictions."""
     patient_id: str
     treatment_id: str
-    treatment_name: Optional[str] = None
+    treatment_name: str | None = None
     response_likelihood: ResponseLikelihood
     probability: float
     time_frame: TimeFrame
-    expected_outcomes: List[OutcomeDetails]
-    side_effects: Optional[List[SideEffectRisk]] = None
-    confidence_interval: Optional[List[float]] = None
+    expected_outcomes: list[OutcomeDetails]
+    side_effects: list[SideEffectRisk] | None = None
+    confidence_interval: list[float] | None = None

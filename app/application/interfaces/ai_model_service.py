@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 # app/application/interfaces/ai_model_service.py
 # Interface for AI model services used by the digital twin
 # Following Dependency Inversion Principle - high-level modules depend on abstractions
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
-from uuid import UUID
+from typing import Any
 
 
 class AIModelService(ABC):
@@ -15,7 +13,7 @@ class AIModelService(ABC):
     """
 
     @abstractmethod
-    async def predict(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def predict(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """
         Make a prediction using the AI model
 
@@ -31,7 +29,7 @@ class AIModelService(ABC):
         pass
 
     @abstractmethod
-    async def get_model_metadata(self) -> Dict[str, Any]:
+    async def get_model_metadata(self) -> dict[str, Any]:
         """
         Get metadata about the AI model
 

@@ -6,20 +6,20 @@ This package contains all exception classes for the domain layer.
 
 from app.domain.exceptions.base import DomainException
 from app.domain.exceptions.repository import (
-    RepositoryException,
-    EntityNotFoundException,
-    DuplicateEntityException,
     DatabaseConnectionException,
+    DuplicateEntityException,
+    EntityNotFoundException,
+    RepositoryError,
+    RepositoryException,
     TransactionException,
-    RepositoryError
 )
 from app.domain.exceptions.token_exceptions import (
-    TokenException,
     InvalidTokenException,
-    TokenExpiredException,
+    MissingTokenException,
     TokenBlacklistedException,
+    TokenException,
+    TokenExpiredException,
     TokenGenerationException,
-    MissingTokenException
 )
 
 # Aliases for backward compatibility

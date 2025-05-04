@@ -6,7 +6,8 @@ abuse and DoS attacks, ensuring service stability and availability.
 """
 
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 
 # Rate limiting strategy enum
 class RateLimitStrategy(str, Enum):
@@ -46,7 +47,7 @@ class RateLimitConfig:
 class RateLimiterService:
     """Service for enforcing rate limits across the API."""
     
-    def __init__(self, config: Optional[RateLimitConfig] = None):
+    def __init__(self, config: RateLimitConfig | None = None):
         """
         Initialize the rate limiter service.
         
@@ -55,7 +56,7 @@ class RateLimiterService:
         """
         self.config = config or RateLimitConfig()
         
-    async def check_rate_limit(self, scope_id: str) -> Dict[str, Any]:
+    async def check_rate_limit(self, scope_id: str) -> dict[str, Any]:
         """
         Check if a request exceeds the rate limit.
         
@@ -79,7 +80,7 @@ class RateLimiterService:
 class RateLimitingMiddleware:
     """Middleware for enforcing rate limits on API endpoints."""
     
-    def __init__(self, service: Optional[RateLimiterService] = None):
+    def __init__(self, service: RateLimiterService | None = None):
         """
         Initialize the rate limiting middleware.
         

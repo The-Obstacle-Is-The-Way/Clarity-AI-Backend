@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Observer Pattern Implementation.
 
@@ -6,7 +5,8 @@ This module provides a standard implementation of the Observer design pattern.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Callable
+from collections.abc import Callable
+from typing import Any
 
 from app.core.utils.logging import get_logger
 
@@ -35,7 +35,7 @@ class Subject:
     """
     def __init__(self) -> None:
         """Initialize the Subject with an empty list of observers."""
-        self._observers: Dict[str, List[Callable[[Any], None]]] = {}
+        self._observers: dict[str, list[Callable[[Any], None]]] = {}
 
     def attach(self, event_type: str, observer_callback: Callable[[Any], None]) -> None:
         """

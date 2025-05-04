@@ -10,7 +10,7 @@ from typing import Annotated, Any
 from fastapi import Depends
 
 # Correct service/factory imports
-from app.core.interfaces.repositories.user_repository_interface import UserRepositoryInterface
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.ml.pat_interface import PATInterface
 from app.core.services.ml.pat.factory import PATServiceFactory
 from app.infrastructure.repositories.user_repository import (
@@ -23,7 +23,7 @@ PATServiceDep = Annotated[
     PATInterface, Depends(PATServiceFactory.create_pat_service)
 ]
 UserRepoDep = Annotated[
-    UserRepositoryInterface, Depends(infra_get_user_repo)
+    IUserRepository, Depends(infra_get_user_repo)
 ]  # Reusing from auth.py, but defining here for clarity
 
 # --- Dependency Functions --- #
@@ -35,8 +35,8 @@ def get_pat_service(
     return pat_service
 
 def get_user_repository(
-    user_repo: UserRepositoryInterface = Depends(infra_get_user_repo),
-) -> UserRepositoryInterface:
+    user_repo: IUserRepository = Depends(infra_get_user_repo),
+) -> IUserRepository:
     """Provides an instance of the User Repository."""
     # Note: This uses the same underlying factory as the one used in auth.py's get_current_user
     return user_repo

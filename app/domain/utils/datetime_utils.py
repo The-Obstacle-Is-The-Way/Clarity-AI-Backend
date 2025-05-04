@@ -8,7 +8,6 @@ from implementation details of the Python standard library.
 """
 
 import datetime
-from typing import Optional
 
 # Define a true UTC timezone following mathematical principles
 # This creates a single source of truth for UTC timezone access

@@ -8,4 +8,3 @@ DO NOT USE THIS IN NEW CODE - use app.api.routes.auth instead.
 """
 
 # Re-export from the new location 
-from app.api.routes.auth import router

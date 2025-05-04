@@ -8,31 +8,27 @@ This service handles user authentication operations including:
 - HIPAA-compliant authorization
 """
 
-from typing import Dict, Optional, Tuple, Any, Union
 import logging
 from datetime import datetime, timedelta
 from uuid import UUID
 
+from app.application.dtos.auth_dtos import LoginResponseDTO, TokenPairDTO, UserSessionDTO
+from app.core.config.settings import Settings
 from app.domain.entities.user import User
 from app.domain.exceptions import (
     AuthenticationError,
     InvalidCredentialsError,
-    UserNotFoundError,
-    PermissionDeniedError,
     InvalidTokenError,
+    MissingTokenError,
+    PermissionDeniedError,
     TokenExpiredError,
-    MissingTokenError
+    UserNotFoundError,
 )
 from app.domain.interfaces.user_repository import UserRepositoryInterface
+from app.infrastructure.logging.audit_logger import AuditLogger
 from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.infrastructure.security.password.password_service import PasswordService
-from app.infrastructure.logging.audit_logger import AuditLogger
-from app.core.config.settings import Settings
-from app.application.dtos.auth_dtos import (
-    LoginResponseDTO,
-    TokenPairDTO,
-    UserSessionDTO
-)
+
 
 class AuthenticationService:
     """
@@ -69,7 +65,7 @@ class AuthenticationService:
         
         # Initialize session storage
         # In production, this should use Redis or similar distributed cache
-        self._active_sessions: Dict[str, UserSessionDTO] = {}
+        self._active_sessions: dict[str, UserSessionDTO] = {}
         
     async def login(self, email: str, password: str, ip_address: str, user_agent: str) -> LoginResponseDTO:
         """
@@ -177,19 +173,19 @@ class AuthenticationService:
                 user=user_data
             )
             
-        except (UserNotFoundError, InvalidCredentialsError) as e:
+        except (UserNotFoundError, InvalidCredentialsError):
             # Standardize error for security (don't leak user existence)
             raise InvalidCredentialsError("Invalid email or password")
             
         except Exception as e:
-            logging.error(f"Login error: {str(e)}", exc_info=True)
+            logging.error(f"Login error: {e!s}", exc_info=True)
             self.audit_logger.log_failed_login(
                 email=email,
                 reason=f"error: {type(e).__name__}",
                 ip_address=ip_address,
                 user_agent=user_agent
             )
-            raise AuthenticationError(f"Authentication failed: {str(e)}")
+            raise AuthenticationError(f"Authentication failed: {e!s}")
             
     async def logout(self, user_id: str, session_id: str, all_sessions: bool = False) -> bool:
         """
@@ -246,8 +242,8 @@ class AuthenticationService:
             return True
             
         except Exception as e:
-            logging.error(f"Logout error: {str(e)}", exc_info=True)
-            raise AuthenticationError(f"Logout failed: {str(e)}")
+            logging.error(f"Logout error: {e!s}", exc_info=True)
+            raise AuthenticationError(f"Logout failed: {e!s}")
             
     async def refresh_token(self, refresh_token: str, ip_address: str, user_agent: str) -> TokenPairDTO:
         """
@@ -371,8 +367,8 @@ class AuthenticationService:
             raise
             
         except Exception as e:
-            logging.error(f"Token refresh error: {str(e)}", exc_info=True)
-            raise AuthenticationError(f"Token refresh failed: {str(e)}")
+            logging.error(f"Token refresh error: {e!s}", exc_info=True)
+            raise AuthenticationError(f"Token refresh failed: {e!s}")
             
     async def validate_token(self, token: str) -> User:
         """
@@ -421,8 +417,8 @@ class AuthenticationService:
             raise
             
         except Exception as e:
-            logging.error(f"Token validation error: {str(e)}", exc_info=True)
-            raise InvalidTokenError(f"Token validation failed: {str(e)}")
+            logging.error(f"Token validation error: {e!s}", exc_info=True)
+            raise InvalidTokenError(f"Token validation failed: {e!s}")
             
     async def check_permission(self, user: User, required_permission: str) -> bool:
         """

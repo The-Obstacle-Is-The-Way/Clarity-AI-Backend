@@ -6,8 +6,8 @@ UUIDs consistently across different database dialects (PostgreSQL and SQLite).
 """
 
 import uuid
-import pytest
-from sqlalchemy import Column, create_engine, MetaData, Table
+
+from sqlalchemy import Column, MetaData, Table, create_engine
 from sqlalchemy.orm import Session, registry
 
 from app.infrastructure.persistence.sqlalchemy.types import GUID

@@ -5,10 +5,11 @@ This module provides middleware for adding security-related HTTP headers
 to responses, helping to protect against common web vulnerabilities.
 """
 
+import logging
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable, Dict
-import logging
 
 logger = logging.getLogger(__name__)
 

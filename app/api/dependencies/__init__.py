@@ -4,10 +4,12 @@ This package contains dependency injection components for FastAPI routes,
 middleware configuration, and service provider functions.
 """
 
-from fastapi import Request, Depends
-from typing import Callable, Optional, Dict, Any
 import logging
+from collections.abc import Callable
+from typing import Any, Dict, Optional
 from uuid import UUID
+
+from fastapi import Depends, Request
 
 logger = logging.getLogger(__name__)
 

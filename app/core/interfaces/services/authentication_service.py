@@ -6,7 +6,7 @@ following HIPAA-compliant security practices in a clean architecture design.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any
+from typing import Any
 
 # Attempt to import User, handle potential circular dependency gracefully
 try:
@@ -26,7 +26,7 @@ class IAuthenticationService(ABC):
     """
     
     @abstractmethod
-    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
+    async def authenticate_user(self, username: str, password: str) -> User | None:
         """
         Authenticate a user with username and password.
         
@@ -85,7 +85,7 @@ class IAuthenticationService(ABC):
         pass
     
     @abstractmethod
-    def create_token_pair(self, user: User) -> Dict[str, str]:
+    def create_token_pair(self, user: User) -> dict[str, str]:
         """
         Create both access and refresh tokens.
         
@@ -98,7 +98,7 @@ class IAuthenticationService(ABC):
         pass
     
     @abstractmethod
-    def refresh_token(self, refresh_token: str) -> Dict[str, str]:
+    def refresh_token(self, refresh_token: str) -> dict[str, str]:
         """
         Create a new access token using a refresh token.
         

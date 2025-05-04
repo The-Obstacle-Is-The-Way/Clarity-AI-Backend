@@ -6,26 +6,21 @@ clinical rules for biometric data. It enables psychiatrists to create custom
 alert thresholds for their patients.
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
-from pydantic import BaseModel, Field
-from typing import List, Optional, Union
 
-from app.domain.services.biometric_event_processor import AlertRule, AlertPriority
-from app.domain.entities.biometric_twin import BiometricDataPoint
 from app.domain.entities.biometric_rule import (
     AlertPriority,
     BiometricRule,
+    LogicalOperator,
     RuleCondition,
     RuleOperator,
-    LogicalOperator,
 )
-from app.domain.entities.biometric_twin import BiometricTwinState
 from app.domain.exceptions import ValidationError
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
+from app.domain.services.biometric_event_processor import AlertPriority
+from app.domain.utils.datetime_utils import UTC
 
 
 class ClinicalRuleEngine:
@@ -185,13 +180,13 @@ class ClinicalRuleEngine:
         
         # Only validate if we have no parent context data_type
         if not has_identifier and not hasattr(self, "_current_rule_data_type"):
-            raise ValidationError(f"Missing required field in condition: data_type or metric_name")
+            raise ValidationError("Missing required field in condition: data_type or metric_name")
             
         if "operator" not in condition_data:
-            raise ValidationError(f"Missing required field in condition: operator")
+            raise ValidationError("Missing required field in condition: operator")
             
         if "threshold_value" not in condition_data and "value" not in condition_data:
-            raise ValidationError(f"Missing required field in condition: threshold_value or value")
+            raise ValidationError("Missing required field in condition: threshold_value or value")
         
         # Parse operator with QUANTUM COMPATIBILITY across representations
         operator_val = condition_data["operator"]
@@ -262,8 +257,8 @@ class ClinicalRuleEngine:
         name: str | None = None,
         description: str | None = None,
         conditions: list[dict[str, Any]] | None = None,
-        logical_operator: Union[str, LogicalOperator] | None = None,  # Support direct enum values
-        alert_priority: Union[str, AlertPriority] | None = None,  # Support direct enum values
+        logical_operator: str | LogicalOperator | None = None,  # Support direct enum values
+        alert_priority: str | AlertPriority | None = None,  # Support direct enum values
         is_active: bool | None = None,
         metadata: dict[str, Any] | None = None,
         data_type: str | None = None  # For test compatibility

@@ -6,13 +6,12 @@ delegating to the primary PHISanitizer implementation to maintain a single sourc
 """
 
 import logging
-import json
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from app.infrastructure.security.phi.sanitizer import (
-    PHISanitizer, 
+    PHISanitizer,
     SanitizedLogger,
-    get_sanitized_logger
+    get_sanitized_logger,
 )
 
 
@@ -22,7 +21,7 @@ class PHIRedactionHandler:
     Delegates to the consolidated PHISanitizer implementation.
     """
     
-    def __init__(self, sanitizer: Optional[PHISanitizer] = None):
+    def __init__(self, sanitizer: PHISanitizer | None = None):
         """
         Initialize the PHI redaction handler.
         
@@ -31,7 +30,7 @@ class PHIRedactionHandler:
         """
         self.sanitizer = sanitizer or PHISanitizer()
     
-    def redact_phi(self, text: Union[str, Dict, List, Any]) -> Any:
+    def redact_phi(self, text: str | dict | list | Any) -> Any:
         """
         Redact PHI from input data.
         
@@ -43,7 +42,7 @@ class PHIRedactionHandler:
         """
         return self.sanitizer.sanitize(text)
     
-    def redact_dictionary(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def redact_dictionary(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Redact PHI from a dictionary.
         
@@ -76,10 +75,10 @@ class PHIFormatter(logging.Formatter):
     
     def __init__(
         self,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
+        fmt: str | None = None,
+        datefmt: str | None = None,
         style: str = '%',
-        sanitizer: Optional[PHISanitizer] = None
+        sanitizer: PHISanitizer | None = None
     ):
         """
         Initialize PHI formatter.
@@ -129,7 +128,7 @@ class LogSanitizer:
     Delegates to SanitizedLogger for a consistent implementation.
     """
     
-    def __init__(self, logger_name: str = None, sanitizer: Optional[PHISanitizer] = None):
+    def __init__(self, logger_name: str = None, sanitizer: PHISanitizer | None = None):
         """
         Initialize log sanitizer.
         
@@ -150,7 +149,7 @@ class LogSanitizer:
         """
         return self._logger
     
-    def sanitize(self, message: Union[str, Dict, List, Any]) -> Any:
+    def sanitize(self, message: str | dict | list | Any) -> Any:
         """
         Sanitize a log message or any data format.
         
@@ -172,7 +171,7 @@ class LogSanitizer:
         # Default sanitization for all other cases
         return self.sanitizer.sanitize(message)
     
-    def sanitize_log_message(self, message: Union[str, Dict, List, Any]) -> Any:
+    def sanitize_log_message(self, message: str | dict | list | Any) -> Any:
         """
         Sanitize a log message.
         

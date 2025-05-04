@@ -1,42 +1,41 @@
-# -*- coding: utf-8 -*-
 """
 XGBoost Service API Endpoints.
 
 Provides API endpoints for interacting with the XGBoost prediction service.
 """
 
+import inspect
 import logging
 from types import SimpleNamespace
-import inspect
-from typing import Any, Dict, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from typing import Any
+
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from app.presentation.api.v1.schemas.xgboost_schemas import (
-    RiskPredictionRequest,
-    RiskPredictionResponse,
-    TreatmentResponseRequest,
-    OutcomePredictionRequest,
-    ModelInfoRequest,
-    ModelInfoResponse,
-    FeatureImportanceRequest,
-    DigitalTwinIntegrationRequest
+
+from app.api.routes.xgboost import get_xgboost_service, validate_permissions
+from app.core.services.ml.xgboost.exceptions import (
+    DataPrivacyError,
+    ModelNotFoundError,
+    ResourceNotFoundError,
+    ServiceUnavailableError,
+    ValidationError,
+    XGBoostServiceError,
 )
 from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.api.routes.xgboost import get_xgboost_service, validate_permissions
-from app.presentation.api.dependencies.auth import verify_provider_access
-from app.core.services.ml.xgboost.exceptions import (
-    XGBoostServiceError,
-    ValidationError,
-    DataPrivacyError,
-    ResourceNotFoundError,
-    ModelNotFoundError,
-    ServiceUnavailableError
-)
 
 # Authentication and DI dependencies now via alias module
 # current_user and verify_provider_access imported above
-from app.domain.models.user import User # Or appropriate user model
+from app.presentation.api.dependencies.auth import verify_provider_access
+from app.presentation.api.v1.schemas.xgboost_schemas import (
+    DigitalTwinIntegrationRequest,
+    FeatureImportanceRequest,
+    ModelInfoRequest,
+    ModelInfoResponse,
+    OutcomePredictionRequest,
+    RiskPredictionRequest,
+    TreatmentResponseRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +86,7 @@ async def predict_risk(
         logger.info(f"predict_risk result data: {data!r}")
         
         # Construct consistent response payload
-        output: Dict[str, Any] = {
+        output: dict[str, Any] = {
             'prediction_id': data.get('prediction_id'),
             'patient_id': data.get('patient_id'),
             'risk_type': data.get('risk_type'),
@@ -119,7 +118,7 @@ async def predict_risk(
     except XGBoostServiceError as e:
         logger.error(f"XGBoost service error during risk prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error during risk prediction for patient {request.patient_id}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred during risk prediction.")
 
@@ -168,7 +167,7 @@ async def predict_treatment_response(
     except XGBoostServiceError as e:
         logger.error(f"XGBoost service error during treatment response prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error during treatment response prediction for patient {request.patient_id}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred during treatment response prediction.")
 
@@ -224,7 +223,7 @@ async def predict_outcome(
     except XGBoostServiceError as e:
         logger.error(f"XGBoost service error during outcome prediction: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error during outcome prediction for patient {request.patient_id}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred during outcome prediction.")
 
@@ -250,7 +249,7 @@ async def get_model_info(
     except XGBoostServiceError as e:
         logger.error(f"XGBoost service error retrieving model info for '{model_type}': {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"XGBoost service error: {e}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error retrieving model info for '{model_type}'")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while retrieving model information.")
 
@@ -289,7 +288,7 @@ async def post_model_info(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred while retrieving model information.")
 
 @router.get(
@@ -301,7 +300,7 @@ async def post_model_info(
 async def get_feature_importance(
     model_type: str,
     prediction_id: str,
-    patient_id: Optional[str] = None,
+    patient_id: str | None = None,
     xgboost_service: XGBoostInterface = Depends(get_xgboost_service)
 ) -> dict:
     """Endpoint to get feature importance for a prediction."""
@@ -326,8 +325,8 @@ async def get_feature_importance(
     except ServiceUnavailableError as e:
         logger.error(f"Service unavailable: {e}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
-        logger.exception(f"Unexpected error during feature importance retrieval")
+    except Exception:
+        logger.exception("Unexpected error during feature importance retrieval")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                           detail="An unexpected error occurred during feature importance retrieval.")
 
@@ -375,7 +374,7 @@ async def feature_importance_post(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
     except XGBoostServiceError as e:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error during feature importance retrieval for prediction {request.prediction_id}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                           detail="An unexpected error occurred during feature importance retrieval.")
@@ -388,7 +387,7 @@ async def feature_importance_post(
     response_class=JSONResponse
 )
 async def digital_twin_simulation(
-    request_data: Dict[str, Any] = Body(...),
+    request_data: dict[str, Any] = Body(...),
     xgboost_service: XGBoostInterface = Depends(get_xgboost_service)
 ) -> JSONResponse:
     """Endpoint to simulate a digital twin using XGBoost."""
@@ -447,6 +446,6 @@ async def integrate_with_digital_twin(
     except XGBoostServiceError as e:
         logger.error(f"XGBoost service error during digital twin integration: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error during digital twin integration for patient {request.patient_id}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred during digital twin integration.")

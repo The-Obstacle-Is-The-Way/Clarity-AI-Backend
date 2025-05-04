@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 NOVAMIND Symptom Forecasting Service
 ======================================
@@ -6,17 +5,12 @@ Implements the symptom forecasting microservice for psychiatric symptoms.
 Uses transformer-based models with XGBoost and ensemble approaches.
 """
 
-import json
 import uuid
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
-import pandas as pd
-import numpy as np
-from prophet import Prophet
-from app.core.utils.logging import get_logger
 from app.config.settings import get_settings
-from app.domain.interfaces.symptom_forecasting_interface import SymptomForecastingInterface
+from app.core.utils.logging import get_logger
 from app.domain.exceptions.ml_exceptions import MLModelException
 
 
@@ -45,10 +39,10 @@ class SymptomForecastingService:
     def forecast_symptoms(
         self,
         patient_id: str,
-        symptoms: List[str],
-        patient_data: Dict[str, Any],
+        symptoms: list[str],
+        patient_data: dict[str, Any],
         horizon_days: int = 7,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Forecast psychiatric symptoms over a specified time horizon.
 
@@ -100,7 +94,7 @@ class SymptomForecastingService:
             }
 
         except Exception as e:
-            self.logger.error(f"Error forecasting symptoms: {str(e)}")
+            self.logger.error(f"Error forecasting symptoms: {e!s}")
             raise MLModelException(
                 message="Failed to forecast symptoms",
                 model_name="SymptomForecastingService",
@@ -109,8 +103,8 @@ class SymptomForecastingService:
             )
 
     def analyze_symptom_trends(
-        self, patient_id: str, symptom_history: Dict[str, List[Dict[str, Any]]]
-    ) -> Dict[str, Any]:
+        self, patient_id: str, symptom_history: dict[str, list[dict[str, Any]]]
+    ) -> dict[str, Any]:
         """
         Analyze historical symptom trends to identify patterns.
 
@@ -166,7 +160,7 @@ class SymptomForecastingService:
             }
 
         except Exception as e:
-            self.logger.error(f"Error analyzing symptom trends: {str(e)}")
+            self.logger.error(f"Error analyzing symptom trends: {e!s}")
             raise MLModelException(
                 message="Failed to analyze symptom trends",
                 model_name="SymptomForecastingService",
@@ -177,9 +171,9 @@ class SymptomForecastingService:
     def identify_symptom_triggers(
         self,
         patient_id: str,
-        symptom_data: Dict[str, Any],
-        environmental_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        symptom_data: dict[str, Any],
+        environmental_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Identify potential triggers for psychiatric symptoms.
 
@@ -239,7 +233,7 @@ class SymptomForecastingService:
             }
 
         except Exception as e:
-            self.logger.error(f"Error identifying symptom triggers: {str(e)}")
+            self.logger.error(f"Error identifying symptom triggers: {e!s}")
             raise MLModelException(
                 message="Failed to identify symptom triggers",
                 model_name="SymptomForecastingService",
@@ -249,7 +243,7 @@ class SymptomForecastingService:
 
     # ----- Private Helper Methods -----
 
-    def _create_mock_forecast(self, symptom: str, horizon_days: int) -> Dict[str, Any]:
+    def _create_mock_forecast(self, symptom: str, horizon_days: int) -> dict[str, Any]:
         """Create a mock forecast for demonstration purposes."""
         import random
 
@@ -353,8 +347,8 @@ class SymptomForecastingService:
         }
 
     def _analyze_mock_symptom_trend(
-        self, symptom: str, history: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, symptom: str, history: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Analyze mock symptom trend data for demonstration purposes."""
         import random
 

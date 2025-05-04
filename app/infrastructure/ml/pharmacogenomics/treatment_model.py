@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pharmacogenomics and Treatment Response Model for the NOVAMIND Digital Twin.
 
@@ -10,15 +9,12 @@ the AI Models Core Implementation documentation and adhering to HIPAA compliance
 import logging
 import os
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
 import joblib
 import numpy as np
-import pandas as pd
-from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -26,7 +22,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 # Import relevant exceptions from core layer as a temporary workaround
 from app.core.exceptions.base_exceptions import ModelExecutionError
 from app.domain.exceptions import ValidationError
-from app.infrastructure.ml.base.base_model import BaseModel
+from app.domain.utils.datetime_utils import UTC
 
 
 class PharmacogenomicsModel:
@@ -40,9 +36,9 @@ class PharmacogenomicsModel:
 
     def __init__(
         self,
-        model_path: Optional[str] = None,
-        gene_markers: Optional[List[str]] = None,
-        medications: Optional[List[str]] = None,
+        model_path: str | None = None,
+        gene_markers: list[str] | None = None,
+        medications: list[str] | None = None,
     ):
         """
         Initialize the pharmacogenomics model.
@@ -141,9 +137,9 @@ class PharmacogenomicsModel:
 
             logging.info(f"Loaded pharmacogenomics model from {model_path}")
         except Exception as e:
-            logging.error(f"Error loading pharmacogenomics model: {str(e)}")
+            logging.error(f"Error loading pharmacogenomics model: {e!s}")
             raise ModelExecutionError(
-                f"Failed to load pharmacogenomics model: {str(e)}"
+                f"Failed to load pharmacogenomics model: {e!s}"
             )
 
     def save_model(self, model_path: str) -> None:
@@ -169,12 +165,12 @@ class PharmacogenomicsModel:
             joblib.dump(model_data, model_path)
             logging.info(f"Saved pharmacogenomics model to {model_path}")
         except Exception as e:
-            logging.error(f"Error saving pharmacogenomics model: {str(e)}")
-            raise Exception(f"Failed to save pharmacogenomics model: {str(e)}")
+            logging.error(f"Error saving pharmacogenomics model: {e!s}")
+            raise Exception(f"Failed to save pharmacogenomics model: {e!s}")
 
     def preprocess_data(
-        self, data: Dict[str, Any], is_training: bool = False
-    ) -> Dict[str, np.ndarray]:
+        self, data: dict[str, Any], is_training: bool = False
+    ) -> dict[str, np.ndarray]:
         """
         Preprocess input data for model training or inference.
 
@@ -278,14 +274,14 @@ class PharmacogenomicsModel:
             }
 
         except Exception as e:
-            logging.error(f"Error preprocessing data: {str(e)}")
-            raise ValidationError(f"Failed to preprocess data: {str(e)}")
+            logging.error(f"Error preprocessing data: {e!s}")
+            raise ValidationError(f"Failed to preprocess data: {e!s}")
 
     def train(
         self,
-        training_data: List[Dict[str, Any]],
-        validation_data: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        training_data: list[dict[str, Any]],
+        validation_data: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Train the pharmacogenomics model.
 
@@ -374,17 +370,17 @@ class PharmacogenomicsModel:
             }
 
         except Exception as e:
-            logging.error(f"Error training pharmacogenomics model: {str(e)}")
+            logging.error(f"Error training pharmacogenomics model: {e!s}")
             raise ModelExecutionError(
-                f"Failed to train pharmacogenomics model: {str(e)}"
+                f"Failed to train pharmacogenomics model: {e!s}"
             )
 
     async def predict_medication_response(
         self,
         patient_id: UUID,
-        patient_data: Dict[str, Any],
-        medications: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any],
+        medications: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Predict patient response to psychiatric medications.
 
@@ -458,9 +454,9 @@ class PharmacogenomicsModel:
             }
 
         except Exception as e:
-            logging.error(f"Error predicting medication response: {str(e)}")
+            logging.error(f"Error predicting medication response: {e!s}")
             raise ModelExecutionError(
-                f"Failed to predict medication response: {str(e)}"
+                f"Failed to predict medication response: {e!s}"
             )
 
     def _categorize_effectiveness(self, score: float) -> str:
@@ -485,8 +481,8 @@ class PharmacogenomicsModel:
             return "Poor response expected"
 
     async def analyze_gene_medication_interactions(
-        self, genetic_markers: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, genetic_markers: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Analyze interactions between genetic markers and medications.
 
@@ -565,14 +561,14 @@ class PharmacogenomicsModel:
             }
 
         except Exception as e:
-            logging.error(f"Error analyzing gene-medication interactions: {str(e)}")
+            logging.error(f"Error analyzing gene-medication interactions: {e!s}")
             raise ModelExecutionError(
-                f"Failed to analyze gene-medication interactions: {str(e)}"
+                f"Failed to analyze gene-medication interactions: {e!s}"
             )
 
     async def predict_side_effects(
-        self, patient_id: UUID, patient_data: Dict[str, Any], medication: str
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, patient_data: dict[str, Any], medication: str
+    ) -> dict[str, Any]:
         """
         Predict potential side effects for a specific medication.
 
@@ -814,10 +810,10 @@ class PharmacogenomicsModel:
             }
 
         except Exception as e:
-            logging.error(f"Error predicting side effects: {str(e)}")
-            raise ModelExecutionError(f"Failed to predict side effects: {str(e)}")
+            logging.error(f"Error predicting side effects: {e!s}")
+            raise ModelExecutionError(f"Failed to predict side effects: {e!s}")
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the model.
 

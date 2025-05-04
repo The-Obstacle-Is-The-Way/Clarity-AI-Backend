@@ -6,7 +6,6 @@ following clean architecture principles with proper domain abstractions.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any, Union
 from uuid import UUID
 
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule
@@ -21,7 +20,7 @@ class BiometricAlertRuleRepository(ABC):
     """
     
     @abstractmethod
-    async def get_by_id(self, rule_id: UUID) -> Optional[BiometricAlertRule]:
+    async def get_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
         """
         Retrieve a BiometricAlertRule by its ID.
         
@@ -37,7 +36,7 @@ class BiometricAlertRuleRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_all(self) -> List[BiometricAlertRule]:
+    async def get_all(self) -> list[BiometricAlertRule]:
         """
         Retrieve all BiometricAlertRules.
         
@@ -50,7 +49,7 @@ class BiometricAlertRuleRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID) -> List[BiometricAlertRule]:
+    async def get_by_patient_id(self, patient_id: UUID) -> list[BiometricAlertRule]:
         """
         Retrieve all BiometricAlertRules for a specific patient.
         
@@ -66,7 +65,7 @@ class BiometricAlertRuleRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_provider_id(self, provider_id: UUID) -> List[BiometricAlertRule]:
+    async def get_by_provider_id(self, provider_id: UUID) -> list[BiometricAlertRule]:
         """
         Retrieve all BiometricAlertRules created by a specific provider.
         
@@ -82,7 +81,7 @@ class BiometricAlertRuleRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_all_active(self) -> List[BiometricAlertRule]:
+    async def get_all_active(self) -> list[BiometricAlertRule]:
         """
         Retrieve all active BiometricAlertRules.
         
@@ -95,7 +94,7 @@ class BiometricAlertRuleRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_active_rules_for_patient(self, patient_id: UUID) -> List[BiometricAlertRule]:
+    async def get_active_rules_for_patient(self, patient_id: UUID) -> list[BiometricAlertRule]:
         """
         Retrieve all active BiometricAlertRules for a specific patient.
         
@@ -180,11 +179,11 @@ class BiometricAlertRuleRepository(ABC):
         pass
     
     # Aliases for backward compatibility - these should forward to the primary methods
-    async def get_rules(self) -> List[BiometricAlertRule]:
+    async def get_rules(self) -> list[BiometricAlertRule]:
         """Alias for get_all()"""
         return await self.get_all()
     
-    async def get_rule_by_id(self, rule_id: UUID) -> Optional[BiometricAlertRule]:
+    async def get_rule_by_id(self, rule_id: UUID) -> BiometricAlertRule | None:
         """Alias for get_by_id()"""
         return await self.get_by_id(rule_id)
     

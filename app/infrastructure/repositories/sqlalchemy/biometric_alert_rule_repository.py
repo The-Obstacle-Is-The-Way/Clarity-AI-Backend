@@ -3,17 +3,17 @@ SQLAlchemy implementation of the BiometricAlertRuleRepository.
 """
 from uuid import UUID  # Standard library
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession  # Third-party
-from sqlalchemy import select, func, update
 
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule  # First-party
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
-    SQLAlchemyBiometricRuleRepository,
-)
-from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
 from app.infrastructure.persistence.sqlalchemy.mappers.biometric_rule_mapper import (
     map_rule_model_to_entity,
+)
+from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
+    SQLAlchemyBiometricRuleRepository,
 )
 
 # Import necessary exceptions if needed for real implementation

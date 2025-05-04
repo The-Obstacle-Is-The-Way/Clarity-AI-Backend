@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 NOVAMIND FastAPI Application
 
@@ -9,15 +8,14 @@ event handlers.
 
 import logging
 import logging.config
-import asyncio
-from typing import Optional, Dict, Any
-import os
+
 import uvicorn
 
 # Monkey-patch httpx.AsyncClient to support 'app' parameter for FastAPI testing
 try:
     import httpx
-    from httpx import AsyncClient as _AsyncClient, ASGITransport
+    from httpx import ASGITransport
+    from httpx import AsyncClient as _AsyncClient
     class AsyncClient(_AsyncClient):
         def __init__(self, *args, app=None, **kwargs):
             if app is not None:
@@ -31,33 +29,17 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Depends, Request as FastapiRequest, status
-from starlette.requests import Request as StarletteRequest
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 # Use the new canonical config location
-from app.config.settings import get_settings
-            
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance, get_db_session
-from app.api.routes import setup_routers 
-
 # Import Middleware and Services
-from app.core.security import AuthenticationMiddleware
-from app.api.dependencies import setup_rate_limiting
-from app.core.security import PHIMiddleware  # PHI middleware (disabled in setup)
-
 # Import necessary types for middleware
-from starlette.responses import Response
-from typing import Callable, Awaitable
-
 # Remove direct imports of handlers/repos if not needed elsewhere in main
 # from app.infrastructure.security.password.password_handler import PasswordHandler
 # from app.domain.repositories.user_repository import UserRepository
 # from unittest.mock import MagicMock
-
 # Import settings and the factory function
 from app.app_factory import create_application
+from app.config.settings import get_settings
 from app.core.logging_config import LOGGING_CONFIG
 
 # Setup logging

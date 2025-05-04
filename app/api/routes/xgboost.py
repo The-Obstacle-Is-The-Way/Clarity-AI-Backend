@@ -6,29 +6,29 @@ the clean architecture implementation. It redirects requests to
 the new presentation layer endpoints following SOLID principles.
 """
 
-from typing import Annotated, Dict, Optional
-from uuid import UUID
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.dependencies.database import get_db_session
 
 # Import from the new clean architecture
-from app.core.domain.entities.user import User, UserRole
+from app.core.domain.entities.user import User
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.infrastructure.di.provider import get_service_instance
 from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access
 from app.presentation.api.schemas.xgboost import (
     ModelInfoRequest,
     ModelInfoResponse,
-    RiskPredictionRequest,
-    RiskPredictionResponse,
     OutcomePredictionRequest,
     OutcomePredictionResponse,
+    RiskPredictionRequest,
+    RiskPredictionResponse,
+    TherapyDetails,
+    TimeFrame,
     TreatmentResponseRequest,
     TreatmentResponseResponse,
-    TherapyDetails,
-    TimeFrame
 )
 
 # Create router
@@ -103,7 +103,7 @@ async def get_model_info(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving model info: {str(e)}"
+            detail=f"Error retrieving model info: {e!s}"
         )
 
 
@@ -144,7 +144,7 @@ async def predict_risk(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating risk prediction: {str(e)}"
+            detail=f"Error generating risk prediction: {e!s}"
         )
 
 
@@ -199,7 +199,7 @@ async def predict_outcome(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating outcome prediction: {str(e)}"
+            detail=f"Error generating outcome prediction: {e!s}"
         )
 
 
@@ -259,5 +259,5 @@ async def predict_treatment_response(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error predicting treatment response: {str(e)}"
+            detail=f"Error predicting treatment response: {e!s}"
         )

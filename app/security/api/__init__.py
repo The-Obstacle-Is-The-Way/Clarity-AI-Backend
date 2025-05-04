@@ -13,5 +13,5 @@ from app.core.security import (
     has_role,
     verify_hipaa_compliance,
     verify_input_sanitization,
-    verify_output_sanitization
+    verify_output_sanitization,
 )

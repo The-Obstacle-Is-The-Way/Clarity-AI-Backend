@@ -14,7 +14,7 @@ necessary while refactoring the audit logging vertical.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class AuditService(ABC):
@@ -37,7 +37,7 @@ class AuditService(ABC):
         user_id: str,
         patient_id: str,
         action: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:  # pragma: no cover – interface only
         """Record an access event involving Protected Health Information."""
 
@@ -50,7 +50,7 @@ class AuditService(ABC):
         self,
         *,
         event_type: str,
-        user_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        user_id: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:  # pragma: no cover – interface only
         """Record a security‑relevant event (authentication failure, …)."""

@@ -6,10 +6,9 @@ drawing definitions from the `roles` module.
 """
 
 import logging
-from typing import List, Optional, Set
 
 # Use relative import within the same package
-from .roles import Role, ROLE_PERMISSIONS
+from .roles import ROLE_PERMISSIONS, Role
 
 # Assuming User entity might be needed for context later
 # from app.domain.entities.user import User 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Ensure the legacy *RoleBasedAccessControl* alias is always available as a side
 # effect of importing this module (many historical tests rely on it without an
 # explicit import).
-from importlib import import_module, reload
+from importlib import import_module
 
 # Importing registers the symbol into ``builtins`` (see implementation for
 # details).  A conditional reload guards against repeated side‑effects when the
@@ -43,7 +42,7 @@ class RBACService:
         # Roles and permissions are loaded directly from the imported roles module
         pass 
 
-    def check_permission(self, user_roles: List[Role], required_permission: str) -> bool:
+    def check_permission(self, user_roles: list[Role], required_permission: str) -> bool:
         """
         Check if a user with the given roles has a specific permission.
 
@@ -75,7 +74,7 @@ class RBACService:
         logger.debug(f"Permission check: Roles={user_roles}, Required='{required_permission}', Result={has_perm}")
         return has_perm
 
-    def get_permissions_for_roles(self, roles: List[Role]) -> List[str]:
+    def get_permissions_for_roles(self, roles: list[Role]) -> list[str]:
         """
         Get the combined set of unique permissions for the given roles.
 
@@ -85,7 +84,7 @@ class RBACService:
         Returns:
             A list of unique permission strings.
         """
-        all_permissions: Set[str] = set()
+        all_permissions: set[str] = set()
         for role in roles:
             # Use the imported dictionary directly
             all_permissions.update(ROLE_PERMISSIONS.get(role, []))

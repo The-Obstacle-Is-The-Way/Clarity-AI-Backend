@@ -8,7 +8,7 @@ The analytics service provides data analysis capabilities across the platform.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -25,10 +25,10 @@ class AnalyticsServiceInterface(ABC):
     async def track_event(
         self,
         event_type: str,
-        event_data: Dict[str, Any],
-        user_id: Optional[Union[str, UUID]] = None,
-        session_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None
+        event_data: dict[str, Any],
+        user_id: str | UUID | None = None,
+        session_id: str | None = None,
+        timestamp: datetime | None = None
     ) -> bool:
         """
         Track an analytics event.
@@ -48,11 +48,11 @@ class AnalyticsServiceInterface(ABC):
     @abstractmethod
     async def get_user_metrics(
         self,
-        user_id: Union[str, UUID],
+        user_id: str | UUID,
         start_date: datetime,
         end_date: datetime,
-        metrics: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        metrics: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get metrics for a specific user.
         
@@ -72,9 +72,9 @@ class AnalyticsServiceInterface(ABC):
         self,
         start_date: datetime,
         end_date: datetime,
-        metrics: Optional[List[str]] = None,
+        metrics: list[str] | None = None,
         granularity: str = "day"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get system-wide metrics.
         
@@ -94,8 +94,8 @@ class AnalyticsServiceInterface(ABC):
         self,
         start_date: datetime,
         end_date: datetime,
-        group_by: Optional[str] = None
-    ) -> Dict[str, Any]:
+        group_by: str | None = None
+    ) -> dict[str, Any]:
         """
         Generate a usage report for the platform.
         
@@ -116,7 +116,7 @@ class AnalyticsServiceInterface(ABC):
         start_date: datetime,
         end_date: datetime,
         granularity: str = "day"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get usage statistics for a specific feature.
         

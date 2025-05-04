@@ -6,9 +6,9 @@ This module defines the data models and schemas used by the PAT service.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict, ValidationInfo
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class AccelerometerReading(BaseModel):
@@ -32,8 +32,8 @@ class DeviceInfo(BaseModel):
     
     device_id: str = Field(..., description="Unique identifier for the device")
     device_type: str = Field(..., description="Type of device (e.g., 'fitbit', 'apple_watch')")
-    model: Optional[str] = Field(None, description="Device model")
-    firmware_version: Optional[str] = Field(None, description="Device firmware version")
+    model: str | None = Field(None, description="Device model")
+    firmware_version: str | None = Field(None, description="Device firmware version")
     sampling_rate_hz: float = Field(30.0, description="Sampling rate in Hz")
 
 
@@ -41,12 +41,12 @@ class PatientMetadata(BaseModel):
     """Patient metadata relevant for actigraphy analysis."""
     
     patient_id: str = Field(..., description="Unique identifier for the patient")
-    age: Optional[int] = Field(None, description="Patient age in years")
-    gender: Optional[str] = Field(None, description="Patient gender")
-    height_cm: Optional[float] = Field(None, description="Patient height in centimeters")
-    weight_kg: Optional[float] = Field(None, description="Patient weight in kilograms")
-    diagnoses: Optional[List[str]] = Field(None, description="List of patient diagnoses")
-    medications: Optional[List[Dict[str, Any]]] = Field(None, description="List of patient medications")
+    age: int | None = Field(None, description="Patient age in years")
+    gender: str | None = Field(None, description="Patient gender")
+    height_cm: float | None = Field(None, description="Patient height in centimeters")
+    weight_kg: float | None = Field(None, description="Patient weight in kilograms")
+    diagnoses: list[str] | None = Field(None, description="List of patient diagnoses")
+    medications: list[dict[str, Any]] | None = Field(None, description="List of patient medications")
 
 
 class AnalysisTypeEnum(str, Enum):
@@ -71,12 +71,12 @@ class PATModelSizeEnum(str, Enum):
 class AccelerometerDataRequest(BaseModel):
     """Request model for actigraphy data analysis."""
     
-    readings: List[AccelerometerReading] = Field(..., description="List of accelerometer readings")
+    readings: list[AccelerometerReading] = Field(..., description="List of accelerometer readings")
     device_info: DeviceInfo = Field(..., description="Information about the wearable device")
-    patient_metadata: Optional[PatientMetadata] = Field(None, description="Patient metadata")
+    patient_metadata: PatientMetadata | None = Field(None, description="Patient metadata")
     analysis_type: AnalysisTypeEnum = Field(..., description="Type of analysis to perform")
-    start_time: Optional[datetime] = Field(None, description="Start time for analysis window")
-    end_time: Optional[datetime] = Field(None, description="End time for analysis window")
+    start_time: datetime | None = Field(None, description="Start time for analysis window")
+    end_time: datetime | None = Field(None, description="End time for analysis window")
     model_size: PATModelSizeEnum = Field(PATModelSizeEnum.MEDIUM, description="PAT model size to use")
     cache_results: bool = Field(True, description="Whether to cache analysis results")
 
@@ -158,14 +158,14 @@ class AnalysisResult(BaseModel):
     """Result of actigraphy data analysis."""
     
     analysis_id: str = Field(..., description="Unique identifier for the analysis")
-    patient_id: Optional[str] = Field(None, description="Patient identifier")
+    patient_id: str | None = Field(None, description="Patient identifier")
     analysis_type: AnalysisTypeEnum = Field(..., description="Type of analysis performed")
     timestamp: datetime = Field(..., description="Timestamp of the analysis")
     model_version: str = Field(..., description="Version of the PAT model used")
     confidence_score: float = Field(..., description="Confidence score for the analysis")
-    metrics: Dict[str, Any] = Field(..., description="Analysis metrics")
-    insights: List[str] = Field(..., description="Insights derived from the analysis")
-    warnings: List[str] = Field([], description="Warnings or alerts from the analysis")
+    metrics: dict[str, Any] = Field(..., description="Analysis metrics")
+    insights: list[str] = Field(..., description="Insights derived from the analysis")
+    warnings: list[str] = Field([], description="Warnings or alerts from the analysis")
     
     @field_validator('metrics', mode='before')
     def validate_metrics(cls, v, info: ValidationInfo):
@@ -217,9 +217,9 @@ class HistoricalAnalysisRequest(BaseModel):
     """Request model for retrieving historical analysis results."""
     
     patient_id: str = Field(..., description="Patient identifier")
-    analysis_type: Optional[AnalysisTypeEnum] = Field(None, description="Type of analysis to filter by")
-    start_date: Optional[datetime] = Field(None, description="Start date for filtering results")
-    end_date: Optional[datetime] = Field(None, description="End date for filtering results")
+    analysis_type: AnalysisTypeEnum | None = Field(None, description="Type of analysis to filter by")
+    start_date: datetime | None = Field(None, description="Start date for filtering results")
+    end_date: datetime | None = Field(None, description="End date for filtering results")
     limit: int = Field(10, description="Maximum number of results to return")
     skip: int = Field(0, description="Number of results to skip")
 
@@ -233,6 +233,6 @@ class ModelInfoResponse(BaseModel):
     model_size: PATModelSizeEnum = Field(..., description="Size of the PAT model")
     model_path: str = Field(..., description="Path to the PAT model")
     parameters: str = Field(..., description="Number of model parameters")
-    supported_analysis_types: List[str] = Field(..., description="Supported analysis types")
+    supported_analysis_types: list[str] = Field(..., description="Supported analysis types")
     gpu_enabled: bool = Field(..., description="Whether GPU acceleration is enabled")
     cache_enabled: bool = Field(..., description="Whether result caching is enabled")

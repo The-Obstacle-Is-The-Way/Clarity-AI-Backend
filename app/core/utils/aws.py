@@ -8,7 +8,7 @@ simplify AWS service integration while maintaining testability.
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from botocore.config import Config
@@ -27,9 +27,9 @@ class AWSClientFactory:
     def __init__(
         self,
         region_name: str,
-        profile_name: Optional[str] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
+        profile_name: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
         **kwargs
     ):
         """Initialize the AWS client factory.
@@ -75,7 +75,7 @@ class AWSClientFactory:
         """
         return self.session.client('dynamodb')
     
-    def get_bedrock_runtime_client(self, endpoint_url: Optional[str] = None) -> boto3.client:
+    def get_bedrock_runtime_client(self, endpoint_url: str | None = None) -> boto3.client:
         """Get a Bedrock Runtime client.
         
         Args:
@@ -122,7 +122,7 @@ class AWSClientFactory:
         return self.session.client('comprehendmedical')
 
 
-def format_bedrock_response(response_body: Dict[str, Any], analysis_type: str) -> Dict[str, Any]:
+def format_bedrock_response(response_body: dict[str, Any], analysis_type: str) -> dict[str, Any]:
     """Format a response from Bedrock for actigraphy analysis.
     
     This function extracts and formats the relevant data from a Bedrock response
@@ -172,7 +172,7 @@ def format_bedrock_response(response_body: Dict[str, Any], analysis_type: str) -
         logger.warning(f"Unexpected Bedrock response format: {response_body}")
         return {}
     except Exception as e:
-        logger.warning(f"Error formatting Bedrock response: {str(e)}")
+        logger.warning(f"Error formatting Bedrock response: {e!s}")
         # Return a generic response to avoid failing the entire analysis
         return {
             "error": "Failed to parse model response",

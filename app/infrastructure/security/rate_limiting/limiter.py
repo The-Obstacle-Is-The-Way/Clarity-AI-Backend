@@ -7,7 +7,7 @@ and authenticated user identity.
 """
 
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 # Optional dependency handling - similar to the Redis pattern
 try:
@@ -51,8 +51,8 @@ class RateLimiter:
     """
     
     def __init__(self, 
-                 limiter: Optional[Any] = None, 
-                 default_limits: Optional[list[str]] = None,
+                 limiter: Any | None = None, 
+                 default_limits: list[str] | None = None,
                  strategy: str = "ip"):
         """
         Initialize the rate limiter.
@@ -139,6 +139,6 @@ def create_rate_limiter(settings: Settings) -> RateLimiter:
             logger.warning("Rate limiting disabled by settings")
             return RateLimiter()  # Return a no-op limiter
     except Exception as e:
-        logger.error(f"Error initializing rate limiter: {str(e)}")
+        logger.error(f"Error initializing rate limiter: {e!s}")
         logger.warning("Falling back to unlimited rate limiter due to initialization error")
         return RateLimiter()  # Return a no-op limiter

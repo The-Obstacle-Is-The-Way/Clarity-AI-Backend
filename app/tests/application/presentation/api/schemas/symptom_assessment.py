@@ -1,21 +1,23 @@
 """
 Pydantic schemas for Symptom Assessment API endpoints.
 """
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
-from uuid import UUID
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 # Import enums from domain entity
 from app.domain.entities.symptom_assessment import AssessmentType
+from app.domain.utils.datetime_utils import now_utc
+
 
 class SymptomAssessmentBase(BaseModel):
     patient_id: UUID
     assessment_type: AssessmentType
     assessment_date: datetime = Field(default_factory=now_utc)
-    scores: Dict[str, Any]
-    source: Optional[str] = None
+    scores: dict[str, Any]
+    source: str | None = None
 
 class SymptomAssessmentCreate(SymptomAssessmentBase):
     pass
@@ -35,10 +37,10 @@ class SymptomAssessmentResponse(SymptomAssessmentBase):
 # Schema for listing assessments with potential filters
 class SymptomAssessmentListQuery(BaseModel):
     patient_id: UUID # Usually required when listing assessments
-    assessment_type: Optional[AssessmentType] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    source: Optional[str] = None
+    assessment_type: AssessmentType | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    source: str | None = None
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
 

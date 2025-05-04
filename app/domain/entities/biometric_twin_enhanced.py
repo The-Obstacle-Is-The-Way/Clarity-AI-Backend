@@ -6,8 +6,8 @@ which is responsible for tracking and analyzing patient biometric data.
 """
 
 from datetime import datetime
-from enum import Enum, auto
-from typing import Dict, List, Any, Optional, Union, Set, Tuple
+from enum import Enum
+from typing import Any
 from uuid import uuid4
 
 from app.domain.value_objects.physiological_ranges import PhysiologicalRange
@@ -57,7 +57,7 @@ class BiometricDataPoint:
         timestamp: datetime,
         value: Any,
         source: BiometricSource,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ):
         """
         Initialize a BiometricDataPoint.
@@ -73,7 +73,7 @@ class BiometricDataPoint:
         self.source = source
         self.metadata = metadata or {}
     
-    def add_metadata(self, data: Dict[str, Any]) -> None:
+    def add_metadata(self, data: dict[str, Any]) -> None:
         """
         Add additional metadata to the data point.
         
@@ -112,7 +112,7 @@ class BiometricDataPoint:
             # Return default value for non-numeric data
             return 0.0
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary representation.
         
@@ -127,7 +127,7 @@ class BiometricDataPoint:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BiometricDataPoint":
+    def from_dict(cls, data: dict[str, Any]) -> "BiometricDataPoint":
         """
         Create a BiometricDataPoint from a dictionary.
         
@@ -184,8 +184,8 @@ class BiometricTimeseriesData:
         self,
         biometric_type: BiometricType,
         unit: str,
-        data_points: List[BiometricDataPoint],
-        physiological_range: Optional[PhysiologicalRange] = None
+        data_points: list[BiometricDataPoint],
+        physiological_range: PhysiologicalRange | None = None
     ):
         """
         Initialize a BiometricTimeseriesData.
@@ -226,7 +226,7 @@ class BiometricTimeseriesData:
         self.data_points.append(data_point)
         self.data_points.sort()  # Re-sort to maintain chronological order
     
-    def get_latest_value(self) -> Optional[BiometricDataPoint]:
+    def get_latest_value(self) -> BiometricDataPoint | None:
         """
         Get the most recent data point.
         
@@ -239,7 +239,7 @@ class BiometricTimeseriesData:
         self,
         start_time: datetime,
         end_time: datetime
-    ) -> List[BiometricDataPoint]:
+    ) -> list[BiometricDataPoint]:
         """
         Get data points within a time range.
         
@@ -255,7 +255,7 @@ class BiometricTimeseriesData:
             if start_time <= dp.timestamp <= end_time
         ]
     
-    def get_abnormal_values(self) -> List[BiometricDataPoint]:
+    def get_abnormal_values(self) -> list[BiometricDataPoint]:
         """
         Get data points with values outside normal range but not critical.
         
@@ -270,7 +270,7 @@ class BiometricTimeseriesData:
             if self.physiological_range.is_abnormal(dp.get_normalized_value())
         ]
     
-    def get_critical_values(self) -> List[BiometricDataPoint]:
+    def get_critical_values(self) -> list[BiometricDataPoint]:
         """
         Get data points with values in critical range.
         
@@ -285,7 +285,7 @@ class BiometricTimeseriesData:
             if self.physiological_range.is_critical(dp.get_normalized_value())
         ]
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary representation.
         
@@ -300,7 +300,7 @@ class BiometricTimeseriesData:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BiometricTimeseriesData":
+    def from_dict(cls, data: dict[str, Any]) -> "BiometricTimeseriesData":
         """
         Create a BiometricTimeseriesData from a dictionary.
         
@@ -353,10 +353,10 @@ class BiometricTwin:
     def __init__(
         self,
         patient_id: str,
-        timeseries_data: Dict[BiometricType, BiometricTimeseriesData],
-        id: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None
+        timeseries_data: dict[BiometricType, BiometricTimeseriesData],
+        id: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None
     ):
         """
         Initialize a BiometricTwin.
@@ -409,7 +409,7 @@ class BiometricTwin:
         self,
         biometric_type: BiometricType,
         data_point: BiometricDataPoint,
-        unit: Optional[str] = None
+        unit: str | None = None
     ) -> None:
         """
         Add a data point to a specific biometric timeseries.
@@ -449,7 +449,7 @@ class BiometricTwin:
         
         self.updated_at = datetime.now()
     
-    def get_biometric_data(self, biometric_type: BiometricType) -> Optional[BiometricTimeseriesData]:
+    def get_biometric_data(self, biometric_type: BiometricType) -> BiometricTimeseriesData | None:
         """
         Get timeseries data for a specific biometric type.
         
@@ -461,7 +461,7 @@ class BiometricTwin:
         """
         return self.timeseries_data.get(biometric_type)
     
-    def get_latest_values(self) -> Dict[BiometricType, BiometricDataPoint]:
+    def get_latest_values(self) -> dict[BiometricType, BiometricDataPoint]:
         """
         Get latest values for all biometric types.
         
@@ -474,7 +474,7 @@ class BiometricTwin:
             if timeseries.get_latest_value() is not None
         }
     
-    def get_abnormal_values(self) -> Dict[BiometricType, List[BiometricDataPoint]]:
+    def get_abnormal_values(self) -> dict[BiometricType, list[BiometricDataPoint]]:
         """
         Get abnormal values for all biometric types.
         
@@ -487,7 +487,7 @@ class BiometricTwin:
             if timeseries.get_abnormal_values()
         }
     
-    def get_critical_values(self) -> Dict[BiometricType, List[BiometricDataPoint]]:
+    def get_critical_values(self) -> dict[BiometricType, list[BiometricDataPoint]]:
         """
         Get critical values for all biometric types.
         
@@ -500,7 +500,7 @@ class BiometricTwin:
             if timeseries.get_critical_values()
         }
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert to dictionary representation.
         
@@ -519,7 +519,7 @@ class BiometricTwin:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BiometricTwin":
+    def from_dict(cls, data: dict[str, Any]) -> "BiometricTwin":
         """
         Create a BiometricTwin from a dictionary.
         

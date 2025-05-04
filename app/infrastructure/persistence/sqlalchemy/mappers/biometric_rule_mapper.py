@@ -5,12 +5,15 @@ This module provides functions to convert between domain entities and database m
 for biometric rules, maintaining a clean separation between the domain and infrastructure layers.
 """
 
-import json
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from app.domain.entities.biometric_rule import BiometricRule, AlertPriority, RuleCondition, RuleOperator
+from app.domain.entities.biometric_rule import (
+    AlertPriority,
+    BiometricRule,
+    RuleCondition,
+    RuleOperator,
+)
 from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import BiometricRuleModel
 
 

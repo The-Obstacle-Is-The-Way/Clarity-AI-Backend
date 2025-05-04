@@ -6,28 +6,31 @@ providing seamless integration with the clean architecture pattern.
 """
 
 # PHI Security Components - imports moved to direct imports to avoid circular dependencies
-from app.infrastructure.security.phi.log_sanitizer import LogSanitizer, PHIFormatter, PHIRedactionHandler
+# Audit Components  
+from app.infrastructure.security.audit import AuditLogger
 
 # Authentication Components
-from app.infrastructure.security.auth import MFAService 
-
-# JWT Components
-from app.infrastructure.security.jwt import JWTService
+from app.infrastructure.security.auth import MFAService
 
 # Encryption Components
 from app.infrastructure.security.encryption import BaseEncryptionService
 
+# JWT Components
+from app.infrastructure.security.jwt import JWTService
+
 # Password Components
 from app.infrastructure.security.password import PasswordHandler, get_password_hash, verify_password
-
-# RBAC Components
-from app.infrastructure.security.rbac import RBACService
+from app.infrastructure.security.phi.log_sanitizer import (
+    LogSanitizer,
+    PHIFormatter,
+    PHIRedactionHandler,
+)
 
 # Rate Limiting Components
 from app.infrastructure.security.rate_limiting import DistributedRateLimiter
 
-# Audit Components  
-from app.infrastructure.security.audit import AuditLogger
+# RBAC Components
+from app.infrastructure.security.rbac import RBACService
 
 from .auth.authentication_service import AuthenticationService
 

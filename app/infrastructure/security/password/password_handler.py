@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 NOVAMIND Password Handler
 =======================
@@ -6,21 +5,18 @@ Secure password handling for the NOVAMIND psychiatric platform.
 Implements HIPAA-compliant password hashing and verification.
 """
 
+# Use standard logger instead of old import
+# from app.core.utils.logging import get_logger # Use the standard logger function
+import logging
+import re
 import secrets
 import string
-from typing import Optional, Tuple, List
-import re
 
 from passlib.context import CryptContext
-from passlib.exc import UnknownHashError
 
 # Use canonical config import
 # from app.core.config import get_settings
 from app.config.settings import get_settings
-
-# Use standard logger instead of old import
-# from app.core.utils.logging import get_logger # Use the standard logger function
-import logging
 
 # Initialize logger
 # logger = get_logger(__name__) # Use the standard logger function
@@ -29,7 +25,6 @@ logger = logging.getLogger(__name__)
 # Default context using bcrypt
 # default_crypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-from app.infrastructure.security.password.hashing import verify_password, get_password_hash
 
 class PasswordHandler:
     """
@@ -37,7 +32,7 @@ class PasswordHandler:
     Allows configuration of hashing schemes and parameters.
     """
 
-    def __init__(self, schemes: Optional[List[str]] = None, deprecated: str = "auto"):
+    def __init__(self, schemes: list[str] | None = None, deprecated: str = "auto"):
         """
         Initialize the PasswordHandler with specified schemes.
 
@@ -159,15 +154,15 @@ class PasswordHandler:
 
     # pylint: disable=invalid-name
 
-    def hash_password(self, password: str) -> str:  # noqa: D401, N802
+    def hash_password(self, password: str) -> str:
         """Alias for :py:meth:`get_password_hash` (retained for backwards‑compat)."""
         return self.get_password_hash(password)
 
-    def check_password(self, plain_password: str, hashed_password: str) -> bool:  # noqa: D401, N802
+    def check_password(self, plain_password: str, hashed_password: str) -> bool:
         """Alias for :py:meth:`verify_password` (retained for backwards‑compat)."""
         return self.verify_password(plain_password, hashed_password)
 
-    def validate_password_strength(self, password: str) -> Tuple[bool, Optional[str]]:
+    def validate_password_strength(self, password: str) -> tuple[bool, str | None]:
         """
         Validate password strength against HIPAA-compliant security requirements.
 
@@ -210,7 +205,7 @@ class PasswordHandler:
         logger.debug("Password strength validation passed")
         return True, None
 
-    def validate_password_complexity(self, password: str) -> Tuple[bool, Optional[str]]:
+    def validate_password_complexity(self, password: str) -> tuple[bool, str | None]:
         """
         Validate if a password meets complexity requirements.
         
@@ -221,7 +216,7 @@ class PasswordHandler:
             Tuple of (is_valid, error_message)
         """
         if len(password) < 8:
-            return False, f"Password must be at least 8 characters long"
+            return False, "Password must be at least 8 characters long"
             
         if self.require_uppercase and not any(c.isupper() for c in password):
             return False, "Password must contain at least one uppercase letter"

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /mnt/c/Users/JJ/Desktop/NOVAMIND-WEB/Novamind-Backend/app/infrastructure/ml_services/pharmacogenomics/service.py
 
@@ -8,16 +7,10 @@ for predicting medication responses based on genetic markers and patient history
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
 
-import numpy as np
-from pydantic import BaseModel, Field
-import pandas as pd
-import asyncio
-
 # Use canonical config path
-from app.config.settings import get_settings
 from app.domain.interfaces.ml_services import PharmacogenomicsService
 from app.infrastructure.ml.pharmacogenomics.gene_medication_model import (
     GeneMedicationModel,
@@ -29,11 +22,6 @@ from app.infrastructure.ml.utils.preprocessing import (
     preprocess_genetic_data,
     preprocess_medication_history,
 )
-from app.infrastructure.ml.utils.serialization import (
-    deserialize_model,
-    serialize_prediction,
-)
-from app.infrastructure.ml_services.base import BaseMLService
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +60,12 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
 
             logger.info("All pharmacogenomics models loaded successfully")
         except Exception as e:
-            logger.error(f"Error loading pharmacogenomics models: {str(e)}")
-            raise RuntimeError(f"Failed to load pharmacogenomics models: {str(e)}")
+            logger.error(f"Error loading pharmacogenomics models: {e!s}")
+            raise RuntimeError(f"Failed to load pharmacogenomics models: {e!s}")
 
     async def predict_medication_response(
-        self, patient_id: UUID, genetic_data: Dict[str, Any], medication_id: str
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, genetic_data: dict[str, Any], medication_id: str
+    ) -> dict[str, Any]:
         """
         Predict patient's response to a specific medication based on genetic markers.
 
@@ -123,13 +111,13 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
 
         except Exception as e:
             logger.error(
-                f"Error predicting medication response for patient {patient_id}: {str(e)}"
+                f"Error predicting medication response for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to predict medication response: {str(e)}")
+            raise RuntimeError(f"Failed to predict medication response: {e!s}")
 
     async def analyze_gene_interactions(
-        self, patient_id: UUID, genetic_data: Dict[str, Any], medications: List[str]
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, genetic_data: dict[str, Any], medications: list[str]
+    ) -> dict[str, Any]:
         """
         Analyze interactions between genetic markers and multiple medications.
 
@@ -177,17 +165,17 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
 
         except Exception as e:
             logger.error(
-                f"Error analyzing gene interactions for patient {patient_id}: {str(e)}"
+                f"Error analyzing gene interactions for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to analyze gene interactions: {str(e)}")
+            raise RuntimeError(f"Failed to analyze gene interactions: {e!s}")
 
     async def generate_treatment_plan(
         self,
         patient_id: UUID,
-        genetic_data: Dict[str, Any],
-        medication_history: Dict[str, Any],
+        genetic_data: dict[str, Any],
+        medication_history: dict[str, Any],
         condition: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate personalized treatment plan based on genetic data and medication history.
 
@@ -232,13 +220,13 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
 
         except Exception as e:
             logger.error(
-                f"Error generating treatment plan for patient {patient_id}: {str(e)}"
+                f"Error generating treatment plan for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to generate treatment plan: {str(e)}")
+            raise RuntimeError(f"Failed to generate treatment plan: {e!s}")
 
     def _identify_contraindications(
-        self, interactions: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, interactions: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Identify contraindications from gene-medication interactions."""
         contraindications = []
 
@@ -256,7 +244,7 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
         return contraindications
 
     def _generate_medication_recommendation(
-        self, response_prediction: Dict[str, Any]
+        self, response_prediction: dict[str, Any]
     ) -> str:
         """Generate a recommendation based on predicted medication response."""
         # Implementation would create a recommendation based on the prediction
@@ -264,7 +252,7 @@ class PharmacogenomicsServiceImpl(PharmacogenomicsService):
         return "Medication recommendation would be generated here."
 
     def _generate_interaction_summary(
-        self, interactions: Dict[str, Any], contraindications: List[Dict[str, Any]]
+        self, interactions: dict[str, Any], contraindications: list[dict[str, Any]]
     ) -> str:
         """Generate a human-readable summary of gene-medication interactions."""
         # Implementation would create a natural language summary of interactions

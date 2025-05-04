@@ -6,7 +6,7 @@ principles. All domain-specific exceptions should inherit from these base classe
 to ensure consistent error handling across the application.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class BaseAppException(Exception):
@@ -25,8 +25,8 @@ class BaseAppException(Exception):
     
     def __init__(self, 
                  message: str, 
-                 error_code: Optional[str] = None, 
-                 detail: Optional[Dict[str, Any]] = None):
+                 error_code: str | None = None, 
+                 detail: dict[str, Any] | None = None):
         """
         Initialize the base exception.
         

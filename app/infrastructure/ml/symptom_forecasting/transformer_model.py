@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Transformer-based symptom forecasting model for the NOVAMIND Digital Twin.
 
@@ -8,10 +7,12 @@ the AI Models Core Implementation documentation.
 """
 
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
+
+from app.domain.utils.datetime_utils import UTC
+
 try:
     import torch
     import torch.nn as nn
@@ -52,7 +53,7 @@ class MultiHeadAttention(nn.Module):
         query: 'torch.Tensor',  # type: ignore
         key: 'torch.Tensor',    # type: ignore
         value: 'torch.Tensor',  # type: ignore
-        mask: Optional[torch.Tensor] = None,
+        mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for multi-head attention.
@@ -129,7 +130,7 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Forward pass for transformer encoder layer.
@@ -180,8 +181,8 @@ class TransformerDecoderLayer(nn.Module):
         self,
         x: torch.Tensor,
         encoder_output: torch.Tensor,
-        src_mask: Optional[torch.Tensor] = None,
-        tgt_mask: Optional[torch.Tensor] = None,
+        src_mask: torch.Tensor | None = None,
+        tgt_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Forward pass for transformer decoder layer.
@@ -215,7 +216,7 @@ class TransformerDecoderLayer(nn.Module):
 class QuantileOutput(nn.Module):
     """Quantile output layer for probabilistic forecasting."""
 
-    def __init__(self, d_model: int, output_dim: int, quantiles: List[float]):
+    def __init__(self, d_model: int, output_dim: int, quantiles: list[float]):
         """
         Initialize quantile output layer.
 
@@ -268,7 +269,7 @@ class MultiHorizonTransformer(nn.Module):
         num_decoder_layers: int = 6,
         d_ff: int = 1024,
         dropout: float = 0.1,
-        quantiles: List[float] = [0.1, 0.5, 0.9],
+        quantiles: list[float] = [0.1, 0.5, 0.9],
     ):
         """
         Initialize Multi-Horizon Transformer model.
@@ -323,7 +324,7 @@ class MultiHorizonTransformer(nn.Module):
 
     def create_masks(
         self, src_seq: torch.Tensor, tgt_seq: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Create masks for the transformer.
 
@@ -352,7 +353,7 @@ class MultiHorizonTransformer(nn.Module):
         return src_mask, tgt_mask
 
     def encode(
-        self, src: torch.Tensor, src_mask: Optional[torch.Tensor] = None
+        self, src: torch.Tensor, src_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Encode the source sequence.
@@ -380,8 +381,8 @@ class MultiHorizonTransformer(nn.Module):
         self,
         tgt: torch.Tensor,
         memory: torch.Tensor,
-        src_mask: Optional[torch.Tensor] = None,
-        tgt_mask: Optional[torch.Tensor] = None,
+        src_mask: torch.Tensor | None = None,
+        tgt_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Decode the target sequence.
@@ -433,8 +434,8 @@ class MultiHorizonTransformer(nn.Module):
         self,
         input_data: torch.Tensor,
         horizon: int,
-        quantiles: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
+        quantiles: list[float] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate predictions for the given input data.
 
@@ -497,7 +498,7 @@ class MultiHorizonTransformer(nn.Module):
 
         except Exception as e:
             raise Exception(
-                f"Error during transformer model inference: {str(e)}"
+                f"Error during transformer model inference: {e!s}"
             )
 
 
@@ -511,7 +512,7 @@ class SymptomTransformerModel:
 
     def __init__(
         self,
-        model_path: Optional[str] = None,
+        model_path: str | None = None,
         input_dim: int = 20,
         output_dim: int = 10,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
@@ -548,8 +549,8 @@ class SymptomTransformerModel:
         self,
         input_data: np.ndarray,
         horizon: int,
-        quantiles: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
+        quantiles: list[float] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate predictions for the given input data.
 
@@ -567,7 +568,7 @@ class SymptomTransformerModel:
         # Generate predictions
         return await self.model.predict(input_tensor, horizon, quantiles)
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the model.
 

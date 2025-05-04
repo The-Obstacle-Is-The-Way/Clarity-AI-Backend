@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PAT (Patient Assessment Tool) Bedrock Implementation.
 
@@ -10,15 +9,15 @@ import datetime
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Union
 from datetime import timezone
+from typing import Any
 
-from app.core.services.ml.pat.pat_interface import PATInterface
 from app.core.exceptions import (
     InvalidRequestError,
     ModelNotFoundError,
     ServiceUnavailableError,
 )
+from app.core.services.ml.pat.pat_interface import PATInterface
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +29,12 @@ class BedrockPAT(PATInterface):
     This service provides patient assessment capabilities using
     AWS Bedrock's natural language processing and machine learning features.
     """
-    def generate_report(self, assessment_id: str, report_type: Optional[str] = None, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def generate_report(self, assessment_id: str, report_type: str | None = None, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """Minimal stub for testing."""
         return {"assessment_id": assessment_id, "report_type": report_type, "options": options, "result": "dummy"}
 
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the Bedrock PAT service.
         
@@ -49,7 +48,7 @@ class BedrockPAT(PATInterface):
         self._healthy = True
         self._bedrock_client = None
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -359,9 +358,9 @@ class BedrockPAT(PATInterface):
         self,
         patient_id: str,
         assessment_type: str,
-        clinician_id: Optional[str] = None,
-        initial_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        clinician_id: str | None = None,
+        initial_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Create a new patient assessment.
         
@@ -447,7 +446,7 @@ class BedrockPAT(PATInterface):
         
         return assessment_info
     
-    def get_assessment(self, assessment_id: str) -> Dict[str, Any]:
+    def get_assessment(self, assessment_id: str) -> dict[str, Any]:
         """
         Get information about an assessment.
         
@@ -511,8 +510,8 @@ class BedrockPAT(PATInterface):
     def update_assessment(
         self,
         assessment_id: str,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Update an assessment with new data.
         
@@ -577,8 +576,8 @@ class BedrockPAT(PATInterface):
     def complete_assessment(
         self,
         assessment_id: str,
-        completion_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        completion_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Complete an assessment.
         
@@ -654,9 +653,9 @@ class BedrockPAT(PATInterface):
     def analyze_assessment(
         self,
         assessment_id: str,
-        analysis_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        analysis_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze an assessment.
         
@@ -722,10 +721,10 @@ class BedrockPAT(PATInterface):
     def get_assessment_history(
         self,
         patient_id: str,
-        assessment_type: Optional[str] = None,
-        limit: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        assessment_type: str | None = None,
+        limit: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Get assessment history for a patient.
         
@@ -766,7 +765,7 @@ class BedrockPAT(PATInterface):
             "assessments": assessments
         }
     
-    def _calculate_completion_percentage(self, assessment: Dict[str, Any], template: Dict[str, Any]) -> float:
+    def _calculate_completion_percentage(self, assessment: dict[str, Any], template: dict[str, Any]) -> float:
         """
         Calculate the completion percentage of an assessment.
         
@@ -796,7 +795,7 @@ class BedrockPAT(PATInterface):
         
         return (completed_count / required_count) * 100
     
-    def _calculate_assessment_scores(self, assessment: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_assessment_scores(self, assessment: dict[str, Any], template: dict[str, Any]) -> dict[str, Any]:
         """
         Calculate scores for an assessment.
         
@@ -820,7 +819,7 @@ class BedrockPAT(PATInterface):
             # Generic scoring for other assessment types
             return self._calculate_generic_scores(assessment, template)
     
-    def _calculate_phq9_scores(self, assessment: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_phq9_scores(self, assessment: dict[str, Any], template: dict[str, Any]) -> dict[str, Any]:
         """
         Calculate PHQ-9 depression scores.
         
@@ -867,7 +866,7 @@ class BedrockPAT(PATInterface):
             "suicide_risk": suicide_risk
         }
     
-    def _calculate_gad7_scores(self, assessment: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_gad7_scores(self, assessment: dict[str, Any], template: dict[str, Any]) -> dict[str, Any]:
         """
         Calculate GAD-7 anxiety scores.
         
@@ -901,7 +900,7 @@ class BedrockPAT(PATInterface):
             "severity": severity
         }
     
-    def _calculate_generic_scores(self, assessment: Dict[str, Any], template: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_generic_scores(self, assessment: dict[str, Any], template: dict[str, Any]) -> dict[str, Any]:
         """
         Calculate generic scores for an assessment.
         
@@ -924,7 +923,7 @@ class BedrockPAT(PATInterface):
             "total_score": total_score
         }
     
-    def _generate_standard_analysis(self, assessment: Dict[str, Any], template: Dict[str, Any], options: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_standard_analysis(self, assessment: dict[str, Any], template: dict[str, Any], options: dict[str, Any]) -> dict[str, Any]:
         """
         Generate standard analysis results for an assessment.
         
@@ -947,7 +946,7 @@ class BedrockPAT(PATInterface):
             "scores": scores
         }
     
-    def _generate_detailed_analysis(self, assessment: Dict[str, Any], template: Dict[str, Any], options: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_detailed_analysis(self, assessment: dict[str, Any], template: dict[str, Any], options: dict[str, Any]) -> dict[str, Any]:
         """
         Generate detailed analysis results for an assessment.
         
@@ -978,7 +977,7 @@ class BedrockPAT(PATInterface):
             "detailed_results": detailed_results
         }
     
-    def _generate_nlp_analysis(self, assessment: Dict[str, Any], template: Dict[str, Any], options: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_nlp_analysis(self, assessment: dict[str, Any], template: dict[str, Any], options: dict[str, Any]) -> dict[str, Any]:
         """
         Generate NLP-based analysis results for an assessment.
         

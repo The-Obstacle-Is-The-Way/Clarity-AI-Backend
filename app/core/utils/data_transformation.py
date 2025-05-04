@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 NOVAMIND Data Transformation Utility
 ===================================
@@ -8,16 +7,18 @@ Implements HIPAA-compliant data transformation for research and analytics.
 
 import hashlib
 import re
-import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 # Removed unused import: from ..config import settings
 # Corrected import path for EncryptionService
-from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService as EncryptionService
+from app.infrastructure.security.encryption.base_encryption_service import (
+    BaseEncryptionService as EncryptionService,
+)
 
 
 class DataAnonymizer:
@@ -26,7 +27,7 @@ class DataAnonymizer:
     Provides methods for anonymizing PHI for research and analytics.
     """
 
-    def __init__(self, encryption_service: Optional[EncryptionService] = None):
+    def __init__(self, encryption_service: EncryptionService | None = None):
         """
         Initialize the data anonymizer.
 
@@ -46,7 +47,7 @@ class DataAnonymizer:
         }
 
     def anonymize_patient_id(
-        self, patient_id: str, salt: Optional[bytes] = None
+        self, patient_id: str, salt: bytes | None = None
     ) -> str:
         """
         Create a consistent anonymized identifier for a patient.
@@ -65,8 +66,8 @@ class DataAnonymizer:
         return hash_value[:8]
 
     def anonymize_date(
-        self, date_value: Union[str, datetime], shift_days: Optional[int] = None
-    ) -> Union[str, datetime]:
+        self, date_value: str | datetime, shift_days: int | None = None
+    ) -> str | datetime:
         """
         Anonymize a date by shifting it randomly but consistently.
 
@@ -138,11 +139,11 @@ class DataAnonymizer:
 
     def anonymize_dict(
         self,
-        data: Dict[str, Any],
-        phi_fields: List[str],
-        id_fields: Optional[List[str]] = None,
-        date_fields: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any],
+        phi_fields: list[str],
+        id_fields: list[str] | None = None,
+        date_fields: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Anonymize a dictionary of patient data.
 
@@ -204,7 +205,7 @@ class DataNormalizer:
     """
 
     @staticmethod
-    def z_score_normalize(data: Union[List[float], np.ndarray]) -> np.ndarray:
+    def z_score_normalize(data: list[float] | np.ndarray) -> np.ndarray:
         """
         Normalize data using Z-score (mean=0, std=1).
 
@@ -226,8 +227,8 @@ class DataNormalizer:
 
     @staticmethod
     def min_max_normalize(
-        data: Union[List[float], np.ndarray],
-        feature_range: Tuple[float, float] = (0, 1),
+        data: list[float] | np.ndarray,
+        feature_range: tuple[float, float] = (0, 1),
     ) -> np.ndarray:
         """
         Normalize data to a specific range.
@@ -254,8 +255,8 @@ class DataNormalizer:
     def normalize_dataframe(
         df: pd.DataFrame,
         method: str = "z-score",
-        columns: Optional[List[str]] = None,
-        feature_range: Tuple[float, float] = (0, 1),
+        columns: list[str] | None = None,
+        feature_range: tuple[float, float] = (0, 1),
     ) -> pd.DataFrame:
         """
         Normalize selected columns in a DataFrame.
@@ -300,7 +301,7 @@ class MissingValueImputer:
     """
 
     @staticmethod
-    def mean_imputation(data: Union[List[float], np.ndarray]) -> np.ndarray:
+    def mean_imputation(data: list[float] | np.ndarray) -> np.ndarray:
         """
         Impute missing values with the mean.
 
@@ -317,7 +318,7 @@ class MissingValueImputer:
         return np.where(np.isnan(data_array), mean_value, data_array)
 
     @staticmethod
-    def median_imputation(data: Union[List[float], np.ndarray]) -> np.ndarray:
+    def median_imputation(data: list[float] | np.ndarray) -> np.ndarray:
         """
         Impute missing values with the median.
 
@@ -334,7 +335,7 @@ class MissingValueImputer:
         return np.where(np.isnan(data_array), median_value, data_array)
 
     @staticmethod
-    def mode_imputation(data: Union[List[Any], np.ndarray]) -> np.ndarray:
+    def mode_imputation(data: list[Any] | np.ndarray) -> np.ndarray:
         """
         Impute missing values with the mode (most frequent value).
 
@@ -364,8 +365,8 @@ class MissingValueImputer:
     def impute_dataframe(
         df: pd.DataFrame,
         method: str = "mean",
-        columns: Optional[List[str]] = None,
-        categorical_columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
+        categorical_columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Impute missing values in a DataFrame.
@@ -428,8 +429,8 @@ class TimeSeriesProcessor:
 
     @staticmethod
     def create_sequences(
-        data: np.ndarray, sequence_length: int, target_column: Optional[int] = None
-    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        data: np.ndarray, sequence_length: int, target_column: int | None = None
+    ) -> tuple[np.ndarray, np.ndarray | None]:
         """
         Create sequences for time series prediction.
 
@@ -462,7 +463,7 @@ class TimeSeriesProcessor:
         df: pd.DataFrame,
         date_column: str,
         freq: str = "D",
-        aggregation_dict: Optional[Dict[str, str]] = None,
+        aggregation_dict: dict[str, str] | None = None,
     ) -> pd.DataFrame:
         """
         Resample time series data to a different frequency.
@@ -574,7 +575,7 @@ class FeatureEngineer:
         return np.hstack(poly_features)
 
     @staticmethod
-    def create_lag_features(data: np.ndarray, lag_periods: List[int]) -> np.ndarray:
+    def create_lag_features(data: np.ndarray, lag_periods: list[int]) -> np.ndarray:
         """
         Create lag features for time series data.
 
@@ -598,8 +599,8 @@ class FeatureEngineer:
     @staticmethod
     def create_rolling_features(
         data: np.ndarray,
-        window_sizes: List[int],
-        functions: List[Callable] = [np.mean, np.std, np.min, np.max],
+        window_sizes: list[int],
+        functions: list[Callable] = [np.mean, np.std, np.min, np.max],
     ) -> np.ndarray:
         """
         Create rolling window features for time series data.
@@ -629,7 +630,7 @@ class FeatureEngineer:
 
     @staticmethod
     def one_hot_encode(
-        data: np.ndarray, categories: Optional[List[List[Any]]] = None
+        data: np.ndarray, categories: list[list[Any]] | None = None
     ) -> np.ndarray:
         """
         One-hot encode categorical features.

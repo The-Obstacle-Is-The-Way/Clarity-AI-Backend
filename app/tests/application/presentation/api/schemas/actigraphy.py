@@ -6,13 +6,12 @@ API endpoints, including data analysis, embedding generation, and integration
 with digital twins.
 """
 
+import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-import uuid
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -64,11 +63,11 @@ class AccelerometerReading(BaseModel):
     x: float = Field(..., description="X-axis acceleration in g")
     y: float = Field(..., description="Y-axis acceleration in g")
     z: float = Field(..., description="Z-axis acceleration in g")
-    heart_rate: Optional[int] = Field(
+    heart_rate: int | None = Field(
         None,
         description="Heart rate in BPM, if available"
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         None,
         description="Additional metadata for the reading"
     )
@@ -87,21 +86,21 @@ class DeviceInfo(BaseModel):
         description="Model of the device",
         examples=["Apple Watch Series 9", "Fitbit Sense 2"]
     )
-    manufacturer: Optional[str] = Field(
+    manufacturer: str | None = Field(
         None,
         description="Manufacturer of the device",
         examples=["Apple", "Fitbit", "Samsung"]
     )
-    firmware_version: Optional[str] = Field(
+    firmware_version: str | None = Field(
         None,
         description="Firmware version of the device"
     )
-    position: Optional[str] = Field(
+    position: str | None = Field(
         None,
         description="Position of the device on the body",
         examples=["wrist_left", "wrist_right", "waist", "ankle"]
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         None,
         description="Additional metadata for the device"
     )
@@ -116,7 +115,7 @@ class AnalyzeActigraphyRequest(BaseModel):
         ...,
         description="Unique identifier for the patient"
     )
-    readings: List[AccelerometerReading] = Field(
+    readings: list[AccelerometerReading] = Field(
         ...,
         description="List of accelerometer readings",
         min_length=1
@@ -140,7 +139,7 @@ class AnalyzeActigraphyRequest(BaseModel):
         ...,
         description="Information about the recording device"
     )
-    analysis_types: List[AnalysisType] = Field(
+    analysis_types: list[AnalysisType] = Field(
         ...,
         description="Types of analyses to perform",
         min_length=1
@@ -168,7 +167,7 @@ class GetActigraphyEmbeddingsRequest(BaseModel):
         ...,
         description="Unique identifier for the patient"
     )
-    readings: List[AccelerometerReading] = Field(
+    readings: list[AccelerometerReading] = Field(
         ...,
         description="List of accelerometer readings",
         min_length=1
@@ -263,11 +262,11 @@ class AnalysisResult(BaseModel):
         ...,
         description="ISO-8601 formatted timestamp of the analysis"
     )
-    analysis_types: List[str] = Field(
+    analysis_types: list[str] = Field(
         ...,
         description="Types of analyses performed"
     )
-    device_info: Dict[str, Any] = Field(
+    device_info: dict[str, Any] = Field(
         ...,
         description="Information about the recording device"
     )
@@ -275,16 +274,16 @@ class AnalysisResult(BaseModel):
         ...,
         description="Summary of the analyzed data"
     )
-    results: Dict[str, Any] = Field(
+    results: dict[str, Any] = Field(
         ...,
         description="Analysis results for each analysis type"
     )
     # Convenience fields for individual analysis types
-    sleep_metrics: Optional[Dict[str, Any]] = Field(
+    sleep_metrics: dict[str, Any] | None = Field(
         None,
         description="Sleep quality metrics"
     )
-    activity_levels: Optional[Dict[str, Any]] = Field(
+    activity_levels: dict[str, Any] | None = Field(
         None,
         description="Activity level metrics"
     )
@@ -301,7 +300,7 @@ class AnalysisSummary(BaseModel):
         ...,
         description="ISO-8601 formatted timestamp of the analysis"
     )
-    analysis_types: List[str] = Field(
+    analysis_types: list[str] = Field(
         ...,
         description="Types of analyses performed"
     )
@@ -335,7 +334,7 @@ class Pagination(BaseModel):
 class AnalysesList(BaseModel):
     """List of analyses with pagination information."""
     
-    analyses: List[AnalysisSummary] = Field(
+    analyses: list[AnalysisSummary] = Field(
         ...,
         description="List of analysis summaries"
     )
@@ -350,7 +349,7 @@ class EmbeddingData(BaseModel):
     
     model_config = {"protected_namespaces": ()}
     
-    vector: List[float] = Field(
+    vector: list[float] = Field(
         ...,
         description="Embedding vector"
     )
@@ -388,7 +387,7 @@ class EmbeddingResult(BaseModel):
         description="Embedding data"
     )
     # Legacy aliases for embedding vector and size
-    embeddings: List[float] = Field(
+    embeddings: list[float] = Field(
         ..., description="Legacy alias for embedding vector"
     )
     embedding_size: int = Field(
@@ -422,7 +421,7 @@ class Insight(BaseModel):
 class ProfileUpdate(BaseModel):
     """Information about the digital twin profile update."""
     
-    updated_aspects: List[str] = Field(
+    updated_aspects: list[str] = Field(
         ...,
         description="Aspects of the profile that were updated"
     )
@@ -447,13 +446,13 @@ class AnalysisResponse(BaseModel):
     """Minimal AnalysisResponse schema for actigraphy analysis endpoints."""
     analysis_id: str
     status: str
-    result: Optional[str] = None
+    result: str | None = None
 
 class UploadResponse(BaseModel):
     """Minimal UploadResponse schema for actigraphy upload endpoints."""
     upload_id: str
     status: str
-    detail: Optional[str] = None
+    detail: str | None = None
 
 class IntegrationResult(BaseModel):
     """Result of digital twin integration."""
@@ -482,7 +481,7 @@ class IntegrationResult(BaseModel):
         ...,
         description="Status of the integration"
     )
-    insights: List[Insight] = Field(
+    insights: list[Insight] = Field(
         ...,
         description="Insights derived from the analysis"
     )

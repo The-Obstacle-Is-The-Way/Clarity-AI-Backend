@@ -6,16 +6,16 @@ on user roles attached to the request state.
 """
 
 import logging
-from typing import List, Optional, Set, Any, Dict
+from typing import Any
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-# Use absolute path for infrastructure service
-from app.infrastructure.security.rbac.rbac_service import RBACService 
 # Use absolute path for domain enums/entities if needed, adjust if moved
-from app.domain.enums.role import Role 
+# Use absolute path for infrastructure service
+from app.infrastructure.security.rbac.rbac_service import RBACService
+
 # from app.domain.entities.user import User # Import User if type hint is needed
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
         # --- Endpoint-Specific RBAC Rules (Example) --- 
         # In a real app, these rules might come from endpoint decorators or a config map.
-        required_permission: Optional[str] = None
+        required_permission: str | None = None
         path = request.url.path
         method = request.method
 

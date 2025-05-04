@@ -8,8 +8,3 @@ DO NOT USE THIS IN NEW CODE - use app.api.rules instead.
 """
 
 # Re-export from the new location
-from app.api.rules import (
-    RuleTemplate,
-    AlertRuleTemplate,
-    PatientRiskRuleTemplate
-)

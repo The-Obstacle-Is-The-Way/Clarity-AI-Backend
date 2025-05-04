@@ -9,21 +9,20 @@ import contextlib
 import logging
 import time
 import uuid
-from typing import Any, Dict, Generator, List, Optional, TypeVar, cast, Union
+from collections.abc import Generator
+from typing import Any, TypeVar
 
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.engine import Engine, Connection
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Use canonical config path
 from app.config.settings import get_settings
+
 settings = get_settings()
-import os
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -45,14 +44,14 @@ class Database:
     
     def __init__(
         self,
-        db_url: Optional[str] = None,
-        echo: Optional[bool] = None,
-        pool_size: Optional[int] = None,
-        max_overflow: Optional[int] = None,
-        pool_timeout: Optional[int] = None,
-        ssl_mode: Optional[str] = None,
-        ssl_ca: Optional[str] = None,
-        ssl_verify: Optional[bool] = None
+        db_url: str | None = None,
+        echo: bool | None = None,
+        pool_size: int | None = None,
+        max_overflow: int | None = None,
+        pool_timeout: int | None = None,
+        ssl_mode: str | None = None,
+        ssl_ca: str | None = None,
+        ssl_verify: bool | None = None
     ):
         """
         Initialize database connection.
@@ -124,13 +123,13 @@ class Database:
         try:
             yield session
             session.commit()
-        except Exception as e:
+        except Exception:
             session.rollback()
             raise
         finally:
             session.close()
     
-    def execute_query(self, sql: Union[str, text], params: Optional[Dict[str, Any]] = None) -> List[Any]:
+    def execute_query(self, sql: str | text, params: dict[str, Any] | None = None) -> list[Any]:
         """
         Execute a raw SQL query.
         
@@ -184,16 +183,16 @@ class EnhancedDatabase(Database):
     
     def __init__(
         self,
-        db_url: Optional[str] = None,
-        echo: Optional[bool] = None,
-        pool_size: Optional[int] = None,
-        max_overflow: Optional[int] = None,
-        pool_timeout: Optional[int] = None,
-        ssl_mode: Optional[str] = None,
-        ssl_ca: Optional[str] = None,
-        ssl_verify: Optional[bool] = None,
-        enable_encryption: Optional[bool] = None,
-        enable_audit: Optional[bool] = None
+        db_url: str | None = None,
+        echo: bool | None = None,
+        pool_size: int | None = None,
+        max_overflow: int | None = None,
+        pool_timeout: int | None = None,
+        ssl_mode: str | None = None,
+        ssl_ca: str | None = None,
+        ssl_verify: bool | None = None,
+        enable_encryption: bool | None = None,
+        enable_audit: bool | None = None
     ):
         """
         Initialize enhanced database connection.
@@ -388,6 +387,7 @@ class EnhancedDatabase(Database):
 
 
 import threading
+
 
 class DatabaseFactory:
     """

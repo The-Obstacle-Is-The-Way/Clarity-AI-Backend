@@ -5,11 +5,11 @@ This module provides a foundational repository implementation using SQLAlchemy O
 following domain-driven design principles and HIPAA-compliant data access patterns.
 """
 
-from typing import Generic, TypeVar, Type, List, Optional, Any, Dict
+from typing import Any, Generic, TypeVar
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.exceptions import RepositoryError
 from app.infrastructure.logging.logger import get_logger
@@ -27,7 +27,7 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
     Provides common CRUD operations and mapping between domain entities and ORM models.
     """
     
-    def __init__(self, session: AsyncSession, model_class: Type[ModelT]):
+    def __init__(self, session: AsyncSession, model_class: type[ModelT]):
         """
         Initialize the repository with a session and model class.
         
@@ -65,9 +65,9 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
             return self._to_entity(model)
         except SQLAlchemyError as e:
             logger.error(f"Error adding entity: {e}")
-            raise RepositoryError(f"Failed to add entity: {str(e)}") from e
+            raise RepositoryError(f"Failed to add entity: {e!s}") from e
     
-    async def get_by_id(self, entity_id: Any) -> Optional[EntityT]:
+    async def get_by_id(self, entity_id: Any) -> EntityT | None:
         """
         Get an entity by its ID.
         
@@ -92,9 +92,9 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
             return None
         except SQLAlchemyError as e:
             logger.error(f"Error getting entity by ID: {e}")
-            raise RepositoryError(f"Failed to get entity by ID: {str(e)}") from e
+            raise RepositoryError(f"Failed to get entity by ID: {e!s}") from e
     
-    async def get_all(self) -> List[EntityT]:
+    async def get_all(self) -> list[EntityT]:
         """
         Get all entities.
         
@@ -113,7 +113,7 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
             return [self._to_entity(model) for model in models]
         except SQLAlchemyError as e:
             logger.error(f"Error getting all entities: {e}")
-            raise RepositoryError(f"Failed to get all entities: {str(e)}") from e
+            raise RepositoryError(f"Failed to get all entities: {e!s}") from e
     
     async def update(self, entity: EntityT) -> EntityT:
         """
@@ -142,7 +142,7 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
             return self._to_entity(merged_model)
         except SQLAlchemyError as e:
             logger.error(f"Error updating entity: {e}")
-            raise RepositoryError(f"Failed to update entity: {str(e)}") from e
+            raise RepositoryError(f"Failed to update entity: {e!s}") from e
     
     async def delete(self, entity_id: Any) -> bool:
         """
@@ -169,7 +169,7 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
             return result.rowcount > 0
         except SQLAlchemyError as e:
             logger.error(f"Error deleting entity: {e}")
-            raise RepositoryError(f"Failed to delete entity: {str(e)}") from e
+            raise RepositoryError(f"Failed to delete entity: {e!s}") from e
     
     async def count(self) -> int:
         """
@@ -187,7 +187,7 @@ class BaseSQLAlchemyRepository(Generic[EntityT, ModelT]):
             return result.scalar() or 0
         except SQLAlchemyError as e:
             logger.error(f"Error counting entities: {e}")
-            raise RepositoryError(f"Failed to count entities: {str(e)}") from e
+            raise RepositoryError(f"Failed to count entities: {e!s}") from e
     
     def _to_model(self, entity: EntityT) -> ModelT:
         """

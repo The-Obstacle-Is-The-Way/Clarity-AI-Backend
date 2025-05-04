@@ -1,13 +1,10 @@
-# -*- coding: utf-8 -*-
 # app/application/use_cases/digital_twin/generate_digital_twin.py
 # Placeholder for the generate digital twin use case
 # This use case handles the business logic for creating a digital twin for a patient
 
-from typing import Optional
 from uuid import UUID
 
 from app.domain.entities.digital_twin.digital_twin import DigitalTwin
-from app.domain.entities.patient import Patient
 from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
 from app.domain.repositories.patient_repository import PatientRepository
 

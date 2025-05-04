@@ -5,28 +5,33 @@ access to protected resources and routes in our HIPAA-compliant system.
 """
 
 import json
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-import asyncio # Added for async sleep/timing if needed
-from unittest.mock import AsyncMock, MagicMock, patch
 
 # Using pytest-asyncio for async tests
-import pytest
 from fastapi import FastAPI, Request, Response, status
 from starlette.authentication import AuthCredentials, UnauthenticatedUser
 from starlette.datastructures import Headers, State
 from starlette.responses import JSONResponse
+
+from app.domain.entities.user import User  # Import User model for mocking
+from app.domain.exceptions.auth_exceptions import AuthenticationException
 
 # Import exceptions from their correct locations
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
-from app.domain.exceptions.auth_exceptions import UserNotFoundException, AuthenticationException
+from app.infrastructure.security.auth_service import (
+    AuthenticationService,  # Assuming needed for mocking type
+)
 
 # Import the TokenPayload model
-from app.infrastructure.security.jwt.jwt_service import TokenPayload, JWTService # Assuming JWTService is needed for mocking type
-from app.infrastructure.security.auth_service import AuthenticationService # Assuming needed for mocking type
-from app.domain.entities.user import User # Import User model for mocking
+from app.infrastructure.security.jwt.jwt_service import (  # Assuming JWTService is needed for mocking type
+    JWTService,
+    TokenPayload,
+)
 
 # Assuming RoleBasedAccessControl is correctly defined/imported
 # If not, define a mock or import the actual class
@@ -498,4 +503,5 @@ class TestAuthMiddleware:
 
 # Add logger import if not present
 import logging
+
 logger = logging.getLogger(__name__)

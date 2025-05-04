@@ -1,14 +1,15 @@
 # Placeholder for BiometricAlertService
 
+from typing import Any  # Use Any for placeholder dicts
 from uuid import UUID
-from typing import Any # Use Any for placeholder dicts
 
 from app.domain.entities.biometric_alert import (
-    BiometricAlert,
     AlertPriority,
     AlertStatusEnum,
+    BiometricAlert,
 )
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+
 
 class BiometricAlertService:
     def __init__(self, alert_repository: BiometricAlertRepository):

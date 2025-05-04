@@ -6,7 +6,7 @@ following clean architecture principles and the dependency inversion principle.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -20,7 +20,7 @@ class XGBoostInterface(ABC):
     """
     
     @abstractmethod
-    async def predict_risk(self, patient_id: UUID, features: Dict[str, Any]) -> Dict[str, Any]:
+    async def predict_risk(self, patient_id: UUID, features: dict[str, Any]) -> dict[str, Any]:
         """
         Predict risk factors for a patient using XGBoost models.
         
@@ -38,8 +38,8 @@ class XGBoostInterface(ABC):
         self, 
         patient_id: UUID, 
         medication_id: str,
-        features: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        features: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Predict patient response to a specific treatment using XGBoost models.
         
@@ -54,7 +54,7 @@ class XGBoostInterface(ABC):
         pass
     
     @abstractmethod
-    async def get_feature_importance(self, model_id: str) -> List[Dict[str, Any]]:
+    async def get_feature_importance(self, model_id: str) -> list[dict[str, Any]]:
         """
         Get feature importance for a specific XGBoost model.
         

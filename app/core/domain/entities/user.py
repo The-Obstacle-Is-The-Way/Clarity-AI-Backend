@@ -8,7 +8,6 @@ attributes, behaviors, and invariants following Domain-Driven Design principles.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Set
 from uuid import UUID, uuid4
 
 
@@ -56,15 +55,15 @@ class User:
     full_name: str
     password_hash: str
     id: UUID = field(default_factory=uuid4)
-    roles: Set[UserRole] = field(default_factory=lambda: {UserRole.PATIENT})
+    roles: set[UserRole] = field(default_factory=lambda: {UserRole.PATIENT})
     status: UserStatus = UserStatus.PENDING_VERIFICATION
     created_at: datetime = field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
     mfa_enabled: bool = False
-    mfa_secret: Optional[str] = None
+    mfa_secret: str | None = None
     attempts: int = 0
-    reset_token: Optional[str] = None
-    reset_token_expires: Optional[datetime] = None
+    reset_token: str | None = None
+    reset_token_expires: datetime | None = None
 
     def __post_init__(self):
         """Validate the entity after initialization."""

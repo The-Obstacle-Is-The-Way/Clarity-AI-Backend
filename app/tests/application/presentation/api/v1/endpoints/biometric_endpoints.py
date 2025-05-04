@@ -15,7 +15,6 @@ from app.domain.entities.user import User
 from app.domain.enums.role import Role
 from app.presentation.api.dependencies.auth import get_current_user
 
-
 # OAuth2 scheme for token authentication
 # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # Moved to auth dependency
 

@@ -4,12 +4,10 @@ Provides synthetic predictions without requiring the actual XGBoost model.
 """
 import random
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Union, Optional, Any
+from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from app.core.domain.entities.patient import Patient
-from app.core.domain.entities.user import User
 from app.core.services.ml.xgboost.interface import XGBoostInterface
 
 
@@ -20,7 +18,7 @@ class MockXGBoostService(XGBoostInterface):
     the actual XGBoost model or AWS infrastructure.
     """
     
-    async def predict(self, patient_id: UUID, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: UUID, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """Generic prediction method required by MLServiceInterface.
         
         Args:
@@ -107,9 +105,9 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        risk_factors: List[str],
+        risk_factors: list[str],
         time_horizon: str
-    ) -> Dict:
+    ) -> dict:
         """Generate mock risk predictions.
         
         Args:
@@ -161,7 +159,7 @@ class MockXGBoostService(XGBoostInterface):
         
         return response
         
-    def _generate_contributing_factors(self, risk_factor: str) -> List[Dict]:
+    def _generate_contributing_factors(self, risk_factor: str) -> list[dict]:
         """Generate mock contributing factors for a risk factor.
         
         Args:
@@ -211,10 +209,10 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        symptoms: List[str],
-        time_points: List[int],  # days into the future
-        with_treatment: Optional[Dict] = None
-    ) -> Dict:
+        symptoms: list[str],
+        time_points: list[int],  # days into the future
+        with_treatment: dict | None = None
+    ) -> dict:
         """Forecast symptom progression over time with or without treatment.
         
         Args:
@@ -314,9 +312,9 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        treatment_options: List[Dict],
+        treatment_options: list[dict],
         time_horizon: str
-    ) -> Dict:
+    ) -> dict:
         """Predict response to different treatment options.
         
         Args:
@@ -397,10 +395,10 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        outcomes: List[str],
+        outcomes: list[str],
         time_horizon: str,
-        with_treatment: Optional[Dict] = None
-    ) -> Dict:
+        with_treatment: dict | None = None
+    ) -> dict:
         """Predict clinical outcomes with or without treatment.
         
         Args:
@@ -485,9 +483,9 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: UUID,
         digital_twin_state_id: UUID,
-        treatment_options: List[Dict],
-        evaluation_metrics: List[str]
-    ) -> List[Tuple[Dict, Dict]]:
+        treatment_options: list[dict],
+        evaluation_metrics: list[str]
+    ) -> list[tuple[dict, dict]]:
         """Compare multiple treatment options based on predicted outcomes.
         
         Args:

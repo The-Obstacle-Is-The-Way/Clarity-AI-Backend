@@ -5,20 +5,23 @@ This module provides an implementation of the ITokenService interface
 using JWT (JSON Web Tokens).
 """
 
-import jwt
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, Tuple
+from typing import Any
+
+import jwt
 
 from app.core.config import settings
 from app.domain.entities.user import User
-from app.domain.interfaces.token_service import ITokenService
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
-    TokenExpiredException,
     TokenBlacklistedException,
-    TokenGenerationException
+    TokenExpiredException,
+    TokenGenerationException,
 )
-from app.infrastructure.persistence.repositories.token_blacklist_repository import TokenBlacklistRepository
+from app.domain.interfaces.token_service import ITokenService
+from app.infrastructure.persistence.repositories.token_blacklist_repository import (
+    TokenBlacklistRepository,
+)
 
 
 class JWTTokenService(ITokenService):
@@ -37,7 +40,7 @@ class JWTTokenService(ITokenService):
         self.algorithm = settings.JWT_ALGORITHM
         self.secret_key = settings.JWT_SECRET_KEY
 
-    def generate_tokens(self, user: User) -> Dict[str, str]:
+    def generate_tokens(self, user: User) -> dict[str, str]:
         """
         Generate access and refresh tokens for a user.
 
@@ -86,9 +89,9 @@ class JWTTokenService(ITokenService):
                 "refresh_token": refresh_token
             }
         except Exception as e:
-            raise TokenGenerationException(f"Failed to generate tokens: {str(e)}")
+            raise TokenGenerationException(f"Failed to generate tokens: {e!s}")
 
-    def validate_access_token(self, token: str) -> Dict[str, Any]:
+    def validate_access_token(self, token: str) -> dict[str, Any]:
         """
         Validate an access token and return its payload.
 
@@ -121,9 +124,9 @@ class JWTTokenService(ITokenService):
         except jwt.InvalidTokenError:
             raise InvalidTokenException()
         except Exception as e:
-            raise InvalidTokenException(f"Token validation failed: {str(e)}")
+            raise InvalidTokenException(f"Token validation failed: {e!s}")
 
-    def validate_refresh_token(self, token: str) -> Dict[str, Any]:
+    def validate_refresh_token(self, token: str) -> dict[str, Any]:
         """
         Validate a refresh token and return its payload.
 
@@ -156,9 +159,9 @@ class JWTTokenService(ITokenService):
         except jwt.InvalidTokenError:
             raise InvalidTokenException()
         except Exception as e:
-            raise InvalidTokenException(f"Token validation failed: {str(e)}")
+            raise InvalidTokenException(f"Token validation failed: {e!s}")
 
-    def refresh_tokens(self, refresh_token: str, user: User) -> Dict[str, str]:
+    def refresh_tokens(self, refresh_token: str, user: User) -> dict[str, str]:
         """
         Generate new access and refresh tokens using a valid refresh token.
 
@@ -206,7 +209,7 @@ class JWTTokenService(ITokenService):
             expiry = datetime.fromtimestamp(exp_timestamp)
             self.token_blacklist_repository.blacklist_token(token, expiry)
         except Exception as e:
-            raise InvalidTokenException(f"Failed to revoke token: {str(e)}")
+            raise InvalidTokenException(f"Failed to revoke token: {e!s}")
 
     def revoke_user_tokens(self, user_id: str) -> None:
         """
@@ -217,7 +220,7 @@ class JWTTokenService(ITokenService):
         """
         self.token_blacklist_repository.blacklist_user_tokens(user_id)
 
-    def get_user_from_token(self, token: str) -> Dict[str, Any]:
+    def get_user_from_token(self, token: str) -> dict[str, Any]:
         """
         Extract and return the user information from a token.
 

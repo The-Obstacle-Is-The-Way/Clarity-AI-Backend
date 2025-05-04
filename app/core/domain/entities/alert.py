@@ -6,8 +6,8 @@ representing critical information that requires attention from clinicians or pat
 """
 
 from datetime import datetime
-from enum import Enum, auto
-from typing import Dict, Any, Optional
+from enum import Enum
+from typing import Any
 
 
 class AlertType(str, Enum):
@@ -61,16 +61,16 @@ class Alert:
     
     def __init__(
         self,
-        id: Optional[str],
+        id: str | None,
         alert_type: AlertType,
         timestamp: datetime,
         status: AlertStatus,
         priority: AlertPriority,
         message: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         user_id: str,
-        resolved_at: Optional[datetime] = None,
-        resolution_notes: Optional[str] = None
+        resolved_at: datetime | None = None,
+        resolution_notes: str | None = None
     ):
         """
         Initialize a new Alert entity.
@@ -120,7 +120,7 @@ class Alert:
         if self.resolved_at and self.status != AlertStatus.RESOLVED:
             raise ValueError("Cannot set resolved_at timestamp for non-resolved alerts")
     
-    def resolve(self, notes: Optional[str] = None) -> None:
+    def resolve(self, notes: str | None = None) -> None:
         """
         Resolve the alert.
         
@@ -137,7 +137,7 @@ class Alert:
         if self.status == AlertStatus.OPEN:
             self.status = AlertStatus.ACKNOWLEDGED
     
-    def dismiss(self, notes: Optional[str] = None) -> None:
+    def dismiss(self, notes: str | None = None) -> None:
         """
         Dismiss the alert without resolving the underlying issue.
         
@@ -168,7 +168,7 @@ class Alert:
         """
         return self.status in {AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED, AlertStatus.IN_PROGRESS}
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert entity to dictionary.
         
@@ -189,7 +189,7 @@ class Alert:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Alert":
+    def from_dict(cls, data: dict[str, Any]) -> "Alert":
         """
         Create entity from dictionary.
         

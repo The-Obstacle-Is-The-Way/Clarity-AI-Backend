@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /mnt/c/Users/JJ/Desktop/NOVAMIND-WEB/Novamind-Backend/app/infrastructure/ml_services/biometric_correlation/service.py
 
@@ -8,22 +7,14 @@ for analyzing correlations between biometric data and mental health indicators.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
-
-import numpy as np
-from pydantic import BaseModel, Field
-import asyncio
 
 # Use canonical config path
 from app.config.settings import get_settings
 from app.domain.interfaces.ml_services import BiometricCorrelationService
 from app.infrastructure.ml.biometric_correlation.lstm_model import BiometricLSTMModel
 from app.infrastructure.ml.utils.preprocessing import preprocess_biometric_data
-from app.infrastructure.ml.utils.serialization import (
-    deserialize_model,
-    serialize_prediction,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -58,15 +49,15 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
 
             logger.info("Biometric correlation model loaded successfully")
         except Exception as e:
-            logger.error(f"Error loading biometric correlation model: {str(e)}")
-            raise RuntimeError(f"Failed to load biometric correlation model: {str(e)}")
+            logger.error(f"Error loading biometric correlation model: {e!s}")
+            raise RuntimeError(f"Failed to load biometric correlation model: {e!s}")
 
     async def analyze_correlations(
         self,
         patient_id: UUID,
-        biometric_data: Dict[str, Any],
-        mental_health_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        biometric_data: dict[str, Any],
+        mental_health_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Analyze correlations between biometric data and mental health indicators.
 
@@ -107,13 +98,13 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
 
         except Exception as e:
             logger.error(
-                f"Error analyzing biometric correlations for patient {patient_id}: {str(e)}"
+                f"Error analyzing biometric correlations for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to analyze biometric correlations: {str(e)}")
+            raise RuntimeError(f"Failed to analyze biometric correlations: {e!s}")
 
     async def detect_anomalies(
-        self, patient_id: UUID, biometric_data: Dict[str, Any], sensitivity: float = 0.7
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, biometric_data: dict[str, Any], sensitivity: float = 0.7
+    ) -> dict[str, Any]:
         """
         Detect anomalies in biometric data that may indicate mental health changes.
 
@@ -155,16 +146,16 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
 
         except Exception as e:
             logger.error(
-                f"Error detecting biometric anomalies for patient {patient_id}: {str(e)}"
+                f"Error detecting biometric anomalies for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to detect biometric anomalies: {str(e)}")
+            raise RuntimeError(f"Failed to detect biometric anomalies: {e!s}")
 
     async def generate_monitoring_plan(
         self,
         patient_id: UUID,
-        biometric_data: Dict[str, Any],
-        mental_health_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        biometric_data: dict[str, Any],
+        mental_health_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Generate a personalized biometric monitoring plan based on correlations.
 
@@ -207,17 +198,17 @@ class BiometricCorrelationServiceImpl(BiometricCorrelationService):
 
         except Exception as e:
             logger.error(
-                f"Error generating monitoring plan for patient {patient_id}: {str(e)}"
+                f"Error generating monitoring plan for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to generate monitoring plan: {str(e)}")
+            raise RuntimeError(f"Failed to generate monitoring plan: {e!s}")
 
-    def _generate_correlation_summary(self, correlations: List[Dict[str, Any]]) -> str:
+    def _generate_correlation_summary(self, correlations: list[dict[str, Any]]) -> str:
         """Generate a human-readable summary of identified correlations."""
         # Implementation would create a natural language summary of correlations
         # This is a placeholder for the actual implementation
         return "Correlation analysis summary would be generated here."
 
-    def _generate_anomaly_recommendations(self, anomalies: List[Dict[str, Any]]) -> str:
+    def _generate_anomaly_recommendations(self, anomalies: list[dict[str, Any]]) -> str:
         """Generate recommendations based on detected anomalies."""
         # Implementation would create recommendations based on anomalies
         # This is a placeholder for the actual implementation

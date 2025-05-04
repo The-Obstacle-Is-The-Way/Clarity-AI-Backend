@@ -3,28 +3,33 @@ API Endpoints for Appointment Scheduling.
 
 Provides endpoints for creating, retrieving, updating, and deleting appointments.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.domain.entities.appointment import AppointmentStatus  # For query param validation
+
+# Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
+from app.domain.entities.user import User
+
+# from app.application.services.appointment_service import AppointmentService # Use this when service layer is built
+from app.domain.repositories.appointment_repository import (
+    IAppointmentRepository,  # Temporary direct repo access
+)
+from app.domain.utils.datetime_utils import now_utc
+
+# Import dependencies
+from app.presentation.api.dependencies.auth import (
+    get_current_user,  #, require_role # Add role check if needed
+)
 
 # Import schemas
 from app.presentation.api.schemas.appointment import (
     AppointmentCreate,
-    AppointmentUpdate,
     AppointmentResponse,
-    AppointmentListQuery
+    AppointmentUpdate,
 )
-from app.domain.entities.appointment import AppointmentStatus # For query param validation
-
-# Import dependencies
-from app.presentation.api.dependencies.auth import get_current_user #, require_role # Add role check if needed
-from app.infrastructure.di.container import get_container # Assuming a DI container exists
-# from app.application.services.appointment_service import AppointmentService # Use this when service layer is built
-from app.domain.repositories.appointment_repository import IAppointmentRepository # Temporary direct repo access
-# Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
-from app.domain.entities.user import User
 
 # Initialize router
 router = APIRouter()
@@ -66,7 +71,7 @@ async def schedule_appointment(
     # TODO: Add validation: Check for provider availability / overlapping appointments using repo.find_overlapping_appointments
 
     try:
-        from app.domain.entities.appointment import Appointment # Import entity
+        from app.domain.entities.appointment import Appointment  # Import entity
         
         new_appointment_entity = Appointment(**appointment_data.model_dump())
         
@@ -80,7 +85,7 @@ async def schedule_appointment(
         return created_appointment
     except ValueError as ve: # Catch validation errors from entity __post_init__
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
-    except Exception as e:
+    except Exception:
         # Log error
         # logger.error(f"Failed to schedule appointment: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to schedule appointment")
@@ -103,8 +108,9 @@ async def get_appointment(
     # Mock get_by_id for now
     async def mock_get_id(appt_id):
         if str(appt_id) == "123e4567-e89b-12d3-a456-426614174002": # Example ID
-             from app.domain.entities.appointment import Appointment, AppointmentType
              from uuid import uuid4
+
+             from app.domain.entities.appointment import Appointment, AppointmentType
              return Appointment(
                  id=UUID("123e4567-e89b-12d3-a456-426614174002"),
                  patient_id=uuid4(), provider_id=uuid4(),
@@ -132,16 +138,16 @@ async def get_appointment(
 
 @router.get(
     "",
-    response_model=List[AppointmentResponse],
+    response_model=list[AppointmentResponse],
     summary="List Appointments",
     description="Retrieve a list of appointments based on filter criteria.",
 )
 async def list_appointments(
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient ID"),
-    provider_id: Optional[UUID] = Query(None, description="Filter by provider ID"),
-    start_date: Optional[datetime] = Query(None, description="Filter by start date (inclusive)"),
-    end_date: Optional[datetime] = Query(None, description="Filter by end date (exclusive)"),
-    status: Optional[AppointmentStatus] = Query(None, description="Filter by appointment status"),
+    patient_id: UUID | None = Query(None, description="Filter by patient ID"),
+    provider_id: UUID | None = Query(None, description="Filter by provider ID"),
+    start_date: datetime | None = Query(None, description="Filter by start date (inclusive)"),
+    end_date: datetime | None = Query(None, description="Filter by end date (exclusive)"),
+    status: AppointmentStatus | None = Query(None, description="Filter by appointment status"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of appointments to return"),
     offset: int = Query(0, ge=0, description="Number of appointments to skip"),
     current_user: User = Depends(get_current_user),
@@ -204,8 +210,9 @@ async def update_appointment(
     # Mock get_by_id for update
     async def mock_get_id_for_update(appt_id):
         # Return a mock appointment that can be updated
-        from app.domain.entities.appointment import Appointment, AppointmentType
         from uuid import uuid4
+
+        from app.domain.entities.appointment import Appointment, AppointmentType
         return Appointment(
             id=appt_id,
             patient_id=uuid4(), provider_id=uuid4(),
@@ -253,7 +260,7 @@ async def update_appointment(
         return updated_appointment
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
-    except Exception as e:
+    except Exception:
         # Log error
         # logger.error(f"Failed to update appointment: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update appointment")
@@ -278,8 +285,9 @@ async def cancel_appointment(
     # Mock get_by_id for cancel
     async def mock_get_id_for_cancel(appt_id):
         # Return a mock appointment that can be cancelled
-        from app.domain.entities.appointment import Appointment, AppointmentType, AppointmentStatus
         from uuid import uuid4
+
+        from app.domain.entities.appointment import Appointment, AppointmentStatus, AppointmentType
         return Appointment(
             id=appt_id,
             patient_id=uuid4(), provider_id=uuid4(),
@@ -313,5 +321,5 @@ async def cancel_appointment(
     return
 
 # Need uuid4 for mock create and timedelta
-from uuid import uuid4
 from datetime import timedelta
+from uuid import uuid4

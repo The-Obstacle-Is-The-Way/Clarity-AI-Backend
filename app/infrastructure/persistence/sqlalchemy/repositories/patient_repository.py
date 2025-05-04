@@ -4,37 +4,35 @@ SQLAlchemy implementation of Patient repository for the Novamind Digital Twin pl
 This module provides a concrete implementation of the patient repository
 interface using SQLAlchemy for database operations.
 """
-from typing import List, Dict, Any, Optional, Callable, AsyncContextManager, Union
-import json
+import dataclasses
 import inspect
-import logging
+import json
 import traceback
 import uuid
+from dataclasses import fields
+from datetime import date, datetime, timezone
+from typing import Any
 from uuid import UUID
-from datetime import datetime, timezone, date
-from app.domain.utils.datetime_utils import now_utc, UTC
 
-from sqlalchemy import select, update, delete
+from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError, NoResultFound, IntegrityError, DBAPIError
-from app.core.exceptions import PersistenceError # ADD THIS IMPORT
+
+from app.core.exceptions import PersistenceError  # ADD THIS IMPORT
+
+# Import the custom logger function
+from app.core.utils.logging import get_logger
 from app.domain.entities.patient import Patient as PatientEntity
-from app.domain.entities.patient import ContactInfo
+from app.domain.value_objects.address import Address
 
 # The ContactInfoDescriptor in the Patient domain entity now properly handles
 # both class-level access (PatientEntity.contact_info) and instance-level access (patient.contact_info)
 # with a clean architectural pattern
-from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel # Alias model
+from app.infrastructure.persistence.sqlalchemy.models.patient import (
+    Patient as PatientModel,  # Alias model
+)
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.domain.value_objects.address import Address
-from pydantic import ValidationError
-import dataclasses
-from dataclasses import fields
-from sqlalchemy.orm import selectinload # ADDED IMPORT
-from app.infrastructure.persistence.sqlalchemy.config.base import Base  # Ensure metadata for table creation
-
-# Import the custom logger function
-from app.core.utils.logging import get_logger
 
 # Use the custom logger
 logger = get_logger(__name__)
@@ -107,7 +105,7 @@ class PatientRepository:
     # Class attribute identifying fields stored as JSON in the entity but potentially encrypted
     json_fields_entity = {"medical_history", "medications", "allergies", "treatment_notes", "emergency_contact", "extra_data"}
 
-    def __init__(self, db_session: Optional[AsyncSession] = None, db_session_factory = None, encryption_service: Optional[BaseEncryptionService] = None, user_context: Optional[Dict[str, Any]] = None, **_):
+    def __init__(self, db_session: AsyncSession | None = None, db_session_factory = None, encryption_service: BaseEncryptionService | None = None, user_context: dict[str, Any] | None = None, **_):
         """
         Initialize the repository with a database session or a session factory.
         
@@ -125,7 +123,7 @@ class PatientRepository:
         self.user_context = user_context or {}
         self.logger = logger
 
-    async def _model_to_entity_dict(self, patient_model: PatientModel) -> Optional[PatientEntity]:
+    async def _model_to_entity_dict(self, patient_model: PatientModel) -> PatientEntity | None:
         """Converts a Patient SQLAlchemy object to a PatientEntity dictionary, handling decryption."""
         if not patient_model:
             return None
@@ -257,7 +255,7 @@ class PatientRepository:
 
             # Emergency Contact - Decrypt single JSON blob
             if hasattr(patient_model, '_emergency_contact'):
-                encrypted_contact = getattr(patient_model, '_emergency_contact')
+                encrypted_contact = patient_model._emergency_contact
                 if encrypted_contact:
                     try:
                         encrypted_bytes = encrypted_contact.encode('utf-8') if isinstance(encrypted_contact, str) else encrypted_contact
@@ -276,7 +274,7 @@ class PatientRepository:
 
             # Insurance Provider - Similar to Emergency Contact
             if hasattr(patient_model, '_insurance_provider'):
-                encrypted_insurance = getattr(patient_model, '_insurance_provider')
+                encrypted_insurance = patient_model._insurance_provider
                 if encrypted_insurance:
                     try:
                         encrypted_bytes = encrypted_insurance.encode('utf-8') if isinstance(encrypted_insurance, str) else encrypted_insurance
@@ -333,7 +331,7 @@ class PatientRepository:
             # Allow the error to propagate after logging for visibility
             raise PersistenceError(f"Conversion failed for patient model {getattr(patient_model, 'id', 'UNKNOWN')}") from e
 
-    async def _convert_to_domain(self, patient_model: PatientModel) -> Optional[PatientEntity]:
+    async def _convert_to_domain(self, patient_model: PatientModel) -> PatientEntity | None:
         """Converts a Patient model to a PatientEntity with robust error handling and contact_info mapping."""
         try:
             # Get the entity dictionary from model
@@ -344,11 +342,11 @@ class PatientRepository:
                 
             # Create a proper ContactInfo instance
             contact_info_data = {}
-            if 'email' in entity_dict and entity_dict['email']:
+            if entity_dict.get('email'):
                 contact_info_data['email'] = entity_dict['email']
                 # Remove duplicated field to avoid redundancy
                 entity_dict.pop('email', None)
-            if 'phone' in entity_dict and entity_dict['phone']:
+            if entity_dict.get('phone'):
                 contact_info_data['phone'] = entity_dict['phone']
                 # Remove duplicated field to avoid redundancy
                 entity_dict.pop('phone', None)
@@ -439,9 +437,9 @@ class PatientRepository:
         else:
             raise RuntimeError("No database session or factory available")
 
-    async def create(self, patient_entity: PatientEntity) -> Optional[PatientEntity]:
+    async def create(self, patient_entity: PatientEntity) -> PatientEntity | None:
         """Create a new patient record using PatientModel.from_domain for conversion."""
-        async def _create_operation(session: AsyncSession) -> Optional[PatientEntity]: # Ensure session type hint
+        async def _create_operation(session: AsyncSession) -> PatientEntity | None: # Ensure session type hint
             try:
                 # Use the model's from_domain classmethod for conversion and encryption
                 self.logger.debug(f"Converting PatientEntity {patient_entity.id} to PatientModel using from_domain.")
@@ -473,16 +471,16 @@ class PatientRepository:
                 # Log the specific SQLAlchemy error before raising PersistenceError
                 self.logger.error(f"SQLAlchemyError during patient creation: {e}", exc_info=True)
                 # Rollback is handled by _with_session wrapper
-                raise PersistenceError(f"Failed to create patient due to database error.") from e
+                raise PersistenceError("Failed to create patient due to database error.") from e
             except Exception as e:
                 # Catch any other unexpected errors during conversion or session ops
                 self.logger.error(f"Unexpected error during patient creation: {e}", exc_info=True)
-                raise PersistenceError(f"An unexpected error occurred while creating the patient.") from e
+                raise PersistenceError("An unexpected error occurred while creating the patient.") from e
 
         # Execute the operation within the session context manager
         return await self._with_session(_create_operation)
 
-    async def get_by_id(self, patient_id: Union[str, UUID]) -> Optional[PatientEntity]:
+    async def get_by_id(self, patient_id: str | UUID) -> PatientEntity | None:
         """
         Retrieve a patient by their ID.
         
@@ -515,7 +513,7 @@ class PatientRepository:
             return entity
         return await self._with_session(_get_by_id_operation)
 
-    async def get_all(self, limit: int = 50, offset: int = 0) -> List[PatientEntity]:
+    async def get_all(self, limit: int = 50, offset: int = 0) -> list[PatientEntity]:
         """Get all patients with pagination.
         
         Args:
@@ -550,7 +548,7 @@ class PatientRepository:
             return entities
         return await self._with_session(_get_all_operation)
 
-    async def update(self, patient_entity: PatientEntity) -> Optional[PatientEntity]:
+    async def update(self, patient_entity: PatientEntity) -> PatientEntity | None:
         """Updates an existing patient with proper field mapping and encryption.
         
         Args:
@@ -705,7 +703,7 @@ class PatientRepository:
         try:
             # Convert to UUID object - sample_patient_id is already a valid UUID string
             uuid_obj = uuid.UUID(patient_id)
-        except (ValueError, AttributeError, TypeError) as e:
+        except (ValueError, AttributeError, TypeError):
             logger.warning(f"Attempted delete with invalid UUID format: {patient_id}")
             return False
             
@@ -735,7 +733,7 @@ class PatientRepository:
         
         return await self._with_session(_delete_operation)
 
-    async def get_by_email(self, email: str) -> Optional[PatientEntity]:
+    async def get_by_email(self, email: str) -> PatientEntity | None:
         """Retrieve a patient by their email address."""
         try:
             stmt = select(PatientModel).where(PatientModel._email == email)

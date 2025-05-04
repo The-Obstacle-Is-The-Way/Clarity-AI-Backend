@@ -5,24 +5,23 @@ This module tests the integration between the API routes and the
 PAT service implementation.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any, TypeVar
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient
-from unittest.mock import MagicMock, AsyncMock
-from collections.abc import Callable
-from typing import Type, TypeVar, Dict, Any, List
-
 from fastapi import Depends, FastAPI
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.utils.datetime_utils import UTC
 from app.core.interfaces.repositories.user_repository import IUserRepository
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.entities.user import User
 from app.domain.enums.role import Role as UserRole
-from app.presentation.api.dependencies.database import get_repository, get_db
+from app.domain.utils.datetime_utils import UTC
 from app.presentation.api.dependencies.auth import get_jwt_service
+from app.presentation.api.dependencies.database import get_db, get_repository
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
@@ -37,7 +36,7 @@ def mock_pat_service() -> MagicMock:
     service.initialize({})
     return service
 
-def auth_headers() -> Dict[str, str]:
+def auth_headers() -> dict[str, str]:
     """Authentication headers for API requests."""
     # Use the mock token recognized by the mocked JWT service in async_client
     return {
@@ -47,7 +46,7 @@ def auth_headers() -> Dict[str, str]:
 
 
 @pytest.fixture
-def actigraphy_data() -> Dict[str, Any]:
+def actigraphy_data() -> dict[str, Any]:
     """Sample actigraphy data for testing."""
     # Generate 1 hour of data at 50Hz
     start_time = datetime.now(UTC).replace(microsecond=0)
@@ -89,7 +88,7 @@ def create_repository_override(mock_user_repo_instance: MagicMock) -> Callable[[
     """Creates an override function for the get_repository dependency factory."""
     T = TypeVar('T')
 
-    def repository_override_provider(repo_type: Type[T]) -> Callable[[AsyncSession], T]:
+    def repository_override_provider(repo_type: type[T]) -> Callable[[AsyncSession], T]:
         """The actual function that overrides get_repository."""
         if repo_type == IUserRepository:
             # Define the factory function that returns the mock
@@ -106,8 +105,9 @@ def create_repository_override(mock_user_repo_instance: MagicMock) -> Callable[[
 
 # Fixtures to create app and client for integration tests
 @pytest.fixture
-def test_app(mock_pat_service: MagicMock, actigraphy_data: Dict[str, Any]) -> FastAPI:
+def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any]) -> FastAPI:
     from app.main import create_application
+
     # Removed unused import: get_current_user
     from app.presentation.api.v1.endpoints.actigraphy import get_pat_service
     app_instance = create_application()
@@ -151,8 +151,8 @@ class TestActigraphyAPI:
     async def test_analyze_actigraphy(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
-        actigraphy_data: Dict[str, Any]
+        auth_headers: dict[str, str],
+        actigraphy_data: dict[str, Any]
     ) -> None:
         """Test analyzing actigraphy data."""
         response = await async_client.post(
@@ -174,8 +174,8 @@ class TestActigraphyAPI:
     async def test_get_actigraphy_embeddings(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
-        actigraphy_data: Dict[str, Any]
+        auth_headers: dict[str, str],
+        actigraphy_data: dict[str, Any]
     ) -> None:
         """Test generating embeddings from actigraphy data."""
         embedding_data = {
@@ -205,7 +205,7 @@ class TestActigraphyAPI:
     async def test_get_analysis_by_id(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
+        auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
         """Test retrieving an analysis by ID."""
@@ -241,7 +241,7 @@ class TestActigraphyAPI:
     async def test_get_patient_analyses(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
+        auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
         """Test retrieving analyses for a patient."""
@@ -288,7 +288,7 @@ class TestActigraphyAPI:
     async def test_get_model_info(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
+        auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
         """Test getting model information."""
@@ -305,9 +305,9 @@ class TestActigraphyAPI:
     async def test_integrate_with_digital_twin(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
+        auth_headers: dict[str, str],
         mock_pat_service: MagicMock,
-        actigraphy_data: Dict[str, Any]
+        actigraphy_data: dict[str, Any]
     ) -> None:
         """Test integrating analysis with digital twin."""
         analysis_data = mock_pat_service.analyze_actigraphy(
@@ -352,7 +352,7 @@ class TestActigraphyAPI:
     async def test_unauthorized_access(
         self,
         async_client: AsyncClient,
-        actigraphy_data: Dict[str, Any]
+        actigraphy_data: dict[str, Any]
     ) -> None:
         """Test unauthorized access to API."""
         response = await async_client.post(
@@ -365,7 +365,7 @@ class TestActigraphyAPI:
     async def test_get_analysis_types(
         self,
         async_client: AsyncClient,
-        auth_headers: Dict[str, str],
+        auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
         """Test retrieving analysis types via the API."""

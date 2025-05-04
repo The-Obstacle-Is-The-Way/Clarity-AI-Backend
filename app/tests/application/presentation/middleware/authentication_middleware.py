@@ -6,40 +6,36 @@ and attaches the authenticated user to the request state.
 It implements HIPAA-compliant logging and authorization checks.
 """
 
-import re
 import asyncio
-from collections.abc import Callable
-from typing import Any, Optional, Union
-
-from fastapi import FastAPI, Request, Response, status
-from starlette.authentication import AuthCredentials, UnauthenticatedUser
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import JSONResponse
-import json
 import re
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
+
+from fastapi import FastAPI, Request, Response
+from starlette.authentication import AuthCredentials, UnauthenticatedUser
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
+
+from app.core.config.settings import Settings, get_settings
+
+# Import interfaces from the core layer
+from app.core.interfaces.services.authentication_service import IAuthenticationService
+from app.core.interfaces.services.jwt_service import IJwtService
 
 # Import necessary domain exceptions for token validation
 from app.domain.exceptions import (
-    AuthenticationError, 
-    MissingTokenError,
-    PermissionDeniedError,
-    TokenExpiredException,
+    AuthenticationError,
     InvalidTokenException,
+    TokenExpiredException,
 )
+
 # Import UserNotFoundException from its specific module
 from app.domain.exceptions.auth_exceptions import UserNotFoundException
-
-# Import interfaces from the core layer
-from app.core.interfaces.services.authentication_service import IAuthenticationService 
-from app.core.interfaces.services.jwt_service import IJwtService
-
-from app.core.config.settings import Settings, get_settings
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service
@@ -68,9 +64,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         app: FastAPI,
         auth_service=None,  # Support for test injection
         jwt_service=None,   # Support for test injection
-        public_paths: Optional[Union[list[str], set[str]]] = None,
-        public_path_regex: Optional[list[str]] = None,
-        settings: Optional[Settings] = None,
+        public_paths: list[str] | set[str] | None = None,
+        public_path_regex: list[str] | None = None,
+        settings: Settings | None = None,
     ):
         """Initialize the middleware with configuration for public paths."""
         super().__init__(app)
@@ -190,7 +186,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         # Removed excessive logging from previous attempt
 
-    def _extract_token(self, request: Request) -> Optional[str]:
+    def _extract_token(self, request: Request) -> str | None:
         """
         Extract JWT token from request headers or cookies.
         

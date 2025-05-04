@@ -6,8 +6,8 @@ ensuring HIPAA-compliant data consistency in the application's persistence layer
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional
 from types import TracebackType
 
 
@@ -33,9 +33,9 @@ class IUnitOfWork(ABC):
     @abstractmethod
     async def __aexit__(
         self, 
-        exc_type: Optional[type[BaseException]], 
-        exc_val: Optional[BaseException], 
-        exc_tb: Optional[TracebackType]
+        exc_type: type[BaseException] | None, 
+        exc_val: BaseException | None, 
+        exc_tb: TracebackType | None
     ) -> None:
         """
         Exit the context manager, handling commit or rollback based on exceptions.

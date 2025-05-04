@@ -17,27 +17,33 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.dependencies import (
+    get_auth_service_provider,
+    get_jwt_service,
+    get_pat_service,
+    get_user_repository_provider,
+)
+from app.api.routes import auth as auth_router
+
 # --- Core App/Config Imports ---
 from app.core.config.settings import Settings, get_settings
+from app.core.dependencies.database import get_db_session
 from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.core.security import AuthenticationMiddleware
 
 # --- Domain Imports ---
 from app.domain.entities.user import User
 from app.domain.exceptions import AuthenticationError
+from app.domain.services.pat_service import PATService
 
 # --- Infrastructure Imports ---
 from app.infrastructure.database.base_class import Base
 from app.infrastructure.security.auth_service import AuthenticationService
 from app.infrastructure.security.jwt_service import JWTService
 from app.infrastructure.security.password.hashing import pwd_context
-from app.domain.services.pat_service import PATService
 
 # --- API Layer Imports ---
 from app.main import create_application
-from app.api.dependencies import get_user_repository_provider, get_auth_service_provider, get_jwt_service, get_pat_service
-from app.core.dependencies.database import get_db_session
-from app.api.routes import auth as auth_router
-from app.core.security import AuthenticationMiddleware
 
 # --- Test Utility Imports ---
 

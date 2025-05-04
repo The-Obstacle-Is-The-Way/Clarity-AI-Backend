@@ -5,12 +5,12 @@ This module provides FastAPI middleware components to protect PHI in
 requests and responses, ensuring HIPAA compliance at the API layer.
 """
 
-import time
 import json
-import logging
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple, Set
+import time
+from collections.abc import Callable
+from typing import Any
 
-from fastapi import FastAPI, Request, Response, Depends
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -36,10 +36,10 @@ class PHIMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        phi_sanitizer: Optional[PHISanitizer] = None,
+        phi_sanitizer: PHISanitizer | None = None,
         audit_mode: bool = False,
-        exclude_paths: Optional[List[str]] = None,
-        whitelist_patterns: Optional[List[str]] = None
+        exclude_paths: list[str] | None = None,
+        whitelist_patterns: list[str] | None = None
     ):
         """
         Initialize PHI middleware.
@@ -334,10 +334,10 @@ class PHIMiddleware(BaseHTTPMiddleware):
 
 # Dependency for FastAPI routes
 def get_phi_middleware(
-    phi_sanitizer: Optional[PHISanitizer] = None,
+    phi_sanitizer: PHISanitizer | None = None,
     audit_mode: bool = False,
-    exclude_paths: Optional[List[str]] = None,
-    whitelist_patterns: Optional[List[str]] = None
+    exclude_paths: list[str] | None = None,
+    whitelist_patterns: list[str] | None = None
 ) -> PHIMiddleware:
     """
     Get a PHI middleware instance for use with FastAPI.
@@ -362,10 +362,10 @@ def get_phi_middleware(
 
 def add_phi_middleware(
     app: FastAPI,
-    phi_sanitizer: Optional[PHISanitizer] = None,
+    phi_sanitizer: PHISanitizer | None = None,
     audit_mode: bool = False,
-    exclude_paths: Optional[List[str]] = None,
-    whitelist_patterns: Optional[List[str]] = None
+    exclude_paths: list[str] | None = None,
+    whitelist_patterns: list[str] | None = None
 ) -> None:
     """
     Add PHI middleware to a FastAPI application.

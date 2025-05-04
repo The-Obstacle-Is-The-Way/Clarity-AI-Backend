@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Mock Digital Twin Implementation.
 
@@ -6,23 +5,20 @@ This module provides a mock implementation of Digital Twin services for developm
 No actual patient simulation is performed; instead, predefined responses are returned.
 """
 
-import json
 import random
 import time
 import uuid
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
-    ModelNotFoundError,
     ServiceUnavailableError,
 )
-from app.core.services.ml.interface import DigitalTwinInterface # Corrected interface name
+from app.core.services.ml.interface import DigitalTwinInterface  # Corrected interface name
 from app.core.utils.logging import get_logger
-
+from app.domain.utils.datetime_utils import UTC
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -42,7 +38,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         self._config = None
         self._patient_sessions = {}
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -61,10 +57,10 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
             logger.info("Mock Digital Twin service initialized")
             
         except Exception as e:
-            logger.error(f"Failed to initialize mock Digital Twin service: {str(e)}")
+            logger.error(f"Failed to initialize mock Digital Twin service: {e!s}")
             self._initialized = False
             self._config = None
-            raise InvalidConfigurationError(f"Failed to initialize mock Digital Twin service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize mock Digital Twin service: {e!s}")
     
     def is_healthy(self) -> bool:
         """
@@ -85,9 +81,9 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
     def create_session(
         self,
         patient_id: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new Digital Twin session.
         
@@ -151,7 +147,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         self,
         session_id: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get Digital Twin session information.
         
@@ -200,7 +196,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         session_id: str,
         message: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send a message to the Digital Twin.
         
@@ -275,7 +271,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         
         return result
     
-    def _get_response_for_message(self, message: str, session: Dict[str, Any]) -> str:
+    def _get_response_for_message(self, message: str, session: dict[str, Any]) -> str:
         """
         Get a response for a message based on its content.
         
@@ -294,7 +290,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         
         # Greeting
         if any(word in message_lower for word in ["hello", "hi", "hey", "greetings"]):
-            return f"Hello! I'm your digital twin health assistant. How can I help you today?"
+            return "Hello! I'm your digital twin health assistant. How can I help you today?"
         
         # How are you
         elif "how are you" in message_lower:
@@ -336,7 +332,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         self,
         session_id: str,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         End a Digital Twin session.
         
@@ -384,10 +380,10 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
     def get_insights(
         self,
         patient_id: str,
-        insight_type: Optional[str] = None,
-        time_period: Optional[str] = None,
+        insight_type: str | None = None,
+        time_period: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get Digital Twin insights for a patient.
         
@@ -452,7 +448,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         
         return result
     
-    def _generate_all_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_all_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate all types of insights.
         
@@ -486,7 +482,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
             }
         }
     
-    def _generate_mood_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_mood_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate mood insights.
         
@@ -557,7 +553,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
         else:
             return "very good"
     
-    def _generate_activity_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_activity_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate activity insights.
         
@@ -607,7 +603,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
             }
         }
     
-    def _generate_sleep_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_sleep_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate sleep insights.
         
@@ -665,7 +661,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
             }
         }
     
-    def _generate_medication_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_medication_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate medication insights.
         
@@ -730,7 +726,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
             }
         }
     
-    def _generate_treatment_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_treatment_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate treatment insights.
         
@@ -794,7 +790,7 @@ class MockDigitalTwinService(DigitalTwinInterface): # Corrected base class
             }
         }
     
-    def _generate_default_insights(self, patient_id: str, time_period: Optional[str] = None) -> Dict[str, Any]:
+    def _generate_default_insights(self, patient_id: str, time_period: str | None = None) -> dict[str, Any]:
         """
         Generate default insights.
         

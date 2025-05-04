@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PHI Detection Service Module.
 
@@ -6,31 +5,22 @@ This module provides a HIPAA-compliant service for detecting and redacting
 Protected Health Information (PHI) from text.
 """
 
-import os
-import re
-import yaml
-import logging
 import asyncio
 import concurrent.futures
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Set, Pattern, Match, Union, cast
+import re
+from re import Pattern
+from typing import Any
 
-from sqlalchemy.orm import Session
-from app.infrastructure.persistence.sqlalchemy.models import Patient, User
-from app.presentation.api.schemas.ml_schemas import (
-    PHIContextEnum, PHIRequest, PHIDetectionRequest, TextProcessingRequest
-)
+import yaml
+
 from app.config.settings import get_settings
 from app.core.exceptions.ml_exceptions import (
-    PHIDetectionException,
     PHIConfigurationError,
-    PHIPatternError
+    PHIDetectionException,
+    PHIPatternError,
 )
 from app.core.utils.logging import get_logger
-from presidio_analyzer import AnalyzerEngine
-from presidio_anonymizer import AnonymizerEngine
-from app.core.services.ml.interface import PHIDetectionInterface
-
+from app.presentation.api.schemas.ml_schemas import PHIDetectionRequest
 
 # Setup logger
 logger = get_logger(__name__)
@@ -71,7 +61,7 @@ class PHIPattern:
         self.case_insensitive = case_insensitive
         self.multi_line = multi_line
         self.dot_all = dot_all
-        self.compiled_regex: Optional[Pattern] = None
+        self.compiled_regex: Pattern | None = None
         
         self._compile_regex()
     
@@ -93,7 +83,7 @@ class PHIPattern:
             
             self.compiled_regex = re.compile(self.regex_str, flags)
         except re.error as e:
-            error_msg = f"Failed to compile regex pattern '{self.name}': {str(e)}"
+            error_msg = f"Failed to compile regex pattern '{self.name}': {e!s}"
             logger.error(error_msg)
             raise PHIPatternError(
                 message=error_msg,
@@ -131,8 +121,8 @@ class PHIDetectionService:
         Initialize PHI detection service using global settings.
         """
         self.settings = get_settings().ml.phi_detection # Get nested settings
-        self.patterns: Dict[str, List[PHIPattern]] = {}
-        self.categories: List[str] = []
+        self.patterns: dict[str, list[PHIPattern]] = {}
+        self.categories: list[str] = []
         
         # Load patterns
         self._load_patterns()
@@ -152,7 +142,7 @@ class PHIDetectionService:
         try:
             patterns_file = self.settings.patterns_file
             
-            with open(patterns_file, "r", encoding="utf-8") as file:
+            with open(patterns_file, encoding="utf-8") as file:
                 pattern_data = yaml.safe_load(file)
             
             # Process each category
@@ -187,7 +177,7 @@ class PHIDetectionService:
                 extra={"categories": len(self.categories)}
             )
         except (FileNotFoundError, yaml.YAMLError, KeyError) as e:
-            error_msg = f"Failed to load PHI patterns from {self.settings.patterns_file}: {str(e)}"
+            error_msg = f"Failed to load PHI patterns from {self.settings.patterns_file}: {e!s}"
             logger.error(error_msg)
             raise PHIConfigurationError(
                 message=error_msg,
@@ -244,18 +234,18 @@ class PHIDetectionService:
             
             return result
         except Exception as e:
-            logger.error(f"Error detecting PHI: {str(e)}")
+            logger.error(f"Error detecting PHI: {e!s}")
             raise PHIDetectionException(
-                message=f"Error detecting PHI: {str(e)}",
+                message=f"Error detecting PHI: {e!s}",
                 details={"text_length": len(request.text)}
             )
     
     async def _detect_phi_sequential(
         self,
         text: str,
-        categories: List[str],
+        categories: list[str],
         confidence_threshold: float
-    ) -> List[PHIDetectionMatch]:
+    ) -> list[PHIDetectionMatch]:
         """
         Detect PHI sequentially.
         
@@ -267,7 +257,7 @@ class PHIDetectionService:
         Returns:
             List of PHI detection matches
         """
-        all_matches: List[PHIDetectionMatch] = []
+        all_matches: list[PHIDetectionMatch] = []
         
         # Check each category
         for category in categories:
@@ -303,9 +293,9 @@ class PHIDetectionService:
     async def _detect_phi_parallel(
         self,
         text: str,
-        categories: List[str],
+        categories: list[str],
         confidence_threshold: float
-    ) -> List[PHIDetectionMatch]:
+    ) -> list[PHIDetectionMatch]:
         """
         Detect PHI in parallel.
         
@@ -317,7 +307,7 @@ class PHIDetectionService:
         Returns:
             List of PHI detection matches
         """
-        all_matches: List[PHIDetectionMatch] = []
+        all_matches: list[PHIDetectionMatch] = []
         tasks = []
         
         # Create tasks for each category
@@ -350,7 +340,7 @@ class PHIDetectionService:
         text: str,
         category: str,
         confidence_threshold: float
-    ) -> List[PHIDetectionMatch]:
+    ) -> list[PHIDetectionMatch]:
         """
         Detect PHI for a specific category.
         
@@ -362,7 +352,7 @@ class PHIDetectionService:
         Returns:
             List of PHI detection matches
         """
-        matches: List[PHIDetectionMatch] = []
+        matches: list[PHIDetectionMatch] = []
         
         # Run in a thread to avoid blocking
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -382,7 +372,7 @@ class PHIDetectionService:
         text: str,
         category: str,
         confidence_threshold: float
-    ) -> List[PHIDetectionMatch]:
+    ) -> list[PHIDetectionMatch]:
         """
         Detect PHI for a specific category (synchronous version).
         
@@ -394,7 +384,7 @@ class PHIDetectionService:
         Returns:
             List of PHI detection matches
         """
-        matches: List[PHIDetectionMatch] = []
+        matches: list[PHIDetectionMatch] = []
         
         # Check each pattern in the category
         for pattern in self.patterns[category]:
@@ -422,7 +412,7 @@ class PHIDetectionService:
         
         return matches
     
-    def _redact_text(self, text: str, matches: List[PHIDetectionMatch]) -> str:
+    def _redact_text(self, text: str, matches: list[PHIDetectionMatch]) -> str:
         """
         Redact PHI from text.
         
@@ -451,7 +441,7 @@ class PHIDetectionService:
         # Join back into a string
         return ''.join(chars)
     
-    def validate_patterns(self) -> Dict[str, Any]:
+    def validate_patterns(self) -> dict[str, Any]:
         """
         Validate all patterns and return metrics.
         

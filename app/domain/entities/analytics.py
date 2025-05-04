@@ -5,10 +5,10 @@ This module defines the core domain entities related to analytics
 within the Novamind Digital Twin platform.
 """
 
-from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+
 from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional
 
 
 class AnalyticsEvent:
@@ -73,7 +73,7 @@ class AnalyticsEvent:
         return self.event_data
 
     @data.setter
-    def data(self, value: dict[str, Any]) -> None:  # noqa: D401 – simple alias mutator
+    def data(self, value: dict[str, Any]) -> None:
         self.event_data = value
 
 

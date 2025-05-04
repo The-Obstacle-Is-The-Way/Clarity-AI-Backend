@@ -8,19 +8,21 @@ following HIPAA compliance requirements for secure authentication and authorizat
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Any, List, Tuple
+from typing import Any
 
 import jwt
 from pydantic import BaseModel
 
-from app.domain.exceptions.auth_exceptions import (
-    TokenExpiredException,
-    InvalidTokenException,
-    TokenBlacklistedException
-)
-from app.domain.interfaces.repositories.token_blacklist_repository import TokenBlacklistRepositoryInterface
 from app.application.interfaces.services.audit_logger import AuditLogger
 from app.core.config import Settings
+from app.domain.exceptions.auth_exceptions import (
+    InvalidTokenException,
+    TokenBlacklistedException,
+    TokenExpiredException,
+)
+from app.domain.interfaces.repositories.token_blacklist_repository import (
+    TokenBlacklistRepositoryInterface,
+)
 
 
 class TokenPayload(BaseModel):
@@ -34,7 +36,7 @@ class TokenPayload(BaseModel):
     user_id: str  # User ID
     email: str  # User email
     role: str  # User role
-    permissions: List[str]  # User permissions
+    permissions: list[str]  # User permissions
 
 
 class JWTService:
@@ -77,9 +79,9 @@ class JWTService:
         user_id: str,
         email: str,
         role: str,
-        permissions: List[str],
+        permissions: list[str],
         session_id: str
-    ) -> Tuple[str, int]:
+    ) -> tuple[str, int]:
         """
         Create a new access token for a user.
         
@@ -192,7 +194,7 @@ class JWTService:
         
         return refresh_token
     
-    def validate_token(self, token: str, token_type: str = "access") -> Dict[str, Any]:
+    def validate_token(self, token: str, token_type: str = "access") -> dict[str, Any]:
         """
         Validate a JWT token and return its payload.
         
@@ -252,7 +254,7 @@ class JWTService:
             )
             raise InvalidTokenException("Invalid token")
     
-    def blacklist_token(self, token: str, user_id: Optional[str] = None) -> None:
+    def blacklist_token(self, token: str, user_id: str | None = None) -> None:
         """
         Blacklist a token to prevent it from being used.
         

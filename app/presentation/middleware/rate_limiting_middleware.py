@@ -11,7 +11,7 @@ DO NOT USE THIS IN NEW CODE - use app.core.security.rate_limiting instead.
 from app.core.security.rate_limiting import RateLimitingMiddleware
 
 # Re-export RateLimitConfig from the API dependencies
-from app.presentation.api.dependencies.rate_limiter import RateLimitConfig, RateLimitScope
+from app.presentation.api.dependencies.rate_limiter import RateLimitConfig
 
 
 def create_rate_limiting_middleware(config: RateLimitConfig):

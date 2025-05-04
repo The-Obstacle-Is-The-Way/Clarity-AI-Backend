@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Mock PHI Detection Implementation.
 
@@ -6,19 +5,18 @@ This module provides a mock implementation of PHI Detection for development and 
 No actual PHI detection is performed; instead, predefined responses are returned.
 """
 
-import re
 import random
+import re
 import time
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
     ServiceUnavailableError,
 )
-from app.core.services.ml.interface import PHIDetectionInterface # Corrected import
+from app.core.services.ml.interface import PHIDetectionInterface  # Corrected import
 from app.core.utils.logging import get_logger
-
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -38,7 +36,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         self._config = None
         self._patterns = self._get_default_patterns()
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -69,10 +67,10 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             logger.info(f"Mock PHI detection service initialized with level: {self._detection_level}")
             
         except Exception as e:
-            logger.error(f"Failed to initialize mock PHI detection service: {str(e)}")
+            logger.error(f"Failed to initialize mock PHI detection service: {e!s}")
             self._initialized = False
             self._config = None
-            raise InvalidConfigurationError(f"Failed to initialize mock PHI detection service: {str(e)}")
+            raise InvalidConfigurationError(f"Failed to initialize mock PHI detection service: {e!s}")
     
     def is_healthy(self) -> bool:
         """
@@ -92,9 +90,9 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
     def detect_phi(
         self,
         text: str,
-        detection_level: Optional[str] = None,
+        detection_level: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect PHI in text.
         
@@ -159,9 +157,9 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         self,
         text: str,
         replacement: str = "[REDACTED]",
-        detection_level: Optional[str] = None,
+        detection_level: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Redact PHI from text.
         
@@ -223,7 +221,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         
         return result
     
-    def _detect_phi_with_patterns(self, text: str, patterns: Dict[str, List[re.Pattern]]) -> List[Dict[str, Any]]:
+    def _detect_phi_with_patterns(self, text: str, patterns: dict[str, list[re.Pattern]]) -> list[dict[str, Any]]:
         """
         Detect PHI using regex patterns.
         
@@ -262,7 +260,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         
         return entities
     
-    def _get_patterns_for_level(self, level: str) -> Dict[str, List[re.Pattern]]:
+    def _get_patterns_for_level(self, level: str) -> dict[str, list[re.Pattern]]:
         """
         Get patterns based on detection level.
         
@@ -281,7 +279,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         else:
             return self._get_default_patterns()
     
-    def _get_default_patterns(self) -> Dict[str, List[re.Pattern]]:
+    def _get_default_patterns(self) -> dict[str, list[re.Pattern]]:
         """
         Get default PHI detection patterns.
         
@@ -290,7 +288,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         """
         return self._get_moderate_patterns()
     
-    def _get_strict_patterns(self) -> Dict[str, List[re.Pattern]]:
+    def _get_strict_patterns(self) -> dict[str, list[re.Pattern]]:
         """
         Get strict PHI detection patterns.
         
@@ -340,7 +338,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             ]
         }
     
-    def _get_moderate_patterns(self) -> Dict[str, List[re.Pattern]]:
+    def _get_moderate_patterns(self) -> dict[str, list[re.Pattern]]:
         """
         Get moderate PHI detection patterns.
         
@@ -374,7 +372,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             ]
         }
     
-    def _get_relaxed_patterns(self) -> Dict[str, List[re.Pattern]]:
+    def _get_relaxed_patterns(self) -> dict[str, list[re.Pattern]]:
         """
         Get relaxed PHI detection patterns.
         
@@ -396,7 +394,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             ]
         }
     
-    def _create_mock_phi_instances(self, level: str) -> List[Dict[str, Any]]:
+    def _create_mock_phi_instances(self, level: str) -> list[dict[str, Any]]:
         """
         Create mock PHI instances for testing.
         """
@@ -409,7 +407,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             patterns = self._get_strict_patterns()
         else:
             raise InvalidRequestError("Invalid detection level: must be one of minimal, moderate, aggressive")
-        instances: List[Dict[str, Any]] = []
+        instances: list[dict[str, Any]] = []
         for phi_type, pattern_list in patterns.items():
             for _ in pattern_list:
                 instances.append({

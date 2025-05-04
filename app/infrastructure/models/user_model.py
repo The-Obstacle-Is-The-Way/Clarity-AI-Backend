@@ -9,6 +9,7 @@ All new code should use the canonical User model directly.
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -31,7 +32,8 @@ except ImportError as e:
     
     # Import only what's needed for the type definition
     from sqlalchemy.ext.declarative import declarative_base
-    from app.infrastructure.persistence.sqlalchemy.models.base import TimestampMixin, AuditMixin
+
+    from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, TimestampMixin
     
     # Create a placeholder Base that won't be used for actual mapping
     _Base = declarative_base()

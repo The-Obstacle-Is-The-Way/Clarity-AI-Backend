@@ -2,9 +2,10 @@
 Role validation service for checking user permissions and access control.
 """
 
-from typing import List, Union
+
 from app.domain.entities.user import User
 from app.domain.enums.role import Role as UserRole
+
 
 class RoleValidator:
     """
@@ -21,7 +22,7 @@ class RoleValidator:
     def has_required_roles(
         self,
         user: User,
-        required_roles: List[Union[UserRole, str]]
+        required_roles: list[UserRole | str]
     ) -> bool:
         """
         Check if a user has any of the required roles.
@@ -48,6 +49,6 @@ class RoleValidator:
             
             # Check if user has any of the required roles
             return any(role in user.roles for role in normalized_required)
-        except (KeyError, AttributeError) as e:
+        except (KeyError, AttributeError):
             # If there's an error converting roles, deny access
             return False

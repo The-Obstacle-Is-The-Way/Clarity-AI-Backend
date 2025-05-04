@@ -7,7 +7,6 @@ suitable for HIPAA-compliant healthcare applications.
 """
 
 import logging
-from typing import List, Optional
 
 from passlib.context import CryptContext
 
@@ -24,8 +23,8 @@ class PasswordHandler:
     
     def __init__(
         self,
-        schemes: Optional[List[str]] = None,
-        deprecated: Optional[List[str]] = None
+        schemes: list[str] | None = None,
+        deprecated: list[str] | None = None
     ):
         """
         Initialize the password handler with hashing schemes.
@@ -89,7 +88,7 @@ class PasswordHandler:
         """
         return self._pwd_context.needs_update(hashed_password)
     
-    def update_hash(self, password: str, current_hash: str) -> Optional[str]:
+    def update_hash(self, password: str, current_hash: str) -> str | None:
         """
         Generate an updated hash if needed.
         

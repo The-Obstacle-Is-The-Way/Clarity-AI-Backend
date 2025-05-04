@@ -2,17 +2,17 @@
 Interface for the Symptom Assessment Repository.
 """
 from abc import ABC, abstractmethod
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
-from app.domain.entities.symptom_assessment import SymptomAssessment, AssessmentType
+from app.domain.entities.symptom_assessment import AssessmentType, SymptomAssessment
+
 
 class ISymptomAssessmentRepository(ABC):
     """Abstract base class defining the symptom assessment repository interface."""
 
     @abstractmethod
-    async def get_by_id(self, assessment_id: UUID) -> Optional[SymptomAssessment]:
+    async def get_by_id(self, assessment_id: UUID) -> SymptomAssessment | None:
         """Retrieve a symptom assessment by its ID."""
         pass
 
@@ -36,10 +36,10 @@ class ISymptomAssessmentRepository(ABC):
     async def list_by_patient_id(
         self,
         patient_id: UUID,
-        assessment_type: Optional[AssessmentType] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
-    ) -> List[SymptomAssessment]:
+        assessment_type: AssessmentType | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None
+    ) -> list[SymptomAssessment]:
         """List symptom assessments for a specific patient, optionally filtered by type and date range."""
         pass
 

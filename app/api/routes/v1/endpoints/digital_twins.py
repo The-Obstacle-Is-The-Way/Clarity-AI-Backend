@@ -5,10 +5,11 @@ This module provides endpoints for managing patient digital twins,
 including creation, querying, simulation, and analysis of digital twin models.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any, List
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 router = APIRouter(
@@ -25,7 +26,7 @@ class DigitalTwinResponse(BaseModel):
     updated_at: datetime
     model_version: str = Field(..., description="Version of the digital twin model")
     status: str = Field(..., description="Current status of the digital twin")
-    metrics: Dict[str, Any] = Field(..., description="Key metrics for this digital twin")
+    metrics: dict[str, Any] = Field(..., description="Key metrics for this digital twin")
 
 
 @router.get("/{patient_id}")
@@ -58,7 +59,7 @@ async def get_digital_twin(patient_id: UUID) -> DigitalTwinResponse:
 @router.post("/{patient_id}/simulate")
 async def simulate_treatment(
     patient_id: UUID,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Simulate treatment effects using the patient's digital twin.
     

@@ -3,7 +3,7 @@ Base class for domain entities.
 """
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
-from datetime import datetime
+
 
 @dataclass(kw_only=True)
 class BaseEntity:

@@ -5,11 +5,11 @@ This module provides middleware classes for handling security aspects like
 authentication, authorization, and PHI (Protected Health Information) protection.
 """
 
+import logging
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable, Optional, Dict, Any
-import logging
-from uuid import UUID
 
 logger = logging.getLogger(__name__)
 

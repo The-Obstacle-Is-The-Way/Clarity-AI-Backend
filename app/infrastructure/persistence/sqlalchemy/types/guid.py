@@ -7,6 +7,7 @@ and SQLite.
 """
 
 import uuid
+
 from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 

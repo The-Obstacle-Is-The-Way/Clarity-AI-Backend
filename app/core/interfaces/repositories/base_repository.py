@@ -7,7 +7,7 @@ All concrete repository interfaces should extend this base.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Optional, Type, TypeVar, Union
+from typing import Generic, TypeVar
 from uuid import UUID
 
 # Generic type variable for domain entities
@@ -24,7 +24,7 @@ class BaseRepositoryInterface(Generic[T], ABC):
     """
     
     @abstractmethod
-    async def get_by_id(self, entity_id: Union[str, UUID]) -> Optional[T]:
+    async def get_by_id(self, entity_id: str | UUID) -> T | None:
         """
         Retrieve an entity by its unique ID.
         
@@ -37,7 +37,7 @@ class BaseRepositoryInterface(Generic[T], ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[T]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[T]:
         """
         Retrieve a paginated list of all entities.
         
@@ -83,7 +83,7 @@ class BaseRepositoryInterface(Generic[T], ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def delete(self, entity_id: Union[str, UUID]) -> bool:
+    async def delete(self, entity_id: str | UUID) -> bool:
         """
         Delete an entity from the repository.
         

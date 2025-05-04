@@ -5,17 +5,28 @@ This module provides a clean, dependency-injection friendly way to create
 UnitOfWork instances with their proper repository dependencies.
 """
 
-from typing import Optional, Callable
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.infrastructure.persistence.sqlalchemy.async_unit_of_work import AsyncSQLAlchemyUnitOfWork
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import SQLAlchemyPatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import SQLAlchemyDigitalTwinRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import SQLAlchemyBiometricRuleRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_alert_repository import SQLAlchemyBiometricAlertRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.biometric_twin_repository import SQLAlchemyBiometricTwinRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_alert_repository import (
+    SQLAlchemyBiometricAlertRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
+    SQLAlchemyBiometricRuleRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.repositories.biometric_twin_repository import (
+    SQLAlchemyBiometricTwinRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import (
+    SQLAlchemyDigitalTwinRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    SQLAlchemyPatientRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+    SQLAlchemyUserRepository,
+)
 
 
 class UnitOfWorkFactory:

@@ -6,10 +6,8 @@ biometric alerts in a HIPAA-compliant manner with strict security controls
 and proper audit logging.
 """
 
-from typing import List, Optional, Dict, Any
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
@@ -21,8 +19,8 @@ from app.presentation.api.dependencies.rate_limiter import sensitive_rate_limit
 from app.presentation.api.schemas.alert import (
     AlertCreateRequest,
     AlertResponse,
+    AlertsFilterParams,
     AlertUpdateRequest,
-    AlertsFilterParams
 )
 from app.presentation.api.v1.dependencies.biometric import get_alert_service
 
@@ -36,22 +34,22 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=List[AlertResponse],
+    response_model=list[AlertResponse],
     summary="Get biometric alerts",
     description="Get a list of biometric alerts with optional filtering"
 )
 async def get_alerts(
-    status: Optional[AlertStatus] = Query(None, description="Filter by alert status"),
-    priority: Optional[AlertPriority] = Query(None, description="Filter by alert priority"),
-    alert_type: Optional[AlertType] = Query(None, description="Filter by alert type"),
-    start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
-    end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
-    patient_id: Optional[UUID4] = Query(None, description="Patient ID if accessing as provider"),
+    status: AlertStatus | None = Query(None, description="Filter by alert status"),
+    priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
+    alert_type: AlertType | None = Query(None, description="Filter by alert type"),
+    start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
+    end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
+    patient_id: UUID4 | None = Query(None, description="Patient ID if accessing as provider"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user)
-) -> List[AlertResponse]:
+) -> list[AlertResponse]:
     """
     Get a list of biometric alerts with optional filtering.
     

@@ -2,23 +2,23 @@
 Interface for the Digital Twin Repository.
 """
 from abc import ABC, abstractmethod
-from typing import Optional, List
 from uuid import UUID
 
 # Import directly from the module, not the package
 from app.domain.entities.digital_twin import DigitalTwin
+
 
 # Rename class to match import in DI container -> Renaming back to DigitalTwinRepository
 class DigitalTwinRepository(ABC): # Renamed from DigitalTwinRepositoryInterface
     """Abstract base class defining the digital twin repository interface."""
 
     @abstractmethod
-    async def get_by_id(self, twin_id: UUID) -> Optional[DigitalTwin]:
+    async def get_by_id(self, twin_id: UUID) -> DigitalTwin | None:
         """Retrieve a digital twin by its ID."""
         pass
 
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID) -> Optional[DigitalTwin]:
+    async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwin | None:
         """Retrieve a digital twin by its associated patient ID."""
         pass
 
@@ -28,7 +28,7 @@ class DigitalTwinRepository(ABC): # Renamed from DigitalTwinRepositoryInterface
         pass
 
     @abstractmethod
-    async def update(self, twin: DigitalTwin) -> Optional[DigitalTwin]:
+    async def update(self, twin: DigitalTwin) -> DigitalTwin | None:
         """Update an existing digital twin."""
         pass
 

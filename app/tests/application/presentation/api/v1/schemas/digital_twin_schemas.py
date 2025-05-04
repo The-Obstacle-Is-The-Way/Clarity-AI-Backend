@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Digital Twin API schemas.
 
@@ -9,11 +8,11 @@ handling input validation and response serialization.
 from __future__ import annotations
 
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional, Union as _Union
+from typing import Any
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.domain.utils.datetime_utils import now_utc
 
 
 class DigitalTwinFeatureSchema(BaseModel):
@@ -37,12 +36,12 @@ class DigitalTwinFeatureSchema(BaseModel):
 class TreatmentOutcomeSchema(BaseModel):
     """Schema for Treatment Outcome."""
     
-    id: Optional[str] = Field(None, description="Unique ID for outcome record")
-    digital_twin_id: Optional[str] = Field(None, description="ID of associated digital twin")
+    id: str | None = Field(None, description="Unique ID for outcome record")
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     treatment: str = Field(..., description="Treatment administered")
     outcome: str = Field(..., description="Observed outcome")
     effectiveness: str = Field(..., description="Treatment effectiveness")
-    notes: Optional[str] = Field(None, description="Additional notes")
+    notes: str | None = Field(None, description="Additional notes")
     timestamp: datetime = Field(default_factory=now_utc, description="Timestamp when outcome was recorded")
     
     model_config = ConfigDict(
@@ -63,14 +62,14 @@ class TreatmentOutcomeSchema(BaseModel):
 class TreatmentPredictionSchema(BaseModel):
     """Schema for Treatment Prediction."""
     
-    id: Optional[str] = Field(None, description="Unique ID for prediction")
-    digital_twin_id: Optional[str] = Field(None, description="ID of associated digital twin")
+    id: str | None = Field(None, description="Unique ID for prediction")
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     treatment: str = Field(..., description="Treatment being predicted")
-    condition: Optional[str] = Field(None, description="Condition being treated")
+    condition: str | None = Field(None, description="Condition being treated")
     likelihood: str = Field(..., description="Likelihood of positive response")
     timeline: str = Field(..., description="Expected timeline for response")
-    obstacles: List[str] = Field(default_factory=list, description="Potential obstacles to treatment")
-    influencing_factors: List[str] = Field(default_factory=list, description="Factors influencing treatment response")
+    obstacles: list[str] = Field(default_factory=list, description="Potential obstacles to treatment")
+    influencing_factors: list[str] = Field(default_factory=list, description="Factors influencing treatment response")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for prediction")
     timestamp: datetime = Field(default_factory=now_utc, description="Timestamp when prediction was made")
     
@@ -95,11 +94,11 @@ class TreatmentPredictionSchema(BaseModel):
 class DigitalTwinSchema(BaseModel):
     """Schema for Digital Twin."""
     
-    id: Optional[str] = Field(None, description="Unique ID for digital twin")
-    patient_id: Optional[str] = Field(None, description="ID of associated patient")
-    name: Optional[str] = Field(None, description="Name of digital twin")
-    description: Optional[str] = Field(None, description="Description of digital twin")
-    features: List[DigitalTwinFeatureSchema] = Field(default_factory=list, description="Features of digital twin")
+    id: str | None = Field(None, description="Unique ID for digital twin")
+    patient_id: str | None = Field(None, description="ID of associated patient")
+    name: str | None = Field(None, description="Name of digital twin")
+    description: str | None = Field(None, description="Description of digital twin")
+    features: list[DigitalTwinFeatureSchema] = Field(default_factory=list, description="Features of digital twin")
     created_at: datetime = Field(default_factory=now_utc, description="Timestamp when digital twin was created")
     updated_at: datetime = Field(default_factory=now_utc, description="Timestamp when digital twin was last updated")
     
@@ -130,16 +129,16 @@ class CreateDigitalTwinRequest(BaseModel):
     """Request schema for creating a digital twin."""
     
     patient_id: str = Field(..., description="ID of associated patient")
-    name: Optional[str] = Field(None, description="Name of digital twin")
-    description: Optional[str] = Field(None, description="Description of digital twin")
-    initial_features: List[DigitalTwinFeatureSchema] = Field(default_factory=list, description="Initial features of digital twin")
+    name: str | None = Field(None, description="Name of digital twin")
+    description: str | None = Field(None, description="Description of digital twin")
+    initial_features: list[DigitalTwinFeatureSchema] = Field(default_factory=list, description="Initial features of digital twin")
 
 
 class UpdateDigitalTwinRequest(BaseModel):
     """Request schema for updating a digital twin."""
     
-    name: Optional[str] = Field(None, description="Name of digital twin")
-    description: Optional[str] = Field(None, description="Description of digital twin")
+    name: str | None = Field(None, description="Name of digital twin")
+    description: str | None = Field(None, description="Description of digital twin")
 
 
 class AddFeatureRequest(BaseModel):
@@ -152,8 +151,8 @@ class ClinicalTextAnalysisRequest(BaseModel):
     """Request schema for analyzing clinical text."""
     
     text: str = Field(..., description="Clinical text to analyze")
-    digital_twin_id: Optional[str] = Field(None, description="ID of associated digital twin")
-    patient_id: Optional[str] = Field(None, description="ID of associated patient")
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
+    patient_id: str | None = Field(None, description="ID of associated patient")
     analysis_type: str = Field("diagnostic_impression", description="Type of analysis to perform")
     detect_phi: bool = Field(True, description="Whether to detect and remove PHI")
     
@@ -229,7 +228,7 @@ class TreatmentPredictionRequest(BaseModel):
     """Request schema for predicting treatment outcome."""
     
     treatment: str = Field(..., description="Treatment to predict outcome for")
-    condition: Optional[str] = Field(None, description="Condition being treated")
+    condition: str | None = Field(None, description="Condition being treated")
     time_horizon: str = Field("short_term", description="Time horizon for prediction")
     
     @field_validator('treatment')
@@ -254,7 +253,7 @@ class RecordTreatmentOutcomeRequest(BaseModel):
     treatment: str = Field(..., description="Treatment administered")
     outcome: str = Field(..., description="Outcome observed")
     effectiveness: str = Field(..., description="Treatment effectiveness")
-    notes: Optional[str] = Field(None, description="Additional notes")
+    notes: str | None = Field(None, description="Additional notes")
     
     @field_validator('treatment', 'outcome', 'effectiveness')
     def not_empty(cls, v, info):
@@ -276,15 +275,15 @@ class ClinicalTextAnalysisResponse(BaseModel):
     still validate successfully.
     """
 
-    analysis_id: Optional[str] = Field(None, description="Unique ID for analysis")
-    digital_twin_id: Optional[str] = Field(None, description="ID of associated digital twin")
+    analysis_id: str | None = Field(None, description="Unique ID for analysis")
+    digital_twin_id: str | None = Field(None, description="ID of associated digital twin")
     analysis_type: str = Field(..., description="Type of analysis performed")
 
-    result: _Union[Dict[str, Any], str] = Field(..., description="Analysis result")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
-    confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence score for analysis")
-    timestamp: Optional[datetime] = Field(None, description="Timestamp when analysis was performed")
-    phi_detected: Optional[bool] = Field(None, description="Whether PHI was detected in the text")
+    result: dict[str, Any] | str = Field(..., description="Analysis result")
+    metadata: dict[str, Any] | None = Field(None, description="Additional metadata")
+    confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence score for analysis")
+    timestamp: datetime | None = Field(None, description="Timestamp when analysis was performed")
+    phi_detected: bool | None = Field(None, description="Whether PHI was detected in the text")
 
 # Ensure the model is fully defined, especially for Union types
 ClinicalTextAnalysisResponse.model_rebuild()
@@ -298,7 +297,7 @@ class PersonalizedInsightResponse(BaseModel):
     query: str = Field(..., description="Query used for insight")
     insight_type: str = Field(..., description="Type of insight generated")
     insight: str = Field(..., description="Generated insight")
-    key_points: List[str] = Field(..., description="Key points from the insight")
+    key_points: list[str] = Field(..., description="Key points from the insight")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for insight")
     timestamp: datetime = Field(..., description="Timestamp when insight was generated")
 
@@ -310,10 +309,10 @@ class ClinicalRecommendationResponse(BaseModel):
     digital_twin_id: str = Field(..., description="ID of associated digital twin")
     query: str = Field(..., description="Query used for recommendation")
     recommendation_type: str = Field(..., description="Type of recommendation generated")
-    primary_recommendations: List[str] = Field(..., description="Primary recommendations")
-    alternative_recommendations: List[str] = Field(..., description="Alternative recommendations")
-    implementation: List[str] = Field(..., description="Implementation guidelines")
-    monitoring: List[str] = Field(..., description="Monitoring guidelines")
+    primary_recommendations: list[str] = Field(..., description="Primary recommendations")
+    alternative_recommendations: list[str] = Field(..., description="Alternative recommendations")
+    implementation: list[str] = Field(..., description="Implementation guidelines")
+    monitoring: list[str] = Field(..., description="Monitoring guidelines")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for recommendation")
     timestamp: datetime = Field(..., description="Timestamp when recommendation was generated")
 
@@ -326,7 +325,7 @@ class TreatmentOutcomeResponse(BaseModel):
     treatment: str = Field(..., description="Treatment administered")
     outcome: str = Field(..., description="Outcome observed")
     effectiveness: str = Field(..., description="Treatment effectiveness")
-    notes: Optional[str] = Field(None, description="Additional notes")
+    notes: str | None = Field(None, description="Additional notes")
     timestamp: datetime = Field(..., description="Timestamp when outcome was recorded")
 
 
@@ -336,10 +335,10 @@ class BiometricCorrelationResponse(BaseModel):
     correlation_id: str = Field(..., description="Unique ID for correlation analysis")
     digital_twin_id: str = Field(..., description="ID of associated digital twin")
     biometric_type: str = Field(..., description="Type of biometric data analyzed")
-    correlations: Dict[str, float] = Field(..., description="Correlation coefficients for each factor")
-    significance: Dict[str, float] = Field(..., description="Statistical significance of correlations")
+    correlations: dict[str, float] = Field(..., description="Correlation coefficients for each factor")
+    significance: dict[str, float] = Field(..., description="Statistical significance of correlations")
     sample_size: int = Field(..., gt=0, description="Sample size used for analysis")
-    confidence_interval: List[float] = Field(..., description="Confidence interval for correlations")
+    confidence_interval: list[float] = Field(..., description="Confidence interval for correlations")
     timestamp: datetime = Field(..., description="Timestamp when analysis was performed")
 
 
@@ -350,7 +349,7 @@ class MedicationResponsePredictionResponse(BaseModel):
     digital_twin_id: str = Field(..., description="ID of associated digital twin")
     medication: str = Field(..., description="Medication being predicted")
     response_likelihood: float = Field(..., ge=0.0, le=1.0, description="Likelihood of positive response")
-    potential_side_effects: List[str] = Field(..., description="Potential side effects")
+    potential_side_effects: list[str] = Field(..., description="Potential side effects")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for prediction")
     similar_cases: int = Field(..., ge=0, description="Number of similar cases used for prediction")
     timestamp: datetime = Field(..., description="Timestamp when prediction was generated")
@@ -361,10 +360,10 @@ class TreatmentPlanResponse(BaseModel):
     
     plan_id: str = Field(..., description="Unique ID for treatment plan")
     digital_twin_id: str = Field(..., description="ID of associated digital twin")
-    treatment_goals: List[str] = Field(..., description="Goals of the treatment plan")
-    recommended_treatments: List[str] = Field(..., description="Recommended treatments")
-    timeline: Dict[str, Any] = Field(..., description="Timeline for treatment implementation")
-    monitoring_plan: List[str] = Field(..., description="Plan for monitoring treatment effectiveness")
-    adjustments: List[str] = Field(..., description="Potential adjustments based on response")
+    treatment_goals: list[str] = Field(..., description="Goals of the treatment plan")
+    recommended_treatments: list[str] = Field(..., description="Recommended treatments")
+    timeline: dict[str, Any] = Field(..., description="Timeline for treatment implementation")
+    monitoring_plan: list[str] = Field(..., description="Plan for monitoring treatment effectiveness")
+    adjustments: list[str] = Field(..., description="Potential adjustments based on response")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for plan")
     timestamp: datetime = Field(..., description="Timestamp when plan was generated")

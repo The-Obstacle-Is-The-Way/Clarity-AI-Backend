@@ -7,9 +7,9 @@ The container manages service registration and resolution, enabling
 loose coupling between components and facilitating testing.
 """
 
-import inspect
 import logging
-from typing import Any, Callable, Dict, Generic, Type, TypeVar, get_type_hints
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,13 +38,13 @@ class DIContainer:
         Args:
             is_mock: Whether this container should use mock implementations
         """
-        self._services: Dict[Type, Any] = {}
-        self._factories: Dict[Type, Callable] = {}
-        self._repository_factories: Dict[Type, Callable[[AsyncSession], Any]] = {}
+        self._services: dict[type, Any] = {}
+        self._factories: dict[type, Callable] = {}
+        self._repository_factories: dict[type, Callable[[AsyncSession], Any]] = {}
         self._is_mock = is_mock
         logger.info(f"Initializing {'MOCK' if is_mock else 'REAL'} DI container and registering services.")
     
-    def register(self, interface: Type[T], implementation: T) -> None:
+    def register(self, interface: type[T], implementation: T) -> None:
         """
         Register a service implementation for an interface.
         
@@ -63,7 +63,7 @@ class DIContainer:
         else:
             logger.debug(register_msg)
     
-    def register_factory(self, interface: Type[T], factory: Callable[[], T]) -> None:
+    def register_factory(self, interface: type[T], factory: Callable[[], T]) -> None:
         """
         Register a factory function for creating service instances.
         
@@ -75,7 +75,7 @@ class DIContainer:
     
     def register_repository_factory(
         self, 
-        interface: Type[T], 
+        interface: type[T], 
         factory: Callable[[AsyncSession], T]
     ) -> None:
         """
@@ -87,7 +87,7 @@ class DIContainer:
         """
         self._repository_factories[interface] = factory
     
-    def get(self, interface: Type[T]) -> T:
+    def get(self, interface: type[T]) -> T:
         """
         Resolve an implementation for the specified interface.
         
@@ -115,7 +115,7 @@ class DIContainer:
         # Not found
         raise KeyError(f"No implementation registered for {interface.__name__}")
     
-    def get_repository_factory(self, interface: Type[T]) -> Callable[[AsyncSession], T]:
+    def get_repository_factory(self, interface: type[T]) -> Callable[[AsyncSession], T]:
         """
         Get a factory function for creating repository instances.
         
@@ -148,7 +148,7 @@ class DIContainer:
                 
             logger.info(f"DI Container initialized with {'MOCK' if self._is_mock else 'REAL'} service registrations.")
         except Exception as e:
-            logger.error(f"Error registering {'mock' if self._is_mock else 'real'} services in DI container: {str(e)}")
+            logger.error(f"Error registering {'mock' if self._is_mock else 'real'} services in DI container: {e!s}")
             logger.exception(e)
     
     def _register_mock_services(self) -> None:
@@ -159,7 +159,6 @@ class DIContainer:
         from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 
         # Create and register generic mocks for all repository types
-        from app.core.interfaces.repositories.user_repository_interface import IUserRepository
         
         # Event repository
         mock_event_repo = MagicMock(spec=BaseRepositoryInterface)
@@ -196,7 +195,9 @@ class DIContainer:
         # Register service mocks as needed
         
         # Analytics service
-        from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
+        from app.core.interfaces.services.analytics_service_interface import (
+            AnalyticsServiceInterface,
+        )
         mock_analytics_service = MagicMock(spec=AnalyticsServiceInterface)
         self.register(AnalyticsServiceInterface, mock_analytics_service)
         logger.info("Registered AnalyticsService in DI container.")
@@ -212,9 +213,8 @@ class DIContainer:
         
         # Import services and their interfaces
         from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
-        from app.infrastructure.security.auth_service import get_auth_service
-        
         from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+        from app.infrastructure.security.auth_service import get_auth_service
         from app.infrastructure.security.jwt_service import get_jwt_service
         
         # Register services directly or via factories
@@ -223,7 +223,9 @@ class DIContainer:
         
         # Register additional services
         try:
-            from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
+            from app.core.interfaces.services.analytics_service_interface import (
+                AnalyticsServiceInterface,
+            )
             from app.core.services.analytics_service import AnalyticsService
             
             # Create and register analytics service
@@ -271,7 +273,7 @@ def reset_container() -> None:
     _container = None
 
 
-def get_service(interface_type: Type[T]) -> T:
+def get_service(interface_type: type[T]) -> T:
     """
     Get a service instance by its interface type.
     

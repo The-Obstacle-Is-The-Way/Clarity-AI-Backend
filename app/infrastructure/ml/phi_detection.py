@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 PHI Detection Service.
 
@@ -6,15 +5,14 @@ This module provides a service for detecting and redacting Protected Health Info
 (PHI) in text data, ensuring HIPAA compliance for all content stored and logged.
 """
 
-import re
 import os
-import yaml
-import logging
-from typing import Dict, List, Set, Pattern, Optional, Tuple, Union
+import re
 from dataclasses import dataclass
+from re import Pattern
+
+import yaml
 
 from app.core.utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -31,7 +29,7 @@ class PHIPattern:
     pattern: str
     description: str
     category: str
-    regex: Optional[Pattern] = None
+    regex: Pattern | None = None
     
     def __post_init__(self):
         """Compile the regex pattern after initialization."""
@@ -52,7 +50,7 @@ class PHIDetectionService:
     methods to detect and redact PHI in text data.
     """
     
-    def __init__(self, pattern_file: Optional[str] = None):
+    def __init__(self, pattern_file: str | None = None):
         """
         Initialize the PHI detection service.
         
@@ -63,7 +61,7 @@ class PHIDetectionService:
             os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
             "phi_patterns.yaml"
         )
-        self.patterns: List[PHIPattern] = []
+        self.patterns: list[PHIPattern] = []
         self._initialized = False
         
     def ensure_initialized(self) -> None:
@@ -84,7 +82,7 @@ class PHIDetectionService:
         the PHI detection patterns.
         """
         try:
-            with open(self.pattern_file, "r") as f:
+            with open(self.pattern_file) as f:
                 config = yaml.safe_load(f)
                 
             self.patterns = []
@@ -102,12 +100,12 @@ class PHIDetectionService:
                     
             logger.info(f"Loaded {len(self.patterns)} PHI detection patterns")
             
-        except (yaml.YAMLError, IOError) as e:
+        except (OSError, yaml.YAMLError) as e:
             logger.error(f"Error loading PHI patterns: {e}")
             # Load some basic default patterns
             self.patterns = self._get_default_patterns()
             
-    def _get_default_patterns(self) -> List[PHIPattern]:
+    def _get_default_patterns(self) -> list[PHIPattern]:
         """
         Get default PHI patterns.
         
@@ -180,7 +178,7 @@ class PHIDetectionService:
                 
         return False
         
-    def detect_phi(self, text: str) -> List[Tuple[str, str, int, int]]:
+    def detect_phi(self, text: str) -> list[tuple[str, str, int, int]]:
         """
         Detect PHI in text and return details of matches.
         

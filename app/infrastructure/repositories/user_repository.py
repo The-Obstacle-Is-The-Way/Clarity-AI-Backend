@@ -5,20 +5,21 @@ This module implements the IUserRepository using SQLAlchemy ORM,
 following the Repository pattern from clean architecture principles.
 """
 
-from typing import List, Optional, Union
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.user import User
-from app.core.errors.base_exceptions import NotFoundException
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.infrastructure.persistence.sqlalchemy.models.user import (
     User as UserModel,
 )
+from app.infrastructure.persistence.sqlalchemy.repositories.base_repository import (
+    BaseSQLAlchemyRepository,
+)
 
-class SqlAlchemyUserRepository(IUserRepository):
+
+class SqlAlchemyUserRepository(BaseSQLAlchemyRepository, IUserRepository):
     """
     SQLAlchemy implementation of the IUserRepository.
     
@@ -28,15 +29,20 @@ class SqlAlchemyUserRepository(IUserRepository):
     """
     
     def __init__(self, session: AsyncSession):
-        """
-        Initialize the repository with a database session.
-        
-        Args:
-            session: SQLAlchemy async session for database operations
-        """
-        self._session = session
+        """Initialize the repository with the session and specific model class."""
+        super().__init__(session=session, model_class=UserModel)
+        # self._session = session # Redundant assignment handled by BaseSQLAlchemyRepository
     
-    async def get_by_id(self, user_id: Union[str, UUID]) -> Optional[User]:
+    async def _to_entity(self, model: UserModel) -> User:
+        """Convert SQLAlchemy model to domain entity."""
+        return User(
+            id=model.id,
+            username=model.username,
+            email=model.email,
+            # Add other fields as necessary
+        )
+    
+    async def get_by_id(self, user_id: str | UUID) -> User | None:
         """
         Retrieve a user by their unique ID.
         
@@ -50,7 +56,7 @@ class SqlAlchemyUserRepository(IUserRepository):
         # For test collection, return a placeholder
         return None
     
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         """
         Retrieve a user by their email address.
         
@@ -64,7 +70,7 @@ class SqlAlchemyUserRepository(IUserRepository):
         # For test collection, return a placeholder
         return None
     
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         """
         Retrieve a user by their username.
         
@@ -112,7 +118,7 @@ class SqlAlchemyUserRepository(IUserRepository):
         # For test collection, return the input
         return user
     
-    async def delete(self, user_id: Union[str, UUID]) -> bool:
+    async def delete(self, user_id: str | UUID) -> bool:
         """
         Delete a user from the repository.
         
@@ -126,7 +132,7 @@ class SqlAlchemyUserRepository(IUserRepository):
         # For test collection, return success
         return True
     
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         """
         List all users with pagination.
         

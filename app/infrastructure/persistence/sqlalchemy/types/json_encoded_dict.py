@@ -6,8 +6,8 @@ dictionaries as JSON data, with cross-database compatibility.
 """
 
 import json
+
 from sqlalchemy import types
-from sqlalchemy.ext.mutable import MutableDict
 
 
 class JSONEncodedDict(types.TypeDecorator):

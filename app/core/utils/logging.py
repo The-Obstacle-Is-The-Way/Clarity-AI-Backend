@@ -7,16 +7,15 @@ with special care for HIPAA compliance and PHI protection.
 
 import logging
 import os
-import re
 import sys
 import traceback
+from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Type, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 from app.core.constants import LogLevel
 from app.core.utils.data_transformation import DataAnonymizer
-
 
 # Type variables for function signatures
 F = TypeVar('F', bound=Callable[..., Any])
@@ -97,7 +96,7 @@ def get_logger(name: str) -> logging.Logger:
 
 
 def log_execution_time(
-    logger: Optional[logging.Logger] = None, 
+    logger: logging.Logger | None = None, 
     level: LogLevel = LogLevel.DEBUG
 ) -> Callable[[F], F]:
     """
@@ -141,7 +140,7 @@ def log_execution_time(
                 duration_ms = (end_time - start_time).total_seconds() * 1000
                 
                 logger.exception(
-                    f"Exception in '{func.__name__}' after {duration_ms:.2f} ms: {str(e)}"
+                    f"Exception in '{func.__name__}' after {duration_ms:.2f} ms: {e!s}"
                 )
                 raise  # Re-raise the exception
                 
@@ -151,11 +150,11 @@ def log_execution_time(
 
 
 def log_method_calls(
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
     level: LogLevel = LogLevel.DEBUG,
     log_args: bool = True,
     log_results: bool = True
-) -> Callable[[Type], Type]:
+) -> Callable[[type], type]:
     """
     Class decorator to log method calls.
     
@@ -168,7 +167,7 @@ def log_method_calls(
     Returns:
         Decorator function
     """
-    def decorator(cls: Type) -> Type:
+    def decorator(cls: type) -> type:
         # Get class methods (excluding magic methods)
         for name, method in cls.__dict__.items():
             if callable(method) and not name.startswith('__'):
@@ -182,7 +181,7 @@ def log_method_calls(
 
 def _create_logged_method(
     method: Callable,
-    logger: Optional[logging.Logger],
+    logger: logging.Logger | None,
     level: LogLevel,
     log_args: bool,
     log_results: bool
@@ -226,7 +225,7 @@ def _create_logged_method(
             if log_results:
                 method_logger.log(
                     level.value,
-                    f"{method_call} returned: {str(result)}"
+                    f"{method_call} returned: {result!s}"
                 )
             else:
                 method_logger.log(
@@ -240,7 +239,7 @@ def _create_logged_method(
             # Log exception
             tb = traceback.format_exc()
             method_logger.error(
-                f"Exception in {method_call}: {str(e)}\n{tb}"
+                f"Exception in {method_call}: {e!s}\n{tb}"
             )
             raise  # Re-raise the exception
             

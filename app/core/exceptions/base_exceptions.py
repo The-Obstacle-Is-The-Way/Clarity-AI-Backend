@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base exceptions for the application.
 
@@ -6,7 +5,7 @@ This module defines the foundational exception classes that form the basis of th
 application's exception hierarchy.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class BaseException(Exception):
@@ -22,8 +21,8 @@ class BaseException(Exception):
     def __init__(
         self,
         message: str,
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
-        code: Optional[str] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
+        code: str | None = None,
     ):
         self.message = message
         self.detail = detail
@@ -42,7 +41,7 @@ class ValidationException(BaseException):
     def __init__(
         self,
         message: str = "Validation error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "VALIDATION_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -54,7 +53,7 @@ class ResourceNotFoundException(BaseException):
     def __init__(
         self,
         message: str = "Resource not found",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "RESOURCE_NOT_FOUND",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -70,7 +69,7 @@ class ResourceNotFoundError(BaseException):
     def __init__(
         self,
         message: str = "Resource not found",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "RESOURCE_NOT_FOUND",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -89,7 +88,7 @@ class EntityNotFoundError(ResourceNotFoundError):
     def __init__(
         self,
         message: str = "Entity not found",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "ENTITY_NOT_FOUND",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -101,7 +100,7 @@ class AuthenticationException(BaseException):
     def __init__(
         self,
         message: str = "Authentication failed",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "AUTHENTICATION_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -113,7 +112,7 @@ class AuthorizationException(BaseException):
     def __init__(
         self,
         message: str = "Not authorized",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "AUTHORIZATION_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -125,7 +124,7 @@ class BusinessRuleException(BaseException):
     def __init__(
         self,
         message: str = "Business rule violation",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "BUSINESS_RULE_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -137,7 +136,7 @@ class InitializationError(BaseException):
     def __init__(
         self,
         message: str = "Failed to initialize",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "INITIALIZATION_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -149,7 +148,7 @@ class ConfigurationError(BaseException):
     def __init__(
         self,
         message: str = "Configuration error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "CONFIGURATION_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -161,7 +160,7 @@ class ExternalServiceException(BaseException):
     def __init__(
         self,
         message: str = "External service error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "EXTERNAL_SERVICE_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -173,7 +172,7 @@ class DatabaseException(BaseException):
     def __init__(
         self,
         message: str = "Database error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "DATABASE_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -185,9 +184,9 @@ class PersistenceError(BaseException):
     def __init__(
         self,
         message: str = "Persistence error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "PERSISTENCE_ERROR",
-        original_exception: Optional[Exception] = None,
+        original_exception: Exception | None = None,
     ):
         super().__init__(message=message, detail=detail, code=code)
         self.original_exception = original_exception
@@ -199,7 +198,7 @@ class SecurityException(BaseException):
     def __init__(
         self,
         message: str = "Security error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "SECURITY_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -211,7 +210,7 @@ class ApplicationError(BaseException):
     def __init__(
         self,
         message: str = "Application error",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "APPLICATION_ERROR",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -223,7 +222,7 @@ class InvalidConfigurationError(BaseException):
     def __init__(
         self,
         message: str = "Invalid configuration",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: str = "INVALID_CONFIGURATION",
     ):
         super().__init__(message=message, detail=detail, code=code)
@@ -233,42 +232,42 @@ class InvalidConfigurationError(BaseException):
 
 class AuthorizationError(BaseException):
     """Exception raised for authorization errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Authorization error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "AUTHORIZATION_ERROR"):
+    def __init__(self, message: str = "Authorization error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "AUTHORIZATION_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class ValidationError(BaseException):
     """Exception raised for validation errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Validation error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "VALIDATION_ERROR"):
+    def __init__(self, message: str = "Validation error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "VALIDATION_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class ServiceProviderError(BaseException):
     """Exception raised for service provider errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Service provider error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "SERVICE_PROVIDER_ERROR"):
+    def __init__(self, message: str = "Service provider error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "SERVICE_PROVIDER_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class AnalysisError(BaseException):
     """Exception raised for analysis errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Analysis error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "ANALYSIS_ERROR"):
+    def __init__(self, message: str = "Analysis error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "ANALYSIS_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class EmbeddingError(BaseException):
     """Exception raised for embedding errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Embedding error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "EMBEDDING_ERROR"):
+    def __init__(self, message: str = "Embedding error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "EMBEDDING_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class InitializationError(BaseException):
     """Exception raised for initialization errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Initialization error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "INITIALIZATION_ERROR"):
+    def __init__(self, message: str = "Initialization error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "INITIALIZATION_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class IntegrationError(BaseException):
     """Exception raised for integration errors (legacy import compatibility)."""
-    def __init__(self, message: str = "Integration error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "INTEGRATION_ERROR"):
+    def __init__(self, message: str = "Integration error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "INTEGRATION_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 class ModelExecutionError(BaseException):
     """Exception raised when an ML model fails during execution."""
-    def __init__(self, message: str = "Model execution error", detail: Optional[Union[str, List[str], Dict[str, Any]]] = None, code: str = "MODEL_EXECUTION_ERROR"):
+    def __init__(self, message: str = "Model execution error", detail: str | list[str] | dict[str, Any] | None = None, code: str = "MODEL_EXECUTION_ERROR"):
         super().__init__(message=message, detail=detail, code=code)
 
 # --- Exceptions moved from standalone exceptions.py --- 
@@ -279,8 +278,8 @@ class HIPAAComplianceError(BusinessRuleException):
     def __init__(
         self, 
         message: str = "HIPAA compliance violation",
-        detail: Optional[Union[str, List[str], Dict[str, Any]]] = None,
-        violation_type: Optional[str] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
+        violation_type: str | None = None,
         code: str = "HIPAA_COMPLIANCE_ERROR",
         **kwargs # Added to capture potential extra args from old definition
     ):

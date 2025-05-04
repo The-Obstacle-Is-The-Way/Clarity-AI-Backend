@@ -2,19 +2,23 @@
 Application service for temporal neurotransmitter analysis.
 """
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 from uuid import UUID
-import logging
-import uuid
 
-from app.domain.entities.temporal_sequence import TemporalSequence
+from app.domain.entities.digital_twin_enums import (
+    BrainRegion,
+    Neurotransmitter,
+)
 from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
-from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter, ClinicalSignificance
+from app.domain.entities.neurotransmitter_mapping import (
+    NeurotransmitterMapping,
+    create_default_neurotransmitter_mapping,
+)
 from app.domain.entities.temporal_neurotransmitter_mapping import extend_neurotransmitter_mapping
-from app.domain.entities.neurotransmitter_mapping import NeurotransmitterMapping, create_default_neurotransmitter_mapping
-from app.domain.repositories.temporal_repository import TemporalSequenceRepository, EventRepository
+from app.domain.entities.temporal_sequence import TemporalSequence
+from app.domain.repositories.temporal_repository import EventRepository, TemporalSequenceRepository
 from app.domain.services.visualization_preprocessor import NeurotransmitterVisualizationPreprocessor
+from app.domain.utils.datetime_utils import UTC
 
 
 class TemporalNeurotransmitterService:
@@ -28,11 +32,11 @@ class TemporalNeurotransmitterService:
     def __init__(
         self,
         sequence_repository: TemporalSequenceRepository,
-        event_repository: Optional[EventRepository] = None,
-        nt_mapping: Optional[NeurotransmitterMapping] = None,
-        visualization_preprocessor: Optional[NeurotransmitterVisualizationPreprocessor] = None,
+        event_repository: EventRepository | None = None,
+        nt_mapping: NeurotransmitterMapping | None = None,
+        visualization_preprocessor: NeurotransmitterVisualizationPreprocessor | None = None,
         xgboost_service = None,  # Intentionally untyped to avoid cyclic imports
-        patient_id: Optional[UUID] = None
+        patient_id: UUID | None = None
     ):
         """
         Initialize the service with required dependencies.
@@ -139,7 +143,7 @@ class TemporalNeurotransmitterService:
         patient_id: UUID,
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter
-    ) -> Optional[NeurotransmitterEffect]:
+    ) -> NeurotransmitterEffect | None:
         """
         Analyze neurotransmitter levels for a patient in a specific brain region.
         
@@ -169,7 +173,7 @@ class TemporalNeurotransmitterService:
         # Extract time series for this neurotransmitter
         time_series_data = [
             (ts, values[feature_idx]) 
-            for ts, values in zip(sequence.timestamps, sequence.values)
+            for ts, values in zip(sequence.timestamps, sequence.values, strict=False)
         ]
         
         # Calculate baseline period (first third of the sequence)
@@ -207,7 +211,7 @@ class TemporalNeurotransmitterService:
         target_neurotransmitter: Neurotransmitter,
         treatment_effect: float,
         simulation_days: int = 14
-    ) -> Dict[Neurotransmitter, UUID]:
+    ) -> dict[Neurotransmitter, UUID]:
         """
         Simulate treatment response and save resulting temporal sequences.
         
@@ -313,8 +317,8 @@ class TemporalNeurotransmitterService:
     async def get_visualization_data(
         self,
         sequence_id: UUID,
-        focus_features: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        focus_features: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get optimized visualization data for a temporal sequence.
         
@@ -369,7 +373,7 @@ class TemporalNeurotransmitterService:
         starting_region: BrainRegion,
         neurotransmitter: Neurotransmitter,
         time_steps: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get visualization data for a neurotransmitter cascade.
         
@@ -487,7 +491,7 @@ class TemporalNeurotransmitterService:
         
         return viz_data
     
-    def _find_region_for_position(self, position: Tuple[float, float, float]) -> Optional[BrainRegion]:
+    def _find_region_for_position(self, position: tuple[float, float, float]) -> BrainRegion | None:
         """
         Find the brain region closest to the given 3D position.
         
@@ -652,7 +656,7 @@ class TemporalNeurotransmitterService:
         )
         # Attach details attribute for consistency with record_event expectations
         if details is not None:
-            setattr(event, 'details', details)
+            event.details = details
 
         if self.event_repository is None:
             # In production this should never happen, but unit‑tests may provide None – emulate save and return id.
@@ -669,7 +673,7 @@ class TemporalNeurotransmitterService:
         brain_region: BrainRegion,
         start_time: datetime,
         end_time: datetime,
-    ) -> Optional[TemporalSequence]:
+    ) -> TemporalSequence | None:
         """Retrieve concentration data within a time window via repository."""
         return await self.sequence_repository.get_by_time_range(
             patient_id=patient_id,

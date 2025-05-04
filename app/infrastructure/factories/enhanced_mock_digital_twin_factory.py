@@ -5,15 +5,16 @@ This factory is responsible for creating and wiring up the enhanced mock impleme
 of the Digital Twin core service and its dependencies (MentalLLaMA, XGBoost, PAT).
 """
 import logging
-from typing import Tuple, Optional, Dict
 from uuid import UUID
 
 from app.domain.services.enhanced_digital_twin_core_service import EnhancedDigitalTwinCoreService
 from app.domain.services.enhanced_mentalllama_service import EnhancedMentalLLaMAService
-from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 from app.domain.services.enhanced_pat_service import EnhancedPATService
+from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
+from app.infrastructure.services.mock_enhanced_digital_twin_core_service import (
+    MockEnhancedDigitalTwinCoreService,
+)
 
-from app.infrastructure.services.mock_enhanced_digital_twin_core_service import MockEnhancedDigitalTwinCoreService
 # These would be imported once implemented
 # from app.infrastructure.services.mock_enhanced_mentalllama_service import MockEnhancedMentalLLaMAService
 # from app.infrastructure.services.mock_enhanced_xgboost_service import MockEnhancedXGBoostService
@@ -65,7 +66,7 @@ class MockEnhancedMentalLLaMAService(EnhancedMentalLLaMAService):
         logger.info("MockEnhancedMentalLLaMAService.integrate_with_belief_network called")
         return {}
     
-    async def generate_insight_explanation(self, patient_id: UUID, insight: Dict, detail_level: str) -> Dict:
+    async def generate_insight_explanation(self, patient_id: UUID, insight: dict, detail_level: str) -> dict:
         """Stub for generating explanations for clinical insights."""
         logger.info("MockEnhancedMentalLLaMAService.generate_insight_explanation called")
         # Provide a non-empty explanation for test compatibility
@@ -150,12 +151,12 @@ class MockEnhancedXGBoostService(EnhancedXGBoostService):
         logger.info("MockEnhancedXGBoostService.integrate_with_knowledge_graph called")
         return {}
     
-    async def simulate_treatment_cascade(self, *args, **kwargs) -> Dict:
+    async def simulate_treatment_cascade(self, *args, **kwargs) -> dict:
         """Stub for simulating treatment cascade effects."""
         logger.info("MockEnhancedXGBoostService.simulate_treatment_cascade called")
         return {"direct_effects": {}, "indirect_effects": [{}]}
     
-    async def predict_treatment_response(self, *args, **kwargs) -> Dict:
+    async def predict_treatment_response(self, *args, **kwargs) -> dict:
         """Stub for predicting treatment response via XGBoost."""
         logger.info("MockEnhancedXGBoostService.predict_treatment_response called")
         return {"predicted_response": 0.5, "confidence": 1.0, "timeframe_days": 7}
@@ -286,7 +287,7 @@ class EnhancedMockDigitalTwinFactory:
     """
     
     @staticmethod
-    def create_enhanced_mock_services() -> Tuple[
+    def create_enhanced_mock_services() -> tuple[
         EnhancedDigitalTwinCoreService,
         EnhancedMentalLLaMAService,
         EnhancedXGBoostService,

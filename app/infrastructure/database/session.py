@@ -5,9 +5,7 @@ This module provides SQLAlchemy session management functionality
 following clean architecture principles with proper separation of concerns.
 """
 
-import os
-import os
-from typing import AsyncGenerator, Union, Generator
+from collections.abc import AsyncGenerator
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -53,7 +51,7 @@ try:
     
 except Exception as e:
     # Fallback to sync engine if async fails (for test collection)
-    print(f"Warning: Failed to create async engine ({str(e)}), falling back to sync engine")
+    print(f"Warning: Failed to create async engine ({e!s}), falling back to sync engine")
     
     # Convert async URL to sync URL
     if 'sqlite+aiosqlite' in settings.DATABASE_URL:
@@ -78,7 +76,7 @@ except Exception as e:
     is_async = False
 
 
-async def get_async_session() -> AsyncGenerator[Union[AsyncSession, Session], None]:
+async def get_async_session() -> AsyncGenerator[AsyncSession | Session, None]:
     """
     Dependency function to get a database session.
     
@@ -104,7 +102,7 @@ async def get_async_session() -> AsyncGenerator[Union[AsyncSession, Session], No
             session.close()
 
 
-def get_session() -> Union[AsyncSession, Session]:
+def get_session() -> AsyncSession | Session:
     """
     Get a new database session for non-dependency injection contexts.
     

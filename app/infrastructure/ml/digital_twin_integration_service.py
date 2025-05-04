@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Digital Twin Integration Service.
 
@@ -6,13 +5,8 @@ This module provides integration with the Digital Twin system for creating
 and manipulating patient-specific neural network models.
 """
 
-from typing import Dict, List, Any, Optional
-import json
-import os
 import logging
-
-from app.infrastructure.ml.mentallama import MockMentaLLaMA # Import correct class name
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +52,8 @@ class DigitalTwinIntegrationService:
     async def create_patient_model(
         self, 
         patient_id: str, 
-        clinical_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        clinical_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a new patient-specific Digital Twin model.
         
@@ -104,8 +98,8 @@ class DigitalTwinIntegrationService:
     async def update_model(
         self, 
         patient_id: str, 
-        new_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        new_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Update an existing patient Digital Twin model.
         
@@ -130,7 +124,7 @@ class DigitalTwinIntegrationService:
         
         return model
     
-    async def get_model(self, patient_id: str) -> Dict[str, Any]:
+    async def get_model(self, patient_id: str) -> dict[str, Any]:
         """
         Retrieve a patient's Digital Twin model.
         
@@ -152,8 +146,8 @@ class DigitalTwinIntegrationService:
     async def simulate_treatment(
         self, 
         patient_id: str, 
-        treatment_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        treatment_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Simulate treatment effect on a patient's Digital Twin model.
         
@@ -192,8 +186,8 @@ class DigitalTwinIntegrationService:
     async def generate_comprehensive_insights(
         self,
         patient_id: str,
-        options: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        options: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate comprehensive insights for a patient by integrating multiple ML services.
         
@@ -270,7 +264,7 @@ class DigitalTwinIntegrationService:
             
         return result
     
-    async def _generate_integrated_recommendations(self, insights: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _generate_integrated_recommendations(self, insights: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Generate integrated recommendations based on insights from all services.
         
@@ -332,7 +326,7 @@ class DigitalTwinIntegrationService:
             
         return recommendations
         
-    async def _get_patient_data(self, patient_id: str) -> Dict[str, Any]:
+    async def _get_patient_data(self, patient_id: str) -> dict[str, Any]:
         """
         Retrieve patient data from the repository.
         
@@ -353,12 +347,12 @@ class DigitalTwinIntegrationService:
     async def generate_comprehensive_patient_insights(
         self,
         patient_id: str,
-        patient_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate comprehensive patient insights by coordinating multiple services.
         """
-        insights: Dict[str, Any] = {}
+        insights: dict[str, Any] = {}
         # Symptom forecasting
         # Skip forecast if side_effect is set (treated as failure)
         side = getattr(self.symptom_forecasting_service.forecast_symptoms, 'side_effect', None)
@@ -388,7 +382,7 @@ class DigitalTwinIntegrationService:
             pass
         return insights
     
-    def _sanitize_patient_data(self, patient_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_patient_data(self, patient_data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize patient data by removing PHI fields.
         """

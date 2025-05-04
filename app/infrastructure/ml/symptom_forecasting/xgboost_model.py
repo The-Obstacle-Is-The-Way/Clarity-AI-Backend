@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 XGBoost-based symptom forecasting model for the NOVAMIND Digital Twin.
 
@@ -9,13 +8,14 @@ the AI Models Core Implementation documentation.
 
 import logging
 import os
+import sys
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import joblib
 import numpy as np
-import sys
+
+from app.domain.utils.datetime_utils import UTC
 
 # Mock all required modules explicitly and add them to sys.modules
 # This ensures they're available during test collection
@@ -88,7 +88,7 @@ except Exception:
     # Already taken care of with our mocks, this should never execute
     pass
 
-from app.core.services.ml.xgboost.exceptions import PredictionError, ValidationError
+from app.core.services.ml.xgboost.exceptions import PredictionError
 
 
 class XGBoostSymptomModel:
@@ -101,9 +101,9 @@ class XGBoostSymptomModel:
 
     def __init__(
         self,
-        model_path: Optional[str] = None,
-        feature_names: Optional[List[str]] = None,
-        target_names: Optional[List[str]] = None,
+        model_path: str | None = None,
+        feature_names: list[str] | None = None,
+        target_names: list[str] | None = None,
         n_estimators: int = 1000,
         learning_rate: float = 0.01,
         max_depth: int = 6,
@@ -163,8 +163,8 @@ class XGBoostSymptomModel:
             self.params = model_data.get("params", self.params)
             logging.info(f"Loaded XGBoost model from {model_path}")
         except Exception as e:
-            logging.error(f"Error loading XGBoost model: {str(e)}")
-            raise Exception(f"Failed to load XGBoost model: {str(e)}")
+            logging.error(f"Error loading XGBoost model: {e!s}")
+            raise Exception(f"Failed to load XGBoost model: {e!s}")
 
     def save_model(self, model_path: str) -> None:
         """
@@ -185,12 +185,12 @@ class XGBoostSymptomModel:
             joblib.dump(model_data, model_path)
             logging.info(f"Saved XGBoost model to {model_path}")
         except Exception as e:
-            logging.error(f"Error saving XGBoost model: {str(e)}")
-            raise Exception(f"Failed to save XGBoost model: {str(e)}")
+            logging.error(f"Error saving XGBoost model: {e!s}")
+            raise Exception(f"Failed to save XGBoost model: {e!s}")
 
     def _optimize_hyperparameters(
         self, X_train: np.ndarray, y_train: np.ndarray, n_trials: int = 50
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Optimize hyperparameters using Optuna.
 
@@ -258,7 +258,7 @@ class XGBoostSymptomModel:
         y_train: np.ndarray,
         optimize: bool = True,
         n_trials: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Train the XGBoost model.
 
@@ -335,7 +335,7 @@ class XGBoostSymptomModel:
             "params": self.params,
         }
 
-    async def predict(self, X: np.ndarray, horizon: int) -> Dict[str, Any]:
+    async def predict(self, X: np.ndarray, horizon: int) -> dict[str, Any]:
         """
         Generate predictions for the given input data.
 
@@ -415,9 +415,9 @@ class XGBoostSymptomModel:
             }
 
         except Exception as e:
-            raise PredictionError(f"Error during XGBoost model inference: {str(e)}")
+            raise PredictionError(f"Error during XGBoost model inference: {e!s}")
 
-    def get_feature_importance(self) -> Dict[str, Dict[str, float]]:
+    def get_feature_importance(self) -> dict[str, dict[str, float]]:
         """
         Get feature importance for each target variable.
 
@@ -435,7 +435,7 @@ class XGBoostSymptomModel:
 
         return feature_importance
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the model.
 

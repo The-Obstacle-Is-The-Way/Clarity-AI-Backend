@@ -7,7 +7,6 @@ that must be implemented by concrete repositories.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
 
 
 class ITokenRepository(ABC):
@@ -83,7 +82,7 @@ class ITokenRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_active_sessions(self, user_id: str) -> List[str]:
+    async def get_active_sessions(self, user_id: str) -> list[str]:
         """
         Get all active sessions for a user.
 

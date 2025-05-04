@@ -8,21 +8,21 @@ that can be used in tests without requiring actual AWS connectivity.
 import json
 import uuid
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional, Union, BinaryIO
 from io import BytesIO
+from typing import Any
 
 from app.core.interfaces.aws_service_interface import (
+    AWSServiceFactory,
+    AWSSessionServiceInterface,
+    BedrockRuntimeServiceInterface,
+    BedrockServiceInterface,
+    ComprehendMedicalServiceInterface,
     DynamoDBServiceInterface,
     S3ServiceInterface,
-    SageMakerServiceInterface,
     SageMakerRuntimeServiceInterface,
-    ComprehendMedicalServiceInterface,
-    BedrockServiceInterface,
-    BedrockRuntimeServiceInterface,
-    AWSSessionServiceInterface,
-    AWSServiceFactory
+    SageMakerServiceInterface,
 )
+from app.domain.utils.datetime_utils import UTC
 
 
 class InMemoryDynamoDBService(DynamoDBServiceInterface):
@@ -30,22 +30,22 @@ class InMemoryDynamoDBService(DynamoDBServiceInterface):
 
     def __init__(self):
         """Initialize with empty tables storage."""
-        self._tables: Dict[str, List[Dict[str, Any]]] = {}
+        self._tables: dict[str, list[dict[str, Any]]] = {}
 
-    def scan_table(self, table_name: str) -> Dict[str, List[Dict[str, Any]]]:
+    def scan_table(self, table_name: str) -> dict[str, list[dict[str, Any]]]:
         """Scan a DynamoDB table and return all items."""
         if table_name not in self._tables:
             self._tables[table_name] = []
         return {"Items": list(self._tables[table_name])}
 
-    def put_item(self, *, TableName: str, Item: Dict[str, Any]) -> Dict[str, Any]:
+    def put_item(self, *, TableName: str, Item: dict[str, Any]) -> dict[str, Any]:
         """Put an item into a DynamoDB table."""
         if TableName not in self._tables:
             self._tables[TableName] = []
         self._tables[TableName].append(Item)
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
         
-    def get_item(self, table_name: str, key: Dict[str, Any]) -> Dict[str, Any]:
+    def get_item(self, table_name: str, key: dict[str, Any]) -> dict[str, Any]:
         """Get an item from a DynamoDB table."""
         if table_name not in self._tables:
             return {"Item": None}
@@ -63,7 +63,7 @@ class InMemoryDynamoDBService(DynamoDBServiceInterface):
         return {"Item": None}
         
     def query(self, table_name: str, key_condition_expression: str, 
-              expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+              expression_attribute_values: dict[str, Any]) -> dict[str, Any]:
         """Query items from a DynamoDB table."""
         # This is a very simplified implementation for testing
         # In real applications, you'd need a proper expression parser
@@ -80,20 +80,20 @@ class InMemoryS3Service(S3ServiceInterface):
 
     def __init__(self):
         """Initialize with empty buckets storage."""
-        self._buckets: Dict[str, Dict[str, bytes]] = {}
+        self._buckets: dict[str, dict[str, bytes]] = {}
 
     def check_bucket_exists(self, bucket_name: str) -> bool:
         """Check if an S3 bucket exists."""
         return bucket_name in self._buckets
 
-    def put_object(self, bucket_name: str, key: str, body: bytes) -> Dict[str, Any]:
+    def put_object(self, bucket_name: str, key: str, body: bytes) -> dict[str, Any]:
         """Upload an object to S3."""
         if bucket_name not in self._buckets:
             self._buckets[bucket_name] = {}
         self._buckets[bucket_name][key] = body
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
         
-    def get_object(self, bucket_name: str, key: str) -> Dict[str, Any]:
+    def get_object(self, bucket_name: str, key: str) -> dict[str, Any]:
         """Get an object from S3."""
         if bucket_name not in self._buckets or key not in self._buckets[bucket_name]:
             raise Exception(f"Key '{key}' not found in bucket '{bucket_name}'")
@@ -105,7 +105,7 @@ class InMemoryS3Service(S3ServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200}
         }
         
-    def list_objects(self, bucket_name: str, prefix: Optional[str] = None) -> Dict[str, Any]:
+    def list_objects(self, bucket_name: str, prefix: str | None = None) -> dict[str, Any]:
         """List objects in an S3 bucket with optional prefix."""
         if bucket_name not in self._buckets:
             return {"Contents": []}
@@ -136,16 +136,16 @@ class InMemorySageMakerService(SageMakerServiceInterface):
 
     def __init__(self):
         """Initialize with empty endpoints storage."""
-        self._endpoints: Dict[str, Dict[str, Any]] = {}
+        self._endpoints: dict[str, dict[str, Any]] = {}
 
-    def list_endpoints(self) -> List[Dict[str, Any]]:
+    def list_endpoints(self) -> list[dict[str, Any]]:
         """List all SageMaker endpoints."""
         return [
             {"EndpointName": name, "EndpointStatus": info.get("status", "InService")}
             for name, info in self._endpoints.items()
         ]
 
-    def describe_endpoint(self, endpoint_name: str) -> Dict[str, Any]:
+    def describe_endpoint(self, endpoint_name: str) -> dict[str, Any]:
         """Get information about a SageMaker endpoint."""
         # If endpoint doesn't exist, create a default one to avoid errors in tests
         info = self._endpoints.setdefault(endpoint_name, {})
@@ -173,7 +173,7 @@ class InMemorySageMakerRuntimeService(SageMakerRuntimeServiceInterface):
         content_type: str, 
         body: bytes,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Invoke a SageMaker endpoint with deterministic test responses."""
         # Create a predictable test response
         response_payload = {
@@ -193,7 +193,7 @@ class InMemorySageMakerRuntimeService(SageMakerRuntimeServiceInterface):
 class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
     """In-memory AWS Comprehend Medical service implementation for testing."""
     
-    def detect_entities(self, text: str) -> Dict[str, Any]:
+    def detect_entities(self, text: str) -> dict[str, Any]:
         """Simulate detection of medical entities in text."""
         # Return simulated medical entities that would be found in psychiatric texts
         return {
@@ -221,7 +221,7 @@ class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200},
         }
         
-    def detect_phi(self, text: str) -> Dict[str, Any]:
+    def detect_phi(self, text: str) -> dict[str, Any]:
         """Simulate detection of PHI in text."""
         # Return simulated PHI entities with high sensitivity for testing
         return {
@@ -249,7 +249,7 @@ class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
             "ResponseMetadata": {"HTTPStatusCode": 200},
         }
         
-    def infer_icd10_cm(self, text: str) -> Dict[str, Any]:
+    def infer_icd10_cm(self, text: str) -> dict[str, Any]:
         """Simulate inference of ICD-10-CM codes from text."""
         # Return simulated ICD-10 codes relevant to psychiatry
         return {
@@ -285,7 +285,7 @@ class InMemoryComprehendMedicalService(ComprehendMedicalServiceInterface):
 class InMemoryBedrockService(BedrockServiceInterface):
     """In-memory AWS Bedrock service implementation for testing."""
     
-    def list_foundation_models(self) -> Dict[str, Any]:
+    def list_foundation_models(self) -> dict[str, Any]:
         """Simulate listing available foundation models."""
         return {
             "modelSummaries": [
@@ -310,9 +310,9 @@ class InMemoryBedrockService(BedrockServiceInterface):
     def invoke_model(
         self,
         model_id: str,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Simulate invoking a foundation model."""
         # Mock response for testing
         return {
@@ -330,11 +330,11 @@ class InMemoryBedrockRuntimeService(BedrockRuntimeServiceInterface):
     def invoke_model(
         self,
         model_id: str,
-        body: Union[str, Dict[str, Any], bytes],
-        content_type: Optional[str] = None,
-        accept: Optional[str] = None,
+        body: str | dict[str, Any] | bytes,
+        content_type: str | None = None,
+        accept: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Simulate invoking a foundation model."""
         # Interpret the request based on model_id
         if "anthropic.claude" in model_id:
@@ -359,11 +359,11 @@ class InMemoryBedrockRuntimeService(BedrockRuntimeServiceInterface):
     def invoke_model_with_response_stream(
         self,
         model_id: str,
-        body: Union[str, Dict[str, Any], bytes],
-        content_type: Optional[str] = None,
-        accept: Optional[str] = None,
+        body: str | dict[str, Any] | bytes,
+        content_type: str | None = None,
+        accept: str | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Simulate invoking a foundation model with streaming response."""
         # Mock streaming response generator
         class MockStreamingBody:
@@ -412,7 +412,7 @@ class InMemoryAWSSessionService(AWSSessionServiceInterface):
         """Initialize with mock region."""
         self._region_name = "us-east-1"  # Default test region
     
-    def get_caller_identity(self) -> Dict[str, Any]:
+    def get_caller_identity(self) -> dict[str, Any]:
         """Simulate getting AWS identity information."""
         return {
             "UserId": "TESTUSER123",
@@ -420,7 +420,7 @@ class InMemoryAWSSessionService(AWSSessionServiceInterface):
             "Arn": "arn:aws:iam::123456789012:user/test-user"
         }
     
-    def get_available_regions(self, service_name: str) -> List[str]:
+    def get_available_regions(self, service_name: str) -> list[str]:
         """Simulate getting available regions for a service."""
         return ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
     

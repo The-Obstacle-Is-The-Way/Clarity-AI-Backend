@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base SQLAlchemy declarative base for all models.
 
@@ -15,19 +14,19 @@ application. All other Base definitions should be removed or replaced with impor
 from this module.
 """
 
-import uuid
-from typing import Any, Dict, Optional, Type, List
-from datetime import datetime
-import logging
 import importlib
+import logging
+import uuid
+from typing import Any
 
-from sqlalchemy import Column, DateTime, Integer, String, func, text, inspect
+from sqlalchemy import Column, DateTime, String, func, inspect
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import declarative_base
 
 # Import from the centralized registry module
+from app.infrastructure.persistence.sqlalchemy.registry import metadata
 from app.infrastructure.persistence.sqlalchemy.registry import (
-    metadata, registry, register_model as registry_register_model
+    register_model as registry_register_model,
 )
 
 # Configure logging
@@ -38,9 +37,9 @@ logger = logging.getLogger(__name__)
 Base = declarative_base(metadata=metadata, cls=AsyncAttrs)
 
 # Keep a local registry for backward compatibility
-_model_registry: List[Type[Base]] = []
+_model_registry: list[type[Base]] = []
 
-def register_model(model_class: Type[Base]) -> Type[Base]:
+def register_model(model_class: type[Base]) -> type[Base]:
     """
     Register a model class with the central registry for validation.
     This helps detect duplicate models and ensure proper initialization.
@@ -61,7 +60,7 @@ def register_model(model_class: Type[Base]) -> Type[Base]:
     
     return model_class
 
-def validate_models(session: Optional[Any] = None) -> None:
+def validate_models(session: Any | None = None) -> None:
     """
     Validate all registered models to ensure they're properly mapped.
     
@@ -72,7 +71,9 @@ def validate_models(session: Optional[Any] = None) -> None:
         ValueError: If any model fails validation
     """
     # Use the validation function from the central registry
-    from app.infrastructure.persistence.sqlalchemy.registry import validate_models as registry_validate_models
+    from app.infrastructure.persistence.sqlalchemy.registry import (
+        validate_models as registry_validate_models,
+    )
     registry_validate_models()
     
     # Also validate models in local registry for backward compatibility
@@ -97,7 +98,7 @@ def validate_models(session: Optional[Any] = None) -> None:
                 session.query(model_class).first()
                 
         except Exception as e:
-            logger.error(f"Validation failed for model {model_class.__name__}: {str(e)}")
+            logger.error(f"Validation failed for model {model_class.__name__}: {e!s}")
             logger.warning(f"Continuing despite validation error for {model_class.__name__}")
             
     logger.info(f"Validated {len(_model_registry)} models in local registry successfully")
@@ -127,12 +128,11 @@ def ensure_all_models_loaded():
                 logger.warning(f"Could not import model module {module_name}: {e}")
         
         # Also import the models package to trigger __init__.py imports (backup)
-        import app.infrastructure.persistence.sqlalchemy.models
         
         registered_models = get_registered_models()
         logger.info(f"All models loaded successfully: {registered_models}")
     except Exception as e:
-        logger.error(f"Error loading models: {str(e)}")
+        logger.error(f"Error loading models: {e!s}")
         # Don't raise exception to allow tests to continue despite errors
         logger.warning("Continuing despite model loading errors")
         
@@ -189,4 +189,4 @@ class AuditMixin:
 
 
 # Export the Base class and mixins as the public API
-__all__ = ['Base', 'TimestampMixin', 'AuditMixin']
+__all__ = ['AuditMixin', 'Base', 'TimestampMixin']

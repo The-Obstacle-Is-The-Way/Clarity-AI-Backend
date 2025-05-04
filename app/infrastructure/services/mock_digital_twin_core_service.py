@@ -3,11 +3,12 @@ Stub mock implementation of DigitalTwinCoreService for non-enhanced integration 
 """
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any
 from uuid import UUID, uuid4
-from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
+
 from app.domain.entities.digital_twin import DigitalTwinState
 from app.domain.entities.digital_twin_entity import ClinicalInsight
+from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
 
 
 class MockDigitalTwinCoreService(DigitalTwinCoreService):
@@ -19,7 +20,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         self._patient_repository = patient_repository
     
     class State:
-        def __init__(self, patient_id: UUID, data: Dict[str, Any], version: int = 1):
+        def __init__(self, patient_id: UUID, data: dict[str, Any], version: int = 1):
             self.id = uuid.uuid4()
             self.patient_id = patient_id
             self.version = version
@@ -43,7 +44,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     async def update_from_actigraphy(
         self,
         patient_id: UUID,
-        actigraphy_data: Dict,
+        actigraphy_data: dict,
         data_source: str
     ) -> DigitalTwinState:
         """
@@ -204,7 +205,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         patient_id: UUID,
         note_text: str,
         note_type: str,
-        clinician_id: Optional[UUID] = None
+        clinician_id: UUID | None = None
     ) -> DigitalTwinState:
         """
         Update Digital Twin with insights from clinical notes via MentalLLaMA.
@@ -272,9 +273,9 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     async def generate_treatment_recommendations(
         self,
         patient_id: UUID,
-        digital_twin_state_id: Optional[UUID] = None,
+        digital_twin_state_id: UUID | None = None,
         include_rationale: bool = True
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Generate treatment recommendations using XGBoost and MentalLLaMA.
         
@@ -411,9 +412,9 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     async def get_visualization_data(
         self,
         patient_id: UUID,
-        digital_twin_state_id: Optional[UUID] = None,
+        digital_twin_state_id: UUID | None = None,
         visualization_type: str = "brain_model"
-    ) -> Dict:
+    ) -> dict:
         """
         Get data for 3D visualization of the Digital Twin.
         
@@ -543,7 +544,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     async def merge_insights(
         self,
         patient_id: UUID,
-        insights: List[ClinicalInsight],
+        insights: list[ClinicalInsight],
         source: str
     ) -> DigitalTwinState:
         """
@@ -600,7 +601,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         patient_id: UUID,
         state_id_1: UUID,
         state_id_2: UUID
-    ) -> Dict:
+    ) -> dict:
         """
         Compare two Digital Twin states to identify changes.
         
@@ -713,10 +714,10 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     async def generate_clinical_summary(
         self,
         patient_id: UUID,
-        time_range: Optional[Tuple[str, str]] = None,
+        time_range: tuple[str, str] | None = None,
         include_treatment_history: bool = True,
         include_predictions: bool = True
-    ) -> Dict:
+    ) -> dict:
         """
         Generate comprehensive clinical summary from Digital Twin.
         
@@ -867,7 +868,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
     async def process_treatment_event(
         self,
         patient_id: UUID,
-        event_data: Dict[str, Any]
+        event_data: dict[str, Any]
     ) -> Any:
         """Stub treatment event processing: appends to treatment_history."""
         prev = await self._digital_twin_repository.get_latest_state(patient_id)
@@ -885,7 +886,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         patient_id: UUID,
         consider_current_medications: bool,
         include_therapy_options: bool
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Stub recommendations with at least one medication and one therapy."""
         recs = []
         recs.append({"type": "medication", "name": "Sertraline", "rationale": "Standard SSRI"})
@@ -897,7 +898,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         self,
         patient_id: UUID,
         visualization_type: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Stub visualization: returns brain_model_3d and sample brain_regions."""
         return {"visualization_type": "brain_model_3d", "brain_regions": [{"id": "AMYGDALA", "activation": 0.5}]}
 
@@ -906,7 +907,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         patient_id: UUID,
         state_id_1: UUID,
         state_id_2: UUID
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Stub state comparison with minimal brain_state_changes and new_insights."""
         return {
             "state_1": {"id": str(state_id_1)},
@@ -920,7 +921,7 @@ class MockDigitalTwinCoreService(DigitalTwinCoreService):
         patient_id: UUID,
         include_treatment_history: bool,
         include_predictions: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Stub clinical summary with patient info, insights, and history."""
         patient = await self._patient_repository.get_by_id(patient_id)
         name = getattr(patient, "full_name", None) or f"{getattr(patient, 'first_name', '')} {getattr(patient, 'last_name', '')}".strip()

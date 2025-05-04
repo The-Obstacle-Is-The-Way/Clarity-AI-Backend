@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Interface definition for User Repository.
 
@@ -6,7 +5,6 @@ Defines the contract for data access operations related to User entities.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List
 from uuid import UUID
 
 # Import User entity - use Any as fallback if import fails
@@ -19,17 +17,17 @@ class IUserRepository(ABC):
     """Abstract base class for user data persistence operations."""
 
     @abstractmethod
-    async def get_by_id(self, user_id: UUID) -> Optional[User]:
+    async def get_by_id(self, user_id: UUID) -> User | None:
         """Retrieve a user by their unique ID."""
         pass
 
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         """Retrieve a user by their email address."""
         pass
 
     @abstractmethod
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         """Retrieve a user by their username."""
         pass
 
@@ -49,6 +47,6 @@ class IUserRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         """List all users with pagination."""
         pass 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 AWS Bedrock MentaLLaMA Implementation.
 
@@ -7,7 +6,7 @@ This module provides an AWS Bedrock implementation of MentaLLaMA services.
 
 import json
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 try:
     import boto3
@@ -22,10 +21,10 @@ from app.core.exceptions import (
     ModelNotFoundError,
     ServiceUnavailableError,
 )
-# Corrected import path for the base MentaLLaMA implementation
-from app.infrastructure.ml.mentallama.service import MentaLLaMA as BaseMentaLLaMA
 from app.core.utils.logging import get_logger
 
+# Corrected import path for the base MentaLLaMA implementation
+from app.infrastructure.ml.mentallama.service import MentaLLaMA as BaseMentaLLaMA
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -90,16 +89,16 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             logger.info("AWS Bedrock MentaLLaMA provider initialized")
             
         except ClientError as e:
-            logger.error(f"AWS Bedrock client error: {str(e)}")
-            raise InvalidConfigurationError(f"AWS Bedrock client error: {str(e)}")
+            logger.error(f"AWS Bedrock client error: {e!s}")
+            raise InvalidConfigurationError(f"AWS Bedrock client error: {e!s}")
         except ImportError as e:
-            logger.error(f"Import error: {str(e)}")
-            raise InvalidConfigurationError(f"Import error: {str(e)}")
+            logger.error(f"Import error: {e!s}")
+            raise InvalidConfigurationError(f"Import error: {e!s}")
         except Exception as e:
-            logger.error(f"Failed to initialize AWS Bedrock provider: {str(e)}")
-            raise InvalidConfigurationError(f"Failed to initialize AWS Bedrock provider: {str(e)}")
+            logger.error(f"Failed to initialize AWS Bedrock provider: {e!s}")
+            raise InvalidConfigurationError(f"Failed to initialize AWS Bedrock provider: {e!s}")
     
-    def _discover_available_models(self) -> Dict[str, Dict[str, Any]]:
+    def _discover_available_models(self) -> dict[str, dict[str, Any]]:
         """
         Discover available models from AWS Bedrock.
         
@@ -151,11 +150,11 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
     def _generate(
         self,
         prompt: str,
-        model: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using AWS Bedrock models.
         
@@ -238,8 +237,8 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             else:
                 raise ServiceUnavailableError(f"AWS Bedrock error: {error_message}")
         except Exception as e:
-            logger.error(f"Error generating text: {str(e)}")
-            raise ServiceUnavailableError(f"Error generating text: {str(e)}")
+            logger.error(f"Error generating text: {e!s}")
+            raise ServiceUnavailableError(f"Error generating text: {e!s}")
     
     def _generate_anthropic(
         self,
@@ -248,7 +247,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
         max_tokens: int,
         temperature: float,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using Anthropic Claude models.
         
@@ -329,7 +328,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
         max_tokens: int,
         temperature: float,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate text using Amazon Titan models.
         
@@ -385,7 +384,7 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
         
         return result
     
-    def _extract_text_from_response(self, response: Dict[str, Any], model: str) -> str:
+    def _extract_text_from_response(self, response: dict[str, Any], model: str) -> str:
         """
         Extract text from model response.
         
@@ -422,13 +421,13 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
         self,
         prompt: str,
         patient_id: str,
-        session_id: Optional[str] = None,
-        model: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        session_id: str | None = None,
+        model: str | None = None,
+        context: dict[str, Any] | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Conduct a conversation with a patient's digital twin.
         
@@ -496,13 +495,13 @@ class AWSBedrockMentaLLaMA(BaseMentaLLaMA):
             return response
             
         except Exception as e:
-            logger.error(f"Error in digital twin conversation: {str(e)}")
+            logger.error(f"Error in digital twin conversation: {e!s}")
             raise
     
     def _create_digital_twin_system_prompt(
         self,
         patient_id: str,
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ) -> str:
         """
         Create a system prompt for digital twin conversation.
@@ -567,7 +566,7 @@ This conversation is HIPAA-compliant and secure.
     def _create_digital_twin_conversation_prompt(
         self,
         system_prompt: str,
-        history: List[Dict[str, Any]],
+        history: list[dict[str, Any]],
         user_message: str
     ) -> str:
         """

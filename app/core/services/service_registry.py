@@ -4,7 +4,7 @@ Provides a way to retrieve registered services.
 This acts as a simple service locator or part of a larger DI framework.
 """
 
-from typing import Type, TypeVar, Any
+from typing import Any, TypeVar
 
 # In a real implementation, this might interact with a DI container
 # like dependency_injector or a custom registry.
@@ -42,7 +42,7 @@ def get_service(service_name: str) -> Any:
     return _SERVICE_REGISTRY[service_name]
 
 # Example of how you might use Type hinting if retrieving by class type
-def get_service_by_type(service_type: Type[T]) -> T:
+def get_service_by_type(service_type: type[T]) -> T:
     """
     Retrieve a registered service by its type (Placeholder).
     """

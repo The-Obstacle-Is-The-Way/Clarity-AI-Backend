@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Rate Limiting Middleware
 
@@ -10,12 +9,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from fastapi import Request, Response, status
-from app.config.settings import get_settings
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.config.settings import get_settings
 from app.infrastructure.security.rate_limiting.rate_limiter import (
     DistributedRateLimiter,
     RateLimitType,
@@ -39,15 +38,15 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         app=None,
         *,
         # New/primary dependency‑injected rate limiter (preferred path)
-        rate_limiter: Optional[DistributedRateLimiter] = None,
+        rate_limiter: DistributedRateLimiter | None = None,
         # Legacy/simple arguments used by tests ↓↓↓
         rate_limit: int | None = None,
         time_window: int | None = None,
         redis_client=None,
-        default_limits: Optional[dict] = None,
-        path_limits: Optional[dict] = None,
+        default_limits: dict | None = None,
+        path_limits: dict | None = None,
         limiter=None,
-        get_key: Optional[Callable] = None,
+        get_key: Callable | None = None,
     ):
         """
         Initialize the middleware.
@@ -141,12 +140,14 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         self._in_memory_counters[key].append(now)
         return len(self._in_memory_counters[key])
 
-    async def check_rate_limit(self, key: str) -> bool:  # noqa: D401 (simple name for test compatibility)
+    async def check_rate_limit(self, key: str) -> bool:
         """Return True if request is within limit. False if rate‑limited."""
         # Prefer real limiter if provided & has method
         if self._limiter and hasattr(self._limiter, "check_rate_limit"):
             try:
-                from app.infrastructure.security.rate_limiting.rate_limiter_enhanced import RateLimitConfig as _RC  # lazy import
+                from app.infrastructure.security.rate_limiting.rate_limiter_enhanced import (
+                    RateLimitConfig as _RC,  # lazy import
+                )
                 cfg = _RC(requests=self._simple_rate_limit, window_seconds=self._simple_time_window, block_seconds=self._simple_time_window * 5)
                 return self._limiter.check_rate_limit(key, cfg)  # type: ignore[arg-type]
             except Exception:  # pragma: no cover – fall back to simple counters
@@ -159,7 +160,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
     # ------------------------------------------------------------------
     # Key resolution helpers                                             
     # ------------------------------------------------------------------
-    def _default_get_key(self, request: Request) -> str:  # noqa: D401
+    def _default_get_key(self, request: Request) -> str:
         """Extract a key for rate‑limiting from request (IP aware)."""
         # Honour X‑Forwarded‑For chain first
         xff = request.headers.get("X-Forwarded-For")
@@ -323,6 +324,7 @@ class RateLimitConfig:
 
 from .rate_limiting_middleware import RateLimitingMiddleware
 
+
 def create_rate_limiting_middleware(
     *,
     app,
@@ -330,8 +332,8 @@ def create_rate_limiting_middleware(
     api_window_seconds: int,
     api_block_seconds: int,
     limiter=None,
-    get_key: Optional[Callable] = None,
-    middleware_instance: Optional[RateLimitingMiddleware] = None,
+    get_key: Callable | None = None,
+    middleware_instance: RateLimitingMiddleware | None = None,
 ):
     """Factory that instantiates or returns a RateLimitingMiddleware."""
     

@@ -8,10 +8,8 @@ between domain logic and implementation details.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
-
-from app.core.domain.entities.user import User
 
 
 class BiometricServiceInterface(ABC):
@@ -26,12 +24,12 @@ class BiometricServiceInterface(ABC):
     @abstractmethod
     async def process_biometric_data(
         self, 
-        patient_id: Union[str, UUID], 
+        patient_id: str | UUID, 
         data_type: str,
-        data: Dict[str, Any],
-        timestamp: Optional[datetime] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        data: dict[str, Any],
+        timestamp: datetime | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> tuple[bool, str | None, str | None]:
         """
         Process incoming biometric data for a patient.
         
@@ -50,13 +48,13 @@ class BiometricServiceInterface(ABC):
     @abstractmethod
     async def get_biometric_data(
         self,
-        patient_id: Union[str, UUID],
-        data_type: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        patient_id: str | UUID,
+        data_type: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve biometric data for a patient with optional filtering.
         
@@ -76,12 +74,12 @@ class BiometricServiceInterface(ABC):
     @abstractmethod
     async def get_biometric_summary(
         self,
-        patient_id: Union[str, UUID],
+        patient_id: str | UUID,
         data_type: str,
         start_time: datetime,
         end_time: datetime,
         interval: str = "day"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get a summary of biometric data aggregated over time intervals.
         
@@ -100,12 +98,12 @@ class BiometricServiceInterface(ABC):
     @abstractmethod
     async def analyze_trends(
         self,
-        patient_id: Union[str, UUID],
+        patient_id: str | UUID,
         data_type: str,
         start_time: datetime,
         end_time: datetime,
-        analysis_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+        analysis_type: str | None = None
+    ) -> dict[str, Any]:
         """
         Analyze trends in biometric data over time.
         
@@ -124,11 +122,11 @@ class BiometricServiceInterface(ABC):
     @abstractmethod
     async def check_data_quality(
         self,
-        patient_id: Union[str, UUID],
+        patient_id: str | UUID,
         data_type: str,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
-    ) -> Dict[str, Any]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None
+    ) -> dict[str, Any]:
         """
         Check the quality of biometric data for a patient.
         

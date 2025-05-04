@@ -2,14 +2,8 @@
 Factory for creating and wiring mock Digital Twin components.
 This simplifies the creation and configuration of the Digital Twin system.
 """
-from typing import Dict, Optional, Tuple
-from uuid import UUID
 
 from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
-from app.domain.services.mentalllama_service import MentalLLaMAService
-from app.domain.services.pat_service import PATService
-from app.domain.services.xgboost_service import XGBoostService
-
 from app.infrastructure.repositories.mock_digital_twin_repository import MockDigitalTwinRepository
 from app.infrastructure.repositories.mock_patient_repository import MockPatientRepository
 from app.infrastructure.services.mock_digital_twin_core_service import MockDigitalTwinCoreService
@@ -25,7 +19,7 @@ class MockDigitalTwinFactory:
     """
     
     @staticmethod
-    def create_repositories() -> Tuple[MockDigitalTwinRepository, MockPatientRepository]:
+    def create_repositories() -> tuple[MockDigitalTwinRepository, MockPatientRepository]:
         """
         Create the mock repositories needed for the Digital Twin.
         
@@ -38,7 +32,7 @@ class MockDigitalTwinFactory:
         return digital_twin_repository, patient_repository
     
     @staticmethod
-    def create_ai_services() -> Tuple[MockXGBoostService, MockPATService, MockMentalLLaMAService]:
+    def create_ai_services() -> tuple[MockXGBoostService, MockPATService, MockMentalLLaMAService]:
         """
         Create the mock AI services needed for the Digital Twin.
         
@@ -75,7 +69,7 @@ class MockDigitalTwinFactory:
         )
     
     @classmethod
-    def create_complete_system(cls) -> Dict:
+    def create_complete_system(cls) -> dict:
         """
         Create a complete system with all components.
         

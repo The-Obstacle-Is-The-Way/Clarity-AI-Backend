@@ -5,12 +5,12 @@ This module provides configuration settings for the application, including
 security settings, database connection, and other environment-specific values.
 """
 
+import logging
 import os
 import secrets
-from typing import List, Dict, Any, Optional
-from pydantic import Field, field_validator, ConfigDict
+
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +41,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     SESSION_TIMEOUT_MINUTES: int = 60
-    JWT_ISSUER: Optional[str] = None
-    JWT_AUDIENCE: Optional[str] = None
+    JWT_ISSUER: str | None = None
+    JWT_AUDIENCE: str | None = None
     
     # CORS Settings
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: list[str] = ["*"]
     CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    CORS_ALLOW_METHODS: list[str] = ["*"]
+    CORS_ALLOW_HEADERS: list[str] = ["*"]
     
     # Database Settings
     DATABASE_URL: str = "sqlite:///./novamind.db"
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     # Monitoring and Error Tracking (Sentry)
-    SENTRY_DSN: Optional[str] = None
+    SENTRY_DSN: str | None = None
     SENTRY_TRACES_SAMPLE_RATE: float = 0.2  # Percentage of transactions to trace
     SENTRY_PROFILES_SAMPLE_RATE: float = 0.2  # Percentage of transactions to profile
     
@@ -67,14 +67,14 @@ class Settings(BaseSettings):
     
     # Rate Limiting
     RATE_LIMITING_ENABLED: bool = True
-    DEFAULT_RATE_LIMITS: List[str] = ["60/minute", "1000/hour"]
+    DEFAULT_RATE_LIMITS: list[str] = ["60/minute", "1000/hour"]
     RATE_LIMIT_STRATEGY: str = "ip"
     
     # CORS Settings (extended with explicit typing)
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
     
     # Security Headers
-    SECURITY_HEADERS: Dict[str, str] = {
+    SECURITY_HEADERS: dict[str, str] = {
         "X-Content-Type-Options": "nosniff",
         "X-XSS-Protection": "1; mode=block",
         "X-Frame-Options": "DENY",
@@ -90,12 +90,12 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SAMESITE: str = "Lax"
     
     # Legacy settings for backward compatibility
-    POSTGRES_SERVER: Optional[str] = None
-    POSTGRES_USER: Optional[str] = None
-    POSTGRES_PASSWORD: Optional[str] = None
-    POSTGRES_DB: Optional[str] = None
-    POSTGRES_PORT: Optional[str] = None
-    SECRET_KEY: Optional[str] = None
+    POSTGRES_SERVER: str | None = None
+    POSTGRES_USER: str | None = None
+    POSTGRES_PASSWORD: str | None = None
+    POSTGRES_DB: str | None = None
+    POSTGRES_PORT: str | None = None
+    SECRET_KEY: str | None = None
     
     model_config = ConfigDict(
         env_file=".env",

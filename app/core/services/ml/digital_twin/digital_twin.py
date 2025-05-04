@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Digital Twin Service Implementation.
 
@@ -10,15 +9,15 @@ import datetime
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Union
 from datetime import timezone
+from typing import Any
 
-from app.core.services.ml.interface import DigitalTwinInterface
 from app.core.exceptions import (
     InvalidRequestError,
     ModelNotFoundError,
     ServiceUnavailableError,
 )
+from app.core.services.ml.interface import DigitalTwinInterface
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ class DigitalTwinService(DigitalTwinInterface):
     facilitating communication between patients and therapists through a digital model.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the Digital Twin service.
         
@@ -55,7 +54,7 @@ class DigitalTwinService(DigitalTwinInterface):
             ]
         }
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -105,10 +104,10 @@ class DigitalTwinService(DigitalTwinInterface):
     def create_session(
         self,
         therapist_id: str,
-        patient_id: Optional[str] = None,
+        patient_id: str | None = None,
         session_type: str = "therapy",
-        session_params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        session_params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Create a new Digital Twin session.
         
@@ -160,7 +159,7 @@ class DigitalTwinService(DigitalTwinInterface):
             "message": "Digital Twin session created successfully"
         }
     
-    def get_session(self, session_id: str) -> Dict[str, Any]:
+    def get_session(self, session_id: str) -> dict[str, Any]:
         """
         Get information about a Digital Twin session.
         
@@ -203,9 +202,9 @@ class DigitalTwinService(DigitalTwinInterface):
         session_id: str,
         message: str,
         sender_type: str = "user",
-        sender_id: Optional[str] = None,
-        message_params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        sender_id: str | None = None,
+        message_params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Send a message to a Digital Twin session.
         
@@ -292,8 +291,8 @@ class DigitalTwinService(DigitalTwinInterface):
     def end_session(
         self,
         session_id: str,
-        end_reason: Optional[str] = None
-    ) -> Dict[str, Any]:
+        end_reason: str | None = None
+    ) -> dict[str, Any]:
         """
         End a Digital Twin session.
         
@@ -347,8 +346,8 @@ class DigitalTwinService(DigitalTwinInterface):
     def get_insights(
         self,
         session_id: str,
-        insight_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+        insight_type: str | None = None
+    ) -> dict[str, Any]:
         """
         Get insights from a Digital Twin session.
         
@@ -389,7 +388,7 @@ class DigitalTwinService(DigitalTwinInterface):
             "insights": insights
         }
     
-    def _generate_response(self, message: str, session: Dict[str, Any]) -> str:
+    def _generate_response(self, message: str, session: dict[str, Any]) -> str:
         """
         Generate a response from the Digital Twin.
         
@@ -425,7 +424,7 @@ class DigitalTwinService(DigitalTwinInterface):
         # Default response
         return "Thank you for sharing. Could you tell me more about that?"
     
-    def _update_insights(self, session: Dict[str, Any], message: str) -> None:
+    def _update_insights(self, session: dict[str, Any], message: str) -> None:
         """
         Update session insights based on message content.
         
@@ -508,7 +507,7 @@ class DigitalTwinService(DigitalTwinInterface):
                     session["insights"]["risk"]["status"] = "high"
                     session["insights"]["risk"]["requires_attention"] = True
     
-    def _generate_summary(self, session: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_summary(self, session: dict[str, Any]) -> dict[str, Any]:
         """
         Generate a summary of the session.
         
@@ -546,7 +545,7 @@ class DigitalTwinService(DigitalTwinInterface):
             "generated_at": datetime.datetime.now(timezone.utc).isoformat()
         }
     
-    def _calculate_duration(self, session: Dict[str, Any]) -> str:
+    def _calculate_duration(self, session: dict[str, Any]) -> str:
         """
         Calculate the duration of a session.
         

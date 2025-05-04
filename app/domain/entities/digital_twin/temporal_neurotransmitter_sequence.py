@@ -6,7 +6,7 @@ neurotransmitter levels across different brain regions.
 """
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter, TemporalResolution
@@ -30,7 +30,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         resolution_hours: float = 24.0,
         sequence_id: UUID = None,
         name: str = None,
-        metadata: Dict[str, Any] = None
+        metadata: dict[str, Any] = None
     ):
         """
         Initialize a new temporal neurotransmitter sequence.
@@ -155,7 +155,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         self,
         neurotransmitter: Neurotransmitter,
         brain_region: BrainRegion = None
-    ) -> List[tuple[datetime, float]]:
+    ) -> list[tuple[datetime, float]]:
         """
         Get the time series for a specific neurotransmitter.
         
@@ -199,7 +199,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         self,
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter = None
-    ) -> List[tuple[datetime, float]]:
+    ) -> list[tuple[datetime, float]]:
         """
         Get the time series for a specific brain region.
         
@@ -244,7 +244,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
         neurotransmitter: Neurotransmitter,
         brain_region: BrainRegion,
         window_size: int = 3
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze the trend for a specific neurotransmitter and brain region.
         
@@ -322,7 +322,7 @@ class TemporalNeurotransmitterSequence(TemporalSequence):
             "correlation": correlations
         }
         
-    def _calculate_correlation(self, x: List[float], y: List[float]) -> float:
+    def _calculate_correlation(self, x: list[float], y: list[float]) -> float:
         """
         Calculate Pearson correlation coefficient between two sequences.
         

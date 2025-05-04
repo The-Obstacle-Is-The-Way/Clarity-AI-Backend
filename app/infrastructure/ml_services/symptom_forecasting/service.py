@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /mnt/c/Users/JJ/Desktop/NOVAMIND-WEB/Novamind-Backend/app/infrastructure/ml_services/symptom_forecasting/service.py
 
@@ -8,12 +7,8 @@ for predicting psychiatric symptom trajectories.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 from uuid import UUID
-
-import numpy as np
-from pydantic import BaseModel, Field
-import asyncio
 
 # Use canonical config path
 from app.config.settings import get_settings
@@ -27,11 +22,8 @@ from app.infrastructure.ml.symptom_forecasting.transformer_model import (
 from app.infrastructure.ml.symptom_forecasting.xgboost_model import SymptomXGBoostModel
 from app.infrastructure.ml.utils.preprocessing import preprocess_time_series_data
 from app.infrastructure.ml.utils.serialization import (
-    deserialize_model,
     serialize_prediction,
 )
-from app.infrastructure.ml_services.base import BaseMLService
-from app.infrastructure.ml.symptom_forecasting.ensemble_model import EnsembleModel
 
 logger = logging.getLogger(__name__)
 
@@ -80,16 +72,16 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
 
             logger.info("All symptom forecasting models loaded successfully")
         except Exception as e:
-            logger.error(f"Error loading symptom forecasting models: {str(e)}")
-            raise RuntimeError(f"Failed to load symptom forecasting models: {str(e)}")
+            logger.error(f"Error loading symptom forecasting models: {e!s}")
+            raise RuntimeError(f"Failed to load symptom forecasting models: {e!s}")
 
     async def generate_forecast(
         self,
         patient_id: UUID,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         horizon_days: int = 30,
         use_ensemble: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate symptom forecast for a patient.
 
@@ -140,13 +132,13 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
 
         except Exception as e:
             logger.error(
-                f"Error generating forecast for patient {patient_id}: {str(e)}"
+                f"Error generating forecast for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to generate symptom forecast: {str(e)}")
+            raise RuntimeError(f"Failed to generate symptom forecast: {e!s}")
 
     async def analyze_symptom_patterns(
-        self, patient_id: UUID, data: Dict[str, Any], lookback_days: int = 90
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, data: dict[str, Any], lookback_days: int = 90
+    ) -> dict[str, Any]:
         """
         Analyze historical symptom patterns for a patient.
 
@@ -189,13 +181,13 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
 
         except Exception as e:
             logger.error(
-                f"Error analyzing symptom patterns for patient {patient_id}: {str(e)}"
+                f"Error analyzing symptom patterns for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to analyze symptom patterns: {str(e)}")
+            raise RuntimeError(f"Failed to analyze symptom patterns: {e!s}")
 
     async def detect_anomalies(
-        self, patient_id: UUID, data: Dict[str, Any], sensitivity: float = 0.8
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, data: dict[str, Any], sensitivity: float = 0.8
+    ) -> dict[str, Any]:
         """
         Detect anomalies in patient symptom data.
 
@@ -235,19 +227,19 @@ class SymptomForecastingServiceImpl(SymptomForecastingService):
 
         except Exception as e:
             logger.error(
-                f"Error detecting anomalies for patient {patient_id}: {str(e)}"
+                f"Error detecting anomalies for patient {patient_id}: {e!s}"
             )
-            raise RuntimeError(f"Failed to detect symptom anomalies: {str(e)}")
+            raise RuntimeError(f"Failed to detect symptom anomalies: {e!s}")
 
     def _generate_pattern_summary(
-        self, patterns: List[Dict[str, Any]], correlations: List[Dict[str, Any]]
+        self, patterns: list[dict[str, Any]], correlations: list[dict[str, Any]]
     ) -> str:
         """Generate a human-readable summary of identified patterns."""
         # Implementation would create a natural language summary of patterns
         # This is a placeholder for the actual implementation
         return "Pattern analysis summary would be generated here."
 
-    def _generate_anomaly_recommendations(self, anomalies: List[Dict[str, Any]]) -> str:
+    def _generate_anomaly_recommendations(self, anomalies: list[dict[str, Any]]) -> str:
         """Generate recommendations based on detected anomalies."""
         # Implementation would create recommendations based on anomalies
         # This is a placeholder for the actual implementation

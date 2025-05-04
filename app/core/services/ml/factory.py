@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 ML Service Factory.
 
 This module provides factory methods for creating ML service instances.
 """
 
-from typing import Dict, Optional, Any, Literal
+from typing import Any, Literal
 
 from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.interface import PHIDetectionInterface
+from app.core.utils.logging import get_logger
+
 # Import implementations from the infrastructure layer
 from app.infrastructure.ml.phi.aws_comprehend_medical import AWSComprehendMedicalPHIDetection
 from app.infrastructure.ml.phi.mock import MockPHIDetection
-from app.core.utils.logging import get_logger
-
 
 # Create logger (no PHI logging)
 logger = get_logger(__name__)
@@ -31,10 +30,10 @@ class MLServiceFactory:
     def __init__(self) -> None:
         """Initialize the ML service factory."""
         # self._mental_llama_instances: Dict[str, MentaLLaMAInterface] = {}  # REMOVE: No core-layer MentaLLaMA
-        self._phi_detection_instances: Dict[str, PHIDetectionInterface] = {}
-        self._config: Dict[str, Any] = {}
+        self._phi_detection_instances: dict[str, PHIDetectionInterface] = {}
+        self._config: dict[str, Any] = {}
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the factory with configuration.
         
@@ -153,9 +152,9 @@ class MLServiceCache:
     
     def __init__(self) -> None:
         """Initialize the ML service cache."""
-        self._factory: Optional[MLServiceFactory] = None
+        self._factory: MLServiceFactory | None = None
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the cache with configuration.
         

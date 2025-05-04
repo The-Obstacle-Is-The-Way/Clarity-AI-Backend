@@ -25,14 +25,12 @@ This shim can be removed once the test‑suite is updated to rely exclusively on
 from __future__ import annotations
 
 import builtins
-from typing import List, Set
 
 # NOTE:
 # -----
 # We intentionally import the *domain*-level `Role` enum instead of the
 # infrastructure‑level variant to align with how the tests reference the
 # symbol (`from app.domain.enums.role import Role`).
-
 from app.domain.enums.role import Role  # Canonical enum definition
 
 # -------------------------------------------------------------------------
@@ -69,7 +67,7 @@ _PERMISSION_MATRIX: dict[Role, list[str]] = {
 }
 
 
-class RoleBasedAccessControl:  # noqa: N801  (retain camel‑case for legacy tests)
+class RoleBasedAccessControl:
     """A compatibility wrapper around :class:`RBACService`."""
 
     # No internal state is currently required – the class acts as a simple
@@ -79,11 +77,11 @@ class RoleBasedAccessControl:  # noqa: N801  (retain camel‑case for legacy tes
     # Public helpers
     # ------------------------------------------------------------------
 
-    def get_role_permissions(self, role: Role) -> List[str]:  # noqa: D401
+    def get_role_permissions(self, role: Role) -> list[str]:
         """Return the list of permissions granted to *role*."""
         return _PERMISSION_MATRIX.get(role, [])
 
-    def has_permission(self, role: Role | str, permission: str) -> bool:  # noqa: D401
+    def has_permission(self, role: Role | str, permission: str) -> bool:
         """Return *True* when *role* grants *permission*."""
         key: Role | str
         key = role  # type: ignore[assignment]

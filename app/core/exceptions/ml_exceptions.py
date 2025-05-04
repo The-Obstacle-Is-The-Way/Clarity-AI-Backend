@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 """
 Machine Learning Service Exceptions.
 
 This module defines exceptions raised by machine learning services.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any
+
 from app.core.exceptions.base_exceptions import ApplicationError
 
 
@@ -64,9 +64,9 @@ class MentalLLaMAServiceError(MLServiceError):
     def __init__(
         self, 
         message: str = "Error in MentalLLaMA service", 
-        service_name: Optional[str] = None,
-        status_code: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None,
+        service_name: str | None = None,
+        status_code: int | None = None,
+        details: dict[str, Any] | None = None,
         *args, 
         **kwargs
     ):
@@ -102,9 +102,9 @@ class MentalLLaMAInferenceError(MLServiceError):
     def __init__(
         self, 
         message: str = "MentalLLaMA inference error",
-        model_id: Optional[str] = None,
-        input_data: Optional[Dict[str, Any]] = None,
-        details: Optional[Dict[str, Any]] = None,
+        model_id: str | None = None,
+        input_data: dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None,
         *args, 
         **kwargs
     ):

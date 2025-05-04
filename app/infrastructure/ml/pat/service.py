@@ -5,32 +5,28 @@ This module provides the implementation of the PAT service for analyzing
 actigraphy data from wearable devices using transformer-based models.
 """
 
-import asyncio
 import json
 import logging
 import os
 import time
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
+
+from app.config.settings import get_settings  # Import main settings function
+
 # import sagemaker # Removed unused import
 # from sagemaker.predictor import Predictor # Removed unused import
-
 # Removed incorrect ml_settings import
 # from app.config.ml_settings import ml_settings
 from app.core.exceptions import (
+    AnalysisError,
     ModelNotFoundError,
-    AnalysisError, 
-    ValidationError, # Replaced DataPreprocessingError
-    ServiceUnavailableError
+    ValidationError,  # Replaced DataPreprocessingError
 )
-from app.core.utils.logging import get_logger
-from app.config.settings import get_settings # Import main settings function
-
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +62,8 @@ class PATService:
     def __init__(
         self,
         model_size: PATModelSize = PATModelSize.MEDIUM,
-        model_path: Optional[str] = None,
-        cache_dir: Optional[str] = None,
+        model_path: str | None = None,
+        cache_dir: str | None = None,
         use_gpu: bool = True
     ):
         """
@@ -130,14 +126,14 @@ class PATService:
             self.model = tf.saved_model.load(self.model_path)
             
             self.initialized = True
-            logger.info(f"PAT model successfully loaded")
+            logger.info("PAT model successfully loaded")
         except Exception as e:
             logger.error(f"Failed to initialize PAT model: {e}")
             raise
     
     async def preprocess_actigraphy_data(
         self, 
-        raw_data: Union[List[Dict[str, Any]], np.ndarray],
+        raw_data: list[dict[str, Any]] | np.ndarray,
         sampling_rate: float = 30.0,  # Default: 30 Hz
         window_size: int = 86400,     # Default: 1 day in seconds
         normalize: bool = True
@@ -202,11 +198,11 @@ class PATService:
     
     async def analyze(
         self,
-        actigraphy_data: Union[List[Dict[str, Any]], np.ndarray],
+        actigraphy_data: list[dict[str, Any]] | np.ndarray,
         analysis_type: AnalysisType,
-        patient_metadata: Optional[Dict[str, Any]] = None,
+        patient_metadata: dict[str, Any] | None = None,
         cache_results: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze actigraphy data using the PAT model.
         
@@ -233,7 +229,7 @@ class PATService:
             # Check if cached results exist
             if os.path.exists(cache_file):
                 try:
-                    with open(cache_file, 'r') as f:
+                    with open(cache_file) as f:
                         cached_results = json.load(f)
                     logger.info(f"Using cached results for {analysis_type.value}")
                     return cached_results
@@ -274,8 +270,8 @@ class PATService:
         self,
         predictions: Any,
         analysis_type: AnalysisType,
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Process raw model predictions into structured results.
         
@@ -321,9 +317,9 @@ class PATService:
     async def _process_sleep_quality(
         self,
         predictions: np.ndarray,
-        results: Dict[str, Any],
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        results: dict[str, Any],
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process sleep quality analysis results."""
         # This is a placeholder implementation
         # In a real implementation, this would extract sleep metrics from the model predictions
@@ -357,9 +353,9 @@ class PATService:
     async def _process_activity_patterns(
         self,
         predictions: np.ndarray,
-        results: Dict[str, Any],
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        results: dict[str, Any],
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process activity patterns analysis results."""
         # Placeholder implementation
         
@@ -389,9 +385,9 @@ class PATService:
     async def _process_circadian_rhythm(
         self,
         predictions: np.ndarray,
-        results: Dict[str, Any],
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        results: dict[str, Any],
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process circadian rhythm analysis results."""
         # Placeholder implementation
         
@@ -421,9 +417,9 @@ class PATService:
     async def _process_energy_expenditure(
         self,
         predictions: np.ndarray,
-        results: Dict[str, Any],
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        results: dict[str, Any],
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process energy expenditure analysis results."""
         # Placeholder implementation
         
@@ -466,9 +462,9 @@ class PATService:
     async def _process_mental_state_correlation(
         self,
         predictions: np.ndarray,
-        results: Dict[str, Any],
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        results: dict[str, Any],
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process mental state correlation analysis results."""
         # Placeholder implementation
         
@@ -505,9 +501,9 @@ class PATService:
     async def _process_medication_response(
         self,
         predictions: np.ndarray,
-        results: Dict[str, Any],
-        patient_metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        results: dict[str, Any],
+        patient_metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process medication response analysis results."""
         # Placeholder implementation
         
@@ -553,7 +549,7 @@ class PATService:
         
         return results
     
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the loaded PAT model.
         

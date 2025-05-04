@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Serialization utilities for ML models in the NOVAMIND system.
 
@@ -8,19 +7,16 @@ all ML services and proper handling of model artifacts.
 """
 
 import json
-import logging
 import os
 import pickle
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import joblib
-import numpy as np
 import torch
 import xgboost as xgb
-from sklearn.base import BaseEstimator
 
+from app.domain.utils.datetime_utils import UTC
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +36,7 @@ class ModelSerializer:
         model: Any,
         model_path: str,
         model_type: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Save a model to disk with metadata.
@@ -95,14 +91,14 @@ class ModelSerializer:
             return model_path
 
         except Exception as e:
-            logger.error(f"Failed to save model: {str(e)}")
+            logger.error(f"Failed to save model: {e!s}")
             raise
 
     @staticmethod
     def load_model(
         model_path: str,
-        model_class: Optional[Any] = None,
-        custom_load_fn: Optional[callable] = None,
+        model_class: Any | None = None,
+        custom_load_fn: callable | None = None,
     ) -> tuple:
         """
         Load a model from disk with its metadata.
@@ -122,7 +118,7 @@ class ModelSerializer:
         # Load metadata
         metadata_path = f"{model_path}.meta.json"
         try:
-            with open(metadata_path, "r") as f:
+            with open(metadata_path) as f:
                 metadata = json.load(f)
         except FileNotFoundError:
             logger.warning(f"No metadata found for model at {model_path}")
@@ -160,16 +156,16 @@ class ModelSerializer:
             return model, metadata
 
         except Exception as e:
-            logger.error(f"Failed to load model: {str(e)}")
+            logger.error(f"Failed to load model: {e!s}")
             raise
 
     @staticmethod
     def save_ensemble(
-        models: Dict[str, Any],
+        models: dict[str, Any],
         base_path: str,
-        model_types: Dict[str, str],
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, str]:
+        model_types: dict[str, str],
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         """
         Save an ensemble of models to disk.
 
@@ -222,7 +218,7 @@ class ModelSerializer:
                 )
                 model_paths[model_name] = saved_path
             except Exception as e:
-                logger.error(f"Failed to save model {model_name}: {str(e)}")
+                logger.error(f"Failed to save model {model_name}: {e!s}")
                 raise
 
         logger.info(
@@ -233,8 +229,8 @@ class ModelSerializer:
     @staticmethod
     def load_ensemble(
         base_path: str,
-        model_classes: Optional[Dict[str, Any]] = None,
-        custom_load_fns: Optional[Dict[str, callable]] = None,
+        model_classes: dict[str, Any] | None = None,
+        custom_load_fns: dict[str, callable] | None = None,
     ) -> tuple:
         """
         Load an ensemble of models from disk.
@@ -254,7 +250,7 @@ class ModelSerializer:
         # Load ensemble metadata
         ensemble_meta_path = os.path.join(base_path, "ensemble.meta.json")
         try:
-            with open(ensemble_meta_path, "r") as f:
+            with open(ensemble_meta_path) as f:
                 ensemble_metadata = json.load(f)
         except FileNotFoundError:
             logger.warning(f"No ensemble metadata found at {ensemble_meta_path}")
@@ -290,7 +286,7 @@ class ModelSerializer:
                 )
                 models[model_name] = model
             except Exception as e:
-                logger.error(f"Failed to load model {model_name}: {str(e)}")
+                logger.error(f"Failed to load model {model_name}: {e!s}")
                 raise
 
         logger.info(

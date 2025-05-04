@@ -5,10 +5,11 @@ This module provides middleware and utilities for enforcing rate limits
 on API endpoints to prevent abuse and ensure fair resource allocation.
 """
 
+import logging
+from collections.abc import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable, Optional
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base model class for all ML models in the NOVAMIND system.
 
@@ -10,8 +9,7 @@ HIPAA compliance across all ML services.
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
+from typing import Any
 
 from app.infrastructure.logging.logger import get_logger
 
@@ -29,8 +27,8 @@ class BaseModel(ABC):
         self,
         model_name: str,
         version: str,
-        model_path: Optional[str] = None,
-        logger: Optional[logging.Logger] = None,
+        model_path: str | None = None,
+        logger: logging.Logger | None = None,
     ):
         """
         Initialize the base model with common attributes.
@@ -64,7 +62,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def save(self, path: Optional[str] = None) -> str:
+    def save(self, path: str | None = None) -> str:
         """
         Save the model to storage.
 
@@ -120,7 +118,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def postprocess(self, predictions: Any) -> Dict[str, Any]:
+    def postprocess(self, predictions: Any) -> dict[str, Any]:
         """
         Postprocess model predictions.
 
@@ -139,7 +137,7 @@ class BaseModel(ABC):
         """
         pass
 
-    def predict_with_processing(self, data: Any) -> Dict[str, Any]:
+    def predict_with_processing(self, data: Any) -> dict[str, Any]:
         """
         Complete prediction pipeline with pre and post processing.
 
@@ -174,11 +172,11 @@ class BaseModel(ABC):
             return processed_results
 
         except Exception as e:
-            self.logger.error(f"Error during prediction: {str(e)}")
+            self.logger.error(f"Error during prediction: {e!s}")
             raise
 
     @abstractmethod
-    def evaluate(self, test_data: Any, test_labels: Any) -> Dict[str, float]:
+    def evaluate(self, test_data: Any, test_labels: Any) -> dict[str, float]:
         """
         Evaluate the model on test data.
 
@@ -197,7 +195,7 @@ class BaseModel(ABC):
         """
         pass
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the model.
 
@@ -212,7 +210,7 @@ class BaseModel(ABC):
             "model_path": self.model_path,
         }
 
-    def sanitize_patient_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def sanitize_patient_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize patient data to ensure HIPAA compliance.
 

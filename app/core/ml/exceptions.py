@@ -4,13 +4,13 @@ Exceptions for ML and LLM operations in the Novamind Digital Twin Platform.
 This module defines custom exception types for interacting with
 machine learning and large language models, particularly MentalLLaMA.
 """
-from typing import Dict, Any, Optional, List, Union
+from typing import Any
 
 
 class MentalLLaMABaseError(Exception):
     """Base exception for all MentalLLaMA errors."""
     
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         """
         Initialize the base exception.
         
@@ -33,10 +33,10 @@ class MentalLLaMAInferenceError(MentalLLaMABaseError):
     def __init__(
         self, 
         message: str, 
-        model_id: Optional[str] = None,
-        input_text: Optional[str] = None,
-        error_type: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        model_id: str | None = None,
+        input_text: str | None = None,
+        error_type: str | None = None,
+        details: dict[str, Any] | None = None
     ):
         """
         Initialize inference error.
@@ -70,8 +70,8 @@ class MentalLLaMAValidationError(MentalLLaMABaseError):
     def __init__(
         self, 
         message: str, 
-        validation_errors: Optional[Dict[str, Any]] = None,
-        details: Optional[Dict[str, Any]] = None
+        validation_errors: dict[str, Any] | None = None,
+        details: dict[str, Any] | None = None
     ):
         """
         Initialize validation error.
@@ -100,10 +100,10 @@ class MentalLLaMAServiceError(MentalLLaMABaseError):
     def __init__(
         self, 
         message: str, 
-        service_name: Optional[str] = None,
-        status_code: Optional[int] = None,
-        retry_after: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None
+        service_name: str | None = None,
+        status_code: int | None = None,
+        retry_after: int | None = None,
+        details: dict[str, Any] | None = None
     ):
         """
         Initialize service error.
@@ -140,7 +140,7 @@ class MentalLLaMATokenLimitError(MentalLLaMAValidationError):
         message: str, 
         token_count: int,
         token_limit: int,
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         """
         Initialize token limit error.

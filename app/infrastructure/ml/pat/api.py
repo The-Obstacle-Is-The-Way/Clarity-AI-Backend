@@ -7,28 +7,20 @@ This module provides the FastAPI endpoints for the PAT service.
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.core.auth.jwt_handler import verify_jwt_token
 from app.config.settings import get_settings
+from app.core.auth.jwt_handler import verify_jwt_token
 from app.infrastructure.ml.pat.models import (
     AccelerometerDataRequest,
     AnalysisResult,
-    AnalysisTypeEnum,
     HistoricalAnalysisRequest,
     ModelInfoResponse,
-    PATModelSizeEnum
+    PATModelSizeEnum,
 )
-from app.infrastructure.ml.pat.service import PATService, AnalysisType
-import boto3
-from botocore.exceptions import ClientError
-from app.core.exceptions import (
-    AnalysisError,
-)
-
+from app.infrastructure.ml.pat.service import AnalysisType, PATService
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
@@ -136,7 +128,7 @@ async def analyze_actigraphy_data(
         logger.error(f"Error analyzing actigraphy data: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error analyzing actigraphy data: {str(e)}"
+            detail=f"Error analyzing actigraphy data: {e!s}"
         )
 
 
@@ -176,13 +168,13 @@ async def get_model_info(
         logger.error(f"Error getting model info: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting model info: {str(e)}"
+            detail=f"Error getting model info: {e!s}"
         )
 
 
 @router.post(
     "/historical",
-    response_model=List[AnalysisResult],
+    response_model=list[AnalysisResult],
     status_code=status.HTTP_200_OK,
     summary="Get historical analysis results",
     description="Get historical actigraphy analysis results for a patient"
@@ -190,7 +182,7 @@ async def get_model_info(
 async def get_historical_analysis(
     request: HistoricalAnalysisRequest,
     credentials: HTTPAuthorizationCredentials = Security(security)
-) -> List[AnalysisResult]:
+) -> list[AnalysisResult]:
     """
     Get historical actigraphy analysis results for a patient.
     

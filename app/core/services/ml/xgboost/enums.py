@@ -6,7 +6,7 @@ the XGBoost service for consistent type-safe categorization
 of predictions, risk levels, and treatment categories.
 """
 
-from enum import Enum, auto
+from enum import Enum
 
 
 class ResponseLevel(str, Enum):

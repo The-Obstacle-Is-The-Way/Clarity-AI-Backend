@@ -5,15 +5,16 @@ This module provides a robust implementation of the Unit of Work pattern using S
 ensuring transactional integrity for PHI data operations according to HIPAA requirements.
 """
 
-import logging
 import abc
 import contextlib
-from typing import Any, TypeVar, Dict, Optional, Callable, ContextManager, Type
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
+import logging
+from typing import Any, ContextManager, TypeVar
 
-from app.domain.interfaces.unit_of_work import UnitOfWork
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
+
 from app.domain.exceptions import RepositoryError
+from app.domain.interfaces.unit_of_work import UnitOfWork
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -42,13 +43,13 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
              if not callable(session_factory):
                   raise TypeError("session_factory must be a SQLAlchemy sessionmaker instance or a callable factory.")
         self.session_factory = session_factory
-        self._session: Optional[Session] = None
+        self._session: Session | None = None
         self._transaction_level = 0 # Track nesting
         # Track read-only status per level. Using a list as a stack.
         self._is_read_only_stack: list[bool] = [] 
         self._committed = False # Track if commit was called in the current context
-        self._repositories: Dict[str, abc.ABC] = {}
-        self._metadata: Dict[str, Any] = {}
+        self._repositories: dict[str, abc.ABC] = {}
+        self._metadata: dict[str, Any] = {}
 
     @property
     def session(self) -> Session:
@@ -90,9 +91,9 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[Any],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
     ) -> None:
         """Exit the unit of work context, handling commit/rollback and session closing."""
         if self._session is None: # Should not happen if __enter__ succeeded
@@ -148,7 +149,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     self._session.rollback()
                 except Exception as final_rb_err:
                     logger.error(f"Error during final rollback attempt: {final_rb_err}")
-            raise RepositoryError(f"Error during transaction cleanup: {str(e)}") from e
+            raise RepositoryError(f"Error during transaction cleanup: {e!s}") from e
         except Exception as e:
             logger.error(f"Unexpected error during transaction cleanup: {e}. Force rolling back.")
             if is_top_level and self._session:
@@ -250,13 +251,13 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                  logger.error("Read-only stack empty after entering context.")
                  raise RepositoryError("Failed to enter read-only context properly.")
 
-    def set_metadata(self, metadata: Dict[str, Any]) -> None:
+    def set_metadata(self, metadata: dict[str, Any]) -> None:
         """Sets metadata for the current transaction for audit logging."""
         # Store metadata for audit logging 
         self._metadata.update(metadata)
         logger.debug(f"UoW Metadata set: {metadata}")
 
-    def _get_repository(self, repo_type: Type[Repo]) -> Repo:
+    def _get_repository(self, repo_type: type[Repo]) -> Repo:
         """Retrieves or creates a repository instance of the given type."""
         repo_name = repo_type.__name__ # Get the class name (e.g., 'PatientRepository')
         
@@ -277,6 +278,6 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         return self._repositories[repo_name] # type: ignore[return-value]
 
     # Allow accessing repositories using dictionary-like syntax (uow[PatientRepository])
-    def __getitem__(self, repo_type: Type[Repo]) -> Repo:
+    def __getitem__(self, repo_type: type[Repo]) -> Repo:
         """Allows accessing repositories using dictionary-like syntax."""
         return self._get_repository(repo_type)

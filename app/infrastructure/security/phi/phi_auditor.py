@@ -7,7 +7,7 @@ delegating to the consolidated PHISanitizer implementation where appropriate.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any
 
 from app.infrastructure.security.phi.sanitizer import PHISanitizer
 
@@ -18,7 +18,7 @@ class PHIAuditHandler:
     Provides HIPAA-compliant auditing of PHI access and modifications.
     """
     
-    def __init__(self, sanitizer: Optional[PHISanitizer] = None):
+    def __init__(self, sanitizer: PHISanitizer | None = None):
         """
         Initialize the PHI audit handler.
         
@@ -107,7 +107,7 @@ class PHIAuditHandler:
         """
         return self.sanitizer.contains_phi(data)
     
-    def get_audit_log(self, user_id: Optional[str] = None, patient_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_audit_log(self, user_id: str | None = None, patient_id: str | None = None) -> list[dict[str, Any]]:
         """
         Get PHI audit log entries (stub implementation).
         

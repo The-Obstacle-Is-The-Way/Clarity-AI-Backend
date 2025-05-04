@@ -3,7 +3,8 @@ SQLAlchemy Base class definition for the Novamind Digital Twin Platform.
 
 This module defines the declarative base class used for all ORM models.
 """
-from typing import Any, Dict
+from typing import Any
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import registry
 
@@ -28,7 +29,7 @@ class BaseModel(SQLAlchemyModel):
     """
     __abstract__ = True
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert model to dictionary.
         
@@ -38,7 +39,7 @@ class BaseModel(SQLAlchemyModel):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BaseModel":
+    def from_dict(cls, data: dict[str, Any]) -> "BaseModel":
         """
         Create model instance from dictionary data.
         

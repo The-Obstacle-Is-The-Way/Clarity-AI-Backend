@@ -2,11 +2,9 @@
 Mock implementation of PATService for testing.
 Provides synthetic actigraphy analysis without requiring the actual PAT model.
 """
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from uuid import UUID
-
 import random
+from datetime import datetime, timedelta
+from uuid import UUID
 
 from app.domain.services.pat_service import PATService
 
@@ -20,11 +18,11 @@ class MockPATService(PATService):
     async def process_actigraphy_data(
         self,
         patient_id: UUID,
-        actigraphy_data: Dict,
+        actigraphy_data: dict,
         data_source: str,
         start_time: datetime,
         end_time: datetime
-    ) -> Dict:
+    ) -> dict:
         """
         Process raw actigraphy data to extract behavioral patterns.
         
@@ -197,7 +195,7 @@ class MockPATService(PATService):
         patient_id: UUID,
         time_period: str = "week",  # "day", "week", "month"
         granularity: str = "hourly"  # "minute", "hourly", "daily"
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Detect activity patterns for a patient over a specified period.
         
@@ -291,7 +289,7 @@ class MockPATService(PATService):
         self,
         patient_id: UUID,
         days: int = 30
-    ) -> Dict:
+    ) -> dict:
         """
         Analyze sleep patterns for a patient over a specified number of days.
         
@@ -417,10 +415,10 @@ class MockPATService(PATService):
     async def detect_anomalies(
         self,
         patient_id: UUID,
-        activity_type: Optional[str] = None,  # "sleep", "movement", "heart_rate", etc.
+        activity_type: str | None = None,  # "sleep", "movement", "heart_rate", etc.
         sensitivity: float = 0.8,  # 0.0 to 1.0
-        time_range: Optional[Tuple[datetime, datetime]] = None
-    ) -> List[Dict]:
+        time_range: tuple[datetime, datetime] | None = None
+    ) -> list[dict]:
         """
         Detect anomalies in patient activity patterns.
         
@@ -558,7 +556,7 @@ class MockPATService(PATService):
         self,
         patient_id: UUID,
         days: int = 30
-    ) -> Dict:
+    ) -> dict:
         """
         Extract circadian rhythm information from patient activity data.
         
@@ -681,10 +679,10 @@ class MockPATService(PATService):
     async def correlate_activities_with_mood(
         self,
         patient_id: UUID,
-        mood_data: Dict,
-        activity_data: Optional[Dict] = None,
-        time_range: Optional[Tuple[datetime, datetime]] = None
-    ) -> Dict:
+        mood_data: dict,
+        activity_data: dict | None = None,
+        time_range: tuple[datetime, datetime] | None = None
+    ) -> dict:
         """
         Correlate activity patterns with mood data.
         

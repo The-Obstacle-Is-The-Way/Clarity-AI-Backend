@@ -356,7 +356,7 @@ class BayesianBeliefNetwork:
                 continue
             
             # Initialize belief for this variable
-            beliefs[var] = {state: 0.0 for state in self.variables[var]["states"]}
+            beliefs[var] = dict.fromkeys(self.variables[var]["states"], 0.0)
             
             # For each possible parent configuration
             for parent_config in self._generate_parent_configs(var, beliefs):

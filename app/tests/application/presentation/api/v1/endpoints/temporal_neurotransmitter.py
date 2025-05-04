@@ -4,18 +4,19 @@ API endpoints for the Temporal Neurotransmitter System.
 Provides FastAPI routes for generating and analyzing neurotransmitter time series,
 simulating treatments, and retrieving visualization data.
 """
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.routes.temporal_neurotransmitter import (
-    get_temporal_neurotransmitter_service,
     get_current_user,
-    verify_provider_access,
+    get_temporal_neurotransmitter_service,
 )
-from app.application.services.temporal_neurotransmitter_service import TemporalNeurotransmitterService
+from app.application.services.temporal_neurotransmitter_service import (
+    TemporalNeurotransmitterService,
+)
 from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
 
 router = APIRouter(tags=["Temporal Neurotransmitter"])
@@ -43,7 +44,7 @@ class TreatmentSimulationRequest(BaseModel):
     simulation_days: int = 14
 
 class TreatmentSimulationResponse(BaseModel):
-    sequence_ids: Dict[str, UUID]
+    sequence_ids: dict[str, UUID]
     patient_id: UUID
     brain_region: str
     target_neurotransmitter: str
@@ -52,13 +53,13 @@ class TreatmentSimulationResponse(BaseModel):
 
 class VisualizationDataRequest(BaseModel):
     sequence_id: UUID
-    focus_features: Optional[List[str]] = None
+    focus_features: list[str] | None = None
 
 class VisualizationDataResponse(BaseModel):
-    time_points: List[str]
-    features: List[str]
-    values: List[List[float]]
-    metadata: Optional[Dict[str, Any]] = None
+    time_points: list[str]
+    features: list[str]
+    values: list[list[float]]
+    metadata: dict[str, Any] | None = None
 
 class AnalyzeNeurotransmitterRequest(BaseModel):
     patient_id: UUID
@@ -69,12 +70,12 @@ class AnalysisResponse(BaseModel):
     neurotransmitter: str
     brain_region: str
     effect_size: float
-    confidence_interval: Optional[List[float]]
-    p_value: Optional[float]
+    confidence_interval: list[float] | None
+    p_value: float | None
     is_statistically_significant: bool
-    clinical_significance: Optional[str]
-    time_series_data: List[List[Any]]
-    comparison_periods: Dict[str, List[str]]
+    clinical_significance: str | None
+    time_series_data: list[list[Any]]
+    comparison_periods: dict[str, list[str]]
 
 class CascadeVisualizationRequest(BaseModel):
     patient_id: UUID
@@ -83,10 +84,10 @@ class CascadeVisualizationRequest(BaseModel):
     time_steps: int = 3
 
 class CascadeVisualizationResponse(BaseModel):
-    nodes: List[Dict[str, Any]]
-    connections: List[Dict[str, Any]]
-    time_steps: List[Dict[str, Any]]
-    metadata: Optional[Dict[str, Any]] = None
+    nodes: list[dict[str, Any]]
+    connections: list[dict[str, Any]]
+    time_steps: list[dict[str, Any]]
+    metadata: dict[str, Any] | None = None
 
 @router.post(
     "/time-series",
@@ -187,7 +188,7 @@ async def analyze_neurotransmitter(
         )
     # Format response
     time_series_data = [[ts.isoformat(), val] for ts, val in effect.time_series_data]
-    comparison_periods: Dict[str, List[str]] = {}
+    comparison_periods: dict[str, list[str]] = {}
     if effect.baseline_period:
         comparison_periods["baseline"] = [
             effect.baseline_period[0].isoformat(),

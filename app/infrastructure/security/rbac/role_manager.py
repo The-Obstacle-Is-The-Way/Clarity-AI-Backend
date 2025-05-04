@@ -6,8 +6,6 @@ and enforcing permissions across the application, with specific attention to PHI
 """
 
 import logging
-from typing import Optional, Dict, List, Set, Any, Union
-from functools import wraps
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -72,7 +70,7 @@ class RoleBasedAccessControl:
         self._user_permissions[user_id].add(permission)
         logger.info(f"User {user_id} granted permission: {permission}")
     
-    def get_user_permissions(self, user_id: str) -> Set[str]:
+    def get_user_permissions(self, user_id: str) -> set[str]:
         """
         Get all permissions for a user based on their role and any direct permissions.
         
@@ -94,7 +92,7 @@ class RoleBasedAccessControl:
         
         return permissions
     
-    def check_permission(self, user_id: str, permission: str, resource_id: Optional[str] = None) -> bool:
+    def check_permission(self, user_id: str, permission: str, resource_id: str | None = None) -> bool:
         """
         Check if a user has a specific permission, optionally for a specific resource.
         
@@ -128,8 +126,8 @@ class RoleBasedAccessControl:
         return False
 
 
-def check_permission(user_id: Optional[str] = None, permission: Optional[str] = None, 
-                    resource_id: Optional[str] = None) -> bool:
+def check_permission(user_id: str | None = None, permission: str | None = None, 
+                    resource_id: str | None = None) -> bool:
     """
     Function to check if a user has a specific permission.
     

@@ -10,10 +10,9 @@ and ensuring proper dependency management.
 """
 
 import logging
-from typing import Dict, List, Set, Type, Any
+from typing import Any
 
 from sqlalchemy import MetaData
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import registry as sa_registry
 
 # Configure logging
@@ -26,11 +25,11 @@ metadata = MetaData()
 registry = sa_registry(metadata=metadata)
 
 # Keep track of all registered models for validation and debugging
-_registered_models: Set[Type[Any]] = set()
-_registered_tables: Set[str] = set()
+_registered_models: set[type[Any]] = set()
+_registered_tables: set[str] = set()
 
 
-def register_model(model_class: Type[Any]) -> Type[Any]:
+def register_model(model_class: type[Any]) -> type[Any]:
     """
     Register a model with the central SQLAlchemy registry.
     
@@ -87,15 +86,15 @@ def validate_models() -> None:
             logger.debug(f"Model {model_class.__name__} columns: {column_details}")
             
         except Exception as e:
-            logger.error(f"Validation error for {model_class.__name__}: {str(e)}")
+            logger.error(f"Validation error for {model_class.__name__}: {e!s}")
 
 
-def get_registered_models() -> List[str]:
+def get_registered_models() -> list[str]:
     """Get list of all registered model names."""
     return [model.__name__ for model in _registered_models]
 
 
-def get_registered_tables() -> List[str]:
+def get_registered_tables() -> list[str]:
     """Get list of all registered table names."""
     return list(_registered_tables)
 
@@ -109,9 +108,6 @@ def ensure_all_models_registered() -> None:
     """
     try:
         # Import core models to ensure they're registered
-        import app.infrastructure.persistence.sqlalchemy.models.user
-        import app.infrastructure.persistence.sqlalchemy.models.patient
-        import app.infrastructure.persistence.sqlalchemy.models.provider
         
         # Log registered models for debugging
         model_names = get_registered_models()
@@ -119,5 +115,5 @@ def ensure_all_models_registered() -> None:
         logger.info(f"Registered {len(model_names)} models: {', '.join(model_names)}")
         logger.info(f"Registered {len(table_names)} tables: {', '.join(table_names)}")
     except Exception as e:
-        logger.error(f"Error ensuring models are registered: {str(e)}")
+        logger.error(f"Error ensuring models are registered: {e!s}")
         # Don't raise the exception to allow for graceful degradation

@@ -7,7 +7,7 @@ It decouples high-level modules from low-level modules by abstracting
 the creation of dependencies behind a standard interface.
 """
 
-from typing import Any, Dict, Type, TypeVar
+from typing import TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,7 @@ from app.infrastructure.di.container import get_container
 T = TypeVar('T')
 
 
-def get_service_instance(interface_type: Type[T]) -> T:
+def get_service_instance(interface_type: type[T]) -> T:
     """
     Get an instance of a service that implements the specified interface.
     
@@ -38,7 +38,7 @@ def get_service_instance(interface_type: Type[T]) -> T:
     return container.get(interface_type)
 
 
-def get_repository_instance(repository_type: Type[T], session: AsyncSession) -> T:
+def get_repository_instance(repository_type: type[T], session: AsyncSession) -> T:
     """
     Get an instance of a repository that implements the specified interface.
     

@@ -5,10 +5,7 @@ This module contains the ProviderService, which encapsulates complex business lo
 related to provider management in the concierge psychiatry practice.
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
-from app.domain.utils.datetime_utils import UTC
 from uuid import UUID
 
 from app.domain.entities.provider import (
@@ -24,6 +21,7 @@ from app.domain.exceptions import (
 )
 from app.domain.repositories.patient_repository import PatientRepository
 from app.domain.repositories.provider_repository import ProviderRepository
+from app.domain.utils.datetime_utils import UTC
 
 
 class ProviderService:

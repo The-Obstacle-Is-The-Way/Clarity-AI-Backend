@@ -6,7 +6,7 @@ Following clean architecture principles, this exists in the core domain layer
 to avoid dependencies on infrastructure or external services.
 """
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -20,15 +20,15 @@ class PredictionResult:
 
     def __init__(
         self,
-        prediction_id: Union[str, UUID],
+        prediction_id: str | UUID,
         model_type: str,
         patient_id: str,
         prediction_value: Any,
         confidence: float,
-        features_used: List[str],
-        timestamp: Optional[datetime] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        model_version: Optional[str] = None,
+        features_used: list[str],
+        timestamp: datetime | None = None,
+        metadata: dict[str, Any] | None = None,
+        model_version: str | None = None,
     ):
         """
         Initialize a new prediction result.
@@ -54,7 +54,7 @@ class PredictionResult:
         self.metadata = metadata or {}
         self.model_version = model_version
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the prediction result to a dictionary representation."""
         return {
             "prediction_id": self.prediction_id,
@@ -69,7 +69,7 @@ class PredictionResult:
         }
         
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PredictionResult":
+    def from_dict(cls, data: dict[str, Any]) -> "PredictionResult":
         """Create a PredictionResult from a dictionary representation."""
         # Convert timestamp string back to datetime if present
         if "timestamp" in data and isinstance(data["timestamp"], str):

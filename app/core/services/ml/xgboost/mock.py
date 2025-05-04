@@ -5,31 +5,28 @@ This module provides a mock implementation of the XGBoost service
 for testing, development, and demonstration purposes.
 """
 
-import json
+import hashlib
 import logging
+import random
 import re
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Set, Union
-import random
-import hashlib
+from typing import Any
 
-from app.core.services.ml.xgboost.interface import (
-    XGBoostInterface,
-    ModelType,
-    EventType,
-    Observer,
-    PrivacyLevel
-)
 from app.core.services.ml.xgboost.exceptions import (
-    ValidationError,
+    ConfigurationError,
     DataPrivacyError,
-    ResourceNotFoundError,
     ModelNotFoundError,
-    PredictionError,
-    ServiceConnectionError,
-    ConfigurationError
+    ResourceNotFoundError,
+    ValidationError,
+)
+from app.core.services.ml.xgboost.interface import (
+    EventType,
+    ModelType,
+    Observer,
+    PrivacyLevel,
+    XGBoostInterface,
 )
 
 
@@ -54,10 +51,10 @@ class MockXGBoostService(XGBoostInterface):
         super().__init__()
         
         # In-memory storage for predictions
-        self._predictions: Dict[str, Dict[str, Any]] = {}
+        self._predictions: dict[str, dict[str, Any]] = {}
         
         # In-memory storage for digital twin profiles
-        self._profiles: Dict[str, Dict[str, Any]] = {}
+        self._profiles: dict[str, dict[str, Any]] = {}
         
         # Configuration
         self._mock_delay_ms = 200
@@ -88,12 +85,12 @@ class MockXGBoostService(XGBoostInterface):
         }
         
         # Observer pattern support
-        self._observers: Dict[Union[EventType, str], Set[Observer]] = {}
+        self._observers: dict[EventType | str, set[Observer]] = {}
         
         # Logger
         self._logger = logging.getLogger(__name__)
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the mock XGBoost service with configuration.
         
@@ -164,11 +161,11 @@ class MockXGBoostService(XGBoostInterface):
                 raise
             else:
                 raise ConfigurationError(
-                    f"Failed to initialize mock XGBoost service: {str(e)}",
+                    f"Failed to initialize mock XGBoost service: {e!s}",
                     details=str(e)
                 )
     
-    def register_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    def register_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Register an observer for a specific event type.
         
@@ -182,7 +179,7 @@ class MockXGBoostService(XGBoostInterface):
         self._observers[event_key].add(observer)
         self._logger.debug(f"Observer registered for event type {event_type}")
     
-    def unregister_observer(self, event_type: Union[EventType, str], observer: Observer) -> None:
+    def unregister_observer(self, event_type: EventType | str, observer: Observer) -> None:
         """
         Unregister an observer for a specific event type.
         
@@ -197,7 +194,7 @@ class MockXGBoostService(XGBoostInterface):
                 del self._observers[event_key]
             self._logger.debug(f"Observer unregistered for event type {event_type}")
     
-    async def predict(self, patient_id: str, features: Dict[str, Any], model_type: str, **kwargs) -> Dict[str, Any]:
+    async def predict(self, patient_id: str, features: dict[str, Any], model_type: str, **kwargs) -> dict[str, Any]:
         """
         Generic prediction method required by MLServiceInterface.
         
@@ -282,9 +279,9 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         risk_type: str,
-        clinical_data: Dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict risk level using a risk model.
         
@@ -365,10 +362,10 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict response to a psychiatric treatment.
         
@@ -451,11 +448,11 @@ class MockXGBoostService(XGBoostInterface):
     async def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, int],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
+        outcome_timeframe: dict[str, int],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
         **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict clinical outcomes based on treatment plan.
         
@@ -547,7 +544,7 @@ class MockXGBoostService(XGBoostInterface):
         patient_id: str,
         model_type: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
         
@@ -644,7 +641,7 @@ class MockXGBoostService(XGBoostInterface):
         patient_id: str,
         profile_id: str,
         prediction_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Integrate prediction with digital twin profile.
         
@@ -731,7 +728,7 @@ class MockXGBoostService(XGBoostInterface):
         
         return result
     
-    def get_model_info(self, model_type: str) -> Dict[str, Any]:
+    def get_model_info(self, model_type: str) -> dict[str, Any]:
         """
         Get information about a model.
         
@@ -834,7 +831,7 @@ class MockXGBoostService(XGBoostInterface):
         if self._mock_delay_ms > 0:
             time.sleep(self._mock_delay_ms / 1000)
     
-    def _notify_observers(self, event_type: EventType, data: Dict[str, Any]) -> None:
+    def _notify_observers(self, event_type: EventType, data: dict[str, Any]) -> None:
         """
         Notify observers of an event.
         
@@ -862,7 +859,7 @@ class MockXGBoostService(XGBoostInterface):
                 except Exception as e:
                     self._logger.error(f"Error notifying wildcard observer: {e}")
     
-    def _check_phi_in_data(self, data: Dict[str, Any]) -> None:
+    def _check_phi_in_data(self, data: dict[str, Any]) -> None:
         """
         Check for PHI in data.
         
@@ -910,7 +907,7 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         risk_type: str,
-        clinical_data: Dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
     ) -> float:
         """
@@ -985,8 +982,8 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any],
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any],
         **kwargs
     ) -> float:
         """
@@ -1073,8 +1070,8 @@ class MockXGBoostService(XGBoostInterface):
         self,
         patient_id: str,
         time_frame_days: int,
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
         outcome_type: str
     ) -> float:
         """
@@ -1200,7 +1197,7 @@ class MockXGBoostService(XGBoostInterface):
         else:
             return "excellent"
     
-    def _extract_features(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_features(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Extract features from data.
         
@@ -1226,8 +1223,8 @@ class MockXGBoostService(XGBoostInterface):
         self,
         risk_type: str,
         risk_level: str,
-        clinical_data: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        clinical_data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Generate supporting evidence for a risk prediction.
         
@@ -1328,8 +1325,8 @@ class MockXGBoostService(XGBoostInterface):
     def _generate_risk_factors(
         self,
         risk_type: str,
-        clinical_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        clinical_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate risk factors for a risk prediction.
         
@@ -1415,8 +1412,8 @@ class MockXGBoostService(XGBoostInterface):
         self,
         treatment_type: str,
         efficacy_score: float,
-        clinical_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        clinical_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate expected outcome for a treatment response prediction.
         
@@ -1476,9 +1473,9 @@ class MockXGBoostService(XGBoostInterface):
     def _generate_side_effect_risk(
         self,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any]
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any]
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Generate side effect risk for a treatment response prediction.
         
@@ -1543,7 +1540,7 @@ class MockXGBoostService(XGBoostInterface):
         outcome_type: str,
         outcome_score: float,
         time_frame_days: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate outcome trajectory for an outcome prediction.
         
@@ -1605,9 +1602,9 @@ class MockXGBoostService(XGBoostInterface):
         self,
         outcome_type: str,
         outcome_score: float,
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate outcome details for an outcome prediction.
         
@@ -1716,7 +1713,7 @@ class MockXGBoostService(XGBoostInterface):
         
         return details
     
-    def _determine_prediction_type(self, prediction: Dict[str, Any]) -> str:
+    def _determine_prediction_type(self, prediction: dict[str, Any]) -> str:
         """
         Determine the type of prediction from prediction data.
         
@@ -1757,7 +1754,7 @@ class MockXGBoostService(XGBoostInterface):
     def _validate_treatment_type(
         self,
         treatment_type: str,
-        treatment_details: Dict[str, Any]
+        treatment_details: dict[str, Any]
     ) -> None:
         """
         Validate treatment type and details.
@@ -1798,7 +1795,7 @@ class MockXGBoostService(XGBoostInterface):
                     field="treatment_details.frequency"
                 )
     
-    def _validate_outcome_params(self, outcome_timeframe: Dict[str, int]) -> None:
+    def _validate_outcome_params(self, outcome_timeframe: dict[str, int]) -> None:
         """
         Validate outcome prediction parameters.
         

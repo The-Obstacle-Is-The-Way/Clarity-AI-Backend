@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 """
 ML Service Interfaces.
@@ -7,14 +6,14 @@ This module defines the interfaces for ML services used in the application.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class BaseMLInterface(ABC):
     """Base interface for all ML services."""
     
     @abstractmethod
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
         
@@ -49,9 +48,9 @@ class MentaLLaMAInterface(BaseMLInterface):
     def process(
         self, 
         text: str,
-        model_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        model_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA model.
         
@@ -74,8 +73,8 @@ class MentaLLaMAInterface(BaseMLInterface):
     def detect_depression(
         self, 
         text: str,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Detect depression signals in text.
         
@@ -89,7 +88,7 @@ class PHIDetectionInterface(BaseMLInterface):
     """Interface for PHI detection services."""
 
     @abstractmethod
-    def detect_phi(self, text: str) -> List[Dict[str, Any]]:
+    def detect_phi(self, text: str) -> list[dict[str, Any]]:
         """
         Detect potential PHI entities in the given text.
 
@@ -130,7 +129,7 @@ class DigitalTwinInterface(BaseMLInterface):
     """Interface for Digital Twin services."""
 
     @abstractmethod
-    def create_digital_twin(self, patient_id: str, initial_data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_digital_twin(self, patient_id: str, initial_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new digital twin for a patient.
 
@@ -144,7 +143,7 @@ class DigitalTwinInterface(BaseMLInterface):
         pass
 
     @abstractmethod
-    def get_twin_status(self, twin_id: str) -> Dict[str, Any]:
+    def get_twin_status(self, twin_id: str) -> dict[str, Any]:
         """
         Get the current status of a digital twin.
 
@@ -157,7 +156,7 @@ class DigitalTwinInterface(BaseMLInterface):
         pass
 
     @abstractmethod
-    def update_twin_data(self, twin_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_twin_data(self, twin_id: str, data: dict[str, Any]) -> dict[str, Any]:
         """
         Update the data associated with a digital twin.
 
@@ -171,7 +170,7 @@ class DigitalTwinInterface(BaseMLInterface):
         pass
 
     @abstractmethod
-    def get_insights(self, twin_id: str, insight_types: List[str]) -> Dict[str, Any]:
+    def get_insights(self, twin_id: str, insight_types: list[str]) -> dict[str, Any]:
         """
         Generate insights from the digital twin's data.
 
@@ -185,7 +184,7 @@ class DigitalTwinInterface(BaseMLInterface):
         pass
 
     @abstractmethod
-    def interact(self, twin_id: str, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def interact(self, twin_id: str, query: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Interact with the digital twin, potentially asking questions or running simulations.
 

@@ -3,7 +3,7 @@ Data privacy and PHI-related exceptions.
 
 Contains specialized exceptions for handling privacy violations and PHI detection.
 """
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.core.exceptions.base_exceptions import BaseException
 
@@ -19,7 +19,7 @@ class DataPrivacyError(BaseException):
     def __init__(
         self, 
         message: str = "Protected Health Information (PHI) detected in request data",
-        details: Optional[Dict[str, Any]] = None
+        details: dict[str, Any] | None = None
     ):
         """
         Initialize a DataPrivacyError exception.

@@ -6,10 +6,8 @@ following HIPAA Security Rule requirements for data protection at rest and in tr
 """
 
 import base64
-import os
-import json
 import logging
-from typing import Optional, Dict, Any, Union
+from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
@@ -101,7 +99,7 @@ decryption methods for strings and dictionaries.
         return self._cipher
     
     @property
-    def previous_cipher(self) -> Optional[Fernet]:
+    def previous_cipher(self) -> Fernet | None:
         """Get the previous Fernet cipher for key rotation, creating it if necessary."""
         if self._previous_cipher is None:
             prev_key = self._get_previous_key()
@@ -113,7 +111,7 @@ decryption methods for strings and dictionaries.
                     pass
         return self._previous_cipher
     
-    def _prepare_key_for_fernet(self, key_material: str) -> Optional[bytes]:
+    def _prepare_key_for_fernet(self, key_material: str) -> bytes | None:
         """Validates and formats a key string for Fernet."""
         if not key_material:
             return None
@@ -136,7 +134,7 @@ decryption methods for strings and dictionaries.
             
             return base64.urlsafe_b64encode(key_bytes)
 
-    def _get_key(self) -> Optional[bytes]:
+    def _get_key(self) -> bytes | None:
         """Get primary encryption key formatted for Fernet, prioritizing direct key."""
         if self._direct_key:
             prepared_key = self._prepare_key_for_fernet(self._direct_key)
@@ -172,7 +170,7 @@ decryption methods for strings and dictionaries.
         logger.warning("Using derived key - ensure this is acceptable for your security posture.")
         return base64.urlsafe_b64encode(derived_key)
     
-    def _get_previous_key(self) -> Optional[bytes]:
+    def _get_previous_key(self) -> bytes | None:
         """Get previous encryption key formatted for Fernet, prioritizing direct key."""
         if self._direct_previous_key:
             prepared_key = self._prepare_key_for_fernet(self._direct_previous_key)
@@ -192,7 +190,7 @@ decryption methods for strings and dictionaries.
         
         return None
     
-    def encrypt(self, value: Union[str, bytes]) -> Optional[str]:
+    def encrypt(self, value: str | bytes) -> str | None:
         """Encrypt a string or bytes value.
         
         Args:
@@ -231,7 +229,7 @@ decryption methods for strings and dictionaries.
             logger.exception(f"Encryption failed: {e}")
             raise ValueError("Encryption operation failed.") from e
 
-    def decrypt(self, encrypted_value: Optional[str]) -> Optional[str]:
+    def decrypt(self, encrypted_value: str | None) -> str | None:
         """
         Decrypt a value encrypted by this service (or previous key).
         
@@ -295,7 +293,7 @@ decryption methods for strings and dictionaries.
             logger.exception(f"Decryption with primary key failed unexpectedly: {e_prime}")
             raise ValueError("Decryption failed unexpectedly with primary key.") from e_prime
 
-    def encrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def encrypt_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Encrypts string values within a dictionary (shallow)."""
         encrypted_data = {}
         for key, value in data.items():
@@ -305,7 +303,7 @@ decryption methods for strings and dictionaries.
                 encrypted_data[key] = value
         return encrypted_data
 
-    def decrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def decrypt_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Decrypts encrypted string values within a dictionary (shallow)."""
         decrypted_data = {}
         for key, value in data.items():
@@ -319,10 +317,10 @@ decryption methods for strings and dictionaries.
                 decrypted_data[key] = value
         return decrypted_data
 
-    def encrypt_field(self, value: Union[str, bytes]) -> Optional[str]:
+    def encrypt_field(self, value: str | bytes) -> str | None:
         """Alias for encrypt method to encrypt a single field."""
         return self.encrypt(value)
 
-    def decrypt_field(self, encrypted_value: Optional[str]) -> Optional[str]:
+    def decrypt_field(self, encrypted_value: str | None) -> str | None:
         """Alias for decrypt method to decrypt a single field."""
         return self.decrypt(encrypted_value)

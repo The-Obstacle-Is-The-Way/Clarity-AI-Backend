@@ -5,11 +5,12 @@ This module provides bidirectional mapping between the domain User entity and
 the SQLAlchemy User model, following clean architecture principles.
 """
 
-from typing import List, Optional, Union
 from uuid import UUID
 
 from app.domain.entities.user import User as DomainUser
-from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole
+from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel
+from app.infrastructure.persistence.sqlalchemy.models.user import UserRole
+
 
 class UserMapper:
     """

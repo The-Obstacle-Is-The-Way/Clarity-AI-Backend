@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Authentication and Authorization Exception Classes.
 

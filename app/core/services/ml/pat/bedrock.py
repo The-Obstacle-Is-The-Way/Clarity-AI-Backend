@@ -1,46 +1,40 @@
-import uuid
-import random
+import hashlib
 import json
 import logging
-import hashlib
 import re
-from datetime import datetime, timezone, timedelta
-from app.domain.utils.datetime_utils import UTC
-from typing import Optional, List, Any, Union, Tuple, Dict
-from unittest.mock import MagicMock
+import uuid
+from datetime import datetime
+from typing import Any
+
 from botocore.exceptions import ClientError
-from dateutil.parser import parse 
+from dateutil.parser import parse
+
 from app.core.exceptions import (
+    DatabaseException,
     InitializationError,
     InvalidConfigurationError,
-    ValidationError,
     ResourceNotFoundError,
-    AuthorizationError,
-    EmbeddingError,
-    IntegrationError,
-    DatabaseException,
-)
-from app.core.services.ml.pat.exceptions import (
-    InitializationError,
     ValidationError,
-    AnalysisError,
-    ResourceNotFoundError,
-    AuthorizationError,
-    EmbeddingError,
-    IntegrationError, 
 )
-from app.core.services.ml.pat.pat_interface import PATInterface
 from app.core.interfaces.aws_service_interface import (
     AWSServiceFactory,
-    S3ServiceInterface,
-    DynamoDBServiceInterface,
-    BedrockRuntimeServiceInterface,
     AWSSessionServiceInterface,
-    BedrockServiceInterface
+    BedrockRuntimeServiceInterface,
+    BedrockServiceInterface,
+    DynamoDBServiceInterface,
+    S3ServiceInterface,
 )
-from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
-from app.infrastructure.ml.pat.models import AnalysisResult, AccelerometerReading
+from app.core.services.ml.pat.exceptions import (
+    AnalysisError,
+    InitializationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
+from app.core.services.ml.pat.pat_interface import PATInterface
 from app.domain.entities.digital_twin import DigitalTwin
+from app.domain.utils.datetime_utils import UTC
+from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
+from app.infrastructure.ml.pat.models import AnalysisResult
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +45,7 @@ class BedrockPAT(PATInterface):
     This class uses the clean architecture pattern with abstracted AWS service interfaces
     for improved testability, maintainability, and HIPAA compliance.
     """
-    def __init__(self, aws_service_factory: Optional[AWSServiceFactory] = None):
+    def __init__(self, aws_service_factory: AWSServiceFactory | None = None):
         """
         Initialize the Bedrock PAT service.
         
@@ -71,11 +65,11 @@ class BedrockPAT(PATInterface):
             self._aws_factory = aws_service_factory
         
         # Services will be initialized in the initialize method
-        self._s3_service: Optional[S3ServiceInterface] = None
-        self._dynamodb_service: Optional[DynamoDBServiceInterface] = None
-        self._bedrock_runtime_service: Optional[BedrockRuntimeServiceInterface] = None
-        self._bedrock_service: Optional[BedrockServiceInterface] = None
-        self._session_service: Optional[AWSSessionServiceInterface] = None
+        self._s3_service: S3ServiceInterface | None = None
+        self._dynamodb_service: DynamoDBServiceInterface | None = None
+        self._bedrock_runtime_service: BedrockRuntimeServiceInterface | None = None
+        self._bedrock_service: BedrockServiceInterface | None = None
+        self._session_service: AWSSessionServiceInterface | None = None
         
         # Direct client references that are publicly accessible for testing
         # These are the attributes that tests will mock and verify
@@ -166,7 +160,7 @@ class BedrockPAT(PATInterface):
         """Set analysis model ID."""
         self._analysis_model_id = value
     
-    async def initialize(self, config: Optional[dict[str, Any]] = None) -> None:
+    async def initialize(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize the service with AWS configurations.
         
@@ -225,7 +219,7 @@ class BedrockPAT(PATInterface):
             if isinstance(e, InvalidConfigurationError):
                 # Re-raise configuration errors directly for test expectations
                 raise
-            error_msg = f"Failed to initialize BedrockPAT service: {str(e)}"
+            error_msg = f"Failed to initialize BedrockPAT service: {e!s}"
             logger.error(error_msg)
             raise InitializationError(error_msg) from e
 
@@ -276,7 +270,7 @@ class BedrockPAT(PATInterface):
             }
             logger.info(f"AUDIT: {json.dumps(audit_entry)}")
         except Exception as e:
-            logger.error(f"Failed to record audit log: {str(e)}")
+            logger.error(f"Failed to record audit log: {e!s}")
     
     async def _store_analysis_result(self, analysis: dict[str, Any]) -> None:
         """
@@ -313,14 +307,14 @@ class BedrockPAT(PATInterface):
             
             logger.info(f"Stored analysis {analysis['analysis_id']} in DynamoDB")
         except Exception as e:
-            error_msg = f"Failed to store analysis: {str(e)}"
+            error_msg = f"Failed to store analysis: {e!s}"
             logger.error(error_msg)
             raise StorageError(error_msg)
             
     def _validate_actigraphy_request(
         self, 
         patient_id: str, 
-        readings: List[dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str,
         end_time: str, 
         sampling_rate_hz: float
@@ -366,7 +360,7 @@ class BedrockPAT(PATInterface):
                 raise ValidationError("End time must be after start time")
                 
         except Exception as e:
-            raise ValidationError(f"Invalid time format: {str(e)}")
+            raise ValidationError(f"Invalid time format: {e!s}")
             
         # Validate readings format
         for i, reading in enumerate(readings):
@@ -383,12 +377,12 @@ class BedrockPAT(PATInterface):
     async def analyze_actigraphy(
         self, 
         patient_id: str, 
-        readings: List[dict[str, Any]],
+        readings: list[dict[str, Any]],
         start_time: str, 
         end_time: str,
         sampling_rate_hz: float,
-        device_info: Optional[dict[str, Any]] = None,
-        analysis_types: Optional[List[str]] = None,
+        device_info: dict[str, Any] | None = None,
+        analysis_types: list[str] | None = None,
         **kwargs
     ) -> AnalysisResult:
         """
@@ -473,7 +467,7 @@ class BedrockPAT(PATInterface):
                 
             except Exception as e:
                 # If parsing fails, use default test values
-                logger.warning(f"Error parsing Bedrock response: {str(e)}. Using default values.")
+                logger.warning(f"Error parsing Bedrock response: {e!s}. Using default values.")
                 model_output = {
                     "sleep_metrics": {
                         "sleep_efficiency": 0.85,
@@ -547,7 +541,7 @@ class BedrockPAT(PATInterface):
             
         except Exception as e:
             # Catch other errors
-            error_msg = f"Failed to analyze actigraphy data: {str(e)}"
+            error_msg = f"Failed to analyze actigraphy data: {e!s}"
             logger.error(error_msg)
             patient_hash = self._hash_identifier(patient_id)
             self._record_audit_log("actigraphy_analysis_error", {
@@ -557,7 +551,7 @@ class BedrockPAT(PATInterface):
             })
             raise AnalysisError(error_msg)
 
-    async def get_analysis_by_id(self, analysis_id: str) -> Optional[AnalysisResult]:
+    async def get_analysis_by_id(self, analysis_id: str) -> AnalysisResult | None:
         """
         Retrieve an analysis by its ID.
         
@@ -606,7 +600,7 @@ class BedrockPAT(PATInterface):
             logging.warning(f"Analysis {analysis_id} not found.")
             raise e # Re-raise not found error
         except Exception as e:
-            error_msg = f"Failed to retrieve analysis: {str(e)}"
+            error_msg = f"Failed to retrieve analysis: {e!s}"
             logger.error(error_msg)
             raise ResourceNotFoundError(error_msg)
 
@@ -615,9 +609,9 @@ class BedrockPAT(PATInterface):
         patient_id: str, 
         limit: int = 10, 
         offset: int = 0,
-        analysis_type: Optional[str] = None,
-        start_date: Optional[str] = None, 
-        end_date: Optional[str] = None,
+        analysis_type: str | None = None,
+        start_date: str | None = None, 
+        end_date: str | None = None,
         **kwargs
     ) -> list[AnalysisResult]:
         """
@@ -764,7 +758,7 @@ class BedrockPAT(PATInterface):
         self,
         patient_id: str,
         analysis_result: AnalysisResult,
-        twin_profile: Optional[DigitalTwin] = None 
+        twin_profile: DigitalTwin | None = None 
     ) -> DigitalTwin: 
         """Integrates the PAT analysis results with the patient's digital twin profile."""
         if not self._dynamodb_service:
@@ -784,11 +778,15 @@ class BedrockPAT(PATInterface):
         # For now, return a placeholder DigitalTwin instance to resolve type errors
         
         # Imports needed for placeholder - ideally inject repository
-        import json # Needed for parsing bedrock response
+        import json  # Needed for parsing bedrock response
         from uuid import UUID
-        from datetime import datetime
-        from app.domain.utils.datetime_utils import now_utc, UTC
-        from app.domain.entities.digital_twin import DigitalTwin, DigitalTwinState, DigitalTwinConfiguration
+
+        from app.domain.entities.digital_twin import (
+            DigitalTwin,
+            DigitalTwinConfiguration,
+            DigitalTwinState,
+        )
+        from app.domain.utils.datetime_utils import now_utc
 
         logger.info(f"Fetching or updating digital twin profile for patient {patient_id}")
         
@@ -875,7 +873,7 @@ class BedrockPAT(PATInterface):
         
         return placeholder_twin
 
-    async def get_actigraphy_embeddings(self, patient_id: str, data: List[Dict]) -> List[float]:
+    async def get_actigraphy_embeddings(self, patient_id: str, data: list[dict]) -> list[float]:
         """
         Placeholder for generating embeddings from actigraphy data using Bedrock.
         TODO: Implement actual Bedrock call for embeddings.
@@ -961,7 +959,7 @@ class BedrockPAT(PATInterface):
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
         return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
-    def _parse_dynamodb_item(self, item: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def _parse_dynamodb_item(self, item: dict[str, dict[str, Any]]) -> dict[str, Any]:
         """
         Convert a DynamoDB item dictionary to a standard Python dictionary.
         

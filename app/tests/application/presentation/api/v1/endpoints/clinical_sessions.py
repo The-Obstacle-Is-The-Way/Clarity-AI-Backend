@@ -4,28 +4,33 @@ API Endpoints for Clinical Session Records.
 Provides endpoints for creating, retrieving, and updating clinical session notes
 and structured data.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.domain.entities.clinical_session import SessionType  # For query param validation
+
+# Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
+from app.domain.entities.user import User
+
+# from app.application.services.clinical_session_service import ClinicalSessionService # Use this when service layer is built
+from app.domain.repositories.clinical_session_repository import (
+    IClinicalSessionRepository,  # Temporary direct repo access
+)
+from app.domain.utils.datetime_utils import now_utc
+
+# Import dependencies
+from app.presentation.api.dependencies.auth import (
+    get_current_user,  #, require_role # Add role check if needed
+)
 
 # Import schemas
 from app.presentation.api.schemas.clinical_session import (
     ClinicalSessionCreate,
-    ClinicalSessionUpdate,
     ClinicalSessionResponse,
-    ClinicalSessionListQuery
+    ClinicalSessionUpdate,
 )
-from app.domain.entities.clinical_session import SessionType # For query param validation
-
-# Import dependencies
-from app.presentation.api.dependencies.auth import get_current_user #, require_role # Add role check if needed
-from app.infrastructure.di.container import get_container # Assuming a DI container exists
-# from app.application.services.clinical_session_service import ClinicalSessionService # Use this when service layer is built
-from app.domain.repositories.clinical_session_repository import IClinicalSessionRepository # Temporary direct repo access
-# Assuming User type from auth dependency matches this import or is compatible (e.g., dict)
-from app.domain.entities.user import User
 
 # Initialize router
 router = APIRouter()
@@ -67,7 +72,7 @@ async def record_clinical_session(
     #        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Provider can only record sessions for themselves.")
 
     try:
-        from app.domain.entities.clinical_session import ClinicalSession # Import entity
+        from app.domain.entities.clinical_session import ClinicalSession  # Import entity
         
         new_session_entity = ClinicalSession(**session_data.model_dump())
 
@@ -79,7 +84,7 @@ async def record_clinical_session(
         
         created_session = await repo.create(new_session_entity)
         return created_session
-    except Exception as e:
+    except Exception:
         # Log error
         # logger.error(f"Failed to record clinical session: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to record clinical session")
@@ -102,8 +107,9 @@ async def get_clinical_session(
      # Mock get_by_id for now
     async def mock_get_id(sid):
         if str(sid) == "123e4567-e89b-12d3-a456-426614174003": # Example ID
-             from app.domain.entities.clinical_session import ClinicalSession, SessionType
              from uuid import uuid4
+
+             from app.domain.entities.clinical_session import ClinicalSession, SessionType
              return ClinicalSession(
                  id=UUID("123e4567-e89b-12d3-a456-426614174003"),
                  patient_id=uuid4(), provider_id=uuid4(),
@@ -131,17 +137,17 @@ async def get_clinical_session(
 
 @router.get(
     "",
-    response_model=List[ClinicalSessionResponse],
+    response_model=list[ClinicalSessionResponse],
     summary="List Clinical Sessions",
     description="Retrieve a list of clinical sessions based on filter criteria.",
 )
 async def list_clinical_sessions(
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient ID"),
-    provider_id: Optional[UUID] = Query(None, description="Filter by provider ID"),
-    appointment_id: Optional[UUID] = Query(None, description="Filter by appointment ID"),
-    start_date: Optional[datetime] = Query(None, description="Filter by session start date (inclusive)"),
-    end_date: Optional[datetime] = Query(None, description="Filter by session end date (exclusive)"),
-    session_type: Optional[SessionType] = Query(None, description="Filter by session type"),
+    patient_id: UUID | None = Query(None, description="Filter by patient ID"),
+    provider_id: UUID | None = Query(None, description="Filter by provider ID"),
+    appointment_id: UUID | None = Query(None, description="Filter by appointment ID"),
+    start_date: datetime | None = Query(None, description="Filter by session start date (inclusive)"),
+    end_date: datetime | None = Query(None, description="Filter by session end date (exclusive)"),
+    session_type: SessionType | None = Query(None, description="Filter by session type"),
     limit: int = Query(50, ge=1, le=200, description="Maximum sessions to return"),
     offset: int = Query(0, ge=0, description="Number of sessions to skip"),
     current_user: User = Depends(get_current_user),
@@ -206,8 +212,9 @@ async def update_clinical_session(
     """
     # Mock get_by_id for update
     async def mock_get_id_for_update(sid):
-        from app.domain.entities.clinical_session import ClinicalSession, SessionType
         from uuid import uuid4
+
+        from app.domain.entities.clinical_session import ClinicalSession, SessionType
         # Determine provider ID based on current user if possible
         provider_uuid = UUID(current_user['id']) if isinstance(current_user, dict) and 'id' in current_user else uuid4()
         return ClinicalSession(
@@ -256,6 +263,5 @@ async def update_clinical_session(
 # Consider an 'archive' or 'mark_as_error' status instead.
 
 # Need uuid4 for mock create
-from uuid import uuid4
 # Need UUID for mock provider_id comparison
-from uuid import UUID 
+from uuid import UUID, uuid4

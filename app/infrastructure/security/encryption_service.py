@@ -9,15 +9,13 @@ import base64
 import hashlib
 import hmac
 import os
-import secrets
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
-from app.core.config import settings
 
 
 class EncryptionService(IEncryptionService):
@@ -29,7 +27,7 @@ class EncryptionService(IEncryptionService):
     Single Responsibility Principle by focusing solely on encryption operations.
     """
     
-    def __init__(self, master_key: Optional[bytes] = None):
+    def __init__(self, master_key: bytes | None = None):
         """
         Initialize the encryption service.
         
@@ -40,7 +38,7 @@ class EncryptionService(IEncryptionService):
         self._master_key = master_key or self._load_or_generate_master_key()
         self._fernet = Fernet(self._master_key)
     
-    def encrypt(self, data: Union[str, bytes], context: Optional[Dict[str, Any]] = None) -> bytes:
+    def encrypt(self, data: str | bytes, context: dict[str, Any] | None = None) -> bytes:
         """
         Encrypt data with optional context.
         
@@ -70,7 +68,7 @@ class EncryptionService(IEncryptionService):
         # Use master key if no context
         return self._fernet.encrypt(data_bytes)
     
-    def decrypt(self, encrypted_data: bytes, context: Optional[Dict[str, Any]] = None) -> bytes:
+    def decrypt(self, encrypted_data: bytes, context: dict[str, Any] | None = None) -> bytes:
         """
         Decrypt previously encrypted data with optional context.
         
@@ -139,7 +137,7 @@ class EncryptionService(IEncryptionService):
         
         return Fernet.generate_key()
     
-    def _derive_key_from_context(self, context: Dict[str, Any]) -> bytes:
+    def _derive_key_from_context(self, context: dict[str, Any]) -> bytes:
         """
         Derive a specific key from the master key and context.
         

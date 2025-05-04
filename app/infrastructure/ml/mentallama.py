@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 MentaLLaMA Service.
 
@@ -6,16 +5,14 @@ This module provides integration with MentaLLaMA, a specialized LLM
 for mental health analysis and clinical decision support.
 """
 
-import json
 import asyncio
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
 
-import backoff
 import aiohttp
+import backoff
 
 from app.core.utils.logging import get_logger
 from app.infrastructure.ml.phi_detection import PHIDetectionService
-
 
 logger = get_logger(__name__)
 
@@ -36,9 +33,9 @@ class MentaLLaMAResult:
     def __init__(
         self,
         text: str,
-        analysis: Dict[str, Any],
+        analysis: dict[str, Any],
         confidence: float,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ):
         """
         Initialize MentaLLaMA result.
@@ -54,7 +51,7 @@ class MentaLLaMAResult:
         self.confidence = confidence
         self.metadata = metadata or {}
         
-    def get_insights(self) -> List[str]:
+    def get_insights(self) -> list[str]:
         """
         Get clinical insights from analysis.
         
@@ -63,7 +60,7 @@ class MentaLLaMAResult:
         """
         return self.analysis.get("insights", [])
         
-    def get_suggested_actions(self) -> List[str]:
+    def get_suggested_actions(self) -> list[str]:
         """
         Get suggested clinical actions from analysis.
         
@@ -72,7 +69,7 @@ class MentaLLaMAResult:
         """
         return self.analysis.get("suggested_actions", [])
         
-    def get_risk_factors(self) -> Dict[str, float]:
+    def get_risk_factors(self) -> dict[str, float]:
         """
         Get identified risk factors with confidence scores.
         
@@ -81,7 +78,7 @@ class MentaLLaMAResult:
         """
         return self.analysis.get("risk_factors", {})
         
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert result to dictionary.
         
@@ -107,7 +104,7 @@ class MentaLLaMAService:
     def __init__(
         self,
         phi_detection_service: PHIDetectionService,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         api_endpoint: str = "https://api.mentallama.com/v1",
         model_name: str = "mentallama-7b",
         temperature: float = 0.7

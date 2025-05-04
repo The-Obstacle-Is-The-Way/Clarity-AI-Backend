@@ -4,12 +4,13 @@ Application Service for Patient operations.
 Orchestrates use cases related to patient data management.
 """
 import logging
+from typing import Any
 from uuid import UUID
-from typing import Optional, List, Dict, Any
 
 # Import necessary domain entities and repository interfaces
 from app.domain.entities.patient import Patient
 from app.domain.repositories.patient_repository import PatientRepository
+
 # Import encryption service if needed for handling sensitive data
 # from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 
@@ -24,9 +25,9 @@ class PatientApplicationService:
         # self.encryption_service = encryption_service # If needed
         logger.info("PatientApplicationService initialized.")
 
-    async def create_patient(self, patient_data: Dict[str, Any]) -> Patient:
+    async def create_patient(self, patient_data: dict[str, Any]) -> Patient:
         """Creates a new patient record."""
-        logger.info(f"Creating new patient record.")
+        logger.info("Creating new patient record.")
         # TODO: Add validation, encryption of sensitive fields before creating entity
         # Map data to domain entity
         try:
@@ -41,7 +42,7 @@ class PatientApplicationService:
              # Consider raising a specific application-level exception
              raise
 
-    async def get_patient_by_id(self, patient_id: UUID, requesting_user_id: UUID, requesting_user_role: str) -> Optional[Patient]:
+    async def get_patient_by_id(self, patient_id: UUID, requesting_user_id: UUID, requesting_user_role: str) -> Patient | None:
         """Retrieves a patient by ID, applying authorization checks."""
         logger.debug(f"Retrieving patient {patient_id} for user {requesting_user_id} ({requesting_user_role})")
         patient = await self.repo.get_by_id(patient_id)
@@ -64,7 +65,7 @@ class PatientApplicationService:
              # Raise or return None based on policy
              raise PermissionError("User not authorized to access this patient data.")
 
-    async def update_patient(self, patient_id: UUID, update_data: Dict[str, Any]) -> Optional[Patient]:
+    async def update_patient(self, patient_id: UUID, update_data: dict[str, Any]) -> Patient | None:
         """Updates an existing patient record."""
         logger.info(f"Updating patient {patient_id}")
         # TODO: Add authorization check

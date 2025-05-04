@@ -4,52 +4,51 @@ This implementation demonstrates the integration of all three AI components
 and the knowledge graph without requiring actual ML models.
 """
 import asyncio
-from datetime import datetime, timedelta
 import logging
-import math
 import random
 import time
 import uuid
-from typing import Dict, List, Optional, Tuple, Union, Set, Callable
-from uuid import UUID, uuid4
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock
+from uuid import UUID
+
+from app.domain.entities.digital_twin import DigitalTwinState
+from app.domain.entities.digital_twin_entity import ClinicalInsight
 
 # Import domain entities (use dataclass models for insights and state)
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    Neurotransmitter,
     ClinicalSignificance,
+    Neurotransmitter,
 )
-from app.domain.entities.digital_twin_entity import ClinicalInsight
-from app.domain.entities.digital_twin import DigitalTwin, DigitalTwinState
-from app.domain.entities.neurotransmitter_mapping import ReceptorSubtype
-from app.domain.entities.neurotransmitter_mapping import (
-    NeurotransmitterMapping,
-    ReceptorProfile,
-    ReceptorType,
-    create_default_neurotransmitter_mapping
+from app.domain.entities.knowledge_graph import (
+    BayesianBeliefNetwork,
+    EdgeType,
+    KnowledgeGraphEdge,
+    KnowledgeGraphNode,
+    NodeType,
+    TemporalKnowledgeGraph,
 )
+
 # Import the original DigitalTwinState and all adapter classes
 # Removed import of DigitalTwinState enum to avoid shadowing domain models
-
 # Corrected import path assuming model_adapter is directly under entities
 from app.domain.entities.model_adapter import (
     BrainRegionStateAdapter,
-    NeurotransmitterStateAdapter,
-    NeuralConnectionAdapter,
-    TemporalPatternAdapter,
     DigitalTwinStateAdapter,
-    ensure_enum_value
+    NeuralConnectionAdapter,
+    NeurotransmitterStateAdapter,
+)
+from app.domain.entities.neurotransmitter_mapping import (
+    NeurotransmitterMapping,
+    ReceptorProfile,
+    create_default_neurotransmitter_mapping,
 )
 from app.domain.services.enhanced_digital_twin_core_service import EnhancedDigitalTwinCoreService
 from app.domain.services.enhanced_mentalllama_service import EnhancedMentalLLaMAService
-from unittest.mock import MagicMock
-from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 from app.domain.services.enhanced_pat_service import EnhancedPATService
-from app.domain.entities.knowledge_graph import (
-    TemporalKnowledgeGraph, BayesianBeliefNetwork, KnowledgeGraphNode, KnowledgeGraphEdge,
-    NodeType, EdgeType
-)
-
+from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +65,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     
     def __init__(
         self,
-        mental_llama_service: Optional[EnhancedMentalLLaMAService] = None,
-        xgboost_service: Optional[EnhancedXGBoostService] = None,
-        pat_service: Optional[EnhancedPATService] = None,
+        mental_llama_service: EnhancedMentalLLaMAService | None = None,
+        xgboost_service: EnhancedXGBoostService | None = None,
+        pat_service: EnhancedPATService | None = None,
     ):
         """
         Initialize the mock enhanced digital twin core service with its component services.
@@ -87,22 +86,22 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self.pat_service = pat_service or MagicMock(spec=EnhancedPATService)
         
         # In-memory storage of Digital Twin states, knowledge graphs, and belief networks
-        self._digital_twin_states: Dict[UUID, Dict[UUID, Union[DigitalTwinState, DigitalTwinStateAdapter]]] = {}  # patient_id -> state_id -> state
-        self._knowledge_graphs: Dict[UUID, TemporalKnowledgeGraph] = {}  # patient_id -> knowledge_graph
-        self._belief_networks: Dict[UUID, BayesianBeliefNetwork] = {}  # patient_id -> belief_network
-        self._neurotransmitter_mappings: Dict[UUID, NeurotransmitterMapping] = {}  # patient_id -> neurotransmitter_mapping
+        self._digital_twin_states: dict[UUID, dict[UUID, DigitalTwinState | DigitalTwinStateAdapter]] = {}  # patient_id -> state_id -> state
+        self._knowledge_graphs: dict[UUID, TemporalKnowledgeGraph] = {}  # patient_id -> knowledge_graph
+        self._belief_networks: dict[UUID, BayesianBeliefNetwork] = {}  # patient_id -> belief_network
+        self._neurotransmitter_mappings: dict[UUID, NeurotransmitterMapping] = {}  # patient_id -> neurotransmitter_mapping
         
         # Event system
-        self._event_subscriptions: Dict[UUID, Dict] = {}  # subscription_id -> subscription_data
-        self._event_history: Dict[UUID, List[Dict]] = {}  # patient_id -> events
+        self._event_subscriptions: dict[UUID, dict] = {}  # subscription_id -> subscription_data
+        self._event_history: dict[UUID, list[dict]] = {}  # patient_id -> events
     
     async def initialize_digital_twin(
         self,
         patient_id: UUID,
-        initial_data: Optional[Dict] = None,
+        initial_data: dict | None = None,
         enable_knowledge_graph: bool = True,
         enable_belief_network: bool = True
-    ) -> Tuple[DigitalTwinState, Optional[TemporalKnowledgeGraph], Optional[BayesianBeliefNetwork]]:
+    ) -> tuple[DigitalTwinState, TemporalKnowledgeGraph | None, BayesianBeliefNetwork | None]:
         """
         Initialize a new Digital Twin state with knowledge graph and belief network.
         
@@ -174,13 +173,13 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def process_multimodal_data(
         self,
         patient_id: UUID,
-        text_data: Optional[Dict] = None,
-        physiological_data: Optional[Dict] = None,
-        imaging_data: Optional[Dict] = None,
-        behavioral_data: Optional[Dict] = None,
-        genetic_data: Optional[Dict] = None,
-        context: Optional[Dict] = None
-    ) -> Tuple[DigitalTwinState, List[Dict]]:
+        text_data: dict | None = None,
+        physiological_data: dict | None = None,
+        imaging_data: dict | None = None,
+        behavioral_data: dict | None = None,
+        genetic_data: dict | None = None,
+        context: dict | None = None
+    ) -> tuple[DigitalTwinState, list[dict]]:
         """
         Process multimodal data using all three AI components.
         
@@ -300,9 +299,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def update_knowledge_graph(
         self,
         patient_id: UUID,
-        new_data: Dict,
+        new_data: dict,
         data_source: str,
-        digital_twin_state_id: Optional[UUID] = None
+        digital_twin_state_id: UUID | None = None
     ) -> TemporalKnowledgeGraph:
         """
         Update the temporal knowledge graph with new data.
@@ -385,7 +384,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
                     knowledge_graph.add_edge(edge)
         
         # Process other data types (simplified)
-        if "text_data" in new_data and new_data["text_data"]:
+        if new_data.get("text_data"):
             if "diagnoses" in new_data["text_data"]:
                 # Use current time for all operations to ensure consistent timestamps
                 now = datetime.now()
@@ -436,7 +435,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def update_belief_network(
         self,
         patient_id: UUID,
-        evidence: Dict,
+        evidence: dict,
         source: str,
         confidence: float = 1.0
     ) -> BayesianBeliefNetwork:
@@ -494,9 +493,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def perform_cross_validation(
         self,
         patient_id: UUID,
-        data_points: Dict,
+        data_points: dict,
         validation_strategy: str = "majority_vote"
-    ) -> Dict:
+    ) -> dict:
         """
         Perform cross-validation of data points across AI components.
         
@@ -572,7 +571,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         end_event: str,
         max_path_length: int = 5,
         min_confidence: float = 0.6
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Analyze cause-effect relationships across time.
         
@@ -619,9 +618,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         treatment_id: UUID,
-        time_points: List[datetime],
-        effect_types: List[str]
-    ) -> Dict:
+        time_points: list[datetime],
+        effect_types: list[str]
+    ) -> dict:
         """
         Map treatment effects on specific patient parameters over time.
         
@@ -678,9 +677,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         intervention_type: str,
-        response_markers: List[str],
-        time_window: Tuple[int, int] = (0, 30)  # days
-    ) -> Dict:
+        response_markers: list[str],
+        time_window: tuple[int, int] = (0, 30)  # days
+    ) -> dict:
         """
         Generate precise mapping of intervention effects on response markers.
         
@@ -746,10 +745,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def detect_digital_phenotype(
         self,
         patient_id: UUID,
-        data_sources: List[str],
+        data_sources: list[str],
         min_data_points: int = 100,
         clustering_method: str = "hierarchical"
-    ) -> Dict:
+    ) -> dict:
         """
         Detect digital phenotype from multimodal data sources.
         
@@ -792,10 +791,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def generate_predictive_maintenance_plan(
         self,
         patient_id: UUID,
-        risk_factors: List[str],
+        risk_factors: list[str],
         prediction_horizon: int = 90,  # days
-        intervention_options: Optional[List[Dict]] = None
-    ) -> Dict:
+        intervention_options: list[dict] | None = None
+    ) -> dict:
         """
         Generate a predictive maintenance plan for patient stability.
         
@@ -850,10 +849,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         baseline_state_id: UUID,
-        intervention_scenarios: List[Dict],
-        output_variables: List[str],
+        intervention_scenarios: list[dict],
+        output_variables: list[str],
         simulation_horizon: int = 180  # days
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Perform counterfactual simulation of intervention scenarios.
         
@@ -934,10 +933,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def generate_early_warning_system(
         self,
         patient_id: UUID,
-        warning_conditions: List[Dict],
+        warning_conditions: list[dict],
         monitoring_frequency: str = "daily",
         notification_threshold: float = 0.7  # 0.0 to 1.0
-    ) -> Dict:
+    ) -> dict:
         """
         Generate an early warning system for patient decompensation.
         
@@ -991,10 +990,10 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def generate_multimodal_clinical_summary(
         self,
         patient_id: UUID,
-        summary_types: List[str],
-        time_range: Optional[Tuple[datetime, datetime]] = None,
+        summary_types: list[str],
+        time_range: tuple[datetime, datetime] | None = None,
         detail_level: str = "comprehensive"  # "brief", "standard", "comprehensive"
-    ) -> Dict:
+    ) -> dict:
         """
         Generate a comprehensive multimodal clinical summary.
         
@@ -1040,9 +1039,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         visualization_type: str,
-        parameters: Dict,
-        digital_twin_state_id: Optional[UUID] = None
-    ) -> Dict:
+        parameters: dict,
+        digital_twin_state_id: UUID | None = None
+    ) -> dict:
         """
         Generate data for advanced visualizations.
         
@@ -1116,25 +1115,25 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         node_id = uuid.uuid4()
         return node_id
 
-    async def add_knowledge_relationship(self, patient_id: UUID, source_node_id: UUID, target_node_type, relationship_type: str, relationship_data: Dict) -> UUID:
+    async def add_knowledge_relationship(self, patient_id: UUID, source_node_id: UUID, target_node_type, relationship_type: str, relationship_data: dict) -> UUID:
         """Stub for adding a relationship to the knowledge graph."""
         relationship_id = uuid.uuid4()
         return relationship_id
 
-    async def query_knowledge_graph(self, patient_id: UUID, query_type: str, parameters: Dict) -> Dict:
+    async def query_knowledge_graph(self, patient_id: UUID, query_type: str, parameters: dict) -> dict:
         """Stub for querying the knowledge graph."""
         return {"relationships": [{}]}
 
-    async def update_belief(self, patient_id: UUID, belief_node: str, evidence: Dict, probability: float) -> None:
+    async def update_belief(self, patient_id: UUID, belief_node: str, evidence: dict, probability: float) -> None:
         """Stub for updating the belief network."""
         return
 
-    async def query_belief_network(self, patient_id: UUID, query_node: str, evidence: Dict) -> Dict:
+    async def query_belief_network(self, patient_id: UUID, query_node: str, evidence: dict) -> dict:
         """Stub for querying the belief network."""
         # Return a dummy probability between 0 and 1
         return {"probability": 0.5}
 
-    async def simulate_neurotransmitter_dynamics(self, patient_id: UUID, intervention: Dict, duration_days: int, time_resolution_hours: int) -> Dict:
+    async def simulate_neurotransmitter_dynamics(self, patient_id: UUID, intervention: dict, duration_days: int, time_resolution_hours: int) -> dict:
         """Stub for simulating neurotransmitter dynamics."""
         return {"timeline": [{"neurotransmitter_levels": {}}], "clinical_effects": []}
 
@@ -1142,11 +1141,11 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         """Stub for adding a temporal neurotransmitter sequence."""
         return
 
-    async def analyze_temporal_patterns(self, patient_id: UUID, sequence_id: UUID, analysis_type: str, parameters: Dict) -> Dict:
+    async def analyze_temporal_patterns(self, patient_id: UUID, sequence_id: UUID, analysis_type: str, parameters: dict) -> dict:
         """Stub for analyzing temporal patterns in neurotransmitter data."""
         return {"trend": "", "significance": "", "correlation": 0.0}
 
-    async def generate_clinical_insights(self, patient_id: UUID, insight_types: List, time_range: Tuple = None, **kwargs) -> List[Dict]:
+    async def generate_clinical_insights(self, patient_id: UUID, insight_types: list, time_range: tuple = None, **kwargs) -> list[dict]:
         """Stub for generating clinical insights."""
         # Provide one dummy insight
         return [{
@@ -1157,7 +1156,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "supporting_evidence": []
         }]
 
-    async def predict_treatment_response(self, patient_id: UUID, treatment: Dict, prediction_timeframe_weeks: int) -> Dict:
+    async def predict_treatment_response(self, patient_id: UUID, treatment: dict, prediction_timeframe_weeks: int) -> dict:
         """Stub for predicting treatment response."""
         return {
             "response_probability": 0.5,
@@ -1166,7 +1165,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "expected_neurotransmitter_changes": []
         }
 
-    async def process_clinical_event(self, patient_id: UUID, event_type: str, event_data: Dict) -> Dict:
+    async def process_clinical_event(self, patient_id: UUID, event_type: str, event_data: dict) -> dict:
         """Stub for processing a clinical event."""
         event_id = uuid.uuid4()
         # Record event for retrieval
@@ -1177,7 +1176,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         # Include at least one effect for test compatibility
         return {"event_id": str(event_id), "status": "processed", "effects": [{}]}
 
-    async def get_clinical_events(self, patient_id: UUID, event_types: List[str], time_range: Tuple) -> List[Dict]:
+    async def get_clinical_events(self, patient_id: UUID, event_types: list[str], time_range: tuple) -> list[dict]:
         """Stub for retrieving processed clinical events."""
         # Return recorded events matching types (ignores time_range for simplicity)
         events = self._event_history.get(patient_id, [])
@@ -1185,7 +1184,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             return [e for e in events if e.get("event_type") in event_types]
         return events
     
-    async def simulate_neurotransmitter_cascade(self, *args, **kwargs) -> Dict:
+    async def simulate_neurotransmitter_cascade(self, *args, **kwargs) -> dict:
         """Stub for cascading neurotransmitter simulations."""
         # Ensure mapping exists for patient (args[0] is patient_id)
         patient_id = kwargs.get('patient_id') if 'patient_id' in kwargs else (args[0] if args else None)
@@ -1198,7 +1197,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         }]
         return {"timeline": timeline}
     
-    async def analyze_neurotransmitter_interactions(self, *args, **kwargs) -> Dict:
+    async def analyze_neurotransmitter_interactions(self, *args, **kwargs) -> dict:
         """Stub for analyzing neurotransmitter interactions."""
         return {
             "primary_interactions": [{"source": None, "target": None, "effect_type": None, "effect_magnitude": "medium"}],
@@ -1206,7 +1205,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "confidence": 0.5
         }
     
-    async def predict_medication_effects(self, *args, **kwargs) -> Dict:
+    async def predict_medication_effects(self, *args, **kwargs) -> dict:
         """Stub for predicting medication effects on neurotransmitters."""
         # Primary effects with at least serotonin
         primary = {Neurotransmitter.SEROTONIN.value: 1.0}
@@ -1219,7 +1218,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "confidence": 0.5
         }
     
-    async def analyze_temporal_response(self, *args, **kwargs) -> Dict:
+    async def analyze_temporal_response(self, *args, **kwargs) -> dict:
         """Stub for analyzing temporal treatment response."""
         response_curve = [{"day": 0, "response_level": 1.0}]
         return {
@@ -1229,7 +1228,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             "confidence": 1.0
         }
     
-    async def analyze_regional_effects(self, *args, **kwargs) -> Dict:
+    async def analyze_regional_effects(self, *args, **kwargs) -> dict:
         """Stub for analyzing regional neurotransmitter effects."""
         # One clinical effect
         expected_clinical_effects = [{"symptom": None, "change_direction": None, "magnitude": None, "confidence": 0.5}]
@@ -1257,9 +1256,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
 
     async def subscribe_to_events(
         self,
-        event_types: List[str],
+        event_types: list[str],
         callback: Callable,
-        filters: Optional[Dict] = None
+        filters: dict | None = None
     ) -> UUID:
         """
         Subscribe to Digital Twin events.
@@ -1309,9 +1308,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def publish_event(
         self,
         event_type: str,
-        event_data: Dict,
+        event_data: dict,
         source: str,
-        patient_id: Optional[UUID] = None
+        patient_id: UUID | None = None
     ) -> UUID:
         """
         Publish an event to the Digital Twin event system.
@@ -1362,7 +1361,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def _merge_insights(
         self,
         patient_id: UUID,
-        insights: List[ClinicalInsight],
+        insights: list[ClinicalInsight],
         source: str
     ) -> DigitalTwinState:
         """
@@ -1426,7 +1425,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         
         return new_state
     
-    def _create_initial_digital_twin_state(self, patient_id: UUID, initial_data: Dict) -> Union[DigitalTwinState, DigitalTwinStateAdapter]:
+    def _create_initial_digital_twin_state(self, patient_id: UUID, initial_data: dict) -> DigitalTwinState | DigitalTwinStateAdapter:
         """Create an initial Digital Twin state for a patient."""
         # Initialize brain regions with default values
         brain_regions = {}
@@ -1511,7 +1510,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             metadata={"source": "initialization"}
         )
     
-    def _initialize_belief_network(self, patient_id: UUID, initial_data: Dict) -> BayesianBeliefNetwork:
+    def _initialize_belief_network(self, patient_id: UUID, initial_data: dict) -> BayesianBeliefNetwork:
         """Initialize a Bayesian belief network for a patient."""
         # Create a new belief network
         network = BayesianBeliefNetwork(patient_id=patient_id)
@@ -1538,7 +1537,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         use_default_mapping: bool = True,
-        custom_mapping: Optional[NeurotransmitterMapping] = None
+        custom_mapping: NeurotransmitterMapping | None = None
     ) -> NeurotransmitterMapping:
         """
         Initialize or update the neurotransmitter mapping for a patient.
@@ -1593,7 +1592,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def update_receptor_profiles(
         self,
         patient_id: UUID,
-        receptor_profiles: List[ReceptorProfile]
+        receptor_profiles: list[ReceptorProfile]
     ) -> NeurotransmitterMapping:
         """
         Update or add receptor profiles to the patient's neurotransmitter mapping.
@@ -1635,8 +1634,8 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         neurotransmitter: Neurotransmitter,
-        brain_regions: Optional[List[BrainRegion]] = None
-    ) -> Dict[BrainRegion, Dict]:
+        brain_regions: list[BrainRegion] | None = None
+    ) -> dict[BrainRegion, dict]:
         """
         Get the effects of a neurotransmitter on specified brain regions.
         
@@ -1707,8 +1706,8 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         brain_region: BrainRegion,
-        neurotransmitters: Optional[List[Neurotransmitter]] = None
-    ) -> Dict[Neurotransmitter, Dict]:
+        neurotransmitters: list[Neurotransmitter] | None = None
+    ) -> dict[Neurotransmitter, dict]:
         """
         Get a brain region's sensitivity to different neurotransmitters.
         
@@ -1775,11 +1774,11 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
     async def simulate_neurotransmitter_cascade(
         self,
         patient_id: UUID,
-        initial_changes: Dict[Neurotransmitter, float],
+        initial_changes: dict[Neurotransmitter, float],
         simulation_steps: int = 3,
         min_effect_threshold: float = 0.1,
         **kwargs
-    ) -> Dict:
+    ) -> dict:
         """
         Simulate cascade effects of neurotransmitter changes across brain regions.
         
@@ -1841,7 +1840,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         
         # Track changes at each step
         steps_data = []
-        region_effects = {region: 0.0 for region in BrainRegion}
+        region_effects = dict.fromkeys(BrainRegion, 0.0)
         
         # Run simulation steps
         for step in range(simulation_steps):
@@ -1881,7 +1880,7 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
             # Prepare for next step: update neurotransmitter levels based on region effects
             if step < simulation_steps - 1:
                 # For each region that produces neurotransmitters, adjust production based on its activation
-                nt_production_changes = {nt: 0.0 for nt in Neurotransmitter}
+                nt_production_changes = dict.fromkeys(Neurotransmitter, 0.0)
                 
                 for nt in Neurotransmitter:
                     for region in mapping.get_producing_regions(nt):
@@ -1952,9 +1951,9 @@ class MockEnhancedDigitalTwinCoreService(EnhancedDigitalTwinCoreService):
         self,
         patient_id: UUID,
         treatment_id: UUID,
-        time_points: List[datetime],
-        neurotransmitters: Optional[List[Neurotransmitter]] = None
-    ) -> Dict:
+        time_points: list[datetime],
+        neurotransmitters: list[Neurotransmitter] | None = None
+    ) -> dict:
         """
         Analyze how a treatment affects neurotransmitter levels and brain regions over time.
         

@@ -7,7 +7,7 @@ representing computational models of patients for simulation and prediction.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class TwinType(str, Enum):
@@ -51,14 +51,14 @@ class DigitalTwin:
     
     def __init__(
         self,
-        id: Optional[str],
+        id: str | None,
         twin_type: TwinType,
         name: str,
-        description: Optional[str],
-        created_at: Optional[datetime],
-        updated_at: Optional[datetime],
+        description: str | None,
+        created_at: datetime | None,
+        updated_at: datetime | None,
         version: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         user_id: str
     ):
         """
@@ -105,10 +105,10 @@ class DigitalTwin:
             raise ValueError("Digital twin must be associated with a user")
     
     def update(self, 
-               name: Optional[str] = None, 
-               description: Optional[str] = None,
-               version: Optional[str] = None,
-               data: Optional[Dict[str, Any]] = None) -> None:
+               name: str | None = None, 
+               description: str | None = None,
+               version: str | None = None,
+               data: dict[str, Any] | None = None) -> None:
         """
         Update the digital twin.
         
@@ -128,7 +128,7 @@ class DigitalTwin:
             self.data = data
         self.updated_at = datetime.now()
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert entity to dictionary.
         
@@ -148,7 +148,7 @@ class DigitalTwin:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DigitalTwin":
+    def from_dict(cls, data: dict[str, Any]) -> "DigitalTwin":
         """
         Create entity from dictionary.
         

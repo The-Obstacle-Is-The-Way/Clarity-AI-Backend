@@ -23,10 +23,10 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
 from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any
+
+from app.domain.utils.datetime_utils import now_utc
 
 # ---------------------------------------------------------------------------
 # DynamoDB
@@ -38,16 +38,16 @@ class _InMemoryDynamoDBTable:
 
     def __init__(self, name: str):
         self._name = name
-        self._items: List[Dict[str, Any]] = []
+        self._items: list[dict[str, Any]] = []
 
     # The tests expect a dict with an ``Items`` key mirroring boto3's response
     # shape.  Returning a *copy* avoids accidental mutation from the caller.
-    def scan(self):  # noqa: D401 – match boto3 signature
+    def scan(self):
         return {"Items": list(self._items)}
 
     # boto3 spells the argument with an initial capital – keep that here so
     # the real implementation can be swapped in transparently.
-    def put_item(self, Item=None, **_kw):  # noqa: N802 – boto3 convention
+    def put_item(self, Item=None, **_kw):
         if Item is not None:
             self._items.append(Item)
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
@@ -57,7 +57,7 @@ class _InMemoryDynamoDBResource:
     """Mimic ``boto3.resource('dynamodb')``."""
 
     def __init__(self):
-        self._tables: Dict[str, _InMemoryDynamoDBTable] = {}
+        self._tables: dict[str, _InMemoryDynamoDBTable] = {}
 
     def Table(self, name: str):  # noqa: N802 – boto3 uses PascalCase
         if name not in self._tables:
@@ -73,12 +73,12 @@ class _InMemoryDynamoDBResource:
 class _InMemoryS3Client:
     """Stub for a subset of the S3 client interface."""
 
-    def head_bucket(self, Bucket=None, **_kw):  # noqa: N802 – boto3 style
+    def head_bucket(self, Bucket=None, **_kw):
         # Always succeed – the goal is to *simulate* the call, not validate AWS
         # state.
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
 
-    def put_object(self, **_kw):  # noqa: D401
+    def put_object(self, **_kw):
         return {"ResponseMetadata": {"HTTPStatusCode": 200}}
 
 
@@ -92,15 +92,15 @@ class _InMemorySageMakerClient:
 
     def __init__(self):
         # Use a set because we don't need ordering.
-        self._endpoints: Dict[str, Dict[str, Any]] = {}
+        self._endpoints: dict[str, dict[str, Any]] = {}
 
-    def list_endpoints(self, **_kw):  # noqa: D401
+    def list_endpoints(self, **_kw):
         return {"Endpoints": [
             {"EndpointName": name, "EndpointStatus": info.get("status", "InService")}
             for name, info in self._endpoints.items()
         ]}
 
-    def describe_endpoint(self, EndpointName):  # noqa: N802 – boto3 style
+    def describe_endpoint(self, EndpointName):
         # If the endpoint hasn't been created yet return a default entry so that
         # service code proceeds without raising a *real* AWS error.
         info = self._endpoints.setdefault(EndpointName, {})
@@ -122,10 +122,10 @@ class _BodyWrapper(SimpleNamespace):
 class _InMemorySageMakerRuntimeClient:
     """Simplified SageMaker Runtime client that echos back synthetic results."""
 
-    def invoke_endpoint(self, *, EndpointName, ContentType, Body, **_kw):  # noqa: N802
+    def invoke_endpoint(self, *, EndpointName, ContentType, Body, **_kw):
         # Derive a predictable but *fake* response so that downstream parsing
         # logic is covered by the tests.
-        parsed_in: Dict[str, Any] = json.loads(Body)
+        parsed_in: dict[str, Any] = json.loads(Body)
 
         response_payload = {
             "risk_score": 0.42,
@@ -146,7 +146,7 @@ class _InMemorySageMakerRuntimeClient:
 # ---------------------------------------------------------------------------
 
 
-def client(service_name: str, **_kw):  # noqa: D401 – boto3 parity
+def client(service_name: str, **_kw):
     service_name = service_name.lower()
     if service_name == "s3":
         return _InMemoryS3Client()
@@ -165,7 +165,7 @@ def client(service_name: str, **_kw):  # noqa: D401 – boto3 parity
     return SimpleNamespace()
 
 
-def resource(service_name: str, **_kw):  # noqa: D401 – boto3 parity
+def resource(service_name: str, **_kw):
     service_name = service_name.lower()
     if service_name == "dynamodb":
         return _InMemoryDynamoDBResource()

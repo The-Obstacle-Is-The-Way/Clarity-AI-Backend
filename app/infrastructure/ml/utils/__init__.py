@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ML utilities package.
 
@@ -7,13 +6,13 @@ text preprocessing, entity extraction, and prompt formatting.
 """
 
 from app.infrastructure.ml.utils.preprocessing import (
-    sanitize_text,
     extract_clinical_entities,
-    format_as_clinical_prompt
+    format_as_clinical_prompt,
+    sanitize_text,
 )
 
 __all__ = [
-    'sanitize_text',
     'extract_clinical_entities',
-    'format_as_clinical_prompt'
+    'format_as_clinical_prompt',
+    'sanitize_text'
 ]

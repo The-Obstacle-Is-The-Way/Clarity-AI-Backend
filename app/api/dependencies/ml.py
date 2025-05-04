@@ -9,8 +9,9 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.services.ml.xgboost.interface import XGBoostInterface
 from app.core.services.ml.xgboost.factory import create_xgboost_service
+from app.core.services.ml.xgboost.interface import XGBoostInterface
+
 
 def get_xgboost_service() -> XGBoostInterface:
     """

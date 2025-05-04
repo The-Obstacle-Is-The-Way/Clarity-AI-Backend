@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy implementation of the BiometricAlertRepository.
 
@@ -7,17 +6,18 @@ interface using SQLAlchemy ORM for database operations.
 """
 
 from datetime import datetime
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Dict, List, Optional, Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.domain.services.biometric_event_processor import BiometricAlert, AlertPriority
-from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.exceptions import EntityNotFoundError, RepositoryError
-from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import BiometricAlertModel
+from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
+from app.domain.utils.datetime_utils import now_utc
+from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import (
+    BiometricAlertModel,
+)
 
 
 class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
@@ -75,9 +75,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             return self._map_to_entity(alert_model)
         except Exception as e:
             await self.session.rollback()
-            raise RepositoryError(f"Error saving biometric alert: {str(e)}") from e
+            raise RepositoryError(f"Error saving biometric alert: {e!s}") from e
     
-    async def get_by_id(self, alert_id: UUID | str) -> Optional[BiometricAlert]:
+    async def get_by_id(self, alert_id: UUID | str) -> BiometricAlert | None:
         """
         Retrieve a biometric alert by its ID.
         
@@ -103,17 +103,17 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             
             return self._map_to_entity(alert_model)
         except Exception as e:
-            raise RepositoryError(f"Error retrieving biometric alert: {str(e)}") from e
+            raise RepositoryError(f"Error retrieving biometric alert: {e!s}") from e
     
     async def get_by_patient_id(
         self,
         patient_id: UUID,
-        acknowledged: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        acknowledged: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[BiometricAlert]:
+    ) -> list[BiometricAlert]:
         """
         Retrieve biometric alerts for a specific patient.
         
@@ -144,15 +144,15 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             return [self._map_to_entity(model) for model in alert_models]
         except Exception as e:
             self.session.rollback()
-            raise RepositoryError(f"Error retrieving biometric alerts by patient: {str(e)}") from e
+            raise RepositoryError(f"Error retrieving biometric alerts by patient: {e!s}") from e
     
     async def get_unacknowledged_alerts(
         self,
-        priority: Optional[AlertPriority] = None,
-        patient_id: Optional[UUID] = None,
+        priority: AlertPriority | None = None,
+        patient_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[BiometricAlert]:
+    ) -> list[BiometricAlert]:
         """
         Retrieve active (non-resolved) biometric alerts.
         
@@ -191,9 +191,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             return [self._map_to_entity(model) for model in alert_models]
         except Exception as e:
             self.session.rollback()
-            raise RepositoryError(f"Error retrieving active alerts: {str(e)}") from e
+            raise RepositoryError(f"Error retrieving active alerts: {e!s}") from e
     
-    async def update_status(self, alert_id: UUID | str, acknowledged: bool, acknowledged_by: Optional[UUID] = None) -> BiometricAlert:
+    async def update_status(self, alert_id: UUID | str, acknowledged: bool, acknowledged_by: UUID | None = None) -> BiometricAlert:
         """
         Update the status of a biometric alert.
         
@@ -239,9 +239,9 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             raise
         except Exception as e:
             await self.session.rollback()
-            raise RepositoryError(f"Error updating biometric alert status: {str(e)}") from e
+            raise RepositoryError(f"Error updating biometric alert status: {e!s}") from e
     
-    async def count_unacknowledged_by_patient(self, patient_id: UUID, min_priority: Optional[AlertPriority] = None) -> int:
+    async def count_unacknowledged_by_patient(self, patient_id: UUID, min_priority: AlertPriority | None = None) -> int:
         """
         Count unacknowledged alerts for a patient, optionally filtered by minimum priority.
         
@@ -271,7 +271,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             count = result.scalar()
             return count if count is not None else 0
         except Exception as e:
-            raise RepositoryError(f"Error counting unacknowledged alerts: {str(e)}") from e
+            raise RepositoryError(f"Error counting unacknowledged alerts: {e!s}") from e
     
     async def delete(self, alert_id: UUID | str) -> bool:
         """
@@ -302,14 +302,14 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             return True
         except Exception as e:
             await self.session.rollback()
-            raise RepositoryError(f"Error deleting biometric alert: {str(e)}") from e
+            raise RepositoryError(f"Error deleting biometric alert: {e!s}") from e
     
     async def count_by_patient(
         self,
         patient_id: UUID,
-        acknowledged: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        acknowledged: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None
     ) -> int:
         """
         Count biometric alerts for a specific patient.
@@ -337,7 +337,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             return count if count is not None else 0
         except Exception as e:
             self.session.rollback()
-            raise RepositoryError(f"Error counting biometric alerts: {str(e)}") from e
+            raise RepositoryError(f"Error counting biometric alerts: {e!s}") from e
     
     def _apply_filters(self, query, acknowledged, start_date, end_date):
         """

@@ -7,11 +7,10 @@ for efficient visualization in the frontend.
 import math
 import random
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from app.domain.entities.digital_twin_enums import (
     BrainRegion,
-    ClinicalSignificance,
     Neurotransmitter,
 )
 from app.domain.entities.neurotransmitter_effect import NeurotransmitterEffect
@@ -63,8 +62,8 @@ class NeurotransmitterVisualizationPreprocessor:
         
     def precompute_cascade_geometry(
         self,
-        cascade_data: Union[Dict[BrainRegion, Dict[Neurotransmitter, float]], Dict[BrainRegion, List[float]]]
-    ) -> Dict[str, Any]:
+        cascade_data: dict[BrainRegion, dict[Neurotransmitter, float]] | dict[BrainRegion, list[float]]
+    ) -> dict[str, Any]:
         """
         Precompute geometry data for visualizing neurotransmitter cascades.
         
@@ -90,7 +89,7 @@ class NeurotransmitterVisualizationPreprocessor:
         else:
             return self._precompute_detailed_geometry(cascade_data)
     
-    def _precompute_time_series_geometry(self, cascade_data: Dict[BrainRegion, List[float]]) -> Dict[str, Any]:
+    def _precompute_time_series_geometry(self, cascade_data: dict[BrainRegion, list[float]]) -> dict[str, Any]:
         """Handle time series data format (used in tests)."""
         # Determine number of time steps
         time_steps = 0
@@ -159,7 +158,7 @@ class NeurotransmitterVisualizationPreprocessor:
             "regions": [region.value for region in cascade_data.keys()]
         }
     
-    def _precompute_detailed_geometry(self, cascade_data: Dict[BrainRegion, Dict[Neurotransmitter, float]]) -> Dict[str, Any]:
+    def _precompute_detailed_geometry(self, cascade_data: dict[BrainRegion, dict[Neurotransmitter, float]]) -> dict[str, Any]:
         """Handle detailed neurotransmitter data format."""
         # Create nodes for each brain region
         nodes = []
@@ -252,7 +251,7 @@ class NeurotransmitterVisualizationPreprocessor:
         self, 
         sequence: TemporalSequence,
         downsample_factor: int = 1
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Preprocess a temporal sequence for visualization.
         
@@ -311,8 +310,8 @@ class NeurotransmitterVisualizationPreprocessor:
 
     def generate_comparative_visualization(
         self,
-        effects: List[NeurotransmitterEffect]
-    ) -> Dict[str, Any]:
+        effects: list[NeurotransmitterEffect]
+    ) -> dict[str, Any]:
         """
         Generate visualization data for comparing multiple effects.
         
@@ -374,9 +373,9 @@ class NeurotransmitterVisualizationPreprocessor:
         }
 
 
-    def process_neurotransmitter_levels(self, levels: Dict[str, float], normalize: bool = False, include_metadata: bool = False) -> Dict[str, Any]:
+    def process_neurotransmitter_levels(self, levels: dict[str, float], normalize: bool = False, include_metadata: bool = False) -> dict[str, Any]:
         """Process neurotransmitter levels for visualization purposes."""
-        metadata: Dict[str, Any] = {}
+        metadata: dict[str, Any] = {}
         data = levels.copy()
         if normalize:
             max_val = max(data.values()) if data else 0
@@ -384,7 +383,7 @@ class NeurotransmitterVisualizationPreprocessor:
             if max_val != min_val:
                 data = {k: (v - min_val) / (max_val - min_val) for k, v in data.items()}
             else:
-                data = {k: 1.0 for k in data}
+                data = dict.fromkeys(data, 1.0)
             metadata["max_original_value"] = max_val
             metadata["min_original_value"] = min_val
             metadata["normalization_applied"] = True
@@ -393,14 +392,14 @@ class NeurotransmitterVisualizationPreprocessor:
         neurotransmitters = []
         for nt, level in data.items():
             neurotransmitters.append({"neurotransmitter": nt, "level": level})
-        result: Dict[str, Any] = {"neurotransmitters": neurotransmitters}
+        result: dict[str, Any] = {"neurotransmitters": neurotransmitters}
         if include_metadata:
             result["metadata"] = metadata
         return result
 
-    def generate_comparative_visualization(self, effects: List[NeurotransmitterEffect]) -> Dict[str, Any]:
+    def generate_comparative_visualization(self, effects: list[NeurotransmitterEffect]) -> dict[str, Any]:
         """Generate comparison data for multiple neurotransmitter effects."""
-        processed_effects: List[Dict[str, Any]] = []
+        processed_effects: list[dict[str, Any]] = []
         for e in effects:
             processed_effects.append({
                 "neurotransmitter": e.neurotransmitter.value,
@@ -415,7 +414,7 @@ class NeurotransmitterVisualizationPreprocessor:
         most_significant = min(significant_effects, key=lambda e: e.p_value) if significant_effects else None
         largest_effect = max(effects, key=lambda e: abs(e.effect_size)) if effects else None
         magnitude_ranking = [e.neurotransmitter.value for e in sorted(effects, key=lambda e: abs(e.effect_size), reverse=True)]
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "most_significant": most_significant.neurotransmitter.value if most_significant else None,
             "largest_effect": largest_effect.neurotransmitter.value if largest_effect else None,
             "magnitude_ranking": magnitude_ranking
@@ -437,8 +436,8 @@ class NeurotransmitterEffectVisualizer:
         
     def generate_effect_comparison(
         self,
-        effects: List[NeurotransmitterEffect]
-    ) -> Dict[str, Any]:
+        effects: list[NeurotransmitterEffect]
+    ) -> dict[str, Any]:
         """
         Generate visualization data for comparing multiple effects.
         
@@ -511,7 +510,7 @@ class NeurotransmitterEffectVisualizer:
         effect: NeurotransmitterEffect,
         time_points: int = 10,
         uncertainty_samples: int = 5
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a timeline visualization showing how an effect might evolve.
         

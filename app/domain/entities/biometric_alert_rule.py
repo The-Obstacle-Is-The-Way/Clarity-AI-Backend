@@ -6,10 +6,11 @@ including value objects and enums for use throughout the application.
 Following proper domain-driven design principles.
 """
 from datetime import datetime
-from enum import Enum, auto
-from typing import List, Optional, Dict, Any, Union
+from enum import Enum
+from typing import Any
 from uuid import UUID, uuid4
-from pydantic import BaseModel, Field, validator
+
+from pydantic import BaseModel, Field
 
 # Value Objects and Enums
 
@@ -117,7 +118,7 @@ class RuleCondition(BaseModel):
     metric_type: BiometricMetricType
     operator: ComparatorOperator
     threshold_value: float
-    description: Optional[str] = None
+    description: str | None = None
     
     def evaluate(self, metric_value: float) -> bool:
         """Evaluate if the condition is met for a given metric value."""
@@ -133,18 +134,18 @@ class BiometricAlertRule(BaseModel):
     """Domain entity for biometric alert rules."""
     id: UUID = Field(default_factory=uuid4)
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     patient_id: UUID
-    provider_id: Optional[UUID] = None
-    conditions: List[RuleCondition]
+    provider_id: UUID | None = None
+    conditions: list[RuleCondition]
     logical_operator: RuleLogicalOperator = RuleLogicalOperator.AND
     priority: AlertPriority = AlertPriority.MEDIUM
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = None
-    template_id: Optional[UUID] = None
+    updated_at: datetime | None = None
+    template_id: UUID | None = None
     
-    def evaluate(self, metrics: Dict[BiometricMetricType, float]) -> bool:
+    def evaluate(self, metrics: dict[BiometricMetricType, float]) -> bool:
         """
         Evaluate if the rule is triggered based on the provided metrics.
         

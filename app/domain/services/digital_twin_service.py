@@ -6,14 +6,11 @@ related to patient digital twins in the concierge psychiatry practice.
 """
 
 import logging
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, timezone
-from app.domain.utils.datetime_utils import UTC, now_utc
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin import DigitalTwin, DigitalTwinConfiguration, DigitalTwinState
-from app.domain.entities.patient import Patient
 from app.domain.exceptions import (
     DomainError,
     ValidationError,
@@ -26,6 +23,7 @@ from app.domain.interfaces.ml_service_interface import (
 )
 from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
 from app.domain.repositories.patient_repository import PatientRepository
+from app.domain.utils.datetime_utils import UTC
 from app.domain.value_objects.therapeutic_plan import TherapeuticPlan
 
 

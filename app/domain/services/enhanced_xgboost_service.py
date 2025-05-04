@@ -846,7 +846,9 @@ class EnhancedXGBoostService:
 
 # === Monkey patch analysis and cascade methods for EnhancedXGBoostService ===
 from datetime import datetime
+
 from app.domain.utils.datetime_utils import UTC
+
 
 def _analyze_neurotransmitter_interactions(self, patient_id: UUID, brain_region: BrainRegion, baseline_data: dict[str, float]) -> dict[str, Any]:
     """Simple analysis of interactions between neurotransmitters."""

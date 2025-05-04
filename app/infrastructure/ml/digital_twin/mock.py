@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Mock Digital Twin Service Implementation.
 
@@ -6,19 +5,19 @@ This module provides a mock implementation of the Digital Twin service
 for development and testing purposes.
 """
 
-import uuid
-from typing import Any, Dict, List, Optional
 import datetime
-from app.domain.utils.datetime_utils import UTC, format_iso8601, now_utc
+import uuid
+from typing import Any
 
-from app.core.services.ml.interface import DigitalTwinInterface
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
+    ResourceNotFoundError,
     ServiceUnavailableError,
-    ResourceNotFoundError
 )
+from app.core.services.ml.interface import DigitalTwinInterface
 from app.core.utils.logging import get_logger
+from app.domain.utils.datetime_utils import UTC, format_iso8601, now_utc
 
 logger = get_logger(__name__)
 
@@ -31,11 +30,11 @@ class MockDigitalTwinService(DigitalTwinInterface):
     def __init__(self) -> None:
         """Initialize the mock service."""
         self._initialized = False
-        self._config: Dict[str, Any] = {}
-        self._twins: Dict[str, Dict[str, Any]] = {}  # Store mock twin data
-        self._sessions: Dict[str, Dict[str, Any]] = {}  # Store mock sessions
+        self._config: dict[str, Any] = {}
+        self._twins: dict[str, dict[str, Any]] = {}  # Store mock twin data
+        self._sessions: dict[str, dict[str, Any]] = {}  # Store mock sessions
 
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the mock service with configuration.
 
@@ -68,7 +67,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         self._twins.clear()
         logger.info("Mock Digital Twin service shut down.")
 
-    def create_digital_twin(self, initial_data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_digital_twin(self, initial_data: dict[str, Any]) -> dict[str, Any]:
         """
         Mock creation of a new digital twin for a patient.
 
@@ -96,7 +95,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         logger.info(f"Mock digital twin created for patient {patient_id} with ID {twin_id}")
         return {"twin_id": twin_id, "status": "created"}
 
-    def get_twin_status(self, twin_id: str) -> Dict[str, Any]:
+    def get_twin_status(self, twin_id: str) -> dict[str, Any]:
         """
         Get the mock status of a digital twin.
 
@@ -115,7 +114,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
 
         return {"twin_id": twin_id, "status": twin.get("status", "unknown"), "patient_id": twin.get("patient_id")}
 
-    def update_twin_data(self, twin_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_twin_data(self, twin_id: str, data: dict[str, Any]) -> dict[str, Any]:
         """
         Mock update of the data associated with a digital twin.
 
@@ -141,7 +140,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         logger.info(f"Mock digital twin data updated for twin ID {twin_id}")
         return {"twin_id": twin_id, "status": "updated"}
     
-    def create_session(self, twin_id: str, session_type: str) -> Dict[str, Any]:
+    def create_session(self, twin_id: str, session_type: str) -> dict[str, Any]:
         """
         Create a new therapy session for a digital twin.
         """
@@ -169,7 +168,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             "status": "active"
         }
     
-    def get_session(self, session_id: str) -> Dict[str, Any]:
+    def get_session(self, session_id: str) -> dict[str, Any]:
         """
         Retrieve an existing session by ID.
         """
@@ -180,7 +179,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             raise ResourceNotFoundError(f"Session with ID {session_id} not found.")
         return session.copy()
     
-    def send_message(self, session_id: str, message: str) -> Dict[str, Any]:
+    def send_message(self, session_id: str, message: str) -> dict[str, Any]:
         """
         Send a user message to the session and generate a mock twin response.
         """
@@ -212,7 +211,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         session["messages"].append({"content": response_text, "sender": "twin"})
         return {"response": response_text, "messages": session["messages"].copy()}
     
-    def end_session(self, session_id: str) -> Dict[str, Any]:
+    def end_session(self, session_id: str) -> dict[str, Any]:
         """
         End an active session, mark as completed, and return summary.
         """
@@ -238,7 +237,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             "summary": summary
         }
 
-    def get_insights(self, twin_id: str, insight_types: Optional[List[str]] = None) -> Dict[str, Any]:
+    def get_insights(self, twin_id: str, insight_types: list[str] | None = None) -> dict[str, Any]:
         """
         Generate mock insights from the digital twin's data.
         """
@@ -248,7 +247,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
         if not twin:
             raise ResourceNotFoundError(f"Mock digital twin with ID {twin_id} not found.")
 
-        insights: Dict[str, Any] = {}
+        insights: dict[str, Any] = {}
         # Default summary if no specific types requested
         if not insight_types:
             insights["summary"] = f"General mock insights summary for twin {twin_id}."
@@ -282,7 +281,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
 
         return {"twin_id": twin_id, "insights": insights}
 
-    def interact(self, twin_id: str, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def interact(self, twin_id: str, query: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Mock interaction with the digital twin.
 

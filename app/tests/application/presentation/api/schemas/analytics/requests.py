@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Analytics API request schemas.
 
@@ -6,8 +5,9 @@ This module defines the Pydantic schemas for validating incoming requests
 to the analytics endpoints in the Novamind Digital Twin platform.
 """
 
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -25,25 +25,25 @@ class AnalyticsEventCreateRequest(BaseModel):
         examples=["page_view", "feature_usage", "session_start"]
     )
     
-    event_data: Dict[str, Any] = Field(
+    event_data: dict[str, Any] = Field(
         ...,
         description="Payload containing details about the event",
         examples=[{"page": "/dashboard", "time_on_page": 45}]
     )
     
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         None,
         description="Identifier of the user who triggered the event (if available)",
         examples=["provider-123", "admin-456"]
     )
     
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None,
         description="Identifier of the session in which the event occurred",
         examples=["session-789-xyz"]
     )
     
-    timestamp: Optional[datetime] = Field(
+    timestamp: datetime | None = Field(
         None,
         description="When the event occurred (defaults to current time if not provided)",
         examples=["2025-03-30T12:00:00Z"]
@@ -82,22 +82,22 @@ class AnalyticsEventItem(BaseModel):
         description="Category or type of the analytics event"
     )
     
-    event_data: Dict[str, Any] = Field(
+    event_data: dict[str, Any] = Field(
         ...,
         description="Payload containing details about the event"
     )
     
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         None,
         description="Identifier of the user who triggered the event (if available)"
     )
     
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None,
         description="Identifier of the session in which the event occurred"
     )
     
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         None,
         description="When the event occurred, as ISO 8601 string"
     )
@@ -111,14 +111,14 @@ class AnalyticsEventsBatchRequest(BaseModel):
     used for bulk imports or processing accumulated events.
     """
     
-    events: List[AnalyticsEventItem] = Field(
+    events: list[AnalyticsEventItem] = Field(
         ...,
         description="List of analytics events to process",
         min_length=1,
         max_length=1000
     )
     
-    batch_id: Optional[str] = Field(
+    batch_id: str | None = Field(
         None,
         description="Optional identifier for this batch of events"
     )
@@ -159,25 +159,25 @@ class AnalyticsAggregationRequest(BaseModel):
         examples=["count", "sum", "avg", "min", "max"]
     )
     
-    dimensions: List[str] = Field(
+    dimensions: list[str] = Field(
         ...,
         description="Dimensions to group data by",
         examples=[["event_type"], ["user_role", "event_type"], ["date"]]
     )
     
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         None,
         description="Optional filters to apply to the data",
         examples=[{"event_type": "page_view", "platform": "web"}]
     )
     
-    start_time: Optional[datetime] = Field(
+    start_time: datetime | None = Field(
         None,
         description="Start of the time range for data (default: 24 hours ago)",
         examples=["2025-03-29T00:00:00Z"]
     )
     
-    end_time: Optional[datetime] = Field(
+    end_time: datetime | None = Field(
         None,
         description="End of the time range for data (default: current time)",
         examples=["2025-03-30T00:00:00Z"]

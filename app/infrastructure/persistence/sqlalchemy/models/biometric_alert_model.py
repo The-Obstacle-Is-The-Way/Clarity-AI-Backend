@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy model for BiometricAlert entities.
 
@@ -8,15 +7,13 @@ of concerning patterns in patient biometric data.
 """
 
 import uuid
-from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc
-from sqlalchemy import Column, String, DateTime, Float, ForeignKey, JSON, Enum
-from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from sqlalchemy import JSON, Column, DateTime, Enum, String
 
 from app.domain.services.biometric_event_processor import AlertPriority, AlertStatus
+from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.config.database import Base
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 class BiometricAlertModel(Base):

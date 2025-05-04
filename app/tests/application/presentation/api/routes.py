@@ -6,10 +6,11 @@ mechanism to include them in the main FastAPI application.
 """
 
 import importlib
-import os
-from typing import Dict, Callable, Any
+
 from fastapi import APIRouter
+
 from app.config.settings import get_settings
+
 
 # Lazy router loading to prevent FastAPI from analyzing dependencies during import
 def get_router(module_name: str) -> APIRouter:
@@ -183,15 +184,17 @@ def setup_routers() -> APIRouter:
         if is_testing:
             # In test mode, use the test-specific router that matches test expectations
             try:
-                import sys
                 import os
+                import sys
                 # Debug the import path to help troubleshoot
                 print(f"Python path during import: {sys.path}")
                 print(f"Current directory: {os.getcwd()}")
                 print(f"TESTING environment variable: {os.environ.get('TESTING')}")
                 
                 # Use absolute import path for better reliability
-                from app.presentation.api.routers.ml.test_xgboost_router import router as test_xgboost_router
+                from app.presentation.api.routers.ml.test_xgboost_router import (
+                    router as test_xgboost_router,
+                )
                 
                 # Note: for tests, the router already has the api/v1 prefix built in
                 main_api_router.include_router(test_xgboost_router)

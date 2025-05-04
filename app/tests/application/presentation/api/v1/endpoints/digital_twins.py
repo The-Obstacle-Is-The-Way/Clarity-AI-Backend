@@ -4,28 +4,25 @@ API Endpoints for Digital Twin Management.
 Provides endpoints for creating, retrieving, updating, and managing
 patient digital twins.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Body
-from typing import Optional, List, Dict, Any
+from typing import Any
 from uuid import UUID
+
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 # Exceptions
 from app.core.exceptions.base_exceptions import (
-    ResourceNotFoundError,
     ModelExecutionError,
+    ResourceNotFoundError,
 )
 
-# Pydantic schemas for request/response bodies
-from app.presentation.api.v1.schemas.digital_twin_schemas import (
-    ClinicalTextAnalysisRequest,
-    ClinicalTextAnalysisResponse,
-    PersonalizedInsightResponse,
-    BiometricCorrelationResponse,
-    MedicationResponsePredictionResponse,
-    TreatmentPlanResponse,
-)
+# User entity
+from app.domain.entities.user import User
+
+# Domain interface
+from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
+from app.presentation.api.dependencies.auth import get_current_user
 
 # NOTE: FastAPI APIRouter already imported above
-
 # ---------------------------------------------------------------------------
 # Digital‑Twin API router
 # This router is included at the application root in the test suite, so each
@@ -33,15 +30,16 @@ from app.presentation.api.v1.schemas.digital_twin_schemas import (
 # here guarantees the correct absolute paths whether the router is included
 # with or without an additional prefix by the application.
 # ---------------------------------------------------------------------------
-
 # Dependencies
 from app.presentation.api.dependencies.services import get_digital_twin_service
-from app.presentation.api.dependencies.auth import get_current_user
 
-# Domain interface
-from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
-# User entity
-from app.domain.entities.user import User
+# Pydantic schemas for request/response bodies
+from app.presentation.api.v1.schemas.digital_twin_schemas import (
+    BiometricCorrelationResponse,
+    ClinicalTextAnalysisRequest,
+    MedicationResponsePredictionResponse,
+    TreatmentPlanResponse,
+)
 
 router = APIRouter(prefix="/digital-twins")
 
@@ -55,7 +53,9 @@ router = APIRouter(prefix="/digital-twins")
 # `datetime.datetime.now` to transparently convert a bare `timedelta` into
 # `datetime.timezone(timedelta)`.
 
-from datetime import datetime as _dt_datetime, timezone as _dt_timezone, timedelta as _dt_timedelta
+from datetime import datetime as _dt_datetime
+from datetime import timedelta as _dt_timedelta
+from datetime import timezone as _dt_timezone
 
 
 def _patch_datetime_now_for_timedelta() -> None:  # pragma: no cover
@@ -68,7 +68,7 @@ def _patch_datetime_now_for_timedelta() -> None:  # pragma: no cover
 
     try:
         # Assign as *staticmethod* so the signature matches the original.
-        setattr(_dt_datetime, "now", staticmethod(_patched_now))
+        _dt_datetime.now = staticmethod(_patched_now)
     except TypeError:
         # In environments that forbid attribute assignment on built‑in types we
         # silently ignore the patch – the offending tests will fail in that
@@ -117,7 +117,7 @@ def _patch_testclient_async_methods() -> None:  # pragma: no cover
     def _make_async(method_name: str):
         original = getattr(_TestClient, method_name)
 
-        def _patched(self, *args, **kwargs):  # noqa: D401
+        def _patched(self, *args, **kwargs):
             resp = original(self, *args, **kwargs)
             return _AwaitableResponse(resp)
 
@@ -197,14 +197,14 @@ except Exception:  # pragma: no cover
 for _m in list(_sys.modules.values()):
     if _m is None or not hasattr(_m, "UTC"):
         continue
-    if isinstance(getattr(_m, "UTC"), _dt_timedelta):
-            setattr(_m, "UTC", _dt_timezone.utc)
+    if isinstance(_m.UTC, _dt_timedelta):
+            _m.UTC = _dt_timezone.utc
 
             # Replace the directly imported `datetime` symbol inside the test
             # module so that `datetime.now(UTC)` accepts a plain `timedelta` as
             # seen in the fixture definitions.
             if hasattr(_m, "datetime"):
-                _orig_dt_cls = getattr(_m, "datetime")
+                _orig_dt_cls = _m.datetime
 
                 class _DTCompat:
                     @staticmethod
@@ -216,7 +216,7 @@ for _m in list(_sys.modules.values()):
                     def __getattr__(self, item):
                         return getattr(_orig_dt_cls, item)
 
-                setattr(_m, "datetime", _DTCompat)
+                _m.datetime = _DTCompat
 
 # ---------------------------------------------------------------------------
 # New Digital‑Twin endpoints required by the unit test suite
@@ -227,7 +227,7 @@ for _m in list(_sys.modules.values()):
 async def get_digital_twin_status_endpoint(
     patient_id: UUID,
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return the build/completeness status of the patient's digital‑twin.
 
     The underlying *integration service* returns a serialisable ``dict`` so we
@@ -245,7 +245,7 @@ async def get_digital_twin_status_endpoint(
 async def generate_patient_insights_endpoint(
     patient_id: UUID,
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate and return a *PersonalizedInsightResponse* for the patient.
 
     Any ``ModelExecutionError`` coming from the service is mapped to an HTTP
@@ -256,7 +256,7 @@ async def generate_patient_insights_endpoint(
     except ModelExecutionError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate insights: {str(e)}",
+            detail=f"Failed to generate insights: {e!s}",
         )
 
 
@@ -269,7 +269,7 @@ async def analyze_clinical_text_endpoint(
     patient_id: UUID,
     request: ClinicalTextAnalysisRequest = Body(...),
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run MentalLLaMA analysis over the supplied clinical text.
 
     The unit‑tests purposefully check that *uncaught* ``ModelExecutionError``
@@ -316,7 +316,7 @@ async def analyze_clinical_text_endpoint(
 async def generate_symptom_forecast_endpoint(
     patient_id: UUID,
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate near‑term symptom forecasting for the patient.
 
     This simply delegates to ``service.generate_symptom_forecasting`` and
@@ -339,7 +339,7 @@ async def generate_symptom_forecast_endpoint(
 async def correlate_biometrics_endpoint(
     patient_id: UUID,
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyse biometric‑symptom correlations for the patient."""
     try:
         return await service.correlate_biometrics(patient_id)
@@ -357,7 +357,7 @@ async def correlate_biometrics_endpoint(
 async def predict_medication_response_endpoint(
     patient_id: UUID,
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Predict the patient’s response to candidate medications."""
     try:
         return await service.predict_medication_response(patient_id)
@@ -375,7 +375,7 @@ async def predict_medication_response_endpoint(
 async def generate_treatment_plan_endpoint(
     patient_id: UUID,
     service=Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate an integrated treatment plan for the patient."""
     try:
         return await service.generate_treatment_plan(patient_id)
@@ -393,11 +393,11 @@ async def generate_treatment_plan_endpoint(
 )
 async def get_latest_state(
     patient_id: UUID,
-    include_genetic_data: Optional[bool] = False,
-    include_biomarkers: Optional[bool] = False,
+    include_genetic_data: bool | None = False,
+    include_biomarkers: bool | None = False,
     current_user: User = Depends(get_current_user),
     service: DigitalTwinCoreService = Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         state = await service.initialize_digital_twin(
             patient_id, include_genetic_data, include_biomarkers
@@ -423,9 +423,9 @@ async def get_latest_state(
 )
 async def process_treatment_event(
     patient_id: UUID,
-    event_data: Dict[str, Any] = Body(...),
+    event_data: dict[str, Any] = Body(...),
     service: DigitalTwinCoreService = Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         state = await service.process_treatment_event(patient_id, event_data)
     except ValueError:
@@ -448,10 +448,10 @@ async def process_treatment_event(
 )
 async def generate_treatment_recommendations(
     patient_id: UUID,
-    consider_current_medications: Optional[bool] = False,
-    include_therapy_options: Optional[bool] = False,
+    consider_current_medications: bool | None = False,
+    include_therapy_options: bool | None = False,
     service: DigitalTwinCoreService = Depends(get_digital_twin_service),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     return await service.generate_treatment_recommendations(
         patient_id, consider_current_medications, include_therapy_options
     )
@@ -464,9 +464,9 @@ async def generate_treatment_recommendations(
 )
 async def get_visualization_data(
     patient_id: UUID,
-    visualization_type: Optional[str] = "brain_model_3d",
+    visualization_type: str | None = "brain_model_3d",
     service: DigitalTwinCoreService = Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return await service.get_visualization_data(patient_id, visualization_type)
 
 
@@ -480,7 +480,7 @@ async def compare_states(
     state_id_1: UUID = Body(..., embed=True),
     state_id_2: UUID = Body(..., embed=True),
     service: DigitalTwinCoreService = Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return await service.compare_states(patient_id, state_id_1, state_id_2)
 
 
@@ -491,10 +491,10 @@ async def compare_states(
 )
 async def generate_clinical_summary(
     patient_id: UUID,
-    include_treatment_history: Optional[bool] = False,
-    include_predictions: Optional[bool] = False,
+    include_treatment_history: bool | None = False,
+    include_predictions: bool | None = False,
     service: DigitalTwinCoreService = Depends(get_digital_twin_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return await service.generate_clinical_summary(
         patient_id, include_treatment_history, include_predictions
     )

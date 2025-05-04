@@ -6,9 +6,8 @@ enabling clean architecture with proper separation between domain and infrastruc
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
 
-from app.core.domain.entities.alert import Alert, AlertStatus, AlertPriority, AlertType
+from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 
 
 class IAlertRepository(ABC):
@@ -36,7 +35,7 @@ class IAlertRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_id(self, alert_id: str, user_id: str) -> Optional[Alert]:
+    async def get_by_id(self, alert_id: str, user_id: str) -> Alert | None:
         """
         Get an alert by its ID with access control.
         
@@ -86,14 +85,14 @@ class IAlertRepository(ABC):
     async def get_alerts(
         self,
         user_id: str,
-        status: Optional[AlertStatus] = None,
-        priority: Optional[AlertPriority] = None,
-        alert_type: Optional[AlertType] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        status: AlertStatus | None = None,
+        priority: AlertPriority | None = None,
+        alert_type: AlertType | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Alert]:
+    ) -> list[Alert]:
         """
         Get alerts with optional filtering.
         

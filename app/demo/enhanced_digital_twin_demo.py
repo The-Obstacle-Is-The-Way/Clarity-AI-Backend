@@ -11,14 +11,12 @@ Usage:
 import asyncio
 import datetime
 import logging
-import random
 import uuid
-from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
-from app.domain.entities.digital_twin import BrainRegion, ClinicalSignificance, Neurotransmitter
-from app.domain.entities.knowledge_graph import NodeType, EdgeType
-from app.infrastructure.factories.enhanced_mock_digital_twin_factory import EnhancedMockDigitalTwinFactory
+from app.infrastructure.factories.enhanced_mock_digital_twin_factory import (
+    EnhancedMockDigitalTwinFactory,
+)
 
 # Configure logging
 logging.basicConfig(

@@ -10,10 +10,10 @@ for neurotransmitter levels and other temporal measurements.
 # executed at run‑time.
 
 from __future__ import annotations
+
 import math
 import uuid
 from datetime import datetime, timedelta
-from app.domain.utils.datetime_utils import UTC
 from enum import Enum
 from typing import Any, Generic, TypeVar
 from uuid import UUID
@@ -21,6 +21,7 @@ from uuid import UUID
 import numpy as np
 
 from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter, TemporalResolution
+from app.domain.utils.datetime_utils import UTC
 
 T = TypeVar('T', float, int, bool, str)
 
@@ -200,7 +201,7 @@ class TemporalSequence(Generic[T]):
         values: list[list[float]],
         patient_id: UUID,
         metadata: dict[str, Any] | None = None
-    ) -> 'TemporalSequence':
+    ) -> TemporalSequence:
         """
         Factory method to create a temporal sequence with an auto-generated ID.
         
@@ -270,7 +271,7 @@ class TemporalSequence(Generic[T]):
             "seq_len": self.sequence_length
         }
     
-    def extract_subsequence(self, start_idx: int, end_idx: int) -> 'TemporalSequence':
+    def extract_subsequence(self, start_idx: int, end_idx: int) -> TemporalSequence:
         """
         Extract a subsequence from this sequence.
         

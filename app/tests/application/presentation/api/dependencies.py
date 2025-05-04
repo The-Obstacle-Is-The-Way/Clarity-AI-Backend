@@ -13,15 +13,17 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config.settings import get_settings, Settings
-from app.core.interfaces.unit_of_work import IUnitOfWork
+from app.application.services.digital_twin_service import DigitalTwinService
+from app.core.config.settings import Settings, get_settings
+from app.core.dependencies.database import get_db_session
 from app.core.interfaces.services.authentication_service import IAuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.application.services.digital_twin_service import DigitalTwinService
-from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import SQLAlchemyDigitalTwinRepository
-from app.core.dependencies.database import get_db_session
-from app.infrastructure.persistence.sqlalchemy.unit_of_work_factory import UnitOfWorkFactory
+from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.infrastructure.database.session import async_session_factory
+from app.infrastructure.persistence.sqlalchemy.repositories.digital_twin_repository import (
+    SQLAlchemyDigitalTwinRepository,
+)
+from app.infrastructure.persistence.sqlalchemy.unit_of_work_factory import UnitOfWorkFactory
 
 logger = logging.getLogger(__name__)
 

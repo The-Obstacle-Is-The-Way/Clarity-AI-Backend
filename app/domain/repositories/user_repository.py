@@ -6,7 +6,6 @@ following the Repository pattern from Domain-Driven Design to abstract data acce
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
 from app.domain.entities.user import User
@@ -24,7 +23,7 @@ class UserRepository(ABC):
     """
 
     @abstractmethod
-    async def get_by_id(self, user_id: UUID) -> Optional[User]:
+    async def get_by_id(self, user_id: UUID) -> User | None:
         """
         Retrieve a user by their unique ID.
         
@@ -37,7 +36,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         """
         Retrieve a user by their email address.
         
@@ -50,7 +49,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         """
         Retrieve a user by their username.
         
@@ -111,7 +110,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         """
         List all users with pagination.
         
@@ -125,7 +124,7 @@ class UserRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> List[User]:
+    async def get_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[User]:
         """
         Retrieve users by their role.
         

@@ -10,18 +10,12 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
-import boto3
-from botocore.exceptions import ClientError
 
 # Removed ml_settings import, will use get_settings
 # from app.config.ml_settings import ml_settings 
 from app.config.settings import get_settings
 from app.core.exceptions.ml_exceptions import RepositoryError
 from app.infrastructure.ml.pat.models import AnalysisResult, AnalysisTypeEnum
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +30,7 @@ class PATRepository:
     
     def __init__(
         self,
-        storage_path: Optional[str] = None
+        storage_path: str | None = None
     ):
         """
         Initialize the PAT repository.
@@ -111,7 +105,7 @@ class PATRepository:
             logger.error(f"Error saving analysis result: {e}")
             raise RepositoryError(f"Failed to save analysis result: {e}")
     
-    async def get_analysis_result(self, analysis_id: str, patient_id: Optional[str] = None) -> Optional[AnalysisResult]:
+    async def get_analysis_result(self, analysis_id: str, patient_id: str | None = None) -> AnalysisResult | None:
         """
         Get an analysis result by ID.
         
@@ -133,7 +127,7 @@ class PATRepository:
                     file_path = os.path.join(analysis_type_dir, f"{analysis_id}.json")
                     
                     if os.path.exists(file_path):
-                        with open(file_path, "r") as f:
+                        with open(file_path) as f:
                             result_dict = json.load(f)
                         
                         # Convert ISO format strings to datetime objects
@@ -147,7 +141,7 @@ class PATRepository:
                 file_path = os.path.join(analysis_type_dir, f"{analysis_id}.json")
                 
                 if os.path.exists(file_path):
-                    with open(file_path, "r") as f:
+                    with open(file_path) as f:
                         result_dict = json.load(f)
                     
                     # Convert ISO format strings to datetime objects
@@ -165,12 +159,12 @@ class PATRepository:
     async def get_patient_analysis_results(
         self,
         patient_id: str,
-        analysis_type: Optional[AnalysisTypeEnum] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        analysis_type: AnalysisTypeEnum | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 10,
         skip: int = 0
-    ) -> List[AnalysisResult]:
+    ) -> list[AnalysisResult]:
         """
         Get analysis results for a patient.
         
@@ -209,7 +203,7 @@ class PATRepository:
                     
                     # Load each file and filter by date if needed
                     for file_path in file_paths:
-                        with open(file_path, "r") as f:
+                        with open(file_path) as f:
                             result_dict = json.load(f)
                         
                         # Convert ISO format strings to datetime objects
@@ -238,7 +232,7 @@ class PATRepository:
                         
                         # Load each file and filter by date if needed
                         for file_path in file_paths:
-                            with open(file_path, "r") as f:
+                            with open(file_path) as f:
                                 result_dict = json.load(f)
                             
                             # Convert ISO format strings to datetime objects
@@ -262,7 +256,7 @@ class PATRepository:
             logger.error(f"Error retrieving patient analysis results: {e}")
             raise RepositoryError(f"Failed to retrieve patient analysis results: {e}")
     
-    async def delete_analysis_result(self, analysis_id: str, patient_id: Optional[str] = None) -> bool:
+    async def delete_analysis_result(self, analysis_id: str, patient_id: str | None = None) -> bool:
         """
         Delete an analysis result.
         

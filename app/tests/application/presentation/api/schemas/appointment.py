@@ -1,13 +1,14 @@
 """
 Pydantic schemas for Appointment API endpoints.
 """
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import Optional
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Import enums from domain entity
 from app.domain.entities.appointment import AppointmentStatus, AppointmentType
+
 
 class AppointmentBase(BaseModel):
     patient_id: UUID
@@ -15,8 +16,8 @@ class AppointmentBase(BaseModel):
     start_time: datetime
     end_time: datetime
     appointment_type: AppointmentType
-    location: Optional[str] = None
-    notes: Optional[str] = None
+    location: str | None = None
+    notes: str | None = None
 
     @field_validator('end_time')
     def end_time_must_be_after_start_time(cls, v, values):
@@ -30,11 +31,11 @@ class AppointmentCreate(AppointmentBase):
 
 class AppointmentUpdate(BaseModel):
     # Allow updating specific fields
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    status: Optional[AppointmentStatus] = None
-    location: Optional[str] = None
-    notes: Optional[str] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    status: AppointmentStatus | None = None
+    location: str | None = None
+    notes: str | None = None
     # Add patient_id/provider_id/type only if reassigning appointments is allowed
 
     @field_validator('end_time')
@@ -57,11 +58,11 @@ class AppointmentResponse(AppointmentBase):
 
 # Schema for listing appointments with potential filters
 class AppointmentListQuery(BaseModel):
-    patient_id: Optional[UUID] = None
-    provider_id: Optional[UUID] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    status: Optional[AppointmentStatus] = None
+    patient_id: UUID | None = None
+    provider_id: UUID | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    status: AppointmentStatus | None = None
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
 

@@ -10,8 +10,13 @@ from httpx import AsyncClient
 from app.domain.entities.user import User
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
-from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
-from app.domain.services.biometric_event_processor import BiometricEventProcessor, ClinicalRuleEngine
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
+)
+from app.domain.services.biometric_event_processor import (
+    BiometricEventProcessor,
+    ClinicalRuleEngine,
+)
 from app.main import app
 from app.presentation.api.v1.dependencies import (
     get_alert_repository,

@@ -7,7 +7,8 @@ between PostgreSQL (using native ARRAY type) and SQLite (using JSON serializatio
 """
 
 import json
-from typing import List, Optional, Any, Union, Sequence
+from collections.abc import Sequence
+
 from sqlalchemy import types
 from sqlalchemy.dialects.postgresql import ARRAY
 

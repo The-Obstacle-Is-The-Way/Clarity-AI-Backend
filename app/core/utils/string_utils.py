@@ -5,10 +5,9 @@ This module provides reusable string utilities that can be used
 across the application, particularly for sanitization and formatting.
 """
 import re
-from typing import Optional, Union
 
 
-def sanitize_name(name: Optional[str]) -> str:
+def sanitize_name(name: str | None) -> str:
     """
     Sanitize a name by removing potentially dangerous characters.
     

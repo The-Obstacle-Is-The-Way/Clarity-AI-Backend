@@ -2,14 +2,15 @@
 XGBoost ML Service Interface.
 """
 
-from app.domain.interfaces.ml_service_interface import MLServiceInterface
-from typing import Any, Dict, Optional, List, Union
-from uuid import UUID
 from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel
 
 # Import the constants
 from app.core.services.ml.xgboost.constants import ModelType
+from app.domain.interfaces.ml_service_interface import MLServiceInterface
+
 
 class XGBoostInterface(MLServiceInterface):
     """Interface for XGBoost ML Service implementation."""
@@ -18,9 +19,9 @@ class XGBoostInterface(MLServiceInterface):
         self, 
         patient_id: str, 
         risk_type: str, 
-        clinical_data: Dict[str, Any],
-        time_frame_days: Optional[int] = None
-    ) -> Dict[str, Any]:
+        clinical_data: dict[str, Any],
+        time_frame_days: int | None = None
+    ) -> dict[str, Any]:
         """
         Predict patient risk based on clinical data.
         
@@ -39,9 +40,9 @@ class XGBoostInterface(MLServiceInterface):
         self,
         patient_id: str,
         treatment_type: str,
-        treatment_details: Dict[str, Any],
-        clinical_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        treatment_details: dict[str, Any],
+        clinical_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Predict patient response to treatment.
         
@@ -59,12 +60,12 @@ class XGBoostInterface(MLServiceInterface):
     async def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: Dict[str, Any],
-        clinical_data: Dict[str, Any],
-        treatment_plan: Dict[str, Any],
-        social_determinants: Optional[Dict[str, Any]] = None,
-        comorbidities: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        outcome_timeframe: dict[str, Any],
+        clinical_data: dict[str, Any],
+        treatment_plan: dict[str, Any],
+        social_determinants: dict[str, Any] | None = None,
+        comorbidities: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Predict patient outcome based on clinical data and treatment plan.
         
@@ -83,8 +84,8 @@ class XGBoostInterface(MLServiceInterface):
     
     async def get_model_info(
         self, 
-        model_type: Union[str, ModelType]
-    ) -> Dict[str, Any]:
+        model_type: str | ModelType
+    ) -> dict[str, Any]:
         """
         Get information about an XGBoost model.
         
@@ -98,10 +99,10 @@ class XGBoostInterface(MLServiceInterface):
     
     async def get_feature_importance(
         self,
-        model_type: Union[str, ModelType],
+        model_type: str | ModelType,
         prediction_id: str,
-        patient_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        patient_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Get feature importance for a prediction.
         
@@ -120,8 +121,8 @@ class XGBoostInterface(MLServiceInterface):
         patient_id: str,
         profile_id: str,
         prediction_id: str,
-        additional_data: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        additional_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Integrate a prediction with a digital twin.
         
@@ -136,7 +137,7 @@ class XGBoostInterface(MLServiceInterface):
         """
         pass
     
-    async def healthcheck(self) -> Dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """
         Check health status of XGBoost service.
         
@@ -150,9 +151,9 @@ class ModelMetadata(BaseModel):
     name: str
     version: str
     description: str
-    input_features: List[str]
-    output_types: List[str]
-    performance_metrics: Dict[str, float]
+    input_features: list[str]
+    output_types: list[str]
+    performance_metrics: dict[str, float]
 
 # Dummy definitions to satisfy imports elsewhere
 class EventType(str, Enum):
@@ -162,7 +163,7 @@ class EventType(str, Enum):
     ERROR = "error"
 
 class Observer:
-    async def update(self, event_type: EventType, data: Dict[str, Any]) -> None:
+    async def update(self, event_type: EventType, data: dict[str, Any]) -> None:
         pass
 
 class PrivacyLevel(str, Enum):

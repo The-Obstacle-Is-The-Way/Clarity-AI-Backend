@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Cross-database compatible UUID type for SQLAlchemy.
 
@@ -7,7 +6,7 @@ particularly for handling the PostgreSQL UUID vs SQLite string storage differenc
 """
 
 import uuid
-from typing import Any, Optional, Union, cast
+from typing import Any
 
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
@@ -43,7 +42,7 @@ class GUID(TypeDecorator):
             return dialect.type_descriptor(PostgresUUID(as_uuid=True))
         return dialect.type_descriptor(String(36))
     
-    def process_bind_param(self, value: Optional[Union[str, uuid.UUID]], dialect: Dialect) -> Optional[str]:
+    def process_bind_param(self, value: str | uuid.UUID | None, dialect: Dialect) -> str | None:
         """
         Process the parameter value before binding to SQL statement.
         
@@ -67,7 +66,7 @@ class GUID(TypeDecorator):
             return str(value)
         return value
     
-    def process_result_value(self, value: Any, dialect: Dialect) -> Optional[uuid.UUID]:
+    def process_result_value(self, value: Any, dialect: Dialect) -> uuid.UUID | None:
         """
         Process the result value from SQL result set.
         

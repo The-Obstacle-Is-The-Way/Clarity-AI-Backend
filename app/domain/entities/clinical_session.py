@@ -3,12 +3,13 @@ Domain entity representing a Clinical Session record.
 """
 from dataclasses import dataclass, field
 from datetime import datetime
-from app.domain.utils.datetime_utils import now_utc, UTC
-from typing import Optional, Dict, List, Any
-from uuid import UUID, uuid4
 from enum import Enum
+from typing import Any
+from uuid import UUID, uuid4
 
 from app.domain.entities.base_entity import BaseEntity
+from app.domain.utils.datetime_utils import now_utc
+
 
 class SessionType(str, Enum):
     THERAPY = "therapy"
@@ -22,16 +23,16 @@ class ClinicalSession(BaseEntity):
     id: UUID = field(default_factory=uuid4)
     patient_id: UUID
     provider_id: UUID
-    appointment_id: Optional[UUID] = None # Link to appointment if scheduled
+    appointment_id: UUID | None = None # Link to appointment if scheduled
     session_datetime: datetime # Actual time the session occurred
     duration_minutes: int
     session_type: SessionType
-    summary: Optional[str] = None # Clinician's summary of the session
-    subjective_notes: Optional[str] = None # Patient's report (SOAP note S)
-    objective_notes: Optional[str] = None # Clinician's observations (SOAP note O)
-    assessment_notes: Optional[str] = None # Clinician's assessment (SOAP note A)
-    plan_notes: Optional[str] = None # Treatment plan adjustments (SOAP note P)
-    structured_data: Dict[str, Any] = field(default_factory=dict) # For specific assessments, scales used, etc.
+    summary: str | None = None # Clinician's summary of the session
+    subjective_notes: str | None = None # Patient's report (SOAP note S)
+    objective_notes: str | None = None # Clinician's observations (SOAP note O)
+    assessment_notes: str | None = None # Clinician's assessment (SOAP note A)
+    plan_notes: str | None = None # Treatment plan adjustments (SOAP note P)
+    structured_data: dict[str, Any] = field(default_factory=dict) # For specific assessments, scales used, etc.
     created_at: datetime = field(default_factory=now_utc)
     last_updated: datetime = field(default_factory=now_utc)
 

@@ -10,7 +10,7 @@ actigraphy analysis capabilities for the psychiatric digital twin platform.
 """
 
 import logging
-from typing import Any, Dict, Optional, Union, Type
+from typing import Any
 
 # Use the canonical config location
 from app.config.settings import get_settings
@@ -18,8 +18,8 @@ from app.config.settings import get_settings
 settings = get_settings()
 from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.pat.exceptions import InitializationError
-from app.core.services.ml.pat.pat_interface import PATInterface
 from app.core.services.ml.pat.mock import MockPATService
+from app.core.services.ml.pat.pat_interface import PATInterface
 
 # Conditionally import the AWS implementation
 try:
@@ -52,7 +52,7 @@ class PATServiceFactory:
     """
     
     # Service type to implementation mapping
-    _SERVICE_REGISTRY: Dict[str, Type[PATInterface]] = {
+    _SERVICE_REGISTRY: dict[str, type[PATInterface]] = {
         "mock": MockPATService
     }
     
@@ -64,7 +64,7 @@ class PATServiceFactory:
         _SERVICE_REGISTRY["bedrock"] = BedrockPAT
     
     @classmethod
-    def create_pat_service(cls, config: Optional[Union[Dict[str, Any], str]] = None) -> PATInterface:
+    def create_pat_service(cls, config: dict[str, Any] | str | None = None) -> PATInterface:
         """Create and initialize a PAT service instance.
         
         Args:
@@ -149,7 +149,7 @@ class PATServiceFactory:
         return service
     
     # For backward compatibility
-    def create_service(self, service_type: Optional[str] = None) -> PATInterface:
+    def create_service(self, service_type: str | None = None) -> PATInterface:
         """Create a PAT service instance (without initialization).
         
         Args:
