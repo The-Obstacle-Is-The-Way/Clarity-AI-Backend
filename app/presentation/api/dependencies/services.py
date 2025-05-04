@@ -34,11 +34,20 @@ def get_pat_service(
     """Provides an instance of the PAT Service created via its factory."""
     return pat_service
 
-def get_user_repository(
-    user_repo: IUserRepository = Depends(infra_get_user_repo),
+# Wrapper to inject AsyncSession into infrastructure-level factory
+from app.core.dependencies.database import get_db_session
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def _user_repository_factory(
+    db_session: AsyncSession = Depends(get_db_session),
 ) -> IUserRepository:
-    """Provides an instance of the User Repository."""
-    # Note: This uses the same underlying factory as the one used in auth.py's get_current_user
+    """Factory that adapts infrastructure get_user_repository to FastAPI DI."""
+    return infra_get_user_repo(db_session)
+
+def get_user_repository(
+    user_repo: IUserRepository = Depends(_user_repository_factory),
+) -> IUserRepository:
+    """Provides an instance of the User Repository via adapted factory."""
     return user_repo
 
 def get_digital_twin_service() -> Any | None:
