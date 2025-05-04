@@ -5,20 +5,19 @@ This module provides dependency functions for biometric alert components
 following clean architecture principles with proper separation of concerns.
 """
 
-from typing import Annotated
-
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dependencies.database import get_db_session
 from app.core.interfaces.repositories.alert_repository_interface import AlertRepositoryInterface
 from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
 from app.infrastructure.di.container import get_container
 from app.infrastructure.repositories.alert_repository import AlertRepository
-from app.presentation.api.dependencies.database import get_db, DatabaseSessionDep
 from app.presentation.api.dependencies.repository import get_encryption_service
 
 
 def get_alert_repository(
-    db_session: DatabaseSessionDep,
+    db_session: AsyncSession = Depends(get_db_session),
     encryption_service: EncryptionServiceInterface = Depends(get_encryption_service)
 ) -> AlertRepositoryInterface:
     """

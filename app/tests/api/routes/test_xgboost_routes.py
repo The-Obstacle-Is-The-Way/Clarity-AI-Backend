@@ -165,7 +165,7 @@ def client():
             '/xgboost/outcome-prediction',
             OutcomePredictionRequest(
                 patient_id='test-patient-456',
-                outcome_type=OutcomeType.SYMPTOM,
+                outcome_type=OutcomeType.SYMPTOM_REDUCTION,
                 outcome_timeframe=TimeFrame(weeks=12),
                 clinical_data={
                     'age': 40,
@@ -183,7 +183,7 @@ def client():
             OutcomePredictionResponse(
                 prediction_id='test-prediction-789',
                 patient_id='test-patient-456',
-                outcome_type=OutcomeType.SYMPTOM,
+                outcome_type=OutcomeType.SYMPTOM_REDUCTION,
                 outcome_score=0.4,
                 time_frame_days=84,
                 confidence=0.75,

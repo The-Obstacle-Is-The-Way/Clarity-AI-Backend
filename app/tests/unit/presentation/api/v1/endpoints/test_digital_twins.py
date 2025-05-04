@@ -30,7 +30,7 @@ from app.presentation.api.dependencies.services import (
     get_digital_twin_service,
 )
 from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
-from app.presentation.api.v1.schemas.digital_twin_schemas import (
+from app.presentation.api.schemas.digital_twin_schemas import (
     ClinicalTextAnalysisResponse,
     PersonalizedInsightResponse,
 )
