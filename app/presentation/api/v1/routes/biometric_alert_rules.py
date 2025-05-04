@@ -23,8 +23,8 @@ from app.presentation.api.schemas.alert import (
     AlertRuleUpdateRequest,
 )
 from app.presentation.api.dependencies.auth import get_current_active_user
-from app.presentation.api.v1.dependencies.biometric import (
-    get_biometric_rule_repository,
+from app.presentation.api.v1.dependencies.biometric_alert import (
+    get_rule_repository as get_biometric_rule_repository,
 )
 
 logger = logging.getLogger(__name__)
