@@ -195,22 +195,18 @@ def client():
                 time_frame_days=84,
                 confidence=0.75,
                 trajectory=OutcomeTrajectory(
-                    points=[
-                        OutcomeTrajectoryPoint(time_point='Week 2', days_from_start=14, improvement_percentage=10),
-                        OutcomeTrajectoryPoint(time_point='Week 4', days_from_start=28, improvement_percentage=25),
-                        OutcomeTrajectoryPoint(time_point='Week 8', days_from_start=56, improvement_percentage=40)
-                    ],
-                    final_improvement=40,
-                    time_frame_days=84,
-                    visualization_type=VisualizationType.LINE_CHART
+                    domain=OutcomeDomain.DEPRESSION,
+                    outcome_type=OutcomeType.SYMPTOM_REDUCTION,
+                    trajectory=[
+                        OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.1),
+                        OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.2),
+                        OutcomeTrajectoryPoint(time_point=datetime.now(), predicted_value=0.3)
+                    ]
                 ),
                 outcome_details=OutcomeDetails(
-                    overall_improvement='moderate',
-                    domains=[
-                        OutcomeDomain(name='Mood', improvement='moderate', notes='Improved stability'),
-                        OutcomeDomain(name='Anxiety', improvement='mild', notes='Some reduction in symptoms')
-                    ],
-                    recommendations=['Continue current treatment', 'Monitor for side effects']
+                    domain=OutcomeDomain.DEPRESSION,
+                    outcome_type=OutcomeType.SYMPTOM_REDUCTION,
+                    predicted_value=0.65
                 ),
                 timestamp=datetime.now()
             )

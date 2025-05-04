@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.interfaces.repositories.alert_repository_interface import AlertRepositoryInterface
 from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
 from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
-from app.infrastructure.repositories.sqlalchemy.alert_repository import AlertRepository
+# Corrected import path for AlertRepository
+from app.infrastructure.repositories.alert_repository import AlertRepository
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import ( 
     BiometricAlertRepository,
 )
