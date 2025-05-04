@@ -64,7 +64,7 @@ UserDep = Annotated[User, Depends(get_current_user)]
 ProviderAccessDep = Annotated[User, Depends(verify_provider_access)]
 
 
-@router.post("/model-info", response_model=None) # Temporarily set to None
+@router.post("/model-info", response_model=ModelInfoResponse)
 async def get_model_info(
     request: ModelInfoRequest,
     xgboost_service: XGBoostDep,

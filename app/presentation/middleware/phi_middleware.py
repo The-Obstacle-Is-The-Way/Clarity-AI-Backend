@@ -20,7 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.domain.exceptions.phi_exceptions import PHIInUrlError, PHISanitizationError
-from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 from app.infrastructure.di.container import get_container
 from app.infrastructure.security.encryption_service import EncryptionService
 
@@ -79,11 +79,11 @@ class PHIMiddleware(BaseHTTPMiddleware):
         # Get encryption service for HIPAA compliance
         container = get_container()
         try:
-            self.encryption_service = container.get(EncryptionServiceInterface)
+            self.encryption_service = container.get(IEncryptionService)
         except KeyError:
             # Create encryption service if not available
             self.encryption_service = EncryptionService()
-            container.register(EncryptionServiceInterface, self.encryption_service)
+            container.register(IEncryptionService, self.encryption_service)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """

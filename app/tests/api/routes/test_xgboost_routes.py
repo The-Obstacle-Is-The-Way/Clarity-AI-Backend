@@ -75,6 +75,36 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture
+def mock_model_info():
+    """Provides a mock XGBoostService with the get_model_info method mocked."""
+    def mock_model_info_data(request: ModelInfoRequest):
+        # Mock ModelInfoResponse structure
+        return ModelInfoResponse(
+            model_name='Mock XGBoost Model',
+            model_type='risk_suicide',
+            model_version='1.2.3',
+            creation_date=datetime.now(),
+            description='Suicide risk prediction model',
+            training_dataset_size=1000,
+            trained_for_domains=[OutcomeDomain.SUICIDALITY.value],
+            supports_features=['age', 'gender', 'diagnosis', 'previous_attempts'],
+            performance_metrics=PerformanceMetrics(
+                accuracy=0.88,
+                precision=0.85,
+                recall=0.82,
+                f1_score=0.83,
+                auc_roc=0.92
+            ),
+            hyperparameters={'max_depth': 5, 'learning_rate': 0.1},
+            status='active'
+        ).model_dump()
+
+    mock_service = AsyncMock()
+    mock_service.get_model_info.side_effect = mock_model_info_data
+    return mock_service
+
+
 @pytest.mark.parametrize(
     'endpoint, request_model, response_model',
     [
@@ -217,11 +247,14 @@ def client():
             '/xgboost/model-info',
             ModelInfoRequest(model_type='risk_suicide'),
             ModelInfoResponse(
+                model_name='Mock XGBoost Model',
                 model_type='risk_suicide',
-                version='1.2.3',
-                last_updated=datetime.fromisoformat('2023-05-15T10:30:00'),
+                model_version='1.2.3',
+                creation_date=datetime.now(),
                 description='Suicide risk prediction model',
-                features=['age', 'gender', 'diagnosis', 'previous_attempts'],
+                training_dataset_size=1000,
+                trained_for_domains=[OutcomeDomain.SUICIDALITY.value],
+                supports_features=['age', 'gender', 'diagnosis', 'previous_attempts'],
                 performance_metrics=PerformanceMetrics(
                     accuracy=0.88,
                     precision=0.85,

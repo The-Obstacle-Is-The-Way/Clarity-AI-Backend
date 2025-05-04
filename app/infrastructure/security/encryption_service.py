@@ -1,7 +1,7 @@
 """
 Encryption service implementation.
 
-This module implements the EncryptionServiceInterface to provide
+This module implements the IEncryptionService to provide
 HIPAA-compliant encryption for all PHI data in the system.
 """
 
@@ -16,10 +16,11 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.core.config import settings
 
 
-class EncryptionService(EncryptionServiceInterface):
+class EncryptionService(IEncryptionService):
     """
     Implementation of the encryption service with HIPAA-compliant encryption.
     

@@ -6,20 +6,21 @@ ensuring HIPAA compliance and proper data handling for alerts.
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Optional, Sequence
 
-from sqlalchemy import select, and_, or_, between, desc
+from sqlalchemy import select, between, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.domain.entities.alert import Alert, AlertStatus, AlertPriority, AlertType
-from app.core.errors.security_exceptions import AuthenticationError
-from app.core.interfaces.repositories.alert_repository_interface import AlertRepositoryInterface
-from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
-from app.infrastructure.models.alert_model import AlertModel
+from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
+from app.core.exceptions.auth_exceptions import AuthenticationError
+from app.core.interfaces.repositories.alert_repository_interface import IAlertRepository
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import Alert as AlertModel
+from app.infrastructure.persistence.sqlalchemy.models.biometric_rule import AlertRule as AlertRuleModel
 from app.infrastructure.models.user_model import UserModel
 
 
-class AlertRepository(AlertRepositoryInterface):
+class AlertRepository(IAlertRepository):
     """
     Implementation of the alert repository interface.
     
@@ -27,7 +28,7 @@ class AlertRepository(AlertRepositoryInterface):
     HIPAA compliance, including data encryption and access controls.
     """
     
-    def __init__(self, db_session: AsyncSession, encryption_service: EncryptionServiceInterface):
+    def __init__(self, db_session: AsyncSession, encryption_service: IEncryptionService):
         """
         Initialize the alert repository.
         
@@ -180,7 +181,7 @@ class AlertRepository(AlertRepositoryInterface):
         end_date: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Alert]:
+    ) -> Sequence[Alert]:
         """
         Get alerts with optional filtering.
         

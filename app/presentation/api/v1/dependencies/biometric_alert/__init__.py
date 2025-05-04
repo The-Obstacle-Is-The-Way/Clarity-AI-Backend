@@ -6,9 +6,9 @@ This module provides dependency injection for biometric alert related services.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.interfaces.repositories.alert_repository_interface import AlertRepositoryInterface
+from app.core.interfaces.repositories.alert_repository_interface import IAlertRepository
 from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
-from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 # Corrected import path for AlertRepository
 from app.infrastructure.repositories.alert_repository import AlertRepository
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import ( 
@@ -24,8 +24,8 @@ from app.presentation.api.v1.dependencies.security import get_encryption_service
 
 async def get_alert_repository(
     db_session: AsyncSession = get_db_session,
-    encryption_service: EncryptionServiceInterface = get_encryption_service
-) -> AlertRepositoryInterface:
+    encryption_service: IEncryptionService = get_encryption_service
+) -> IAlertRepository:
     """
     Dependency provider for alert repository.
     
@@ -41,7 +41,7 @@ async def get_alert_repository(
 
 async def get_biometric_repository(
     db_session: AsyncSession = get_db_session,
-    encryption_service: EncryptionServiceInterface = get_encryption_service
+    encryption_service: IEncryptionService = get_encryption_service
 ) -> BiometricAlertRepository:
     """
     Dependency provider for biometric repository.
@@ -57,13 +57,15 @@ async def get_biometric_repository(
 
 
 async def get_rule_repository(
-    db_session: AsyncSession = get_db_session
+    db_session: AsyncSession = get_db_session,
+    encryption_service: IEncryptionService = get_encryption_service
 ) -> IBiometricRuleRepository:
     """
     Dependency provider for biometric alert rule repository.
     
     Args:
         db_session: Database session
+        encryption_service: Encryption service for sensitive data
         
     Returns:
         Biometric rule repository instance

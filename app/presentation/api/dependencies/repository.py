@@ -9,7 +9,7 @@ This is a compatibility module that re-exports from database.py.
 from fastapi import Depends
 from typing import Callable, Type, TypeVar
 
-from app.core.interfaces.services.encryption_service_interface import EncryptionServiceInterface
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 from app.infrastructure.security.encryption_service import EncryptionService
 from app.infrastructure.di.container import get_container
 
@@ -22,7 +22,7 @@ get_repository_dependency = get_repository
 T = TypeVar('T')
 
 
-def get_encryption_service() -> EncryptionServiceInterface:
+def get_encryption_service() -> IEncryptionService:
     """
     Get the encryption service instance.
     
@@ -34,11 +34,11 @@ def get_encryption_service() -> EncryptionServiceInterface:
     """
     container = get_container()
     try:
-        return container.get(EncryptionServiceInterface)
+        return container.get(IEncryptionService)
     except KeyError:
         # Lazily register if not already available
         service = EncryptionService()
-        container.register(EncryptionServiceInterface, service)
+        container.register(IEncryptionService, service)
         return service
 
 
@@ -56,18 +56,18 @@ def get_patient_repository(db_session: DatabaseSessionDep):
     Returns:
         An instance of the patient repository
     """
-    from app.core.interfaces.repositories.patient_repository_interface import PatientRepositoryInterface
+    from app.core.interfaces.repositories.patient_repository_interface import IPatientRepository
     from app.infrastructure.repositories.patient_repository import PatientRepository
     
     # Use container to get or create repository
     container = get_container()
     try:
-        return container.get(PatientRepositoryInterface)
+        return container.get(IPatientRepository)
     except KeyError:
         # Get encryption service for HIPAA compliance
         encryption_service = get_encryption_service()
         
         # Create repository with proper dependencies
         repo = PatientRepository(db_session, encryption_service)
-        container.register(PatientRepositoryInterface, repo)
+        container.register(IPatientRepository, repo)
         return repo

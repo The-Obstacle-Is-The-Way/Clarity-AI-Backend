@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Union
 
 
-class EncryptionServiceInterface(ABC):
+class IEncryptionService(ABC):
     """
     Abstract interface for encryption services.
     

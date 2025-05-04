@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 from app.core.domain.entities.alert import Alert, AlertStatus, AlertPriority, AlertType
 
 
-class AlertRepositoryInterface(ABC):
+class IAlertRepository(ABC):
     """
     Interface for alert repository implementations.
     
