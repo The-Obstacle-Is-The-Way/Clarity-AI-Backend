@@ -66,49 +66,38 @@ async def get_current_user(
     jwt_service: JWTServiceDep,
     user_repo: UserRepoDep,
 ) -> User:
-    """
-    Dependency to get the current authenticated user based on the provided token.
-
-    Decodes the JWT token, retrieves the user ID, and fetches the user
-    from the repository.
-
-    Args:
-        token: The OAuth2 bearer token.
-        jwt_service: Injected JWTService dependency.
-        user_repo: Injected UserRepository dependency.
-
-    Returns:
-        The authenticated User object.
-
-    Raises:
-        HTTPException: If credentials cannot be validated.
-    """
+    """Dependency to get the current authenticated user from the token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt_service.decode_token(token)
+        payload = jwt_service.decode_access_token(token)
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except InvalidCredentialsError as e:
-        # Log the specific JWT error?
-        raise credentials_exception from e
-    except Exception as e:
-        # Catch unexpected errors during token processing
-        # Log e
-        raise credentials_exception from e
+    except InvalidCredentialsError: # Or specific JWT errors
+        raise credentials_exception from None
 
-    user = await user_repo.get_by_id(user_id)
+    user = await user_repo.get_user_by_id(user_id)
     if user is None:
         raise credentials_exception
-    # TODO: Add checks for user status (e.g., is_active)
     return user
 
+CurrentUserDep = Annotated[User, Depends(get_current_user)]
 
-# Optional: Dependency for getting an active user
+async def require_admin_role(current_user: CurrentUserDep) -> User:
+    """Dependency that requires the current user to have the ADMIN role."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have permission to perform this action.",
+        )
+    return current_user
+
+AdminUserDep = Annotated[User, Depends(require_admin_role)]
+
 async def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
@@ -175,3 +164,16 @@ async def verify_provider_access(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Not authorized to access this patient's data"
     )
+
+__all__ = [
+    "AdminUserDep",
+    "AuthServiceDep",
+    "CurrentUserDep",
+    "JWTServiceDep",
+    "TokenDep",
+    "UserRepoDep",
+    "get_current_user",
+    "get_user_repository_dependency",
+    "oauth2_scheme",
+    "require_admin_role",
+]
