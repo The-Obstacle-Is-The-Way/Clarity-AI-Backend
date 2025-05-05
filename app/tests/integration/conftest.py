@@ -9,7 +9,7 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.interfaces.aws_service_interface import S3ServiceInterface
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 
 # Import SQLAlchemy models and utils
 from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
@@ -272,6 +273,18 @@ async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 
 # External Service Mocks
+@pytest.fixture
+def mock_encryption_service() -> IEncryptionService:
+    """
+    Provides a mock implementation of the encryption service interface.
+    For integration tests, this often just needs to pass data through.
+    """
+    mock_service = MagicMock(spec=IEncryptionService)
+    mock_service.encrypt.side_effect = lambda data: data.encode() if isinstance(data, str) else data
+    mock_service.decrypt.side_effect = lambda data: data.decode() if isinstance(data, bytes) else data
+    return mock_service
+
+
 @pytest.fixture
 def mock_mentallama_api() -> Any:
     """
