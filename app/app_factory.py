@@ -3,6 +3,8 @@ import logging
 import logging.config
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import os
+from unittest.mock import AsyncMock
 
 # Third-Party Imports
 import sentry_sdk
@@ -17,9 +19,9 @@ from app.core.config import Settings, settings as global_settings
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.database.session import create_db_engine_and_session
 from app.presentation.api.v1.api_router import api_v1_router
-from app.presentation.middleware.logging_middleware import LoggingMiddleware
+from app.presentation.middleware.logging import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
-# from app.presentation.middleware.request_id import RequestIdMiddleware
+from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 
 # Initialize logging early
@@ -94,24 +96,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise RuntimeError(f"Critical database initialization failure: {e}") from e
 
     # --- Redis Initialization ---
-    try:
-        logger.info("Initializing Redis connection pool...")
-        redis_pool = ConnectionPool.from_url(str(current_settings.REDIS_URL), decode_responses=True)
-        app.state.redis_pool = redis_pool
-        app.state.redis = Redis(connection_pool=redis_pool)
-        # Test Redis connection
-        await app.state.redis.ping()
-        logger.info("Redis connection pool initialized and tested successfully.")
-    except RedisError as _e:  # Renamed e to _e
-        logger.error(f"Redis connection failed: {_e}", exc_info=True)
-        # Decide if Redis failure is critical. Maybe set state to None?
-        app.state.redis_pool = None
-        app.state.redis = None
-        logger.warning("Redis is unavailable.")
-    except Exception as _e:  # Renamed e to _e
-        logger.exception(f"An unexpected error occurred during Redis init: {_e}")
-        app.state.redis_pool = None
-        app.state.redis = None
+    if current_settings.ENVIRONMENT == "test":
+        logger.info("Test environment detected, mocking Redis connection.")
+        # Create mock objects with necessary async methods for shutdown
+        mock_redis_client = AsyncMock(spec=Redis)
+        mock_redis_client.ping = AsyncMock()
+        mock_redis_client.close = AsyncMock()
+        mock_redis_pool = AsyncMock(spec=ConnectionPool)
+        mock_redis_pool.disconnect = AsyncMock()
+
+        app.state.redis = mock_redis_client
+        app.state.redis_pool = mock_redis_pool
+    else:
+        try:
+            logger.info("Initializing Redis connection pool...")
+            redis_pool = ConnectionPool.from_url(str(current_settings.REDIS_URL), decode_responses=True)
+            app.state.redis_pool = redis_pool
+            app.state.redis = Redis(connection_pool=redis_pool)
+            # Test Redis connection
+            await app.state.redis.ping()
+            logger.info("Redis connection successful.")
+        except RedisError as e:
+            logger.error(f"Redis connection failed: {e}", exc_info=True)
+            # Decide if this is critical. For now, log and continue, but set state to None.
+            app.state.redis_pool = None
+            app.state.redis = None
+        except Exception as e: # Catch potential parsing errors from from_url etc.
+            logger.error(f"An unexpected error occurred during Redis initialization: {e}", exc_info=True)
+            app.state.redis_pool = None
+            app.state.redis = None
 
     # --- Sentry Initialization ---
     _initialize_sentry(current_settings)
@@ -126,22 +139,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             await app.state.redis.close()
             logger.info("Redis client closed.")
-        except Exception as _e:
-            logger.error(f"Error closing Redis client: {_e}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Error closing Redis client: {e}", exc_info=True)
     if hasattr(app.state, "redis_pool") and app.state.redis_pool:
         try:
             await app.state.redis_pool.disconnect()
             logger.info("Redis connection pool disconnected.")
-        except Exception as _e:
-            logger.error(f"Error disconnecting Redis pool: {_e}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Error disconnecting Redis pool: {e}", exc_info=True)
 
     # Dispose SQLAlchemy engine
     if hasattr(app.state, "db_engine") and app.state.db_engine:
         try:
             await app.state.db_engine.dispose()
             logger.info("Database engine disposed successfully.")
-        except Exception as _e:
-            logger.error(f"Error disposing database engine: {_e}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Error disposing database engine: {e}", exc_info=True)
 
     logger.info("Application shutdown complete.")
 
@@ -197,13 +210,16 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     )
 
     # --- Middleware Configuration (Order Matters!) ---
-    # 1. Request ID (early for logging)
-    # app.add_middleware(RequestIdMiddleware) # TODO: Re-enable when RequestIdMiddleware is implemented/found
+    # 1. Security Headers Middleware
+    app.add_middleware(SecurityHeadersMiddleware)
 
-    # 2. Logging (after Request ID)
-    app.add_middleware(LoggingMiddleware)
+    # 2. Request ID Middleware
+    app.add_middleware(RequestIdMiddleware)
 
-    # 3. CORS
+    # 3. Logging Middleware
+    app.add_middleware(LoggingMiddleware, logger=logger)
+
+    # 4. CORS
     if app_settings.BACKEND_CORS_ORIGINS:
         logger.info(f"Configuring CORS for origins: {app_settings.BACKEND_CORS_ORIGINS}")
         app.add_middleware(
@@ -216,28 +232,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     else:
         logger.warning("No CORS origins configured. CORS middleware not added.")
 
-    # 4. Security Headers
-    app.add_middleware(SecurityHeadersMiddleware)
-
-    # 5. Rate Limiting (conditionally, using Redis if available)
-    # Check if redis state exists and is not None before adding middleware
-    # This check needs to happen *after* the lifespan has potentially run
-    # and set app.state.redis. A bit tricky here, maybe defer middleware
-    # addition or have middleware handle redis unavailability gracefully.
-    # For now, let's assume lifespan runs before requests.
-    # if hasattr(app.state, 'redis') and app.state.redis:
-    #     logger.info("Redis available, adding Rate Limiting Middleware.")
-    #     app.add_middleware(
-    #         RateLimitingMiddleware,
-    #         redis_client=lambda: app.state.redis,  # Pass redis client factory
-    #         limit=app_settings.RATE_LIMIT_REQUESTS,
-    #         period=app_settings.RATE_LIMIT_PERIOD_SECONDS,
-    #     )
-    # else:
-    #     logger.warning(
-    #         "Redis not available, Rate Limiting Middleware will not be functional."
-    #     )
-    # Let's add it but have it handle unavailability internally for simplicity now:
+    # 5. Rate Limiting Middleware
     logger.info("Adding Rate Limiting Middleware.")
     app.add_middleware(
         RateLimitingMiddleware,

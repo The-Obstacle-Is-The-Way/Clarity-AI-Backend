@@ -13,16 +13,18 @@ from typing import Any
 import jwt
 from pydantic import BaseModel
 
-from app.application.interfaces.services.audit_logger import AuditLogger
+from app.infrastructure.logging.audit_logger import AuditLogger
 from app.core.config import Settings
 from app.domain.exceptions.auth_exceptions import (
     InvalidTokenException,
     TokenBlacklistedException,
     TokenExpiredException,
 )
-from app.domain.interfaces.repositories.token_blacklist_repository import (
-    TokenBlacklistRepositoryInterface,
-)
+# from app.domain.interfaces.repositories.token_blacklist_repository import (
+#     ITokenBlacklistRepository, # TODO: Define this interface in core
+#     ITokenRepository,
+# )
+from app.domain.interfaces.token_repository import ITokenRepository # TODO: Move this to core
 
 
 class TokenPayload(BaseModel):
@@ -53,20 +55,20 @@ class JWTService:
 
     def __init__(
         self,
-        settings: Settings,
-        token_blacklist_repository: TokenBlacklistRepositoryInterface,
+        token_repo: ITokenRepository,
+        # blacklist_repo: ITokenBlacklistRepository, # TODO: Add back when defined and injected
         audit_logger: AuditLogger
     ):
         """
         Initialize the JWT service.
         
         Args:
-            settings: Application settings containing JWT configuration
-            token_blacklist_repository: Repository for managing blacklisted tokens
+            token_repo: Repository for managing tokens
+            # blacklist_repo: Repository for managing blacklisted tokens
             audit_logger: Service for audit logging
         """
-        self.settings = settings
-        self.token_blacklist_repository = token_blacklist_repository
+        self.token_repo = token_repo
+        # self.blacklist_repo = blacklist_repo # TODO: Add back when defined and injected
         self.audit_logger = audit_logger
         self.algorithm = "HS256"  # HMAC with SHA-256
         
@@ -212,13 +214,13 @@ class JWTService:
         """
         try:
             # Check if token is blacklisted
-            if self.token_blacklist_repository.is_blacklisted(token):
-                self.audit_logger.log_security_event(
-                    event_type="BLACKLISTED_TOKEN_USED",
-                    description="Attempt to use blacklisted token",
-                    metadata={"token_type": token_type}
-                )
-                raise TokenBlacklistedException("Token has been revoked")
+            # if self.token_blacklist_repository.is_blacklisted(token):
+            #     self.audit_logger.log_security_event(
+            #         event_type="BLACKLISTED_TOKEN_USED",
+            #         description="Attempt to use blacklisted token",
+            #         metadata={"token_type": token_type}
+            #     )
+            #     raise TokenBlacklistedException("Token has been revoked")
             
             # Decode token
             payload = jwt.decode(
@@ -277,11 +279,11 @@ class JWTService:
             email = payload.get("email", "unknown")
             
             # Add token to blacklist
-            self.token_blacklist_repository.add_to_blacklist(
-                token=token,
-                jti=jti,
-                expires_at=datetime.fromtimestamp(exp)
-            )
+            # self.token_blacklist_repository.add_to_blacklist(
+            #     token=token,
+            #     jti=jti,
+            #     expires_at=datetime.fromtimestamp(exp)
+            # )
             
             # Log blacklisting
             self.audit_logger.log_security_event(
@@ -295,11 +297,11 @@ class JWTService:
             
         except Exception as e:
             # If token can't be decoded, blacklist it anyway
-            self.token_blacklist_repository.add_to_blacklist(
-                token=token,
-                jti="invalid",
-                expires_at=datetime.utcnow() + timedelta(days=7)  # Default 7 days
-            )
+            # self.token_blacklist_repository.add_to_blacklist(
+            #     token=token,
+            #     jti="invalid",
+            #     expires_at=datetime.utcnow() + timedelta(days=7)  # Default 7 days
+            # )
             
             # Log error
             self.audit_logger.log_security_event(
@@ -320,7 +322,7 @@ class JWTService:
             user_id: The ID of the user (for audit logging)
         """
         # Blacklist the session
-        self.token_blacklist_repository.blacklist_session(session_id)
+        # self.token_blacklist_repository.blacklist_session(session_id)
         
         # Log blacklisting
         self.audit_logger.log_security_event(

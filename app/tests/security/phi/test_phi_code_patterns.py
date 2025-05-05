@@ -7,8 +7,8 @@ in various types of source code files.
 
 import os
 import tempfile
-from pathlib import Path
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 
@@ -289,7 +289,11 @@ class TestPHIInSourceFiles:
         ]
         assert len(clean_file_critical_findings) == 0
 
-    def test_scan_directory_with_exclusions(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
+    def test_scan_directory_with_exclusions(
+        self,
+        phi_analyzer: PHICodeAnalyzer,
+        temp_dir: Path
+    ) -> None:
         """Test scanning a directory with exclusions."""
         # Create files in excluded and included paths
         exclude_dir_path = temp_dir / "exclude_me" 

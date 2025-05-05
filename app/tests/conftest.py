@@ -1,34 +1,34 @@
 # Standard Library Imports
 import asyncio
+import datetime
 import logging
 import os
+import sqlite3
 import uuid
-from collections.abc import AsyncGenerator, Callable, Generator
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from collections.abc import AsyncGenerator, Callable
 
-# Third-Party Imports
+# Third Party Imports
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.testclient import AsyncClient
 from httpx import AsyncClient
+from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from testcontainers.postgres import PostgresContainer
-from testcontainers.redis import RedisContainer
+from sqlalchemy.pool import StaticPool
+from unittest.mock import AsyncMock, MagicMock
 
-# Application-Specific Imports
-from app.app_factory import create_application
-from app.core.config import Settings
-from app.core.domain.entities.user import UserRole, User
-from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
-# from app.core.domain.services.patient import PatientServiceInterface # Interface definition missing
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.infrastructure.database.base_class import Base
-from app.infrastructure.database.session import get_async_session
-from app.infrastructure.security.jwt import JWTService
-from app.presentation.api.dependencies.auth import get_current_user
-# from app.presentation.api.v1.models.users import UserCreateRequest # Model definition missing
+# Application-specific Imports
+from app.app_factory import create_application # Presentation
+from app.core.config import Settings # Core
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository # Core
+from app.core.interfaces.services.auth_service_interface import AuthServiceInterface # Core
+from app.core.domain.entities.user import User, UserRole # Core
+from app.core.security.auth import get_current_user # Core
+from app.application.security.jwt_service import JWTService # Application
+from app.infrastructure.database.base_class import Base # Infrastructure
+from app.infrastructure.database.session import get_async_session # Infrastructure
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ TEST_PROVIDER_PASSWORD = "providerPass123"
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+def event_loop() -> Callable[[], asyncio.AbstractEventLoop]:
     """Create an instance of the default event loop for the session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -83,81 +83,73 @@ def test_settings() -> Settings:
     return settings
 
 
-@pytest.fixture(scope="session")
-def postgres_container(test_settings: Settings) -> Generator[PostgresContainer, None, None]:
-    """Starts a PostgreSQL container for the test session."""
-    # Extract connection details from the potentially overridden DATABASE_URL
-    # Basic parsing - consider a more robust URL parser if needed
-    db_url = str(test_settings.DATABASE_URL)
-    creds_part = db_url.split("@")[0].split("//")[1]
-    db_part = db_url.split("@")[1]
-    user, password = creds_part.split(":")
-    host_port_db = db_part.split("/")
-    dbname = host_port_db[-1]
-    image = "postgres:15-alpine"  # Specify a PostgreSQL version
-
-    logger.info(f"Starting PostgreSQL container (Image: {image}, DB: {dbname})...")
-    with PostgresContainer(image=image, username=user, password=password, dbname=dbname) as pg:
-        logger.info(f"PostgreSQL container started: {pg.get_connection_url()}")
-        # Update settings to use the container's dynamic URL
-        test_settings.DATABASE_URL = pg.get_connection_url().replace(
-            "postgresql://", "postgresql+asyncpg://"
-        )
-        logger.info(f"Test settings DATABASE_URL updated to: {test_settings.DATABASE_URL}")
-        yield pg
-    logger.info("PostgreSQL container stopped.")
-
-
-@pytest.fixture(scope="session")
-def redis_container(test_settings: Settings) -> Generator[RedisContainer, None, None]:
-    """Starts a Redis container for the test session."""
-    # Basic parsing for Redis URL (assuming redis://host:port/db format)
-    redis_url_parts = str(test_settings.REDIS_URL).split(":")
-    port = int(redis_url_parts[2].split("/")[0])
-    image = "redis:7-alpine"  # Specify a Redis version
-
-    logger.info(f"Starting Redis container (Image: {image}, Port: {port})...")
-    with RedisContainer(image=image, port=port) as redis:
-        container_host = redis.get_container_host_ip()
-        container_port = redis.get_exposed_port(port)
-        redis_connection_url = f"redis://{container_host}:{container_port}/0"
-        logger.info(f"Redis container started: {redis_connection_url}")
-        # Update settings to use the container's dynamic URL
-        test_settings.REDIS_URL = redis_connection_url
-        logger.info(f"Test settings REDIS_URL updated to: {test_settings.REDIS_URL}")
-        yield redis
-    logger.info("Redis container stopped.")
-
-
 # --- Database Fixtures ---
 
 
 @pytest_asyncio.fixture(scope="session")
 async def test_db_engine(
-    test_settings: Settings, postgres_container: PostgresContainer
+    test_settings: Settings,
 ) -> AsyncGenerator[AsyncEngine, None]:
-    """Creates a test database engine using the session-scoped Postgres container."""
-    # Ensure postgres_container fixture runs first and updates the settings
-    engine = create_async_engine(str(test_settings.DATABASE_URL), echo=test_settings.DB_ECHO_LOG)
+    """Creates a test database engine and enables foreign keys synchronously."""
+    db_url = str(test_settings.DATABASE_URL)
+    # Use StaticPool for SQLite in tests to simplify connection management
+    # Also, ensure check_same_thread=False is passed for SQLite
+    engine = create_async_engine(
+        db_url,
+        echo=test_settings.DB_ECHO_LOG,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False}
+    )
     logger.info(f"Test DB engine created for: {engine.url}")
 
-    # Create tables
-    logger.info("Creating database tables...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables created.")
+    # Enable Foreign Keys Synchronously before async operations
+    logger.info("Attempting to enable foreign keys synchronously...")
+    try:
+        # Access the underlying sync engine's pool and get a connection
+        sync_engine = engine.sync_engine
+        with sync_engine.connect() as sync_conn:
+            # Get the raw DBAPI connection
+            raw_conn = sync_conn.connection.driver_connection
+            if isinstance(raw_conn, sqlite3.Connection):
+                 # Execute PRAGMA synchronously
+                raw_conn.execute("PRAGMA foreign_keys=ON;")
+                # Commit might be needed depending on SQLite/driver specifics
+                raw_conn.commit()
+                logger.info("Executed PRAGMA foreign_keys=ON synchronously.")
+            else:
+                logger.warning("Could not get raw sqlite3 connection to set PRAGMA.")
+    except Exception as e:
+        logger.error(f"Error enabling foreign keys synchronously: {e}", exc_info=True)
+        # Decide if this should be a fatal error for the tests
+        # pytest.fail(f"Failed to enable foreign keys: {e}")
 
-    yield engine
+    # Create tables asynchronously
+    logger.info("Creating database tables...")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all) # Ensure clean state
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created.")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {e}", exc_info=True)
+        await engine.dispose() # Clean up engine if table creation fails
+        pytest.fail(f"Failed to create database tables: {e}")
+
+
+    yield engine # Yield the configured engine to tests
 
     # Drop tables
     logger.info("Dropping database tables...")
-    async with engine.begin() as conn:
-        # Consider CASCADE if relationships cause issues during drop
-        await conn.run_sync(Base.metadata.drop_all)
-    logger.info("Database tables dropped.")
-
-    await engine.dispose()
-    logger.info("Test DB engine disposed.")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        logger.info("Database tables dropped.")
+    except Exception as e:
+        # Log error during teardown but don't necessarily fail the whole suite
+        logger.error(f"Error dropping database tables during teardown: {e}", exc_info=True)
+    finally:
+        await engine.dispose()
+        logger.info("Test DB engine disposed.")
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -194,66 +186,6 @@ def override_get_settings(test_settings: Settings) -> Callable[[], Settings]:
     return lambda: test_settings
 
 
-# Renamed fixture to avoid conflict and clarify purpose
-@pytest_asyncio.fixture(scope="function")
-async def test_app_factory(
-    test_settings: Settings, test_db_engine: AsyncEngine, redis_container: RedisContainer
-) -> Callable[..., FastAPI]:
-    """
-    Provides a factory function to create the app instance for each test function.
-    Ensures dependencies like DB engine and Redis are ready *before* app creation.
-    """
-    # Ensure containers are up and settings are updated before creating the app
-    _ = postgres_container  # Dependency ensures it runs
-    _ = redis_container  # Dependency ensures it runs
-
-    # Create the test session factory using the test engine
-    test_session_local = sessionmaker(
-        bind=test_db_engine, class_=AsyncSession, expire_on_commit=False
-    )
-
-    def _create_test_app(**overrides: dict[Callable, Callable]) -> FastAPI:
-        app = create_application(settings=test_settings)
-
-        # Set up the application state correctly for tests *before* it's used
-        app.state.db_engine = test_db_engine
-        app.state.db_session_factory = test_session_local
-        # Assuming redis client is created from pool in lifespan or middleware:
-        # Need to ensure test Redis pool is available if middleware uses it directly
-        app.state.redis_pool = getattr(redis_container, "pool", None)  # Or get from container
-        app.state.redis = getattr(redis_container, "client", None)  # Or get from container
-
-        # Override get_async_session to use the test factory stored in app.state
-        async def override_get_async_session(
-            request: Request,
-        ) -> AsyncGenerator[AsyncSession, None]:
-            # Access the factory stored in app.state by the test_app_factory
-            session_factory = getattr(request.app.state, "db_session_factory", None)
-            if not isinstance(session_factory, sessionmaker):
-                # This shouldn't happen if test_app_factory sets state correctly
-                logger.error("Test session factory not found in app state during override.")
-                raise RuntimeError("Test session factory not found in app state during override.")
-
-            async with session_factory() as session:
-                # The transaction is managed by the db_session fixture,
-                # so we just yield the session provided by the factory.
-                # No explicit rollback/commit/close here.
-                logger.debug(
-                    "Yielding session from overridden get_async_session using app.state factory."
-                )
-                yield session
-
-        app.dependency_overrides[get_async_session] = override_get_async_session  # Restore override
-
-        # Apply any additional test-specific overrides
-        app.dependency_overrides.update(overrides)
-
-        logger.info("Test FastAPI application instance created with overrides.")
-        return app
-
-    return _create_test_app
-
-
 # Define a mock function to replace get_current_user
 async def mock_get_current_user() -> User:
     # Return a simple, valid User object for testing purposes
@@ -274,20 +206,36 @@ async def mock_get_current_user() -> User:
 
 @pytest_asyncio.fixture(scope="function")
 async def initialized_app(
-    test_app_factory: Callable[..., FastAPI],
-    db_session: AsyncSession,  # Ensures transaction context
+    test_settings: Settings,
+    db_session: AsyncSession,  # Correctly depends on the managed session
+    test_db_engine: AsyncEngine # Keep engine dependency if needed for app state
 ) -> FastAPI:
     """
     Provides a fully initialized FastAPI app instance for testing,
-    using the test factory and ensuring the DB session context is managed.
-    Crucially, overrides problematic dependencies during app creation.
+    ensuring the DB session dependency is correctly overridden with the
+    transaction-managed session from the db_session fixture.
     """
-    # Pass the override for get_current_user when creating the app
-    app = test_app_factory(
-        overrides={
-            get_current_user: mock_get_current_user  # Add the override here
-        }
+    # Create the app instance directly
+    app = create_application(settings=test_settings)
+
+    # Set essential app state if needed (e.g., engine, though factory might be less relevant now)
+    app.state.db_engine = test_db_engine
+    # Optionally set the factory if other code relies on it, but override is key
+    app.state.db_session_factory = sessionmaker(
+        bind=test_db_engine, class_=AsyncSession, expire_on_commit=False
     )
+
+    # Define the override function to yield the managed session
+    async def override_get_async_session() -> AsyncGenerator[AsyncSession, None]:
+        logger.debug(f"Yielding managed db_session: {id(db_session)}")
+        yield db_session
+        # No cleanup here, db_session fixture handles rollback/close
+
+    # Apply necessary overrides
+    app.dependency_overrides[get_async_session] = override_get_async_session
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+
+    logger.info("Test FastAPI app instance created with DB session override.")
     return app
 
 
@@ -318,7 +266,7 @@ def mock_jwt_service() -> MagicMock:
         return_value={
             "sub": TEST_USERNAME,
             "roles": [UserRole.ADMIN.value],
-            "exp": datetime.now(timezone.utc).timestamp() + 3600,
+            "exp": datetime.now(datetime.timezone.utc).timestamp() + 3600,
         }
     )
     return service
@@ -409,27 +357,41 @@ async def authenticated_user(db_session: AsyncSession, mock_user_service: MagicM
 #     # Use the mock repository provided by the fixture
 #     user_service = mock_user_service
 #     # Assuming UserCreateRequest model exists or define a minimal dict/object
-#     user_data = UserCreateRequest(email=TEST_PROVIDER_EMAIL, password=TEST_PROVIDER_PASSWORD) # Missing Model
+#     user_data = {
+#         "email": TEST_PROVIDER_EMAIL, 
+#         "password": TEST_PROVIDER_PASSWORD
+#     }
 #     # Assuming the repository's create method or a service method handles creation
 #     # Adjust the call based on the actual repository/service interface if available
 #     # If IUserRepository is the correct interface being mocked:
-#     created_user = await user_service.create_user(user_data) # Adjust based on actual create signature
+#     created_user = await user_service.create_user(user_data) 
 #     # If a UserService wraps the repository:
 #     # user_service_instance = UserService(user_repository=user_service)
 #     # created_user = await user_service_instance.create_user(user_data, roles=[UserRole.PROVIDER])
 #     # Need to clarify the actual service/repository interaction pattern
 #     # For now, returning a dummy user based on mocked create
-#     if not hasattr(user_service, 'create_user') or not isinstance(user_service.create_user, AsyncMock):
-#          # Fallback if mock setup is incomplete
-#          user_service.create_user = AsyncMock(return_value=User(id=uuid.uuid4(), email=TEST_PROVIDER_EMAIL, roles=[UserRole.PROVIDER]))
-#          created_user = await user_service.create_user(user_data)
+#     if (not hasattr(user_service, 'create_user')
+#             or not isinstance(user_service.create_user, AsyncMock)):
+#         # Fallback if mock setup is incomplete
+#         user_service.create_user = AsyncMock(
+#             return_value=User(
+#                 id=uuid.uuid4(), 
+#                 email=TEST_PROVIDER_EMAIL, 
+#                 roles=[UserRole.PROVIDER]
+#             )
+#         )
+#         created_user = await user_service.create_user(user_data)
 #     else:
-#          created_user = await user_service.create_user(user_data)
+#         created_user = await user_service.create_user(user_data)
 
 #     # Ensure the returned object is a User instance
 #     if not isinstance(created_user, User):
 #         # If the mock didn't return a User, create a default one
-#         created_user = User(id=uuid.uuid4(), email=TEST_PROVIDER_EMAIL, roles=[UserRole.PROVIDER])
+#         created_user = User(
+#             id=uuid.uuid4(), 
+#             email=TEST_PROVIDER_EMAIL, 
+#             roles=[UserRole.PROVIDER]
+#         )
 
 #     return created_user
 

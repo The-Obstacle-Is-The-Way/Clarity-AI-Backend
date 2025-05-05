@@ -297,6 +297,17 @@ class Settings(BaseSettings):
         # If DATABASE_URL wasn't set and components are missing, return None
         return None
 
+    @model_validator(mode='after')
+    def set_test_db_url(self) -> 'Settings':
+        """Overrides DATABASE_URL for the test environment."""
+        if self.ENVIRONMENT == "test":
+            # Force SQLite absolute path for testing
+            abs_test_db_path = "sqlite+aiosqlite:////tmp/test_db.sqlite3"
+            self.DATABASE_URL = abs_test_db_path
+            # Add print for verification during test runs
+            print(f"\n--- INFO: Test environment detected. Forcing DATABASE_URL to: {self.DATABASE_URL} ---")
+        return self
+
     # Encryption Settings
     ENCRYPTION_KEY: SecretStr | None = Field(default=None, json_schema_extra={"env": "ENCRYPTION_KEY"}) # Use SecretStr
     PREVIOUS_ENCRYPTION_KEY: SecretStr | None = Field(default=None, json_schema_extra={"env": "PREVIOUS_ENCRYPTION_KEY"}) # Use SecretStr

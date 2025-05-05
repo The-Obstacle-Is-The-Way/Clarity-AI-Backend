@@ -9,6 +9,7 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
+from app.core.interfaces.aws_service_interface import S3ServiceInterface
 
 # Import SQLAlchemy models and utils
 from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
@@ -246,6 +248,9 @@ def test_app(db_session: AsyncSession, jwt_service: IJwtService) -> FastAPI:
     # Override JWT service
     from app.core.interfaces.services.jwt_service import IJwtService
     dependency_overrides[IJwtService] = lambda: jwt_service
+    
+    # Override S3 service with a mock
+    dependency_overrides[S3ServiceInterface] = lambda: AsyncMock(spec=S3ServiceInterface)
     
     # Create app with injected dependencies
     test_app = create_application(dependency_overrides=dependency_overrides)
