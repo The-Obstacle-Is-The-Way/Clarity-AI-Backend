@@ -3,21 +3,18 @@ import asyncio
 import datetime
 import logging
 import os
-import sqlite3
 import uuid
-from collections.abc import AsyncGenerator, Callable
+from unittest.mock import AsyncMock, MagicMock
 
 # Third Party Imports
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from fastapi.testclient import AsyncClient
 from httpx import AsyncClient
-from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from unittest.mock import AsyncMock, MagicMock
+from collections.abc import AsyncGenerator, Callable
 
 # Application-specific Imports
 from app.app_factory import create_application # Presentation
@@ -101,27 +98,6 @@ async def test_db_engine(
         connect_args={"check_same_thread": False}
     )
     logger.info(f"Test DB engine created for: {engine.url}")
-
-    # Enable Foreign Keys Synchronously before async operations
-    logger.info("Attempting to enable foreign keys synchronously...")
-    try:
-        # Access the underlying sync engine's pool and get a connection
-        sync_engine = engine.sync_engine
-        with sync_engine.connect() as sync_conn:
-            # Get the raw DBAPI connection
-            raw_conn = sync_conn.connection.driver_connection
-            if isinstance(raw_conn, sqlite3.Connection):
-                 # Execute PRAGMA synchronously
-                raw_conn.execute("PRAGMA foreign_keys=ON;")
-                # Commit might be needed depending on SQLite/driver specifics
-                raw_conn.commit()
-                logger.info("Executed PRAGMA foreign_keys=ON synchronously.")
-            else:
-                logger.warning("Could not get raw sqlite3 connection to set PRAGMA.")
-    except Exception as e:
-        logger.error(f"Error enabling foreign keys synchronously: {e}", exc_info=True)
-        # Decide if this should be a fatal error for the tests
-        # pytest.fail(f"Failed to enable foreign keys: {e}")
 
     # Create tables asynchronously
     logger.info("Creating database tables...")
@@ -207,33 +183,40 @@ async def mock_get_current_user() -> User:
 @pytest_asyncio.fixture(scope="function")
 async def initialized_app(
     test_settings: Settings,
-    db_session: AsyncSession,  # Correctly depends on the managed session
-    test_db_engine: AsyncEngine # Keep engine dependency if needed for app state
+    test_db_engine: AsyncEngine, 
+    override_get_async_session: Callable[[], AsyncGenerator[AsyncSession, None]],
 ) -> FastAPI:
     """
-    Provides a fully initialized FastAPI app instance for testing,
-    ensuring the DB session dependency is correctly overridden with the
-    transaction-managed session from the db_session fixture.
+    Initialize the FastAPI application for testing, ensuring essential state
+    like the database session factory is available even before the first request.
     """
-    # Create the app instance directly
+    logger.info("Initializing FastAPI app for testing.")
+
     app = create_application(settings=test_settings)
 
-    # Set essential app state if needed (e.g., engine, though factory might be less relevant now)
+    # Manually set essential state for direct dependency testing
+    # This mimics part of the lifespan manager for test setup.
+    logger.info("Manually setting app.state for test initialization.")
     app.state.db_engine = test_db_engine
-    # Optionally set the factory if other code relies on it, but override is key
+    # Use the *real* session factory creator, but with the test engine
     app.state.db_session_factory = sessionmaker(
         bind=test_db_engine, class_=AsyncSession, expire_on_commit=False
     )
+    logger.info(f"Manually set app.state.db_engine: {app.state.db_engine}")
+    logger.info(f"Manually set app.state.db_session_factory: {app.state.db_session_factory}")
+
+    # Apply the crucial dependency override for request handling via client
+    app.dependency_overrides[get_async_session] = override_get_async_session
+    logger.info(f"App dependency overrides: {app.dependency_overrides}")
 
     # Define the override function to yield the managed session
-    async def override_get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_current_user() -> User:
         logger.debug(f"Yielding managed db_session: {id(db_session)}")
-        yield db_session
+        yield mock_get_current_user()
         # No cleanup here, db_session fixture handles rollback/close
 
     # Apply necessary overrides
-    app.dependency_overrides[get_async_session] = override_get_async_session
-    app.dependency_overrides[get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     logger.info("Test FastAPI app instance created with DB session override.")
     return app
