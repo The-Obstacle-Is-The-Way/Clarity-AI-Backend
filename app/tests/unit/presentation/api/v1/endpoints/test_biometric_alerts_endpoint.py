@@ -18,13 +18,13 @@ from app.domain.services.biometric_event_processor import (
     ClinicalRuleEngine,
 )
 from app.main import app
-from app.presentation.api.v1.dependencies import (
+from app.presentation.api.dependencies import (
     get_alert_repository,
     get_event_processor,
     get_rule_repository,
     get_template_repository,
 )
-from app.presentation.dependencies.auth import get_current_user
+from app.presentation.api.dependencies.auth import get_current_user
 
 # Attempt to import infrastructure implementations for more realistic mocking specs
 # Fallback to basic AsyncMock if infrastructure layer is not available

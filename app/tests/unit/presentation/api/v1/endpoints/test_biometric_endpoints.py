@@ -35,7 +35,7 @@ from app.domain.entities.user import User  # Added User import
 from app.domain.enums.role import Role as UserRole
 
 # Correct import for the dependency function
-from app.presentation.api.v1.routes.biometric_endpoints import (
+from app.presentation.api.v1.routes.biometric import (
     get_patient_id,
     require_admin_role,
     # router, # Removed - Endpoint modules typically don't export routers directly
