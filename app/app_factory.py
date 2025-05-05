@@ -81,11 +81,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # --- Database Initialization ---
     try:
         logger.info("Initializing database connection...")
-        db_engine, db_session_factory = create_db_engine_and_session(
-            str(current_settings.ASYNC_DATABASE_URI), echo=current_settings.DB_ECHO_LOG
+        app.state.db_engine, app.state.db_session_factory = create_db_engine_and_session(
+            str(current_settings.DATABASE_URL)
         )
-        app.state.db_engine = db_engine
-        app.state.db_session_factory = db_session_factory
         logger.info("Database connection initialized successfully.")
         # Optional: Test connection? (be careful with blocking calls)
         # async with db_engine.connect() as conn:
@@ -97,6 +95,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise RuntimeError(f"Critical database initialization failure: {e}") from e
 
     # --- Redis Initialization ---
+    logger.debug(f"Checking environment for Redis init: {current_settings.ENVIRONMENT=}")
     if current_settings.ENVIRONMENT == "test":
         logger.info("Test environment detected, mocking Redis connection.")
         # Create mock objects with necessary async methods for shutdown
@@ -190,25 +189,19 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     else:
         logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
 
-    # Store settings in app state for access elsewhere (e.g., lifespan)
-    app_state = {"settings": app_settings}
-
-    # Explicitly disable docs in production unless overridden
-    docs_url = "/docs" if app_settings.ENVIRONMENT != "production" else None
-    redoc_url = "/redoc" if app_settings.ENVIRONMENT != "production" else None
-
-    # Initialize FastAPI app with lifespan context manager and state
+    # Initialize FastAPI app with lifespan context manager
     app = FastAPI(
         title=app_settings.PROJECT_NAME,
         version=app_settings.API_VERSION,
         description=app_settings.PROJECT_DESCRIPTION,
         openapi_url=f"{app_settings.API_V1_STR}/openapi.json",
-        docs_url=docs_url,
-        redoc_url=redoc_url,
+        docs_url="/docs" if app_settings.ENVIRONMENT != "production" else None,
+        redoc_url="/redoc" if app_settings.ENVIRONMENT != "production" else None,
         lifespan=lifespan,  # Use the lifespan context manager
-        state=app_state,  # Pass state containing settings
-        # Add other FastAPI parameters as needed
     )
+
+    # Assign settings to app state immediately after creation
+    app.state.settings = app_settings
 
     # --- Middleware Configuration (Order Matters!) ---
     # 1. Security Headers Middleware

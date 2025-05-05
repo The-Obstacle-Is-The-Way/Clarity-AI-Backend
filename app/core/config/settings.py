@@ -131,7 +131,12 @@ def get_settings() -> Settings:
         # Create test-specific settings with in-memory SQLite DB
         test_db_url = "sqlite+aiosqlite:///./test_db.sqlite3" # Use correct var name and test DB
         logger.info(f"Running in TEST environment, using DB: {test_db_url}")
-        test_settings = Settings(TESTING=True, DATABASE_URL=test_db_url, SENTRY_DSN=None)
+        test_settings = Settings(
+            TESTING=True, 
+            ENVIRONMENT="test", # Explicitly set environment for tests
+            DATABASE_URL=test_db_url, 
+            SENTRY_DSN=None
+        )
         return test_settings
         
     # Return standard settings otherwise

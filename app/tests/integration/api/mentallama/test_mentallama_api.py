@@ -169,29 +169,29 @@ async def test_app_with_lifespan(
     logger.info("Setting up test application fixture.")
 
     # --- Patch DI Container Resolve BEFORE app creation --- #
-    original_resolve = di_container.resolve # Store original
+    original_get = di_container.get # Store original
 
-    def mock_resolve(interface_type: type[Any]) -> Any:
-        """Patched resolve to return mocks for specific auth services."""
+    def mock_get(interface_type: type[Any]) -> Any:
+        """Patched get to return mocks for specific auth services."""
         # Use actual type comparison, avoid relying on internal _get_key if possible
         key_name = getattr(interface_type, '__name__', str(interface_type))
-        logger.debug(f"Patched resolve called for: {key_name}")
+        logger.debug(f"Patched get called for: {key_name}")
         if interface_type is IAuthenticationService:
-            logger.info("Patched resolve returning mock_auth_service.")
+            logger.info("Patched get returning mock_auth_service.")
             # Return the already created mock instance from the fixture
             return mock_auth_service
         if interface_type is IJwtService:
-            logger.info("Patched resolve returning mock_jwt_service.")
+            logger.info("Patched get returning mock_jwt_service.")
             # Return the already created mock instance from the fixture
             return mock_jwt_service
         # Fallback to original resolution for other types
-        logger.debug(f"Falling back to original resolve for {key_name}.")
+        logger.debug(f"Falling back to original get for {key_name}.")
         # Make sure to call the original method correctly
-        return original_resolve(interface_type)
+        return original_get(interface_type)
 
     # Patch the DI container, service getters, and Redis functions
     with (
-        patch.object(di_container, 'resolve', side_effect=mock_resolve),
+        patch.object(di_container, 'get', side_effect=mock_get),
         # Patch the service getters used by AuthenticationMiddleware fallback
         patch(
             "app.infrastructure.security.jwt_service.get_jwt_service",
@@ -201,12 +201,13 @@ async def test_app_with_lifespan(
             "app.infrastructure.security.auth_service.get_auth_service",
             return_value=mock_auth_service
         ),
-        patch("app.app_factory.initialize_redis_pool", new_callable=AsyncMock) as _,
-        patch("app.app_factory.close_redis_connection", new_callable=AsyncMock) as _,
+        # Removed Redis patches as lifespan handles test env mocking
+        # patch("app.app_factory.initialize_redis_pool", new_callable=AsyncMock) as _,
+        # patch("app.app_factory.close_redis_connection", new_callable=AsyncMock) as _,
     ):
         logger.info(
             "Creating FastAPI app instance within patched context "
-            "(DI, Redis)..."
+            "(DI, Service Getters)..."
         )
         # Create app instance *after* patches are active
         app = create_application(test_settings)
