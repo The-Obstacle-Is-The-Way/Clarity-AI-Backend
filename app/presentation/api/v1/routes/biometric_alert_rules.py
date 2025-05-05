@@ -82,7 +82,7 @@ router = APIRouter(
     tags=["Biometric Alert Rules"],
 )
 async def get_alert_rules(
-    db: AsyncSession = Depends(get_async_session),
+    # db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_active_user_wrapper),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -92,113 +92,113 @@ async def get_alert_rules(
 
     (Placeholder Implementation)
     """
-    logger.info(f"User {current_user.id} fetching alert rules with limit {limit}, offset {offset}.")
+    logger.info(f"User {current_user.id} fetching alert rules with limit {limit}, offset {offset}. DB session temporarily removed.")
     # TODO: Implement actual repository call using the 'db' session
     # rules = await rule_repo.get_rules_by_user(db=db, user_id=current_user.id, limit=limit, offset=offset)
     # Placeholder response:
     return []
 
 
-@router.get(
-    "/{rule_id}",
-    response_model=None,
-    status_code=status.HTTP_200_OK,
-    summary="Get a specific biometric alert rule by ID",
-)
-async def get_alert_rule(
-    rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user_wrapper),
-) -> AlertRuleResponse:
-    """
-    Get details for a specific biometric alert rule owned by the current user.
-
-    (Placeholder Implementation)
-    """
-    logger.info(f"User {current_user.id} fetching alert rule {rule_id}")
-    # TODO: Implement actual repository call using the 'db' session
-    # rule = await rule_repo.get_rule_by_id(db=db, rule_id=rule_id, user_id=current_user.id)
-    # if not rule:
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
-    # Placeholder response:
-    # This placeholder needs access to AlertRuleResponse fields to be valid
-    # For now, let's assume we'd fetch and return based on the ID
-    if str(rule_id) == "11111111-1111-1111-1111-111111111111": # Dummy check
-        return AlertRuleResponse(
-            id=UUID("11111111-1111-1111-1111-111111111111"),
-            name="Placeholder Rule",
-            description="This is a placeholder",
-            biometric_type="HEART_RATE", # Assuming biometric type
-            threshold_level=100, # Assuming threshold level
-            comparison_operator="GREATER_THAN", # Assuming comparison operator
-            is_active=True,
-            created_by=str(current_user.id),  # RESTORED (assuming string UUID)
-            updated_by=str(current_user.id),  # RESTORED
-            created_at=datetime.now(),
-            last_updated=datetime.now(),
-        )
-    else:
-        raise HTTPException(status_code=404, detail="Rule not found")
-
-
-@router.put(
-    "/{rule_id}",
-    response_model=None,
-    status_code=status.HTTP_200_OK,
-    summary="Update a biometric alert rule",
-)
-async def update_alert_rule(
-    rule_data: AlertRuleUpdateRequest,
-    rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user_wrapper),
-) -> AlertRuleResponse:
-    """
-    Update an existing biometric alert rule owned by the current user.
-
-    (Placeholder Implementation)
-    """
-    logger.info(f"User {current_user.id} updating alert rule {rule_id}")
-    # TODO: Implement actual repository call using the 'db' session
-    # updated_rule = await rule_repo.update_rule(db=db, rule_id=rule_id, user_id=current_user.id, update_data=rule_data)
-    # if not updated_rule:
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
-    # Placeholder response:
-    return AlertRuleResponse(
-        id=rule_id,
-        name=rule_data.name or "Updated Rule Name",
-        description=rule_data.description or "Updated description",
-        biometric_type=rule_data.biometric_type or "HEART_RATE", # Assuming biometric type
-        threshold_level=rule_data.threshold_level or 100, # Assuming threshold level
-        comparison_operator=rule_data.comparison_operator or "GREATER_THAN", # Assuming comparison operator
-        is_active=rule_data.is_active if rule_data.is_active is not None else True,
-        created_by=str(current_user.id),
-        updated_by=str(current_user.id),
-        created_at=datetime.now(), # Placeholder - should be original
-        last_updated=datetime.now(),
-    )
+# @router.get(
+#     "/{rule_id}",
+#     response_model=None,
+#     status_code=status.HTTP_200_OK,
+#     summary="Get a specific biometric alert rule by ID",
+# )
+# async def get_alert_rule(
+#     rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
+#     db: AsyncSession = Depends(get_async_session),
+#     current_user: User = Depends(get_current_active_user_wrapper),
+# ) -> AlertRuleResponse:
+#     """
+#     Get details for a specific biometric alert rule owned by the current user.
+#
+#     (Placeholder Implementation)
+#     """
+#     logger.info(f"User {current_user.id} fetching alert rule {rule_id}")
+#     # TODO: Implement actual repository call using the 'db' session
+#     # rule = await rule_repo.get_rule_by_id(db=db, rule_id=rule_id, user_id=current_user.id)
+#     # if not rule:
+#     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
+#     # Placeholder response:
+#     # This placeholder needs access to AlertRuleResponse fields to be valid
+#     # For now, let's assume we'd fetch and return based on the ID
+#     if str(rule_id) == "11111111-1111-1111-1111-111111111111": # Dummy check
+#         return AlertRuleResponse(
+#             id=UUID("11111111-1111-1111-1111-111111111111"),
+#             name="Placeholder Rule",
+#             description="This is a placeholder",
+#             biometric_type="HEART_RATE", # Assuming biometric type
+#             threshold_level=100, # Assuming threshold level
+#             comparison_operator="GREATER_THAN", # Assuming comparison operator
+#             is_active=True,
+#             created_by=str(current_user.id),  # RESTORED (assuming string UUID)
+#             updated_by=str(current_user.id),  # RESTORED
+#             created_at=datetime.now(),
+#             last_updated=datetime.now(),
+#         )
+#     else:
+#         raise HTTPException(status_code=404, detail="Rule not found")
 
 
-@router.delete(
-    "/{rule_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_model=None,
-    summary="Delete a biometric alert rule",
-)
-async def delete_alert_rule(
-    rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user_wrapper),
-) -> None:
-    """
-    Delete a specific biometric alert rule owned by the current user.
+# @router.put(
+#     "/{rule_id}",
+#     response_model=None,
+#     status_code=status.HTTP_200_OK,
+#     summary="Update a biometric alert rule",
+# )
+# async def update_alert_rule(
+#     rule_data: AlertRuleUpdateRequest,
+#     rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
+#     db: AsyncSession = Depends(get_async_session),
+#     current_user: User = Depends(get_current_active_user_wrapper),
+# ) -> AlertRuleResponse:
+#     """
+#     Update an existing biometric alert rule owned by the current user.
+#
+#     (Placeholder Implementation)
+#     """
+#     logger.info(f"User {current_user.id} updating alert rule {rule_id}")
+#     # TODO: Implement actual repository call using the 'db' session
+#     # updated_rule = await rule_repo.update_rule(db=db, rule_id=rule_id, user_id=current_user.id, update_data=rule_data)
+#     # if not updated_rule:
+#     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
+#     # Placeholder response:
+#     return AlertRuleResponse(
+#         id=rule_id,
+#         name=rule_data.name or "Updated Rule Name",
+#         description=rule_data.description or "Updated description",
+#         biometric_type=rule_data.biometric_type or "HEART_RATE", # Assuming biometric type
+#         threshold_level=rule_data.threshold_level or 100, # Assuming threshold level
+#         comparison_operator=rule_data.comparison_operator or "GREATER_THAN", # Assuming comparison operator
+#         is_active=rule_data.is_active if rule_data.is_active is not None else True,
+#         created_by=str(current_user.id),
+#         updated_by=str(current_user.id),
+#         created_at=datetime.now(), # Placeholder - should be original
+#         last_updated=datetime.now(),
+#     )
 
-    (Placeholder Implementation)
-    """
-    logger.info(f"User {current_user.id} deleting alert rule {rule_id}")
-    # TODO: Implement actual repository call using the 'db' session
-    # success = await rule_repo.delete_rule(db=db, rule_id=rule_id, user_id=current_user.id)
-    # if not success:
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
-    # No return body for 204
-    return None
+
+# @router.delete(
+#     "/{rule_id}",
+#     status_code=status.HTTP_204_NO_CONTENT,
+#     response_model=None,
+#     summary="Delete a biometric alert rule",
+# )
+# async def delete_alert_rule(
+#     rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
+#     db: AsyncSession = Depends(get_async_session),
+#     current_user: User = Depends(get_current_active_user_wrapper),
+# ) -> None:
+#     """
+#     Delete a specific biometric alert rule owned by the current user.
+#
+#     (Placeholder Implementation)
+#     """
+#     logger.info(f"User {current_user.id} deleting alert rule {rule_id}")
+#     # TODO: Implement actual repository call using the 'db' session
+#     # success = await rule_repo.delete_rule(db=db, rule_id=rule_id, user_id=current_user.id)
+#     # if not success:
+#     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
+#     # No return body for 204
+#     return None

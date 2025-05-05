@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Correct service/factory imports
 from app.core.domain.entities.user import User, UserRole
@@ -20,6 +21,7 @@ from app.core.interfaces.services.auth_service_interface import (
     AuthServiceInterface,
 )
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.infrastructure.database.session import get_async_session
 from app.infrastructure.repositories.user_repository import get_user_repository
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service
@@ -28,7 +30,18 @@ from app.infrastructure.security.jwt_service import get_jwt_service
 
 AuthServiceDep = Annotated[AuthServiceInterface, Depends(get_auth_service)]
 JWTServiceDep = Annotated[JWTServiceInterface, Depends(get_jwt_service)]
-UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository)]
+
+# --- Dependency Functions --- #
+
+# Define an explicit dependency function for the user repository
+async def get_user_repository_dependency(
+    session: AsyncSession = Depends(get_async_session), 
+) -> IUserRepository:
+    """Provides an instance of IUserRepository using the injected session."""
+    return get_user_repository(session=session) 
+
+# Use the new explicit dependency function
+UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository_dependency)]
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")

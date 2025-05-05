@@ -21,7 +21,6 @@ T = TypeVar('T', bound=BaseRepositoryInterface)
 # Type alias for session dependency
 DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session)]
 
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency for getting a database session.
@@ -47,7 +46,7 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
         Callable: A dependency function that provides the repository instance.
     """
     
-    async def _get_repo_with_session(session: DatabaseSessionDep) -> T:
+    async def _get_repo_with_session(session: AsyncSession) -> T:
         """
         Get a repository instance with the provided database session.
         
