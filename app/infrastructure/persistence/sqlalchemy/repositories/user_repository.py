@@ -98,20 +98,35 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             The User domain entity, or None if not found
         """
         try:
-            # Convert string ID to UUID if necessary
-            if isinstance(user_id, str):
-                user_id = uuid.UUID(user_id)
+            result = await self._db_session.execute(
+                select(UserModel).where(UserModel.id == user_id)
+            )
+            db_user = result.scalars().first()
             
-            # Query the database
-            user_model = await self._db_session.get(UserModel, user_id)
-            
-            # Convert to domain entity using the mapper
-            if user_model:
-                return UserMapper.to_domain(user_model)
+            if not db_user:
+                logger.warning(f"User with id {user_id} not found")
+                return None
+                
+            return self._mapper.to_domain(db_user)
+        except SQLAlchemyError as e:
+            logger.error(f"Error retrieving user by id: {e}")
             return None
-        except (SQLAlchemyError, ValueError) as e:
-            logger.error(f"Error retrieving user by ID {user_id}: {e}")
-            raise
+            
+    async def get_user_by_id(self, user_id: str | uuid.UUID) -> DomainUser | None:
+        """
+        Alias for get_by_id to maintain API compatibility with auth dependencies.
+        
+        This method exists to address an architectural inconsistency where:
+        - The core interface uses get_by_id (as per IUserRepository)
+        - Auth dependencies call get_user_by_id
+        
+        Args:
+            user_id: The ID of the user to retrieve
+            
+        Returns:
+            The User domain entity if found, None otherwise
+        """
+        return await self.get_by_id(user_id)
     
     async def get_by_username(self, username: str) -> DomainUser | None:
         """

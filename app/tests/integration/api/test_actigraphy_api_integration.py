@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJwtService
+from app.domain.entities.user import User
 from app.domain.utils.datetime_utils import UTC
 
 # Infrastructure imports
@@ -72,8 +73,11 @@ def actigraphy_data() -> dict[str, Any]:
     end_time = (start_time + timedelta(seconds=179)).isoformat() + "Z"
     start_time = start_time.isoformat() + "Z"
 
+    # Use a valid UUID format for patient_id to satisfy SQLAlchemy's UUID type validation
+    test_patient_uuid = "123e4567-e89b-12d3-a456-426614174000"
+    
     return {
-        "patient_id": "test-patient-123",
+        "patient_id": test_patient_uuid,
         "readings": readings,
         "start_time": start_time,
         "end_time": end_time,
@@ -138,9 +142,55 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any])
     # --- Mock JWT Service Setup (provides the actual user for tests) --- 
     mock_jwt_service = MagicMock(spec=IJwtService)
     
-    # --- Mock User Repository (needed for get_jwt_service signature analysis) ---
-    mock_user_repo = MagicMock(spec=IUserRepository)
-
+    # --- Create a proper adapter mock repository that implements both interfaces ---
+    # This class addresses the architectural inconsistency between get_by_id and get_user_by_id
+    class MockUserRepository(IUserRepository):
+        """Mock user repository that implements both interface variants.
+        
+        This adapter addresses the architectural inconsistency where:
+        - Core layer interface uses get_by_id
+        - Auth dependencies call get_user_by_id
+        """
+        
+        def __init__(self, mock_user):
+            self.mock_user = mock_user
+            
+        async def get_by_id(self, user_id: str) -> User:
+            """Core interface method - get user by ID"""
+            return self.mock_user
+            
+        async def get_user_by_id(self, user_id: str) -> User:
+            """Auth dependency method - get user by ID with different method name"""
+            return self.mock_user
+            
+        async def get_by_email(self, email: str) -> User:
+            """Get user by email"""
+            return self.mock_user
+            
+        async def get_by_username(self, username: str) -> User:
+            """Get user by username"""
+            return self.mock_user
+            
+        async def create(self, user: User) -> User:
+            """Create a new user"""
+            return self.mock_user
+            
+        async def update(self, user: User) -> User:
+            """Update an existing user"""
+            return self.mock_user
+            
+        async def delete(self, user_id: str) -> bool:
+            """Delete a user"""
+            return True
+            
+        async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
+            """List all users with pagination"""
+            return [self.mock_user]
+            
+        async def count(self) -> int:
+            """Count all users"""
+            return 1
+    
     # Create a mock user object matching the expected structure using the SQLAlchemy User model
     from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
     
@@ -166,17 +216,19 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any])
         "role": "patient"
     })
     
-    # Now that mock_user is created, we can set up the repository mock methods
-    # Use get_by_id to match the IUserRepository interface method name
-    mock_user_repo.get_by_id = AsyncMock(return_value=mock_user)
-    # For compatibility with any code that might expect the wrong method name
-    mock_user_repo.get_user_by_id = AsyncMock(return_value=mock_user)
+    # Create our repository adapter with the mock user
+    mock_user_repo = MockUserRepository(mock_user)
     # ------------------------------
 
-    # Override dependencies
+    # Override dependencies including get_repository_instance to avoid database access completely
     app_instance.dependency_overrides[get_db] = get_test_db_session
     app_instance.dependency_overrides[actual_get_pat_service] = lambda: mock_pat_service
     app_instance.dependency_overrides[get_jwt_service] = lambda: mock_jwt_service
+    
+    # This is the most critical part - override get_user_repository_dependency to return our mock
+    # This prevents any actual database access attempts
+    from app.presentation.api.dependencies.auth import get_user_repository_dependency
+    app_instance.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo
     
     # Reset and reconfigure the DI container to ensure clean test isolation
     from app.infrastructure.di.container import reset_container, get_container, DIContainer

@@ -50,11 +50,31 @@ class SqlAlchemyUserRepository(BaseSQLAlchemyRepository, IUserRepository):
             user_id: Unique identifier for the user
             
         Returns:
-            The User entity if found, None otherwise
+            User entity if found, None otherwise
         """
-        # In a real implementation, this would use SQLAlchemy to query the database
-        # For test collection, return a placeholder
-        return None
+        # Use the base class implementation inherited from BaseSQLAlchemyRepository
+        # This already handles all the SQLAlchemy session management
+        model = await super().get_by_id(user_id)
+        if model is None:
+            return None
+        return await self._to_entity(model)
+        
+    async def get_user_by_id(self, user_id: str | UUID) -> User | None:
+        """
+        Alias for get_by_id to maintain API compatibility with auth dependencies.
+        
+        This method exists to address an architectural inconsistency where:
+        - The core interface uses get_by_id (as per IUserRepository)
+        - Auth dependencies call get_user_by_id
+        
+        Args:
+            user_id: Unique identifier for the user
+            
+        Returns:
+            User entity if found, None otherwise
+        """
+        # Simply delegate to the standard interface method
+        return await self.get_by_id(user_id)
     
     async def get_by_email(self, email: str) -> User | None:
         """
