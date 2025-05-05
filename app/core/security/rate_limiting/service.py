@@ -1,0 +1,48 @@
+"""
+Rate Limiter Service Definition.
+
+Contains the interface or concrete implementation for the rate limiting service.
+"""
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+# Placeholder - In a real implementation, this might depend on Redis, etc.
+
+class RateLimiterService(ABC):
+    """Abstract base class for a rate limiter service."""
+
+    @abstractmethod
+    async def is_allowed(self, identifier: str) -> bool:
+        """
+        Check if a request from the given identifier is allowed.
+
+        Args:
+            identifier: Unique key identifying the request source (e.g., IP, user_id).
+
+        Returns:
+            True if the request is allowed, False otherwise.
+        """
+        pass
+
+# Placeholder implementation/factory
+# TODO: Replace with actual implementation (e.g., using Redis)
+class InMemoryRateLimiter(RateLimiterService):
+    """Simple in-memory rate limiter (for demonstration/testing)."""
+    async def is_allowed(self, identifier: str) -> bool:
+        # Basic placeholder - allows all requests
+        print(f"Warning: Using placeholder InMemoryRateLimiter for {identifier}. Allowing request.")
+        return True
+
+def get_rate_limiter_service() -> RateLimiterService:
+    """
+    Dependency provider/factory for the rate limiter service.
+
+    Returns:
+        An instance of the configured RateLimiterService.
+    """
+    # TODO: Add logic to instantiate the correct service based on config
+    # For now, return the placeholder implementation.
+    return InMemoryRateLimiter()
+
+__all__ = ["RateLimiterService", "get_rate_limiter_service"]

@@ -8,6 +8,9 @@ abuse and DoS attacks, ensuring service stability and availability.
 from enum import Enum
 from typing import Any
 
+# Import the middleware class
+from .middleware import RateLimitingMiddleware
+from .service import RateLimiterService, get_rate_limiter_service
 
 # Rate limiting strategy enum
 class RateLimitStrategy(str, Enum):
@@ -45,45 +48,11 @@ class RateLimitConfig:
         self.burst_multiplier = burst_multiplier
 
 
-# Service for rate limiting
-class RateLimiterService:
-    """Service for enforcing rate limits across the API."""
-
-    def __init__(self, config: RateLimitConfig | None = None):
-        """
-        Initialize the rate limiter service.
-
-        Args:
-            config: Rate limiting configuration
-        """
-        self.config = config or RateLimitConfig()
-
-    async def check_rate_limit(self, scope_id: str) -> dict[str, Any]:
-        """
-        Check if a request exceeds the rate limit.
-
-        Args:
-            scope_id: Identifier for the rate limit scope
-
-        Returns:
-            Result with limit information
-        """
-        # Stub implementation for test collection
-        return {
-            "allowed": True,
-            "current_usage": 1,
-            "limit": self.config.rate_limit_per_minute,
-            "remaining": self.config.rate_limit_per_minute - 1,
-            "retry_after": None,
-        }
-
-
-# Dependency for getting the rate limiter service
-def get_rate_limiter_service() -> RateLimiterService:
-    """
-    Get the rate limiter service.
-
-    Returns:
-        Rate limiter service instance
-    """
-    return RateLimiterService()
+# Export relevant classes
+__all__ = [
+    "RateLimitStrategy",
+    "RateLimitConfig",
+    "RateLimiterService",
+    "get_rate_limiter_service",
+    "RateLimitingMiddleware",
+]

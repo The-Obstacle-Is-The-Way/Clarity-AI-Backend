@@ -23,11 +23,11 @@ from app.domain.exceptions import (
 # Corrected dependency import syntax
 from app.presentation.api.dependencies.auth import (
     get_current_user,
-    get_patient_id, # Assume it's defined here
     require_admin_role, 
     require_clinician_role,
     get_jwt_service
 )
+from app.presentation.api.dependencies.patient import get_patient_id
 
 # Create a mock OAuth2 scheme for testing
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
