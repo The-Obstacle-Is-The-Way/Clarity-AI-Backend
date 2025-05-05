@@ -61,7 +61,8 @@ def test_settings() -> Settings:
         _env_file=".env.test",  # Load test env if exists
         ENVIRONMENT="test",
         # Set default test values if not in .env.test
-        DATABASE_URL=original_db_url or "postgresql+asyncpg://test:test@localhost:5433/testdb",
+        # Default to in-memory SQLite for tests if DATABASE_URL env var not set
+        DATABASE_URL=original_db_url or "sqlite+aiosqlite:///:memory:",
         REDIS_URL=original_redis_url or "redis://localhost:6380/0",
         SECRET_KEY="test_secret_key_for_jwt_testing_only_12345",
         ACCESS_TOKEN_EXPIRE_MINUTES=15,
