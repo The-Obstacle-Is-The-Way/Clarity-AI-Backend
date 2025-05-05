@@ -11,9 +11,9 @@ from fastapi import APIRouter
 from app.presentation.api.v1.routes.analytics import router as analytics_router
 from app.presentation.api.v1.routes.auth import router as auth_router
 from app.presentation.api.v1.routes.biometric import router as biometric_router
-# from app.presentation.api.v1.routes.biometric_alert_rules import (
-#     router as biometric_alert_rules_router,
-# )
+from app.presentation.api.v1.routes.biometric_alert_rules import (
+    router as biometric_alert_rules_router,
+)
 from app.presentation.api.v1.routes.biometric_alerts import (
     router as biometric_alerts_router,
 )
@@ -37,12 +37,11 @@ api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biom
 api_v1_router.include_router(
     biometric_alerts_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
 )
-# Temporarily commented out to isolate collection error
-# api_v1_router.include_router(
-#     biometric_alert_rules_router,
-#     prefix="/biometric-alert-rules",
-#     tags=["Biometric Alert Rules"],
-# )
+api_v1_router.include_router(
+    biometric_alert_rules_router,
+    prefix="/biometric-alert-rules",
+    tags=["Biometric Alert Rules"],
+)
 api_v1_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])
 api_v1_router.include_router(
     temporal_neurotransmitter_router,

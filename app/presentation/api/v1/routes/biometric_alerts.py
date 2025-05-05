@@ -12,7 +12,7 @@ from pydantic import UUID4
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User
-from app.core.errors.security_exceptions import AuthenticationError
+from app.core.errors.security_exceptions import InvalidCredentialsError
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.dependencies.rate_limiter import sensitive_rate_limit
@@ -118,9 +118,9 @@ async def get_alerts(
             for alert in alerts
         ]
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to access this patient's alert data"
         ) from e
     except Exception as e:
@@ -184,9 +184,9 @@ async def get_alert(
             resolution_notes=alert.resolution_notes
         )
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to access this alert"
         ) from e
     except Exception as e:
@@ -259,9 +259,9 @@ async def create_alert(
             resolution_notes=created_alert.resolution_notes
         )
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to create an alert for this patient"
         ) from e
     except ValueError as e:
@@ -348,9 +348,9 @@ async def update_alert(
             resolution_notes=result.resolution_notes
         )
         
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to update this alert"
         ) from e
     except ValueError as e:
@@ -419,9 +419,9 @@ async def delete_alert(
                 detail="Failed to delete alert"
             )
             
-    except AuthenticationError as e:
+    except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to delete this alert"
         ) from e
     except Exception as e:
