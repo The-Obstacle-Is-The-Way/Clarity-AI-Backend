@@ -6,7 +6,6 @@ Provides API endpoints for managing biometric alert rules.
 
 import logging
 from datetime import datetime
-from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -16,7 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.domain.entities.user import User
 from app.infrastructure.database.session import get_async_session
 from app.infrastructure.security.rate_limiting.limiter import RateLimiter
-from app.presentation.api.dependencies.auth import get_current_active_user
+from app.presentation.api.dependencies.auth import (
+    get_current_active_user_wrapper,
+)
 from app.presentation.api.schemas.alert import (
     AlertRuleResponse,
     AlertRuleUpdateRequest,
@@ -36,7 +37,6 @@ router = APIRouter(
 # =============================================================================
 # @router.post(
 #     "",
-#     # response_model=AlertRuleResponse, # Temporarily set to None
 #     response_model=None,
 #     status_code=status.HTTP_201_CREATED,
 #     summary="Create a new biometric alert rule",
@@ -45,7 +45,8 @@ router = APIRouter(
 # async def create_alert_rule(
 #     rule_data: AlertRuleCreateRequest,
 #     # rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
-#     current_user: User = Depends(get_current_active_user),
+#     current_user: User = Depends(get_current_active_user_wrapper),
+#     db: AsyncSession = Depends(get_async_session),
 # ) -> AlertRuleResponse:
 #     """Endpoint to create a new biometric alert rule."""
 #     # Placeholder implementation
@@ -81,8 +82,8 @@ router = APIRouter(
     tags=["Biometric Alert Rules"],
 )
 async def get_alert_rules(
-    db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user_wrapper),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> list[AlertRuleResponse]:
@@ -100,14 +101,14 @@ async def get_alert_rules(
 
 @router.get(
     "/{rule_id}",
-    response_model=AlertRuleResponse,
+    response_model=None,
     status_code=status.HTTP_200_OK,
     summary="Get a specific biometric alert rule by ID",
 )
 async def get_alert_rule(
     rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_wrapper),
 ) -> AlertRuleResponse:
     """
     Get details for a specific biometric alert rule owned by the current user.
@@ -142,7 +143,7 @@ async def get_alert_rule(
 
 @router.put(
     "/{rule_id}",
-    response_model=AlertRuleResponse,
+    response_model=None,
     status_code=status.HTTP_200_OK,
     summary="Update a biometric alert rule",
 )
@@ -150,7 +151,7 @@ async def update_alert_rule(
     rule_data: AlertRuleUpdateRequest,
     rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_wrapper),
 ) -> AlertRuleResponse:
     """
     Update an existing biometric alert rule owned by the current user.
@@ -181,12 +182,13 @@ async def update_alert_rule(
 @router.delete(
     "/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Delete a biometric alert rule",
 )
 async def delete_alert_rule(
     rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user_wrapper),
 ) -> None:
     """
     Delete a specific biometric alert rule owned by the current user.

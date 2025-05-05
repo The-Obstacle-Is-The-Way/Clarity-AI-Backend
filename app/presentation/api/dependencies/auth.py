@@ -107,6 +107,9 @@ async def get_current_active_user(
         )
     return current_user
 
+async def get_current_active_user_wrapper(user: User = Depends(get_current_active_user)) -> User:
+    """Simple wrapper around get_current_active_user."""
+    return user
 
 async def get_optional_user(
     token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)),
@@ -124,7 +127,7 @@ async def get_optional_user(
 
 async def verify_provider_access(
     current_user: User = Depends(get_current_user),
-    patient_id: str = None,
+    patient_id: str | None = None,
 ) -> User:
     """Dependency to verify a provider has access to a patient's data.
     

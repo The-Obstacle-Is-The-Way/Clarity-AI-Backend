@@ -5,17 +5,13 @@ import os
 import uuid
 from collections.abc import AsyncGenerator, Callable, Generator
 from datetime import datetime, timezone
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 # Third-Party Imports
 import pytest
 import pytest_asyncio
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import FastAPI, Request
 from httpx import AsyncClient
-from redis.asyncio import Redis
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
@@ -24,10 +20,12 @@ from testcontainers.redis import RedisContainer
 # Application-Specific Imports
 from app.app_factory import create_application
 from app.core.config import Settings
+from app.core.domain.entities.ml_model import InferenceResult, ModelInfo
+from app.core.domain.entities.patient import Patient
 from app.core.domain.entities.user import Roles, User
 from app.core.domain.services.auth import AuthServiceInterface
-from app.core.domain.services.jwt import JWTServiceInterface
-from app.core.exceptions import InvalidCredentialsError
+from app.core.domain.services.ml_model import ModelServiceInterface
+from app.core.domain.services.patient import PatientServiceInterface
 from app.core.repositories.user_repository import IUserRepository
 from app.infrastructure.database.base_class import Base
 from app.infrastructure.database.session import get_async_session
@@ -234,7 +232,7 @@ async def test_app_factory(
                 logger.debug("Yielding session from overridden get_async_session using app.state factory.")
                 yield session
 
-        app.dependency_overrides[get_async_session] = override_get_async_session
+        app.dependency_overrides[get_async_session] = override_get_async_session # Restore override
 
         # Apply any additional test-specific overrides
         app.dependency_overrides.update(overrides)
@@ -343,12 +341,11 @@ def mock_user_service() -> MagicMock:
 @pytest.fixture
 def mock_patient_service() -> MagicMock:
     """Provides a mock PatientService."""
-    service = MagicMock(spec=PatientService)
-    # Configure mock methods as needed for patient-related tests
+    service = MagicMock(spec=PatientServiceInterface)
     test_patient = Patient(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
-        date_of_birth=datetime(1990, 1, 1).date()
+        date_of_birth=datetime.date(1985, 5, 15)
     )
     service.create_patient = AsyncMock(return_value=test_patient)
     service.get_patient_by_id = AsyncMock(return_value=test_patient)
@@ -358,11 +355,10 @@ def mock_patient_service() -> MagicMock:
 @pytest.fixture
 def mock_model_service() -> MagicMock:
     """Provides a mock ModelService."""
-    service = MagicMock(spec=ModelService)
-    service.get_available_models = AsyncMock(return_value=[
-        ModelInfo(id="model1", name="Test Model 1", description="Desc 1", version="1.0"),
-        ModelInfo(id="model2", name="Test Model 2", description="Desc 2", version="2.1"),
-    ])
+    service = MagicMock(spec=ModelServiceInterface)
+    model_info1 = ModelInfo(id="model1", name="Test Model 1", version="1.0")
+    model_info2 = ModelInfo(id="model2", name="Test Model 2", version="2.1")
+    service.get_available_models = AsyncMock(return_value=[model_info1, model_info2])
     service.run_inference = AsyncMock(return_value=InferenceResult(
         model_id="model1", 
         version="1.0", 
