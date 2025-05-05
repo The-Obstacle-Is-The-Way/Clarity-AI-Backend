@@ -107,7 +107,7 @@ async def get_model_info(
 async def predict_risk(
     request: RiskPredictionRequest,
     xgboost_service: XGBoostDep,
-    user: ProviderAccessDep = Depends(verify_provider_access),
+    user: ProviderAccessDep,
 ) -> RiskPredictionResponse:
     """
     Generate a risk prediction for a patient.
@@ -148,7 +148,7 @@ async def predict_risk(
 async def predict_outcome(
     request: OutcomePredictionRequest,
     xgboost_service: XGBoostDep,
-    user: ProviderAccessDep = Depends(verify_provider_access),
+    user: ProviderAccessDep,
 ) -> OutcomePredictionResponse:
     """
     Generate an outcome prediction for a patient's treatment.
@@ -203,7 +203,7 @@ async def predict_outcome(
 async def predict_treatment_response(
     request: TreatmentResponseRequest,
     xgboost_service: XGBoostDep,
-    user: ProviderAccessDep = Depends(verify_provider_access),
+    user: ProviderAccessDep,
 ) -> TreatmentResponseResponse:
     """
     Predict how a patient will respond to a specific treatment.

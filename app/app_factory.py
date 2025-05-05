@@ -1,9 +1,8 @@
 # Standard Library Imports
 import logging
 import logging.config
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 # Third-Party Imports
 import sentry_sdk
@@ -17,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import Settings, settings as global_settings
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.database.session import create_db_engine_and_session
-from app.presentation.api.v1.api_router import api_router as api_v1_router
+from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.logging import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
