@@ -31,11 +31,11 @@ from app.infrastructure.security.auth.authentication_service import Authenticati
 from app.presentation.api.dependencies.auth import get_current_user, get_optional_user
 
 # Import dependencies providers
-from app.presentation.api.dependencies.auth_service import get_auth_service_provider
-from app.presentation.api.dependencies.user_repository import get_user_repository_provider
+from app.presentation.api.dependencies.auth_service import get_auth_service
+from app.presentation.api.dependencies.repositories import get_user_repository
 
 # Import the router
-from app.presentation.api.v1.endpoints.auth import router
+from app.presentation.api.v1.endpoints.auth import router as auth_router
 
 # Suppress datetime binary incompatibility warning
 warnings.filterwarnings(
@@ -75,7 +75,7 @@ async def setup_database() -> None:
 def app() -> FastAPI:
     """Create a FastAPI app with just the auth router."""
     app_instance = FastAPI()
-    app_instance.include_router(router, prefix="/api/v1/auth")
+    app_instance.include_router(auth_router, prefix="/api/v1/auth")
     return app_instance
 
 
@@ -191,8 +191,8 @@ def mock_dependencies(
     mock_user_repository: AsyncMock
 ) -> None:
     """Override dependencies for the test app."""
-    app.dependency_overrides[get_auth_service_provider] = lambda: mock_auth_service
-    app.dependency_overrides[get_user_repository_provider] = lambda: mock_user_repository
+    app.dependency_overrides[get_auth_service] = lambda: mock_auth_service
+    app.dependency_overrides[get_user_repository] = lambda: mock_user_repository
     
     # Mock auth dependencies if needed for specific tests like get_current_user
     test_user = User(

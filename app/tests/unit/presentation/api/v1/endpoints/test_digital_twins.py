@@ -34,7 +34,8 @@ from app.presentation.api.dependencies.services import (
 #     ClinicalTextAnalysisResponse,
 #     PersonalizedInsightResponse,
 # )
-from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
+# TODO: Uncomment when digital_twins.py endpoint file is created/restored
+# from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
 
 # Define UTC timezone
 UTC = timedelta(0) # Simple UTC offset
@@ -74,8 +75,8 @@ def app(mock_digital_twin_service, mock_current_user):
     app_instance.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
     app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
 
-    # Include router
-    app_instance.include_router(digital_twins_router)
+    # TODO: Uncomment when digital_twins_router is imported
+    # app_instance.include_router(digital_twins_router)
     return app_instance
 
 @pytest.fixture

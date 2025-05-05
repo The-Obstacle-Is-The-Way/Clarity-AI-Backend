@@ -19,7 +19,7 @@ from app.presentation.api.dependencies.auth import (  # Removed get_admin_user
     get_current_user,
     get_optional_user,
 )
-from app.presentation.api.dependencies.auth_service import get_auth_service_provider
+from app.presentation.api.dependencies.auth_service import get_auth_service
 from app.presentation.api.dependencies.user_repository import get_user_repository_provider
 
 # Initialize router
@@ -73,7 +73,7 @@ async def login(
     request: Request,
     login_data: LoginRequest,
     response: Response,
-    auth_service: AuthenticationService = Depends(get_auth_service_provider)
+    auth_service: AuthenticationService = Depends(get_auth_service)
 ):
     """
     Authenticate a user and return JWT tokens.
@@ -177,7 +177,7 @@ async def refresh_token(
     response: Response,
     refresh_data: RefreshRequest | None = None,
     refresh_token: str | None = Cookie(None, alias="refresh_token"),
-    auth_service: AuthenticationService = Depends(get_auth_service_provider),
+    auth_service: AuthenticationService = Depends(get_auth_service),
 ):
     """
     Refresh access token using a valid refresh token.
@@ -264,7 +264,7 @@ async def logout(
     response: Response,
     access_token: str | None = Depends(get_current_user),
     refresh_token: str | None = Cookie(None, alias="refresh_token"),
-    auth_service: AuthenticationService = Depends(get_auth_service_provider)
+    auth_service: AuthenticationService = Depends(get_auth_service)
 ):
     """
     Log out the current user by revoking their tokens.
