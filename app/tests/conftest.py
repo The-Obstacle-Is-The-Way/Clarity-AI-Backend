@@ -5,13 +5,12 @@ import os
 import uuid
 from collections.abc import AsyncGenerator, Callable, Generator
 from datetime import datetime, timezone
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 # Third-Party Imports
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -218,25 +217,23 @@ async def test_app_factory(
         app.state.redis_pool = getattr(redis_container, 'pool', None) # Or get from container
         app.state.redis = getattr(redis_container, 'client', None) # Or get from container
 
-        # Override get_async_session to use the function-scoped session factory
-        # This is crucial for transaction rollback per test
-        def get_test_session_override() -> Generator[AsyncSession, None, None]:
-            # This closure captures test_session_local from the outer scope
-            session_instance = test_session_local()
-            try:
-                yield session_instance # Create a new session instance per request
-            finally:
-                # Session closing is handled by the db_session fixture
-                pass
+        # Override get_async_session to use the test factory stored in app.state
+        async def override_get_async_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+            # Access the factory stored in app.state by the test_app_factory
+            session_factory = getattr(request.app.state, "db_session_factory", None)
+            if not isinstance(session_factory, sessionmaker):
+                # This shouldn't happen if test_app_factory sets state correctly
+                logger.error("Test session factory not found in app state during override.")
+                raise RuntimeError("Test session factory not found in app state during override.")
 
-        # Original Override (using db_session fixture - incorrect approach)
-        # def override_get_async_session_incorrect():
-        #     # This tries to yield the already created db_session fixture instance,
-        #     # which bypasses FastAPI's dependency management and transaction isolation.
-        #     yield db_session
+            async with session_factory() as session:
+                # The transaction is managed by the db_session fixture,
+                # so we just yield the session provided by the factory.
+                # No explicit rollback/commit/close here.
+                logger.debug("Yielding session from overridden get_async_session using app.state factory.")
+                yield session
 
-        # Override the dependency *within* the app instance
-        app.dependency_overrides[get_async_session] = get_test_session_override
+        app.dependency_overrides[get_async_session] = override_get_async_session
 
         # Apply any additional test-specific overrides
         app.dependency_overrides.update(overrides)
