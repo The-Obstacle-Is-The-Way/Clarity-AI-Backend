@@ -8,7 +8,7 @@ in various types of source code files.
 import os
 import tempfile
 from pathlib import Path
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 
@@ -80,11 +80,6 @@ class TestPHIInSourceFiles:
             if f.severity == CodeSeverity.INFO and "Variable name suggests PHI" in f.message
         ]
         assert len(var_name_findings) > 0
-
-        # Check for logging/print/exception patterns (adjust as needed)
-        log_print_findings = [f for f in findings_list if f.severity == CodeSeverity.WARNING or (f.severity == CodeSeverity.INFO and "print" in f.message)]
-        # This assertion might fail depending on exact content and patterns
-        # assert len(log_print_findings) > 0
 
         # Note: Specific PHI value checks (SSN, email) might fail as the 
         # current analyze_file uses generic code patterns, not the detailed PHI patterns
@@ -210,7 +205,10 @@ class TestPHIInSourceFiles:
         # Check that *specific* PHI findings are absent.
         # The current generic patterns might still find things (like function calls).
         # Filter for critical/warning findings if needed, or check length is expected
-        critical_warning_findings = [f for f in findings_list if f.severity in (CodeSeverity.CRITICAL, CodeSeverity.WARNING)]
+        critical_warning_findings = [
+            f for f in findings_list 
+            if f.severity in (CodeSeverity.CRITICAL, CodeSeverity.WARNING)
+        ]
         assert len(critical_warning_findings) == 0
         # Assert specific content is NOT found if necessary
     
@@ -314,11 +312,15 @@ class TestPHIInSourceFiles:
         assert isinstance(findings_list, list)
         
         # Check that no findings come from the excluded directory
-        excluded_findings = [f for f in findings_list if str(exclude_dir_path) in f.file_path]
+        excluded_findings = [
+            f for f in findings_list if str(exclude_dir_path) in f.file_path
+        ]
         assert len(excluded_findings) == 0
 
         # Check that findings DO come from the non-excluded file
-        included_findings = [f for f in findings_list if f.file_path == str(included_file_path)]
+        included_findings = [
+            f for f in findings_list if f.file_path == str(included_file_path)
+        ]
         assert len(included_findings) > 0
 
     # === Tests below this line likely need significant adaptation ===
