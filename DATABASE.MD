@@ -39,6 +39,62 @@ The database is a critical component of the Clarity AI Backend, responsible for 
   * Crucially, overrides the application's `get_async_session` dependency.
   * The override provides the specific, transaction-managed `AsyncSession` instance yielded by the `db_session` fixture, ensuring tests operate within the controlled transaction.
 
+### 4.1 Critical Test Database Issues Analysis
+
+#### Driver Configuration Issues
+The application exhibits a critical mismatch in database driver configuration between production and test environments:
+
+* **Production Configuration**: The `settings.DATABASE_URL` is set to `sqlite:///./novamind.db` in `app.core.config.settings`
+* **Required Async Configuration**: The database access layer requires an async SQLite driver, specifically `sqlite+aiosqlite:///`
+* **Error Impact**: Tests fail with `ValueError: Database URL 'sqlite:///./novamind.db' does not seem to use a supported async driver`
+* **Solution**: Tests must override `DATABASE_URL` with `sqlite+aiosqlite:///./test_db.sqlite3` or use in-memory SQLite (`sqlite+aiosqlite:///:memory:`)
+
+#### Repository Architecture Inconsistencies
+
+The project has multiple repository interfaces with naming discrepancies that violate Clean Architecture principles:
+
+1. **Interface Duplication**:
+   * Core layer: `app.core.interfaces.repositories.user_repository_interface.IUserRepository` with method `get_by_id`
+   * Domain layer: `app.domain.repositories.user_repository.UserRepository` with method `get_by_id`
+
+2. **Implementation Binding**:
+   * `app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository` implements the domain interface `UserRepository`, not the core interface `IUserRepository`
+   * Binds to `UserRepositoryInterface` imported from the domain layer, violating Clean Architecture principles
+
+3. **Method Naming Inconsistency**:
+   * Test code attempts to access `get_user_by_id` but implementations have `get_by_id`
+   * This naming mismatch causes `AttributeError: 'SqlAlchemyUserRepository' object has no attribute 'get_user_by_id'`
+
+#### Dependency Injection Complexity
+
+The DI system creates significant complexity for testing:
+
+1. **Multi-layered Injection**:
+   * `app_instance.dependency_overrides[get_repository_instance]` requires overriding at a lower level than expected
+   * Repository factories in `app.infrastructure.di.container.DIContainer._repository_factories` handle session injection
+   * Simple dependency overrides in tests don't propagate through all layers
+
+2. **Container Singleton Pattern**:
+   * Global container instance in `app.infrastructure.di.container` persists between tests
+   * Container isn't properly reset for each test, leading to potential state leakage
+   * Manual container reset is needed via `reset_container()` to ensure clean test isolation
+
+#### Testing Best Practices
+
+To properly test repository-dependent code:
+
+1. **Precise Interface Mocking**:
+   * Mock the exact interface being used by the application code
+   * Ensure mocks implement all required methods with matching signatures
+
+2. **Multi-level Dependency Overrides**:
+   * Override at the correct dependency level (repository instance provider)
+   * Consider direct module patching for deeply embedded dependencies
+
+3. **Proper Repository Factory Registration**:
+   * Register a mock repository factory function that returns the mock for any session
+   * Ensure factory functions match the expected signature: `Callable[[AsyncSession], T]`
+
 ## 5. Schema Management (PRD Requirement)
 
 * Definition: Database schema (tables, columns, constraints, relationships) is defined using SQLAlchemy models located primarily within `app/infrastructure/persistence/sqlalchemy/models/`.

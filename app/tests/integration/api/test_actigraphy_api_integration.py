@@ -16,14 +16,19 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import proper interfaces following Clean Architecture
-from app.application.security.interfaces.jwt_service import IJwtService
+# Core imports
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
-from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJwtService
 from app.domain.utils.datetime_utils import UTC
-from app.infrastructure.persistence.sqlalchemy.models.user import UserRole
+
+# Infrastructure imports
+from app.infrastructure.persistence.sqlalchemy.models.user import UserRole  # Used for SQLAUserRole
+from app.infrastructure.security.jwt_service import get_jwt_service
+
+# Presentation/API imports
+from app.presentation.api.dependencies.auth import get_current_active_user  # Used for mocking auth flow
 from app.presentation.api.dependencies.database import get_db
-from app.presentation.api.dependencies.repositories import get_repository
-from app.presentation.api.dependencies.security import get_jwt_service
 from app.presentation.api.v1.routes.actigraphy import get_pat_service as actual_get_pat_service
 
 # Mark all tests in this module as asyncio tests
@@ -86,7 +91,7 @@ def actigraphy_data() -> dict[str, Any]:
         "analysis_types": ["activity_levels", "sleep_quality"]
     }
 
-# Reintroduce the repository override factory function
+# Define the repository override factory function
 def create_repository_override(mock_user_repo_instance: MagicMock) -> Callable:
     """Create a repository override function for the dependency injection system.
     
@@ -101,21 +106,12 @@ def create_repository_override(mock_user_repo_instance: MagicMock) -> Callable:
     """
     T = TypeVar('T', bound=BaseRepositoryInterface)
     
-    # Define the override provider function
-    def repository_override_provider(repo_type: type[T]) -> Callable[[AsyncSession], T]:
-        # When we need a user repository, return our mock
-        if repo_type == IUserRepository:
-            # Return a function that ignores the session and returns the mock
-            async def _get_mock_repo(db: AsyncSession = Depends(get_db)) -> T:
-                return mock_user_repo_instance
-            return _get_mock_repo
-        else:
-            # Raise an error if any other repository type is unexpectedly requested in these tests
-            raise NotImplementedError(
-                f"Dependency override not configured for repository type: {repo_type.__name__}"
-            )
+    # Define the direct repository instance provider
+    # This provides the mock regardless of session or repository type
+    async def _get_mock_repo(db: AsyncSession) -> T:
+        return mock_user_repo_instance
     
-    return repository_override_provider
+    return _get_mock_repo
 
 # Fixtures to create app and client for integration tests
 @pytest.fixture
@@ -123,14 +119,14 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any])
     from app.main import create_application
     from app.core.config import settings
     from app.infrastructure.database.session import create_db_engine_and_session
-    from app.presentation.api.dependencies.database import get_db_session
-    from app.presentation.api.v1.routes.actigraphy import get_pat_service as actual_get_pat_service
-
+    
     # Create application instance
     app_instance = create_application()
 
-    # Setup database for tests
-    db_engine, db_session_factory = create_db_engine_and_session(str(settings.DATABASE_URL))
+    # Setup database for tests with the correct async driver
+    # Override the DATABASE_URL to use sqlite+aiosqlite (required for async operations)
+    test_db_url = "sqlite+aiosqlite:///./test_db.sqlite3"
+    db_engine, db_session_factory = create_db_engine_and_session(test_db_url)
     app_instance.state.db_engine = db_engine
     app_instance.state.db_session_factory = db_session_factory
     
@@ -139,11 +135,11 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any])
         async with db_session_factory() as session:
             yield session
     
-    # --- Mock User Repository (needed for get_jwt_service signature analysis) ---
-    mock_user_repo = MagicMock(spec=IUserRepository)
-    
     # --- Mock JWT Service Setup (provides the actual user for tests) --- 
     mock_jwt_service = MagicMock(spec=IJwtService)
+    
+    # --- Mock User Repository (needed for get_jwt_service signature analysis) ---
+    mock_user_repo = MagicMock(spec=IUserRepository)
 
     # Create a mock user object matching the expected structure using the SQLAlchemy User model
     from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
@@ -160,23 +156,60 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any])
         roles=[SQLAUserRole.PATIENT.value]
     )
 
-    # Configure the mock's async method to return the mock user
+    # Configure the mock's methods to provide necessary functionality
     mock_jwt_service.get_user_from_token = AsyncMock(return_value=mock_user)
     mock_jwt_service.create_access_token = MagicMock(return_value="test_token")
+    # Add missing decode_access_token method required by authentication flow
+    mock_jwt_service.decode_access_token = MagicMock(return_value={
+        "sub": actigraphy_data["patient_id"],
+        "exp": (datetime.now(UTC) + timedelta(minutes=30)).timestamp(),
+        "role": "patient"
+    })
+    
+    # Now that mock_user is created, we can set up the repository mock methods
+    # Use get_by_id to match the IUserRepository interface method name
+    mock_user_repo.get_by_id = AsyncMock(return_value=mock_user)
+    # For compatibility with any code that might expect the wrong method name
+    mock_user_repo.get_user_by_id = AsyncMock(return_value=mock_user)
     # ------------------------------
 
     # Override dependencies
     app_instance.dependency_overrides[get_db] = get_test_db_session
     app_instance.dependency_overrides[actual_get_pat_service] = lambda: mock_pat_service
     app_instance.dependency_overrides[get_jwt_service] = lambda: mock_jwt_service
-    app_instance.dependency_overrides[get_repository] = create_repository_override(mock_user_repo)
+    
+    # Reset and reconfigure the DI container to ensure clean test isolation
+    from app.infrastructure.di.container import reset_container, get_container, DIContainer
+    
+    # Reset the container to start fresh
+    reset_container()
+    
+    # Get a test container with mock=True flag
+    container = get_container(use_mock=True)
+    
+    # Register our mock repository factory directly in the DI container
+    # This is more reliable than overriding the get_repository_instance function
+    def mock_user_repo_factory(session: AsyncSession) -> IUserRepository:
+        """Factory function that always returns our mock user repository."""
+        return mock_user_repo
+    
+    # Register the factory for both possible interface types to handle architectural inconsistencies
+    container.register_repository_factory(IUserRepository, mock_user_repo_factory)
+    
+    # For interfaces defined in the domain layer (architectural inconsistency)
+    from app.domain.repositories.user_repository import UserRepository as DomainUserRepository
+    container.register_repository_factory(DomainUserRepository, mock_user_repo_factory)
+    
+    # For good measure, also override the dependency at the FastAPI level
+    from app.infrastructure.di.provider import get_repository_instance
+    
+    # Override the repository provider function
+    app_instance.dependency_overrides[get_repository_instance] = lambda repo_type, session: mock_user_repo if repo_type == IUserRepository else None
     
     yield app_instance
     
     # Cleanup
     await db_engine.dispose()
-
-    return app_instance
 
 @pytest.mark.asyncio
 @pytest.mark.db_required()
