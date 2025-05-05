@@ -9,10 +9,11 @@ Direct implementation using the consolidated PHISanitizer.
 
 import logging
 import re
-from typing import Any
+from typing import Any, Type
 
-# Import directly from the consolidated implementation
-from app.infrastructure.security.phi import PHISanitizer, PHIType, get_sanitized_logger
+# Application imports (Corrected)
+from app.core.domain.enums.phi_enums import PHIType
+from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
 
 
 class PHIDetector:

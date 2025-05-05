@@ -15,7 +15,7 @@ from starlette.authentication import AuthCredentials, UnauthenticatedUser
 from starlette.datastructures import Headers, State
 from starlette.responses import JSONResponse
 
-from app.domain.entities.user import User  # Import User model for mocking
+from app.core.domain.entities.user import User  # Import User model for mocking
 from app.domain.exceptions.auth_exceptions import AuthenticationException
 
 # Import exceptions from their correct locations
@@ -45,9 +45,7 @@ except ImportError:
             return True
 
 # Import the middleware being tested
-from app.presentation.middleware.authentication_middleware import (
-    AuthenticationMiddleware as AuthMiddleware,
-)
+from app.core.security.middleware import AuthenticationMiddleware as AuthMiddleware
 
 # Mock TokenAuthorizationError if it's a custom exception used internally
 # class TokenAuthorizationError(Exception):

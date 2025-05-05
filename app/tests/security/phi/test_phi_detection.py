@@ -4,8 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# Import the canonical PHIService
-from app.infrastructure.security.phi.phi_service import PHIService, PHIType
+# Application imports (Corrected)
+from app.core.domain.enums.phi_enums import PHIType
+from app.infrastructure.security.phi.phi_service import PHIService 
 
 # Mock PHIAuditor
 PHIAuditor = MagicMock()

@@ -12,10 +12,9 @@ from typing import Any, Dict, List, Optional, Union
 from fastapi import HTTPException, Request, status
 
 # Import middleware components
-from app.core.security.middleware import AuthenticationMiddleware, LoggingMiddleware
+from app.core.security.middleware import AuthenticationMiddleware
 from app.core.security.rate_limiting import (
     RateLimitConfig,
-    RateLimitingMiddleware,
     RateLimitStrategy,
     get_rate_limiter_service,
 )
@@ -127,11 +126,9 @@ def verify_output_sanitization(data: dict[str, Any]) -> dict[str, Any]:
 
 __all__ = [
     "AuthenticationMiddleware",
-    "LoggingMiddleware",
     "PHIMiddleware",
     "RateLimitConfig",
     "RateLimitStrategy",
-    "RateLimitingMiddleware",
     "check_permission",
     "get_rate_limiter_service",
     "has_role",
