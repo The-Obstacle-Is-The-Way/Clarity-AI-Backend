@@ -17,7 +17,7 @@ from app.core.config import Settings, settings as global_settings
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.database.session import create_db_engine_and_session
 from app.presentation.api.v1.api_router import api_v1_router
-from app.presentation.middleware.logging import LoggingMiddleware
+from app.presentation.middleware.logging_middleware import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
@@ -25,6 +25,25 @@ from app.presentation.middleware.security_headers import SecurityHeadersMiddlewa
 # Initialize logging early
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
+
+# Initialize Sentry early if DSN is provided.
+# Ensure settings are loaded before this point.
+if global_settings.SENTRY_DSN:
+    logger.info("Sentry DSN found, initializing Sentry.")
+    try:
+        sentry_sdk.init(
+            dsn=str(global_settings.SENTRY_DSN),
+            traces_sample_rate=global_settings.SENTRY_TRACES_SAMPLE_RATE,
+            profiles_sample_rate=global_settings.SENTRY_PROFILES_SAMPLE_RATE,
+            environment=global_settings.ENVIRONMENT,
+            release=global_settings.APP_VERSION,
+            # Consider enabling performance monitoring based on settings
+            enable_tracing=True,  # Adjust as needed
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize Sentry: {e}", exc_info=True)
+else:
+    logger.info("Sentry DSN not provided, skipping Sentry initialization.")
 
 
 # --- Helper Functions ---
@@ -40,7 +59,7 @@ def _initialize_sentry(settings: Settings) -> None:
                 environment=settings.ENVIRONMENT,
                 release=settings.APP_VERSION,
                 # Consider enabling performance monitoring based on settings
-                enable_tracing=True, # Adjust as needed
+                enable_tracing=True,  # Adjust as needed
             )
         except Exception as e:
             logger.error(f"Failed to initialize Sentry: {e}", exc_info=True)
@@ -60,8 +79,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         logger.info("Initializing database connection...")
         db_engine, db_session_factory = create_db_engine_and_session(
-            str(current_settings.ASYNC_DATABASE_URI),
-            echo=current_settings.DB_ECHO_LOG
+            str(current_settings.ASYNC_DATABASE_URI), echo=current_settings.DB_ECHO_LOG
         )
         app.state.db_engine = db_engine
         app.state.db_session_factory = db_session_factory
@@ -78,23 +96,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # --- Redis Initialization ---
     try:
         logger.info("Initializing Redis connection pool...")
-        redis_pool = ConnectionPool.from_url(
-            str(current_settings.REDIS_URL), decode_responses=True
-        )
+        redis_pool = ConnectionPool.from_url(str(current_settings.REDIS_URL), decode_responses=True)
         app.state.redis_pool = redis_pool
         app.state.redis = Redis(connection_pool=redis_pool)
         # Test Redis connection
         await app.state.redis.ping()
         logger.info("Redis connection pool initialized and tested successfully.")
-    except RedisError as _e: # Renamed e to _e
-        logger.error(
-            f"Redis connection failed: {_e}", exc_info=True
-        )
+    except RedisError as _e:  # Renamed e to _e
+        logger.error(f"Redis connection failed: {_e}", exc_info=True)
         # Decide if Redis failure is critical. Maybe set state to None?
         app.state.redis_pool = None
         app.state.redis = None
         logger.warning("Redis is unavailable.")
-    except Exception as _e: # Renamed e to _e
+    except Exception as _e:  # Renamed e to _e
         logger.exception(f"An unexpected error occurred during Redis init: {_e}")
         app.state.redis_pool = None
         app.state.redis = None
@@ -108,13 +122,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # --- Shutdown Logic ---
     logger.info("Application lifespan shutdown sequence initiated.")
     # Close Redis pool
-    if hasattr(app.state, 'redis') and app.state.redis:
+    if hasattr(app.state, "redis") and app.state.redis:
         try:
             await app.state.redis.close()
             logger.info("Redis client closed.")
         except Exception as _e:
             logger.error(f"Error closing Redis client: {_e}", exc_info=True)
-    if hasattr(app.state, 'redis_pool') and app.state.redis_pool:
+    if hasattr(app.state, "redis_pool") and app.state.redis_pool:
         try:
             await app.state.redis_pool.disconnect()
             logger.info("Redis connection pool disconnected.")
@@ -122,7 +136,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.error(f"Error disconnecting Redis pool: {_e}", exc_info=True)
 
     # Dispose SQLAlchemy engine
-    if hasattr(app.state, 'db_engine') and app.state.db_engine:
+    if hasattr(app.state, "db_engine") and app.state.db_engine:
         try:
             await app.state.db_engine.dispose()
             logger.info("Database engine disposed successfully.")
@@ -142,7 +156,9 @@ def create_application(settings: Settings | None = None) -> FastAPI:
 
     # Configure logging early
     logging.config.dictConfig(LOGGING_CONFIG)
-    logger.info(f"Logging configured with level: {LOGGING_CONFIG.get('loggers', {}).get('app', {}).get('level', 'UNKNOWN')}")
+    logger.info(
+        f"Logging configured with level: {LOGGING_CONFIG.get('loggers', {}).get('app', {}).get('level', 'UNKNOWN')}"
+    )
 
     # Initialize Sentry if DSN is provided
     if app_settings.SENTRY_DSN:
@@ -154,7 +170,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
             environment=app_settings.ENVIRONMENT,
             release=app_settings.APP_VERSION,
             # Consider enabling performance monitoring based on settings
-            enable_tracing=True, # Adjust as needed
+            enable_tracing=True,  # Adjust as needed
         )
         logger.info("Sentry initialized.")
     else:
@@ -176,7 +192,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         docs_url=docs_url,
         redoc_url=redoc_url,
         lifespan=lifespan,  # Use the lifespan context manager
-        state=app_state, # Pass state containing settings
+        state=app_state,  # Pass state containing settings
         # Add other FastAPI parameters as needed
     )
 
@@ -226,7 +242,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         RateLimitingMiddleware,
         # Pass redis client factory - middleware should handle None state
-        redis_client_factory=lambda: getattr(app.state, 'redis', None),
+        redis_client_factory=lambda: getattr(app.state, "redis", None),
         limit=app_settings.RATE_LIMIT_REQUESTS,
         period=app_settings.RATE_LIMIT_PERIOD_SECONDS,
     )

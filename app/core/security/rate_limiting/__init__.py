@@ -76,34 +76,6 @@ class RateLimiterService:
         }
 
 
-# Middleware for rate limiting
-class RateLimitingMiddleware:
-    """Middleware for enforcing rate limits on API endpoints."""
-    
-    def __init__(self, service: RateLimiterService | None = None):
-        """
-        Initialize the rate limiting middleware.
-        
-        Args:
-            service: Rate limiter service 
-        """
-        self.service = service or RateLimiterService()
-        
-    async def __call__(self, request, call_next):
-        """
-        Process a request through the rate limiting middleware.
-        
-        Args:
-            request: The FastAPI request
-            call_next: The next middleware or endpoint handler
-            
-        Returns:
-            Response from the API
-        """
-        # Stub implementation for test collection
-        return await call_next(request)
-
-
 # Dependency for getting the rate limiter service
 def get_rate_limiter_service():
     """
