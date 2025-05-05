@@ -155,7 +155,7 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
 
 
 @pytest_asyncio.fixture
-async def async_client(test_app) -> AsyncGenerator[httpx.AsyncClient, None]:
+async def client(test_app) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Create an AsyncClient instance for testing."""
     async with httpx.AsyncClient(app=test_app, base_url="http://test") as client:
         yield client
@@ -276,7 +276,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_risk_success(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_risk_prediction_data: dict[str, Any],
         provider_auth_headers: dict[str, str] # Use provider headers
@@ -310,7 +310,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_risk_validation_error(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
@@ -321,7 +321,7 @@ class TestXGBoostAPIIntegration:
             "clinical_data": {"phq9_score": 12}
         }
 
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/xgboost/predict/risk",
             json=invalid_data,
             headers=provider_auth_headers # Pass headers
@@ -334,7 +334,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_risk_phi_detection(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
@@ -355,7 +355,7 @@ class TestXGBoostAPIIntegration:
         # Mock the service to raise DataPrivacyError if called
         mock_xgboost_service.predict_risk_mock.side_effect = DataPrivacyError("Simulated PHI detected")
 
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/xgboost/predict/risk",
             json=phi_data,
             headers=provider_auth_headers # Pass headers
@@ -368,19 +368,19 @@ class TestXGBoostAPIIntegration:
         data = response.json()
         assert "privacy violation" in data.get("message", "").lower() or \
                "phi detected" in data.get("message", "").lower()
-        # Reset side effect for other tests
+        # Reset side effect
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
     async def test_predict_risk_unauthorized(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_risk_prediction_data: dict[str, Any],
         patient_auth_headers: dict[str, str] # Use patient headers (insufficient permissions)
     ):
         """Test risk prediction attempt with insufficient permissions (e.g., patient role)."""
 
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/xgboost/predict/risk",
             json=valid_risk_prediction_data,
             headers=patient_auth_headers # Pass patient headers
@@ -394,7 +394,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_treatment_response_success(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_treatment_response_data: dict[str, Any],
         provider_auth_headers: dict[str, str]
@@ -425,7 +425,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_outcome_success(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_outcome_prediction_data: dict[str, Any],
         provider_auth_headers: dict[str, str]
@@ -457,7 +457,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_feature_importance_success(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str]
     ):
@@ -492,7 +492,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_feature_importance_not_found(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Renamed fixture, use provider
     ):
@@ -503,7 +503,7 @@ class TestXGBoostAPIIntegration:
 
         mock_xgboost_service.get_feature_importance_mock.side_effect = ModelNotFoundError("Prediction not found")
 
-        response = await async_client.get( # Use await with async_client
+        response = await client.get( # Use await with client
             f"/api/v1/xgboost/explain/{model_type}/{prediction_id}",
             params={"patient_id": patient_id},
             headers=provider_auth_headers # Pass headers
@@ -518,7 +518,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_integrate_with_digital_twin_success(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str]
     ):
@@ -548,7 +548,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_model_info_success(
         self,
-        async_client: httpx.AsyncClient,
+        client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str]
     ):
@@ -579,7 +579,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_model_info_not_found(
         self,
-        async_client: httpx.AsyncClient, # Use async_client
+        client: httpx.AsyncClient, # Use client
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
@@ -588,7 +588,7 @@ class TestXGBoostAPIIntegration:
 
         mock_xgboost_service.get_model_info_mock.side_effect = ModelNotFoundError(f"Model type '{model_type}' not found")
 
-        response = await async_client.get( # Use await with async_client
+        response = await client.get( # Use await with client
             f"/api/v1/xgboost/info/{model_type}",
             headers=provider_auth_headers # Pass headers
         )
@@ -600,7 +600,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_service_unavailable(
         self,
-        async_client: httpx.AsyncClient, # Use async_client
+        client: httpx.AsyncClient, # Use client
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str], # Use provider headers
         valid_risk_prediction_data: dict[str, Any]
@@ -608,7 +608,7 @@ class TestXGBoostAPIIntegration:
         """Test API response when the XGBoost service is unavailable."""
         mock_xgboost_service.predict_risk_mock.side_effect = ServiceUnavailableError("XGBoost service is down")
 
-        response = await async_client.post( # Use await with async_client
+        response = await client.post( # Use await with client
             "/api/v1/xgboost/predict/risk",
             json=valid_risk_prediction_data,
             headers=provider_auth_headers # Pass headers
@@ -621,16 +621,16 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
-    async def test_predict_risk_no_auth(self, async_client: httpx.AsyncClient, valid_risk_prediction_data: dict[str, Any]):
+    async def test_predict_risk_no_auth(self, client: httpx.AsyncClient, valid_risk_prediction_data: dict[str, Any]):
         """Test predict risk endpoint without authentication headers."""
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/xgboost/predict/risk",
             json=valid_risk_prediction_data
             # No headers provided
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"
 
-    async def test_get_model_info_no_auth(self, async_client: httpx.AsyncClient):
+    async def test_get_model_info_no_auth(self, client: httpx.AsyncClient):
         """Test get model info endpoint without authentication headers."""
-        response = await async_client.get("/api/v1/xgboost/info/risk_prediction")
+        response = await client.get("/api/v1/xgboost/info/risk_prediction")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"

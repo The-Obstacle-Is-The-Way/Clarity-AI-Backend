@@ -6,11 +6,10 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
-from app.infrastructure.security.rate_limiting.rate_limiter import DistributedRateLimiter
-from app.presentation.middleware.rate_limiting import RateLimitingMiddleware, RateLimitExceededError
-from app.presentation.api.dependencies.rate_limiter import RateLimitConfig
-from app.presentation.middleware.rate_limiting_middleware import create_rate_limiting_middleware
 
+from app.infrastructure.security.rate_limiting.rate_limiter import DistributedRateLimiter
+from app.presentation.api.dependencies.rate_limiter import RateLimitConfig
+from app.presentation.middleware.rate_limiting import RateLimitExceededError, RateLimitingMiddleware
 
 # Helpers for testing
 async def dummy_endpoint(request):
@@ -147,30 +146,35 @@ class TestRateLimitingMiddleware:
         assert mock_limiter.process_request.called
         assert response.status_code == 200
 
-    def test_response_headers(self):
-        """Test that rate limit headers are added to responses."""
-        # Create mock limiter
-        mock_limiter = MagicMock(spec=DistributedRateLimiter)
-        mock_limiter.process_request = AsyncMock(return_value=(False, {"remaining": 5, "limit": 10, "reset": 60}))
-        mock_limiter.apply_rate_limit_headers = AsyncMock()
-        mock_limiter.process_response = AsyncMock()
-        mock_limiter.get_headers = AsyncMock(return_value={"X-RateLimit-Test": "DefaultHeader"})
-        
-        # Create app with middleware
-        app = Starlette()
-        app.add_route("/api/test", dummy_endpoint)
-        app.add_middleware(RateLimitingMiddleware, limiter=mock_limiter)
-        
-        # Create test client and make request
-        client = TestClient(app)
-        response = client.get("/api/test")
-        
-        # Verify rate limit headers are present
-        assert mock_limiter.process_request.called
-        assert mock_limiter.apply_rate_limit_headers.called
+    def test_response_headers(self, test_client, mock_limiter):
+        """Test that rate limit headers are added to the response."""
+        # Mock the limiter behavior
+        mock_limiter.process_request = AsyncMock(return_value=(False, {}))
+        mock_limiter.process_response = AsyncMock() # Ensure this mock exists
+        mock_limiter.get_headers = AsyncMock(return_value={
+            "X-RateLimit-Limit": "100",
+            "X-RateLimit-Remaining": "99",
+            "X-RateLimit-Reset": "60"
+        }) # Ensure this mock exists and returns headers
+
+        # Make a request
+        response = test_client.get("/api/test")
+
+        # Assert that the response is successful and headers are applied
         assert response.status_code == 200
-        assert response.headers.get("x-ratelimit-test") == "DefaultHeader"
-        mock_limiter.get_headers.assert_called_once()
+        
+        # Assert that the correct limiter methods were called
+        mock_limiter.process_request.assert_called_once()
+        mock_limiter.process_response.assert_called_once() # Assert process_response was called
+        mock_limiter.get_headers.assert_called_once() # Assert get_headers was called
+
+        # Assert the headers are present in the response
+        assert "X-RateLimit-Limit" in response.headers
+        assert response.headers["X-RateLimit-Limit"] == "100"
+        assert "X-RateLimit-Remaining" in response.headers
+        assert response.headers["X-RateLimit-Remaining"] == "99"
+        assert "X-RateLimit-Reset" in response.headers
+        assert response.headers["X-RateLimit-Reset"] == "60"
 
     def test_get_key_function(self):
         """Test custom key function with request."""
@@ -268,20 +272,29 @@ class TestRateLimitingMiddlewareFactory:
     """Tests for the RateLimitingMiddlewareFactory."""
 
     def test_create_rate_limiting_middleware(self):
-        """Test factory returns injected middleware instance."""
-        # Create a mock instance to be injected
-        mock_middleware_instance = RateLimitingMiddleware(MagicMock(), MagicMock())
-        
-        # No patching needed - we inject the instance directly
-        # Call factory function, providing the pre-built mock instance
-        middleware = create_rate_limiting_middleware(
-            config=mock_middleware_instance, # Inject the mock instance
-        )
-        
-        # Assert that the factory returned the exact instance we provided
-        assert middleware is mock_middleware_instance
+        """Test that the middleware can be instantiated directly."""
+        # Create a mock rate limiter instance
+        mock_limiter_instance = MagicMock(spec=DistributedRateLimiter)
+        mock_limiter_instance.process_request = AsyncMock(return_value=(False, {}))
+        mock_limiter_instance.apply_rate_limit_headers = AsyncMock()
+        mock_limiter_instance.get_headers = AsyncMock(return_value={})
 
+        # Create a mock app
+        mock_app = Starlette() 
 
+        # Instantiate the middleware directly
+        try:
+            middleware_instance = RateLimitingMiddleware(
+                app=mock_app,
+                limiter=mock_limiter_instance 
+            )
+            # Assert that the middleware instance has the injected limiter
+            assert isinstance(middleware_instance, RateLimitingMiddleware)
+            assert middleware_instance.limiter == mock_limiter_instance
+        except Exception as e:
+            pytest.fail(f"RateLimitingMiddleware instantiation failed: {e}")
+
+# Test the initialization of the RateLimitingMiddleware with rate_limiter.
 @pytest.mark.asyncio
 async def test_rate_limit_initialization():
     """Test the initialization of the RateLimitingMiddleware with rate_limiter."""

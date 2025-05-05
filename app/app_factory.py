@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 # Application-Specific Imports
 from app.core.config import Settings, settings as global_settings
 from app.core.logging_config import LOGGING_CONFIG
+from app.core.security.rate_limiting.service import get_rate_limiter_service
 from app.infrastructure.database.session import create_db_engine_and_session
 import app.infrastructure.persistence.sqlalchemy.models  # noqa: F401 # Ensure models register first
 from app.presentation.api.v1.api_router import api_v1_router
@@ -234,12 +235,13 @@ def create_application(settings: Settings | None = None) -> FastAPI:
 
     # 5. Rate Limiting Middleware
     logger.info("Adding Rate Limiting Middleware.")
+    # Instantiate the service first
+    # TODO: Update get_rate_limiter_service or the service itself to accept config
+    limiter_service = get_rate_limiter_service() 
+    
     app.add_middleware(
         RateLimitingMiddleware,
-        # Pass redis client factory - middleware should handle None state
-        redis_client_factory=lambda: getattr(app.state, "redis", None),
-        default_limits=app_settings.DEFAULT_RATE_LIMITS,  # Pass the list of limits from settings
-        strategy=app_settings.RATE_LIMIT_STRATEGY  # Also pass the strategy
+        limiter=limiter_service  # Pass the instantiated service
     )
 
     # --- Routers ---

@@ -13,7 +13,7 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_login_success(
-    async_client: AsyncClient, mock_auth_service: AsyncMock
+    client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test successful login using async client."""
     # Arrange
@@ -24,7 +24,7 @@ async def test_login_success(
     }
     
     # Act
-    response = await async_client.post("/api/v1/auth/login", json=login_data)
+    response = await client.post("/api/v1/auth/login", json=login_data)
     
     # Assert
     assert response.status_code == 200
@@ -45,7 +45,7 @@ async def test_login_success(
 
 @pytest.mark.asyncio
 async def test_login_invalid_credentials(
-    async_client: AsyncClient, mock_auth_service: AsyncMock
+    client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test login with invalid credentials using async client."""
     # Arrange
@@ -56,7 +56,7 @@ async def test_login_invalid_credentials(
     }
     
     # Act
-    response = await async_client.post("/api/v1/auth/login", json=login_data)
+    response = await client.post("/api/v1/auth/login", json=login_data)
     
     # Assert
     assert response.status_code == 401
@@ -75,7 +75,7 @@ async def test_login_invalid_credentials(
 
 @pytest.mark.asyncio
 async def test_login_inactive_account(
-    async_client: AsyncClient, mock_auth_service: AsyncMock
+    client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test login with inactive account using async client."""
     # Arrange
@@ -86,7 +86,7 @@ async def test_login_inactive_account(
     }
     
     # Act
-    response = await async_client.post("/api/v1/auth/login", json=login_data)
+    response = await client.post("/api/v1/auth/login", json=login_data)
     
     # Assert
     assert response.status_code == 401
@@ -105,7 +105,7 @@ async def test_login_inactive_account(
 
 @pytest.mark.asyncio
 async def test_refresh_token_success(
-    async_client: AsyncClient, mock_auth_service: AsyncMock
+    client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test successful token refresh using async client."""
     # Arrange
@@ -114,7 +114,7 @@ async def test_refresh_token_success(
     }
     
     # Act
-    response = await async_client.post("/api/v1/auth/refresh", json=refresh_data)
+    response = await client.post("/api/v1/auth/refresh", json=refresh_data)
     
     # Assert
     assert response.status_code == 200
@@ -135,7 +135,7 @@ async def test_refresh_token_success(
 
 @pytest.mark.asyncio
 async def test_refresh_token_invalid(
-    async_client: AsyncClient, mock_auth_service: AsyncMock
+    client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test refresh with invalid token using async client."""
     # Arrange
@@ -144,7 +144,7 @@ async def test_refresh_token_invalid(
     }
     
     # Act
-    response = await async_client.post("/api/v1/auth/refresh", json=refresh_data)
+    response = await client.post("/api/v1/auth/refresh", json=refresh_data)
     
     # Assert
     assert response.status_code == 401
@@ -162,30 +162,30 @@ async def test_refresh_token_invalid(
     assert "refresh_token" not in response.cookies
 
 @pytest.mark.asyncio
-async def test_refresh_token_missing(async_client: AsyncClient) -> None:
+async def test_refresh_token_missing(client: AsyncClient) -> None:
     """Test refresh with missing token using async client."""
     # Arrange
     refresh_data = {}
     
     # Act
-    response = await async_client.post("/api/v1/auth/refresh", json=refresh_data)
+    response = await client.post("/api/v1/auth/refresh", json=refresh_data)
     
     # Assert
     assert response.status_code == 422
 
 @pytest.mark.asyncio
 async def test_logout(
-    async_client: AsyncClient, mock_auth_service: AsyncMock
+    client: AsyncClient, mock_auth_service: AsyncMock
 ) -> None:
     """Test logout using async client."""
     # First, perform login to get tokens.
     login_data = {"username": "testuser", "password": "testpassword"}
-    login_response = await async_client.post("/api/v1/auth/login", json=login_data)
+    login_response = await client.post("/api/v1/auth/login", json=login_data)
     # Ensure login succeeded
     assert login_response.status_code == 200 
     
     # Act - Use the client instance which now has cookies from login
-    response = await async_client.post("/api/v1/auth/logout")
+    response = await client.post("/api/v1/auth/logout")
     
     # Assert
     assert response.status_code == 204 # No content on successful logout
@@ -200,19 +200,19 @@ async def test_logout(
     mock_auth_service.logout.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_session_info_authenticated(async_client: AsyncClient) -> None:
+async def test_session_info_authenticated(client: AsyncClient) -> None:
     """Test session info with authentication using async client."""
     # Arrange
     # Perform login to establish authenticated session
     login_data = {"username": "testuser", "password": "testpassword"}
-    login_response = await async_client.post(
+    login_response = await client.post(
         "/api/v1/auth/login", 
         json=login_data
     )
     assert login_response.status_code == 200
     
     # Act
-    response = await async_client.get("/api/v1/auth/session-info")
+    response = await client.get("/api/v1/auth/session-info")
     
     # Assert
     assert response.status_code == 200
@@ -229,10 +229,10 @@ async def test_session_info_authenticated(async_client: AsyncClient) -> None:
     assert data["exp"] == 1619900000
 
 @pytest.mark.asyncio
-async def test_session_info_not_authenticated(async_client: AsyncClient) -> None:
+async def test_session_info_not_authenticated(client: AsyncClient) -> None:
     """Test session info without authentication using async client."""
     # Act
-    response = await async_client.get("/api/v1/auth/session-info")
+    response = await client.get("/api/v1/auth/session-info")
     
     # Assert
     assert response.status_code == 200

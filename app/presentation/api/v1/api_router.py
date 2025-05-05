@@ -25,6 +25,7 @@ from app.presentation.api.v1.routes.temporal_neurotransmitter import (
     router as temporal_neurotransmitter_router,
 )
 from app.presentation.api.v1.routes.xgboost import router as xgboost_router
+from app.presentation.api.v1.routes.patient import router as patient_router
 
 # Create the main router for API v1
 api_v1_router = APIRouter()
@@ -50,7 +51,7 @@ api_v1_router.include_router(
 )
 api_v1_router.include_router(xgboost_router, prefix="/xgboost", tags=["XGBoost"])
 api_v1_router.include_router(digital_twin_router, prefix="/digital-twin", tags=["Digital Twin"])
-
+api_v1_router.include_router(patient_router, prefix="/patients", tags=["patients"])
 
 # Add a simple health check endpoint for v1
 @api_v1_router.get("/health", tags=["Health"])

@@ -84,41 +84,41 @@ async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
         yield client
 
 @pytest.mark.asyncio
-async def test_public_route_access(async_client: AsyncClient) -> None:
+async def test_public_route_access(client: AsyncClient) -> None:
     """Test that public routes are accessible without authentication."""
-    response = await async_client.get("/public")
+    response = await client.get("/public")
     assert response.status_code == 200
     assert response.json() == {"message": "public access"}
 
 @pytest.mark.asyncio
-async def test_protected_route_no_token(async_client: AsyncClient) -> None:
+async def test_protected_route_no_token(client: AsyncClient) -> None:
     """Test that protected routes require authentication (401 without token)."""
-    response = await async_client.get("/protected")
+    response = await client.get("/protected")
     assert response.status_code == 401
     assert "Authentication required" in response.text
 
 @pytest.mark.asyncio
-async def test_protected_route_with_valid_token(async_client: AsyncClient) -> None:
+async def test_protected_route_with_valid_token(client: AsyncClient) -> None:
     """Test that protected routes are accessible with a valid token."""
-    response = await async_client.get(
+    response = await client.get(
         "/protected", headers={"Authorization": "Bearer patient123"}
     )
     assert response.status_code == 200
     assert response.json() == {"message": "protected access"}
 
 @pytest.mark.asyncio
-async def test_protected_route_with_invalid_token(async_client: AsyncClient) -> None:
+async def test_protected_route_with_invalid_token(client: AsyncClient) -> None:
     """Test that protected routes return 401 with an invalid token."""
-    response = await async_client.get(
+    response = await client.get(
         "/protected", headers={"Authorization": "Bearer invalid"}
     )
     assert response.status_code == 401
     assert "Authentication failed" in response.text
 
 @pytest.mark.asyncio
-async def test_protected_route_with_expired_token(async_client: AsyncClient) -> None:
+async def test_protected_route_with_expired_token(client: AsyncClient) -> None:
     """Test that protected routes return 401 with an expired token."""
-    response = await async_client.get(
+    response = await client.get(
         "/protected", headers={"Authorization": "Bearer expired"}
     )
     assert response.status_code == 401

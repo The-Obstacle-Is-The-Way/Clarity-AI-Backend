@@ -150,12 +150,12 @@ class TestActigraphyAPI:
 
     async def test_analyze_actigraphy(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         actigraphy_data: dict[str, Any]
     ) -> None:
         """Test analyzing actigraphy data."""
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/actigraphy/analyze",
             headers=auth_headers,
             json=actigraphy_data
@@ -173,7 +173,7 @@ class TestActigraphyAPI:
 
     async def test_get_actigraphy_embeddings(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         actigraphy_data: dict[str, Any]
     ) -> None:
@@ -186,7 +186,7 @@ class TestActigraphyAPI:
             "sampling_rate_hz": actigraphy_data["sampling_rate_hz"]
         }
 
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/actigraphy/embeddings",
             headers=auth_headers,
             json=embedding_data
@@ -204,7 +204,7 @@ class TestActigraphyAPI:
 
     async def test_get_analysis_by_id(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
@@ -226,7 +226,7 @@ class TestActigraphyAPI:
 
         analysis_id = analysis_data["analysis_id"]
 
-        response = await async_client.get(
+        response = await client.get(
             f"/api/v1/actigraphy/analyses/{analysis_id}",
             headers=auth_headers
         )
@@ -240,7 +240,7 @@ class TestActigraphyAPI:
 
     async def test_get_patient_analyses(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
@@ -263,7 +263,7 @@ class TestActigraphyAPI:
                 analysis_types=["activity_levels"]
             )
 
-        response = await async_client.get(
+        response = await client.get(
             f"/api/v1/actigraphy/patient/{patient_id}/analyses",
             headers=auth_headers
         )
@@ -287,12 +287,12 @@ class TestActigraphyAPI:
 
     async def test_get_model_info(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
         """Test getting model information."""
-        response = await async_client.get(
+        response = await client.get(
             "/api/v1/actigraphy/model-info",
             headers=auth_headers
         )
@@ -304,7 +304,7 @@ class TestActigraphyAPI:
 
     async def test_integrate_with_digital_twin(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         mock_pat_service: MagicMock,
         actigraphy_data: dict[str, Any]
@@ -337,7 +337,7 @@ class TestActigraphyAPI:
             }
         }
 
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/actigraphy/integrate-with-digital-twin",
             headers=auth_headers,
             json=payload
@@ -351,11 +351,11 @@ class TestActigraphyAPI:
 
     async def test_unauthorized_access(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         actigraphy_data: dict[str, Any]
     ) -> None:
         """Test unauthorized access to API."""
-        response = await async_client.post(
+        response = await client.post(
             "/api/v1/actigraphy/analyze",
             json=actigraphy_data
         )
@@ -364,7 +364,7 @@ class TestActigraphyAPI:
 
     async def test_get_analysis_types(
         self,
-        async_client: AsyncClient,
+        client: AsyncClient,
         auth_headers: dict[str, str],
         mock_pat_service: MagicMock
     ) -> None:
@@ -379,7 +379,7 @@ class TestActigraphyAPI:
 
         mock_pat_service.get_analysis_types = lambda: expected
 
-        response = await async_client.get(
+        response = await client.get(
             "/api/v1/actigraphy/analysis_types",
             headers=auth_headers,
         )
