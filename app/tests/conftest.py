@@ -21,7 +21,7 @@ from sqlalchemy.pool import StaticPool
 from app.app_factory import create_application
 from app.application.security.jwt_service import JWTService
 from app.core.config import Settings
-from app.core.domain.entities.user import User, UserRole
+from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.infrastructure.database.base_class import Base
@@ -161,20 +161,23 @@ def mock_jwt_service() -> MagicMock:
     mock_payload = {
         "sub": str(uuid.uuid4()),
         "roles": ["clinician"],
-        # Correctly use datetime.datetime.now()
         "exp": datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600,
         "iat": datetime.datetime.now(datetime.timezone.utc).timestamp(),
     }
-    # Mock get_user_from_token to return a basic User object or similar
-    mock_user = User(
+    # Use SQLAlchemy User model instead of domain entity
+    from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
+    
+    # Create a SQLAlchemy User model instance with required fields
+    mock_user = SQLAUser(
         id=uuid.uuid4(),
-        email="mock@example.com",
         username="mockuser",
-        roles=["clinician"],
-        hashed_password="mockhashedpassword",
+        email="mock@example.com", 
+        password_hash="mockhashedpassword",
         is_active=True,
         is_verified=True,
         email_verified=True,
+        role=SQLAUserRole.CLINICIAN,
+        roles=[SQLAUserRole.CLINICIAN.value]
     )
     mock.get_user_from_token = AsyncMock(return_value=mock_user)
     mock.verify_token = MagicMock(return_value=mock_payload)
@@ -299,35 +302,31 @@ async def authenticated_user(
     faker: Faker,
 ) -> User:
     """Creates an authenticated user in the database for testing purposes."""
-    user_data = {
-        "id": uuid.uuid4(),
-        "username": faker.user_name(),
-        "email": TEST_USERNAME,
-        "full_name": faker.name(),
-        # Use a fixed, known password for testing logins
-        "hashed_password": JWTService(settings=Settings()).get_password_hash(TEST_PASSWORD),
-        "roles": [UserRole.PATIENT.value],
-        "is_active": True,
-        "is_verified": True,
-        "email_verified": True,
-        "created_at": datetime.datetime.now(datetime.timezone.utc),
-        "updated_at": datetime.datetime.now(datetime.timezone.utc),
-        "last_login_at": None,
-        "failed_login_attempts": 0,
-        "lockout_until": None,
-        "mfa_enabled": False,
-        "mfa_secret": None,
-        "mfa_backup_codes": [],
-        "timezone": "UTC",
-        "preferences": {},
-        "profile_picture_url": None,
-        "bio": faker.text(),
-        "provider_details": None,
-        "patient_details": None,
-        "external_auth_provider_id": None,
-        "external_auth_user_id": None,
-    }
-    user = User(**user_data)
+    # Import PasswordHandler only when needed to avoid circular imports
+    from app.infrastructure.security.password_handler import PasswordHandler
+    
+    # Create password handler directly - following DI principles would be better but this is a test fixture
+    password_handler = PasswordHandler()
+    
+    # Create SQLAlchemy User model (not domain entity)
+    # Import the SQLAlchemy User model and the UserRole enum it expects
+    from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
+    
+    # Generate a UUID for the user
+    user_id = uuid.uuid4()
+    
+    # Create a SQLAlchemy User model instance with required fields
+    user = SQLAUser(
+        id=user_id,
+        username=faker.user_name(),
+        email=TEST_USERNAME,
+        password_hash=password_handler.hash_password(TEST_PASSWORD),
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
+        role=SQLAUserRole.PATIENT,  # Use the actual Enum value not string
+        roles=[SQLAUserRole.PATIENT.value],  # JSON field should be a list of string values
+    )
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)

@@ -160,6 +160,11 @@ class TestActigraphyAPI:
             json=actigraphy_data
         )
 
+        # Debug response details
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+        print(f"Response body: {response.text}")
+
         assert response.status_code == 200
         data = response.json()
         assert "analysis_id" in data
