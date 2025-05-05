@@ -28,8 +28,8 @@ router = APIRouter(
     summary="Get the user's digital twin data",
 )
 async def get_digital_twin(
+    dt_service: DigitalTwinServiceDep,  # Remove redundant = Depends()
     current_user: User = Depends(get_current_active_user),
-    dt_service: DigitalTwinServiceDep = Depends(),  # Uses the type alias
 ) -> DigitalTwinResponse:
     """
     Retrieve the digital twin representation for the currently authenticated user.
