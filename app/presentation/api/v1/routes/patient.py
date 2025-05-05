@@ -1,34 +1,74 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application.services.patient_service import PatientService # Assuming service exists
-from app.domain.repositories.patient_repository import PatientRepository # Placeholder, will likely need interface
-# Corrected import: Use PatientRepository instead of SQLAlchemyPatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository as SQLPatientRepoImpl 
-# Corrected import: Use get_db instead of get_db_session
+from app.application.services.patient_service import PatientService
+from app.domain.repositories.patient_repository import PatientRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository as SQLPatientRepoImpl,
+)
 from app.presentation.api.dependencies.database import get_db
+from app.presentation.api.schemas.patient import (
+    PatientRead,
+    PatientCreateRequest,
+    PatientCreateResponse,
+)
 
 # Placeholder dependency - replace with actual service implementation later
-# Corrected dependency: Use get_db
-def get_patient_service(db_session: AsyncSession = Depends(get_db)) -> PatientService:
+def get_patient_service(
+    db_session: AsyncSession = Depends(get_db)
+) -> PatientService:
     """Dependency provider for PatientService."""
-    # Instantiate the correct repository implementation
     repo = SQLPatientRepoImpl(db_session=db_session) 
-    # Return the service with the repository injected
     return PatientService(repository=repo) 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Add placeholder routes here later as needed by tests or features
-@router.get("/patients/{patient_id}")
-# Corrected dependency: Use get_db in endpoint signature if service depends on it directly
-async def read_patient(patient_id: str, service: PatientService = Depends(get_patient_service)):
-    # Placeholder implementation
-    print(f"Placeholder: GET /patients/{patient_id}")
-    # raise NotImplementedError("Patient endpoint not implemented")
-    # Return a dummy response to avoid immediate test failures due to NotImplementedError
-    return {"patient_id": patient_id, "name": "Placeholder Patient"}
+@router.get(
+    "/{patient_id}",
+    response_model=PatientRead, 
+    summary="Get Patient by ID",
+    description="Retrieve details for a specific patient."
+)
+async def read_patient(
+    patient_id: str,
+    service: PatientService = Depends(get_patient_service)
+) -> PatientRead: 
+    """Retrieve a patient by their unique ID."""
+    patient = await service.get_patient_by_id(patient_id)
+    if patient is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient with id {patient_id} not found"
+        )
+    return patient 
 
-# Add other necessary patient-related endpoints (create, update, list, delete)
-# ...
+@router.post(
+    "/",
+    response_model=PatientCreateResponse, 
+    status_code=status.HTTP_201_CREATED, 
+    summary="Create Patient",
+    description="Create a new patient record."
+)
+async def create_patient_endpoint(
+    patient_data: PatientCreateRequest, 
+    service: PatientService = Depends(get_patient_service)
+) -> PatientCreateResponse: 
+    """Create a new patient."""
+    # Add basic error handling (though service might handle more specific cases)
+    try:
+        created_patient = await service.create_patient(patient_data)
+        # Note: Service currently returns a dict. FastAPI validates it against
+        # PatientCreateResponse (aliased to PatientRead) due to response_model.
+        return created_patient
+    except Exception as e:
+        # Basic catch-all, refine error handling later
+        logger.error(f"Error creating patient: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while creating the patient."
+        ) from e
+
+# Add other routes (PUT, DELETE, LIST) later

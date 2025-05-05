@@ -11,11 +11,12 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from faker import Faker
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from collections.abc import AsyncGenerator
 
 # Application-specific Imports
 from app.app_factory import create_application
@@ -120,7 +121,7 @@ async def db_session(
             await session.close()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def override_get_async_session(
     db_session: AsyncSession,
 ) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
@@ -428,3 +429,40 @@ def patient_id() -> str:
 def invalid_name() -> str:
     """Provides an invalid name string (e.g., empty or whitespace)."""
     return "   "
+
+
+@pytest.fixture(scope="function")
+def override_get_session_for_validation_error(app: FastAPI):
+    """Override get_async_session to do nothing, preventing DB interaction during validation errors."""
+    original_get_session = app.dependency_overrides.get(get_async_session)
+
+    # Define a simple async function that yields an AsyncMock instance
+    async def mock_get_async_session() -> AsyncGenerator[AsyncMock, None]:
+        logger.debug(
+            "Validation error test: Using mocked get_async_session (AsyncMock)."
+        )
+        mock_session = AsyncMock(spec=AsyncSession)
+        # Configure the mock if needed, e.g., mock_session.commit = AsyncMock()
+
+        yield mock_session
+        logger.debug(
+            "Validation error test: Mocked get_async_session (AsyncMock) context exited."
+        )
+
+    logger.debug(
+        "Applying mock get_async_session override for validation error test."
+    )
+    app.dependency_overrides[get_async_session] = mock_get_async_session
+
+    try:
+        yield  # Test runs here
+    finally:
+        logger.debug(
+            "Restoring original get_async_session after validation error test."
+        )
+        if original_get_session: # Check if there was an original override
+            app.dependency_overrides[get_async_session] = original_get_session
+        else:
+            # Only delete if we added it and there wasn't one before
+            if get_async_session in app.dependency_overrides:
+                del app.dependency_overrides[get_async_session]
