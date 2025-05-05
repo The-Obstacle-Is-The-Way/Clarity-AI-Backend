@@ -3,7 +3,6 @@ import logging
 import logging.config
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-import os
 from unittest.mock import AsyncMock
 
 # Third-Party Imports
@@ -18,6 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import Settings, settings as global_settings
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.database.session import create_db_engine_and_session
+import app.infrastructure.persistence.sqlalchemy.models  # noqa: F401 # Ensure models register first
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.logging import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware

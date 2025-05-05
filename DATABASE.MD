@@ -41,7 +41,7 @@ The database is a critical component of the Clarity AI Backend, responsible for 
 
 ## 5. Schema Management (PRD Requirement)
 
-* Definition: Database schema (tables, columns, constraints, relationships) is defined using SQLAlchemy models located primarily within `app/core/domain/entities/`.
+* Definition: Database schema (tables, columns, constraints, relationships) is defined using SQLAlchemy models located primarily within `app/infrastructure/persistence/sqlalchemy/models/`.
 * Base Model: All models should inherit from the declarative base defined in `app/infrastructure/database/base_class.py` (`Base`).
 * Migrations (Alembic - Recommended):
   * Alembic should be used to manage schema changes incrementally and reliably.
@@ -76,21 +76,21 @@ The database is a critical component of the Clarity AI Backend, responsible for 
 
 ## 9. Implementation Checklist
 
-* Models: Define all required SQLAlchemy models in `app/core/domain/entities/`, inheriting from `Base`.
-* Relationships: Correctly define relationships (one-to-one, one-to-many, many-to-many) between models.
-* Constraints: Add necessary `UniqueConstraint`, `CheckConstraint`, `ForeignKeyConstraint`, `Index` definitions within models.
-* Configuration: Set up `ASYNC_DATABASE_URI` environment variable for development, staging, and production environments.
-* Alembic Setup:
-  * Initialize Alembic (`alembic init alembic`).
-  * Configure `alembic.ini` (set `sqlalchemy.url`).
-  * Configure `alembic/env.py` (target `Base.metadata`, import models).
-* Initial Migration:
-  * Generate initial schema migration (`alembic revision --autogenerate -m "Initial schema setup"`).
-  * Apply the migration (`alembic upgrade head`).
-* Test Verification: Ensure all tests pass, confirming the `conftest.py` setup correctly manages test database sessions and isolation.
-* Indexing: Review critical query patterns and add necessary indexes to models.
-* Security Review:
-  * Confirm no hardcoded credentials.
-  * Verify TLS/SSL connection requirements (if applicable).
-  * Ensure database user has least privilege.
-* Documentation: Keep this document updated as the database schema or configuration evolves.
+* [x] Models: Define all required SQLAlchemy models in `app/infrastructure/persistence/sqlalchemy/models/`, inheriting from `Base`.
+* [x] Relationships: Correctly define relationships (one-to-one, one-to-many, many-to-many) between models (core models addressed).
+* [ ] Constraints: Add necessary `UniqueConstraint`, `CheckConstraint`, `ForeignKeyConstraint`, `Index` definitions within models.
+* [x] Configuration: Set up `ASYNC_DATABASE_URI` environment variable for development, staging, and production environments.
+* [ ] Alembic Setup:
+  * [ ] Initialize Alembic (`alembic init alembic`).
+  * [ ] Configure `alembic.ini` (set `sqlalchemy.url`).
+  * [ ] Configure `alembic/env.py` (target `Base.metadata`, import models).
+* [ ] Initial Migration:
+  * [ ] Generate initial schema migration (`alembic revision --autogenerate -m "Initial schema setup"`).
+  * [ ] Apply the migration (`alembic upgrade head`).
+* [ ] Test Verification: Ensure all tests pass, confirming the `conftest.py` setup correctly manages test database sessions and isolation (In Progress - Fixing test errors).
+* [ ] Indexing: Review critical query patterns and add necessary indexes to models.
+* [ ] Security Review:
+  * [x] Confirm no hardcoded credentials.
+  * [ ] Verify TLS/SSL connection requirements (if applicable).
+  * [ ] Ensure database user has least privilege.
+* [ ] Documentation: Keep this document updated as the database schema or configuration evolves (In Progress).

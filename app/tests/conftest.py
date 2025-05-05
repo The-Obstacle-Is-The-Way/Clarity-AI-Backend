@@ -1,31 +1,32 @@
 # Standard Library Imports
 import asyncio
-import datetime
 import logging
 import os
-import uuid
+from typing import AsyncGenerator, Callable
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 # Third Party Imports
 import pytest
 import pytest_asyncio
+from faker import Faker
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from collections.abc import AsyncGenerator, Callable
 
 # Application-specific Imports
-from app.app_factory import create_application # Presentation
-from app.core.config import Settings # Core
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository # Core
-from app.core.interfaces.services.auth_service_interface import AuthServiceInterface # Core
-from app.core.domain.entities.user import User, UserRole # Core
-from app.core.security.auth import get_current_user # Core
-from app.application.security.jwt_service import JWTService # Application
-from app.infrastructure.database.base_class import Base # Infrastructure
-from app.infrastructure.database.session import get_async_session # Infrastructure
+from app.app_factory import create_application
+from app.core.config import Settings
+from app.core.domain.entities.user import User, UserRole
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+from app.core.security.auth import get_current_user
+from app.application.security.jwt_service import JWTService
+from app.infrastructure.database.base_class import Base
+from app.infrastructure.database.session import get_async_session
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+from app.infrastructure.security.password_handler import PasswordHandler
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ async def db_session(test_db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession
 # --- Application and Client Fixtures ---
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def override_get_settings(test_settings: Settings) -> Callable[[], Settings]:
     """Overrides the get_settings dependency to return test_settings."""
     return lambda: test_settings
@@ -167,7 +168,7 @@ def override_get_settings(test_settings: Settings) -> Callable[[], Settings]:
 async def mock_get_current_user() -> User:
     # Return a simple, valid User object for testing purposes
     return User(
-        id=uuid.uuid4(),
+        id=uuid4(),
         username="testuser",
         email="test@example.com",
         hashed_password="notarealpassword",
@@ -240,20 +241,29 @@ async def client(
 @pytest.fixture
 def mock_jwt_service() -> MagicMock:
     """Provides a mock JWTService."""
-    service = MagicMock(spec=JWTService)
-    service.create_access_token = MagicMock(return_value="mock_access_token")
-    service.create_refresh_token = MagicMock(return_value="mock_refresh_token")
-    service.verify_token = MagicMock(
-        return_value={"sub": TEST_USERNAME, "roles": [UserRole.ADMIN.value]}
+    mock = MagicMock(spec=JWTService)
+    mock.create_access_token = MagicMock(return_value="mock_access_token")
+    mock.create_refresh_token = MagicMock(return_value="mock_refresh_token")
+    # Simulate successful token verification returning a mock user payload
+    mock_payload = {
+        "sub": str(uuid4()),
+        "roles": ["clinician"],
+        # Correctly use datetime.datetime.now()
+        "exp": datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600,
+    }
+    mock.verify_token = MagicMock(return_value=mock_payload)
+    # Mock get_user_from_token to return a basic User object or similar
+    mock.get_user_from_token = AsyncMock(
+        return_value=User(
+            id=uuid4(),
+            email="mock@example.com",
+            username="mockuser",
+            roles=["clinician"],
+            full_name="Mock User",
+            password_hash="mock_hash"
+        )
     )
-    service.decode_token = MagicMock(
-        return_value={
-            "sub": TEST_USERNAME,
-            "roles": [UserRole.ADMIN.value],
-            "exp": datetime.now(datetime.timezone.utc).timestamp() + 3600,
-        }
-    )
-    return service
+    return mock
 
 
 @pytest.fixture
@@ -262,18 +272,35 @@ def mock_auth_service(mock_jwt_service: MagicMock) -> MagicMock:
     service = MagicMock(spec=AuthServiceInterface)
     service.authenticate_user = AsyncMock(
         return_value=User(
-            id=uuid.uuid4(), email=TEST_USERNAME, hashed_password="hashed", roles=[UserRole.PATIENT]
+            id=uuid4(),
+            email=TEST_USERNAME,
+            username="testuser",
+            full_name="Test User",
+            password_hash="hashed",
+            roles=[UserRole.PATIENT]
         )
     )
     service.register_user = AsyncMock(
         return_value=User(
-            id=uuid.uuid4(), email=TEST_USERNAME, hashed_password="hashed", roles=[UserRole.PATIENT]
+            id=uuid4(),
+            email=TEST_USERNAME,
+            username="testuser",
+            full_name="Test User",
+            password_hash="hashed",
+            roles=[UserRole.PATIENT]
         )
     )
     service.create_tokens = MagicMock(return_value=("mock_access_token", "mock_refresh_token"))
     service.refresh_access_token = AsyncMock(return_value="new_mock_access_token")
     service.get_authenticated_user = AsyncMock(
-        return_value=User(id=uuid.uuid4(), email=TEST_USERNAME, roles=[UserRole.PATIENT])
+        return_value=User(
+            id=uuid4(),
+            email=TEST_USERNAME,
+            username="testuser",
+            full_name="Test User",
+            password_hash="hashed",
+            roles=[UserRole.PATIENT]
+        )
     )
     service.verify_password = MagicMock(return_value=True)
     service.jwt_service = mock_jwt_service  # Assign mock JWT service
@@ -285,7 +312,12 @@ def mock_user_service() -> MagicMock:
     """Provides a mock UserService."""
     service = MagicMock(spec=IUserRepository)
     test_user = User(
-        id=uuid.uuid4(), email=TEST_USERNAME, hashed_password="hashed", roles=[UserRole.PATIENT]
+        id=uuid4(),
+        email=TEST_USERNAME,
+        username="testuser",
+        full_name="Test User",
+        password_hash="hashed",
+        roles=[UserRole.PATIENT]
     )
     service.create_user = AsyncMock(return_value=test_user)
     service.get_user_by_email = AsyncMock(return_value=test_user)
@@ -324,13 +356,54 @@ def mock_user_service() -> MagicMock:
 
 
 @pytest_asyncio.fixture
-async def authenticated_user(db_session: AsyncSession, mock_user_service: MagicMock) -> User:
-    """Creates and saves a standard test user."""
-    # Use the actual service logic if simple, or mock if complex setup needed
-    user_service = IUserRepository(db_session)  # Use real service with test session
-    user_data = UserCreateRequest(email=TEST_USERNAME, password=TEST_PASSWORD)
-    created_user = await user_service.create_user(user_data)
-    return created_user
+async def authenticated_user(
+    db_session: AsyncSession,
+    faker: Faker,
+    # No, use the concrete implementation here for fixture setup
+    # user_service: IUserRepository  # Use the interface type hint if needed elsewhere
+) -> User:
+    """Creates an authenticated user in the database for testing purposes."""
+    # Import concrete implementation for fixture setup
+    from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+        SQLAlchemyUserRepository,
+    )
+    from app.infrastructure.security.password_handler import PasswordHandler
+
+    user_repo = SQLAlchemyUserRepository(db_session)
+    password_handler = PasswordHandler()
+
+    password = faker.password()
+    hashed_password = password_handler.get_password_hash(password)
+    user_email = faker.email()
+    user_id = uuid4()
+    username = faker.user_name()
+
+    # Use the imported User class directly
+    domain_user_instance = User(
+        id=user_id,
+        username=username,
+        email=user_email,
+        hashed_password=hashed_password,
+        roles=[UserRole.PATIENT.value],
+        is_active=True,
+        is_verified=True,
+        email_verified=True
+    )
+    logger.debug(
+        f"Attempting to create user in authenticated_user fixture: {domain_user_instance.id}"
+    )
+    try:
+        # Use the repository instance created above
+        created_user = await user_repo.create(user=domain_user_instance)
+        logger.debug(f"User created successfully: {created_user.id}")
+        # Return the created user object (which should be the DomainUser instance)
+        # If user_repo.create modifies the instance in place or returns a new one,
+        # adjust accordingly. Assuming it returns the created object or confirmation.
+        # Let's return the instance we tried to create, assuming create confirms it.
+        return domain_user_instance
+    except Exception as e:
+        logger.error(f"Error creating user in fixture: {e}", exc_info=True)
+        raise
 
 
 # @pytest_asyncio.fixture
