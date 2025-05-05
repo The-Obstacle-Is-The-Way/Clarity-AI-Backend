@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.user import User
 from app.infrastructure.database.session import get_async_session
+from app.infrastructure.security.rate_limiting.limiter import RateLimiter
 from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.schemas.alert import (
     AlertRuleResponse,
