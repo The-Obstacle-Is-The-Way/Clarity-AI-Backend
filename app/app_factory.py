@@ -95,7 +95,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise RuntimeError(f"Critical database initialization failure: {e}") from e
 
     # --- Redis Initialization ---
-    logger.debug(f"Checking environment for Redis init: {current_settings.ENVIRONMENT=}")
     if current_settings.ENVIRONMENT == "test":
         logger.info("Test environment detected, mocking Redis connection.")
         # Create mock objects with necessary async methods for shutdown
@@ -165,7 +164,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     logger.info("Creating FastAPI application instance...")
 
     # Resolve settings: Use provided settings or load global ones
-    app_settings = settings or global_settings
+    app_settings = settings if settings is not None else global_settings
 
     # Configure logging early
     logging.config.dictConfig(LOGGING_CONFIG)

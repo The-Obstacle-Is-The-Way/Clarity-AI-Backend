@@ -22,6 +22,7 @@ from app.domain.enums.role import Role as UserRole
 from app.domain.utils.datetime_utils import UTC
 from app.presentation.api.dependencies.auth import get_jwt_service
 from app.presentation.api.dependencies.database import get_db, get_repository
+from app.presentation.api.dependencies.services import get_pat_service
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
@@ -108,8 +109,6 @@ def create_repository_override(mock_user_repo_instance: MagicMock) -> Callable[[
 def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any]) -> FastAPI:
     from app.main import create_application
 
-    # Removed unused import: get_current_user
-    from app.presentation.api.v1.endpoints.actigraphy import get_pat_service
     app_instance = create_application()
 
     # --- Mock User Repository (needed for get_jwt_service signature analysis) ---

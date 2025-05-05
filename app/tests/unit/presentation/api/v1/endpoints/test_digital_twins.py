@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 # Third-Party Imports
-import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
+import pytest
 
 # First-Party Imports (Organized)
 # Assuming base exceptions are in core.exceptions.base_exceptions
@@ -22,20 +22,14 @@ from app.core.exceptions.base_exceptions import (
 )
 from app.domain.entities.user import User  # Added User import
 from app.presentation.api.dependencies.auth import get_current_user  # Standard auth dependency
-
-# Import domain entities/services - Adjust paths if necessary
-# from app.infrastructure.ml.digital_twin_integration_service import DigitalTwinIntegrationService # Use for spec if needed
-# Import presentation layer components
 from app.presentation.api.dependencies.services import (
     get_digital_twin_service,
 )
-# TODO: Uncomment when digital_twin_schemas.py is created/restored
-# from app.presentation.api.schemas.digital_twin_schemas import (
-#     ClinicalTextAnalysisResponse,
-#     PersonalizedInsightResponse,
-# )
-# TODO: Uncomment when digital_twins.py endpoint file is created/restored
-# from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
+from app.presentation.api.schemas.digital_twin_schemas import (
+    # ClinicalTextAnalysisResponse, # Let's use the specific fixture name for clarity if needed
+    PersonalizedInsightResponse, # Assuming this covers the /insights endpoint test case
+)
+from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
 
 # Define UTC timezone
 UTC = timedelta(0) # Simple UTC offset
@@ -75,8 +69,7 @@ def app(mock_digital_twin_service, mock_current_user):
     app_instance.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
     app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
 
-    # TODO: Uncomment when digital_twins_router is imported
-    # app_instance.include_router(digital_twins_router)
+    app_instance.include_router(digital_twins_router)
     return app_instance
 
 @pytest.fixture
