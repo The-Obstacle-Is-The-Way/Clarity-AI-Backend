@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
-from app.application.services.ml.pat_service import PATService
-from app.application.services.ml.xgboost_service import XGBoostService
+from app.application.services.event_processor import BiometricEventProcessor
+# from app.application.services.ml.pat_service import PATService # Incorrect path
+# from app.application.services.ml.xgboost_service import XGBoostService # Likely incorrect, check later
 from app.core.config import settings
 from app.core.dependencies.database import get_async_session
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
@@ -27,7 +28,8 @@ from app.infrastructure.database.repositories.user_repository import (
 from app.infrastructure.digital_twin.digital_twin_service_impl import (
     DigitalTwinServiceImpl,
 )
-from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT
+from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT # Example PAT implementation
+from app.infrastructure.ml.pat.service import PATService # Correct path
 from app.infrastructure.ml.xgboost.xgboost_service_impl import (
     XGBoostServiceImpl,
 )
@@ -91,3 +93,11 @@ def get_xgboost_service() -> Any | None:
     # Delegate to the clean architecture implementation
     from app.api.routes.xgboost import get_xgboost_service as new_get_xgboost_service
     return new_get_xgboost_service()
+
+# Provide PATService Implementation
+def get_pat_service() -> PATService:
+    # Simple instantiation assuming BedrockPAT is the chosen implementation
+    # Configuration details might be needed depending on BedrockPAT.__init__
+    return PATService(pat_model=BedrockPAT(config=settings)) # Pass the model instance
+
+# Provide XGBoostService Implementation

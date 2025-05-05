@@ -21,7 +21,13 @@ from app.domain.exceptions import (
 
 # Assuming these dependencies exist in the specified path
 # Corrected dependency import syntax
-from app.presentation.api.dependencies.auth import get_current_user, get_jwt_service
+from app.presentation.api.dependencies.auth import (
+    get_current_user,
+    get_patient_id, # Assume it's defined here
+    require_admin_role, 
+    require_clinician_role,
+    get_jwt_service
+)
 
 # Create a mock OAuth2 scheme for testing
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
@@ -35,15 +41,6 @@ from app.domain.entities.user import User  # Added User import
 from app.domain.enums.role import Role as UserRole
 
 # Correct import for the dependency function
-from app.presentation.api.v1.routes.biometric import (
-    get_patient_id,
-    require_admin_role,
-    # router, # Removed - Endpoint modules typically don't export routers directly
-    # get_biometric_twin_service, # Moved import to dependencies
-    # BiometricDataBatchRequest, # This is a schema, should not be imported from endpoint
-    # BiometricDataResponse # This is also a schema
-    require_clinician_role,
-)
 
 
 @pytest.fixture

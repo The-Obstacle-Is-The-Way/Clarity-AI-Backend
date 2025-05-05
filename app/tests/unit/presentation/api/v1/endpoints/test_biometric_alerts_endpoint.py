@@ -17,8 +17,9 @@ from app.domain.services.biometric_event_processor import (
     BiometricEventProcessor,
     ClinicalRuleEngine,
 )
+from app.domain.services.alert_rules.clinical_rule_engine import ClinicalRuleEngine
 from app.main import app
-from app.presentation.api.dependencies import (
+from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,
     get_rule_repository,
