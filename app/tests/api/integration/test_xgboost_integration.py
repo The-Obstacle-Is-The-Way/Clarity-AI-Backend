@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.core.services.ml.xgboost.mock import MockXGBoostService
-from app.presentation.api.v1.endpoints.xgboost import router as xgboost_router
+from app.presentation.api.v1.routes.xgboost import router as xgboost_router
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def client(mock_service: MockXGBoostService) -> AsyncGenerator[AsyncClient
     # Override the dependency
     from app.presentation.api.dependencies.auth import verify_provider_access
     app.dependency_overrides[verify_provider_access] = mock_verify_provider_access
-    from app.presentation.api.v1.endpoints.xgboost import get_xgboost_service
+    from app.presentation.api.v1.routes.xgboost import get_xgboost_service
     app.dependency_overrides[get_xgboost_service] = lambda: mock_service
 
     # Include the router

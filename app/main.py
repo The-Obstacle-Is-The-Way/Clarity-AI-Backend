@@ -39,7 +39,7 @@ except ImportError:
 # from unittest.mock import MagicMock
 # Import settings and the factory function
 from app.app_factory import create_application
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 from app.core.logging_config import LOGGING_CONFIG
 
 # Setup logging

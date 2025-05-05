@@ -5,36 +5,40 @@ These tests verify that the XGBoost API endpoints correctly validate input,
 handle authentication, and pass data to and from the service layer.
 """
 
-import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock
+import uuid
+import httpx
 
 import pytest
 import pytest_asyncio
-from fastapi import status
-from httpx import AsyncClient
+from fastapi import FastAPI, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.presentation.api.dependencies.auth import get_current_user
+from app.core.domain.entities.user import User
 from app.core.services.ml.xgboost.exceptions import (
     DataPrivacyError,
     ModelNotFoundError,
-    ResourceNotFoundError,
     ServiceUnavailableError,
 )
 from app.core.services.ml.xgboost.interface import XGBoostInterface
+from app.domain.enums.role import Role as UserRole
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
+from app.main import create_application
+from app.presentation.api.dependencies.auth import (
+    get_patient_id,
+    verify_admin_access,
+    verify_provider_access,
+)
+from app.presentation.api.v1.routes.xgboost import get_xgboost_service
+from app.tests.integration.utils.test_authentication import create_test_headers_for_role
+from app.tests.integration.utils.test_config import setup_test_environment
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
-
-from collections.abc import AsyncGenerator
-from typing import Any
-
-from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.api.routes.xgboost import get_xgboost_service
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
-from app.main import create_application
-
 
 # Create a concrete implementation of XGBoostInterface for tests
 class MockXGBoostService:
@@ -108,7 +112,6 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     removing the need for complex middleware authentication in the test environment.
     """
     # Configure test environment with standardized settings
-    from app.tests.integration.utils.test_config import setup_test_environment
     setup_test_environment()
     
     # Create a base application with standard configuration
@@ -121,17 +124,6 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Override XGBoost service dependency
     def override_get_xgboost_service() -> XGBoostInterface:
         return mock_xgboost_service
-    
-    # Import all auth dependencies we need to override
-    # Create test user with provider/clinician role
-    from app.domain.entities.user import User
-    from app.domain.enums.role import Role as UserRole
-    from app.presentation.api.dependencies.auth import (
-        get_current_user,
-        get_patient_id,
-        verify_admin_access,
-        verify_provider_access,
-    )
     
     # Create a mock auth override that directly returns a user without JWT validation
     async def override_get_current_user(*args, **kwargs):
@@ -156,21 +148,6 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     async def override_get_patient_id(*args, **kwargs):
         return "00000000-0000-0000-0000-000000000001"  # Always return the test patient ID
     
-    # In a test-driven clean architecture approach, we should update the
-    # actual mock service class to ensure it uses the mocks correctly.
-    # Modify the MockXGBoostService implementation for clean testing:
-    
-    # 1. Save original methods to restore after tests
-    original_predict_risk = MockXGBoostService.predict_risk
-    
-    # 2. Override methods to call mocks directly
-    async def predict_risk_test_implementation(self, patient_id, risk_type, clinical_data, **kwargs):
-        # Direct call to the mock for test assertions
-        return await self.predict_risk_mock(patient_id, risk_type, clinical_data)  
-    
-    # 3. Apply the override for testing
-    MockXGBoostService.predict_risk = predict_risk_test_implementation
-    
     # Apply all dependency overrides
     app.dependency_overrides.update({
         get_db_dependency: override_get_db,
@@ -188,9 +165,9 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
 
 
 @pytest_asyncio.fixture
-async def async_client(test_app) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(test_app) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Create an AsyncClient instance for testing."""
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
+    async with httpx.AsyncClient(app=test_app, base_url="http://test") as client:
         yield client
 
 @pytest.fixture(scope="session")
@@ -309,16 +286,12 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_risk_success(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_risk_prediction_data: dict[str, Any],
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
         """Test successful risk prediction with valid data and authentication."""
-        # Skip test implementation - creating a direct pass test that's simpler
-        # This implementation follows clean architecture principles 
-        # by using direct assertions on mocks
-        
         # Configure the mock response with valid data
         expected_response = {
             "prediction_id": f"risk-{uuid.uuid4()}",
@@ -347,7 +320,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_risk_validation_error(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
@@ -371,7 +344,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_risk_phi_detection(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
@@ -408,10 +381,9 @@ class TestXGBoostAPIIntegration:
         # Reset side effect for other tests
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
-
     async def test_predict_risk_unauthorized(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_risk_prediction_data: dict[str, Any],
         patient_auth_headers: dict[str, str] # Use patient headers (insufficient permissions)
@@ -432,7 +404,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_treatment_response_success(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_treatment_response_data: dict[str, Any],
         provider_auth_headers: dict[str, str]
@@ -463,7 +435,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_predict_outcome_success(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_outcome_prediction_data: dict[str, Any],
         provider_auth_headers: dict[str, str]
@@ -495,7 +467,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_feature_importance_success(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str]
     ):
@@ -530,7 +502,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_feature_importance_not_found(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Renamed fixture, use provider
     ):
@@ -539,7 +511,7 @@ class TestXGBoostAPIIntegration:
         model_type = "risk_prediction"
         prediction_id = "non-existent-prediction-id"
 
-        mock_xgboost_service.get_feature_importance_mock.side_effect = ResourceNotFoundError("Prediction not found")
+        mock_xgboost_service.get_feature_importance_mock.side_effect = ModelNotFoundError("Prediction not found")
 
         response = await async_client.get( # Use await with async_client
             f"/api/v1/xgboost/explain/{model_type}/{prediction_id}",
@@ -556,7 +528,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_integrate_with_digital_twin_success(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str]
     ):
@@ -586,7 +558,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_model_info_success(
         self,
-        async_client: AsyncClient,
+        async_client: httpx.AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str]
     ):
@@ -617,7 +589,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_get_model_info_not_found(
         self,
-        async_client: AsyncClient, # Use async_client
+        async_client: httpx.AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str] # Use provider headers
     ):
@@ -638,7 +610,7 @@ class TestXGBoostAPIIntegration:
 
     async def test_service_unavailable(
         self,
-        async_client: AsyncClient, # Use async_client
+        async_client: httpx.AsyncClient, # Use async_client
         mock_xgboost_service: MockXGBoostService,
         provider_auth_headers: dict[str, str], # Use provider headers
         valid_risk_prediction_data: dict[str, Any]
@@ -659,7 +631,7 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
-    async def test_predict_risk_no_auth(self, async_client: AsyncClient, valid_risk_prediction_data: dict[str, Any]):
+    async def test_predict_risk_no_auth(self, async_client: httpx.AsyncClient, valid_risk_prediction_data: dict[str, Any]):
         """Test predict risk endpoint without authentication headers."""
         response = await async_client.post(
             "/api/v1/xgboost/predict/risk",
@@ -668,7 +640,7 @@ class TestXGBoostAPIIntegration:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"
 
-    async def test_get_model_info_no_auth(self, async_client: AsyncClient):
+    async def test_get_model_info_no_auth(self, async_client: httpx.AsyncClient):
         """Test get model info endpoint without authentication headers."""
         response = await async_client.get("/api/v1/xgboost/info/risk_prediction")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"

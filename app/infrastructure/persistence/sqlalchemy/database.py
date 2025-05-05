@@ -10,12 +10,11 @@ import logging
 import time
 import uuid
 from collections.abc import Generator
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -129,7 +128,11 @@ class Database:
         finally:
             session.close()
     
-    def execute_query(self, sql: str | text, params: dict[str, Any] | None = None) -> list[Any]:
+    def execute_query(
+        self, 
+        sql: Union[str, text], 
+        params: dict[str, Any] | None = None
+    ) -> list[Any]:
         """
         Execute a raw SQL query.
         

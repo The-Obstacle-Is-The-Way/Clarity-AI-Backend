@@ -18,7 +18,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 # Application imports (Sorted)
-from app.api.routes.ml import verify_api_key
+from app.presentation.api.v1.routes.ml import verify_api_key
 from app.app_factory import create_application
 from app.config.settings import Settings, get_settings
 from app.core.dependencies.database import get_db_session

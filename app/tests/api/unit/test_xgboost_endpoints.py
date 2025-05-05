@@ -8,10 +8,10 @@ appropriate responses.
 
 import uuid
 from datetime import datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from app.core.services.ml.xgboost.enums import ResponseLevel, RiskLevel
@@ -22,6 +22,8 @@ from app.core.services.ml.xgboost.exceptions import (
     ServiceConnectionError,
 )
 from app.core.services.ml.xgboost.interface import ModelType
+from app.core.services.ml.xgboost_service import XGBoostService
+from app.core.schemas.xgboost import XGBoostPredictionRequest, XGBoostPredictionResponse
 
 # Update schema import path
 # Update dependency import path for service getter
@@ -32,7 +34,7 @@ from app.infrastructure.di.container import get_service  # Use generic service p
 from app.presentation.api.dependencies.auth import get_current_user
 
 # Import the specific router from its new location
-from app.presentation.api.v1.endpoints.xgboost import router
+from app.presentation.api.v1.routes.xgboost import router
 
 
 # Mock user for authentication
