@@ -12,7 +12,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Correct service/factory imports
-from app.application.services.digital_twin_service import DigitalTwinService
+from app.application.services.digital_twin_service import DigitalTwinApplicationService
 from app.application.services.jwt_service import JWTService
 from app.application.services.ml.pat_service import PATService
 from app.application.services.ml.xgboost_service import XGBoostService
@@ -67,7 +67,7 @@ def get_user_repository(
     """Provides an instance of the User Repository via adapted factory."""
     return user_repo
 
-def get_digital_twin_service() -> Any | None:
+def get_digital_twin_service() -> DigitalTwinApplicationService:
     """
     Provide a Digital Twin service implementation.
     
