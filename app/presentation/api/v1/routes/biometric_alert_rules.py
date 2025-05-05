@@ -72,18 +72,17 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=list[AlertRuleResponse],
+    response_model=None,
     summary="Get biometric alert rules for the current user",
     description=(
         "Retrieves a list of biometric alert rules configured for the currently "
         "authenticated user."
     ),
     tags=["Biometric Alert Rules"],
-    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
 )
 async def get_alert_rules(
     db: Annotated[AsyncSession, Depends(get_async_session)],
-    current_user: User = Depends(get_current_active_user),
+    current_user: Annotated[User, Depends(get_current_active_user)],
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> list[AlertRuleResponse]:

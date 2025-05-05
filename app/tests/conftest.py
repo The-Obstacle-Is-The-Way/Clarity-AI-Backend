@@ -5,13 +5,17 @@ import os
 import uuid
 from collections.abc import AsyncGenerator, Callable, Generator
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 # Third-Party Imports
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
 from httpx import AsyncClient
+from redis.asyncio import Redis
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
@@ -20,18 +24,15 @@ from testcontainers.redis import RedisContainer
 # Application-Specific Imports
 from app.app_factory import create_application
 from app.core.config import Settings
-from app.core.models.enums import Roles
-from app.domain.auth.entities import AuthenticatedUser
-from app.domain.auth.services import AuthService
-from app.domain.ml_models.entities import InferenceResult, ModelInfo
-from app.domain.ml_models.services import ModelService
-from app.domain.patients.entities import Patient
-from app.domain.patients.services import PatientService
-from app.domain.users.entities import User
-from app.domain.users.services import UserService
+from app.core.domain.entities.user import Roles, User
+from app.core.domain.services.auth import AuthServiceInterface
+from app.core.domain.services.jwt import JWTServiceInterface
+from app.core.exceptions import InvalidCredentialsError
+from app.core.repositories.user_repository import IUserRepository
 from app.infrastructure.database.base_class import Base
 from app.infrastructure.database.session import get_async_session
 from app.infrastructure.security.jwt import JWTService
+from app.presentation.api.dependencies.auth import get_current_user
 from app.presentation.api.v1.models.users import UserCreateRequest
 
 logger = logging.getLogger(__name__)
@@ -243,23 +244,40 @@ async def test_app_factory(
 
     return _create_test_app
 
+# Define a mock function to replace get_current_user
+async def mock_get_current_user() -> User:
+    # Return a simple, valid User object for testing purposes
+    return User(
+        id=uuid.uuid4(),
+        username="testuser",
+        email="test@example.com",
+        hashed_password="notarealpassword",
+        role="user",
+        is_active=True,
+        first_name="Test",
+        last_name="User",
+        date_of_birth=datetime.date(1990, 1, 1),
+        created_at=datetime.datetime.now(datetime.timezone.utc),
+        updated_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+
 @pytest_asyncio.fixture(scope="function")
 async def initialized_app(
     test_app_factory: Callable[..., FastAPI],
-    # Include db_session here to ensure the transaction context is active
-    # when the app and client are created and used within a test function.
-    db_session: AsyncSession
-) -> AsyncGenerator[FastAPI, None]:
+    db_session: AsyncSession # Ensures transaction context
+) -> FastAPI:
     """
     Provides a fully initialized FastAPI app instance for testing, 
     using the test factory and ensuring the DB session context is managed.
+    Crucially, overrides problematic dependencies during app creation.
     """
-    # The factory now handles setting app.state and overriding get_async_session
-    app = test_app_factory()
-    # db_session fixture manages the transaction boundary for the test function
-    yield app
-    # Cleanup, if any, specific to the initialized app instance could go here
-    # but most cleanup (DB rollback, engine disposal) is handled by other fixtures.
+    # Pass the override for get_current_user when creating the app
+    app = test_app_factory(
+        overrides={
+            get_current_user: mock_get_current_user # Add the override here
+        }
+    )
+    return app
 
 @pytest_asyncio.fixture(scope="function")
 async def client(
@@ -294,7 +312,7 @@ def mock_jwt_service() -> MagicMock:
 @pytest.fixture
 def mock_auth_service(mock_jwt_service: MagicMock) -> MagicMock:
     """Provides a mock AuthService."""
-    service = MagicMock(spec=AuthService)
+    service = MagicMock(spec=AuthServiceInterface)
     service.authenticate_user = AsyncMock(return_value=User(
         id=uuid.uuid4(), email=TEST_USERNAME, hashed_password="hashed", roles=[Roles.PATIENT]
     ))
@@ -303,7 +321,7 @@ def mock_auth_service(mock_jwt_service: MagicMock) -> MagicMock:
     ))
     service.create_tokens = MagicMock(return_value=("mock_access_token", "mock_refresh_token"))
     service.refresh_access_token = AsyncMock(return_value="new_mock_access_token")
-    service.get_authenticated_user = AsyncMock(return_value=AuthenticatedUser(
+    service.get_authenticated_user = AsyncMock(return_value=User(
         id=uuid.uuid4(), email=TEST_USERNAME, roles=[Roles.PATIENT]
     ))
     service.verify_password = MagicMock(return_value=True)
@@ -313,7 +331,7 @@ def mock_auth_service(mock_jwt_service: MagicMock) -> MagicMock:
 @pytest.fixture
 def mock_user_service() -> MagicMock:
     """Provides a mock UserService."""
-    service = MagicMock(spec=UserService)
+    service = MagicMock(spec=IUserRepository)
     test_user = User(
         id=uuid.uuid4(), email=TEST_USERNAME, hashed_password="hashed", roles=[Roles.PATIENT]
     )
@@ -359,7 +377,7 @@ def mock_model_service() -> MagicMock:
 async def authenticated_user(db_session: AsyncSession, mock_user_service: MagicMock) -> User:
     """Creates and saves a standard test user."""
     # Use the actual service logic if simple, or mock if complex setup needed
-    user_service = UserService(db_session) # Use real service with test session
+    user_service = IUserRepository(db_session) # Use real service with test session
     user_data = UserCreateRequest(email=TEST_USERNAME, password=TEST_PASSWORD)
     created_user = await user_service.create_user(user_data)
     return created_user
@@ -367,7 +385,7 @@ async def authenticated_user(db_session: AsyncSession, mock_user_service: MagicM
 @pytest_asyncio.fixture
 async def provider_user(db_session: AsyncSession) -> User:
     """Creates and saves a provider test user."""
-    user_service = UserService(db_session)
+    user_service = IUserRepository(db_session)
     user_data = UserCreateRequest(email=TEST_PROVIDER_EMAIL, password=TEST_PROVIDER_PASSWORD)
     created_user = await user_service.create_user(user_data, roles=[Roles.PROVIDER])
     return created_user
