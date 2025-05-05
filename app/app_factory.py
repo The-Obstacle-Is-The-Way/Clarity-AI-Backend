@@ -36,7 +36,7 @@ if global_settings.SENTRY_DSN:
             traces_sample_rate=global_settings.SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=global_settings.SENTRY_PROFILES_SAMPLE_RATE,
             environment=global_settings.ENVIRONMENT,
-            release=global_settings.APP_VERSION,
+            release=global_settings.VERSION,
             # Consider enabling performance monitoring based on settings
             enable_tracing=True,  # Adjust as needed
         )
@@ -57,7 +57,7 @@ def _initialize_sentry(settings: Settings) -> None:
                 traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
                 profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
                 environment=settings.ENVIRONMENT,
-                release=settings.APP_VERSION,
+                release=settings.VERSION,
                 # Consider enabling performance monitoring based on settings
                 enable_tracing=True,  # Adjust as needed
             )
@@ -168,7 +168,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
             traces_sample_rate=app_settings.SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=app_settings.SENTRY_PROFILES_SAMPLE_RATE,
             environment=app_settings.ENVIRONMENT,
-            release=app_settings.APP_VERSION,
+            release=app_settings.VERSION,
             # Consider enabling performance monitoring based on settings
             enable_tracing=True,  # Adjust as needed
         )
@@ -186,7 +186,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     # Initialize FastAPI app with lifespan context manager and state
     app = FastAPI(
         title=app_settings.PROJECT_NAME,
-        version=app_settings.APP_VERSION,
+        version=app_settings.API_VERSION,
         description=app_settings.PROJECT_DESCRIPTION,
         openapi_url=f"{app_settings.API_V1_STR}/openapi.json",
         docs_url=docs_url,
@@ -243,8 +243,8 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         RateLimitingMiddleware,
         # Pass redis client factory - middleware should handle None state
         redis_client_factory=lambda: getattr(app.state, "redis", None),
-        limit=app_settings.RATE_LIMIT_REQUESTS,
-        period=app_settings.RATE_LIMIT_PERIOD_SECONDS,
+        default_limits=app_settings.DEFAULT_RATE_LIMITS,  # Pass the list of limits from settings
+        strategy=app_settings.RATE_LIMIT_STRATEGY  # Also pass the strategy
     )
 
     # --- Routers ---

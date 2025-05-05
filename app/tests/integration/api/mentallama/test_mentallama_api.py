@@ -18,7 +18,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 # Application imports (Sorted)
-from app.presentation.api.v1.routes.ml import verify_api_key
 from app.app_factory import create_application
 from app.config.settings import Settings, get_settings
 from app.core.dependencies.database import get_db_session
@@ -149,13 +148,11 @@ async def mock_auth_middleware_call(request: Request, call_next: Callable[[Reque
     return response
 
 
-@pytest_asyncio.fixture(scope="function")
-async def mock_verify_api_key() -> AsyncMock:
+async def mock_verify_api_key(): # Keep the mock function definition for now, might be needed if re-added
     """Provides a mock for the verify_api_key dependency,
     allowing tests to bypass API key checks.
     """
-    # Simulate successful API key verification
-    return AsyncMock(return_value=None)
+    return True # Simple mock return
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -164,7 +161,6 @@ async def test_app_with_lifespan(
     mock_mentallama_service_override: AsyncMock,
     mock_auth_service: MagicMock,
     mock_jwt_service: MagicMock,
-    mock_verify_api_key: AsyncMock,
 ) -> AsyncGenerator[FastAPI, None]:
     """Creates a FastAPI application instance for testing with mocked dependencies.
     
@@ -223,7 +219,6 @@ async def test_app_with_lifespan(
             # Still override auth services here for direct injection into endpoints
             IAuthenticationService: lambda: mock_auth_service,
             IJwtService: lambda: mock_jwt_service,
-            verify_api_key: lambda: mock_verify_api_key,
             get_settings: lambda: test_settings,
             # Use the actual db session for tests - lifespan manager handles init/dispose
             get_db_session: get_db_session,

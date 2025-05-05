@@ -2,7 +2,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from .base import BaseModelConfig
 
 # --- Enums (defined here for API contract) ---
 
@@ -85,11 +87,6 @@ class VisualizationType(str, Enum):
     NETWORK_GRAPH = "network_graph"
     RADAR_CHART = "radar_chart"
 
-
-# --- Base Model Configuration ---
-
-# BaseModelConfig has been moved to app/presentation/api/schemas/base.py
-from .base import BaseModelConfig
 
 # --- Request/Response Models ---
 
@@ -286,3 +283,37 @@ class TreatmentResponseResponse(BaseModelConfig):
     expected_outcomes: list[OutcomeDetails]
     side_effects: list[SideEffectRisk] | None = None
     confidence_interval: list[float] | None = None
+
+
+class XGBoostPredictionRequest(BaseModelConfig):
+    """Request schema for XGBoost predictions."""
+
+    patient_id: str = Field(..., description="Identifier for the patient")
+    features: dict[str, Any] = Field(
+        ..., description="Input features for the XGBoost model"
+    )
+    # Add other relevant fields if needed, e.g., context, specific model target
+
+
+class XGBoostPredictionResponse(BaseModelConfig):
+    """Response schema for XGBoost predictions."""
+
+    prediction_id: str = Field(..., description="Unique identifier for this prediction")
+    patient_id: str = Field(..., description="Identifier for the patient")
+    prediction_value: float = Field(..., description="The raw prediction value/score")
+    predicted_class: str | None = Field(
+        None, description="Predicted class label, if applicable"
+    )
+    probability: float | None = Field(
+        None, ge=0.0, le=1.0, description="Predicted probability, if applicable"
+    )
+    confidence: float | None = Field(
+        None, ge=0.0, le=1.0, description="Confidence score for the prediction"
+    )
+    timestamp: datetime = Field(
+        default_factory=datetime.now, description="Timestamp of the prediction"
+    )
+    model_version: str = Field(..., description="Version of the XGBoost model used")
+    feature_importance: dict[str, float] | None = Field(
+        None, description="Feature importance scores, if available"
+    )

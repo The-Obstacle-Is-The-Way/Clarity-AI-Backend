@@ -29,8 +29,6 @@ from app.domain.enums.role import Role as UserRole
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from app.main import create_application
 from app.presentation.api.dependencies.auth import (
-    get_patient_id,
-    verify_admin_access,
     verify_provider_access,
 )
 from app.presentation.api.v1.routes.xgboost import get_xgboost_service
@@ -142,20 +140,12 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     async def override_verify_provider_access(*args, **kwargs):
         return None  # Provider access check always succeeds
         
-    async def override_verify_admin_access(*args, **kwargs):
-        return None  # Admin access check always succeeds
-        
-    async def override_get_patient_id(*args, **kwargs):
-        return "00000000-0000-0000-0000-000000000001"  # Always return the test patient ID
-    
     # Apply all dependency overrides
     app.dependency_overrides.update({
         get_db_dependency: override_get_db,
         get_xgboost_service: override_get_xgboost_service,
         get_current_user: override_get_current_user,
         verify_provider_access: override_verify_provider_access,
-        verify_admin_access: override_verify_admin_access,
-        get_patient_id: override_get_patient_id
     })
     
     yield app
