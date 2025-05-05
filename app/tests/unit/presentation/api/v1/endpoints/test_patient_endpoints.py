@@ -1,22 +1,22 @@
 import pytest
 from unittest.mock import AsyncMock
-
-from fastapi import status
+from faker import Faker
+from fastapi import status, FastAPI
 from httpx import AsyncClient, Response
 
 from app.application.services.patient_service import PatientService
-from app.main import app  # Import the FastAPI app instance
+from app.main import app
 from app.presentation.api.v1.routes.patient import get_patient_service
 
 # Fixture for AsyncClient
-@pytest.fixture(scope="function") # Use function scope for client fixture
+@pytest.fixture(scope="function") 
 async def client() -> AsyncClient:
     """Provides an AsyncClient instance scoped per test function."""
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
 # Fixture to mock PatientService
-@pytest.fixture(scope="function") # Use function scope for mock fixture
+@pytest.fixture(scope="function") 
 def mock_service() -> AsyncMock:
     """Provides a mock PatientService scoped per test function."""
     return AsyncMock(spec=PatientService)
@@ -103,22 +103,32 @@ async def test_create_patient_success(client: AsyncClient, mock_service: AsyncMo
 
 @pytest.mark.asyncio
 async def test_create_patient_validation_error(
-    client: AsyncClient,
-    override_get_session_for_validation_error: None
+    faker: Faker,
+    initialized_app: tuple[FastAPI, AsyncClient, AsyncMock] # Depend only on this
 ) -> None:
-    """Test POST /patients/ returns 422 for invalid payload (missing name)."""
-    # Arrange
-    invalid_payload = {"id": "should-be-ignored"} # Missing required 'name'
+    """Test validation error during patient creation (e.g., missing fields)."""
+    app_instance, test_client, mock_session = initialized_app # Unpack app, client, session
 
-    # Act
-    response: Response = await client.post("/api/v1/patients/", json=invalid_payload)
+    # Prepare invalid data (e.g., missing required fields)
+    invalid_payload = {
+        "first_name": faker.first_name(),
+        # 'last_name', 'date_of_birth', 'contact_number' are missing
+    }
 
-    # Assert
+    # Override is already handled by initialized_app fixture
+    # logger.info(f"Override should be applied globally by initialized_app for {get_async_session}")
+
+    # Act: Make the request using the client from initialized_app
+    response: Response = await test_client.post("/api/v1/patients/", json=invalid_payload)
+
+    # Assertions
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-    # Optionally, assert details about the validation error in the response body
-    # error_detail = response.json().get("detail", [])
-    # assert any("name" in e.get("loc", []) and "Field required" in e.get("msg", "") for e in error_detail)
+    response_json = response.json()
+    assert "detail" in response_json
+    # Verify specific validation errors are present in the response detail
+    assert any(err["loc"] == ["body", "last_name"] for err in response_json["detail"])
+    assert any(err["loc"] == ["body", "date_of_birth"] for err in response_json["detail"])
+    assert any(err["loc"] == ["body", "contact_number"] for err in response_json["detail"])
 
 # Placeholder for future tests
 def test_read_patient_unauthorized() -> None:

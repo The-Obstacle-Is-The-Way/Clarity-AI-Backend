@@ -7,6 +7,7 @@ the new presentation layer endpoints following SOLID principles.
 """
 
 from typing import Annotated
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -28,9 +29,9 @@ from app.presentation.api.schemas.xgboost import (
     TreatmentResponseResponse,
 )
 
-# Create router
+# Create router (remove prefix)
 router = APIRouter(
-    prefix="/xgboost",
+    # prefix="/xgboost", # Prefix removed, will be applied during inclusion
     tags=["xgboost"],
     responses={
         401: {"description": "Unauthorized"},
@@ -128,19 +129,37 @@ async def predict_risk(
         HTTPException: If prediction fails or access is denied
     """
     try:
-        # Placeholder implementation for test collection
-        return RiskPredictionResponse(
+        # Call the actual service method
+        prediction_result = await xgboost_service.predict_risk(
             patient_id=request.patient_id,
-            risk_type=request.features.get("risk_type", "suicide_attempt"),
-            risk_level="moderate",
-            probability=0.65,
-            contributing_factors=["recent_medication_change", "sleep_disturbance"],
-            side_effect_risks=[]
+            risk_type=request.risk_type,
+            clinical_data=request.clinical_data,
+        )
+
+        # Map fields from mock result and request to the response schema
+        # Ensure required fields without defaults are explicitly provided.
+        return RiskPredictionResponse(
+            prediction_id=prediction_result["prediction_id"], 
+            patient_id=request.patient_id,
+            risk_type=request.risk_type,
+            risk_probability=prediction_result["risk_score"],
+            risk_level=prediction_result["risk_level"],
+            risk_score=prediction_result["risk_score"],
+            confidence=prediction_result["confidence"],
+            timestamp=datetime.now().isoformat(), # Explicitly provide required field
+            time_frame_days=90, # Explicitly provide required field
+            # Other fields rely on defaults or are optional
         )
     except Exception as e:
+        # Basic error handling for now
+        # Consider adding more specific exception handling and logging
+        # Ensure no PHI leaks in error messages as per HIPAA
+        error_detail = f"Error generating risk prediction: {type(e).__name__}"
+        # Log the full error internally for debugging
+        # logger.exception("Risk prediction failed for patient %s", request.patient_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating risk prediction: {e!s}",
+            detail=error_detail,
         ) from e
 
 
@@ -169,33 +188,35 @@ async def predict_outcome(
         HTTPException: If prediction fails or access is denied
     """
     try:
-        # Placeholder implementation for test collection
-        return OutcomePredictionResponse(
+        # Call the actual service method using fields from OutcomePredictionRequest
+        prediction_result = await xgboost_service.predict_outcome(
             patient_id=request.patient_id,
-            expected_outcomes=[
-                {
-                    "domain": "depression",
-                    "outcome_type": "symptom_reduction",
-                    "predicted_value": 0.4,
-                    "probability": 0.75,
-                    "confidence_interval": [0.32, 0.48]
-                }
-            ],
-            response_likelihood="moderate",
-            recommended_therapies=[
-                TherapyDetails(
-                    therapy_id="cbt-001",
-                    therapy_name="Cognitive Behavioral Therapy",
-                    typical_duration=12,
-                    therapy_type="psychotherapy",
-                    is_medication=False
-                )
-            ]
+            features=request.features,
+            timeframe_days=request.timeframe_days,
+            # Pass optional fields if they exist in the request
+            prediction_domains=request.prediction_domains,
+            prediction_types=request.prediction_types,
+            include_trajectories=request.include_trajectories,
+            include_recommendations=request.include_recommendations
+        )
+
+        # Map fields from the mock's return value (defined in the test)
+        # to the OutcomePredictionResponse schema.
+        return OutcomePredictionResponse(
+            patient_id=request.patient_id, # Use ID from request
+            expected_outcomes=prediction_result["expected_outcomes"],
+            response_likelihood=prediction_result["response_likelihood"],
+            recommended_therapies=prediction_result["recommended_therapies"]
         )
     except Exception as e:
+        # Basic error handling
+        # Ensure no PHI leaks in error messages
+        error_detail = f"Error generating outcome prediction: {type(e).__name__}"
+        # Log the full error internally for debugging
+        # logger.exception("Outcome prediction failed for patient %s", request.patient_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating outcome prediction: {e!s}",
+            detail=error_detail,
         ) from e
 
 

@@ -69,10 +69,10 @@ class TestXGBoostIntegration:
             "details": "Mock prediction details"
         })
 
-        # Prepare request data
+        # Prepare request data matching RiskPredictionRequest
         risk_request = {
             "patient_id": "patient-123",
-            "risk_type": "relapse",
+            "risk_type": "suicide_attempt", # Use valid RiskType enum value
             "patient_data": {
                 "age": 40,
                 "prior_episodes": 2,
@@ -85,10 +85,9 @@ class TestXGBoostIntegration:
                 "severity_score": 7,
                 "medication_adherence": 0.8,
             },
-            "time_frame_days": 90,
         }
-        # Make API call
-        response = await client.post("/api/v1/xgboost/predict/risk", json=risk_request)
+        # Make API call to the correct path
+        response = await client.post("/api/v1/xgboost/risk-prediction", json=risk_request)
 
         # Assertions
         assert response.status_code == 200
@@ -100,55 +99,68 @@ class TestXGBoostIntegration:
         # Verify mock was called
         mock_service.predict_risk.assert_called_once_with(
             patient_id="patient-123",
-            risk_type="relapse",
+            risk_type="suicide_attempt", # Match the request
             clinical_data=risk_request["clinical_data"],
-            time_frame_days=90
         )
 
-    async def test_treatment_response_prediction(self, client: AsyncClient, 
-                                               mock_service: MockXGBoostService) -> None:
-        """Test the treatment response prediction workflow."""
-        # Configure mock return value
-        mock_service.predict_treatment_response = AsyncMock(return_value={
-            "prediction_id": "pred_treat_456",
-            "response_probability": 0.65,
-            "expected_improvement": 0.3,
-            "confidence": 0.85,
-            "timeframe_weeks": 8,
-            "details": "Mock treatment response prediction"
+    async def test_outcome_prediction(self, client: AsyncClient,
+                                          mock_service: MockXGBoostService) -> None:
+        """Test the outcome prediction workflow."""
+        # Configure mock return value for predict_outcome
+        mock_service.predict_outcome = AsyncMock(return_value={
+            "patient_id": "patient-123",
+            "expected_outcomes": [
+                {
+                    "domain": "depression",
+                    "outcome_type": "symptom_reduction",
+                    "predicted_value": 0.4,
+                    "probability": 0.75,
+                    "confidence_interval": [0.32, 0.48]
+                }
+            ],
+            "response_likelihood": "moderate",
+            "recommended_therapies": [
+                {
+                    "therapy_id": "cbt-001",
+                    "therapy_name": "Cognitive Behavioral Therapy",
+                    "typical_duration": 12,
+                    "therapy_type": "psychotherapy",
+                    "is_medication": False
+                }
+            ]
         })
 
-        # Prepare request data
-        treatment_request = {
+        # Prepare request data for OutcomePredictionRequest
+        outcome_request = {
             "patient_id": "patient-123",
-            "treatment_type": "medication_ssri", 
-            "treatment_details": {
-                "medication_name": "fluoxetine",
-                "dosage_mg": 20
-            },
-            "clinical_data": {
+            "features": { # Features might differ for outcome vs treatment response
                 "age": 40,
-                "prior_treatment_failures": 2,
-                "severity_score": 7,
-                "anxiety_comorbidity": True,
+                "prior_treatment_success_rate": 0.6,
+                "baseline_severity": 8,
+                "comorbidities": ["anxiety"],
             },
+            "timeframe_days": 90 # Use integer timeframe_days instead of time_frame dict
         }
         # Use the correct path
-        response = await client.post("/api/v1/xgboost/predict/treatment-response", 
-                                     json=treatment_request)
+        response = await client.post("/api/v1/xgboost/outcome-prediction",
+                                     json=outcome_request)
 
         assert response.status_code == 200
         response_data = response.json()
-        assert response_data["prediction_id"] == "pred_treat_456"
-        assert response_data["response_probability"] == 0.65
-        assert response_data["expected_improvement"] == 0.3
-        assert response_data["confidence"] == 0.85
-        assert response_data["timeframe_weeks"] == 8
-        mock_service.predict_treatment_response.assert_called_once_with(
+        assert response_data["patient_id"] == "patient-123"
+        assert response_data["response_likelihood"] == "moderate"
+        assert len(response_data["expected_outcomes"]) == 1
+        assert response_data["expected_outcomes"][0]["domain"] == "depression"
+
+        # Verify mock was called with correct arguments matching OutcomePredictionRequest fields
+        mock_service.predict_outcome.assert_called_once_with(
             patient_id="patient-123",
-            treatment_type="medication_ssri",
-            treatment_details=treatment_request["treatment_details"],
-            clinical_data=treatment_request["clinical_data"]
+            features=outcome_request["features"],
+            timeframe_days=outcome_request["timeframe_days"],
+            prediction_domains=None, # Default from request schema if not provided
+            prediction_types=None, # Default from request schema if not provided
+            include_trajectories=False, # Default from request schema if not provided
+            include_recommendations=False # Default from request schema if not provided
         )
 
     # --- Add tests for other endpoints (outcome, model info, etc.) ---
@@ -163,7 +175,8 @@ class TestXGBoostIntegration:
             "training_date": datetime.now().isoformat(),
             "performance_metrics": {"auc": 0.85}
         })
-        await client.get(f"/api/v1/xgboost/models/{model_type}/info")
+        # Correct path based on router
+        await client.get(f"/api/v1/xgboost/model-info/{model_type}") # Path adjusted if necessary
 
     # --- Add healthcheck test if endpoint exists ---
     async def test_healthcheck(self, client: AsyncClient) -> None:

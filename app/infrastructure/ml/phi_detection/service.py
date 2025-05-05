@@ -19,8 +19,6 @@ import yaml
 from app.core.domain.entities.phi.phi_match import PHIMatch
 from app.core.utils.logging import get_logger
 
-logger = get_logger(__name__)
-
 
 @dataclass
 class PHIPattern:
@@ -33,6 +31,7 @@ class PHIPattern:
 
     def __post_init__(self):
         """Compile the regex pattern after initialization."""
+        logger = get_logger(__name__)
         try:
             if self.pattern:
                 self.regex = re.compile(self.pattern, re.IGNORECASE)
@@ -46,6 +45,7 @@ class PHIDetectionService:
 
     def __init__(self, pattern_file: str | None = None):
         """Initialize the PHI detection service."""
+        self.logger = get_logger(__name__)
         base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
         default_pattern_path = base_dir / "app/infrastructure/security/phi/phi_patterns.yaml"
         self.pattern_file: Path = Path(pattern_file) if pattern_file else default_pattern_path
@@ -68,9 +68,9 @@ class PHIDetectionService:
 
     def _load_patterns(self) -> None:
         """Load PHI detection patterns from file."""
-        # logger.debug(f"Attempting to load PHI patterns from: {self.pattern_file.resolve()}")
+        # self.logger.debug(f"Attempting to load PHI patterns from: {self.pattern_file.resolve()}")
         if not self.pattern_file.is_file():
-            logger.error(f"PHI pattern file not found: {self.pattern_file}")
+            self.logger.error(f"PHI pattern file not found: {self.pattern_file}")
             raise FileNotFoundError(f"PHI pattern file not found: {self.pattern_file}")
 
         patterns_loaded: list[PHIPattern] = []
@@ -93,20 +93,20 @@ class PHIDetectionService:
                              pattern=pattern_info["pattern"],
                              description=pattern_info.get("description", ""),
                              category=category))
-            logger.info(f"Loaded {len(patterns_loaded)} PHI patterns from {self.pattern_file}")
+            self.logger.info(f"Loaded {len(patterns_loaded)} PHI patterns from {self.pattern_file}")
             self.patterns = patterns_loaded
         except (yaml.YAMLError, FileNotFoundError) as e:
-            logger.error(f"Error loading PHI patterns from {self.pattern_file}: {e}")
-            logger.warning("Falling back to default PHI patterns.")
+            self.logger.error(f"Error loading PHI patterns from {self.pattern_file}: {e}")
+            self.logger.warning("Falling back to default PHI patterns.")
             self.patterns = self._get_default_patterns()
         except Exception as e:
-            logger.exception(f"Unexpected error loading PHI patterns: {e}")
-            logger.warning("Falling back to default PHI patterns.")
+            self.logger.exception(f"Unexpected error loading PHI patterns: {e}")
+            self.logger.warning("Falling back to default PHI patterns.")
             self.patterns = self._get_default_patterns()
 
     def _get_default_patterns(self) -> list[PHIPattern]:
         """Returns a basic set of default PHI patterns as a fallback."""
-        logger.warning("Using placeholder default PHI patterns.")
+        self.logger.warning("Using placeholder default PHI patterns.")
         # Simplified for brevity
         return [
             PHIPattern(name="SSN", pattern=r"\d{3}[-\s]?\d{2}[-\s]?\d{4}", description="Social Security Number", category="government_id"),
@@ -126,6 +126,6 @@ class PHIDetectionService:
                         end=match.end(),
                     )
             else:
-                 logger.warning(f"Pattern {getattr(pattern, 'name', 'Unnamed')} has no compiled regex.")
+                 self.logger.warning(f"Pattern {getattr(pattern, 'name', 'Unnamed')} has no compiled regex.")
 
     # --- Other methods like detect_phi, redact_phi, anonymize_phi omitted for brevity ---

@@ -2,57 +2,51 @@
 import asyncio
 import datetime
 import logging
-import os
-from typing import AsyncGenerator, Callable
+import uuid
+from collections.abc import AsyncGenerator
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 # Third Party Imports
 import pytest
 import pytest_asyncio
 from faker import Faker
-from fastapi import FastAPI, Request
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from collections.abc import AsyncGenerator
 
 # Application-specific Imports
-from app.app_factory import create_application
 from app.core.config import Settings
 from app.core.domain.entities.user import User, UserRole
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
-from app.core.security.auth import get_current_user
 from app.application.security.jwt_service import JWTService
 from app.infrastructure.database.base_class import Base
 from app.infrastructure.database.session import get_async_session
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
-from app.infrastructure.security.password_handler import PasswordHandler
 
 logger = logging.getLogger(__name__)
 
 # --- Constants for Test Data ---
 # Use descriptive variable names
 TEST_USERNAME = "testuser@example.com"
-TEST_PASSWORD = "testpassword123"
-TEST_INVALID_PASSWORD = "wrongpassword"
+TEST_PASSWORD = "testpassword123"  
+TEST_INVALID_PASSWORD = "wrongpassword"  
 
 TEST_PROVIDER_EMAIL = "provider@clinic.com"
-TEST_PROVIDER_PASSWORD = "providerPass123"
+TEST_PROVIDER_PASSWORD = "providerPass123"  
 
 # --- Core Fixtures ---
 
 
-@pytest.fixture(scope="session")
-def event_loop_policy():
+@pytest_asyncio.fixture(scope="session")
+def event_loop_policy() -> asyncio.DefaultEventLoopPolicy:
     """Set the asyncio event loop policy for the session."""
-    return asyncio.WindowsSelectorEventLoopPolicy() if os.name == 'nt' else asyncio.DefaultEventLoopPolicy()
+    return asyncio.DefaultEventLoopPolicy()
 
 
-@pytest.fixture(scope="session")
-def event_loop(event_loop_policy):
+@pytest_asyncio.fixture(scope="session")
+def event_loop(event_loop_policy: asyncio.AbstractEventLoopPolicy) -> asyncio.AbstractEventLoop:
     """Overrides pytest default function scope event loop"""
     loop = event_loop_policy.new_event_loop()
     yield loop
@@ -60,12 +54,12 @@ def event_loop(event_loop_policy):
 
 
 # --- Core Settings and Configuration Fixtures ---
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 def test_settings() -> Settings:
     """Load test settings, potentially overriding DATABASE_URL."""
     logger.info("Loading test settings.")
     # Load from .env.test if it exists, otherwise .env
-    env_file = ".env.test" if os.path.exists(".env.test") else ".env"
+    env_file = ".env.test" if Path(".env.test").exists() else ".env"
     settings = Settings(_env_file=env_file)
 
     # Override DATABASE_URL for in-memory SQLite for most tests
@@ -82,8 +76,8 @@ async def test_db_engine(test_settings: Settings) -> AsyncGenerator[AsyncEngine,
     engine = create_async_engine(
         test_settings.DATABASE_URL,
         # echo=True, # Uncomment for SQL logging
-        connect_args={"check_same_thread": False}, # Required for SQLite
-        poolclass=StaticPool, # Use StaticPool for SQLite in-memory
+        connect_args={"check_same_thread": False},  # Required for SQLite
+        poolclass=StaticPool,  # Use StaticPool for SQLite in-memory
     )
     async with engine.begin() as conn:
         logger.debug("Dropping all tables.")
@@ -110,29 +104,34 @@ async def db_session(
         logger.debug(f"DB Session created: {id(session)}")
         try:
             yield session
-            await session.commit() # Commit if test passes
+            await session.commit()  # Commit if test passes
             logger.debug(f"DB Session committed: {id(session)}")
         except Exception:
             logger.warning(f"DB Session rolling back due to exception: {id(session)}")
-            await session.rollback() # Rollback on any exception
+            await session.rollback()  # Rollback on any exception
             raise
         finally:
             logger.debug(f"DB Session closing: {id(session)}")
             await session.close()
 
 
-@pytest.fixture
-def override_get_async_session(
-    db_session: AsyncSession,
-) -> Callable[[], AsyncGenerator[AsyncSession, None]]:
-    """Fixture to override the get_async_session dependency."""
+@pytest_asyncio.fixture(scope="function")
+async def mock_session_fixture() -> AsyncGenerator[AsyncMock, None]:
+    """Provides a mock AsyncSession for dependency injection.
 
-    async def _override() -> AsyncGenerator[AsyncSession, None]:
-        logger.debug(f"Yielding managed db_session: {id(db_session)}")
-        yield db_session
-        # No cleanup here, db_session fixture handles rollback/close
-
-    return _override
+    Yields:
+        AsyncMock: A mock object simulating AsyncSession.
+    """
+    session = AsyncMock(spec=AsyncSession)
+    # Configure common mock methods if needed globally, or configure in tests
+    session.commit = AsyncMock()
+    session.add = AsyncMock()
+    session.refresh = AsyncMock()
+    session.execute = AsyncMock()
+    session.scalar = AsyncMock()
+    session.scalars = AsyncMock()
+    # Add other necessary method mocks
+    yield session # Use yield if you need cleanup, otherwise return
 
 
 # --- Mock Service Fixtures ---
@@ -140,11 +139,11 @@ def override_get_async_session(
 def mock_get_current_user() -> User:
     # Return a simple, valid User object for testing purposes
     return User(
-        id=uuid4(),
+        id=uuid.uuid4(),
         username="testuser",
         email="test@example.com",
-        hashed_password="notarealpassword", # Keep simple for mock
-        roles=[UserRole.PATIENT.value], # Example role
+        hashed_password="notarealpassword",  
+        roles=[UserRole.PATIENT.value],  
         is_active=True,
         is_verified=True,
         email_verified=True,
@@ -159,7 +158,7 @@ def mock_jwt_service() -> MagicMock:
     mock.create_refresh_token = MagicMock(return_value="mock_refresh_token")
     # Simulate successful token verification returning a mock user payload
     mock_payload = {
-        "sub": str(uuid4()),
+        "sub": str(uuid.uuid4()),
         "roles": ["clinician"],
         # Correctly use datetime.datetime.now()
         "exp": datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600,
@@ -168,7 +167,7 @@ def mock_jwt_service() -> MagicMock:
     # Mock get_user_from_token to return a basic User object or similar
     mock.get_user_from_token = AsyncMock(
         return_value=User(
-            id=uuid4(),
+            id=uuid.uuid4(),
             email="mock@example.com",
             username="mockuser",
             roles=["clinician"],
@@ -188,7 +187,7 @@ def mock_auth_service() -> MagicMock:
     service = MagicMock(spec=AuthServiceInterface)
     service.authenticate_user = AsyncMock(
         return_value=User(
-            id=uuid4(),
+            id=uuid.uuid4(),
             email=TEST_USERNAME,
             username="testuser",
             full_name="Test User",
@@ -201,7 +200,7 @@ def mock_auth_service() -> MagicMock:
     )
     service.register_user = AsyncMock(
         return_value=User(
-            id=uuid4(),
+            id=uuid.uuid4(),
             email=TEST_USERNAME,
             username="testuser",
             full_name="Test User",
@@ -215,7 +214,7 @@ def mock_auth_service() -> MagicMock:
     service.refresh_access_token = AsyncMock(return_value="new_mock_access_token")
     service.get_authenticated_user = AsyncMock(
         return_value=User(
-            id=uuid4(),
+            id=uuid.uuid4(),
             email=TEST_USERNAME,
             username="testuser",
             full_name="Test User",
@@ -234,7 +233,7 @@ def mock_user_service() -> MagicMock:
     """Provides a mock UserService."""
     service = MagicMock(spec=IUserRepository)
     test_user = User(
-        id=uuid4(),
+        id=uuid.uuid4(),
         email=TEST_USERNAME,
         username="testuser",
         full_name="Test User",
@@ -253,63 +252,70 @@ def mock_user_service() -> MagicMock:
 # --- Application and Client Fixtures ---
 
 
-@pytest.fixture
-def override_get_settings(test_settings: Settings) -> Callable[[], Settings]:
-    """Overrides the get_settings dependency to return test_settings."""
-    return lambda: test_settings
-
-
 @pytest_asyncio.fixture(scope="function")
 async def initialized_app(
-    test_settings: Settings,
-    test_db_engine: AsyncEngine,
-    override_get_async_session: Callable[[], AsyncGenerator[AsyncSession, None]],
-) -> FastAPI:
+    mock_session_fixture: AsyncSession,
+) -> AsyncGenerator[tuple[AsyncClient, AsyncSession], None]:
+    """Initialize FastAPI app with mock dependencies for testing.
+
+    Initializes the FastAPI application and overrides key dependencies
+    like the database session with mock objects.
+
+    Args:
+        mock_session_fixture (AsyncSession): The mock database session.
+
+    Yields:
+        tuple[AsyncClient, AsyncSession]: A tuple containing the test client
+                                           and the mock session.
     """
-    Initialize the FastAPI application for testing, ensuring essential state
-    like the database session factory is available even before the first request.
+    # Dynamically import create_application to avoid premature app creation
+    from app.main import create_application
+
+    app = create_application()
+
+    # Override the database session dependency using lambda
+    # This ensures the override provides the mock session instance directly
+    # without requiring the 'request' object, crucial for error handling tests.
+    app.dependency_overrides[get_async_session] = lambda: mock_session_fixture
+
+    # Example: Override a service dependency (adjust as per your structure)
+    # mock_patient_service = AsyncMock(spec=PatientService)
+    # app.dependency_overrides[get_patient_service] = lambda: mock_patient_service
+
+    # Use httpx.AsyncClient for async testing
+    async with AsyncClient(app=app, base_url="http://testserver") as client:
+        yield client, mock_session_fixture
+
+    # Clean up overrides after the test function completes
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def test_client(initialized_app: tuple[AsyncClient, AsyncSession]) -> AsyncClient:
+    """Provides just the test client from the initialized app fixture.
+
+    Args:
+        initialized_app (tuple[AsyncClient, AsyncSession]): The output of initialized_app fixture.
+
+    Returns:
+        AsyncClient: The configured test client.
     """
-    logger.info("Initializing FastAPI app for testing.")
-
-    app = create_application(settings=test_settings)
-
-    # Manually set essential state for direct dependency testing
-    # This mimics part of the lifespan manager for test setup.
-    logger.info("Manually setting app.state for test initialization.")
-    app.state.db_engine = test_db_engine
-    # Use the *real* session factory creator, but with the test engine
-    app.state.db_session_factory = sessionmaker(
-        bind=test_db_engine, class_=AsyncSession, expire_on_commit=False
-    )
-    logger.info(f"Manually set app.state.db_engine: {app.state.db_engine}")
-    logger.info(f"Manually set app.state.db_session_factory: {app.state.db_session_factory}")
-
-    # Apply the crucial dependency override for request handling via client
-    app.dependency_overrides[get_async_session] = override_get_async_session
-    logger.info(f"App dependency overrides: {app.dependency_overrides}")
-
-    # Define the override function to yield the managed session
-    async def override_get_current_user() -> User:
-        logger.debug(f"Yielding managed db_session: {id(db_session)}")
-        yield mock_get_current_user()
-        # No cleanup here, db_session fixture handles rollback/close
-
-    # Apply necessary overrides
-    app.dependency_overrides[get_current_user] = override_get_current_user
-
-    logger.info("Test FastAPI app instance created with DB session override.")
-    return app
+    client, _ = initialized_app
+    return client
 
 
-@pytest_asyncio.fixture(scope="function")
-async def client(
-    initialized_app: FastAPI,
-) -> AsyncGenerator[AsyncClient, None]:
-    """Provides an asynchronous HTTP client for making requests to the test app."""
-    # Use the app provided by initialized_app fixture
-    async with AsyncClient(app=initialized_app, base_url="http://testserver") as c:
-        logger.debug("AsyncClient created for test app.")
-        yield c
+@pytest.fixture(scope="function")
+def mock_db_session(initialized_app: tuple[AsyncClient, AsyncSession]) -> AsyncSession:
+    """Provides just the mock session from the initialized app fixture.
+
+    Args:
+        initialized_app (tuple[AsyncClient, AsyncSession]): The output of initialized_app fixture.
+
+    Returns:
+        AsyncSession: The mock database session.
+    """
+    _, session = initialized_app
+    return session
 
 
 # --- User and Authentication Fixtures ---
@@ -319,23 +325,19 @@ async def client(
 async def authenticated_user(
     db_session: AsyncSession,
     faker: Faker,
-    # No, use the concrete implementation here for fixture setup
-    # user_service: IUserRepository  # Use the interface type hint if needed elsewhere
 ) -> User:
     """Creates an authenticated user in the database for testing purposes."""
     # Import concrete implementation for fixture setup
     from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
         SQLAlchemyUserRepository,
     )
-    from app.infrastructure.security.password_handler import PasswordHandler # Correct local import path
+    from app.core.domain.entities.user import User
 
     user_repo = SQLAlchemyUserRepository(db_session)
-    password_handler = PasswordHandler()
 
-    password = faker.password()
-    hashed_password = password_handler.get_password_hash(password)
+    hashed_password = "hashed_password_placeholder"  
     user_email = faker.email()
-    user_id = uuid4() # Now defined
+    user_id = uuid.uuid4()  
     username = faker.user_name()
 
     # Use the imported User class directly
@@ -347,7 +349,11 @@ async def authenticated_user(
         roles=[UserRole.PATIENT.value],
         is_active=True,
         is_verified=True,
-        email_verified=True
+        email_verified=True,
+        first_name=faker.first_name(),
+        last_name=faker.first_name(),
+        created_at=datetime.datetime.now(datetime.timezone.utc),
+        updated_at=datetime.datetime.now(datetime.timezone.utc),
     )
     logger.debug(
         f"Attempting to create user in authenticated_user fixture: {domain_user_instance.id}"
@@ -422,7 +428,7 @@ def admin_auth_headers(mock_jwt_service: MagicMock) -> dict[str, str]:
 @pytest.fixture
 def patient_id() -> str:
     """Provides a valid UUID string for use as a patient ID."""
-    return str(uuid4())
+    return str(uuid.uuid4())
 
 
 @pytest.fixture
@@ -431,38 +437,7 @@ def invalid_name() -> str:
     return "   "
 
 
-@pytest.fixture(scope="function")
-def override_get_session_for_validation_error(app: FastAPI):
-    """Override get_async_session to do nothing, preventing DB interaction during validation errors."""
-    original_get_session = app.dependency_overrides.get(get_async_session)
-
-    # Define a simple async function that yields an AsyncMock instance
-    async def mock_get_async_session() -> AsyncGenerator[AsyncMock, None]:
-        logger.debug(
-            "Validation error test: Using mocked get_async_session (AsyncMock)."
-        )
-        mock_session = AsyncMock(spec=AsyncSession)
-        # Configure the mock if needed, e.g., mock_session.commit = AsyncMock()
-
-        yield mock_session
-        logger.debug(
-            "Validation error test: Mocked get_async_session (AsyncMock) context exited."
-        )
-
-    logger.debug(
-        "Applying mock get_async_session override for validation error test."
-    )
-    app.dependency_overrides[get_async_session] = mock_get_async_session
-
-    try:
-        yield  # Test runs here
-    finally:
-        logger.debug(
-            "Restoring original get_async_session after validation error test."
-        )
-        if original_get_session: # Check if there was an original override
-            app.dependency_overrides[get_async_session] = original_get_session
-        else:
-            # Only delete if we added it and there wasn't one before
-            if get_async_session in app.dependency_overrides:
-                del app.dependency_overrides[get_async_session]
+@pytest.fixture
+def faker() -> Faker:
+    """Provides a Faker instance for generating test data."""
+    return Faker()

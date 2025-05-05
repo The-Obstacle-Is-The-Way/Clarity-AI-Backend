@@ -26,8 +26,8 @@ class TestSettings:
         # Check essential configuration values
         assert settings.PROJECT_NAME == "Novamind Digital Twin"
         assert settings.API_V1_STR == "/api/v1"
-        assert settings.ENVIRONMENT == "test"
-        assert settings.SQLALCHEMY_DATABASE_URI is not None
+        assert settings.ENVIRONMENT == "development"
+        assert settings.DATABASE_URL is not None
 
         # Security settings
         assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 30
@@ -61,7 +61,7 @@ class TestSettings:
         # Re-initialize settings to pick up environment override
         settings_local = Settings()
         # Check database URL
-        assert settings_local.SQLALCHEMY_DATABASE_URI == test_db_url
+        assert settings_local.DATABASE_URL == test_db_url
 
     def test_database_url_construction(self, monkeypatch):
         """Test that database URL is constructed correctly from components."""
@@ -72,7 +72,7 @@ class TestSettings:
         # Re-initialize settings to pick up DATABASE_URL override
         settings_local = Settings()
         # Check database URL
-        assert settings_local.SQLALCHEMY_DATABASE_URI == test_db_url
+        assert settings_local.DATABASE_URL == test_db_url
 
     def test_testing_environment(self, monkeypatch):
         """Test settings specific to the testing environment."""

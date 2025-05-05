@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 
 from app.core.utils.logging import get_logger
-from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 from app.infrastructure.security.phi.sanitizer import PHISanitizer
 
 # Define a more specific type for data potentially containing PHI
@@ -21,7 +20,6 @@ PHIFinding = dict[str, str | int | None]
 
 # Get logger instance(s)
 phi_audit_logger = logging.getLogger("phi_audit")
-phi_auditor_logger = get_logger(__name__)
 
 
 class PHIAuditHandler:
@@ -145,17 +143,20 @@ class PHIAuditHandler:
 class PHIAuditor:
     """Audits various targets for the presence of PHI."""
 
-    def __init__(self, phi_detection_service: PHIDetectionService):
+    def __init__(self, phi_detection_service: "PHIDetectionService"):
         """Initialize the PHI Auditor.
 
         Args:
             phi_detection_service: The service used to detect PHI.
         """
+        # Import here to break cycle
+        from app.infrastructure.ml.phi_detection.service import PHIDetectionService
         if not phi_detection_service:
-            phi_auditor_logger.error("PHIAuditor requires a valid PHIDetectionService instance.")
+            logging.getLogger(__name__).error("PHIAuditor requires a valid PHIDetectionService instance.")
             raise ValueError("PHIDetectionService instance is required.")
         self.phi_detection_service = phi_detection_service
-        phi_auditor_logger.info("PHIAuditor initialized.")
+        self.logger = get_logger(__name__)
+        self.logger.info("PHIAuditor initialized.")
 
     def audit_file(self, file_path: Path) -> list[PHIFinding]:
         """Audits a single file for PHI.
@@ -166,10 +167,10 @@ class PHIAuditor:
         Returns:
             A list of PHI findings.
         """
-        phi_auditor_logger.debug(f"Auditing file: {file_path}")
+        self.logger.debug(f"Auditing file: {file_path}")
         findings: list[PHIFinding] = []
         if not file_path.is_file():
-            phi_auditor_logger.warning(f"Audit target file not found: {file_path}")
+            self.logger.warning(f"Audit target file not found: {file_path}")
             return findings
 
         try:
@@ -185,7 +186,7 @@ class PHIAuditor:
                                 "phi_type": phi_type
                             })
         except Exception as e:
-            phi_auditor_logger.error(f"Error auditing file {file_path}: {e}")
+            self.logger.error(f"Error auditing file {file_path}: {e}")
 
         return findings
 
@@ -198,10 +199,10 @@ class PHIAuditor:
         Returns:
             A list of PHI findings from all files.
         """
-        phi_auditor_logger.debug(f"Auditing directory: {dir_path}")
+        self.logger.debug(f"Auditing directory: {dir_path}")
         all_findings: list[PHIFinding] = []
         if not dir_path.is_dir():
-            phi_auditor_logger.warning(f"Audit target directory not found: {dir_path}")
+            self.logger.warning(f"Audit target directory not found: {dir_path}")
             return all_findings
 
         try:
@@ -211,7 +212,7 @@ class PHIAuditor:
                     file_findings = self.audit_file(item_path)
                     all_findings.extend(file_findings)
         except Exception as e:
-            phi_auditor_logger.error(f"Error traversing directory {dir_path}: {e}")
+            self.logger.error(f"Error traversing directory {dir_path}: {e}")
             
         return all_findings
 
@@ -224,7 +225,7 @@ class PHIAuditor:
         Returns:
             A list of PHI findings.
         """
-        phi_auditor_logger.debug(f"Auditing log entry: '{log_entry[:80]}...' ")
+        self.logger.debug(f"Auditing log entry: '{log_entry[:80]}...' ")
         findings: list[PHIFinding] = []
         detected_phi = self.phi_detection_service.detect_phi(log_entry)
         for phi_type, matches in detected_phi.items():
@@ -236,3 +237,47 @@ class PHIAuditor:
                     "phi_type": phi_type
                 })
         return findings
+
+    def audit_text(self, text_content: str) -> list[PHIFinding]:
+        """Audits a text snippet for PHI.
+
+        Args:
+            text_content: The text to audit.
+
+        Returns:
+            A list of PHI findings.
+        """
+        self.logger.debug("Auditing text snippet.")
+        findings: list[PHIFinding] = []
+        try:
+            detected_phi = self.phi_detection_service.detect_phi(text_content)
+            for phi_type, matches in detected_phi.items():
+                for match in matches:
+                    findings.append({
+                        "file": None, # No file context for a text snippet
+                        "line": None, # No line context for a text snippet
+                        "match": match,
+                        "phi_type": phi_type
+                    })
+        except Exception as e:
+            self.logger.error(f"Error auditing text: {e}")
+
+        return findings
+
+    def contains_phi_in_text(self, text_content: str) -> bool:
+        """Checks if a text snippet contains PHI.
+
+        Args:
+            text_content: The text to check.
+
+        Returns:
+            Boolean indicating if PHI was found.
+        """
+        # This reuses detect_phi logic, consider if direct check is needed
+        self.logger.debug("Checking if text contains PHI.")
+        try:
+            detected_phi = self.phi_detection_service.detect_phi(text_content)
+            return any(detected_phi.values())
+        except Exception as e:
+            self.logger.error(f"Error checking text for PHI: {e}")
+            return False # Fail safe: assume no PHI if error occurs

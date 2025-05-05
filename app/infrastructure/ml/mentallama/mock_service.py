@@ -16,8 +16,6 @@ from app.core.utils.logging import get_logger
 from app.infrastructure.ml.mentallama.models import MentaLLaMAResult
 from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 
-logger = get_logger(__name__)
-
 
 # Rename class and inherit from interface
 class MockMentaLLaMA(MentaLLaMAInterface):
@@ -46,6 +44,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             model_name: Model to use for analysis
             temperature: Temperature parameter for model
         """
+        self.logger = get_logger(__name__)
         self._phi_detection_service = phi_detection_service # Use private attribute convention
         self._api_key = api_key
         self._api_endpoint = api_endpoint
@@ -70,11 +69,11 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         if not hasattr(self, '_phi_detection_service') or self._phi_detection_service is None:
              # If still no PHI service, maybe raise or use a default mock?
              # For now, let's assume it was provided or is not strictly needed for all mock ops
-             logger.warning("MockMentaLLaMA initialized without a PHI detection service.")
+             self.logger.warning("MockMentaLLaMA initialized without a PHI detection service.")
              # self._phi_detection_service = MagicMock(spec=PHIDetectionService) # Example: Use MagicMock if needed
 
         self._initialized = True
-        logger.info(f"MockMentaLLaMA initialized with model: {self._model_name}")
+        self.logger.info(f"MockMentaLLaMA initialized with model: {self._model_name}")
 
     def is_healthy(self) -> bool:
         """Check if the mock service is healthy (initialized)."""
@@ -83,7 +82,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
     def shutdown(self) -> None:
         """Shutdown the mock service."""
         self._initialized = False
-        logger.info("MockMentaLLaMA shutdown.")
+        self.logger.info("MockMentaLLaMA shutdown.")
 
     def _ensure_initialized(self):
         """Raise error if not initialized."""
@@ -123,7 +122,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         if not text:
              raise InvalidRequestError("Input text cannot be empty.")
 
-        logger.info(f"Mock detecting depression for text snippet: '{text[:50]}...'")
+        self.logger.info(f"Mock detecting depression for text snippet: '{text[:50]}...'")
         # Simulate based on keywords
         has_depression_keywords = any(word in text.lower() for word in ["sad", "hopeless", "down", "depressed"])
 
@@ -168,9 +167,9 @@ class MockMentaLLaMA(MentaLLaMAInterface):
                  contains = self._phi_detection_service.contains_phi(text) if hasattr(self._phi_detection_service, 'contains_phi') else False # Removed await
                  if contains:
                      processed_text = self._phi_detection_service.redact_phi(text) if hasattr(self._phi_detection_service, 'redact_phi') else "[REDACTED]" # Removed await
-                     logger.info("PHI detected and redacted before MentaLLaMA analysis")
+                     self.logger.info("PHI detected and redacted before MentaLLaMA analysis")
             else:
-                 logger.warning("PHI detection skipped: No PHI service available in MockMentaLLaMA.")
+                 self.logger.warning("PHI detection skipped: No PHI service available in MockMentaLLaMA.")
 
         # Generate mock analysis results based on analysis type
         if analysis_type == "general":

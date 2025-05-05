@@ -175,3 +175,27 @@ This document outlines the requirements for implementing comprehensive CRUD (Cre
 *   Exact requirements for audit logging (what fields, storage).
 *   Soft vs. Hard delete final decision and implementation details.
 *   Specific performance targets.
+
+**Implementation Checklist (Updated)**
+
+*   **Goals:**
+     *   [x] Define basic `Patient` SQLAlchemy model (`app/domain/models/patient.py`).
+     *   [x] Define basic Pydantic schemas (`PatientCreateRequest`, `PatientRead`) (`app/presentation/schemas/patient.py`).
+     *   [x] Implement `PatientRepository` interface and concrete class (`app/domain/repositories/patient_repository.py`, `app/infrastructure/repositories/sqlalchemy_patient_repository.py`).
+     *   [x] Implement `PatientService` (`app/application/services/patient_service.py`) with basic CRUD methods (`create`, `get_by_id`).
+     *   [x] Create FastAPI router (`app/presentation/api/v1/routes/patient.py`) with `POST /patients/` and `GET /patients/{patient_id}` endpoints.
+     *   [x] Write unit/integration tests (`app/tests/`) for service and repository.
+     *   [x] Write endpoint tests (`app/tests/`) covering success, not found (404), and validation errors (422).
+         *   [x] `test_read_patient_success` (Passed)
+         *   [x] `test_read_patient_not_found` (Passed)
+         *   [x] `test_create_patient_success` (Passed)
+         *   [ ] Fix `TypeError: get_async_session() missing 1 required positional argument: 'request'` in `test_create_patient_validation_error`.
+             *   **Issue:** FastAPI 422 error handling seems to bypass/ignore `get_async_session` override from `conftest.py::initialized_app`.
+             *   **Attempts:**
+                 *   Refactored `override_get_async_session` signature (with/without `request`).
+                 *   Simplified `mock_session` fixture.
+                 *   Applied override inside the test function (caused fixture conflict).
+                 *   Corrected test to use client from `initialized_app` fixture (Pending test run).
+     *   [ ] Implement `UPDATE` endpoint and tests.
+     *   [ ] Implement `DELETE` endpoint and tests.
+     *   [ ] Ensure proper dependency injection throughout.

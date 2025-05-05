@@ -15,7 +15,6 @@ from functools import wraps
 from typing import Any, TypeVar, cast
 
 from app.core.constants import LogLevel
-from app.core.utils.data_transformation import DataAnonymizer
 
 # Type variables for function signatures
 F = TypeVar('F', bound=Callable[..., Any])
@@ -26,6 +25,8 @@ class PHISanitizingFilter(logging.Filter):
 
     def __init__(self, name: str = "PHISanitizer"):
         super().__init__(name)
+        # Import here to break circular dependency
+        from app.core.utils.data_transformation import DataAnonymizer
         # It's potentially inefficient to create this on every filter call,
         # but okay for now. Consider making it a class member if performance issues arise.
         self.anonymizer = DataAnonymizer()
