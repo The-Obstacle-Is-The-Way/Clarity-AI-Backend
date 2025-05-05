@@ -19,7 +19,7 @@ from app.infrastructure.database.session import create_db_engine_and_session
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.logging_middleware import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
-from app.presentation.middleware.request_id import RequestIdMiddleware
+# from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 
 # Initialize logging early
@@ -198,7 +198,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
 
     # --- Middleware Configuration (Order Matters!) ---
     # 1. Request ID (early for logging)
-    app.add_middleware(RequestIdMiddleware)
+    # app.add_middleware(RequestIdMiddleware) # TODO: Re-enable when RequestIdMiddleware is implemented/found
 
     # 2. Logging (after Request ID)
     app.add_middleware(LoggingMiddleware)

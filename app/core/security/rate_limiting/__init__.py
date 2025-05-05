@@ -6,21 +6,23 @@ abuse and DoS attacks, ensuring service stability and availability.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 # Rate limiting strategy enum
 class RateLimitStrategy(str, Enum):
     """Defines different rate limiting strategies."""
+
     FIXED_WINDOW = "fixed_window"
     SLIDING_WINDOW = "sliding_window"
     TOKEN_BUCKET = "token_bucket"
     LEAKY_BUCKET = "leaky_bucket"
 
+
 # Rate limiter configuration
 class RateLimitConfig:
     """Configuration for rate limiting rules."""
-    
+
     def __init__(
         self,
         rate_limit_per_minute: int = 60,
@@ -30,7 +32,7 @@ class RateLimitConfig:
     ):
         """
         Initialize rate limiter configuration.
-        
+
         Args:
             rate_limit_per_minute: Maximum requests per minute
             strategy: Rate limiting algorithm to use
@@ -46,23 +48,23 @@ class RateLimitConfig:
 # Service for rate limiting
 class RateLimiterService:
     """Service for enforcing rate limits across the API."""
-    
+
     def __init__(self, config: RateLimitConfig | None = None):
         """
         Initialize the rate limiter service.
-        
+
         Args:
-            config: Rate limiting configuration 
+            config: Rate limiting configuration
         """
         self.config = config or RateLimitConfig()
-        
+
     async def check_rate_limit(self, scope_id: str) -> dict[str, Any]:
         """
         Check if a request exceeds the rate limit.
-        
+
         Args:
             scope_id: Identifier for the rate limit scope
-            
+
         Returns:
             Result with limit information
         """
@@ -72,15 +74,15 @@ class RateLimiterService:
             "current_usage": 1,
             "limit": self.config.rate_limit_per_minute,
             "remaining": self.config.rate_limit_per_minute - 1,
-            "retry_after": None
+            "retry_after": None,
         }
 
 
 # Dependency for getting the rate limiter service
-def get_rate_limiter_service():
+def get_rate_limiter_service() -> RateLimiterService:
     """
     Get the rate limiter service.
-    
+
     Returns:
         Rate limiter service instance
     """
