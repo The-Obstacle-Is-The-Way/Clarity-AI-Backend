@@ -1,75 +1,109 @@
-from collections.abc import AsyncGenerator
 import logging
+from collections.abc import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
-from sqlalchemy.orm import sessionmaker
 from fastapi import Request
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    create_async_engine,
+)
+from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
-def create_db_engine_and_session(db_url: str, echo: bool = False) -> tuple[AsyncEngine, sessionmaker[AsyncSession]]:
-    """
-    Creates the SQLAlchemy async engine and sessionmaker.
+
+def create_db_engine_and_session(
+    db_url: str, echo: bool = False
+) -> tuple[AsyncEngine, sessionmaker[AsyncSession]]:
+    """Create the SQLAlchemy async engine and session factory.
 
     Args:
         db_url: The database connection URL.
-        echo: Whether to enable SQLAlchemy echo logging.
+        echo: Whether to enable SQL echoing.
 
     Returns:
-        A tuple containing the created AsyncEngine and sessionmaker.
-        
+        A tuple containing the async engine and the session factory.
+
     Raises:
-        ValueError: If the db_url is not for a known async driver.
+        ValueError: If the database URL is not suitable for an async driver.
     """
-    logger.info(f"Creating DB engine and session for URL: {db_url}")
-    if not db_url.startswith(("sqlite+aiosqlite", "postgresql+asyncpg")):
-        error_msg = f"Database URL is not configured for a known async driver: {db_url}"
+    logger.info("Creating database engine and session factory.")
+
+    # Basic validation for async driver in URL
+    if not any(
+        driver in db_url
+        for driver in [
+            "postgresql+asyncpg",
+            "mysql+aiomysql",
+            "sqlite+aiosqlite",
+        ]
+    ):
+        # Shorten the f-string part for display
+        url_display = db_url[: db_url.find('@')] + "@..." if '@' in db_url else db_url
+        error_msg = f"Database URL '{url_display}' does not seem to use a supported async driver."
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    engine = create_async_engine(
-        db_url,
-        echo=echo,
-        future=True,
-        pool_pre_ping=True,
-    )
+    try:
+        engine = create_async_engine(db_url, echo=echo, pool_pre_ping=True)
+        session_local = sessionmaker(
+            bind=engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+        logger.info("Database engine and session factory created successfully.")
+        return engine, session_local
+    except SQLAlchemyError as e:
+        logger.exception(
+            f"Failed to create database engine or session factory: {e}"
+        )
+        raise  # Re-raise the exception after logging
 
-    session_local = sessionmaker(
-        bind=engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-    logger.info("DB Engine and session_local created successfully.")
-    return engine, session_local
 
 async def get_async_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """
-    FastAPI dependency function to get an async database session.
+    """FastAPI dependency to get an async database session.
 
-    Retrieves the session factory (`sessionmaker` instance) stored in
-    `request.app.state.db_session_factory` during application startup.
+    Uses the session factory stored in the application state.
 
     Args:
-        request: The FastAPI Request object.
+        request: The incoming FastAPI request.
 
     Yields:
-        AsyncSession: An active SQLAlchemy async session.
-        
-    Raises:
-        AttributeError: If `request.app.state.db_session_factory` is not set.
-        Exception: Re-raises exceptions during session operations after rollback.
-    """
-    session_factory = getattr(request.app.state, 'db_session_factory', None)
-    if not session_factory or not isinstance(session_factory, sessionmaker):
-        logger.error("Database session factory 'db_session_factory' not found in app.state or is not a sessionmaker.")
-        raise AttributeError("Database session factory not configured in application state.")
+        An AsyncSession instance.
 
-    async with session_factory() as session:
-        try:
+    Raises:
+        RuntimeError: If the session factory is not found in app state.
+        SQLAlchemyError: If there is an error during session handling.
+    """
+    session_factory = getattr(request.app.state, "db_session_factory", None)
+    if not isinstance(session_factory, sessionmaker):
+        error_msg = "Database session factory not found or invalid in application state."
+        logger.critical(
+            "Critical error: 'db_session_factory' missing or invalid in app.state. "
+            "Check application lifespan initialization."
+        )
+        raise RuntimeError(error_msg)
+
+    session: AsyncSession | None = None
+    try:
+        async with session_factory() as session:
+            logger.debug("Database session opened.")
             yield session
-        except Exception as e:
-            logger.error(f"Rolling back session due to exception: {e}", exc_info=True)
+            logger.debug("Database session yielded.")
+    except SQLAlchemyError as e:
+        logger.exception(f"Database session error: {e}")
+        if session:
             await session.rollback()
-            raise
+            logger.warning("Session rolled back due to SQLAlchemyError.")
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error during database session: {e}")
+        if session:
+            await session.rollback()
+            logger.error("Session rolled back due to unexpected error.")
+        raise
+    finally:
+        logger.debug("Database session context exited.")
