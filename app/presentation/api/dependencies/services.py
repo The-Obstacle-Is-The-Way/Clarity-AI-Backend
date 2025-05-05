@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
-from app.application.services.jwt_service import JWTService
 from app.application.services.ml.pat_service import PATService
 from app.application.services.ml.xgboost_service import XGBoostService
 from app.core.config import settings
@@ -32,6 +31,7 @@ from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT
 from app.infrastructure.ml.xgboost.xgboost_service_impl import (
     XGBoostServiceImpl,
 )
+from app.infrastructure.security.jwt.jwt_service import JWTService
 
 logger = logging.getLogger(__name__)
 
