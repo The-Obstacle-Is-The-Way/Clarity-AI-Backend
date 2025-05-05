@@ -7,9 +7,21 @@ delegating to the consolidated PHISanitizer implementation where appropriate.
 
 import logging
 from datetime import datetime
-from typing import Any
+from pathlib import Path
 
+from app.core.utils.logging import get_logger
+from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 from app.infrastructure.security.phi.sanitizer import PHISanitizer
+
+# Define a more specific type for data potentially containing PHI
+PotentiallySensitiveData = str | dict | list | object
+
+# Define structure for audit findings
+PHIFinding = dict[str, str | int | None]
+
+# Get logger instance(s)
+phi_audit_logger = logging.getLogger("phi_audit")
+phi_auditor_logger = get_logger(__name__)
 
 
 class PHIAuditHandler:
@@ -26,7 +38,7 @@ class PHIAuditHandler:
             sanitizer: Optional PHI sanitizer to use (creates a new one if None)
         """
         self.sanitizer = sanitizer or PHISanitizer()
-        self.logger = logging.getLogger("phi_audit")
+        self.logger = phi_audit_logger
         # Ensure audit logger is properly configured
         if not self.logger.handlers:
             handler = logging.StreamHandler()
@@ -41,7 +53,7 @@ class PHIAuditHandler:
         self, 
         user_id: str, 
         patient_id: str, 
-        data_accessed: Any,
+        data_accessed: PotentiallySensitiveData,
         reason: str = "treatment"
     ) -> None:
         """
@@ -68,8 +80,8 @@ class PHIAuditHandler:
         user_id: str, 
         patient_id: str, 
         modification_type: str,
-        before_state: Any,
-        after_state: Any,
+        before_state: PotentiallySensitiveData,
+        after_state: PotentiallySensitiveData,
         reason: str = "treatment"
     ) -> None:
         """
@@ -95,7 +107,7 @@ class PHIAuditHandler:
             f"Before: {sanitized_before}, After: {sanitized_after}"
         )
     
-    def contains_phi(self, data: Any) -> bool:
+    def contains_phi(self, data: PotentiallySensitiveData) -> bool:
         """
         Check if data contains PHI.
         
@@ -107,7 +119,11 @@ class PHIAuditHandler:
         """
         return self.sanitizer.contains_phi(data)
     
-    def get_audit_log(self, user_id: str | None = None, patient_id: str | None = None) -> list[dict[str, Any]]:
+    def get_audit_log(
+        self,
+        user_id: str | None = None,
+        patient_id: str | None = None,
+    ) -> list[dict[str, object]]:
         """
         Get PHI audit log entries (stub implementation).
         
@@ -124,3 +140,99 @@ class PHIAuditHandler:
         # Return empty list as this is just a stub
         # In a real implementation, this would query stored logs
         return []
+
+
+class PHIAuditor:
+    """Audits various targets for the presence of PHI."""
+
+    def __init__(self, phi_detection_service: PHIDetectionService):
+        """Initialize the PHI Auditor.
+
+        Args:
+            phi_detection_service: The service used to detect PHI.
+        """
+        if not phi_detection_service:
+            phi_auditor_logger.error("PHIAuditor requires a valid PHIDetectionService instance.")
+            raise ValueError("PHIDetectionService instance is required.")
+        self.phi_detection_service = phi_detection_service
+        phi_auditor_logger.info("PHIAuditor initialized.")
+
+    def audit_file(self, file_path: Path) -> list[PHIFinding]:
+        """Audits a single file for PHI.
+
+        Args:
+            file_path: Path to the file.
+
+        Returns:
+            A list of PHI findings.
+        """
+        phi_auditor_logger.debug(f"Auditing file: {file_path}")
+        findings: list[PHIFinding] = []
+        if not file_path.is_file():
+            phi_auditor_logger.warning(f"Audit target file not found: {file_path}")
+            return findings
+
+        try:
+            with file_path.open('r', encoding='utf-8', errors='ignore') as f:
+                for line_num, line in enumerate(f, 1):
+                    detected_phi = self.phi_detection_service.detect_phi(line)
+                    for phi_type, matches in detected_phi.items():
+                        for match in matches:
+                            findings.append({
+                                "file": str(file_path),
+                                "line": line_num,
+                                "match": match,
+                                "phi_type": phi_type
+                            })
+        except Exception as e:
+            phi_auditor_logger.error(f"Error auditing file {file_path}: {e}")
+
+        return findings
+
+    def audit_directory(self, dir_path: Path) -> list[PHIFinding]:
+        """Audits all files within a directory (recursively) for PHI.
+
+        Args:
+            dir_path: Path to the directory.
+
+        Returns:
+            A list of PHI findings from all files.
+        """
+        phi_auditor_logger.debug(f"Auditing directory: {dir_path}")
+        all_findings: list[PHIFinding] = []
+        if not dir_path.is_dir():
+            phi_auditor_logger.warning(f"Audit target directory not found: {dir_path}")
+            return all_findings
+
+        try:
+            for item_path in dir_path.rglob('*'):
+                if item_path.is_file():
+                    # TODO: Add file type/extension filtering if needed
+                    file_findings = self.audit_file(item_path)
+                    all_findings.extend(file_findings)
+        except Exception as e:
+            phi_auditor_logger.error(f"Error traversing directory {dir_path}: {e}")
+            
+        return all_findings
+
+    def audit_log_entry(self, log_entry: str) -> list[PHIFinding]:
+        """Audits a single log entry string for PHI.
+
+        Args:
+            log_entry: The log string to audit.
+
+        Returns:
+            A list of PHI findings.
+        """
+        phi_auditor_logger.debug(f"Auditing log entry: '{log_entry[:80]}...' ")
+        findings: list[PHIFinding] = []
+        detected_phi = self.phi_detection_service.detect_phi(log_entry)
+        for phi_type, matches in detected_phi.items():
+            for match in matches:
+                findings.append({
+                    "file": None, # No file context for a single log entry
+                    "line": None, # No line context for a single log entry
+                    "match": match,
+                    "phi_type": phi_type
+                })
+        return findings

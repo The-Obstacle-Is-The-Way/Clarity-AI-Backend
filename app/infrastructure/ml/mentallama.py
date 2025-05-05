@@ -12,7 +12,7 @@ import aiohttp
 import backoff
 
 from app.core.utils.logging import get_logger
-from app.infrastructure.ml.phi_detection import PHIDetectionService
+from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 
 logger = get_logger(__name__)
 

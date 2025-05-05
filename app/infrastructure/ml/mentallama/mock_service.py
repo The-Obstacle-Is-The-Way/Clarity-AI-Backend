@@ -14,7 +14,7 @@ from app.core.exceptions import InvalidRequestError, ServiceUnavailableError
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.utils.logging import get_logger
 from app.infrastructure.ml.mentallama.models import MentaLLaMAResult
-from app.infrastructure.ml.phi_detection import PHIDetectionService
+from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 
 logger = get_logger(__name__)
 

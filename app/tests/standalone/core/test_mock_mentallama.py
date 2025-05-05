@@ -20,7 +20,7 @@ from app.core.exceptions import (
 from app.infrastructure.ml.mentallama.mock_service import MockMentaLLaMA
 
 # Import PHI service needed for mock init
-from app.infrastructure.ml.phi_detection import PHIDetectionService
+from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 
 
 @pytest.fixture(scope="function")

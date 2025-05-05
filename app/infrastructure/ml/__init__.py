@@ -9,7 +9,7 @@ from app.infrastructure.ml.mentallama import (  # Import correct class name
     MentaLLaMAResult,
     MockMentaLLaMA,
 )
-from app.infrastructure.ml.phi_detection import PHIDetectionService
+from app.infrastructure.ml.phi_detection.service import PHIDetectionService
 
 __all__ = [
     "MentaLLaMAResult",
