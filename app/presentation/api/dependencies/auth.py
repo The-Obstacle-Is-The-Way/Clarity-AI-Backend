@@ -98,6 +98,18 @@ async def require_admin_role(current_user: CurrentUserDep) -> User:
 
 AdminUserDep = Annotated[User, Depends(require_admin_role)]
 
+async def require_clinician_role(current_user: CurrentUserDep) -> User:
+    """Dependency that requires the current user to have the CLINICIAN role."""
+    # Allow ADMINs to also pass this check, as they often have superset permissions
+    if current_user.role not in [UserRole.CLINICIAN, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User requires Clinician or Admin role.",
+        )
+    return current_user
+
+ClinicianUserDep = Annotated[User, Depends(require_clinician_role)]
+
 async def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
@@ -168,6 +180,7 @@ async def verify_provider_access(
 __all__ = [
     "AdminUserDep",
     "AuthServiceDep",
+    "ClinicianUserDep",
     "CurrentUserDep",
     "JWTServiceDep",
     "TokenDep",
@@ -176,4 +189,5 @@ __all__ = [
     "get_user_repository_dependency",
     "oauth2_scheme",
     "require_admin_role",
+    "require_clinician_role",
 ]

@@ -13,11 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
-from app.application.services.event_processor import BiometricEventProcessor
+from app.domain.services.biometric_event_processor import BiometricEventProcessor
 # from app.application.services.ml.pat_service import PATService # Incorrect path
 # from app.application.services.ml.xgboost_service import XGBoostService # Likely incorrect, check later
+from app.infrastructure.database.session import get_async_session
 from app.core.config import settings
-from app.core.dependencies.database import get_async_session
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.ml.pat_interface import PATInterface
 from app.core.services.ml.pat.factory import PATServiceFactory
