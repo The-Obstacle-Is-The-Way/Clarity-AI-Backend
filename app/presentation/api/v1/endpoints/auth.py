@@ -13,14 +13,12 @@ from pydantic import BaseModel, EmailStr, Field
 from app.config.settings import get_settings
 from app.core.domain.entities.user import User
 from app.core.utils.logging import get_logger
-from app.domain.repositories.user_repository import UserRepository
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.presentation.api.dependencies.auth import (  # Removed get_admin_user
+from app.presentation.api.dependencies.auth import (  
     get_current_user,
     get_optional_user,
 )
 from app.presentation.api.dependencies.auth_service import get_auth_service
-from app.presentation.api.dependencies.user_repository import get_user_repository_provider
 
 # Initialize router
 router = APIRouter()
@@ -59,6 +57,16 @@ class UserResponse(BaseModel):
     is_active: bool = True
 
 
+class SessionInfoResponse(BaseModel):
+    """Session information response model."""
+    authenticated: bool
+    session_active: bool
+    roles: list[str] = []
+    user_id: str | None = None
+    exp: int | None = None
+    permissions: list[str] = []
+
+
 # --- Auth Endpoints ---
 
 @router.post(
@@ -68,13 +76,13 @@ class UserResponse(BaseModel):
     summary="Authenticate user and get tokens",
     description="Log in a user with username/email and password, return access and refresh tokens",
     response_description="JWT tokens for authentication"
-)
+) 
 async def login(
     request: Request,
     login_data: LoginRequest,
     response: Response,
     auth_service: AuthenticationService = Depends(get_auth_service)
-):
+) -> TokenResponse:
     """
     Authenticate a user and return JWT tokens.
     
@@ -101,7 +109,7 @@ async def login(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
                 headers={"WWW-Authenticate": "Bearer"}
-            )
+            ) from None
             
         if not user.is_active:
             logger.warning(f"Login attempt on inactive account: {login_data.username}")
@@ -109,7 +117,7 @@ async def login(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is inactive",
                 headers={"WWW-Authenticate": "Bearer"}
-            )
+            ) from None
             
         # Generate tokens
         tokens = await auth_service.create_token_pair(user)
@@ -151,9 +159,9 @@ async def login(
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
-    except HTTPException:
+    except HTTPException as http_exc:
         # Re-throw HTTP exceptions
-        raise
+        raise http_exc from http_exc
     except Exception as e:
         # Log the error but don't expose details to client
         logger.error(f"Login error: {e!s}")
@@ -161,7 +169,7 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"}
-        )
+        ) from e
 
 
 @router.post(
@@ -171,14 +179,14 @@ async def login(
     summary="Refresh access token",
     description="Get a new access token using a valid refresh token",
     response_description="New JWT tokens"
-)
+) 
 async def refresh_token(
     request: Request,
     response: Response,
     refresh_data: RefreshRequest | None = None,
     refresh_token: str | None = Cookie(None, alias="refresh_token"),
-    auth_service: AuthenticationService = Depends(get_auth_service),
-):
+    auth_service: AuthenticationService = Depends(get_auth_service)
+) -> TokenResponse:
     """
     Refresh access token using a valid refresh token.
     
@@ -207,7 +215,7 @@ async def refresh_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token required",
             headers={"WWW-Authenticate": "Bearer"}
-        )
+        ) from None
         
     try:
         # Refresh tokens and get new pair
@@ -243,13 +251,16 @@ async def refresh_token(
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
+    except HTTPException as http_exc:
+        # Re-throw HTTP exceptions
+        raise http_exc from http_exc
     except Exception as e:
         logger.warning(f"Token refresh failed: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"}
-        )
+        ) from e
 
 
 @router.post(
@@ -258,14 +269,14 @@ async def refresh_token(
     summary="Log out user",
     description="Revoke current tokens and clear auth cookies",
     response_model=None  # Explicitly set to None to avoid response validation issues
-)
+) 
 async def logout(
     request: Request,
     response: Response,
     access_token: str | None = Depends(get_current_user),
     refresh_token: str | None = Cookie(None, alias="refresh_token"),
     auth_service: AuthenticationService = Depends(get_auth_service)
-):
+) -> None:
     """
     Log out the current user by revoking their tokens.
     
@@ -305,17 +316,15 @@ async def logout(
     summary="Get current user profile",
     description="Return the current user information based on the token",
     response_description="Current user data"
-)
+) 
 async def get_current_user_profile(
-    current_user: User = Depends(get_current_user), 
-    user_repository: UserRepository = Depends(get_user_repository_provider) 
-):
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
     """
     Get the current authenticated user's profile.
     
     Args:
         current_user: The authenticated User object from the dependency.
-        user_repository: Repository for user data (potentially unused here now).
         
     Returns:
         UserResponse with user information
@@ -337,28 +346,28 @@ async def get_current_user_profile(
             roles=[str(role) for role in current_user.roles],
             is_active=current_user.is_active
         )
-    except HTTPException:
+    except HTTPException as http_exc:
         # Re-throw HTTP exceptions
-        raise
+        raise http_exc from http_exc
     except Exception as e:
         # Log unexpected errors
         logger.error(f"Error retrieving user profile for user ID {current_user.id if current_user else 'UNKNOWN'}: {e!s}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve user profile"
-        )
+        ) from e
 
 
 @router.get(
     "/session-info",
-    response_model=dict[str, Any],
+    response_model=SessionInfoResponse,
     summary="Get session information",
     description="Return information about the current authentication session",
     response_description="Session information"
-)
+) 
 async def get_session_info(
     user_data: dict[str, Any] | None = Depends(get_optional_user),
-):
+) -> SessionInfoResponse:
     """
     Get information about the current session.
     
@@ -369,16 +378,16 @@ async def get_session_info(
         Dictionary with session information
     """
     if not user_data:
-        return {
-            "authenticated": False,
-            "session_active": False
-        }
+        return SessionInfoResponse(
+            authenticated=False,
+            session_active=False
+        )
         
-    return {
-        "authenticated": True,
-        "session_active": True,
-        "roles": user_data.get("roles", []),
-        "user_id": user_data.get("sub") or user_data.get("user_id"),
-        "exp": user_data.get("exp"),
-        "permissions": user_data.get("permissions", [])
-    }
+    return SessionInfoResponse(
+        authenticated=True,
+        session_active=True,
+        roles=user_data.get("roles", []),
+        user_id=user_data.get("sub") or user_data.get("user_id"),
+        exp=user_data.get("exp"),
+        permissions=user_data.get("permissions", [])
+    )

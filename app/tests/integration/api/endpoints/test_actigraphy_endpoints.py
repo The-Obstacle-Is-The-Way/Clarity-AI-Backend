@@ -361,7 +361,7 @@ TEST_USER_ID = str(uuid.uuid4()) # Use a consistent test user ID
 
 @pytest.mark.asyncio
 async def test_upload_actigraphy_data(
-    async_client: AsyncClient, 
+    client: AsyncClient, # Renamed from async_client
     provider_token: str, # Assume provider uploads data
     sample_readings: list[dict[str, Any]],
     sample_device_info: dict[str, Any]
@@ -378,8 +378,8 @@ async def test_upload_actigraphy_data(
         "analysis_types": ["sleep_quality", "activity_levels"]
     }
 
-    # Use async_client instead of request
-    response = await async_client.post(
+    # Use client instead of async_client
+    response = await client.post(
         "/api/v1/actigraphy/analyze",
         json=upload_data,
         headers={"Authorization": f"Bearer {provider_token}"}
