@@ -78,3 +78,40 @@ async def get_rule_repository(
         Biometric rule repository instance
     """
     return BiometricRuleRepository(db_session=db_session)
+
+
+async def get_template_repository(
+    db_session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """
+    Get the biometric alert template repository instance.
+    
+    STUB: Concrete implementation pending.
+    
+    Args:
+        db_session: Database session dependency
+        
+    Returns:
+        An instance of the template repository (currently None)
+    """
+    # logger.warning("Using STUB implementation for get_template_repository")
+    # In a real scenario, you would get/create the implementation here
+    # from app.infrastructure.repositories.biometric_alert_template_repository import ConcreteTemplateRepo
+    # repo = ConcreteTemplateRepo(db_session)
+    # return repo
+    return None # Return None or raise NotImplementedError to prevent usage
+
+
+# Dependency for the BiometricEventProcessor
+async def get_event_processor(
+    alert_repo: IAlertRepository = Depends(get_alert_repository),
+    biometric_repo: BiometricAlertRepository = Depends(get_biometric_repository),
+    rule_repo: IBiometricRuleRepository = Depends(get_rule_repository),
+    # Add template_repo: BiometricAlertTemplateRepositoryInterface = Depends(get_template_repository) when implemented
+) -> None:
+    # logger.warning("Using STUB implementation for get_event_processor")
+    # In a real scenario, you would get/create the implementation here
+    # from app.infrastructure.processors.biometric_event_processor import ConcreteEventProcessor
+    # processor = ConcreteEventProcessor(alert_repo, biometric_repo, rule_repo, template_repo)
+    # return processor
+    return None # Return None or raise NotImplementedError to prevent usage

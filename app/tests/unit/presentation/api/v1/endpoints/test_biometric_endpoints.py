@@ -28,16 +28,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 # Import service dependencies from the correct location
 # Import schema from the correct location
 # Assuming JWTService exists for mocking
-# from app.infrastructure.security.jwt_service import JWTService
-# Mocking JWTService directly as its location might still be in flux
-from app.core.interfaces.services.jwt_service import IJwtService
+from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.domain.entities.user import User  # Added User import
 
 # Corrected import path for UserRole enum
 from app.domain.enums.role import Role as UserRole
 
 # Correct import for the dependency function
-from app.presentation.api.v1.endpoints.biometric_endpoints import (
+from app.presentation.api.v1.routes.biometric_endpoints import (
     get_patient_id,
     require_admin_role,
     # router, # Removed - Endpoint modules typically don't export routers directly
@@ -50,11 +48,11 @@ from app.presentation.api.v1.endpoints.biometric_endpoints import (
 
 @pytest.fixture
 def mock_jwt_service():
-    """Create a mock JWT service conforming to IJwtService."""
+    """Create a mock JWT service conforming to JWTService."""
     # Use autospec to ensure mock follows the interface
-    mock = MagicMock(spec=IJwtService)
+    mock = MagicMock(spec=JWTService)
     # Setup the decode_token method to be properly awaitable
-    # Adjust methods based on IJwtService (e.g., get_user_from_token)
+    # Adjust methods based on JWTService (e.g., get_user_from_token)
     mock.decode_token = AsyncMock() # Keep if needed by other parts
     mock.get_user_from_token = AsyncMock() # Mock the method actually used by get_current_user
     return mock
@@ -79,7 +77,7 @@ def app(mock_jwt_service): # Removed redundant decorator
     async def override_get_current_user_for_test(
         token: str = Depends(oauth2_scheme), # Keep dependency signature
         # Inject the *mock* service here via the override below
-        mock_jwt_service_instance: IJwtService = Depends(get_jwt_service)
+        mock_jwt_service_instance: JWTService = Depends(get_jwt_service)
     ):
         if not token or token == "":
             raise HTTPException(status_code=401, detail="Not authenticated")

@@ -6,6 +6,7 @@ detected and sanitized in various data formats to maintain HIPAA compliance.
 """
 
 import logging
+import pytest
 from unittest.mock import MagicMock, patch
 
 # Application imports (Corrected)

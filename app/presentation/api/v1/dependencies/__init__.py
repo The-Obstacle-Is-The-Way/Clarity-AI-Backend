@@ -31,6 +31,7 @@ from app.presentation.api.v1.dependencies.biometric_alert import (
     get_alert_repository,
     get_biometric_repository,
     get_rule_repository,
+    get_template_repository,  # Added import for the stub
 )
 from app.presentation.api.v1.dependencies.digital_twin import get_digital_twin_service
 from app.presentation.api.v1.dependencies.processing import get_event_processor
@@ -51,5 +52,6 @@ __all__ = [
     "get_optional_user",
     "get_repository",
     "get_rule_repository",
+    "get_template_repository",  # Added export for the stub
     "rate_limit",
 ]

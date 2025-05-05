@@ -25,7 +25,7 @@ from app.core.services.ml.pat.exceptions import (
 from app.core.services.ml.pat.interface import PATInterface
 from app.domain.utils.datetime_utils import UTC
 from app.presentation.api.schemas.actigraphy import AnalysisType
-from app.presentation.api.v1.endpoints.actigraphy import router
+from app.presentation.api.v1.routes.actigraphy import router
 
 # Assuming auth dependencies exist
 # from app.api.dependencies.auth import validate_jwt, get_current_user_id
