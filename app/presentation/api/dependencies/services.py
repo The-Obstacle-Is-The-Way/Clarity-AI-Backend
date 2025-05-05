@@ -10,7 +10,7 @@ import logging
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
 from app.core.config import settings
-from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT # Example PAT implementation
+# from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT # Example PAT implementation
 from app.infrastructure.ml.pat.service import PATService # Correct path
 
 logger = logging.getLogger(__name__)
@@ -45,4 +45,6 @@ def get_xgboost_service() -> None:
 def get_pat_service() -> PATService:
     # Simple instantiation assuming BedrockPAT is the chosen implementation
     # Configuration details might be needed depending on BedrockPAT.__init__
-    return PATService(pat_model=BedrockPAT(config=settings)) # Pass the model instance
+    # return PATService(pat_model=BedrockPAT(config=settings)) # Pass the model instance - BedrockPAT missing
+    # NOTE: Returning None as a stub until BedrockPAT is available.
+    return None
