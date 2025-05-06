@@ -31,21 +31,12 @@ class UserMapper:
         Returns:
             Equivalent domain User entity
         """
-        # Handle roles conversion - normalize from enum to string if needed
-        roles = []
-        if model.roles and isinstance(model.roles, list):
-            roles = model.roles
-        elif model.role:
-            # Add the primary role if roles list is empty
-            roles = [model.role.value]
-            
-        # Create domain entity from model attributes
-        # Critical Fix: Map password_hash in model to hashed_password in domain entity
+        # Create the domain entity with required fields and defaults for missing fields
         return DomainUser(
             id=str(model.id),
             username=model.username,
             email=model.email,
-            hashed_password=model.password_hash,  # Map password_hash to hashed_password
+            hashed_password=model.password_hash,
             is_active=model.is_active,
             is_verified=model.is_verified,
             email_verified=model.email_verified,
