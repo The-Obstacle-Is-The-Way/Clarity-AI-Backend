@@ -44,7 +44,9 @@ class ProviderModel(Base):
     user = relationship(
         "User", 
         back_populates="provider",
-        uselist=False  # A provider belongs to a single user
+        foreign_keys=[user_id],
+        uselist=False,  # A provider belongs to a single user
+        viewonly=True   # Make relationship viewonly to prevent synchronization errors
     )
     
     # Comment out these relationships for test isolation

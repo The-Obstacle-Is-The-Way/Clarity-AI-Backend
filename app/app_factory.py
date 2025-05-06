@@ -206,23 +206,22 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     # --- Middleware Configuration (Order Matters!) ---
     # 1. Security Headers Middleware
     app.add_middleware(SecurityHeadersMiddleware)
+    logger.info("Security headers middleware added.")
 
     # 2. Request ID Middleware
     app.add_middleware(RequestIdMiddleware)
+    logger.info("Request ID middleware added.")
 
     # 3. Logging Middleware
-    app.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access")) # Pass specific logger
+    # Temporarily commented due to import/implementation issues
+    # app.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
+    logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
-    # Instantiate RateLimiterService here (could be injected)
-    # Temporarily disabled along with middleware
-    # rate_limiter_service = get_rate_limiter_service(app_settings) # Uses settings
-    # Temporarily disable middleware due to AttributeError: 'InMemoryRateLimiter' object has no attribute 'process_request'
-    # app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service) # Add middleware here
-    # logger.info("Rate limiting middleware added.")
+    # 4. Rate Limiting Middleware
+    # Temporarily disabled due to implementation issues
+    # rate_limiter_service = get_rate_limiter_service(app_settings)
+    # app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
     logger.warning("Rate limiting middleware TEMPORARILY DISABLED due to implementation issue.")
-
-    app.add_middleware(SecurityHeadersMiddleware)
-    logger.info("Security headers middleware added.")
 
     # 4. CORS
     if app_settings.BACKEND_CORS_ORIGINS:

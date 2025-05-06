@@ -26,8 +26,9 @@ settings = get_settings()
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# Create declarative base for models
-Base = declarative_base()
+# Import the canonical Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.infrastructure.persistence.sqlalchemy.registry import ensure_all_models_registered
 
 # Type variable for session-yielding functions
 T = TypeVar('T')
