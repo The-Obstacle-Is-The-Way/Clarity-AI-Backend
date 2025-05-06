@@ -101,7 +101,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         
         try:
             # Check and record rate limit
-            count, _ = await self.limiter.track_request(f"global:{client_id}", config)
+            count, reset_seconds = await self.limiter.track_request(f"global:{client_id}", config)
             
             # Check if over limit
             if count > self.requests_per_minute:
@@ -114,7 +114,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                 # Raise rate limit exception
                 raise RateLimitExceededError(
                     detail=f"Rate limit exceeded. Limit: {self.requests_per_minute} per minute. Please try again later.",
-                    retry_after=60
+                    retry_after=reset_seconds
                 )
             
             # Proceed with request if within limits
