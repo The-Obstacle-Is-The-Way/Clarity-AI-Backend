@@ -26,7 +26,8 @@ from app.presentation.api.schemas.actigraphy import (
     ActigraphySummaryResponse,
     ActigraphyDataResponse,
     ActigraphyAnalysisResult,
-    AnalysisType
+    AnalysisType,
+    DailySummary
 )
 
 # Define interface for the PAT service following Interface Segregation Principle
@@ -48,6 +49,8 @@ class MockPATService(IPATService):
     async def analyze_actigraphy(self, data: ActigraphyAnalysisRequest) -> dict[str, Any]:
         """Mock implementation of actigraphy analysis. Now returns a dict matching AnalyzeActigraphyResponse structure."""
         now = datetime.now()
+        mock_analysis_id = uuid.uuid4()
+
         # Create a mock ActigraphyAnalysisResult
         mock_analysis_result = ActigraphyAnalysisResult(
             analysis_type=data.analysis_types[0] if data.analysis_types else AnalysisType.SLEEP_QUALITY, # Use first requested or default
@@ -57,6 +60,7 @@ class MockPATService(IPATService):
         ).model_dump() # Convert to dict for the outer dict structure
 
         return {
+            "analysis_id": mock_analysis_id,
             "patient_id": str(data.patient_id),
             "time_range": {"start_time": data.start_time if data.start_time else now, "end_time": data.end_time if data.end_time else now},
             "results": [mock_analysis_result] # List of results
@@ -203,7 +207,22 @@ async def get_actigraphy_summary_stub(
     patient_id: str, 
     current_user: CurrentUserDep
 ):
-    return ActigraphySummaryResponse(patient_id=patient_id, summary_data={}, message="Summary stub from routes/actigraphy.py")
+    # Return a compliant ActigraphySummaryResponse
+    mock_daily_summary = DailySummary(
+        date=datetime.now(), 
+        total_sleep_time=480.0, 
+        sleep_efficiency=0.85, 
+        total_steps=5000, 
+        active_minutes=60,
+        energy_expenditure=300.0
+    )
+    return ActigraphySummaryResponse(
+        patient_id=patient_id, 
+        interval="day", 
+        summaries=[mock_daily_summary],
+        trends={"sleep_trend": 0.05, "activity_trend": -0.02}
+        # Removed: summary_data={}, message="..."
+    )
 
 @router.get(
     "/data/{data_id}", 

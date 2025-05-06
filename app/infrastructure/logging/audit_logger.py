@@ -532,4 +532,8 @@ __all__ = [
     "AuditLogger",
     "log_phi_access",
     "log_security_event",
+    "log_audit_event",
+    "AuditEventType",
+    "AuditSeverity",
+    "IAuditLogger"
 ]

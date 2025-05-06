@@ -363,6 +363,22 @@ async def test_async_client(test_settings: Settings, mock_override_user: User) -
     logger.info("AsyncClient lifespan exited (explicit LifespanManager).")
 
 
+@pytest_asyncio.fixture(scope="function")
+async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Provides an AsyncClient configured with a FastAPI app instance
+    created using test settings, managing app lifespan, WITHOUT auth overrides.
+    """
+    app = create_application(settings_override=test_settings)
+    
+    from asgi_lifespan import LifespanManager
+    async with LifespanManager(app):
+        async with AsyncClient(app=app, base_url="http://testserver") as client:
+            logger.info("Yielding UNAUTHENTICATED AsyncClient with managed lifespan.")
+            yield client
+    logger.info("UNAUTHENTICATED AsyncClient lifespan exited.")
+
+
 # --- User and Authentication Fixtures ---
 
 

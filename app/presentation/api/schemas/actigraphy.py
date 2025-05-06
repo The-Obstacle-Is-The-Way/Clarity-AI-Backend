@@ -119,6 +119,7 @@ class ActigraphyAnalysisResult(BaseSchema):
 
 class AnalyzeActigraphyResponse(BaseSchema):
     """Schema for actigraphy analysis response."""
+    analysis_id: uuid.UUID
     patient_id: str
     time_range: dict[str, datetime]
     results: list[ActigraphyAnalysisResult]
