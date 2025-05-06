@@ -1,81 +1,156 @@
+"""
+Rate Limiting Middleware.
+
+This module implements rate limiting middleware for the FastAPI application,
+using the Clean Architecture rate limiting components.
+"""
+
 import logging
-from collections.abc import Callable
+from typing import Callable, Optional
 
-from fastapi import Request, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response, JSONResponse
 
+from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
+from app.infrastructure.security.rate_limiting.providers import get_rate_limiter
+
+# Configure logger
 logger = logging.getLogger(__name__)
 
-class RateLimitExceededError(Exception):
-    def __init__(self, detail="Rate limit exceeded", retry_after=60):
-        super().__init__(detail)
-        self.retry_after = retry_after
+
+class RateLimitExceededError(HTTPException):
+    """
+    Exception raised when a rate limit is exceeded.
+    """
+    
+    def __init__(self, detail: str = "Rate limit exceeded", retry_after: int = 60):
+        """
+        Initialize rate limit error with retry information.
+        
+        Args:
+            detail: Error message
+            retry_after: Seconds until retry is allowed
+        """
+        headers = {"Retry-After": str(retry_after)}
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail,
+            headers=headers
+        )
+
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     """
-    Middleware for enforcing API rate limits.
+    Middleware for global rate limiting.
     
-    This middleware tracks and limits the number of requests from clients
-    based on configured limits and timeframes to prevent API abuse.
+    This middleware applies rate limiting at the application level,
+    complementing the endpoint-specific rate limiting provided by dependencies.
+    It properly follows dependency inversion by depending on IRateLimiter.
     """
     
-    EXCLUDED_PATHS = ["/health", "/metrics"]
-    
-    def __init__(self, app, limiter=None):
+    def __init__(
+        self,
+        app: FastAPI,
+        *,
+        limiter: Optional[IRateLimiter] = None,
+        requests_per_minute: int = 60,
+        exclude_paths: Optional[list[str]] = None,
+        key_func: Optional[Callable[[Request], str]] = None
+    ):
         """
-        Initialize the rate limiting middleware.
+        Initialize rate limiting middleware.
         
         Args:
-            app: The FastAPI application
-            limiter: Rate limiter service/component to use for limit enforcement
-                 (Expected interface: process_request(request), process_response(response), get_headers())
+            app: FastAPI application
+            limiter: Rate limiter implementation
+            requests_per_minute: Request limit per minute
+            exclude_paths: Paths to exclude from rate limiting
+            key_func: Function to extract client identifier from request
         """
         super().__init__(app)
-        self.limiter = limiter
-        
+        self.limiter = limiter or get_rate_limiter()
+        self.requests_per_minute = requests_per_minute
+        self.exclude_paths = exclude_paths or ["/health", "/metrics"]
+        self.key_func = key_func or self._default_key_func
+    
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process the request and enforce rate limits, skipping excluded paths.
+        Process request with rate limiting.
         
         Args:
-            request: The incoming HTTP request
-            call_next: The next middleware/endpoint in the chain
+            request: Incoming request
+            call_next: Function to call next middleware
             
         Returns:
-            The HTTP response from downstream handlers or a 429 Too Many Requests
-            response if rate limits are exceeded
+            HTTP response
         """
-        if any(request.url.path.startswith(path) for path in self.EXCLUDED_PATHS):
-            logger.debug(f"Skipping rate limiting for excluded path: {request.url.path}")
+        # Skip rate limiting for excluded paths
+        path = request.url.path
+        if any(path.startswith(excluded) for excluded in self.exclude_paths):
             return await call_next(request)
-            
-        if not self.limiter:
-            logger.warning(f"Rate limiter not configured, passing through request for: {request.url.path}")
-            return await call_next(request)
-
+        
+        # Get client identifier
+        client_id = self.key_func(request)
+        
+        # Configure rate limit
+        config = RateLimitConfig(
+            requests=self.requests_per_minute,
+            window_seconds=60,
+            scope_key="global"
+        )
+        
         try:
-            logger.debug(f"Processing rate limit check for: {request.url.path}")
-            await self.limiter.process_request(request)
+            # Check and record rate limit
+            count, _ = await self.limiter.track_request(f"global:{client_id}", config)
             
-            response = await call_next(request)
+            # Check if over limit
+            if count > self.requests_per_minute:
+                # Log rate limit event
+                logger.warning(
+                    f"Global rate limit exceeded: {client_id} ({count}/{self.requests_per_minute}) "
+                    f"at {request.url.path}"
+                )
+                
+                # Raise rate limit exception
+                raise RateLimitExceededError(
+                    detail=f"Rate limit exceeded. Limit: {self.requests_per_minute} per minute. Please try again later.",
+                    retry_after=60
+                )
             
-            await self.limiter.process_response(response)
-            headers = await self.limiter.get_headers()
-            if headers:
-                logger.debug(f"Adding rate limit headers: {headers}")
-                response.headers.update(headers)
-            
-            return response
-
-        except RateLimitExceededError as e: 
-            retry_after = getattr(e, 'retry_after', '60')
-            logger.warning(f"Rate limit exceeded for {request.url.path}. Retry after: {retry_after}s")
-            return JSONResponse(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"detail": str(e) or "Rate limit exceeded"},
-                headers={"Retry-After": str(retry_after)}
+            # Proceed with request if within limits
+            return await call_next(request)
+        
+        except RateLimitExceededError as e:
+            # Return the rate limit exceeded response
+            return Response(
+                content=str(e.detail),
+                status_code=e.status_code,
+                headers=e.headers
             )
         except Exception as e:
-            logger.error(f"Unexpected error during rate limiting for {request.url.path}: {e}", exc_info=True)
-            return await call_next(request) 
+            # Log error but allow request to proceed in case of rate limiting failure
+            logger.error(f"Rate limiting error: {str(e)}")
+            return await call_next(request)
+    
+    def _default_key_func(self, request: Request) -> str:
+        """
+        Default function to extract client identifier from request.
+        
+        Args:
+            request: FastAPI request
+            
+        Returns:
+            Client identifier (usually IP address)
+        """
+        # Try to get real IP from X-Forwarded-For
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # First address is the client, the rest are proxies
+            return forwarded_for.split(",")[0].strip()
+        
+        # Fallback to direct client
+        if request.client:
+            return request.client.host
+        
+        # If all else fails
+        return "unknown"

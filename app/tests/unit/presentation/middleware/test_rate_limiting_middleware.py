@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from app.infrastructure.security.rate_limiting.rate_limiter import DistributedRateLimiter
+from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
 from app.presentation.api.dependencies.rate_limiter import RateLimitConfig
 from app.presentation.middleware.rate_limiting import RateLimitExceededError, RateLimitingMiddleware
 
