@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Create the FastAPI application instance using the factory
-app = create_application(settings)
+app = create_application(settings_override=settings)
 
 
 # --- Main Execution Block (for running with uvicorn directly) ---

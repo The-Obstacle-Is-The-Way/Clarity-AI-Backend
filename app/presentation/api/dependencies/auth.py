@@ -67,6 +67,12 @@ async def get_current_user(
     user_repo: UserRepoDep,
 ) -> User:
     """Dependency to get the current authenticated user from the token."""
+    # --- DIAGNOSTIC LOG --- #
+    import logging # Make sure logging is imported if not already
+    logger = logging.getLogger(__name__) # Or use a specific logger
+    logger.info(f"--- ORIGINAL get_current_user CALLED with token: {token[:20]}... ---") # Log first 20 chars of token
+    # --- END DIAGNOSTIC LOG --- #
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

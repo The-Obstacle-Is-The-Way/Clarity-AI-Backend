@@ -8,7 +8,7 @@ following clean architecture principles with proper dependency injection pattern
 from collections.abc import AsyncGenerator, Callable
 from typing import Annotated, TypeVar
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
@@ -21,14 +21,14 @@ T = TypeVar('T', bound=BaseRepositoryInterface)
 # Type alias for session dependency
 DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session)]
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency for getting a database session.
     
     Yields:
         AsyncSession: SQLAlchemy async session.
     """
-    async for session in get_async_session():
+    async for session in get_async_session(request=request):
         yield session
 
 

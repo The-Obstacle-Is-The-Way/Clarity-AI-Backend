@@ -76,11 +76,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events (startup and shutdown)."""
     logger.info("Application lifespan startup sequence initiated.")
 
-    # Retrieve settings directly using the environment-aware get_settings()
-    current_settings = get_settings()
-    logger.info(f"Lifespan using settings from get_settings(). ENVIRONMENT: {current_settings.ENVIRONMENT}, DB_URL: {current_settings.DATABASE_URL}")
+    # Retrieve settings FROM THE APP STATE
+    current_settings = app.state.settings # Use the settings instance already on the app
+    logger.info(f"Lifespan using settings from app.state. ENVIRONMENT: {current_settings.ENVIRONMENT}, DB_URL: {current_settings.DATABASE_URL}")
 
-    # Fallback logic if get_settings() somehow failed (should not happen with proper config)
+    # Fallback logic if app.state.settings somehow failed (should not happen with proper config)
     if current_settings is None: # Should ideally not be None if get_settings() is robust
         logger.critical(
             "Critical: get_settings() returned None during lifespan startup! Attempting fallback to global_settings."
@@ -198,7 +198,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # --- Application Factory ---
-def create_application(settings_override: Settings | None = None) -> FastAPI:
+def create_application(
+    settings_override: Settings | None = None,
+    # dependency_overrides_param: dict | None = None  # REMOVED PARAMETER
+) -> FastAPI:
     """Factory function to create and configure the FastAPI application."""
     logger.info("Creating FastAPI application instance...")
 
@@ -230,7 +233,7 @@ def create_application(settings_override: Settings | None = None) -> FastAPI:
         logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
 
     # Create an initial state object to pass to FastAPI constructor
-    initial_state = {"settings": app_settings}
+    # initial_state = {"settings": app_settings} # OLD
 
     # Initialize FastAPI app with lifespan context manager and initial state
     app = FastAPI(
@@ -241,8 +244,17 @@ def create_application(settings_override: Settings | None = None) -> FastAPI:
         docs_url="/docs" if app_settings.ENVIRONMENT != "production" else None,
         redoc_url="/redoc" if app_settings.ENVIRONMENT != "production" else None,
         lifespan=lifespan,  # Use the lifespan context manager
-        state=initial_state # Pass initial state here
+        # state=initial_state # OLD Pass initial state here
     )
+    app.state.settings = app_settings # Set settings directly on app.state
+
+    logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app.state.settings.ENVIRONMENT if hasattr(app.state, 'settings') and app.state.settings is not None else 'NOT FOUND ON app.state'}") # Diagnostic log
+    # REMOVED: Apply overrides if provided
+    # if dependency_overrides_param:
+    #     app.dependency_overrides = dependency_overrides_param
+    #     logger.info(f"Factory: Applied dependency overrides: {list(dependency_overrides_param.keys())}")
+    # else:
+    #     logger.info("Factory: No dependency overrides provided.")
 
     # Settings are now in app.state via initial_state, no need to set app.state.settings explicitly here
 

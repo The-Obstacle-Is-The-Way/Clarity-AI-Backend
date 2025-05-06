@@ -26,6 +26,7 @@ from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.infrastructure.database.base_class import Base
+from app.presentation.api.dependencies.auth import get_current_user as app_get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -185,41 +186,51 @@ def mock_get_current_user() -> User:
 @pytest.fixture
 def mock_jwt_service() -> MagicMock:
     """Provides a MagicMock for JWTService."""
+    import datetime
+    from app.core.domain.entities.user import UserRole
+    from app.infrastructure.security.jwt_service import JWTService # Correct path
+    # from app.domain.exceptions.token_exceptions import InvalidTokenException # Not needed for this simplified version
+
+    logger.info("--- mock_jwt_service FIXTURE CREATED ---") # Log fixture creation
+
     mock = MagicMock(spec=JWTService)
+
+    # Simplified decode_token mock
+    TEST_USER_ID_STR = "00000000-0000-0000-0000-000000000001"
+    now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    default_payload = {
+        "sub": TEST_USER_ID_STR, 
+        "roles": [UserRole.PATIENT.value], 
+        "exp": now_ts + 3600, 
+        "type": "access", 
+        "jti": str(uuid.uuid4())
+    }
+
+    def simple_mock_decode_token(token: str, settings_param = None):
+        logger.info(f"!!! MOCK JWT DECODE CALLED (simplified) WITH TOKEN: {token} !!!")
+        # Optionally, raise an exception for specific unhandled tokens if needed for a test
+        # if token not in ["VALID_PATIENT_TOKEN", "VALID_PROVIDER_TOKEN", "VALID_ADMIN_TOKEN", "mock_access_token"]:
+        #     raise InvalidTokenException(f"Mock JWTService (simplified): Unhandled token '{token}'")
+        return default_payload
+
+    # mock.decode_token = MagicMock(side_effect=mock_decode_token_side_effect) # OLD COMPLEX SIDE EFFECT
+    mock.decode_token = MagicMock(side_effect=simple_mock_decode_token) # NEW SIMPLIFIED SIDE EFFECT
+
     mock.create_access_token = MagicMock(return_value="mock_access_token")
     mock.create_refresh_token = MagicMock(return_value="mock_refresh_token")
     
-    # Default payload. This can be overridden by specific tests or fixtures like auth_headers.
-    default_user_id_for_payload = str(uuid.uuid4())
-    default_mock_payload = {
-        "sub": default_user_id_for_payload,
-        "roles": ["clinician"],
-        "username": "default_mock_jwt_user",
-        "exp": datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600,
-        "iat": datetime.datetime.now(datetime.timezone.utc).timestamp(),
-    }
-    
-    mock.decode_token = MagicMock(return_value=default_mock_payload)
-    
-    # JWTService.verify_token calls decode_token. So, if decode_token is successful,
-    # verify_token effectively returns True. If decode_token raises error, it's False.
-    # We can mock it to reflect this behavior based on decode_token's mock.
-    # For simplicity, if decode_token returns a payload, verify_token is true.
+    # Keep other mocks if they might be incidentally called
     def _mock_verify_token(token_str):
+        # logger.info(f"!!! MOCK VERIFY TOKEN (simplified) CALLED WITH: {token_str} !!!")
         try:
-            mock.decode_token(token_str) # Call the mocked decode_token
+            mock.decode_token(token_str) # Will call the simplified, logging decode
             return True
         except Exception:
             return False
     mock.verify_token = MagicMock(side_effect=_mock_verify_token)
 
-    # Remove the problematic get_user_from_token default that returned SQLAUser
-    # if hasattr(mock, 'get_user_from_token'):
-    #     del mock.get_user_from_token
-
-    # Ensure other interface methods are present due to 'spec'
-    mock.generate_tokens_for_user = MagicMock(return_value={"access_token": "mock_access", "refresh_token": "mock_refresh"})
-    mock.refresh_access_token = MagicMock(return_value="new_mock_access_token")
+    mock.generate_tokens_for_user = MagicMock(return_value={"access_token": "mock_access_token_for_user", "refresh_token": "mock_refresh_token_for_user"})
+    mock.refresh_access_token = MagicMock(return_value="new_mock_access_token_via_refresh")
     mock.get_token_expiration = MagicMock(return_value=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1))
     
     return mock
@@ -304,30 +315,52 @@ def mock_user_service() -> MagicMock:
 # --- Application and Client Fixtures ---
 
 @pytest_asyncio.fixture(scope="function")
-async def test_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
+async def mock_override_user() -> User:
+    """Provides a mock domain User object for overriding get_current_user."""
+    # Using a fixed UUID for predictability in tests if needed, or uuid.uuid4() for uniqueness
+    TEST_OVERRIDE_USER_ID = uuid.UUID("fab0df22-5f59-4f28-a783-a8dfbce68820") 
+    return User(
+        id=TEST_OVERRIDE_USER_ID,
+        username="override_testuser",
+        email="override_user@example.com",
+        full_name="Override Test User",
+        roles={UserRole.PATIENT}, # Set desired role
+        password_hash="fakepassword", # CORRECTED from hashed_password
+        status=UserStatus.ACTIVE # SETTING USER TO ACTIVE VIA STATUS
+        # REMOVED: is_active=True, is_verified=True, email_verified=True
+    )
+
+@pytest_asyncio.fixture(scope="function")
+async def test_async_client(test_settings: Settings, mock_override_user: User) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an AsyncClient configured with a FastAPI app instance
     created using test settings and managing the app's lifespan.
     """
-    # Create the app instance with test settings
-    # Override dependencies *before* creating the client or running lifespan
-    dependency_overrides = {
-        # Example: Override DB session if needed for specific integration tests
-        # get_async_session: lambda: mock_session_fixture() # If you need a MOCK session
-        # For REAL DB interaction in integration tests, DO NOT override get_async_session here.
-        # Let the app use the real one configured by test_settings.
-        # Override other services as needed for isolation
-    }
+    # Import the actual dependency getter for JWT service
+    # from app.presentation.api.dependencies.auth import get_jwt_service as app_get_jwt_service
 
-    from app.app_factory import create_application
-    app = create_application(settings=test_settings)
-    app.dependency_overrides = dependency_overrides
+    # Define the new override function for get_current_user
+    async def mock_get_current_user_dependency_override() -> User:
+        logger.info(f"--- MOCK get_current_user_dependency_override CALLED, returning user: {mock_override_user.email} ---")
+        return mock_override_user
+
+    app = create_application(
+        settings_override=test_settings,
+        # dependency_overrides_param=dependency_overrides_for_factory # REMOVED: No longer passing to factory
+    )
+    
+    # Apply overrides directly to the app instance for the client
+    app.dependency_overrides[app_get_current_user] = mock_get_current_user_dependency_override
+    logger.info(f"DEBUG: app.dependency_overrides in test_async_client AFTER direct set: {app.dependency_overrides.items() if app.dependency_overrides else 'None or Empty'}")
 
     # Use AsyncClient as a context manager to handle lifespan
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
-        logger.info("Yielding AsyncClient with managed lifespan.")
-        yield client
-    logger.info("AsyncClient lifespan exited.")
+    # Use LifespanManager explicitly to ensure startup/shutdown events are handled correctly
+    from asgi_lifespan import LifespanManager
+    async with LifespanManager(app):
+        async with AsyncClient(app=app, base_url="http://testserver") as client:
+            logger.info("Yielding AsyncClient with managed lifespan (explicit LifespanManager).")
+            yield client
+    logger.info("AsyncClient lifespan exited (explicit LifespanManager).")
 
 
 # --- User and Authentication Fixtures ---

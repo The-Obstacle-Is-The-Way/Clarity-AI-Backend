@@ -7,7 +7,8 @@ providing request/response schema validation for the API contract.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, List, Optional
+import uuid
 
 from pydantic import BaseModel, ConfigDict
 
@@ -118,7 +119,7 @@ class ActigraphyAnalysisResult(BaseSchema):
     raw_results: dict[str, Any] | None = None
 
 
-class ActigraphyAnalysisResponse(BaseSchema):
+class AnalyzeActigraphyResponse(BaseSchema):
     """Schema for actigraphy analysis response."""
     patient_id: str
     time_range: dict[str, datetime]
@@ -149,3 +150,34 @@ class ActigraphySummaryResponse(BaseSchema):
     interval: str
     summaries: list[DailySummary]
     trends: dict[str, float]  # e.g., "sleep_trend": 0.05 (positive trend)
+
+
+class ActigraphyDataResponse(BaseSchema):
+    data_id: str
+    raw_data: Any
+    metadata: dict
+    timestamp: Optional[str] = None
+
+
+class ActigraphyModelInfoResponse(BaseSchema):
+    message: str
+    version: str
+
+
+class ActigraphyAnalysisRequest(BaseSchema):
+    data_file_id: str
+    analysis_type: str
+    sensitivity: Optional[float] = None
+
+
+class AnalyzeActigraphyResponse(BaseSchema):
+    message: str
+    analysis_id: str
+    summary: dict
+    status: Optional[str] = None
+
+
+class ActigraphySummaryResponse(BaseSchema):
+    patient_id: str
+    summary_data: dict
+    generated_at: Optional[str] = None
