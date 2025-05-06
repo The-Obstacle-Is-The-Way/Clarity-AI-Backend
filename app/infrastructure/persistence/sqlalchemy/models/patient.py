@@ -111,8 +111,7 @@ class Patient(Base):
         "AppointmentModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
-        lazy="selectin",  # Efficient loading pattern
-        viewonly=True     # Prevents SQLAlchemy sync errors during tests
+        lazy="selectin"  # Efficient loading pattern
     )
     
     # Relationship with clinical notes with proper viewonly setting
@@ -120,8 +119,7 @@ class Patient(Base):
         "ClinicalNoteModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
-        lazy="selectin",  # Efficient loading pattern
-        viewonly=True     # Prevents SQLAlchemy sync errors during tests
+        lazy="selectin"  # Efficient loading pattern
     )
     
     # Relationship with medications with proper viewonly setting
@@ -129,8 +127,7 @@ class Patient(Base):
         "MedicationModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
-        lazy="selectin",  # Efficient loading pattern
-        viewonly=True     # Prevents SQLAlchemy sync errors during tests
+        lazy="selectin"  # Efficient loading pattern
     )
 
     # Digital twin relationships
