@@ -113,6 +113,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await conn.run_sync(Base.metadata.create_all)
             logger.info("Test environment: Database tables created.")
 
+            # Create test users after tables are created
+            logger.info("Test environment: Creating test users...")
+            from app.tests.integration.utils.test_db_initializer import create_test_users
+            # Create a session to pass to create_test_users
+            async with app.state.db_session_factory() as session:
+                try:
+                    await create_test_users(session)
+                    await session.commit() # Ensure users are committed
+                    logger.info("Test environment: Test users created successfully.")
+                except Exception as e_users:
+                    logger.error(f"Test environment: Error creating test users: {e_users}", exc_info=True)
+                    await session.rollback()
+                    # Optionally re-raise or handle as critical test setup failure
+                    raise RuntimeError(f"Failed to create test users: {e_users}") from e_users
+
     except (SQLAlchemyError, ValueError) as e:
         logger.critical(f"Database initialization failed: {e}", exc_info=True)
         # Depending on policy, might want to exit or prevent app startup

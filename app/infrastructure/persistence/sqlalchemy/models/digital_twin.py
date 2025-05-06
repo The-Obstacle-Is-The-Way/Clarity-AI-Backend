@@ -18,14 +18,14 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
-class BiometricDataPointModel(Base):
+class DigitalTwinDataPoint(Base):
     """
-    SQLAlchemy model for biometric data points.
+    SQLAlchemy model for biometric data points related to a DigitalTwin's timeseries.
     
     This represents a single measurement of a biometric value at a specific point in time.
     """
     
-    __tablename__ = "biometric_data_points"
+    __tablename__ = "digital_twin_data_points"
     __table_args__ = {'extend_existing': True}
     
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
@@ -84,7 +84,7 @@ class BiometricTimeseriesModel(Base):
     
     # Relationships
     twin = relationship("DigitalTwinModel", back_populates="timeseries")
-    data_points = relationship("BiometricDataPointModel", back_populates="timeseries", cascade="all, delete-orphan")
+    data_points = relationship("DigitalTwinDataPoint", back_populates="timeseries", cascade="all, delete-orphan")
     
     @hybrid_property
     def physiological_range(self) -> dict[str, float] | None:

@@ -40,7 +40,7 @@ class BiometricTwinModel(Base):
     # Define the relationship to data points - use string reference to avoid circular imports
     # This will be properly mapped when both classes are loaded
     data_points = relationship(
-        "BiometricDataPointModel", 
+        "app.infrastructure.persistence.sqlalchemy.models.biometric_twin_model.BiometricDataPointModel", 
         back_populates="twin",
         cascade="all, delete-orphan"
     )
@@ -71,7 +71,7 @@ class BiometricDataPointModel(Base):
     confidence = Column(Float, nullable=False, default=1.0)
     
     # Define relationship to BiometricTwinModel using string reference
-    twin = relationship("BiometricTwinModel", back_populates="data_points")
+    twin = relationship("app.infrastructure.persistence.sqlalchemy.models.biometric_twin_model.BiometricTwinModel", back_populates="data_points")
     
     def __repr__(self) -> str:
         """String representation of the model."""

@@ -33,6 +33,8 @@ from app.infrastructure.security.jwt_service import get_jwt_service as get_jwt_s
 from app.core.models.token_models import TokenPayload
 from app.core.domain.entities.user import UserRole
 from app.domain.exceptions.token_exceptions import InvalidTokenException
+# Import the predefined test user UUIDs
+from app.tests.integration.utils.test_db_initializer import TEST_USER_ID, TEST_CLINICIAN_ID
 # End of added imports
 
 # Import SQLAlchemy models and utils
@@ -317,34 +319,37 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
     Provides a mock JWTService that handles placeholder token strings
     and returns corresponding TokenPayload objects.
     """
+    # This mock JWT service fixture is designed to handle placeholder tokens
+    # used in some integration tests, returning predefined TokenPayload objects.
     mock_service = MagicMock(spec=JWTServiceInterface)
 
     def decode_token_side_effect(token: str, audience: str | None = None) -> TokenPayload: # Added audience to match interface
+        logger.info(f"Mock JWT Service: Decoding token '{token}'")
         if token == "VALID_PATIENT_TOKEN":
+            # Return a TokenPayload for a mock patient
+            # Ensure 'sub' is the predefined TEST_USER_ID
             return TokenPayload(
-                sub="mock_patient_id_placeholder",
-                username="mockpatient_placeholder",
-                email="patient_placeholder@example.com",
+                sub=str(TEST_USER_ID), # Use predefined patient UUID
+                username="mockpatient_placeholder", # Matches test_db_initializer
+                email="test.user@novamind.ai",    # Matches test_db_initializer
                 role=UserRole.PATIENT,
                 roles=[UserRole.PATIENT],
-                jti=str(uuid.uuid4()),
-                exp=9999999999, # Far future expiration
-                iat=0, # Issued in the past
-                active=True,
-                verified=True
+                jti=str(uuid.uuid4()), # Placeholder JTI
+                exp=9999999999,  # Far future expiration
+                iat=0,  # Issued at epoch
             )
         elif token == "VALID_PROVIDER_TOKEN":
+            # Return a TokenPayload for a mock provider/clinician
+            # Ensure 'sub' is the predefined TEST_CLINICIAN_ID
             return TokenPayload(
-                sub="mock_provider_id_placeholder",
-                username="mockprovider_placeholder",
-                email="provider_placeholder@example.com",
-                role=UserRole.CLINICIAN, # Assuming provider is a clinician
-                roles=[UserRole.CLINICIAN], # Corrected: Use CLINICIAN instead of PROVIDER
-                jti=str(uuid.uuid4()),
-                exp=9999999999,
-                iat=0,
-                active=True,
-                verified=True
+                sub=str(TEST_CLINICIAN_ID), # Use predefined clinician UUID
+                username="mockprovider_placeholder", # Username can be a placeholder
+                email="test.clinician@novamind.ai", # Matches test_db_initializer
+                role=UserRole.CLINICIAN,
+                roles=[UserRole.CLINICIAN],
+                jti=str(uuid.uuid4()), # Placeholder JTI
+                exp=9999999999,  # Far future expiration
+                iat=0,  # Issued at epoch
             )
         elif token == "VALID_ADMIN_TOKEN":
             return TokenPayload(
@@ -359,11 +364,10 @@ def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
                 active=True,
                 verified=True
             )
-        # Added handling for other common test tokens to avoid breaking other tests
-        elif token == "INVALID_TOKEN_SIGNATURE":
-            raise InvalidTokenException("Invalid token signature (mocked)")
         elif token == "EXPIRED_TOKEN":
-            raise InvalidTokenException("Token has expired (mocked)")
+            raise InvalidTokenException("Token has expired")
+        elif token == "INVALID_SIGNATURE_TOKEN":
+            raise InvalidTokenException("Invalid token signature (mocked)")
         elif token == "MALFORMED_TOKEN":
             raise InvalidTokenException("Malformed token (mocked)")
         else:
