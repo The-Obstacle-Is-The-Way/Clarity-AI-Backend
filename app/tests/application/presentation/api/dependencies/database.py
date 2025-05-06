@@ -23,7 +23,7 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 # Repository interfaces
-from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 
 # Import biometric repository interfaces - these might need to be created if they don't exist
 try:

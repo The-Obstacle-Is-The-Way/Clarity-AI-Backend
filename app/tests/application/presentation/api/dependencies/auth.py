@@ -12,7 +12,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, SecurityScopes
 
 from app.config.settings import Settings, get_settings
-from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.entities.user import User
 from app.domain.enums.role import Role as UserRole

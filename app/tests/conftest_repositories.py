@@ -11,7 +11,7 @@ from app.core.interfaces.repositories.biometric_rule_repository import IBiometri
 from app.core.interfaces.repositories.biometric_twin_repository import IBiometricTwinRepository
 from app.core.interfaces.repositories.digital_twin_repository import IDigitalTwinRepository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.core.interfaces.repositories.user_repository import IUserRepository
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.unit_of_work import IUnitOfWork
 
 # Application Test Utilities (Mock Implementations)

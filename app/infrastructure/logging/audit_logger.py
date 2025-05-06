@@ -11,7 +11,11 @@ import logging
 import os
 import re
 import tempfile
-from typing import Any
+import uuid
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
 
 # Corrected import path
 # from app.config.settings import settings # Keep only get_settings
@@ -30,12 +34,15 @@ except (ImportError, AttributeError):
     AUDIT_LOG_DIR = os.path.join(tempfile.gettempdir(), "novamind_audit")
 
 
-class AuditLogger:
+class AuditLogger(IAuditLogger):
     """
     HIPAA-compliant audit logger for PHI operations.
     
     This class provides secure, immutable logging of all PHI access and
     modifications, supporting both debugging and regulatory compliance.
+    
+    Implements the IAuditLogger interface to ensure architectural alignment
+    with clean architecture principles and dependency inversion.
     """
     
     # Configure standard Python logger for audit events
@@ -202,6 +209,138 @@ def log_security_event(*args, **kwargs):  # type: ignore[missing-return-type-doc
     """Proxy to :pymeth:`AuditLogger.log_security_event`."""
 
     return AuditLogger.log_security_event(*args, **kwargs)
+
+
+# Implementation of IAuditLogger interface methods
+async def log_event(
+    self,
+    event_type: AuditEventType,
+    actor_id: Optional[str] = None,
+    target_resource: Optional[str] = None,
+    target_id: Optional[str] = None,
+    action: Optional[str] = None,
+    status: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+    severity: AuditSeverity = AuditSeverity.INFO,
+    metadata: Optional[Dict[str, Any]] = None,
+    timestamp: Optional[datetime] = None,
+) -> str:
+    """Log an audit event in the system.
+    
+    Implements the IAuditLogger.log_event method by mapping to the existing
+    log_transaction method.
+    """
+    # Configure if not already done
+    if not self._configured:
+        self.setup()
+    
+    # Skip logging if disabled
+    if not AUDIT_ENABLED:
+        return str(uuid.uuid4())  # Return a placeholder ID
+    
+    full_metadata = {
+        "event_type": event_type,
+        "actor_id": actor_id or "system",
+        "target_resource": target_resource,
+        "target_id": target_id,
+        "action": action or event_type,
+        "status": status or "success",
+        "severity": severity,
+        "details": details or {},
+        "timestamp": timestamp.isoformat() if timestamp else datetime.now().isoformat(),
+    }
+    
+    if metadata:
+        full_metadata.update(metadata)
+    
+    # Use existing log_transaction method
+    self.log_transaction(full_metadata)
+    
+    # Generate and return a unique ID for the audit log
+    return str(uuid.uuid4())
+
+async def log_security_event(
+    self,
+    description: str,
+    actor_id: Optional[str] = None,
+    status: Optional[str] = None,
+    severity: AuditSeverity = AuditSeverity.HIGH,
+    details: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Log a security-related event.
+    
+    Implements the IAuditLogger.log_security_event method by mapping to 
+    the existing log_security_event class method.
+    """
+    event_details = details or {}
+    event_details["description"] = description
+    
+    # Call class method using standard approach for security events
+    AuditLogger.log_security_event(
+        event_type="security_event",
+        user_id=actor_id,
+        details=event_details
+    )
+    
+    # Generate and return a unique ID for the audit log
+    return str(uuid.uuid4())
+
+async def log_phi_access(
+    self,
+    actor_id: str,
+    patient_id: str,
+    resource_type: str,
+    action: str,
+    status: str,
+    phi_fields: Optional[list[str]] = None,
+    reason: Optional[str] = None,
+) -> str:
+    """Log PHI access event specifically.
+    
+    Implements the IAuditLogger.log_phi_access method by mapping to
+    the existing log_phi_access class method.
+    """
+    details = {
+        "resource_type": resource_type,
+        "status": status,
+    }
+    
+    if phi_fields:
+        details["phi_fields"] = phi_fields
+    if reason:
+        details["reason"] = reason
+    
+    # Call class method using standard approach for PHI access
+    AuditLogger.log_phi_access(
+        user_id=actor_id,
+        patient_id=patient_id,
+        action=action,
+        details=details
+    )
+    
+    # Generate and return a unique ID for the audit log
+    return str(uuid.uuid4())
+
+async def get_audit_trail(
+    self,
+    filters: Optional[Dict[str, Any]] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[Dict[str, Any]]:
+    """Retrieve audit trail entries based on filters.
+    
+    Implements the IAuditLogger.get_audit_trail method. Currently returns
+    an empty list as the audit log implementation doesn't support retrieval,
+    but this satisfies the interface contract.
+    
+    This would be implemented in future iterations to provide actual audit
+    log retrieval functionality.
+    """
+    # In a real implementation, this would query a database or parse log files
+    # For now, return an empty list to satisfy the interface
+    return []
 
 
 # ---------------------------------------------------------------------------

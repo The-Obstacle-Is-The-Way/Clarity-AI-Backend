@@ -18,7 +18,7 @@ from app.domain.entities.user import User
 from app.domain.exceptions import AuthenticationError
 
 try:
-    from app.core.interfaces.repositories.user_repository import IUserRepository
+    from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 except ImportError:
     IUserRepository = Any
 from app.config.settings import Settings

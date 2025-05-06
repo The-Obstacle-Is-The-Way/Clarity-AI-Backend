@@ -13,7 +13,7 @@ from typing import Any
 import jwt
 from pydantic import BaseModel
 
-from app.infrastructure.logging.audit_logger import AuditLogger
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
 from app.core.config import Settings
 from app.domain.exceptions.auth_exceptions import (
     InvalidTokenException,
@@ -57,7 +57,7 @@ class JWTService:
         self,
         token_repo: ITokenRepository,
         # blacklist_repo: ITokenBlacklistRepository, # TODO: Add back when defined and injected
-        audit_logger: AuditLogger
+        audit_logger: IAuditLogger
     ):
         """
         Initialize the JWT service.
