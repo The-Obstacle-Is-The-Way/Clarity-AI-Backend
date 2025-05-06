@@ -103,31 +103,36 @@ class Patient(Base):
     user = relationship(
         "User", 
         back_populates="patients",
-        uselist=False  # One user per patient
+        uselist=False,  # One user per patient
+        viewonly=True   # Prevents SQLAlchemy sync errors during tests
     )
 
-    # appointments = relationship(
-    #    "AppointmentModel", 
-    #    back_populates="patient", 
-    #    cascade="all, delete-orphan",
-    #    lazy="selectin"  # Efficient loading pattern
-    # )
+    # Define appointments relationship with proper viewonly to prevent sync errors
+    appointments = relationship(
+        "AppointmentModel", 
+        back_populates="patient", 
+        cascade="all, delete-orphan",
+        lazy="selectin",  # Efficient loading pattern
+        viewonly=True     # Prevents SQLAlchemy sync errors during tests
+    )
     
-    # Relationship with clinical notes - defined here but will be skipped during test initialization
-    # clinical_notes = relationship(
-    #    "ClinicalNoteModel", 
-    #    back_populates="patient", 
-    #    cascade="all, delete-orphan",
-    #    lazy="selectin"  # Efficient loading pattern
-    # )
+    # Relationship with clinical notes with proper viewonly setting
+    clinical_notes = relationship(
+        "ClinicalNoteModel", 
+        back_populates="patient", 
+        cascade="all, delete-orphan",
+        lazy="selectin",  # Efficient loading pattern
+        viewonly=True     # Prevents SQLAlchemy sync errors during tests
+    )
     
-    # Relationship with medications - defined here but will be skipped during test initialization
-    # medication_records = relationship(
-    #    "MedicationModel", 
-    #    back_populates="patient", 
-    #    cascade="all, delete-orphan",
-    #    lazy="selectin"  # Efficient loading pattern
-    # )
+    # Relationship with medications with proper viewonly setting
+    medication_records = relationship(
+        "MedicationModel", 
+        back_populates="patient", 
+        cascade="all, delete-orphan",
+        lazy="selectin",  # Efficient loading pattern
+        viewonly=True     # Prevents SQLAlchemy sync errors during tests
+    )
 
     # Digital twin relationships
     # Store as String(36) for SQLite compatibility
