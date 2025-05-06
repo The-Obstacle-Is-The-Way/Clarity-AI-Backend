@@ -220,30 +220,23 @@ async def provider_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
 
 # API Testing Fixtures
 @pytest_asyncio.fixture
-async def test_app(test_settings: Settings, jwt_service: IJwtService) -> FastAPI:
-    """
-    Creates a properly configured FastAPI application for testing.
-    The application will use test_settings for its configuration,
-    allowing its lifespan manager to set up dependencies like the database correctly.
-    Other specific services can be overridden.
+async def test_app(
+    # db_session: AsyncSession, # REMOVE THIS - Lifespan handles DB init for the app
+    test_settings: Settings,
+    mock_s3_service: MagicMock,
+    mock_encryption_service: MagicMock
+) -> FastAPI:
+    logger.info("Creating FastAPI app instance for integration tests via integration/conftest.py.")
     
-    Returns:
-        FastAPI: Configured test application
-    """
+    # Use the application factory
     from app.main import create_application
-    
-    # Create the application using test_settings.
-    # The lifespan manager in create_application will use these settings
-    # to initialize the database, Redis (mocked for tests), etc.
     app = create_application(settings_override=test_settings)
+
+    # Apply common overrides for integration tests
+    app.dependency_overrides[get_s3_service] = lambda: mock_s3_service
+    app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
     
-    # Apply other necessary dependency overrides AFTER app creation
-    app.dependency_overrides[IJwtService] = lambda: jwt_service
-    app.dependency_overrides[S3ServiceInterface] = lambda: AsyncMock(spec=S3ServiceInterface)
-    # DO NOT override get_db_session here if you want the app's lifespan
-    # to manage the database connection for integration tests.
-    # The db_session fixture can be used by tests for direct DB access if needed.
-    
+    logger.info(f"App '{app.title}' created. Lifespan will run when client starts. Settings env: {app.state.settings.ENVIRONMENT}")
     return app
 
 @pytest_asyncio.fixture
