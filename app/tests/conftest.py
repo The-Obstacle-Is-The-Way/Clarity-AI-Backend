@@ -49,32 +49,41 @@ def event_loop_policy() -> asyncio.DefaultEventLoopPolicy:
 
 @pytest_asyncio.fixture(scope="session")
 def test_settings() -> Settings:
-    """Load test settings, potentially overriding DATABASE_URL."""
-    logger.info("Loading test settings.")
+    """Load test settings, ensuring ENVIRONMENT is set to 'test'."""
+    logger.info("Loading test settings for session scope.")
     # Load from .env.test if it exists, otherwise .env
-    env_file = ".env.test" if Path(".env.test").exists() else ".env"
-    settings = Settings(_env_file=env_file)
-
-    # Use test settings from the proper settings module rather than hardcoding values here
-    # This ensures we reference the standardized path for test database defined in settings.py
-    # In-memory database is still the default for unit tests
-    # but file-based standardized path can be enabled via environment variables
-    # Define the test database path following clean architecture principles
-    test_db_path = Path("app/infrastructure/persistence/data/test_db.sqlite3")
+    env_file = ".env.test" if Path(".env.test").exists() else None # Prefer .env.test, fallback to default load
     
-    # If TEST_PERSISTENT_DB is set, use the file-based database
-    if os.environ.get("TEST_PERSISTENT_DB"):
-        settings.DATABASE_URL = f"sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
-        # Ensure the directory exists using Path objects (addressing lint warnings)
-        test_db_path.parent.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Using persistent test database: {settings.DATABASE_URL}")
+    # Initialize settings, allowing .env file loading
+    # We will explicitly override critical test settings afterwards
+    if env_file:
+        current_settings = Settings(_env_file=env_file, _env_file_encoding='utf-8')
+        logger.info(f"Loaded settings from {env_file}")
     else:
-        # Default to in-memory for most tests (faster, isolated)
-        settings.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-        logger.info(f"Using in-memory test database: {settings.DATABASE_URL}")
+        # If no .env.test, load with default .env behaviour (which might be .env or defaults)
+        current_settings = Settings() 
+        logger.info("Loaded settings with default .env behavior (no .env.test found).")
+
+    # Explicitly override/ensure settings for the test environment
+    current_settings.ENVIRONMENT = "test"
+    current_settings.TESTING = True
+    current_settings.SENTRY_DSN = None # Disable Sentry for tests
+
+    # Logic for database URL (copied from original fixture)
+    test_db_path = Path("app/infrastructure/persistence/data/test_db.sqlite3")
+    if os.environ.get("TEST_PERSISTENT_DB"):
+        db_url = f"sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+        test_db_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Using persistent test database: {db_url}")
+    else:
+        db_url = "sqlite+aiosqlite:///:memory:"
+        logger.info(f"Using in-memory test database: {db_url}")
     
-    logger.info(f"Test settings loaded. DATABASE_URL: {settings.DATABASE_URL}")
-    return settings
+    current_settings.DATABASE_URL = db_url
+    current_settings.ASYNC_DATABASE_URL = db_url # Ensure async URL is also set
+
+    logger.info(f"Final test settings: ENVIRONMENT={current_settings.ENVIRONMENT}, DATABASE_URL={current_settings.DATABASE_URL}, ASYNC_DATABASE_URL={current_settings.ASYNC_DATABASE_URL}")
+    return current_settings
 
 
 # --- Database Fixtures ---

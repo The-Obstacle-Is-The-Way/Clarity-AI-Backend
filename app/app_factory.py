@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # Application-Specific Imports
 from app.core.config import Settings, settings as global_settings
+from app.core.config.settings import get_settings
 from app.core.logging_config import LOGGING_CONFIG
 from app.core.security.rate_limiting.service import get_rate_limiter_service
 from app.infrastructure.database.session import create_db_engine_and_session
@@ -75,33 +76,43 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events (startup and shutdown)."""
     logger.info("Application lifespan startup sequence initiated.")
 
-    # Retrieve settings from app state
-    current_settings = getattr(app.state, "settings", None)
-    if current_settings is None:
+    # Retrieve settings directly using the environment-aware get_settings()
+    current_settings = get_settings()
+    logger.info(f"Lifespan using settings from get_settings(). ENVIRONMENT: {current_settings.ENVIRONMENT}, DB_URL: {current_settings.DATABASE_URL}")
+
+    # Fallback logic if get_settings() somehow failed (should not happen with proper config)
+    if current_settings is None: # Should ideally not be None if get_settings() is robust
         logger.critical(
-            "Settings not found in app.state during lifespan startup! Attempting fallback to global_settings."
+            "Critical: get_settings() returned None during lifespan startup! Attempting fallback to global_settings."
         )
-        # Fallback, but this indicates a potential setup issue if global_settings is not the intended one.
         current_settings = global_settings 
-        # For robustness, ensure current_settings is not None even after fallback.
         if current_settings is None:
-            # This is a critical failure if no settings can be resolved.
-            msg = "No settings available for lifespan (app.state.settings or global_settings)."
+            msg = "No settings available for lifespan (get_settings() or global_settings)."
             logger.critical(msg)
-            raise RuntimeError(msg) 
+            raise RuntimeError(msg)
+        logger.info(f"Lifespan fell back to global_settings. ENVIRONMENT: {current_settings.ENVIRONMENT}")
+
 
     # --- Database Initialization ---
     try:
         logger.info("Initializing database connection...")
-        # Use ASYNC_DATABASE_URL rather than DATABASE_URL to ensure async driver compatibility
         db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
         logger.info(f"Using database URL: {db_url}")
-        app.state.db_engine, app.state.db_session_factory = create_db_engine_and_session(db_url)
+        engine, session_factory = create_db_engine_and_session(db_url)
+        app.state.db_engine = engine
+        app.state.db_session_factory = session_factory
         logger.info("Database connection initialized successfully.")
-        # Optional: Test connection? (be careful with blocking calls)
-        # async with db_engine.connect() as conn:
-        #     await conn.run_sync(lambda sync_conn: None) # Simple check
-        # logger.info("Database connection tested successfully.")
+
+        # In a test environment, ensure tables are created.
+        # In production, Alembic migrations would handle this.
+        if current_settings.ENVIRONMENT == "test":
+            logger.info("Test environment: Ensuring database tables are created.")
+            from app.infrastructure.database.base_class import Base  # Import Base here
+            async with app.state.db_engine.begin() as conn:
+                # await conn.run_sync(Base.metadata.drop_all) # Optional: drop if needed for clean slate each app start
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Test environment: Database tables created.")
+
     except (SQLAlchemyError, ValueError) as e:
         logger.critical(f"Database initialization failed: {e}", exc_info=True)
         # Depending on policy, might want to exit or prevent app startup
