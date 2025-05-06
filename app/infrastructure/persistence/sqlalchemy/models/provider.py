@@ -45,14 +45,11 @@ class ProviderModel(Base):
         nullable=False,
     )
 
-    # Relationships with robust string references to avoid mapping issues
-    # We only keep the User relationship for test purposes
+    # Relationship with User model
     user = relationship(
         "User", 
         back_populates="provider",
-        foreign_keys=[user_id],
-        uselist=False,  # A provider belongs to a single user
-        viewonly=True   # Make relationship viewonly to prevent synchronization errors
+        uselist=False  # A provider belongs to a single user
     )
     
     # Define all required relationships to ensure proper SQLAlchemy mapping

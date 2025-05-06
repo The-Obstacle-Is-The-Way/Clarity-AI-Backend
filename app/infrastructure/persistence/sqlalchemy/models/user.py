@@ -176,8 +176,7 @@ class User(Base, TimestampMixin, AuditMixin):
         "ProviderModel",
         back_populates="user",
         uselist=False,
-        cascade="all, delete-orphan",
-        primaryjoin="User.id == ProviderModel.user_id",  # Explicit join condition to avoid mapping issues
+        cascade="all, delete-orphan"
     )
     # Use string reference for Patient to break circular dependency
     patients = relationship(
