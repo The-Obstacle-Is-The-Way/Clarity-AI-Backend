@@ -18,10 +18,10 @@ from app.infrastructure.persistence.sqlalchemy.registry import ensure_all_models
 from .base import Base, AuditMixin, TimestampMixin
 
 # Import models in dependency order (models with no dependencies first)
+from .analytics import AnalyticsEventModel
 from .user import User, UserRole
 from .provider import ProviderModel
 from .patient import Patient
-from .analytics import AnalyticsEventModel
 
 # Import models safely with try/except blocks to avoid breaking imports
 try:

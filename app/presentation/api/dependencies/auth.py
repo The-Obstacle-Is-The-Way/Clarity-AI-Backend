@@ -80,7 +80,7 @@ async def get_current_user(
     )
     try:
         payload = jwt_service.decode_token(token)
-        user_id: str = payload.get("sub")
+        user_id: str = payload.sub
         if user_id is None:
             raise credentials_exception
     except InvalidCredentialsError: # Or specific JWT errors

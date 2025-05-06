@@ -21,9 +21,19 @@ from asgi_lifespan import LifespanManager
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.interfaces.aws_service_interface import S3ServiceInterface
+from app.core.interfaces.aws_service_interface import S3ServiceInterface, AWSServiceFactory
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.presentation.api.dependencies.repository import get_encryption_service
+from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
 from app.core.config import Settings
+
+# Added imports for mock JWT service
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.infrastructure.security.jwt_service import get_jwt_service as get_jwt_service_provider
+from app.core.models.token_models import TokenPayload
+from app.core.domain.entities.user import UserRole
+from app.domain.exceptions.token_exceptions import InvalidTokenException
+# End of added imports
 
 # Import SQLAlchemy models and utils
 from app.infrastructure.persistence.sqlalchemy.registry import metadata as main_metadata
@@ -224,8 +234,9 @@ async def provider_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
 async def test_app(
     # db_session: AsyncSession, # REMOVE THIS - Lifespan handles DB init for the app
     test_settings: Settings,
-    mock_s3_service: MagicMock,
-    mock_encryption_service: MagicMock
+    mock_s3_service: MagicMock, # This is the MagicMock for S3ServiceInterface
+    mock_encryption_service: MagicMock, # This is the MagicMock for IEncryptionService
+    mock_jwt_service_with_placeholder_handling: JWTServiceInterface # Added new mock JWT service
 ) -> FastAPI:
     logger.info("Creating FastAPI app instance for integration tests via integration/conftest.py.")
     
@@ -233,40 +244,137 @@ async def test_app(
     from app.main import create_application
     app = create_application(settings_override=test_settings)
 
+    # Create a mock for the AWS Service Factory
+    mock_aws_factory = MagicMock(spec=AWSServiceFactory)
+    # Configure the mock factory to return our specific mock S3 service
+    mock_aws_factory.get_s3_service.return_value = mock_s3_service
+    # If other services from the factory are needed by tests, they can be mocked here too.
+    # For example: mock_aws_factory.get_dynamodb_service.return_value = MagicMock(spec=DynamoDBServiceInterface)
+
     # Apply common overrides for integration tests
-    app.dependency_overrides[get_s3_service] = lambda: mock_s3_service
+    # Override the AWS service factory provider
+    app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
+    # Override the encryption service provider (assuming it's a direct dependency)
     app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
+    # Override the JWT service provider with our placeholder-handling mock
+    app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
     
-    logger.info(f"App '{app.title}' created. Lifespan will run when client starts. Settings env: {app.state.settings.ENVIRONMENT}")
-    return app
+    # It's important that this fixture yields the app wrapped in LifespanManager
+    # for proper startup and shutdown event handling (like database connections).
+    async with LifespanManager(app):
+        # Any setup that needs to happen after app startup events but before yielding to the test
+        # Example: ensure_all_models_loaded_after_startup(app.state.db_engine)
+        yield app
 
 @pytest_asyncio.fixture
 async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
     """
-    Creates a real test client for API integration testing with properly configured
-    test application with all required dependencies injected.
-    Uses LifespanManager to ensure lifespan events are handled correctly.
-
-    Yields:
-        A FastAPI AsyncClient instance configured for testing.
+    Provides an HTTPX AsyncClient for making requests to the test FastAPI application.
+    Uses the application instance managed by LifespanManager.
     """
-    logger.info("Creating async test client for integration tests with LifespanManager.")
-    async with LifespanManager(test_app):
-        async with AsyncClient(app=test_app, base_url="http://test") as client:
-            yield client
-    logger.info("Async test client (with LifespanManager) shutdown.")
+    # Using app_with_mocked_services fixture that includes LifespanManager
+    # This ensures that startup and shutdown events of the app are handled correctly
+    # which is crucial for database initialization and cleanup.
+    async with AsyncClient(app=test_app, base_url="http://testserver") as client:
+        yield client
 
 
-# External Service Mocks
+@pytest.fixture
+def mock_s3_service() -> MagicMock:
+    """
+    Provides a mock S3 service for testing.
+
+    Returns:
+        MagicMock: A MagicMock instance configured to simulate S3ServiceInterface.
+    """
+    mock = MagicMock(spec=S3ServiceInterface)
+    # Example of mocking a method if needed for specific tests:
+    # mock.upload_file.return_value = {"status": "success", "file_id": "mock_s3_file_id"}
+    # mock.get_file_url.return_value = "https://mock-s3-bucket.s3.amazonaws.com/mock_s3_file_id"
+    return mock
+
+
 @pytest.fixture
 def mock_encryption_service() -> IEncryptionService:
     """
-    Provides a mock implementation of the encryption service interface.
-    For integration tests, this often just needs to pass data through.
+    Provides a mock implementation of the IEncryptionService for testing.
+    
+    This allows testing of encryption-related logic without actual encryption operations.
+    
+    Returns:
+        MagicMock: Mocked IEncryptionService instance
     """
     mock_service = MagicMock(spec=IEncryptionService)
-    mock_service.encrypt.side_effect = lambda data: data.encode() if isinstance(data, str) else data
-    mock_service.decrypt.side_effect = lambda data: data.decode() if isinstance(data, bytes) else data
+    # Define specific mock behaviors as needed by tests
+    # Example: mock_service.encrypt.return_value = \"encrypted_data\"
+    # Example: mock_service.decrypt.return_value = \"decrypted_data\"
+    return mock_service
+
+
+@pytest.fixture
+def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
+    """
+    Provides a mock JWTService that handles placeholder token strings
+    and returns corresponding TokenPayload objects.
+    """
+    mock_service = MagicMock(spec=JWTServiceInterface)
+
+    def decode_token_side_effect(token: str, audience: str | None = None) -> TokenPayload: # Added audience to match interface
+        if token == "VALID_PATIENT_TOKEN":
+            return TokenPayload(
+                sub="mock_patient_id_placeholder",
+                username="mockpatient_placeholder",
+                email="patient_placeholder@example.com",
+                role=UserRole.PATIENT,
+                roles=[UserRole.PATIENT],
+                jti=str(uuid.uuid4()),
+                exp=9999999999, # Far future expiration
+                iat=0, # Issued in the past
+                active=True,
+                verified=True
+            )
+        elif token == "VALID_PROVIDER_TOKEN":
+            return TokenPayload(
+                sub="mock_provider_id_placeholder",
+                username="mockprovider_placeholder",
+                email="provider_placeholder@example.com",
+                role=UserRole.CLINICIAN, # Assuming provider is a clinician
+                roles=[UserRole.CLINICIAN], # Corrected: Use CLINICIAN instead of PROVIDER
+                jti=str(uuid.uuid4()),
+                exp=9999999999,
+                iat=0,
+                active=True,
+                verified=True
+            )
+        elif token == "VALID_ADMIN_TOKEN":
+            return TokenPayload(
+                sub="mock_admin_id_placeholder",
+                username="mockadmin_placeholder",
+                email="admin_placeholder@example.com",
+                role=UserRole.ADMIN,
+                roles=[UserRole.ADMIN],
+                jti=str(uuid.uuid4()),
+                exp=9999999999,
+                iat=0,
+                active=True,
+                verified=True
+            )
+        # Added handling for other common test tokens to avoid breaking other tests
+        elif token == "INVALID_TOKEN_SIGNATURE":
+            raise InvalidTokenException("Invalid token signature (mocked)")
+        elif token == "EXPIRED_TOKEN":
+            raise InvalidTokenException("Token has expired (mocked)")
+        elif token == "MALFORMED_TOKEN":
+            raise InvalidTokenException("Malformed token (mocked)")
+        else:
+            # Attempt to decode as a real JWT if not a placeholder,
+            # or raise specific error for unhandled placeholders.
+            # For now, let's assume any other string is an unhandled placeholder.
+            raise InvalidTokenException(f"Token not recognized by mock_jwt_service_with_placeholder_handling: {token}")
+
+    mock_service.decode_token.side_effect = decode_token_side_effect
+    # Mock create_access_token if it's called by the application during tests, though less likely for override scenario
+    # mock_service.create_access_token.return_value = "MOCK_JWT_TOKEN_FROM_CREATE"
     return mock_service
 
 
