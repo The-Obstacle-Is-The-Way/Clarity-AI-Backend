@@ -68,13 +68,14 @@ def test_settings() -> Settings:
     # This ensures we reference the standardized path for test database defined in settings.py
     # In-memory database is still the default for unit tests
     # but file-based standardized path can be enabled via environment variables
-    test_db_path = "app/infrastructure/persistence/data/test_db.sqlite3"
+    # Define the test database path following clean architecture principles
+    test_db_path = Path("app/infrastructure/persistence/data/test_db.sqlite3")
     
     # If TEST_PERSISTENT_DB is set, use the file-based database
     if os.environ.get("TEST_PERSISTENT_DB"):
         settings.DATABASE_URL = f"sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(test_db_path), exist_ok=True)
+        # Ensure the directory exists using Path objects (addressing lint warnings)
+        test_db_path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(f"Using persistent test database: {settings.DATABASE_URL}")
     else:
         # Default to in-memory for most tests (faster, isolated)
