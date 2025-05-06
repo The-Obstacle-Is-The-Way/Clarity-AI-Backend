@@ -27,6 +27,7 @@ class PHIPattern:
     pattern: str
     description: str
     category: str
+    risk_level: str = "high"  # Default to high risk
     regex: Pattern | None = None
 
     def __post_init__(self):
@@ -109,8 +110,10 @@ class PHIDetectionService:
         self.logger.warning("Using placeholder default PHI patterns.")
         # Simplified for brevity
         return [
-            PHIPattern(name="SSN", pattern=r"\d{3}[-\s]?\d{2}[-\s]?\d{4}", description="Social Security Number", category="government_id"),
-            PHIPattern(name="Email Address", pattern=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", description="Email address", category="contact"),
+            PHIPattern(name="SSN", pattern=r"\d{3}[-\s]?\d{2}[-\s]?\d{4}", description="Social Security Number", category="government_id", risk_level="high"),
+            PHIPattern(name="Email Address", pattern=r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", description="Email address", category="contact", risk_level="medium"),
+            PHIPattern(name="US Phone Number", pattern=r"\b\(?\d{3}\)?[-._\s]?\d{3}[-._\s]?\d{4}\b", description="US phone number", category="contact", risk_level="high"),
+            PHIPattern(name="Full Name", pattern=r"\b(?:[A-Z][a-z]+\s+){1,2}[A-Z][a-z]+\b", description="Full name", category="name", risk_level="high")
         ]
 
     def scan_text(self, text: str) -> Generator[PHIMatch, None, None]:
@@ -127,5 +130,103 @@ class PHIDetectionService:
                     )
             else:
                  self.logger.warning(f"Pattern {getattr(pattern, 'name', 'Unnamed')} has no compiled regex.")
-
-    # --- Other methods like detect_phi, redact_phi, anonymize_phi omitted for brevity ---
+                 
+    def contains_phi(self, text: str) -> bool:
+        """Checks if the text contains any PHI."""
+        if not text or not isinstance(text, str):
+            return False
+        self.ensure_initialized()
+        # Use a generator expression with any() for short-circuiting
+        return any(pattern.regex and pattern.regex.search(text) for pattern in self.patterns)
+    
+    def detect_phi(self, text: str) -> list[dict]:
+        """Detects PHI in text and returns detailed matches."""
+        if not text or not isinstance(text, str):
+            return []
+        self.ensure_initialized()
+        
+        results = []
+        for pattern in self.patterns:
+            if not pattern.regex:
+                continue
+                
+            for match in pattern.regex.finditer(text):
+                results.append({
+                    "text": match.group(0),
+                    "pattern_name": pattern.name,
+                    "category": pattern.category,
+                    "risk_level": pattern.risk_level,
+                    "start": match.start(),
+                    "end": match.end(),
+                    "confidence": 0.91,  # Placeholder for regex-based matches
+                    "id": f"entity-{len(results)+1}"
+                })
+        
+        return results
+    
+    def redact_phi(self, text: str, replacement: str = "[REDACTED]") -> str:
+        """Redacts PHI in text with the specified replacement string."""
+        if not text or not isinstance(text, str):
+            return text
+        self.ensure_initialized()
+        
+        # Get all matches with their positions
+        matches = list(self.scan_text(text))
+        if not matches:
+            return text
+            
+        # Sort by position to handle overlapping matches properly
+        matches.sort(key=lambda m: (m.start, -m.end))
+        
+        # Apply redactions, working from the end to avoid position shifts
+        result = text
+        for match in reversed(matches):
+            result = result[:match.start] + replacement + result[match.end:]
+            
+        return result
+    
+    def anonymize_phi(self, text: str) -> str:
+        """Anonymizes PHI by replacing with category-specific placeholders."""
+        if not text or not isinstance(text, str):
+            return text
+        self.ensure_initialized()
+        
+        # Find all PHI instances
+        phi_instances = self.detect_phi(text)
+        if not phi_instances:
+            return text
+            
+        # Sort by position (reversed) to avoid position shifts
+        phi_instances.sort(key=lambda x: (x["start"], -x["end"]), reverse=True)
+        
+        # Apply anonymization
+        result = text
+        for phi in phi_instances:
+            placeholder = f"[{phi['pattern_name'].upper()}]"
+            result = result[:phi['start']] + placeholder + result[phi['end']:]
+            
+        return result
+        
+    def get_phi_types(self) -> list[str]:
+        """Returns the list of PHI types supported by the service."""
+        self.ensure_initialized()
+        return sorted(list(set(pattern.category for pattern in self.patterns)))
+        
+    def get_statistics(self) -> dict:
+        """Returns statistics about the loaded PHI patterns."""
+        self.ensure_initialized()
+        categories = {}
+        for pattern in self.patterns:
+            if pattern.category not in categories:
+                categories[pattern.category] = 0
+            categories[pattern.category] += 1
+            
+        return {
+            "total_patterns": len(self.patterns),
+            "categories": categories,
+            "risk_levels": {
+                "high": sum(1 for p in self.patterns if p.risk_level == "high"),
+                "medium": sum(1 for p in self.patterns if p.risk_level == "medium"),
+                "low": sum(1 for p in self.patterns if p.risk_level == "low")
+            }
+        }

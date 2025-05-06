@@ -19,6 +19,11 @@ class AnalysisType(str, Enum):
     CIRCADIAN_RHYTHM = "circadian_rhythm"
     ENERGY_EXPENDITURE = "energy_expenditure"
     MOVEMENT_INTENSITY = "movement_intensity"
+    # Adding missing values used in tests
+    ACTIVITY_LEVEL = "activity_level"
+    ACTIVITY = "activity"
+    SLEEP = "sleep"
+    STRESS = "stress"
 
 
 class SleepStage(str, Enum):
