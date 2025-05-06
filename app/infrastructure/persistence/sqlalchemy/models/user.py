@@ -189,6 +189,17 @@ class User(Base, TimestampMixin, AuditMixin):
     # Audit logging
     access_logs = Column(JSON, nullable=True)  # Stores recent access logs
     
+    # Add property aliases for field name compatibility across layers
+    @property
+    def hashed_password(self) -> str:
+        """Alias for password_hash to maintain compatibility with domain model."""
+        return self.password_hash
+        
+    @hashed_password.setter
+    def hashed_password(self, value: str) -> None:
+        """Setter for hashed_password that updates password_hash."""
+        self.password_hash = value
+    
     def __repr__(self):
         """String representation of the user."""
         return f"<User {self.username} ({self.id})>"
