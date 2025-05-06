@@ -60,7 +60,7 @@ except ImportError as e:
 __all__ = [
     "AuditMixin",
     "AppointmentModel",
-    "AuditLogModel",
+    "AuditLog",  # Updated from AuditLogModel to AuditLog
     "Base",
     "BiometricAlertModel",
     "BiometricRuleModel",
