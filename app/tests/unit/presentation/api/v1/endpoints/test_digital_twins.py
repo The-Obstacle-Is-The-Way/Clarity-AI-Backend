@@ -6,12 +6,12 @@ the MentaLLaMA integration for clinical text processing.
 """
 # Standard Library Imports
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 # Third-Party Imports
-from fastapi import FastAPI, status
-from fastapi.testclient import TestClient
+from fastapi import FastAPI, status, HTTPException
+from httpx import AsyncClient
 import pytest
 
 # First-Party Imports (Organized)
@@ -61,21 +61,18 @@ def mock_current_user():
     return User(id=UUID("00000000-0000-0000-0000-000000000001"), role="admin", email="test@example.com")
 
 @pytest.fixture
-def app(mock_digital_twin_service, mock_current_user):
-    """Create a FastAPI test application."""
-    app_instance = FastAPI()
-
-    # Override dependencies
-    app_instance.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
-
-    app_instance.include_router(digital_twins_router)
-    return app_instance
+def app() -> FastAPI:
+    """Override the app fixture to use a real FastAPI instance for these tests."""
+    from app.main import app as actual_app # Ensure this import is correct for your project structure
+    # Apply any necessary test-specific configurations or dependency overrides here
+    # For example, overriding services if needed, though mocks are passed to tests directly
+    return actual_app
 
 @pytest.fixture
-def client(app):
-    """Create a test client for the FastAPI app."""
-    return TestClient(app)
+async def client(app: FastAPI) -> AsyncClient:  # Changed to async fixture and AsyncClient
+    """Create an async test client for the FastAPI app."""
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
 
 @pytest.fixture
 def sample_patient_id():

@@ -27,8 +27,8 @@ async def dummy_call_next(request: Request) -> Response:
 async def test_request_id_middleware_generates_id():
     """Test that middleware generates an ID if none is provided."""
     with patch("uuid.uuid4") as mock_uuid4:
-        mock_uuid = uuid.uuid4() # Generate a fixed UUID for the test
-        mock_uuid4.return_value = str(mock_uuid)
+        fixed_test_uuid = "123e4567-e89b-12d3-a456-426614174000"  # A fixed, known UUID string
+        mock_uuid4.return_value = fixed_test_uuid
 
         middleware = RequestIdMiddleware(app=dummy_app)
         scope = {"type": "http", "method": "GET", "headers": []}
@@ -36,8 +36,8 @@ async def test_request_id_middleware_generates_id():
 
         response = await middleware.dispatch(request, dummy_call_next)
 
-        assert request.state.request_id == str(mock_uuid)
-        assert response.headers["X-Request-ID"] == str(mock_uuid)
+        assert request.state.request_id == fixed_test_uuid
+        assert response.headers["X-Request-ID"] == fixed_test_uuid
         mock_uuid4.assert_called_once()
 
 
@@ -60,8 +60,8 @@ async def test_request_id_middleware_uses_valid_incoming_id():
 async def test_request_id_middleware_generates_id_for_invalid_incoming_id():
     """Test that middleware generates an ID if the incoming one is invalid."""
     with patch("uuid.uuid4") as mock_uuid4_local:
-        mock_uuid = uuid.uuid4() # Generate a fixed UUID for the test
-        mock_uuid4_local.return_value = str(mock_uuid)
+        fixed_test_uuid = "789e0123-e45b-67c8-d901-234567890123"  # A different fixed, known UUID string
+        mock_uuid4_local.return_value = fixed_test_uuid
 
         invalid_incoming_id = "not-a-valid-uuid"
         headers = Headers({"X-Request-ID": invalid_incoming_id})
@@ -72,5 +72,5 @@ async def test_request_id_middleware_generates_id_for_invalid_incoming_id():
         response = await middleware.dispatch(request, dummy_call_next)
 
         mock_uuid4_local.assert_called_once()
-        assert request.state.request_id == str(mock_uuid)
-        assert response.headers["X-Request-ID"] == str(mock_uuid)
+        assert request.state.request_id == fixed_test_uuid
+        assert response.headers["X-Request-ID"] == fixed_test_uuid

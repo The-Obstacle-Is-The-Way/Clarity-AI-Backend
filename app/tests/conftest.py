@@ -188,30 +188,40 @@ def mock_jwt_service() -> MagicMock:
     mock = MagicMock(spec=JWTService)
     mock.create_access_token = MagicMock(return_value="mock_access_token")
     mock.create_refresh_token = MagicMock(return_value="mock_refresh_token")
-    # Simulate successful token verification returning a mock user payload
-    mock_payload = {
-        "sub": str(uuid.uuid4()),
+    
+    # Default payload. This can be overridden by specific tests or fixtures like auth_headers.
+    default_user_id_for_payload = str(uuid.uuid4())
+    default_mock_payload = {
+        "sub": default_user_id_for_payload,
         "roles": ["clinician"],
+        "username": "default_mock_jwt_user",
         "exp": datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600,
         "iat": datetime.datetime.now(datetime.timezone.utc).timestamp(),
     }
-    # Use SQLAlchemy User model instead of domain entity
-    from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
     
-    # Create a SQLAlchemy User model instance with required fields
-    mock_user = SQLAUser(
-        id=uuid.uuid4(),
-        username="mockuser",
-        email="mock@example.com", 
-        password_hash="mockhashedpassword",
-        is_active=True,
-        is_verified=True,
-        email_verified=True,
-        role=SQLAUserRole.CLINICIAN,
-        roles=[SQLAUserRole.CLINICIAN.value]
-    )
-    mock.get_user_from_token = AsyncMock(return_value=mock_user)
-    mock.verify_token = MagicMock(return_value=mock_payload)
+    mock.decode_token = MagicMock(return_value=default_mock_payload)
+    
+    # JWTService.verify_token calls decode_token. So, if decode_token is successful,
+    # verify_token effectively returns True. If decode_token raises error, it's False.
+    # We can mock it to reflect this behavior based on decode_token's mock.
+    # For simplicity, if decode_token returns a payload, verify_token is true.
+    def _mock_verify_token(token_str):
+        try:
+            mock.decode_token(token_str) # Call the mocked decode_token
+            return True
+        except Exception:
+            return False
+    mock.verify_token = MagicMock(side_effect=_mock_verify_token)
+
+    # Remove the problematic get_user_from_token default that returned SQLAUser
+    # if hasattr(mock, 'get_user_from_token'):
+    #     del mock.get_user_from_token
+
+    # Ensure other interface methods are present due to 'spec'
+    mock.generate_tokens_for_user = MagicMock(return_value={"access_token": "mock_access", "refresh_token": "mock_refresh"})
+    mock.refresh_access_token = MagicMock(return_value="new_mock_access_token")
+    mock.get_token_expiration = MagicMock(return_value=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1))
+    
     return mock
 
 
@@ -225,11 +235,9 @@ def mock_auth_service() -> MagicMock:
             email=TEST_USERNAME,
             username="testuser",
             full_name="Test User",
-            hashed_password="hashed_password_placeholder",
-            roles=[UserRole.PATIENT.value],
-            is_active=True,
-            is_verified=True,
-            email_verified=True,
+            password_hash="hashed_password_placeholder",
+            roles={UserRole.PATIENT},
+            status=UserStatus.ACTIVE,
         )
     )
     service.register_user = AsyncMock(
@@ -238,11 +246,9 @@ def mock_auth_service() -> MagicMock:
             email="newuser@example.com",
             username="newuser",
             full_name="New User",
-            hashed_password="hashed_new_password",
-            roles=[UserRole.PATIENT.value],
-            is_active=True,
-            is_verified=False,
-            email_verified=False,
+            password_hash="hashed_new_password",
+            roles={UserRole.PATIENT},
+            status=UserStatus.PENDING_VERIFICATION,
         )
     )
     return service
@@ -391,9 +397,30 @@ async def authenticated_user(
 
 @pytest.fixture
 def auth_headers(mock_jwt_service: MagicMock, authenticated_user: User) -> dict[str, str]:
-    """Generates authorization headers for the standard authenticated user."""
-    access_token = mock_jwt_service.create_access_token(data={"sub": str(authenticated_user.id)})
-    return {"Authorization": f"Bearer {access_token}"}
+    """Generate authentication headers for a mock authenticated user."""
+    
+    # Configure the mock_jwt_service instance used by this test/fixture
+    # to return a payload corresponding to the authenticated_user.
+    specific_payload = {
+        "sub": str(authenticated_user.id), # Use the ID from the Pydantic domain User
+        "roles": authenticated_user.roles,
+        "username": authenticated_user.username,
+        "email": authenticated_user.email,
+        "exp": datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600,
+        "iat": datetime.datetime.now(datetime.timezone.utc).timestamp(),
+    }
+    mock_jwt_service.decode_token = MagicMock(return_value=specific_payload)
+    
+    # The token string itself doesn't matter much as decode_token is mocked based on its input.
+    # However, create_access_token is also on the mock.
+    access_token_str = mock_jwt_service.create_access_token(data={"sub": str(authenticated_user.id)})
+
+    # The get_user_from_token attribute on jwt_service is not standard.
+    # get_current_user relies on user_repo.get_user_by_id(payload["sub"]).
+    # So, ensure authenticated_user is in the db_session for user_repo to find.
+    # The authenticated_user fixture already persists the user.
+
+    return {"Authorization": f"Bearer {access_token_str}"}
 
 
 # @pytest.fixture
