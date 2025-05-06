@@ -97,11 +97,10 @@ async def test_db_engine(test_settings: Settings) -> AsyncGenerator[AsyncEngine,
     logger.info(f"Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL}")
     
     # Import model validation utilities
-    from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
     from app.infrastructure.persistence.sqlalchemy.registry import validate_models
     
     # Ensure all models are loaded before creating tables
-    ensure_all_models_loaded()
+    # ensure_all_models_loaded() # Removed call
     
     # Create async engine with proper configuration for testing
     engine = create_async_engine(
@@ -551,11 +550,10 @@ async def test_db_engine(event_loop, test_settings: Settings) -> AsyncEngine:
     logger.info(f"Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL}")
     
     # Import model validation utilities
-    from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
     from app.infrastructure.persistence.sqlalchemy.registry import validate_models
     
     # Ensure all models are loaded before creating tables
-    ensure_all_models_loaded()
+    # ensure_all_models_loaded() # Removed call
     
     # Create async engine with proper configuration for testing
     engine = create_async_engine(

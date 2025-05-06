@@ -11,6 +11,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
+from fastapi import FastAPI, status
+from fastapi.testclient import TestClient
+
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Fixtures removed:
 # @pytest.fixture

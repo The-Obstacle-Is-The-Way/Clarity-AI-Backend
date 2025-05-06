@@ -1,12 +1,10 @@
 """
-Integration tests for the Actigraphy API.
-
-This module tests the integration between the API routes and the
-PAT service implementation.
+Integration tests for the Actigraphy API, ensuring that the API endpoints
+interact correctly with the underlying services and database.
 """
 
 from collections.abc import AsyncGenerator, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import os
 import uuid
@@ -36,6 +34,7 @@ from app.core.errors.security_exceptions import TokenValidationError
 # Infrastructure imports
 from app.infrastructure.persistence.sqlalchemy.models.user import UserRole  # Used for SQLAUserRole
 from app.infrastructure.security.jwt_service import get_jwt_service
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Presentation/API imports
 from app.presentation.api.dependencies.auth import get_current_active_user  # Used for mocking auth flow
