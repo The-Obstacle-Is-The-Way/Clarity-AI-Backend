@@ -15,6 +15,7 @@ from app.domain.exceptions import EntityNotFoundError, RepositoryError
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
 from app.domain.utils.datetime_utils import now_utc
+from app.core.utils.logging import get_logger
 from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import (
     BiometricAlertModel,
 )
@@ -36,6 +37,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             session: SQLAlchemy database session
         """
         self.session = session
+        self.logger = get_logger(__name__)
     
     async def save(self, alert: BiometricAlert) -> BiometricAlert:
         """
@@ -51,6 +53,8 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             RepositoryError: If there's an error saving the alert
         """
         try:
+            self.logger.debug(f"Saving biometric alert with ID: {alert.alert_id}")
+            
             # Use alert_id which is string in the BiometricAlert class
             alert_model_id = str(alert.alert_id)
             
@@ -62,18 +66,41 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             existing_model = result.scalar_one_or_none()
             
             if existing_model:
+                self.logger.debug(f"Updating existing alert: {alert_model_id}")
                 self._update_model(existing_model, alert)
                 alert_model = existing_model
             else:
-                alert_model = self._map_to_model(alert)
-                self.session.add(alert_model)
+                self.logger.debug(f"Creating new alert: {alert_model_id}")
+                try:
+                    alert_model = self._map_to_model(alert)
+                    self.session.add(alert_model)
+                except Exception as mapping_err:
+                    self.logger.error(f"Error mapping entity to model: {mapping_err}")
+                    raise RepositoryError(f"Error mapping alert entity to model: {mapping_err}") from mapping_err
             
-            await self.session.commit()
-            await self.session.refresh(alert_model)
+            # Commit the transaction
+            try:
+                await self.session.commit()
+                await self.session.refresh(alert_model)
+            except Exception as commit_err:
+                self.logger.error(f"Error committing alert: {commit_err}")
+                await self.session.rollback()
+                raise RepositoryError(f"Error committing alert changes: {commit_err}") from commit_err
             
-            # Return the updated entity
-            return self._map_to_entity(alert_model)
+            # Map back to domain entity after successful save
+            try:
+                saved_entity = self._map_to_entity(alert_model)
+                self.logger.debug(f"Successfully saved alert: {alert_model_id}")
+                return saved_entity
+            except Exception as mapping_err:
+                self.logger.error(f"Error mapping model to entity after save: {mapping_err}")
+                raise RepositoryError(f"Error mapping saved model to entity: {mapping_err}") from mapping_err
+            
+        except RepositoryError:
+            # Let specific repository errors bubble up
+            raise
         except Exception as e:
+            self.logger.error(f"Unexpected error saving biometric alert: {e}")
             await self.session.rollback()
             raise RepositoryError(f"Error saving biometric alert: {e!s}") from e
     
@@ -99,7 +126,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             alert_model = result.scalar_one_or_none()
             
             if not alert_model:
-                return None
+                raise EntityNotFoundError(f"Biometric alert with ID {alert_id} not found")
             
             return self._map_to_entity(alert_model)
         except Exception as e:
@@ -132,18 +159,46 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
             RepositoryError: If there's an error retrieving the alerts
         """
         try:
+            self.logger.debug(f"Retrieving alerts for patient: {patient_id}")
+            
+            # Convert patient_id to string for database query
+            patient_id_str = str(patient_id)
+            
+            # Build the query with patient_id filter
             query = select(BiometricAlertModel).where(
-                BiometricAlertModel.patient_id == str(patient_id)
+                BiometricAlertModel.patient_id == patient_id_str
             )
-            query = self._apply_filters(query, acknowledged, start_date, end_date)
+            
+            # Apply optional filters
+            if acknowledged is not None:
+                query = query.where(BiometricAlertModel.acknowledged == acknowledged)
+            if start_date:
+                query = query.where(BiometricAlertModel.created_at >= start_date)
+            if end_date:
+                query = query.where(BiometricAlertModel.created_at <= end_date)
+            
+            # Add sorting and pagination
             query = query.order_by(BiometricAlertModel.created_at.desc())
             query = query.limit(limit).offset(offset)
-
+            
+            # Execute the query
             result = await self.session.execute(query)
             alert_models = result.scalars().all()
-            return [self._map_to_entity(model) for model in alert_models]
+            self.logger.debug(f"Found {len(alert_models)} alerts for patient {patient_id}")
+            
+            # Map database models to domain entities
+            entities = []
+            for model in alert_models:
+                try:
+                    entity = self._map_to_entity(model)
+                    entities.append(entity)
+                except Exception as mapping_err:
+                    self.logger.error(f"Error mapping alert model to entity: {mapping_err}")
+                    # Continue with other models even if one fails
+            
+            return entities
         except Exception as e:
-            self.session.rollback()
+            self.logger.error(f"Error retrieving alerts for patient {patient_id}: {e}")
             raise RepositoryError(f"Error retrieving biometric alerts by patient: {e!s}") from e
     
     async def get_unacknowledged_alerts(
@@ -379,21 +434,35 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         Returns:
             The corresponding domain entity
         """
+        # For testing purposes, create a mock data point as needed by the entity
+        from unittest.mock import MagicMock
         data_point_mock = MagicMock()
-        return BiometricAlert(
-            alert_id=str(model.alert_id),
-            patient_id=UUID(model.patient_id),
-            rule_id=model.rule_id,
-            rule_name=model.rule_name,
-            priority=AlertPriority(model.priority),
-            data_point=data_point_mock,
-            message=model.message,
-            context=model.context,
-            created_at=model.created_at,
-            acknowledged=model.acknowledged,
-            acknowledged_at=model.acknowledged_at,
-            acknowledged_by=UUID(model.acknowledged_by) if model.acknowledged_by else None
-        )
+        
+        # Convert model to entity with proper type handling
+        try:
+            # Handle UUID conversion safely
+            patient_id = UUID(model.patient_id) if model.patient_id else None
+            acknowledged_by = UUID(model.acknowledged_by) if model.acknowledged_by else None
+            
+            # Create entity with proper field mapping
+            return BiometricAlert(
+                alert_id=model.alert_id,  # Already a string in the model
+                patient_id=patient_id,
+                rule_id=model.rule_id,
+                rule_name=model.rule_name,
+                priority=AlertPriority(model.priority) if model.priority else AlertPriority.INFORMATIONAL,
+                data_point=data_point_mock,
+                message=model.message,
+                context=model.context,
+                created_at=model.created_at,
+                acknowledged=model.acknowledged if model.acknowledged is not None else False,
+                acknowledged_at=model.acknowledged_at,
+                acknowledged_by=acknowledged_by
+            )
+        except Exception as e:
+            # Log error details for debugging
+            self.logger.error(f"Error mapping model to entity: {e!s}")
+            raise RepositoryError(f"Failed to map database model to domain entity: {e!s}") from e
     
     def _map_to_model(self, entity: BiometricAlert) -> BiometricAlertModel:
         """
@@ -405,19 +474,25 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         Returns:
             The corresponding database model
         """
-        return BiometricAlertModel(
-            alert_id=str(entity.alert_id),
-            patient_id=str(entity.patient_id),
-            rule_id=entity.rule_id,
-            rule_name=entity.rule_name,
-            priority=entity.priority.value,
-            message=entity.message,
-            context=entity.context,
-            created_at=entity.created_at,
-            acknowledged=entity.acknowledged,
-            acknowledged_at=entity.acknowledged_at,
-            acknowledged_by=str(entity.acknowledged_by) if entity.acknowledged_by else None
-        )
+        try:
+            # Handle type conversion safely
+            return BiometricAlertModel(
+                alert_id=str(entity.alert_id),
+                patient_id=str(entity.patient_id) if entity.patient_id else None,
+                rule_id=entity.rule_id,
+                rule_name=entity.rule_name or "",  # Ensure non-null string
+                priority=entity.priority.value if hasattr(entity.priority, 'value') else str(entity.priority),
+                message=entity.message or "",  # Ensure non-null string
+                context=entity.context or {},  # Ensure non-null dict
+                created_at=entity.created_at or datetime.now(timezone.utc),  # Ensure non-null timestamp
+                acknowledged=entity.acknowledged if entity.acknowledged is not None else False,
+                acknowledged_at=entity.acknowledged_at,
+                acknowledged_by=str(entity.acknowledged_by) if entity.acknowledged_by else None
+            )
+        except Exception as e:
+            # Log error details for debugging
+            self.logger.error(f"Error mapping entity to model: {e!s}")
+            raise RepositoryError(f"Failed to map domain entity to database model: {e!s}") from e
     
     def _update_model(self, model: BiometricAlertModel, entity: BiometricAlert) -> None:
         """

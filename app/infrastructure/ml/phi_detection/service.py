@@ -17,7 +17,19 @@ import yaml
 
 # Core Imports
 from app.core.domain.entities.phi.phi_match import PHIMatch
+from app.core.exceptions.ml_exceptions import PHIDetectionError
 from app.core.utils.logging import get_logger
+
+# Decorator for PHI detection error handling
+def phi_error_handler(func):
+    """Decorator to handle exceptions in PHI detection functions."""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Wrap all exceptions in PHIDetectionError for consistent handling
+            raise PHIDetectionError(f"Failed in {func.__name__}: {str(e)}") from e
+    return wrapper
 
 
 @dataclass
@@ -133,6 +145,7 @@ class PHIDetectionService:
             else:
                  self.logger.warning(f"Pattern {getattr(pattern, 'name', 'Unnamed')} has no compiled regex.")
                  
+    @phi_error_handler
     def contains_phi(self, text: str) -> bool:
         """Checks if the text contains any PHI."""
         if not text or not isinstance(text, str):
@@ -141,6 +154,7 @@ class PHIDetectionService:
         # Use a generator expression with any() for short-circuiting
         return any(pattern.regex and pattern.regex.search(text) for pattern in self.patterns)
     
+    @phi_error_handler
     def detect_phi(self, text: str) -> list[dict]:
         """Detects PHI in text and returns detailed matches."""
         if not text or not isinstance(text, str):
@@ -166,6 +180,7 @@ class PHIDetectionService:
         
         return results
     
+    @phi_error_handler
     def redact_phi(self, text: str, replacement: str = "[REDACTED]") -> str:
         """Redacts PHI in text with the specified replacement string."""
         if not text or not isinstance(text, str):
@@ -191,6 +206,7 @@ class PHIDetectionService:
             
         return result
     
+    @phi_error_handler
     def anonymize_phi(self, text: str) -> str:
         """Anonymizes PHI by replacing with category-specific placeholders."""
         if not text or not isinstance(text, str):
