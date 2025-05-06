@@ -20,7 +20,7 @@ from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declared_attr
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -139,13 +139,19 @@ class User(Base, TimestampMixin, AuditMixin):
     first_name = Column(String(100), nullable=True, comment="User's first name")
     last_name = Column(String(100), nullable=True, comment="User's last name")
     
+    @declared_attr
+    def phone_number(cls):
+        return Column(String(20), nullable=True, unique=True, index=True, comment="User's phone number")
+    
     # Password hash - never store plaintext passwords
     password_hash = Column(String(255), nullable=False, comment="Securely hashed password")
     
     # User account status
     is_active = Column(Boolean, default=True, nullable=False, comment="Whether account is active")
     is_verified = Column(Boolean, default=False, nullable=False, comment="Whether account is verified")
-    email_verified = Column(Boolean, default=False, nullable=False, comment="Whether email address is verified")
+    @declared_attr
+    def email_verified(cls):
+        return Column(Boolean, default=False, nullable=False, comment="Whether email address is verified")
     
     # User role - using enum to enforce valid values
     role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT, comment="Primary user role")

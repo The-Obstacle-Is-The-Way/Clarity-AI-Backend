@@ -104,11 +104,11 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_unauthenticated_access(
         self,
-        unauth_async_client: AsyncClient
+        test_client: AsyncClient
     ) -> None:
         """Test that unauthenticated requests are rejected."""
         # Access an endpoint without authentication
-        response = await unauth_async_client.get("/api/v1/actigraphy/model-info")
+        response = await test_client.get("/api/v1/actigraphy/model-info")
 
         # Should return 401 Unauthorized
         assert response.status_code == 401
@@ -119,12 +119,12 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_authorized_access(
         self,
-        test_async_client: AsyncClient,
+        test_client: AsyncClient,
         patient_token: str
     ) -> None:
         """Test that authorized requests are allowed."""
         # Access an endpoint with authentication
-        response = await test_async_client.get(
+        response = await test_client.get(
             "/api/v1/actigraphy/model-info", 
             headers={"Authorization": f"Bearer {patient_token}"}
         )
@@ -135,7 +135,7 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_input_validation(
         self,
-        test_async_client: AsyncClient,
+        test_client: AsyncClient,
         patient_token: str
     ) -> None:
         """Test that input validation works correctly."""
@@ -150,7 +150,7 @@ class TestActigraphyEndpoints:
             "analysis_types": ["invalid_type"]  # Invalid analysis type
         }
 
-        response = await test_async_client.post(
+        response = await test_client.post(
             "/api/v1/actigraphy/analyze", 
             json=invalid_request, 
             headers={"Authorization": f"Bearer {patient_token}"}
@@ -165,7 +165,7 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_phi_data_sanitization(
         self, 
-        test_async_client: AsyncClient, 
+        test_client: AsyncClient, 
         provider_token: str
     ) -> None:
         """Test that PHI is sanitized in API responses (mocked)."""
@@ -179,7 +179,7 @@ class TestActigraphyEndpoints:
             "end_time": "2023-01-01T01:00:00Z"    # Optional
         }
         
-        response = await test_async_client.post(
+        response = await test_client.post(
             "/api/v1/actigraphy/analyze", json=valid_request_payload, headers=headers
         )
         
@@ -194,7 +194,7 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_role_based_access_control(
         self, 
-        test_async_client: AsyncClient, 
+        test_client: AsyncClient, 
         patient_token: str, 
         provider_token: str, 
         admin_token: str, 
@@ -214,7 +214,7 @@ class TestActigraphyEndpoints:
         }
         
         # Provider should be able to create analysis
-        response_provider = await test_async_client.post(
+        response_provider = await test_client.post(
             "/api/v1/actigraphy/analyze", 
             json=analysis_request, 
             headers={"Authorization": f"Bearer {provider_token}"}
@@ -224,7 +224,7 @@ class TestActigraphyEndpoints:
         assert analysis_id
 
         # Patient should NOT be able to create analysis (assuming endpoint requires provider/admin)
-        response_patient = await test_async_client.post(
+        response_patient = await test_client.post(
             "/api/v1/actigraphy/analyze", 
             json=analysis_request, 
             headers={"Authorization": f"Bearer {patient_token}"}
@@ -233,7 +233,7 @@ class TestActigraphyEndpoints:
 
         # Test GET access (adjust endpoint path if necessary)
         # Provider should be able to get analysis
-        # response_get_provider = await test_async_client.get(
+        # response_get_provider = await test_client.get(
         #     f"/api/v1/actigraphy/analyses/{analysis_id}", 
         #     headers={"Authorization": f"Bearer {provider_token}"}
         # )
@@ -241,7 +241,7 @@ class TestActigraphyEndpoints:
 
         # Patient should NOT be able to get analysis (unless it's their own AND endpoint allows)
         # This depends heavily on the specific authorization logic in get_analysis endpoint
-        # response_get_patient = await test_async_client.get(
+        # response_get_patient = await test_client.get(
         #     f"/api/v1/actigraphy/analyses/{analysis_id}", 
         #     headers={"Authorization": f"Bearer {patient_token}"}
         # )
@@ -251,7 +251,7 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_hipaa_audit_logging(
         self, 
-        test_async_client: AsyncClient, 
+        test_client: AsyncClient, 
         provider_token: str, 
         sample_readings: list[dict[str, Any]], 
         sample_device_info: dict[str, Any]
@@ -273,7 +273,7 @@ class TestActigraphyEndpoints:
                 # "device_info": sample_device_info, # REMOVED
                 "analysis_types": ["sleep_quality"] # Correct enum value
             }
-            response = await test_async_client.post(
+            response = await test_client.post(
                 "/api/v1/actigraphy/analyze", 
                 json=analysis_request, 
                 headers={"Authorization": f"Bearer {provider_token}"}
@@ -292,7 +292,7 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_secure_data_transmission(
         self, 
-        test_async_client: AsyncClient, 
+        test_client: AsyncClient, 
         provider_token: str, 
         sample_readings: list[dict[str, Any]], 
         sample_device_info: dict[str, Any]
@@ -301,7 +301,7 @@ class TestActigraphyEndpoints:
         # This test primarily relies on the deployment configuration ensuring HTTPS.
         # We can simulate checking the base_url scheme if needed, 
         # but AsyncClient itself doesn't enforce HTTPS locally.
-        assert str(test_async_client.base_url).startswith("http://") # Base URL for testing is http
+        assert str(test_client.base_url).startswith("http://") # Base URL for testing is http
         # In a real end-to-end test against a deployed environment, you would assert HTTPS.
         
         # Perform a standard request to ensure it works over the configured protocol
@@ -315,7 +315,7 @@ class TestActigraphyEndpoints:
             # "device_info": sample_device_info, # REMOVED
             "analysis_types": ["sleep_quality"] # Correct enum value
         }
-        response = await test_async_client.post(
+        response = await test_client.post(
             "/api/v1/actigraphy/analyze", 
             json=analysis_request, 
             headers={"Authorization": f"Bearer {provider_token}"}
@@ -325,7 +325,7 @@ class TestActigraphyEndpoints:
     @pytest.mark.asyncio
     async def test_api_response_structure(
         self, 
-        test_async_client: AsyncClient, 
+        test_client: AsyncClient, 
         provider_token: str,
         # sample_readings: list[dict[str, Any]], # Use a valid structure
         # sample_device_info: dict[str, Any] # Use a valid structure
@@ -341,7 +341,7 @@ class TestActigraphyEndpoints:
             "end_time": "2023-02-01T00:00:01Z"    # Optional
         }
 
-        response = await test_async_client.post(
+        response = await test_client.post(
             "/api/v1/actigraphy/analyze", json=valid_request_payload, headers=headers
         )
         
@@ -367,7 +367,7 @@ TEST_USER_ID = str(uuid.uuid4()) # Use a consistent test user ID
 
 @pytest.mark.asyncio
 async def test_upload_actigraphy_data(
-    test_async_client: AsyncClient,
+    test_client: AsyncClient,
     patient_token: str, # CORRECTED from patient_user_token
     actigraphy_file_content: bytes, # Parameter for file content
     actigraphy_file_name: str, # Parameter for file name
@@ -382,7 +382,7 @@ async def test_upload_actigraphy_data(
     headers = {"Authorization": f"Bearer {patient_token}"}
     files = {"file": (actigraphy_file_name, actigraphy_file_content, "text/csv")}
     
-    response = await test_async_client.post(
+    response = await test_client.post(
         "/api/v1/actigraphy/upload", 
         files=files, # Use files parameter
         headers=headers
@@ -396,7 +396,7 @@ async def test_upload_actigraphy_data(
 
 @pytest.mark.asyncio
 async def test_get_actigraphy_data_summary(
-    test_async_client: AsyncClient,
+    test_client: AsyncClient,
     provider_token: str,
     # upload_data: dict[str, Any] # This was for a POST to /analyze
 ):
@@ -405,7 +405,7 @@ async def test_get_actigraphy_data_summary(
     headers = {"Authorization": f"Bearer {provider_token}"}
     
     # Corrected URL from /summary/patient-{id} to /patient/{id}/summary
-    response = await test_async_client.get(
+    response = await test_client.get(
         f"/api/v1/actigraphy/patient/{patient_id_for_test}/summary", headers=headers
     )
     
@@ -417,7 +417,7 @@ async def test_get_actigraphy_data_summary(
 
 @pytest.mark.asyncio
 async def test_get_specific_actigraphy_data(
-    test_async_client: AsyncClient,
+    test_client: AsyncClient,
     provider_token: str,
     # upload_data: dict[str, Any] # Not needed for this test if GETting existing
     # sample_readings: list[dict[str, Any]] # Not needed
@@ -428,7 +428,7 @@ async def test_get_specific_actigraphy_data(
     headers = {"Authorization": f"Bearer {provider_token}"}
     
     # Corrected URL from /results/{id} to /data/{id}
-    response = await test_async_client.get(
+    response = await test_client.get(
         f"/api/v1/actigraphy/data/{data_id_for_test}", headers=headers
     )
     

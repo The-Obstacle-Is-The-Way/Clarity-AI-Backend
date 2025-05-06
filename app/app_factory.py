@@ -107,7 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # In production, Alembic migrations would handle this.
         if current_settings.ENVIRONMENT == "test":
             logger.info("Test environment: Ensuring database tables are created.")
-            from app.infrastructure.database.base_class import Base  # Import Base here
+            from app.infrastructure.persistence.sqlalchemy.models.base import Base # New correct import
             async with app.state.db_engine.begin() as conn:
                 # await conn.run_sync(Base.metadata.drop_all) # Optional: drop if needed for clean slate each app start
                 await conn.run_sync(Base.metadata.create_all)
