@@ -31,24 +31,32 @@ class UserMapper:
         Returns:
             Equivalent domain User entity
         """
+        # Handle roles conversion - normalize from enum to string if needed
+        roles = []
+        if model.roles and isinstance(model.roles, list):
+            roles = [r.value if hasattr(r, 'value') else r for r in model.roles]
+        elif model.role:
+            # Add the primary role if roles list is empty
+            roles = [model.role.value] if hasattr(model.role, 'value') else [model.role]
+        
         # Create the domain entity with required fields and defaults for missing fields
         return DomainUser(
             id=str(model.id),
             username=model.username,
             email=model.email,
             hashed_password=model.password_hash,
-            is_active=model.is_active,
-            is_verified=model.is_verified,
-            email_verified=model.email_verified,
+            is_active=model.is_active if model.is_active is not None else False,
+            is_verified=model.is_verified if model.is_verified is not None else False,
+            email_verified=model.email_verified if model.email_verified is not None else False,
             roles=roles,
-            role=model.role.value if model.role else None,
+            role=model.role.value if model.role and hasattr(model.role, 'value') else None,
             first_name=model.first_name,
             last_name=model.last_name,
             created_at=model.created_at,
             updated_at=model.updated_at,
             last_login_at=model.last_login,  # Fix: Map last_login to last_login_at
             password_changed_at=model.password_changed_at,
-            failed_login_attempts=model.failed_login_attempts,
+            failed_login_attempts=model.failed_login_attempts if model.failed_login_attempts is not None else 0,
             account_locked_until=model.account_locked_until,
             preferences=model.preferences
         )

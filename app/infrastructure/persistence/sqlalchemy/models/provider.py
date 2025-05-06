@@ -7,12 +7,18 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional, Union, List, Dict, Any
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.user import User
+
+# Type-checking only imports to avoid circular imports
+if TYPE_CHECKING:
+    from app.domain.entities.provider import Provider as DomainProvider
 
 
 class ProviderModel(Base):
@@ -81,35 +87,35 @@ class ProviderModel(Base):
         return f"<Provider(id={self.id}, specialty={self.specialty})>"
 
     @classmethod
-    def from_domain(cls, provider) -> "ProviderModel":
+    def from_domain(cls, provider: 'DomainProvider') -> 'ProviderModel':
         """
-        Create a SQLAlchemy model instance from a domain entity.
-
-        Args:
-            provider: Domain Provider entity
-
-        Returns:
-            ProviderModel: SQLAlchemy model instance
+        Create a Provider model from domain entity.
         """
+        # Extract user and domain data
+        user_data = provider.user
+        
+        # Create user model if not exists
+        # This will be handled by repository and UoW in real implementation
+        user_model = User.from_domain(user_data) if user_data else None
+        
+        # Create provider model
         return cls(
-            id=provider.id,
-            user_id=provider.user_id,
-            specialty=(
-                provider.specialty.value
-                if hasattr(provider.specialty, "value")
-                else provider.specialty
-            ),
+            id=uuid.UUID(provider.id) if provider.id else uuid.uuid4(),
+            user_id=user_model.id if user_model else None,
+            specialty=provider.specialty,
             license_number=provider.license_number,
-            npi_number=provider.npi_number,
-            active=provider.active,
+            npi=provider.npi,
+            created_at=provider.created_at,
+            updated_at=provider.updated_at,
+            status=provider.status
         )
 
-    def to_domain(self):
+    def to_domain(self) -> 'DomainProvider':
         """
         Convert SQLAlchemy model instance to domain entity.
 
         Returns:
-            Provider: Domain entity instance
+            DomainProvider: Domain entity instance
         """
         from app.domain.entities.provider import Provider, Specialty
 
