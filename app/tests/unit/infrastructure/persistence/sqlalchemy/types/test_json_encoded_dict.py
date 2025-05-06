@@ -5,7 +5,7 @@ Tests the ability to store and retrieve dictionary data through SQLAlchemy
 with JSON serialization for different database dialects.
 """
 
-from sqlalchemy import Column, MetaData, Table, create_engine
+from sqlalchemy import Column, Integer, MetaData, Table, create_engine
 from sqlalchemy.orm import Session, registry
 
 from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
@@ -23,7 +23,7 @@ class TestJSONEncodedDict:
         self.test_table = Table(
             'test_json',
             self.metadata,
-            Column('id', Column(SQLAlchemy.Integer, primary_key=True)),
+            Column('id', Integer, primary_key=True),
             Column('data', JSONEncodedDict, nullable=True),
         )
 

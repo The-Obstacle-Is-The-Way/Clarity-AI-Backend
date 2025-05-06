@@ -17,27 +17,29 @@ class GUID(types.TypeDecorator):
     Platform-independent GUID type.
     
     Uses PostgreSQL's UUID type when available, otherwise 
-    uses a CHAR(36), storing as a stringified UUID.
+    uses a String(36), storing as a stringified UUID.
     """
     
     impl = types.CHAR
     cache_ok = True
     
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect) -> types.TypeEngine:
         """
         Use PostgreSQL's native UUID type when available, 
-        otherwise use CHAR(36) for string-based storage.
+        otherwise use String(36) for string-based storage.
         
         Args:
             dialect: SQLAlchemy dialect
             
         Returns:
-            Dialect-specific implementation
+            Dialect-specific implementation type
         """
         if dialect.name == 'postgresql':
             return dialect.type_descriptor(PostgresUUID())
         else:
-            return dialect.type_descriptor(types.CHAR(36))
+            # Use String(36) explicitly for SQLite and other dialects
+            # This ensures test compatibility and proper storage
+            return dialect.type_descriptor(types.String(36))
     
     def process_bind_param(self, value, dialect):
         """
