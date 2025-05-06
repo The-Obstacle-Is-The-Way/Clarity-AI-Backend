@@ -73,13 +73,27 @@ def test_settings() -> Settings:
 @pytest_asyncio.fixture(scope="function")
 async def test_db_engine(test_settings: Settings) -> AsyncGenerator[AsyncEngine, None]:
     """Provides a clean SQLAlchemy engine for each test function."""
-    logger.info(f"Creating test DB engine for URL: {test_settings.DATABASE_URL}")
+    logger.info(f"Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL}")
+    
+    # Import model validation utilities
+    from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
+    from app.infrastructure.persistence.sqlalchemy.registry import validate_models
+    
+    # Ensure all models are loaded before creating tables
+    ensure_all_models_loaded()
+    
+    # Create async engine with proper configuration for testing
     engine = create_async_engine(
-        test_settings.DATABASE_URL,
-        # echo=True, # Uncomment for SQL logging
+        test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL,
+        echo=False,  # Set to True for SQL logging
         connect_args={"check_same_thread": False},  # Required for SQLite
         poolclass=StaticPool,  # Use StaticPool for SQLite in-memory
     )
+    
+    # Validate all models to ensure proper registration
+    validate_models()
+    
+    # Create all tables in a transaction
     async with engine.begin() as conn:
         logger.debug("Dropping all tables.")
         await conn.run_sync(Base.metadata.drop_all)

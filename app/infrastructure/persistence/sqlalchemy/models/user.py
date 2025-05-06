@@ -28,7 +28,7 @@ from app.domain.utils.datetime_utils import now_utc
 # Import the canonical Base and registry
 from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, Base, TimestampMixin
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +123,7 @@ class User(Base, TimestampMixin, AuditMixin):
     }
     
     # --- Core Identification and Metadata ---
-    # Using stable, clearly mapped String type with explicit configuration and robust UUID generation
-    # This approach avoids custom type descriptors which can cause mapping issues while maintaining type semantics
-    # Switch to UUID type for consistency with related models like ProviderModel
+    # Use consistent GUID type implementation to ensure proper ORM mapping across all database backends
     id = Column(
         GUID, 
         primary_key=True, 
@@ -153,8 +151,8 @@ class User(Base, TimestampMixin, AuditMixin):
     role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT, comment="Primary user role")
     
     # Roles are stored as a JSON array for more flexible role management
-    # Use standard SQLAlchemy JSON type instead of custom JSONType for better compatibility
-    roles = Column(JSON, default=list, nullable=False, comment="List of all user roles")
+    # Use our custom JSONEncodedDict type for cross-database compatibility
+    roles = Column(JSONEncodedDict, default=list, nullable=False, comment="List of all user roles")
     
     # Additional audit fields beyond the mixin
     last_login = Column(DateTime, nullable=True, comment="When user last logged in")

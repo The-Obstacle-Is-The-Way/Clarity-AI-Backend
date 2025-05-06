@@ -51,7 +51,8 @@ class Settings(BaseSettings):
     CORS_ALLOW_HEADERS: list[str] = ["*"]
     
     # Database Settings
-    DATABASE_URL: str = "sqlite:///./novamind.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./novamind.db"
+    ASYNC_DATABASE_URL: str | None = None  # Will be set based on DATABASE_URL if None
     
     # Logging Settings
     LOG_LEVEL: str = "INFO"
@@ -129,15 +130,30 @@ def get_settings() -> Settings:
     # Check for test environment
     if os.environ.get("ENVIRONMENT") == "test" or os.environ.get("PYTEST_CURRENT_TEST"):
         # Create test-specific settings with in-memory SQLite DB
-        test_db_url = "sqlite+aiosqlite:///./test_db.sqlite3" # Use correct var name and test DB
+        test_db_url = "sqlite+aiosqlite:///:memory:"  # Use in-memory DB for better test isolation
         logger.info(f"Running in TEST environment, using DB: {test_db_url}")
         test_settings = Settings(
             TESTING=True, 
             ENVIRONMENT="test", # Explicitly set environment for tests
-            DATABASE_URL=test_db_url, 
+            DATABASE_URL=test_db_url,
+            ASYNC_DATABASE_URL=test_db_url,  # Ensure async URL is set correctly
             SENTRY_DSN=None
         )
         return test_settings
+    
+    # For non-test environments, ensure we have an async version of the database URL
+    current_settings = settings
+    
+    # If ASYNC_DATABASE_URL isn't explicitly set, derive it from DATABASE_URL
+    if not current_settings.ASYNC_DATABASE_URL:
+        db_url = current_settings.DATABASE_URL
         
-    # Return standard settings otherwise
-    return settings
+        # Convert standard SQLite URL to async version if needed
+        if db_url.startswith("sqlite:///") and not "aiosqlite" in db_url:
+            current_settings.ASYNC_DATABASE_URL = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+            logger.info(f"Converted DATABASE_URL to async version: {current_settings.ASYNC_DATABASE_URL}")
+        else:
+            # For other database types, apply similar conversions or use as-is
+            current_settings.ASYNC_DATABASE_URL = db_url
+            
+    return current_settings

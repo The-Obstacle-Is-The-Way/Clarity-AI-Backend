@@ -15,29 +15,33 @@ The database is a critical component of the Clarity AI Backend, responsible for 
 ## 3. Production Configuration
 
 * Connection URI: Defined by the `ASYNC_DATABASE_URI` environment variable, loaded via `app.core.config.Settings`.
+  * The system automatically converts standard `DATABASE_URL` to async version using `ASYNC_DATABASE_URI` (e.g., `sqlite:///` to `sqlite+aiosqlite:///`).
 * Initialization: The SQLAlchemy `AsyncEngine` and session factory (`sessionmaker`) are created during application startup within the `lifespan` context manager in `app/app_factory.py`.
 * State Management: The engine and session factory are stored in the `FastAPI` application state (`app.state.db_engine`, `app.state.db_session_factory`) for accessibility.
 * Session Management:
   * A request-scoped `AsyncSession` is provided via the `get_async_session` dependency (`app.infrastructure.database.session.get_async_session`).
-  * This dependency likely retrieves the session factory from `request.app.state` and yields a session, ensuring proper session handling per request.
+  * This dependency retrieves the session factory from `request.app.state` and yields a session, ensuring proper session handling per request.
   * Error handling within the dependency ensures sessions are closed/rolled back appropriately.
 
 ## 4. Testing Configuration (`app/tests/conftest.py`)
 
 * Database: Uses an in-memory SQLite database (`sqlite+aiosqlite:///:memory:`) configured via `test_settings` overriding the main settings.
+* Model Loading: 
+  * The test configuration now explicitly calls `ensure_all_models_loaded()` before creating tables.
+  * Models are validated with `validate_models()` to ensure proper mapping.
 * Engine (`test_db_engine` fixture):
-  * Session-scoped `AsyncEngine`.
-  * Uses `StaticPool` suitable for SQLite.
-  * Handles table creation (`Base.metadata.create_all`) before tests run and table dropping (`Base.metadata.drop_all`) after tests complete within the session scope.
+  * Function-scoped `AsyncEngine` for clean test isolation.
+  * Uses `StaticPool` suitable for SQLite in-memory databases.
+  * Handles table creation (`Base.metadata.create_all`) within a transaction before tests run and proper disposal after completion.
 * Session (`db_session` fixture):
-  * Function-scoped `AsyncSession`.
+  * Function-scoped `AsyncSession` with transaction control.
   * Begins a transaction at the start of each test.
   * Yields the session to the test function.
-  * Rolls back the transaction upon test completion, ensuring test isolation.
-* Dependency Override (`initialized_app` fixture):
-  * Creates the FastAPI application instance for testing.
-  * Crucially, overrides the application's `get_async_session` dependency.
-  * The override provides the specific, transaction-managed `AsyncSession` instance yielded by the `db_session` fixture, ensuring tests operate within the controlled transaction.
+  * Commits on success or rolls back on exception, ensuring proper test isolation.
+* Dependency Override (in integration test fixtures):
+  * Test-specific instances of the FastAPI application are created with proper dependency overrides.
+  * The application's `get_async_session` dependency is overridden with test-specific session.
+  * This ensures tests operate within controlled transactions for proper isolation.
 
 ### 4.1 Critical Test Database Issues Analysis
 
@@ -64,6 +68,24 @@ The project has multiple repository interfaces with naming discrepancies that vi
 3. **Method Naming Inconsistency**:
    * Test code attempts to access `get_user_by_id` but implementations have `get_by_id`
    * This naming mismatch causes `AttributeError: 'SqlAlchemyUserRepository' object has no attribute 'get_user_by_id'`
+
+### 4.2 UUID/GUID Standardization
+
+A critical issue in the database architecture was the inconsistent handling of UUID fields across models:
+
+1. **Inconsistent UUID Implementation**:
+   * Different models used different approaches for UUID fields (String(36), native UUID, etc.)
+   * This caused ORM mapping errors like `UnmappedColumnError: No column users.id is configured on mapper Mapper[User(users)]`
+
+2. **Standardized GUID Solution**:
+   * Created a platform-independent `GUID` type in `app/infrastructure/persistence/sqlalchemy/types.py`
+   * This type handles both PostgreSQL's native UUID type and SQLite's string-based implementation
+   * Used consistently for all ID fields across all models
+
+3. **Cross-Database Compatibility**:
+   * The `GUID` type automatically adapts to the database backend (PostgreSQL or SQLite)
+   * Ensures proper UUID-to-string conversion for SQLite and native UUID handling for PostgreSQL
+   * Preserves the UUID semantics regardless of database backend
 
 #### Dependency Injection Complexity
 

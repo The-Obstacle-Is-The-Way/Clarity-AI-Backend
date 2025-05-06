@@ -1,8 +1,10 @@
 import json
+import uuid
+from typing import Any, Optional
 
 from sqlalchemy import Float as sa_Float
-from sqlalchemy import Text, TypeDecorator
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy import String, Text, TypeDecorator
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 
 
 class JSONEncodedDict(TypeDecorator):
@@ -129,3 +131,47 @@ class FloatListDecorator(TypeDecorator):
                  # Log error or return default
                 return None
         return None
+
+
+class GUID(TypeDecorator):
+    """
+    Platform-independent GUID type for SQLAlchemy.
+    
+    Uses PostgreSQL's UUID type when available, otherwise uses String.
+    Ensures consistent UUID handling across database backends.
+    """
+    impl = String(36)
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect: Any) -> Any:
+        """Load dialect-specific implementation."""
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(UUID())
+        else:
+            return dialect.type_descriptor(String(36))
+    
+    def process_bind_param(self, value: Optional[uuid.UUID | str], dialect: Any) -> Optional[str]:
+        """Convert UUID to string before saving to database."""
+        if value is None:
+            return None
+        elif dialect.name == 'postgresql':
+            # PostgreSQL's UUID type requires a uuid.UUID object
+            return str(value) if isinstance(value, str) else value
+        else:
+            # For SQLite and others, convert to string
+            return str(value)
+    
+    def process_result_value(self, value: Optional[str | uuid.UUID], dialect: Any) -> Optional[uuid.UUID]:
+        """Convert database value to UUID object."""
+        if value is None:
+            return None
+        if isinstance(value, uuid.UUID):
+            return value
+        try:
+            return uuid.UUID(value)
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+
+# Export the custom types
+__all__ = ['JSONEncodedDict', 'StringListDecorator', 'FloatListDecorator', 'GUID']

@@ -81,9 +81,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # --- Database Initialization ---
     try:
         logger.info("Initializing database connection...")
-        app.state.db_engine, app.state.db_session_factory = create_db_engine_and_session(
-            str(current_settings.DATABASE_URL)
-        )
+        # Use ASYNC_DATABASE_URL rather than DATABASE_URL to ensure async driver compatibility
+        db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
+        logger.info(f"Using database URL: {db_url}")
+        app.state.db_engine, app.state.db_session_factory = create_db_engine_and_session(db_url)
         logger.info("Database connection initialized successfully.")
         # Optional: Test connection? (be careful with blocking calls)
         # async with db_engine.connect() as conn:
