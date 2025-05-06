@@ -40,11 +40,12 @@ class UserMapper:
             roles = [model.role.value]
             
         # Create domain entity from model attributes
+        # Critical Fix: Map password_hash in model to hashed_password in domain entity
         return DomainUser(
             id=str(model.id),
             username=model.username,
             email=model.email,
-            hashed_password=model.password_hash,
+            hashed_password=model.password_hash,  # Map password_hash to hashed_password
             is_active=model.is_active,
             is_verified=model.is_verified,
             email_verified=model.email_verified,
@@ -54,7 +55,7 @@ class UserMapper:
             last_name=model.last_name,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            last_login=model.last_login,
+            last_login_at=model.last_login,  # Fix: Map last_login to last_login_at
             password_changed_at=model.password_changed_at,
             failed_login_attempts=model.failed_login_attempts,
             account_locked_until=model.account_locked_until,
@@ -82,11 +83,14 @@ class UserMapper:
                 role = UserRole.PATIENT
                 
         # Convert domain entity to model
+        # Critical Fix: Map domain entity fields to SQLAlchemy model fields
+        # - hashed_password in domain entity maps to password_hash in model
+        # - last_login_at in domain entity maps to last_login in model
         model = UserModel(
             id=entity.id if isinstance(entity.id, UUID) else UUID(entity.id),
             username=entity.username,
             email=entity.email,
-            password_hash=entity.hashed_password,
+            password_hash=entity.hashed_password,  # Map hashed_password to password_hash
             is_active=entity.is_active,
             is_verified=entity.is_verified,
             email_verified=entity.email_verified,
@@ -96,7 +100,7 @@ class UserMapper:
             last_name=entity.last_name,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
-            last_login=entity.last_login_at,
+            last_login=entity.last_login_at,  # Map last_login_at to last_login
             password_changed_at=entity.password_changed_at,
             failed_login_attempts=entity.failed_login_attempts,
             account_locked_until=entity.account_locked_until,
@@ -126,6 +130,7 @@ class UserMapper:
         if entity.email is not None:
             model.email = entity.email
             
+        # Critical Fix: Map hashed_password in domain entity to password_hash in model
         if entity.hashed_password is not None:
             model.password_hash = entity.hashed_password
             
@@ -152,6 +157,10 @@ class UserMapper:
             
         if entity.last_name is not None:
             model.last_name = entity.last_name
+            
+        # Critical Fix: Map last_login_at in domain entity to last_login in model
+        if entity.last_login_at is not None:
+            model.last_login = entity.last_login_at
             
         if entity.preferences is not None:
             model.preferences = entity.preferences

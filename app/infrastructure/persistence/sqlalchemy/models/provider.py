@@ -49,27 +49,32 @@ class ProviderModel(Base):
         viewonly=True   # Make relationship viewonly to prevent synchronization errors
     )
     
-    # Comment out these relationships for test isolation
-    # Since the test scope only needs the User-Provider relationship
-    # This follows clean architecture by decoupling components for testing
+    # Define all required relationships to ensure proper SQLAlchemy mapping
+    # These relationships must be defined even in test environments to prevent sync errors
     
-    # appointments = relationship(
-    #     "AppointmentModel", 
-    #     back_populates="provider",
-    #     lazy="selectin"  # Efficient loading pattern for related entities
-    # )
-    # 
-    # medications = relationship(
-    #     "MedicationModel", 
-    #     back_populates="provider",
-    #     lazy="selectin" 
-    # )
-    # 
-    # clinical_notes = relationship(
-    #     "ClinicalNoteModel", 
-    #     back_populates="provider",
-    #     lazy="selectin" 
-    # )
+    # Define appointments relationship with proper viewonly to prevent sync errors
+    appointments = relationship(
+        "AppointmentModel", 
+        back_populates="provider",
+        lazy="selectin",  # Efficient loading pattern for related entities
+        viewonly=True     # Prevents synchronization errors during tests
+    )
+    
+    # Define medications relationship with proper viewonly setting
+    medications = relationship(
+        "MedicationModel", 
+        back_populates="provider",
+        lazy="selectin",
+        viewonly=True     # Prevents synchronization errors during tests
+    )
+    
+    # Define clinical_notes relationship with proper viewonly setting
+    clinical_notes = relationship(
+        "ClinicalNoteModel", 
+        back_populates="provider",
+        lazy="selectin",
+        viewonly=True     # Prevents synchronization errors during tests
+    )
 
     def __repr__(self) -> str:
         """Return string representation of the provider."""
