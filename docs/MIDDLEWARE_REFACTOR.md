@@ -192,14 +192,14 @@ Related tasks include:
 
 **Iteration 2: Rate Limiting Middleware**
 
-* [ ] Define `IRateLimiterService` interface in `app/core/interfaces/services/`.
-* [ ] Ensure `RedisRateLimiterService` (or equivalent) exists in `infrastructure` and implements the interface.
-* [ ] Define `RateLimitConfig` in `app/presentation/config/` (or `app/core/config/`).
-* [ ] Move `RateLimitingMiddleware` implementation to `app/presentation/middleware/rate_limiting.py`.
-* [ ] Delete any old/shim `RateLimitingMiddleware` files.
-* [ ] Refactor `RateLimitingMiddleware` to use injected `IRateLimiterService` and `RateLimitConfig`.
-* [ ] Update `app_factory.py` to instantiate and inject `IRateLimiterService` implementation and `RateLimitConfig` into `RateLimitingMiddleware` registration.
-* [ ] Update/fix unit tests in `app/tests/unit/presentation/middleware/test_rate_limiting_middleware.py` to mock the interface and use the new structure.
+* [x] Define `IRateLimiter` interface in `app/core/interfaces/services/rate_limiting/rate_limiter_interface.py`.
+* [x] Implement `InMemoryRateLimiter` in `app/infrastructure/security/rate_limiting/in_memory_limiter.py`.
+* [x] Define `RateLimitConfig` in `app/core/interfaces/services/rate_limiting/rate_limiter_interface.py`.
+* [x] Move `RateLimitingMiddleware` implementation to `app/presentation/middleware/rate_limiting.py`.
+* [x] Create dependency provider in `app/infrastructure/security/rate_limiting/providers.py`.
+* [x] Refactor `RateLimitingMiddleware` to use `IRateLimiter` interface via dependency injection.
+* [x] Update `app_factory.py` to instantiate and inject the rate limiter implementation.
+* [x] Update/fix unit tests in `app/tests/unit/presentation/middleware/test_rate_limiting_middleware.py` to mock the interface and use the new structure.
 
 **Iteration 3: Authentication Middleware**
 

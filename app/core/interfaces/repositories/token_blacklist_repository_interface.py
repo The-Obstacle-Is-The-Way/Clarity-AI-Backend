@@ -1,8 +1,9 @@
 """
 Token Blacklist Repository Interface.
 
-This module defines the interface for token blacklist repositories used for JWT token revocation.
-Following the Repository Pattern and Interface Segregation Principle from SOLID.
+This module defines the interface for token blacklist repository operations,
+supporting secure token revocation and logout functionality
+while maintaining HIPAA compliance and clean architecture.
 """
 
 from abc import ABC, abstractmethod
@@ -11,58 +12,90 @@ from typing import Optional
 
 
 class ITokenBlacklistRepository(ABC):
-    """Interface for token blacklist repository operations.
+    """
+    Interface for token blacklist repository operations.
     
-    This interface defines the contract that any token blacklist repository implementation
-    must follow. It provides methods for blacklisting tokens, checking if tokens are
-    blacklisted, and managing token expiration.
+    This interface encapsulates the functionality required for managing
+    blacklisted (revoked) tokens to ensure proper security controls
+    like session invalidation and logout.
     """
     
     @abstractmethod
-    async def add_to_blacklist(self, token_jti: str, expires_at: datetime) -> bool:
-        """Add a token to the blacklist.
+    async def add_to_blacklist(
+        self,
+        token: str,
+        jti: str,
+        expires_at: datetime,
+        reason: Optional[str] = None
+    ) -> None:
+        """
+        Add a token to the blacklist.
         
         Args:
-            token_jti: The unique identifier (JTI) of the token to blacklist
-            expires_at: When the token would naturally expire
+            token: The token to blacklist (typically a hash of the token)
+            jti: JWT ID - unique identifier for the token
+            expires_at: When the token expires
+            reason: Reason for blacklisting
             
-        Returns:
-            bool: True if successfully blacklisted, False otherwise
+        Raises:
+            RepositoryError: If blacklisting fails
         """
         pass
     
     @abstractmethod
-    async def is_blacklisted(self, token_jti: str) -> bool:
-        """Check if a token is blacklisted.
+    async def is_blacklisted(self, token: str) -> bool:
+        """
+        Check if a token is blacklisted.
         
         Args:
-            token_jti: The unique identifier (JTI) of the token to check
+            token: The token to check (typically a hash of the token)
             
         Returns:
-            bool: True if token is blacklisted, False otherwise
+            True if blacklisted, False otherwise
+            
+        Raises:
+            RepositoryError: If check fails
         """
         pass
     
     @abstractmethod
-    async def remove_expired(self, before_time: Optional[datetime] = None) -> int:
-        """Remove expired tokens from the blacklist.
+    async def is_jti_blacklisted(self, jti: str) -> bool:
+        """
+        Check if a token with specific JWT ID is blacklisted.
         
         Args:
-            before_time: Optional time threshold, tokens that expired before this time
-                         will be removed. If None, current time is used.
+            jti: JWT ID to check
             
         Returns:
-            int: Number of expired tokens removed
+            True if blacklisted, False otherwise
+            
+        Raises:
+            RepositoryError: If check fails
         """
         pass
     
     @abstractmethod
-    async def clear_blacklist(self) -> bool:
-        """Clear all tokens from the blacklist.
+    async def blacklist_session(self, session_id: str) -> None:
+        """
+        Blacklist all tokens for a specific session.
         
-        This is primarily used for testing and maintenance purposes.
+        Args:
+            session_id: The session ID to blacklist
+            
+        Raises:
+            RepositoryError: If blacklisting fails
+        """
+        pass
+    
+    @abstractmethod
+    async def remove_expired_entries(self) -> int:
+        """
+        Remove expired entries from the blacklist.
         
         Returns:
-            bool: True if successful, False otherwise
+            Number of entries removed
+            
+        Raises:
+            RepositoryError: If cleanup fails
         """
         pass
