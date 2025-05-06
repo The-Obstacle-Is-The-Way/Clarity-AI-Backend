@@ -29,7 +29,7 @@ from app.presentation.api.dependencies.auth import get_current_active_user
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJwtService
-from app.domain.entities.user import User
+from app.core.config import Settings
 from app.domain.utils.datetime_utils import UTC
 
 # Infrastructure imports
@@ -45,6 +45,9 @@ from app.presentation.api.v1.routes.actigraphy import get_pat_service as actual_
 pytestmark = pytest.mark.asyncio
 
 from app.core.services.ml.pat.mock import MockPATService
+
+# Import TEST_USER_ID for consistency
+from app.tests.integration.utils.test_db_initializer import TEST_USER_ID
 
 
 @pytest.fixture
@@ -284,173 +287,77 @@ def actigraphy_data() -> dict[str, Any]:
         "analysis_types": ["activity_levels", "sleep_quality"]
     }
 
-# Define the repository override factory function
-def create_repository_override(mock_user_repo_instance: MagicMock) -> Callable:
-    """Create a repository override function for the dependency injection system.
-    
-    This follows clean architecture by mocking the repositories at the boundary,
-    allowing for proper unit testing of the API routes.
-    
-    Args:
-        mock_user_repo_instance: A mocked user repository instance
-        
-    Returns:
-        A function that provides the appropriate repository based on the type requested
-    """
-    T = TypeVar('T', bound=BaseRepositoryInterface)
-    
-    # Define the direct repository instance provider
-    # This provides the mock regardless of session or repository type
-    async def _get_mock_repo(db: AsyncSession) -> T:
-        return mock_user_repo_instance
-    
-    return _get_mock_repo
-
-# Fixtures to create app and client for integration tests
 @pytest.fixture
-async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any]) -> FastAPI:
-    from app.main import create_application
-    from app.core.config import settings
-    from app.infrastructure.database.session import create_db_engine_and_session
-    
-    # Create application instance
-    app_instance = create_application()
+async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any], test_settings: Settings) -> FastAPI:
+    """Create a FastAPI app instance for testing the Actigraphy API."""
+    from app.main import create_application # Main app factory
 
-    # Setup database for tests with the correct async driver following clean architecture principles
-    # Use a properly structured path for the database file aligned with infrastructure layer organization
-    test_db_url = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
-    db_engine, db_session_factory = create_db_engine_and_session(test_db_url)
-    app_instance.state.db_engine = db_engine
-    app_instance.state.db_session_factory = db_session_factory
-    
-    # Create a session dependency override
-    async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
-        async with db_session_factory() as session:
-            yield session
-    
-    # --- Mock JWT Service Setup (provides the actual user for tests) --- 
-    mock_jwt_service = MagicMock(spec=IJwtService)
-    
-    # --- Create a proper adapter mock repository that implements both interfaces ---
-    # This class addresses the architectural inconsistency between get_by_id and get_user_by_id
-    class MockUserRepository(IUserRepository):
-        """Mock user repository that implements both interface variants.
-        
-        This adapter addresses the architectural inconsistency where:
-        - Core layer interface uses get_by_id
-        - Auth dependencies call get_user_by_id
-        """
-        
-        def __init__(self, mock_user):
-            self.mock_user = mock_user
-            
-        async def get_by_id(self, user_id: str) -> User:
-            """Core interface method - get user by ID"""
-            return self.mock_user
-            
-        async def get_user_by_id(self, user_id: str) -> User:
-            """Auth dependency method - get user by ID with different method name"""
-            return self.mock_user
-            
-        async def get_by_email(self, email: str) -> User:
-            """Get user by email"""
-            return self.mock_user
-            
-        async def get_by_username(self, username: str) -> User:
-            """Get user by username"""
-            return self.mock_user
-            
-        async def create(self, user: User) -> User:
-            """Create a new user"""
-            return self.mock_user
-            
-        async def update(self, user: User) -> User:
-            """Update an existing user"""
-            return self.mock_user
-            
-        async def delete(self, user_id: str) -> bool:
-            """Delete a user"""
-            return True
-            
-        async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
-            """List all users with pagination"""
-            return [self.mock_user]
-            
-        async def count(self) -> int:
-            """Count all users"""
-            return 1
-    
-    # Create a mock user object matching the expected structure using the SQLAlchemy User model
-    from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
-    
-    mock_user = SQLAUser(
-        id=actigraphy_data["patient_id"],
-        username=f"user_{actigraphy_data['patient_id']}",
-        email=f"{actigraphy_data['patient_id']}@test.com",
-        password_hash="hashed_password",  # Mocked, not used by JWT decode
-        is_active=True,
-        is_verified=True,
-        email_verified=True,
-        role=SQLAUserRole.PATIENT,
-        roles=[SQLAUserRole.PATIENT.value]
+    # Import TEST_USER_ID for consistency
+    from app.tests.integration.utils.test_db_initializer import TEST_USER_ID
+    # from app.domain.entities.user import UserStatus # UserStatus is not in user.py, use is_active
+
+    # Mock JWT service to control authentication
+    mock_jwt_service_instance = MagicMock(spec=IJwtService)
+
+    async def mock_verify_token(token: str) -> dict[str, Any]:
+        # Simplified mock: always returns a valid payload for test tokens
+        if token == "VALID_PATIENT_TOKEN": # This token is used by auth_headers()
+            return {
+                "sub": str(TEST_USER_ID), # Align with the user ID created in db_session
+                "roles": [str(UserRole.PATIENT.value)], # Use .value for Enum
+                "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp()
+            }
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token for test")
+
+    mock_jwt_service_instance.verify_token = AsyncMock(side_effect=mock_verify_token)
+    # Also mock create_access_token if it's called by any part of the auth flow being tested implicitly
+    mock_jwt_service_instance.create_access_token = AsyncMock(return_value="mocked_access_token_string")
+
+
+    # Mock user repository to return a predefined user
+    # This mock_user is what get_current_active_user will eventually return
+    mock_domain_user = User(
+        id=str(TEST_USER_ID), # Use the ID of the user created in db_session
+        email="test.user@novamind.ai", # Match data from create_test_users
+        username="testuser",          # Match data from create_test_users
+        full_name="Test User",        # Match data from create_test_users
+        hashed_password="hashed_password", # Required field
+        roles={UserRole.PATIENT}, 
+        is_active=True # Use is_active boolean field
     )
 
-    # Configure the mock's methods to provide necessary functionality
-    mock_jwt_service.get_user_from_token = AsyncMock(return_value=mock_user)
-    mock_jwt_service.create_access_token = MagicMock(return_value="test_token")
-    # Add missing decode_access_token method required by authentication flow
-    mock_jwt_service.decode_access_token = MagicMock(return_value={
-        "sub": actigraphy_data["patient_id"],
-        "exp": (datetime.now(UTC) + timedelta(minutes=30)).timestamp(),
-        "role": "patient"
-    })
-    
-    # Create our repository adapter with the mock user
-    mock_user_repo = MockUserRepository(mock_user)
-    # ------------------------------
+    T = TypeVar('T')
+    def create_repository_override(mock_repo_instance: MagicMock) -> Callable[[AsyncSession], T]:
+        """Helper to create an async repository override function."""
+        async def _get_mock_repo(db: AsyncSession) -> T: # db param might not be used if fully mocked
+            return mock_repo_instance
+        return _get_mock_repo
 
-    # Override dependencies including get_repository_instance to avoid database access completely
-    app_instance.dependency_overrides[get_db] = get_test_db_session
-    app_instance.dependency_overrides[actual_get_pat_service] = lambda: mock_pat_service
-    app_instance.dependency_overrides[get_jwt_service] = lambda: mock_jwt_service
+    # Create a MagicMock for IUserRepository
+    mock_user_repo_instance = MagicMock(spec=IUserRepository)
+    # Configure its methods. For get_current_active_user, get_by_id is key.
+    mock_user_repo_instance.get_by_id = AsyncMock(return_value=mock_domain_user)
+    # Ensure other methods that might be called by auth logic are also mocked if necessary
+    mock_user_repo_instance.get_user_by_id = AsyncMock(return_value=mock_domain_user)
+
+
+    # Mock the actual PAT service dependency for actigraphy routes
+    def get_mock_pat_service():
+        return mock_pat_service
+
+    # Define overrides
+    dependency_overrides = {
+        actual_get_pat_service: get_mock_pat_service,
+        get_jwt_service: lambda: mock_jwt_service_instance, # For get_current_active_user
+        IUserRepository: create_repository_override(mock_user_repo_instance)
+    }
     
-    # This is the most critical part - override get_user_repository_dependency to return our mock
-    # This prevents any actual database access attempts
-    from app.presentation.api.dependencies.auth import get_user_repository_dependency
-    app_instance.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo
+    # Create the app WITHOUT overrides first, but WITH test_settings
+    app = create_application(settings_override=test_settings) 
+    # THEN apply overrides to the app instance
+    app.dependency_overrides = dependency_overrides
     
-    # Reset and reconfigure the DI container to ensure clean test isolation
-    from app.infrastructure.di.container import reset_container, get_container, DIContainer
-    
-    # Reset the container to start fresh
-    reset_container()
-    
-    # Get a test container with mock=True flag
-    container = get_container(use_mock=True)
-    
-    # Register our mock repository factory directly in the DI container
-    # This is more reliable than overriding the get_repository_instance function
-    def mock_user_repo_factory(session: AsyncSession) -> IUserRepository:
-        """Factory function that always returns our mock user repository."""
-        return mock_user_repo
-    
-    # Register the factory for both possible interface types to handle architectural inconsistencies
-    container.register_repository_factory(IUserRepository, mock_user_repo_factory)
-    
-    # For interfaces defined in the domain layer (architectural inconsistency)
-    from app.domain.repositories.user_repository import UserRepository as DomainUserRepository
-    container.register_repository_factory(DomainUserRepository, mock_user_repo_factory)
-    
-    # For good measure, also override the dependency at the FastAPI level
-    from app.infrastructure.di.provider import get_repository_instance
-    
-    # Override the repository provider function
-    app_instance.dependency_overrides[get_repository_instance] = lambda repo_type, session: mock_user_repo if repo_type == IUserRepository else None
-    
-    yield app_instance
-    
-    # Cleanup
-    await db_engine.dispose()
+    return app
 
 @pytest.mark.asyncio
 @pytest.mark.db_required()

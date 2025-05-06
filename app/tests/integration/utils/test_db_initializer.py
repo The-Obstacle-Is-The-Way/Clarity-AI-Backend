@@ -248,13 +248,11 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
             table_names = list(Base.metadata.tables.keys())
             logger.info(f"Created tables: {', '.join(table_names)}")
             
-            # Verify the users table exists and has expected columns
-            # Fix the TypeError by using 'in' operator to check for table existence rather than boolean evaluation
-            if 'users' in Base.metadata.tables:
-                users_table = Base.metadata.tables['users']
-                column_names = [c.name for c in users_table.columns]
-                logger.info(f"Users table columns: {column_names}")
-            else:
+            # Validate models after creation
+            validate_models()
+            
+            # Verify that the users table exists
+            if "users" not in table_names:
                 logger.error("Users table not found in metadata!")
         
         # Run the table creation function synchronously
@@ -279,10 +277,9 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
             try:
                 async with engine.begin() as conn:
                     # Define the sync function
-                    def validate_models_sync(sync_conn):
-                        from sqlalchemy.orm import Session
-                        with Session(sync_conn) as sync_session:
-                            validate_models(sync_session)
+                    def validate_models_sync(sync_session_arg_not_used):
+                        logger.info("Validating models (sync context inside get_test_db_session)")
+                        validate_models()
                     
                     # Run validation in sync context
                     await conn.run_sync(validate_models_sync)

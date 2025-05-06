@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.interfaces.aws_service_interface import S3ServiceInterface
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.core.config import Settings
 
 # Import SQLAlchemy models and utils
 from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
@@ -148,7 +149,7 @@ def test_config() -> dict[str, Any]:
     return get_test_settings_override()
 
 @pytest.fixture
-def jwt_service(test_config) -> IJwtService:
+def jwt_service(test_settings: Settings) -> IJwtService:
     """
     Provides a properly configured JWT service for test token generation.
     
@@ -159,15 +160,8 @@ def jwt_service(test_config) -> IJwtService:
         IJwtService: Configured JWT service instance
     """
     from app.infrastructure.security.jwt_service import JWTService
-    # Create a Settings-like object for the JWT service to use
-    class TestSettings:
-        def __init__(self, config):
-            for key, value in config.items():
-                setattr(self, key, value)
-    
-    # Initialize the JWT service with our test settings to match application expectations
-    settings = TestSettings(test_config)
-    return JWTService(settings=settings)
+    # JWTService expects a Settings object
+    return JWTService(settings=test_settings, user_repository=None)
 
 @pytest.fixture
 async def patient_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
@@ -188,8 +182,8 @@ async def patient_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
         "active": True,
         "jti": str(uuid.uuid4())
     }
-    # Create the access token asynchronously since the method is defined as async
-    token = await jwt_service.create_access_token(token_data)
+    # create_access_token is now synchronous
+    token = jwt_service.create_access_token(data=token_data)
     
     return {
         "Authorization": f"Bearer {token}",
@@ -216,8 +210,8 @@ async def provider_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
         "jti": str(uuid.uuid4())
     }
     
-    # Create the access token asynchronously
-    token = await jwt_service.create_access_token(token_data)
+    # create_access_token is now synchronous
+    token = jwt_service.create_access_token(data=token_data)
     
     return {
         "Authorization": f"Bearer {token}",
@@ -225,39 +219,32 @@ async def provider_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
     }
 
 # API Testing Fixtures
-@pytest.fixture
-def test_app(db_session: AsyncSession, jwt_service: IJwtService) -> FastAPI:
+@pytest_asyncio.fixture
+async def test_app(test_settings: Settings, jwt_service: IJwtService) -> FastAPI:
     """
-    Creates a properly configured FastAPI application for testing with the
-    correct dependencies injected.
-    
-    This ensures all tests use consistent authentication and database handling.
+    Creates a properly configured FastAPI application for testing.
+    The application will use test_settings for its configuration,
+    allowing its lifespan manager to set up dependencies like the database correctly.
+    Other specific services can be overridden.
     
     Returns:
         FastAPI: Configured test application
     """
-    # Import main app factory function
     from app.main import create_application
     
-    # Create dependency overrides dict
-    dependency_overrides = {}
+    # Create the application using test_settings.
+    # The lifespan manager in create_application will use these settings
+    # to initialize the database, Redis (mocked for tests), etc.
+    app = create_application(settings_override=test_settings)
     
-    # Override database session
-    from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-    dependency_overrides[get_db_session] = lambda: db_session
+    # Apply other necessary dependency overrides AFTER app creation
+    app.dependency_overrides[IJwtService] = lambda: jwt_service
+    app.dependency_overrides[S3ServiceInterface] = lambda: AsyncMock(spec=S3ServiceInterface)
+    # DO NOT override get_db_session here if you want the app's lifespan
+    # to manage the database connection for integration tests.
+    # The db_session fixture can be used by tests for direct DB access if needed.
     
-    # Override JWT service
-    from app.core.interfaces.services.jwt_service import IJwtService
-    dependency_overrides[IJwtService] = lambda: jwt_service
-    
-    # Override S3 service with a mock
-    dependency_overrides[S3ServiceInterface] = lambda: AsyncMock(spec=S3ServiceInterface)
-    
-    # Create app with injected dependencies
-    test_app = create_application(dependency_overrides=dependency_overrides)
-    
-    # Return the configured test app
-    return test_app
+    return app
 
 @pytest_asyncio.fixture
 async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:  

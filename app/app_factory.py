@@ -76,7 +76,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application lifespan startup sequence initiated.")
 
     # Retrieve settings from app state
-    current_settings = app.state.settings
+    current_settings = getattr(app.state, "settings", None)
+    if current_settings is None:
+        logger.critical(
+            "Settings not found in app.state during lifespan startup! Attempting fallback to global_settings."
+        )
+        # Fallback, but this indicates a potential setup issue if global_settings is not the intended one.
+        current_settings = global_settings 
+        # For robustness, ensure current_settings is not None even after fallback.
+        if current_settings is None:
+            # This is a critical failure if no settings can be resolved.
+            msg = "No settings available for lifespan (app.state.settings or global_settings)."
+            logger.critical(msg)
+            raise RuntimeError(msg) 
 
     # --- Database Initialization ---
     try:
@@ -130,6 +142,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _initialize_sentry(current_settings)
 
     logger.info("Application startup complete.")
+    logger.info("Lifespan: Initializing application...")
+    # Resolve settings robustly
+    current_settings = getattr(app.state, 'settings', None)
+    if not current_settings:
+        logger.warning("Settings not found in app.state during lifespan startup, using global_settings.")
+        current_settings = global_settings # Fallback
+    
+    if not current_settings:
+        logger.critical("CRITICAL: Settings are None even after fallback in lifespan. Aborting DB init.")
+        # Potentially raise here or handle as a critical configuration error
+    else:
+        logger.info(f"Lifespan app.state.settings.DATABASE_URL: {current_settings.DATABASE_URL}")
+        logger.info(f"Lifespan id(app): {id(app)}, id(app.state): {id(app.state)}") # DEBUG
+        initialize_database(app, current_settings)
+    
     yield  # Application runs here
 
     # --- Shutdown Logic ---
@@ -160,12 +187,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # --- Application Factory ---
-def create_application(settings: Settings | None = None) -> FastAPI:
+def create_application(settings_override: Settings | None = None) -> FastAPI:
     """Factory function to create and configure the FastAPI application."""
     logger.info("Creating FastAPI application instance...")
 
     # Resolve settings: Use provided settings or load global ones
-    app_settings = settings if settings is not None else global_settings
+    app_settings = settings_override if settings_override is not None else global_settings
 
     # Configure logging early
     logging.config.dictConfig(LOGGING_CONFIG)
@@ -173,23 +200,28 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         f"Logging configured with level: {LOGGING_CONFIG.get('loggers', {}).get('app', {}).get('level', 'UNKNOWN')}"
     )
 
-    # Initialize Sentry if DSN is provided
+    # Initialize Sentry if DSN is provided (moved Sentry init inside factory for clarity)
     if app_settings.SENTRY_DSN:
         logger.info(f"Initializing Sentry for environment: {app_settings.ENVIRONMENT}")
-        sentry_sdk.init(
-            dsn=str(app_settings.SENTRY_DSN),
-            traces_sample_rate=app_settings.SENTRY_TRACES_SAMPLE_RATE,
-            profiles_sample_rate=app_settings.SENTRY_PROFILES_SAMPLE_RATE,
-            environment=app_settings.ENVIRONMENT,
-            release=app_settings.VERSION,
-            # Consider enabling performance monitoring based on settings
-            enable_tracing=True,  # Adjust as needed
-        )
-        logger.info("Sentry initialized.")
+        try:
+            sentry_sdk.init(
+                dsn=str(app_settings.SENTRY_DSN),
+                traces_sample_rate=app_settings.SENTRY_TRACES_SAMPLE_RATE,
+                profiles_sample_rate=app_settings.SENTRY_PROFILES_SAMPLE_RATE,
+                environment=app_settings.ENVIRONMENT,
+                release=app_settings.VERSION,
+                enable_tracing=True,
+            )
+            logger.info("Sentry initialized.")
+        except Exception as e:
+            logger.error(f"Failed to initialize Sentry: {e}", exc_info=True)
     else:
         logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
 
-    # Initialize FastAPI app with lifespan context manager
+    # Create an initial state object to pass to FastAPI constructor
+    initial_state = {"settings": app_settings}
+
+    # Initialize FastAPI app with lifespan context manager and initial state
     app = FastAPI(
         title=app_settings.PROJECT_NAME,
         version=app_settings.API_VERSION,
@@ -198,10 +230,10 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         docs_url="/docs" if app_settings.ENVIRONMENT != "production" else None,
         redoc_url="/redoc" if app_settings.ENVIRONMENT != "production" else None,
         lifespan=lifespan,  # Use the lifespan context manager
+        state=initial_state # Pass initial state here
     )
 
-    # Assign settings to app state immediately after creation
-    app.state.settings = app_settings
+    # Settings are now in app.state via initial_state, no need to set app.state.settings explicitly here
 
     # --- Middleware Configuration (Order Matters!) ---
     # 1. Security Headers Middleware

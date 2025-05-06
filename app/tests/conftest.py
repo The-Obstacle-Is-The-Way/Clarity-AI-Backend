@@ -48,15 +48,6 @@ def event_loop_policy() -> asyncio.DefaultEventLoopPolicy:
 
 
 @pytest_asyncio.fixture(scope="session")
-def event_loop(event_loop_policy: asyncio.AbstractEventLoopPolicy) -> asyncio.AbstractEventLoop:
-    """Overrides pytest default function scope event loop"""
-    loop = event_loop_policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-# --- Core Settings and Configuration Fixtures ---
-@pytest_asyncio.fixture(scope="session")
 def test_settings() -> Settings:
     """Load test settings, potentially overriding DATABASE_URL."""
     logger.info("Loading test settings.")
@@ -459,3 +450,13 @@ def invalid_name() -> str:
 def faker() -> Faker:
     """Provides a Faker instance for generating test data."""
     return Faker()
+
+
+# Define a new event_loop fixture with function scope for better isolation,
+# adhering to pytest-asyncio best practices.
+@pytest.fixture(scope="function")
+async def event_loop() -> asyncio.AbstractEventLoop:
+    """Provide a function-scoped event loop, managed by pytest-asyncio."""
+    # This simply allows pytest-asyncio to provide its default loop.
+    # No explicit creation/closing needed here; pytest-asyncio handles it.
+    return asyncio.get_event_loop()
