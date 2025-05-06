@@ -12,7 +12,8 @@ from sqlalchemy import JSON, Column, DateTime, Enum, String
 
 from app.domain.services.biometric_event_processor import AlertPriority, AlertStatus
 from app.domain.utils.datetime_utils import now_utc
-from app.infrastructure.persistence.sqlalchemy.config.database import Base
+# from app.infrastructure.persistence.sqlalchemy.config.database import Base # Old Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base # Canonical Base
 from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
