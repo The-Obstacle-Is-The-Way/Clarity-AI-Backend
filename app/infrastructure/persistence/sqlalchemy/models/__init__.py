@@ -21,6 +21,20 @@ from .base import Base, AuditMixin, TimestampMixin
 from .analytics import AnalyticsEventModel
 from .user import User, UserRole
 from .provider import ProviderModel
+
+# Biometric and Digital Twin models should be imported before Patient if Patient refers to them
+try:
+    from .biometric_alert_model import BiometricAlertModel
+    from .biometric_rule import BiometricRuleModel
+    from .biometric_twin_model import BiometricTwinModel # Contains BiometricDataPointModel as well
+    from .digital_twin import DigitalTwinModel # Contains its own BiometricDataPointModel and BiometricTimeseriesModel
+except ImportError as e:
+    logging.warning(f"Some biometric or digital twin models could not be imported: {e}")
+    BiometricAlertModel = None
+    BiometricRuleModel = None
+    BiometricTwinModel = None
+    DigitalTwinModel = None 
+
 from .patient import Patient
 
 # Import models safely with try/except blocks to avoid breaking imports
