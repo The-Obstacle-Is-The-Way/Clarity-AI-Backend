@@ -284,7 +284,23 @@ def test_xgboost_endpoints_return_200(client, endpoint, request_model, response_
     
     # Assert response content matches the expected model
     response_data = response.json()
-    assert response_data == response_model.model_dump(), f"Response data for {endpoint} does not match expected response model"
+    
+    # Get the model dump with datetime objects serialized to match the API response format
+    # This ensures that datetime fields are compared as strings, not datetime objects
+    expected_data = response_model.model_dump(mode='json')
+    
+    # For risk prediction endpoint specifically, handle prediction_date field
+    if endpoint == '/xgboost/risk-prediction' and 'prediction_date' in response_data:
+        # We just need to verify the prediction_date exists, but not its exact value
+        # since it's generated at runtime with datetime.now()
+        assert 'prediction_date' in response_data
+        # Remove the field from both sides for the equality comparison
+        del response_data['prediction_date']
+        if 'prediction_date' in expected_data:
+            del expected_data['prediction_date']
+    
+    # Compare the remaining fields
+    assert response_data == expected_data, f"Response data for {endpoint} does not match expected response model"
 
 
 
