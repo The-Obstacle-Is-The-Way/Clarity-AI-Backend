@@ -1,43 +1,45 @@
-"""
-Base SQLAlchemy declarative base for all models.
+"""Base SQLAlchemy models module - DEPRECATED.
 
-This module provides a single source of truth for the SQLAlchemy declarative base
-used by all model classes in the application. This pattern eliminates registry conflicts
-by ensuring all models use the same metadata instance and registry.
+IMPORTANT: This module is deprecated. Use app.infrastructure.database.base_class instead.
 
-Following clean architecture principles, this serves as the foundation for all
-SQLAlchemy models, creating a consistent database schema and behavior across
-the entire application.
+This module previously defined the Base class but now imports it from the canonical source.
+This module is kept to maintain backward compatibility with existing imports.
 
-ARCHITECTURAL NOTE: This is the ONLY Base class that should be used across the entire
-application. All other Base definitions should be removed or replaced with imports
-from this module.
+Following clean architecture principles, we've centralized the SQLAlchemy base class
+in app.infrastructure.database.base_class.py to prevent registry conflicts and maintain
+a single source of truth.
 """
 
-import importlib
 import logging
-import uuid
-from typing import Any
-
-from sqlalchemy import Column, DateTime, String, func, inspect
-from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import declarative_base
-
-# Import from the centralized registry module
-from app.infrastructure.persistence.sqlalchemy.registry import metadata
-from app.infrastructure.persistence.sqlalchemy.registry import (
-    register_model as registry_register_model,
-)
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Create a single declarative base that uses our centralized metadata
-# All models should inherit from this Base class
-Base = declarative_base(metadata=metadata, cls=AsyncAttrs)
+# Import from our canonical source - this is the ONLY correct import location
+from app.infrastructure.database.base_class import (
+    AuditMixin,
+    Base,
+    BaseModel,
+    TimestampMixin,
+    register_model,
+    validate_models
+)
 
-# Keep a local registry for backward compatibility
-_model_registry: list[type[Base]] = []
+# Re-export these symbols for backward compatibility
+__all__ = [
+    'AuditMixin',
+    'Base',
+    'BaseModel',
+    'TimestampMixin',
+    'register_model',
+    'validate_models'
+]
+
+# Log a deprecation warning
+logger.warning(
+    "This module is deprecated. Import Base and related components from "
+    "app.infrastructure.database.base_class instead."
+)
 
 def register_model(model_class: type[Base]) -> type[Base]:
     """
