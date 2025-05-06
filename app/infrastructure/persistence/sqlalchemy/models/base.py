@@ -21,6 +21,7 @@ from app.infrastructure.database.base_class import (
     Base,
     BaseModel,
     TimestampMixin,
+    ensure_all_models_loaded,
     register_model,
     validate_models
 )
@@ -31,6 +32,7 @@ __all__ = [
     'Base',
     'BaseModel',
     'TimestampMixin',
+    'ensure_all_models_loaded',
     'register_model',
     'validate_models'
 ]
