@@ -96,7 +96,7 @@ class TestJWTService:
     async def test_create_access_token(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test creating an access token with user claims."""
         # Pass necessary data directly to create_access_token
-        access_token = await jwt_service.create_access_token(
+        access_token = jwt_service.create_access_token(
             data=user_claims 
         )
 
@@ -104,7 +104,7 @@ class TestJWTService:
         assert isinstance(access_token, str)
 
         # Use decode_token method for consistency if possible, or jwt.decode for direct check
-        payload: TokenPayload = await jwt_service.decode_token(access_token)
+        payload: TokenPayload = jwt_service.decode_token(access_token)
 
         assert payload.sub == user_claims["sub"]
         assert payload.roles == user_claims["roles"]
@@ -120,14 +120,14 @@ class TestJWTService:
     async def test_create_refresh_token(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test creating a refresh token with user claims."""
         # Pass necessary data directly to create_refresh_token
-        refresh_token = await jwt_service.create_refresh_token(
+        refresh_token = jwt_service.create_refresh_token(
             data=user_claims # Pass relevant subset if needed
         )
 
         assert refresh_token is not None
         assert isinstance(refresh_token, str)
 
-        payload: TokenPayload = await jwt_service.decode_token(refresh_token)
+        payload: TokenPayload = jwt_service.decode_token(refresh_token)
 
         assert payload.sub == user_claims["sub"]
         assert payload.exp is not None
@@ -141,9 +141,9 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_decode_token_valid(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of a valid token."""
-        token = await jwt_service.create_access_token(data=user_claims)
+        token = jwt_service.create_access_token(data=user_claims)
         
-        payload = await jwt_service.decode_token(token)
+        payload = jwt_service.decode_token(token)
 
         assert payload is not None
         assert payload.sub == "user123"
@@ -155,26 +155,26 @@ class TestJWTService:
     async def test_decode_token_expired(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of an expired token."""
         # Create a token that is already expired
-        expired_token = await jwt_service.create_access_token(
+        expired_token = jwt_service.create_access_token(
             data=user_claims,
             expires_delta_minutes=-1 # Ensure it's expired relative to frozen time
         )
 
         # No need to sleep or fast-forward time, decode should fail immediately
         with pytest.raises(TokenExpiredException):
-            await jwt_service.decode_token(expired_token)
+            jwt_service.decode_token(expired_token)
 
 
     @pytest.mark.asyncio
     async def test_decode_token_invalid_signature(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test validation of a token with invalid signature."""
-        token = await jwt_service.create_access_token(data=user_claims)
+        token = jwt_service.create_access_token(data=user_claims)
         
         # Tamper with the signature
         tampered_token = token[:-5] + "XXXXX"
 
         with pytest.raises(InvalidTokenException) as exc_info:
-            await jwt_service.decode_token(tampered_token)
+            jwt_service.decode_token(tampered_token)
         assert "Signature verification failed" in str(exc_info.value) or "Invalid signature" in str(exc_info.value)
 
 
@@ -184,7 +184,7 @@ class TestJWTService:
         invalid_token = "not.a.valid.jwt.token.format"
 
         with pytest.raises(InvalidTokenException) as exc_info:
-            await jwt_service.decode_token(invalid_token)
+            jwt_service.decode_token(invalid_token)
         assert "Invalid header string" in str(exc_info.value) or "Not enough segments" in str(exc_info.value)
 
 
@@ -192,10 +192,10 @@ class TestJWTService:
     @pytest.mark.asyncio
     async def test_token_expiry_time(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test that the token expiry time matches the expected duration."""
-        token = await jwt_service.create_access_token(data=user_claims)
+        token = jwt_service.create_access_token(data=user_claims)
         
         # Decode the token to check expiry
-        payload = await jwt_service.decode_token(token)
+        payload = jwt_service.decode_token(token)
         
         # Calculate expected expiry timestamp
         expected_expiry_ts = (datetime.datetime.now(UTC) + datetime.timedelta(minutes=TEST_ACCESS_EXPIRE_MINUTES)).timestamp()
@@ -208,38 +208,38 @@ class TestJWTService:
     async def test_token_audience_validation(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test token audience validation."""
         # Test with correct audience
-        token_correct_aud = await jwt_service.create_access_token(data=user_claims)
-        payload_correct = await jwt_service.decode_token(token_correct_aud) # Should succeed
+        token_correct_aud = jwt_service.create_access_token(data=user_claims)
+        payload_correct = jwt_service.decode_token(token_correct_aud)
         assert payload_correct.aud == TEST_AUDIENCE
 
         # Test with incorrect audience by temporarily changing settings
         original_audience = jwt_service.audience
         jwt_service.audience = "wrong_audience"
-        token_wrong_aud = await jwt_service.create_access_token(data=user_claims)
+        token_wrong_aud = jwt_service.create_access_token(data=user_claims)
         jwt_service.audience = original_audience # Restore
 
         with pytest.raises(InvalidTokenException) as exc_info:
              # Decode with original service settings (expecting TEST_AUDIENCE)
-            await jwt_service.decode_token(token_wrong_aud) 
+            jwt_service.decode_token(token_wrong_aud)
         assert "Invalid audience" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_token_issuer_validation(self, jwt_service: JWTService, user_claims: dict[str, Any]):
         """Test token issuer validation."""
         # Test with correct issuer
-        token_correct_iss = await jwt_service.create_access_token(data=user_claims)
-        payload_correct = await jwt_service.decode_token(token_correct_iss) # Should succeed
+        token_correct_iss = jwt_service.create_access_token(data=user_claims)
+        payload_correct = jwt_service.decode_token(token_correct_iss)
         assert payload_correct.iss == TEST_ISSUER
 
         # Test with incorrect issuer by temporarily changing settings
         original_issuer = jwt_service.issuer
         jwt_service.issuer = "wrong_issuer"
-        token_wrong_iss = await jwt_service.create_access_token(data=user_claims)
+        token_wrong_iss = jwt_service.create_access_token(data=user_claims)
         jwt_service.issuer = original_issuer # Restore
 
         with pytest.raises(InvalidTokenException) as exc_info:
              # Decode with original service settings (expecting TEST_ISSUER)
-            await jwt_service.decode_token(token_wrong_iss) 
+            jwt_service.decode_token(token_wrong_iss)
         assert "Invalid issuer" in str(exc_info.value)
 
     # Add more tests as needed, e.g., for blacklisting, etc.

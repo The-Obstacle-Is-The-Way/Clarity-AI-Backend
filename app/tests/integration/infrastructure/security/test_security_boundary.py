@@ -98,8 +98,8 @@ class TestSecurityBoundary:
             "session_id": session_id
         }
 
-        token = await jwt_service.create_access_token(data=user_data)
-        token_data = await jwt_service.decode_token(token)
+        token = jwt_service.create_access_token(data=user_data)
+        token_data = jwt_service.decode_token(token)
         
         assert token_data.sub == user_id
         assert token_data.roles == [role.value]
@@ -125,10 +125,10 @@ class TestSecurityBoundary:
             "permissions": [],
             "session_id": "session_test"
         }
-        token = await short_lived_jwt_service.create_access_token(data=user_data)
+        token = short_lived_jwt_service.create_access_token(data=user_data)
         
         # Token should be valid immediately
-        token_data = await short_lived_jwt_service.decode_token(token)
+        token_data = short_lived_jwt_service.decode_token(token)
         assert token_data is not None
         
         # Wait for token to expire (increase sleep time)
@@ -136,7 +136,7 @@ class TestSecurityBoundary:
         
         # Token should now be expired
         with pytest.raises(TokenExpiredException):
-            await short_lived_jwt_service.decode_token(token)
+            short_lived_jwt_service.decode_token(token)
 
         # Restore original setting
         mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = original_expiry
@@ -159,8 +159,8 @@ class TestSecurityBoundary:
                 "session_id": session_id
             }
 
-            token = await jwt_service.create_access_token(data=user_data)
-            token_data = await jwt_service.decode_token(token)
+            token = jwt_service.create_access_token(data=user_data)
+            token_data = jwt_service.decode_token(token)
             
             assert token_data.sub == user_id
             assert token_data.roles == [role.value]
@@ -211,11 +211,11 @@ class TestSecurityBoundary:
         admin_user_data = {"sub": "admin123", "roles": [Role.ADMIN.value], "permissions": list(role_manager.get_role_permissions(Role.ADMIN))}
         nurse_user_data = {"sub": "nurse456", "roles": [Role.NURSE.value], "permissions": list(role_manager.get_role_permissions(Role.NURSE))}
         
-        admin_token = await jwt_service.create_access_token(data=admin_user_data)
-        nurse_token = await jwt_service.create_access_token(data=nurse_user_data)
+        admin_token = jwt_service.create_access_token(data=admin_user_data)
+        nurse_token = jwt_service.create_access_token(data=nurse_user_data)
         
-        admin_data = await jwt_service.decode_token(admin_token)
-        nurse_data = await jwt_service.decode_token(nurse_token)
+        admin_data = jwt_service.decode_token(admin_token)
+        nurse_data = jwt_service.decode_token(nurse_token)
         
         assert role_manager.has_permission(Role.ADMIN, "view_all_data")
         assert role_manager.has_permission(Role.ADMIN, "manage_users")
@@ -231,10 +231,10 @@ class TestSecurityBoundary:
         roles = [Role.ADMIN.value]
         user_data = {"sub": user_id, "roles": roles}
 
-        token = await jwt_service.create_access_token(data=user_data)
+        token = jwt_service.create_access_token(data=user_data)
         assert isinstance(token, str)
 
-        payload = await jwt_service.decode_token(token)
+        payload = jwt_service.decode_token(token)
         assert payload.sub == user_id
         assert payload.roles == roles
         assert payload.type == TokenType.ACCESS # Verify type
@@ -248,29 +248,31 @@ class TestSecurityBoundary:
         user_data = {"sub": user_id, "roles": [Role.PATIENT.value]}
 
         # Create token that expired 1 minute ago
-        expired_token = await jwt_service.create_access_token(data=user_data, expires_delta_minutes=-1)
-        
-        await asyncio.sleep(0.1) # Ensure time passes expiry
+        expired_token = jwt_service._create_token( # Assuming _create_token is also sync
+            data=user_data, 
+            token_type=TokenType.ACCESS,
+            expires_delta_minutes=-1 
+        )
         
         with pytest.raises(TokenExpiredException):
-            await jwt_service.decode_token(expired_token)
+            jwt_service.decode_token(expired_token)
 
     @pytest.mark.asyncio
     async def test_invalid_token_validation(self, mock_settings):
         """Test that an invalid/tampered token raises InvalidTokenException."""
         jwt_service = JWTService(settings=mock_settings, user_repository=None)
-        invalid_token_format = "this.is.not.a.valid.token"
+        invalid_token = "this.is.not.a.valid.token"
 
         with pytest.raises(InvalidTokenException):
-            await jwt_service.decode_token(invalid_token_format)
+            jwt_service.decode_token(invalid_token)
 
         # Test token with incorrect signature
         user_id = str(uuid.uuid4())
         user_data = {"sub": user_id, "roles": [Role.PATIENT.value]}
-        token = await jwt_service.create_access_token(data=user_data)
+        token = jwt_service.create_access_token(data=user_data)
         tampered_token = token[:-5] + "wrong"
         with pytest.raises(InvalidTokenException):
-            await jwt_service.decode_token(tampered_token)
+            jwt_service.decode_token(tampered_token)
             
     @pytest.mark.asyncio
     async def test_token_with_minimal_payload(self, mock_settings):
@@ -280,8 +282,8 @@ class TestSecurityBoundary:
         jti = str(uuid.uuid4())
         user_data = {"sub": user_id, "jti": jti} # Minimal data
 
-        minimal_token = await jwt_service.create_access_token(data=user_data)
-        payload = await jwt_service.decode_token(minimal_token)
+        token = jwt_service.create_access_token(data=user_data)
+        payload = jwt_service.decode_token(token)
         
         assert payload.sub == user_id
         assert str(payload.jti) == jti
@@ -293,19 +295,20 @@ class TestSecurityBoundary:
     @pytest.mark.asyncio
     async def test_short_lived_token_validation(self, mock_settings):
         """Test validation of a very short-lived token."""
+        mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 1/60  # 1 second
         jwt_service = JWTService(settings=mock_settings, user_repository=None)
-        user_id = str(uuid.uuid4())
-        user_data = {"sub": user_id}
         
-        # Create token with a very short lifespan (e.g., 0.5 seconds)
-        short_lived_token = await jwt_service.create_access_token(data=user_data, expires_delta_minutes=0.01) # ~0.6s expiry
+        user_id = str(uuid.uuid4())
+        user_data = {"sub": user_id, "roles": [Role.PATIENT.value]}
 
-        # Validate immediately (should be valid)
-        await jwt_service.decode_token(short_lived_token)
+        token = jwt_service.create_access_token(data=user_data)
+        
+        # Validate immediately
+        payload = jwt_service.decode_token(token)
+        assert payload.sub == user_id
 
-        # Wait longer than expiry time (increase sleep time)
-        await asyncio.sleep(1.5)
+        # Wait for it to expire
+        await asyncio.sleep(2) # Sleep for 2 seconds
 
-        # Attempt to validate after expiry
         with pytest.raises(TokenExpiredException):
-            await jwt_service.decode_token(short_lived_token)
+            jwt_service.decode_token(token)
