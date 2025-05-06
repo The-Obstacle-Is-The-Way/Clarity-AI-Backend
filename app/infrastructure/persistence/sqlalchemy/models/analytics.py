@@ -7,15 +7,17 @@ mapping domain entities to database tables.
 
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, ForeignKey
 from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import relationship
 
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
+from app.infrastructure.database.base_class import TimestampMixin
 from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
-class AnalyticsEventModel(Base):
+class AnalyticsEventModel(Base, TimestampMixin):
     """
     SQLAlchemy model for analytics events.
     
@@ -28,11 +30,14 @@ class AnalyticsEventModel(Base):
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     event_type = Column(String(100), nullable=False, index=True)
     event_data = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
-    user_id = Column(String(100), nullable=True, index=True)
+    user_id = Column(GUID, ForeignKey("users.id"), nullable=True, index=True)
     session_id = Column(String(100), nullable=True, index=True)
     timestamp = Column(DateTime, nullable=False, default=now_utc, index=True)
-    processed_at = Column(DateTime, nullable=False, default=now_utc)
-    created_at = Column(DateTime, nullable=False, default=now_utc)
+    processed_at = Column(DateTime, nullable=True, index=True)
+    correlation_id = Column(String(100), nullable=True, index=True)
+    
+    # Define the relationship to the User model
+    user = relationship("User", back_populates="analytics_events")
     
     # Useful indexes for analytics queries
     __table_args__ = (
@@ -51,7 +56,7 @@ class AnalyticsEventModel(Base):
         return f"<AnalyticsEvent(id={self.id}, type={self.event_type}, timestamp={self.timestamp})>"
 
 
-class AnalyticsAggregateModel(Base):
+class AnalyticsAggregateModel(Base, TimestampMixin):
     """
     SQLAlchemy model for pre-computed analytics aggregates.
     
@@ -65,9 +70,7 @@ class AnalyticsAggregateModel(Base):
     aggregate_type = Column(String(50), nullable=False, index=True)
     dimensions = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
     metrics = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
-    metadata = Column(MutableDict.as_mutable(JSON), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=now_utc)
-    updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+    aggregation_metadata = Column(MutableDict.as_mutable(JSON), nullable=True)
     ttl = Column(Integer, nullable=True)  # Time-to-live in seconds
     
     __table_args__ = (
@@ -84,7 +87,7 @@ class AnalyticsAggregateModel(Base):
         return f"<AnalyticsAggregate(id={self.id}, dimensions={dim_str})>"
 
 
-class AnalyticsJobModel(Base):
+class AnalyticsJobModel(Base, TimestampMixin):
     """
     SQLAlchemy model for analytics processing jobs.
     
@@ -100,7 +103,6 @@ class AnalyticsJobModel(Base):
     parameters = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
     results = Column(MutableDict.as_mutable(JSON), nullable=True)
     error = Column(String(500), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=now_utc)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     

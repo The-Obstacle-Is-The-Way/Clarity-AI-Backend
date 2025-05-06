@@ -16,7 +16,9 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import StaticPool, Pool
+from sqlalchemy import event
+from sqlalchemy.dialects import sqlite
 
 # Application-specific Imports
 from app.app_factory import create_application
@@ -25,7 +27,8 @@ from app.core.config import Settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
-from app.infrastructure.database.base_class import Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.infrastructure.persistence.sqlalchemy.registry import metadata as main_metadata
 from app.presentation.api.dependencies.auth import get_current_user as app_get_current_user
 
 logger = logging.getLogger(__name__)
@@ -48,7 +51,7 @@ def event_loop_policy() -> asyncio.DefaultEventLoopPolicy:
     return asyncio.DefaultEventLoopPolicy()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_settings() -> Settings:
     """Load test settings, ensuring ENVIRONMENT is set to 'test'."""
     logger.info("Loading test settings for session scope.")
@@ -331,37 +334,25 @@ async def mock_override_user() -> User:
     )
 
 @pytest_asyncio.fixture(scope="function")
-async def test_async_client(test_settings: Settings, mock_override_user: User) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Provides an AsyncClient configured with a FastAPI app instance
-    created using test settings and managing the app's lifespan.
-    """
-    # Import the actual dependency getter for JWT service
-    # from app.presentation.api.dependencies.auth import get_jwt_service as app_get_jwt_service
+async def client_app_tuple(test_settings: Settings, mock_override_user: User) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
+    """Provides an AsyncClient and the FastAPI app instance it uses, with auth dependencies overridden."""
+    logger.info("Creating client_app_tuple with overridden auth.")
+    
+    # Use the application factory to create the app instance
+    app_instance = create_application(settings_override=test_settings)
 
-    # Define the new override function for get_current_user
     async def mock_get_current_user_dependency_override() -> User:
-        logger.info(f"--- MOCK get_current_user_dependency_override CALLED, returning user: {mock_override_user.email} ---")
+        # logger.info(f"--- mock_get_current_user_dependency_override CALLED, RETURNING: {mock_override_user.email} ---")
         return mock_override_user
 
-    app = create_application(
-        settings_override=test_settings,
-        # dependency_overrides_param=dependency_overrides_for_factory # REMOVED: No longer passing to factory
-    )
+    # Override the main get_current_user dependency
+    app_instance.dependency_overrides[app_get_current_user] = mock_get_current_user_dependency_override
     
-    # Apply overrides directly to the app instance for the client
-    app.dependency_overrides[app_get_current_user] = mock_get_current_user_dependency_override
-    logger.info(f"DEBUG: app.dependency_overrides in test_async_client AFTER direct set: {app.dependency_overrides.items() if app.dependency_overrides else 'None or Empty'}")
-
-    # Use AsyncClient as a context manager to handle lifespan
-    # Use LifespanManager explicitly to ensure startup/shutdown events are handled correctly
-    from asgi_lifespan import LifespanManager
-    async with LifespanManager(app):
-        async with AsyncClient(app=app, base_url="http://testserver") as client:
-            logger.info("Yielding AsyncClient with managed lifespan (explicit LifespanManager).")
-            yield client
-    logger.info("AsyncClient lifespan exited (explicit LifespanManager).")
-
+    async with AsyncClient(app=app_instance, base_url="http://testserver") as client_instance:
+        yield client_instance, app_instance # Yield both client and app
+    
+    logger.info("Cleaning up client_app_tuple overrides.")
+    app_instance.dependency_overrides.clear()
 
 @pytest_asyncio.fixture(scope="function")
 async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
@@ -512,9 +503,80 @@ def faker() -> Faker:
 
 # Define a new event_loop fixture with function scope for better isolation,
 # adhering to pytest-asyncio best practices.
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 async def event_loop() -> asyncio.AbstractEventLoop:
-    """Provide a function-scoped event loop, managed by pytest-asyncio."""
+    """Provide a session-scoped event loop, managed by pytest-asyncio."""
     # This simply allows pytest-asyncio to provide its default loop.
     # No explicit creation/closing needed here; pytest-asyncio handles it.
     return asyncio.get_event_loop()
+
+
+# Event listener to enable foreign keys for SQLite connections
+# This uses Pool.connect and bridges to async for aiosqlite
+@event.listens_for(Pool, "connect", named=True)
+def set_sqlite_pragma(dbapi_connection, connection_record, **kwargs):
+    """Enable foreign_keys on SQLite connection for testing FK constraints."""
+    # Robust check for dialect information and aiosqlite loop
+    if (hasattr(connection_record, 'dialect') and 
+        connection_record.dialect and 
+        connection_record.dialect.name == 'sqlite' and 
+        hasattr(dbapi_connection, '_loop')):
+        
+        loop = dbapi_connection._loop
+
+        async def _execute_pragma(conn):
+            try:
+                await conn.execute("PRAGMA foreign_keys=ON")
+                logger.debug("PRAGMA foreign_keys=ON executed for SQLite connection.")
+            except Exception as e:
+                logger.error(f"Failed to set PRAGMA foreign_keys=ON for SQLite: {e}")
+
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(_execute_pragma(dbapi_connection), loop)
+            try:
+                future.result(timeout=5)  # Add a timeout to prevent indefinite blocking
+            except TimeoutError:
+                logger.error("Timeout waiting for PRAGMA foreign_keys=ON to execute.")
+            except Exception as e:
+                logger.error(f"Error running PRAGMA task: {e}")
+        else:
+            # This case should ideally not happen if the pool is active
+            # Fallback or error for non-running loop if necessary, though
+            # aiosqlite connections from an async engine should have a running loop.
+            logger.warning("Event loop for DBAPI connection not running, cannot set PRAGMA.")
+
+@pytest_asyncio.fixture(scope="session")
+async def test_db_engine(event_loop, test_settings: Settings) -> AsyncEngine:
+    """Provides a clean SQLAlchemy engine for each test function."""
+    logger.info(f"Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL}")
+    
+    # Import model validation utilities
+    from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
+    from app.infrastructure.persistence.sqlalchemy.registry import validate_models
+    
+    # Ensure all models are loaded before creating tables
+    ensure_all_models_loaded()
+    
+    # Create async engine with proper configuration for testing
+    engine = create_async_engine(
+        test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL,
+        echo=False,  # Set to True for SQL logging
+        connect_args={"check_same_thread": False},  # Required for SQLite
+        poolclass=StaticPool,  # Use StaticPool for SQLite in-memory
+    )
+    
+    # Validate all models to ensure proper registration
+    validate_models()
+    
+    # Create all tables in a transaction
+    async with engine.begin() as conn:
+        logger.debug("Dropping all tables.")
+        await conn.run_sync(Base.metadata.drop_all)
+        logger.debug("Creating all tables.")
+        await conn.run_sync(Base.metadata.create_all)
+
+    logger.debug(f"Yielding test DB engine: {engine}")
+    yield engine
+
+    logger.debug("Disposing test DB engine.")
+    await engine.dispose()

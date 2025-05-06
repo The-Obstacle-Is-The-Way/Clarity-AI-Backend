@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 from app.infrastructure.persistence.sqlalchemy.types import GUID
@@ -69,6 +70,7 @@ class BiometricRuleModel(Base):
         nullable=True,
         doc="ID of the patient this rule is for (NULL for global rules)"
     )
+    patient = relationship("Patient", back_populates="biometric_rules")
     provider_id = Column(
         GUID, 
         ForeignKey("users.id", ondelete="SET NULL"), 
@@ -78,9 +80,9 @@ class BiometricRuleModel(Base):
     
     # Metadata
     created_at = Column(
-        DateTime, 
+        DateTime(timezone=True), 
         nullable=False, 
-        default=datetime.utcnow,
+        default=datetime.now,
         doc="When the rule was created"
     )
     updated_at = Column(

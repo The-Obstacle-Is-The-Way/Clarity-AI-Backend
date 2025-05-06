@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, Mock, patch, ANY
 import inspect
 import asyncio
+import uuid
 
 import pytest
 from fastapi import BackgroundTasks, status
@@ -86,7 +87,7 @@ def mock_background_tasks():
 def mock_user():
     """Create a mock user object for testing dependencies."""
     user = MagicMock()
-    user.id = "test-user-123"
+    user.id = uuid.uuid4()
     user.email = "test@example.com"
     user.role = "provider"
     return user

@@ -18,7 +18,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TEXT, TypeDecorator
@@ -182,7 +182,15 @@ class User(Base, TimestampMixin, AuditMixin):
     patients = relationship(
         "Patient",
         back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
+    # Relationship to AnalyticsEventModel
+    analytics_events = relationship(
+        "AnalyticsEventModel", 
+        back_populates="user", 
         cascade="all, delete-orphan",
+        lazy="dynamic"  # Optional: good for large collections
     )
     
     # Audit logging

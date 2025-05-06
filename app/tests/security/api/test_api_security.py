@@ -71,7 +71,7 @@ class TestAuthentication:
         # Create an expired token using the test JWT service
         user_data = {"sub": "test-user-expired", "roles": ["patient"]}
         # Create token with negative expiry
-        expired_token = await test_jwt_service.create_access_token(
+        expired_token = test_jwt_service.create_access_token(
             data=user_data, expires_delta=timedelta(minutes=-5)
         )
         headers = {"Authorization": f"Bearer {expired_token}"}
@@ -86,7 +86,7 @@ class TestAuthentication:
         """Test that tokens with invalid signatures are rejected."""
         # Create a valid token first
         user_data = {"sub": "test-user-tampered", "roles": ["patient"]}
-        valid_token = await test_jwt_service.create_access_token(data=user_data)
+        valid_token = test_jwt_service.create_access_token(data=user_data)
 
         # Tamper with the token payload slightly (won't match signature)
         tampered_token = valid_token + "tamper"
@@ -99,41 +99,34 @@ class TestAuthentication:
     @pytest.mark.asyncio
     async def test_valid_token_access(
         self,
-        client: AsyncClient,
-        get_valid_auth_headers: dict[str, str], # Use the fixture from conftest
-        app: FastAPI # Get app fixture to potentially override repo
+        client_app_tuple: tuple[AsyncClient, FastAPI], # Use the new tuple fixture
+        get_valid_auth_headers: dict[str, str], 
     ) -> None:
         """Test that a valid token grants access (mocking repo)."""
-        headers = get_valid_auth_headers # Use the generated valid headers
+        client, app = client_app_tuple # Unpack the client and app
+        headers = get_valid_auth_headers
         
-        # Mock the repository to return a valid patient for this ID
-        # Note: get_valid_auth_headers uses 'test-integration-user' as sub
-        # We need the get_by_id to succeed for this user/patient ID
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
-        mock_user_id = uuid.UUID("test-integration-user") # ID from get_valid_auth_headers
+        mock_user_id = uuid.UUID("test-integration-user") 
         
-        async def mock_get_patient(patient_id: uuid.UUID) -> User | None:
+        async def mock_get_patient(patient_id: uuid.UUID) -> Patient | None: # Return type Patient
             if patient_id == mock_user_id:
-                # Return a mock Patient domain entity matching the authenticated user
-                # Ensure the returned object structure matches what the endpoint expects
                 mock_patient = MagicMock(spec=Patient)
                 mock_patient.id = patient_id
-                mock_patient.user_id = mock_user_id # Link to user
-                # Add other necessary attributes the endpoint might access
+                mock_patient.user_id = mock_user_id 
                 return mock_patient
             return None
             
         mock_patient_repo.get_by_id = mock_get_patient
+        # Perform override on the app instance used by the client
         app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
 
-        # Make the request - use the mock user ID for the patient endpoint
         response = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
         
-        # Clean up override afterwards
-        if get_repository(IPatientRepository) in app.dependency_overrides:
-             del app.dependency_overrides[get_repository(IPatientRepository)]
+        # Clean up override afterwards (handled by client_app_tuple fixture teardown)
+        # if get_repository(IPatientRepository) in app.dependency_overrides:
+        #      del app.dependency_overrides[get_repository(IPatientRepository)]
 
-        # Assert successful access
         assert response.status_code == status.HTTP_200_OK
         mock_patient_repo.get_by_id.assert_awaited_once_with(mock_user_id)
 
@@ -254,7 +247,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         # Test with admin token (should be allowed or 404)
         # Create admin token
         admin_user_data = {"sub": "test-admin-user", "roles": ["admin"]}
-        admin_token = await test_jwt_service.create_access_token(data=admin_user_data)
+        admin_token = test_jwt_service.create_access_token(data=admin_user_data)
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         
         response_admin = await client.get(admin_endpoint, headers=admin_headers)

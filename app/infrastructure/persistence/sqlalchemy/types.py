@@ -150,15 +150,22 @@ class GUID(TypeDecorator):
         else:
             return dialect.type_descriptor(String(36))
     
-    def process_bind_param(self, value: Optional[uuid.UUID | str], dialect: Any) -> Optional[str]:
-        """Convert UUID to string before saving to database."""
+    def process_bind_param(self, value: Optional[uuid.UUID | str], dialect: Any) -> Optional[str | uuid.UUID]:
+        """Convert UUID to string before saving to database, or ensure UUID type for PG."""
         if value is None:
             return None
-        elif dialect.name == 'postgresql':
-            # PostgreSQL's UUID type requires a uuid.UUID object
-            return str(value) if isinstance(value, str) else value
+        if dialect.name == 'postgresql':
+            if isinstance(value, str):
+                try:
+                    return uuid.UUID(value)
+                except ValueError:
+                    # Optionally, log this error or handle it as per application needs
+                    # For now, re-raise to make the issue visible during tests
+                    raise ValueError(f"Invalid UUID string for PostgreSQL: {value}")
+            # If it's already a UUID object or other compatible type for pg driver, pass as is
+            return value 
         else:
-            # For SQLite and others, convert to string
+            # For SQLite and others, ensure it's a string
             return str(value)
     
     def process_result_value(self, value: Optional[str | uuid.UUID], dialect: Any) -> Optional[uuid.UUID]:

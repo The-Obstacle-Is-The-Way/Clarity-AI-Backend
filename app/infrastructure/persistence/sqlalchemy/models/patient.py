@@ -130,6 +130,14 @@ class Patient(Base):
         lazy="selectin"  # Efficient loading pattern
     )
 
+    # Relationship to BiometricRuleModel
+    biometric_rules = relationship(
+        "BiometricRuleModel",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
+    )
+
     # Digital twin relationships
     # Store as String(36) for SQLite compatibility
     biometric_twin_id = Column(GUID, nullable=True)

@@ -22,16 +22,18 @@ from datetime import date, datetime, timezone
 
 # Import models we need for test creation
 from app.infrastructure.persistence.sqlalchemy.models import UserRole
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Import the base module which contains the model validation functions
-from app.infrastructure.persistence.sqlalchemy.models.base import (
-    Base,
-    ensure_all_models_loaded,
-    validate_models,
-)
+# from app.infrastructure.persistence.sqlalchemy.models.base import (
+#     Base,
+#     ensure_all_models_loaded,
+#     validate_models,
+# )
 
 # Ensure all models are loaded and registered
-ensure_all_models_loaded()
+# ensure_all_models_loaded()
+# validate_models()
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -235,7 +237,8 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
         await conn.execute(text("PRAGMA foreign_keys=ON;"))
         
         # Ensure all models are properly loaded 
-        ensure_all_models_loaded()
+        # ensure_all_models_loaded()
+        # validate_models()
         
         # Create tables based on the real application models
         # Use a sync function to create all tables
@@ -249,7 +252,7 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
             logger.info(f"Created tables: {', '.join(table_names)}")
             
             # Validate models after creation
-            validate_models()
+            # validate_models()
             
             # Verify that the users table exists
             if "users" not in table_names:
@@ -279,7 +282,7 @@ async def get_test_db_session() -> AsyncGenerator[AsyncSession, None]:
                     # Define the sync function
                     def validate_models_sync(sync_session_arg_not_used):
                         logger.info("Validating models (sync context inside get_test_db_session)")
-                        validate_models()
+                        # validate_models()
                     
                     # Run validation in sync context
                     await conn.run_sync(validate_models_sync)

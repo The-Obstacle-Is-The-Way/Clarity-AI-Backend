@@ -21,6 +21,7 @@ from .base import Base, AuditMixin, TimestampMixin
 from .user import User, UserRole
 from .provider import ProviderModel
 from .patient import Patient
+from .analytics import AnalyticsEventModel
 
 # Import models safely with try/except blocks to avoid breaking imports
 try:
@@ -73,6 +74,7 @@ __all__ = [
     "TimestampMixin",
     "User",
     "UserRole",
+    "AnalyticsEventModel",
 ]
 
 # This ensures all models are properly validated during application startup

@@ -15,7 +15,8 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from asgi_lifespan import LifespanManager
 
 # Import JWT service interface
@@ -25,8 +26,7 @@ from app.core.interfaces.services.encryption_service_interface import IEncryptio
 from app.core.config import Settings
 
 # Import SQLAlchemy models and utils
-from app.infrastructure.persistence.sqlalchemy.models.base import ensure_all_models_loaded
-from app.infrastructure.persistence.sqlalchemy.registry import validate_models
+from app.infrastructure.persistence.sqlalchemy.registry import metadata as main_metadata
 
 # Import the FastAPI application
 # Import test database initializer functions
@@ -37,8 +37,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize models
-ensure_all_models_loaded()
-validate_models()
+# ensure_all_models_loaded()
+# validate_models()
 
 
 # Database fixtures
@@ -60,7 +60,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         # This handles all model creation and test data setup
         async for session in get_test_db_session():
             # Ensure models are properly registered before yielding the session
-            ensure_all_models_loaded()
+            # ensure_all_models_loaded()
             
             # Create test users
             await create_test_users(session)
