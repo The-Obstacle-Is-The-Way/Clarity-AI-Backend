@@ -10,7 +10,7 @@ from httpx import AsyncClient
 
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
+from app.infrastructure.security.jwt_service import JWTService, TokenPayload
 from app.core.security.middleware import AuthenticationMiddleware
 
 

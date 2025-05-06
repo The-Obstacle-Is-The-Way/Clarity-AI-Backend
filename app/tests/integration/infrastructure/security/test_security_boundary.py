@@ -19,7 +19,7 @@ from app.config.settings import Settings  # Import Settings
 # from app.infrastructure.security.rbac.rbac_service import RBACService 
 from app.domain.enums.role import Role
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenType
+from app.infrastructure.security.jwt_service import JWTService, TokenType
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 

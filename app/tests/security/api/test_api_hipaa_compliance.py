@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Assume api_router aggregates all relevant endpoints for testing
 # If not, import specific routers needed
 from app.config.settings import get_settings  # To get API prefix, etc.
+from app.core.config.settings import Settings # Import the actual Settings class
 from app.domain.entities.patient import Patient
 
 # Import necessary FastAPI components
@@ -41,7 +42,7 @@ from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository i
 
 # Import Encryption Service for mocking
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.infrastructure.security.jwt.jwt_service import TokenPayload
+from app.infrastructure.security.jwt_service import TokenPayload
 
 # Import the actual dependency function used by the router
 from app.presentation.api.dependencies.auth import get_current_user
@@ -79,8 +80,10 @@ class TestAPIHIPAACompliance:
     def app(self):
         """Create FastAPI application for testing with patched settings and dependencies."""
         # Use a context manager to patch settings for the duration of the fixture setup
-        with patch("app.config.settings.get_settings", return_value=MockSettings()) as mock_get_settings:
-            mock_settings = mock_get_settings() # Get the mock settings instance
+        # Use the actual Settings class, perhaps configured for testing
+        test_settings = Settings() 
+        with patch("app.config.settings.get_settings", return_value=test_settings) as mock_get_settings:
+            # mock_settings = mock_get_settings() # No longer needed, use test_settings
 
             # --- Create App Instance ---
             app = FastAPI(
@@ -213,7 +216,7 @@ class TestAPIHIPAACompliance:
                 return app.state.mock_patient_repo
             
             # Apply Overrides
-            app.dependency_overrides[get_settings] = lambda: mock_settings
+            app.dependency_overrides[get_settings] = lambda: test_settings
             app.dependency_overrides[get_db_session] = override_get_db_session
             app.dependency_overrides[get_encryption_service] = override_get_encryption_service
             app.dependency_overrides[get_patient_repository] = override_get_patient_repository
@@ -359,7 +362,7 @@ class TestAPIHIPAACompliance:
                     )
             
             # Include our test router instead of the actual patients_router
-            app.include_router(test_router, prefix=mock_settings.API_V1_STR + "/patients")
+            app.include_router(test_router, prefix=test_settings.API_V1_STR + "/patients")
         
         # Return the app instance *after* the patch context exits (if setup needs to persist)
             return app
@@ -372,7 +375,7 @@ class TestAPIHIPAACompliance:
     @pytest.fixture
     def api_prefix(self, app):
         """Get the API prefix from settings."""
-        return MockSettings().API_V1_STR
+        return Settings().API_V1_STR
     
     @pytest.fixture
     def admin_token(self):

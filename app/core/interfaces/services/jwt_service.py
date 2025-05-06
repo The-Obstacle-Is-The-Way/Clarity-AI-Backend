@@ -14,6 +14,13 @@ try:
 except ImportError:
     User = Any # Fallback if User cannot be imported
 
+# Import TokenPayload from its new canonical location
+try:
+    # Ensure this path matches the actual location of TokenPayload in jwt_service.py
+    from app.infrastructure.security.jwt_service import TokenPayload 
+except ImportError:
+    TokenPayload = Any # Fallback
+
 # Import AuthenticationError - adjust path if necessary
 
 
@@ -21,29 +28,29 @@ class IJwtService(ABC):
     """Abstract base class for JWT operations."""
 
     @abstractmethod
-    async def create_access_token(
+    def create_access_token( # No longer async
         self, 
         data: dict[str, Any], 
-        expires_delta: timedelta | None = None,
-        expires_delta_minutes: int | None = None
+        expires_delta: timedelta | None = None, 
+        expires_delta_minutes: int | None = None 
     ) -> str:
         """Creates a new access token."""
         pass
 
     @abstractmethod
-    async def create_refresh_token(
+    def create_refresh_token( # No longer async
         self, 
         data: dict[str, Any], 
         expires_delta: timedelta | None = None,
-        expires_delta_minutes: int | None = None
+        expires_delta_minutes: int | None = None 
     ) -> str:
         """Creates a new refresh token."""
         pass
 
     @abstractmethod
-    async def decode_token(self, token: str) -> dict[str, Any]:
+    def decode_token(self, token: str) -> TokenPayload: # No longer async, returns TokenPayload
         """
-        Decodes a token and returns its payload.
+        Decodes a token and returns its payload as a TokenPayload object.
         Raises AuthenticationError if the token is invalid or expired.
         """
         pass
@@ -58,14 +65,19 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    async def verify_refresh_token(self, refresh_token: str) -> dict[str, Any]:
+    def verify_refresh_token(self, refresh_token: str) -> TokenPayload: # No longer async, returns TokenPayload
         """
-        Verifies a refresh token and returns its payload.
+        Verifies a refresh_token and returns its payload as a TokenPayload object.
         Raises AuthenticationError if invalid.
         """
         pass
 
     @abstractmethod
-    def get_token_payload_subject(self, payload: dict[str, Any]) -> str | None:
+    def get_token_payload_subject(self, payload: TokenPayload) -> str | None: # Takes TokenPayload
         """Extracts the subject (user identifier) from the token payload."""
+        pass
+
+    @abstractmethod
+    async def revoke_token(self, token: str) -> None: # Kept async to match JWTService
+        """Revokes a token by adding its JTI to the blacklist."""
         pass 

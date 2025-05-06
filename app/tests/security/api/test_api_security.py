@@ -33,7 +33,7 @@ from app.domain.entities.patient import Patient
 from app.domain.entities.user import User  # Ensure User is imported for type hints
 
 # JWTService might be needed for direct token manipulation if required beyond fixtures
-from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.jwt_service import JWTService
 from app.presentation.api.dependencies.auth import get_jwt_service
 from app.presentation.api.dependencies.database import get_repository
 

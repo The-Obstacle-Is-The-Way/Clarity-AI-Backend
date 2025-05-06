@@ -158,7 +158,7 @@ def jwt_service(test_config) -> IJwtService:
     Returns:
         IJwtService: Configured JWT service instance
     """
-    from app.infrastructure.security.jwt.jwt_service import JWTService
+    from app.infrastructure.security.jwt_service import JWTService
     # Create a Settings-like object for the JWT service to use
     class TestSettings:
         def __init__(self, config):

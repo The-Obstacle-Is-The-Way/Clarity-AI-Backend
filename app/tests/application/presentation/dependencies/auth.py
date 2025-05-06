@@ -23,7 +23,7 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
 
 # Domain/Infrastructure Services & Repositories
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.jwt_service import JWTService
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from app.domain.entities.user import User
 from app.domain.enums.role import Role as UserRole
 from app.domain.exceptions import AuthenticationError
-from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.jwt_service import JWTService
 
 
 @pytest.fixture

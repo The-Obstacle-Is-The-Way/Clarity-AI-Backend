@@ -104,7 +104,6 @@ class Patient(Base):
         "User", 
         back_populates="patients",
         uselist=False,  # One user per patient
-        viewonly=True   # Prevents SQLAlchemy sync errors during tests
     )
 
     # Define appointments relationship with proper viewonly to prevent sync errors

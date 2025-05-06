@@ -22,6 +22,12 @@ class BatchProcessAnalyticsUseCase:
         # In a real scenario, this would process the batch of events
         pass
 
+# Provider functions for use cases
+def get_process_analytics_event_use_case() -> ProcessAnalyticsEventUseCase:
+    return ProcessAnalyticsEventUseCase()
+
+def get_batch_process_analytics_use_case() -> BatchProcessAnalyticsUseCase:
+    return BatchProcessAnalyticsUseCase()
 
 # Dependencies
 from app.presentation.api.dependencies.auth import get_current_active_user
@@ -39,9 +45,8 @@ async def record_analytics_event(
     event_data: dict, # Replace with actual AnalyticsEventData schema
     background_tasks: BackgroundTasks, # FastAPI will inject the real one
     current_user: User = Depends(get_current_active_user),
-    process_event_use_case: ProcessAnalyticsEventUseCase = Depends()
+    process_event_use_case: ProcessAnalyticsEventUseCase = Depends(get_process_analytics_event_use_case)
 ):
-    print(f"[DEBUG] Type of background_tasks in endpoint: {type(background_tasks)}") # Debug print
     user_id_str = str(current_user.id) if current_user else "anonymous"
     # Simplified task_data for placeholder
     task_data_to_send = {
@@ -56,7 +61,7 @@ async def record_analytics_batch(
     events_data: list[dict], # Replace with actual AnalyticsEventBatchData schema
     background_tasks: BackgroundTasks, # FastAPI will inject the real one
     current_user: User = Depends(get_current_active_user),
-    batch_process_use_case: BatchProcessAnalyticsUseCase = Depends()
+    batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(get_batch_process_analytics_use_case)
 ):
     user_id_str = str(current_user.id) if current_user else "anonymous"
     # Simplified task_data for placeholder

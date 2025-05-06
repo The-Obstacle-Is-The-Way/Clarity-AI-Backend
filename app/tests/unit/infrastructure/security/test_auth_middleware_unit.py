@@ -16,6 +16,7 @@ from starlette.datastructures import Headers, State
 from starlette.responses import JSONResponse
 
 from app.core.domain.entities.user import User  # Import User model for mocking
+from app.core.domain.entities.user import UserStatus # Import UserStatus enum
 from app.domain.exceptions.auth_exceptions import AuthenticationException
 
 # Import exceptions from their correct locations
@@ -28,10 +29,7 @@ from app.infrastructure.security.auth_service import (
 )
 
 # Import the TokenPayload model
-from app.infrastructure.security.jwt.jwt_service import (  # Assuming JWTService is needed for mocking type
-    JWTService,
-    TokenPayload,
-)
+from app.infrastructure.security.jwt_service import JWTService
 
 # Assuming RoleBasedAccessControl is correctly defined/imported
 # If not, define a mock or import the actual class
@@ -138,14 +136,23 @@ def mock_auth_service():
             return User(
                 id="user123", 
                 email="doctor@example.com", 
-                is_active=True, 
-                roles=["psychiatrist"],
-                hashed_password="", # Not needed for auth middleware check
-                scopes=["read:patients", "write:clinical_notes", "prescribe:medications"]
+                username="doctor_user", # Added username
+                full_name="Dr. User", # Added full_name
+                status=UserStatus.ACTIVE, # Use status
+                roles={"psychiatrist"}, # roles should be a set
+                password_hash="dummy_hash", # Use a non-empty placeholder
             )
         elif user_id == "inactive_user":
              # Inactive user
-             return User(id="inactive_user", email="inactive@example.com", is_active=False, roles=["patient"], hashed_password="")
+             return User(
+                id="inactive_user", 
+                email="inactive@example.com", 
+                username="inactive_username", # Added username
+                full_name="Inactive User", # Added full_name
+                status=UserStatus.INACTIVE, # Use status
+                roles={"patient"}, 
+                password_hash="dummy_hash" # Use a non-empty placeholder
+            )
         elif user_id == "not_found_user":
             # User that should trigger UserNotFoundException (return None initially was wrong)
             return None # The middleware should handle None by raising UserNotFoundException
@@ -167,18 +174,16 @@ def mock_auth_service():
 @pytest.fixture
 def auth_middleware(app, mock_jwt_service, mock_auth_service, auth_config):
     """Create an authentication middleware instance with async mocks."""
-    # Define async getters for the dependency injection override
-    async def get_mock_jwt():
-        return mock_jwt_service
     async def get_mock_auth():
         return mock_auth_service
+    async def get_mock_jwt(): # This getter will now be used
+        return mock_jwt_service
 
     middleware = AuthMiddleware(
         app=app,
-        # Provide the async getters
         auth_service=get_mock_auth, 
-        jwt_service=get_mock_jwt,   
-        public_paths=list(auth_config.exempt_paths) 
+        jwt_service=get_mock_jwt, # Pass the mock_jwt_service via its getter
+        public_paths=list(auth_config.exempt_paths)
     )
     return middleware
 
@@ -371,10 +376,10 @@ class TestAuthMiddleware:
         async def mock_call_next_success(request: Request) -> Response:
             assert isinstance(request.state.user, User)
             assert request.state.user.id == "user123"
-            assert request.state.user.roles == ["psychiatrist"] # Verify roles on user
+            assert request.state.user.roles == {"psychiatrist"} # Verify roles on user
             assert isinstance(request.state.auth, AuthCredentials)
             # Verify scopes attached to auth credentials match user roles
-            assert request.state.auth.scopes == ["psychiatrist"] 
+            assert request.state.auth.scopes == ["psychiatrist"] # Changed to list for assertion
             return JSONResponse(content={"auth": "ok"})
 
         response = await auth_middleware.dispatch(authenticated_request, mock_call_next_success)

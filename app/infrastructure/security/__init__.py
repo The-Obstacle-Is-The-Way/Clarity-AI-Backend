@@ -13,10 +13,11 @@ from app.infrastructure.security.audit import AuditLogger
 from app.infrastructure.security.auth import MFAService
 
 # Encryption Components
-from app.infrastructure.security.encryption import BaseEncryptionService
+from app.infrastructure.security.encryption import BaseEncryptionService, FieldEncryptor, get_encryption_key
 
 # JWT Components
-from app.infrastructure.security.jwt import JWTService
+# from app.infrastructure.security.jwt import JWTService # Old import from subdirectory
+from app.infrastructure.security.jwt_service import JWTService # Corrected import
 
 # Password Components
 from app.infrastructure.security.password import PasswordHandler, get_password_hash, verify_password
@@ -33,6 +34,7 @@ from app.infrastructure.security.rate_limiting import DistributedRateLimiter
 from app.infrastructure.security.rbac import RBACService
 
 from .auth.authentication_service import AuthenticationService
+from app.infrastructure.security.auth_service import get_auth_service
 
 __all__ = [
     # PHI Security

@@ -16,7 +16,7 @@ from freezegun import freeze_time
 
 # Use canonical config path
 from app.config.settings import Settings
-from app.infrastructure.security.jwt.jwt_service import JWTService
+from app.infrastructure.security.jwt_service import JWTService
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:

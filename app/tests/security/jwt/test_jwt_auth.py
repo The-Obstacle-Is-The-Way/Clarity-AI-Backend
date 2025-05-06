@@ -18,6 +18,7 @@ import asyncio
 import time
 import uuid
 from unittest.mock import MagicMock
+from datetime import timedelta
 
 import pytest
 
@@ -28,7 +29,7 @@ from pydantic import SecretStr
 
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.domain.models.user import User, UserRole
-from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
+from app.infrastructure.security.jwt_service import JWTService, TokenPayload
 
 # Mock data for testing
 TEST_USERS = {
@@ -133,28 +134,40 @@ def mock_settings(monkeypatch) -> MagicMock:
     return settings_mock
 
 @pytest.fixture
-def jwt_service(mock_settings: MagicMock) -> JWTService:
+def jwt_service(mock_settings: MagicMock, monkeypatch) -> JWTService:
     # Pass the mocked settings object
-    return JWTService(settings=mock_settings, user_repository=None) # Assuming user_repository isn't needed or is mocked elsewhere
+    # return JWTService(settings=mock_settings, user_repository=None) # OLD way
+
+    # Configure environment variables for get_jwt_service() using values from mock_settings
+    monkeypatch.setenv("JWT_SECRET_KEY", mock_settings.JWT_SECRET_KEY.get_secret_value())
+    monkeypatch.setenv("JWT_ALGORITHM", mock_settings.JWT_ALGORITHM)
+    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    monkeypatch.setenv("REFRESH_TOKEN_EXPIRE_DAYS", str(mock_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS))
+
+    # Import the factory locally to ensure it picks up monkeypatched env vars if needed by its imports
+    from app.infrastructure.security.jwt_service import get_jwt_service
+    return get_jwt_service() # This should now return a fully implemented JWTService instance
 
 @pytest.fixture
 def token_factory(jwt_service: JWTService):
     async def _create_token(user_type="admin", expired=False, invalid=False, custom_payload_claims: dict | None = None):
         user_data = TEST_USERS.get(user_type, TEST_USERS["admin"])
-        # Ensure keys match what create_access_token expects (sub, roles, etc.)
         payload_data = {
             "sub": user_data["sub"],
-            "roles": [user_data["role"]], # Expects roles as list
+            "roles": [user_data["role"]], 
             "permissions": user_data["permissions"],
             **(custom_payload_claims or {})
         }
         
-        expires_delta_minutes = -1 if expired else None
+        expires_delta_arg = None
+        if expired:
+            expires_delta_arg = timedelta(minutes=-1) # Expired in the past
+        # If a specific positive duration is needed, the caller can set it via custom_payload_claims or another param
         
-        token = await jwt_service.create_access_token(data=payload_data, expires_delta_minutes=expires_delta_minutes)
+        # create_access_token is now synchronous
+        token = jwt_service.create_access_token(data=payload_data, expires_delta=expires_delta_arg)
         
         if invalid:
-            # Tamper with token for invalid signature test
             token = token[:-5] + "wrong"
             
         return token
@@ -172,12 +185,12 @@ class TestJWTAuthentication:
             "roles": [user["role"]],
             "permissions": user["permissions"]
         }
-        token = await jwt_service.create_access_token(data=user_data)
+        token = jwt_service.create_access_token(data=user_data)
 
         assert isinstance(token, str), "Created token is not a string"
 
         try:
-            payload: TokenPayload = await jwt_service.decode_token(token)
+            payload: TokenPayload = jwt_service.decode_token(token)
         except (InvalidTokenException, TokenExpiredException) as e:
             pytest.fail(f"Valid token failed decoding: {e}")
 
@@ -194,7 +207,7 @@ class TestJWTAuthentication:
         # Test valid token
         valid_token = await token_factory(user_type="admin")
         try:
-            decoded = await jwt_service.decode_token(valid_token)
+            decoded = jwt_service.decode_token(valid_token)
             assert decoded.sub == TEST_USERS["admin"]["sub"]
             assert decoded.roles == [TEST_USERS["admin"]["role"]]
         except (InvalidTokenException, TokenExpiredException) as e:
@@ -203,19 +216,19 @@ class TestJWTAuthentication:
         # Test invalid token (bad signature)
         invalid_sig_token = await token_factory(user_type="admin", invalid=True)
         with pytest.raises(InvalidTokenException) as exc_info:
-            await jwt_service.decode_token(invalid_sig_token)
+            jwt_service.decode_token(invalid_sig_token)
         assert "Signature verification failed" in str(exc_info.value)
         
         # Test expired token
         expired_token = await token_factory(user_type="admin", expired=True)
         await asyncio.sleep(0.1) # Ensure time passes expiry
         with pytest.raises(TokenExpiredException):
-            await jwt_service.decode_token(expired_token)
+            jwt_service.decode_token(expired_token)
             
         # Test malformed token
         malformed_token = "this.is.not.jwt"
         with pytest.raises(InvalidTokenException) as exc_info:
-            await jwt_service.decode_token(malformed_token)
+            jwt_service.decode_token(malformed_token)
         assert ("Invalid header string" in str(exc_info.value) or 
                 "Not enough segments" in str(exc_info.value)), \
                f"Unexpected malformed token error: {exc_info.value!s}"
@@ -300,7 +313,7 @@ class TestJWTAuthentication:
         # Need a JTI (JWT ID) for the refresh token. Let's generate one.
         jti = str(uuid.uuid4())
         # create_refresh_token is synchronous in the actual implementation
-        refresh_token = await jwt_service.create_refresh_token(subject=user["sub"], jti=jti)
+        refresh_token = jwt_service.create_refresh_token(subject=user["sub"], jti=jti)
 
         # Attempt to refresh using the endpoint
         response = client.post(refresh_endpoint, json={"refresh_token": refresh_token})
@@ -316,7 +329,7 @@ class TestJWTAuthentication:
         # Verify the new access token is valid and belongs to the correct user
         new_access_token = response_data["access_token"]
         try:
-            payload = await jwt_service.decode_token(new_access_token)
+            payload = jwt_service.decode_token(new_access_token)
             assert payload.sub == user["sub"], "User ID in refreshed token is incorrect"
             assert payload.scope == "access_token", "Refreshed token scope is wrong"
         except (InvalidTokenException, TokenExpiredException) as e:
@@ -352,8 +365,8 @@ class TestJWTAuthentication:
     async def test_token_security_properties(self, jwt_service: JWTService):
         """Check for essential security claims (jti, iat, exp)."""
         user_data = {"sub": TEST_USERS["patient"]["sub"], "roles": [TEST_USERS["patient"]["role"]]}
-        token = await jwt_service.create_access_token(data=user_data)
-        payload = await jwt_service.decode_token(token)
+        token = jwt_service.create_access_token(data=user_data)
+        payload = jwt_service.decode_token(token)
 
         assert hasattr(payload, 'jti') and payload.jti, "Token must have a JTI (JWT ID)"
         assert hasattr(payload, 'iat') and payload.iat, "Token must have an IAT (Issued At)"
