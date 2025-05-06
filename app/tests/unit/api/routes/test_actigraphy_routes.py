@@ -8,6 +8,7 @@ correctly handle requests, responses, and errors.
 from datetime import datetime, timedelta
 from typing import Any  # Added Optional
 from unittest.mock import AsyncMock, MagicMock  # Added AsyncMock
+import uuid # Add this import
 
 import pytest
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -24,7 +25,7 @@ from app.core.services.ml.pat.exceptions import (
 # Assuming PATInterface and other dependencies exist
 from app.core.services.ml.pat.interface import PATInterface
 from app.domain.utils.datetime_utils import UTC
-from app.presentation.api.schemas.actigraphy import AnalysisType
+from app.presentation.api.schemas.actigraphy import AnalysisType, ActigraphyAnalysisRequest, SleepStage # Added SleepStage
 # from app.presentation.api.v1.routes.actigraphy import router # TODO: Restore when actigraphy route exists
 
 # Assuming auth dependencies exist
@@ -81,20 +82,17 @@ def device_info() -> dict[str, Any]:
 
 
 @pytest.fixture
-def analysis_request(
-    patient_id: str, sample_readings: list[dict[str, Any]], device_info: dict[str, Any]
+def analysis_request_payload_fixture(
+    patient_id: str,
 ) -> dict[str, Any]:
-    """Create an analysis request."""
+    """Create an analysis request payload dictionary."""
 
     return {
         "patient_id": patient_id,
-        "readings": sample_readings,
-        "start_time": datetime.now(UTC).isoformat() + "Z",
-        "end_time": (datetime.now(UTC) + timedelta(hours=1)).isoformat() + "Z",
-        "sampling_rate_hz": 10.0,
-        "device_info": device_info,
-        "analysis_types": [AnalysisType.ACTIVITY, AnalysisType.SLEEP, AnalysisType.STRESS],
-        "metadata": {"source": "test"}
+        "analysis_types": [AnalysisType.ACTIVITY.value, AnalysisType.SLEEP.value, AnalysisType.STRESS.value],
+        "start_time": datetime.now(UTC).isoformat(), # Keep as ISO string for client.post
+        "end_time": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+        "parameters": {"detail_level": "high"} # Example valid parameter
     }
 
 
@@ -125,52 +123,47 @@ def integration_request(patient_id: str) -> dict[str, Any]:
 
 
 @pytest.fixture
-def analysis_result(
-    patient_id: str, device_info: dict[str, Any]
-) -> dict[str, Any]:
-    """Create an analysis result."""
-    now_iso = datetime.now(UTC).isoformat() + "Z"
-    end_iso = (datetime.now(UTC) + timedelta(hours=1)).isoformat() + "Z"
+def analysis_result_fixture_corrected(patient_id: str) -> dict[str, Any]: # New fixture
+    """Create an analysis result fixture matching AnalyzeActigraphyResponse structure for JSON comparison."""
+    analysis_uuid = uuid.uuid4()
+    now_dt = datetime.now(UTC)
+    end_dt = now_dt + timedelta(hours=1)
+
+    mock_activity_result = {
+        "analysis_type": AnalysisType.ACTIVITY.value,
+        "analysis_time": now_dt.isoformat(),
+        "activity_metrics": {
+            "total_steps": 5000,
+            "active_minutes": 60.0,
+            "sedentary_minutes": 1200.0,
+            "energy_expenditure": 300.0,
+            "peak_activity_times": [now_dt.isoformat()]
+        },
+        "sleep_metrics": None,
+        "circadian_metrics": None,
+        "raw_results": {"some_activity_raw_data": "value"}
+    }
+    mock_sleep_result = {
+        "analysis_type": AnalysisType.SLEEP.value,
+        "analysis_time": now_dt.isoformat(),
+        "sleep_metrics": {
+            "total_sleep_time": 480.0,
+            "sleep_efficiency": 0.85,
+            "sleep_latency": 15.0,
+            "wake_after_sleep_onset": 30.0,
+            "sleep_stage_duration": {SleepStage.LIGHT.value: 240.0, SleepStage.DEEP.value: 120.0, SleepStage.REM.value: 120.0, SleepStage.AWAKE.value: 0.0},
+            "number_of_awakenings": 2
+        },
+        "activity_metrics": None,
+        "circadian_metrics": None,
+        "raw_results": {"some_sleep_raw_data": "value"}
+    }
+    
     return {
-        "analysis_id": "analysis123",
+        "analysis_id": str(analysis_uuid), # Serialized form
         "patient_id": patient_id,
-        "timestamp": now_iso,
-        "analysis_types": [AnalysisType.ACTIVITY_LEVEL.value, AnalysisType.SLEEP.value],
-        "device_info": device_info,
-        "data_summary": {
-            "start_time": now_iso,
-            "end_time": end_iso,
-            "duration_seconds": 3600.0,
-            "readings_count": 10,
-            "sampling_rate_hz": 10.0,
-        },
-        "results": {
-            AnalysisType.ACTIVITY_LEVEL.value: {
-                "activity_levels": {
-                    "sedentary": {"percentage": 0.6, "duration_seconds": 2160.0},
-                    "light": {"percentage": 0.3, "duration_seconds": 1080.0},
-                    "moderate": {"percentage": 0.08, "duration_seconds": 288.0},
-                    "vigorous": {"percentage": 0.02, "duration_seconds": 72.0},
-                },
-                "step_count": 5000,
-                "calories_burned": 1200,
-                "distance_km": 3.5,
-                "avg_heart_rate_bpm": 72,
-            },
-            AnalysisType.SLEEP.value: {
-                "sleep_stages": {
-                    "awake": {"percentage": 0.1, "duration_seconds": 360.0},
-                    "light": {"percentage": 0.5, "duration_seconds": 1800.0},
-                    "deep": {"percentage": 0.3, "duration_seconds": 1080.0},
-                    "rem": {"percentage": 0.1, "duration_seconds": 360.0},
-                },
-                "sleep_efficiency": 0.9,
-                "sleep_latency_seconds": 600,
-                "interruptions_count": 2,
-                "avg_heart_rate_bpm": 55,
-                "respiratory_rate_bpm": 14.5,
-            },
-        },
+        "time_range": {"start_time": now_dt.isoformat(), "end_time": end_dt.isoformat()}, # Serialized form
+        "results": [mock_activity_result, mock_sleep_result] 
     }
 
 
@@ -312,7 +305,7 @@ def analyses_list(patient_id: str) -> dict[str, Any]:
 # Mock PAT service
 @pytest.fixture
 def mock_pat_service(
-    analysis_result: dict[str, Any],
+    analysis_result_fixture_corrected: dict[str, Any],
     embedding_result: dict[str, Any],
     integration_result: dict[str, Any],
     model_info: dict[str, Any],
@@ -331,9 +324,9 @@ def mock_pat_service(
     mock_service.settings.JWT_AUDIENCE = "test-audience"
 
     # Mock methods
-    mock_service.analyze_actigraphy = AsyncMock(return_value=analysis_result)
+    mock_service.analyze_actigraphy = AsyncMock(return_value=analysis_result_fixture_corrected)
     mock_service.get_actigraphy_embeddings = AsyncMock(return_value=embedding_result)
-    mock_service.get_analysis_by_id = AsyncMock(return_value=analysis_result)
+    mock_service.get_analysis_by_id = AsyncMock(return_value=analysis_result_fixture_corrected)
     mock_service.get_patient_analyses = AsyncMock(return_value=analyses_list)
     mock_service.get_model_info = AsyncMock(return_value=model_info)
     mock_service.integrate_with_digital_twin = AsyncMock(return_value=integration_result)
@@ -405,36 +398,47 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_request: dict[str, Any],
-        analysis_result: dict[str, Any],
+        analysis_request_payload_fixture: dict[str, Any],
+        analysis_result_fixture_corrected: dict[str, Any], # Use the new corrected fixture
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful actigraphy analysis."""
-        # Make the request
+        headers = {"Authorization": f"Bearer {mock_token}"}
+        
+        # Configure the mock service to return the corrected fixture value for this test
+        mock_pat_service.analyze_actigraphy.return_value = analysis_result_fixture_corrected
+
         response = client.post(
-            "/api/v1/actigraphy/analyze",  # Added prefix
-            json=analysis_request,
-            headers={"Authorization": f"Bearer {mock_token}"}
+            "/api/v1/actigraphy/analyze", json=analysis_request_payload_fixture, headers=headers
         )
         
-        # Check the response
-        assert response.status_code == status.HTTP_201_CREATED
-        assert response.json() == analysis_result
+        assert response.status_code == status.HTTP_200_OK
+        # Now this assertion should compare compatible structures and serialized values
+        assert response.json() == analysis_result_fixture_corrected 
         
-        # Verify service call
         mock_pat_service.analyze_actigraphy.assert_called_once()
+        called_arg = mock_pat_service.analyze_actigraphy.call_args[0][0]
+        assert isinstance(called_arg, ActigraphyAnalysisRequest)
+        
+        expected_model_input = ActigraphyAnalysisRequest(**analysis_request_payload_fixture)
+        
+        assert called_arg.patient_id == expected_model_input.patient_id
+        assert called_arg.analysis_types == expected_model_input.analysis_types
+        assert called_arg.start_time == expected_model_input.start_time
+        assert called_arg.end_time == expected_model_input.end_time
+        assert called_arg.parameters == expected_model_input.parameters
 
     def test_analyze_actigraphy_unauthorized(
-        self, client: TestClient, mock_token: str, analysis_request: dict[str, Any]
+        self, client: TestClient, mock_token: str, analysis_request_payload_fixture: dict[str, Any]
     ) -> None:
         """Test unauthorized actigraphy analysis."""
         # Change patient ID to trigger authorization error (assuming auth checks this)
-        modified_request = analysis_request.copy()
+        modified_request = analysis_request_payload_fixture.copy()
         modified_request["patient_id"] = "different_patient"
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/analyze",  # Added prefix
+            "/api/v1/actigraphy/analyze",
             json=modified_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -449,7 +453,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_request: dict[str, Any],
+        analysis_request_payload_fixture: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test actigraphy analysis with validation error."""
@@ -458,8 +462,8 @@ class TestActigraphyRoutes:
         
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/analyze",  # Added prefix
-            json=analysis_request,
+            "/api/v1/actigraphy/analyze",
+            json=analysis_request_payload_fixture,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
         
@@ -471,7 +475,7 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_request: dict[str, Any],
+        analysis_request_payload_fixture: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test actigraphy analysis with analysis error."""
@@ -480,8 +484,8 @@ class TestActigraphyRoutes:
         
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/analyze",  # Added prefix
-            json=analysis_request,
+            "/api/v1/actigraphy/analyze",
+            json=analysis_request_payload_fixture,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
         
@@ -500,7 +504,7 @@ class TestActigraphyRoutes:
         """Test successful embedding generation."""
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/embeddings",  # Added prefix
+            "/api/v1/actigraphy/embeddings",
             json=embedding_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -522,7 +526,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/embeddings",  # Added prefix
+            "/api/v1/actigraphy/embeddings",
             json=modified_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -544,7 +548,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/embeddings",  # Added prefix
+            "/api/v1/actigraphy/embeddings",
             json=embedding_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -566,7 +570,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/embeddings",  # Added prefix
+            "/api/v1/actigraphy/embeddings",
             json=embedding_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -579,20 +583,20 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_result: dict[str, Any],
+        analysis_result_fixture_corrected: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test successful analysis retrieval."""
-        analysis_id = analysis_result["analysis_id"]
+        analysis_id = analysis_result_fixture_corrected["analysis_id"]
         # Make the request
         response = client.get(
-            f"/api/v1/actigraphy/analyses/{analysis_id}",  # Added prefix
+            f"/api/v1/actigraphy/analyses/{analysis_id}",
             headers={"Authorization": f"Bearer {mock_token}"}
         )
         
         # Check the response
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == analysis_result
+        assert response.json() == analysis_result_fixture_corrected
         
         # Verify service call
         mock_pat_service.get_analysis_by_id.assert_called_once_with(analysis_id)
@@ -607,7 +611,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.get(
-            f"/api/v1/actigraphy/analyses/{analysis_id}",  # Added prefix
+            f"/api/v1/actigraphy/analyses/{analysis_id}",
             headers={"Authorization": f"Bearer {mock_token}"}
         )
     
@@ -619,17 +623,17 @@ class TestActigraphyRoutes:
         self,
         client: TestClient,
         mock_token: str,
-        analysis_result: dict[str, Any],
+        analysis_result_fixture_corrected: dict[str, Any],
         mock_pat_service: MagicMock,
     ) -> None:
         """Test unauthorized analysis retrieval."""
-        analysis_id = analysis_result["analysis_id"]
+        analysis_id = analysis_result_fixture_corrected["analysis_id"]
         # Setup the mock to raise AuthorizationError
         mock_pat_service.get_analysis_by_id.side_effect = AuthorizationError("Not authorized")
         
         # Make the request
         response = client.get(
-            f"/api/v1/actigraphy/analyses/{analysis_id}",  # Added prefix
+            f"/api/v1/actigraphy/analyses/{analysis_id}",
             headers={"Authorization": f"Bearer {mock_token}"}
         )
     
@@ -687,7 +691,7 @@ class TestActigraphyRoutes:
         """Test successful model info retrieval."""
         # Make the request
         response = client.get(
-            "/api/v1/actigraphy/model-info",  # Added prefix
+            "/api/v1/actigraphy/model-info",
             headers={"Authorization": f"Bearer {mock_token}"}
         )
         
@@ -711,7 +715,7 @@ class TestActigraphyRoutes:
         """Test successful digital twin integration."""
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/integrate",  # Added prefix
+            "/api/v1/actigraphy/integrate",
             json=integration_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -750,7 +754,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/integrate",  # Added prefix
+            "/api/v1/actigraphy/integrate",
             json=modified_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -772,7 +776,7 @@ class TestActigraphyRoutes:
         
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/integrate",  # Added prefix
+            "/api/v1/actigraphy/integrate",
             json=integration_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -794,7 +798,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/integrate",  # Added prefix
+            "/api/v1/actigraphy/integrate",
             json=integration_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -816,7 +820,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/integrate",  # Added prefix
+            "/api/v1/actigraphy/integrate",
             json=integration_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
@@ -838,7 +842,7 @@ class TestActigraphyRoutes:
 
         # Make the request
         response = client.post(
-            "/api/v1/actigraphy/integrate",  # Added prefix
+            "/api/v1/actigraphy/integrate",
             json=integration_request,
             headers={"Authorization": f"Bearer {mock_token}"}
         )
