@@ -63,8 +63,23 @@ def test_settings() -> Settings:
     env_file = ".env.test" if Path(".env.test").exists() else ".env"
     settings = Settings(_env_file=env_file)
 
-    # Override DATABASE_URL for in-memory SQLite for most tests
-    settings.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    # Use test settings from the proper settings module rather than hardcoding values here
+    # This ensures we reference the standardized path for test database defined in settings.py
+    # In-memory database is still the default for unit tests
+    # but file-based standardized path can be enabled via environment variables
+    test_db_path = "app/infrastructure/persistence/data/test_db.sqlite3"
+    
+    # If TEST_PERSISTENT_DB is set, use the file-based database
+    if os.environ.get("TEST_PERSISTENT_DB"):
+        settings.DATABASE_URL = f"sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(test_db_path), exist_ok=True)
+        logger.info(f"Using persistent test database: {settings.DATABASE_URL}")
+    else:
+        # Default to in-memory for most tests (faster, isolated)
+        settings.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+        logger.info(f"Using in-memory test database: {settings.DATABASE_URL}")
+    
     logger.info(f"Test settings loaded. DATABASE_URL: {settings.DATABASE_URL}")
     return settings
 
