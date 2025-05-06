@@ -16,6 +16,7 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from asgi_lifespan import LifespanManager
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -244,12 +245,16 @@ async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """
     Creates a real test client for API integration testing with properly configured
     test application with all required dependencies injected.
+    Uses LifespanManager to ensure lifespan events are handled correctly.
 
     Yields:
         A FastAPI AsyncClient instance configured for testing.
     """
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
-        yield client
+    logger.info("Creating async test client for integration tests with LifespanManager.")
+    async with LifespanManager(test_app):
+        async with AsyncClient(app=test_app, base_url="http://test") as client:
+            yield client
+    logger.info("Async test client (with LifespanManager) shutdown.")
 
 
 # External Service Mocks

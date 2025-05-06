@@ -299,18 +299,35 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any],
     # Mock JWT service to control authentication
     mock_jwt_service_instance = MagicMock(spec=IJwtService)
 
-    async def mock_verify_token(token: str) -> dict[str, Any]:
-        # Simplified mock: always returns a valid payload for test tokens
+    # Correctly mock decode_token which is used by the authentication middleware/dependencies
+    def mock_decode_token_impl(token: str, settings_param: Optional[Any] = None) -> dict[str, Any]: # Added settings_param to match signature
+        # Simplified mock: always returns a valid payload for "VALID_PATIENT_TOKEN"
         if token == "VALID_PATIENT_TOKEN": # This token is used by auth_headers()
             return {
-                "sub": str(TEST_USER_ID), # Align with the user ID created in db_session
-                "roles": [str(UserRole.PATIENT.value)], # Use .value for Enum
-                "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp()
+                "sub": str(TEST_USER_ID), # TEST_USER_ID is already a UUID, convert to string
+                "roles": [UserRole.PATIENT.value], # Ensure roles are appropriate, e.g., list of strings
+                "exp": (datetime.now(UTC) + timedelta(hours=1)).timestamp(),
+                "jti": str(uuid.uuid4()), # Add jti for completeness if needed
+                "type": "access" # Add type for completeness if needed
             }
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token for test")
+        # For other tokens, or if token is None/empty, simulate an invalid token error
+        # This part depends on how IJwtService.decode_token handles errors.
+        # For now, let's assume it might raise an exception similar to TokenValidationError
+        # or return None/empty dict. For MagicMock, not raising an error means it returns a mock.
+        # To be more robust, we should raise an appropriate exception if that's the contract.
+        # from app.domain.exceptions import TokenValidationError # Example
+        # raise TokenValidationError("Invalid token for test")
+        # However, the current call path expects a dict, so an empty dict or specific error handling in get_current_user is needed.
+        # For now, let's rely on the `if token == "VALID_PATIENT_TOKEN"` check.
+        # If the token is not "VALID_PATIENT_TOKEN", the mock will return a new MagicMock by default if not specified otherwise.
+        # To ensure it raises an error for invalid tokens, we can do:
+        from app.domain.exceptions import TokenValidationError # Ensure this import is valid
+        raise TokenValidationError(f"Mock decode_token: Invalid token provided: {token}")
 
-    mock_jwt_service_instance.verify_token = AsyncMock(side_effect=mock_verify_token)
+    mock_jwt_service_instance.decode_token = MagicMock(side_effect=mock_decode_token_impl)
+
     # Also mock create_access_token if it's called by any part of the auth flow being tested implicitly
+    # Ensure this returns a simple string, not an AsyncMock if the method is synchronous.
     mock_jwt_service_instance.create_access_token = AsyncMock(return_value="mocked_access_token_string")
 
 
@@ -336,8 +353,8 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any],
     # Create a MagicMock for IUserRepository
     mock_user_repo_instance = MagicMock(spec=IUserRepository)
     # Configure its methods. For get_current_active_user, get_by_id is key.
-    mock_user_repo_instance.get_by_id = AsyncMock(return_value=mock_domain_user)
-    # Ensure other methods that might be called by auth logic are also mocked if necessary
+    # mock_user_repo_instance.get_by_id = AsyncMock(return_value=mock_domain_user) # Old, direct get_by_id
+    # Ensure get_user_by_id (which is actually called) is mocked
     mock_user_repo_instance.get_user_by_id = AsyncMock(return_value=mock_domain_user)
 
 

@@ -142,20 +142,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _initialize_sentry(current_settings)
 
     logger.info("Application startup complete.")
-    logger.info("Lifespan: Initializing application...")
-    # Resolve settings robustly
-    current_settings = getattr(app.state, 'settings', None)
-    if not current_settings:
-        logger.warning("Settings not found in app.state during lifespan startup, using global_settings.")
-        current_settings = global_settings # Fallback
-    
-    if not current_settings:
-        logger.critical("CRITICAL: Settings are None even after fallback in lifespan. Aborting DB init.")
-        # Potentially raise here or handle as a critical configuration error
-    else:
-        logger.info(f"Lifespan app.state.settings.DATABASE_URL: {current_settings.DATABASE_URL}")
-        logger.info(f"Lifespan id(app): {id(app)}, id(app.state): {id(app.state)}") # DEBUG
-        initialize_database(app, current_settings)
+    # logger.info("Lifespan: Initializing application...") # Removed as part of cleanup
+    # # Resolve settings robustly
+    # current_settings = getattr(app.state, 'settings', None) # Redundant, current_settings is already defined
+    # if not current_settings:
+    #     logger.warning("Settings not found in app.state during lifespan startup, using global_settings.")
+    #     current_settings = global_settings # Fallback
+    # 
+    # if not current_settings:
+    #     logger.critical("CRITICAL: Settings are None even after fallback in lifespan. Aborting DB init.")
+    #     # Potentially raise here or handle as a critical configuration error
+    # else:
+    #     logger.info(f"Lifespan app.state.settings.DATABASE_URL: {current_settings.DATABASE_URL}") # Debug log, can be removed
+    #     logger.info(f"Lifespan id(app): {id(app)}, id(app.state): {id(app.state)}") # DEBUG # Debug log, can be removed
+    #     initialize_database(app, current_settings) # THIS IS THE REMOVED CALL
     
     yield  # Application runs here
 
