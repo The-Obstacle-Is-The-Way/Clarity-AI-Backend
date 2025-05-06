@@ -20,7 +20,6 @@ class AnalysisType(str, Enum):
     CIRCADIAN_RHYTHM = "circadian_rhythm"
     ENERGY_EXPENDITURE = "energy_expenditure"
     MOVEMENT_INTENSITY = "movement_intensity"
-    # Adding missing values used in tests
     ACTIVITY_LEVEL = "activity_level"
     ACTIVITY = "activity"
     SLEEP = "sleep"
@@ -66,10 +65,9 @@ class ActigraphyUploadRequest(BaseSchema):
 
 class ActigraphyUploadResponse(BaseSchema):
     """Schema for actigraphy upload response."""
-    success: bool
-    record_id: str
     message: str
-    data_points_processed: int
+    file_id: str
+    filename: str
 
 
 class ActigraphyAnalysisRequest(BaseSchema):
@@ -157,27 +155,9 @@ class ActigraphyDataResponse(BaseSchema):
     raw_data: Any
     metadata: dict
     timestamp: Optional[str] = None
+    message: Optional[str] = None
 
 
 class ActigraphyModelInfoResponse(BaseSchema):
     message: str
     version: str
-
-
-class ActigraphyAnalysisRequest(BaseSchema):
-    data_file_id: str
-    analysis_type: str
-    sensitivity: Optional[float] = None
-
-
-class AnalyzeActigraphyResponse(BaseSchema):
-    message: str
-    analysis_id: str
-    summary: dict
-    status: Optional[str] = None
-
-
-class ActigraphySummaryResponse(BaseSchema):
-    patient_id: str
-    summary_data: dict
-    generated_at: Optional[str] = None
