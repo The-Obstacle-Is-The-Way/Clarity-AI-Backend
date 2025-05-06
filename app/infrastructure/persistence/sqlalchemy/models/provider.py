@@ -59,24 +59,21 @@ class ProviderModel(Base):
     appointments = relationship(
         "AppointmentModel", 
         back_populates="provider",
-        lazy="selectin",  # Efficient loading pattern for related entities
-        viewonly=True     # Prevents synchronization errors during tests
+        lazy="selectin"  # Efficient loading pattern for related entities
     )
     
     # Define medications relationship with proper viewonly setting
     medications = relationship(
         "MedicationModel", 
         back_populates="provider",
-        lazy="selectin",
-        viewonly=True     # Prevents synchronization errors during tests
+        lazy="selectin"
     )
     
     # Define clinical_notes relationship with proper viewonly setting
     clinical_notes = relationship(
         "ClinicalNoteModel", 
         back_populates="provider",
-        lazy="selectin",
-        viewonly=True     # Prevents synchronization errors during tests
+        lazy="selectin"
     )
 
     def __repr__(self) -> str:
