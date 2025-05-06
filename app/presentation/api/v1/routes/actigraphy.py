@@ -7,7 +7,7 @@ from datetime import datetime
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel, UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,12 +19,14 @@ from app.core.domain.entities.user import User
 
 # Import centralized schemas
 from app.presentation.api.schemas.actigraphy import (
-    AnalyzeActigraphyRequest, 
+    ActigraphyAnalysisRequest,
     AnalyzeActigraphyResponse,
     ActigraphyModelInfoResponse,
     ActigraphyUploadResponse,
     ActigraphySummaryResponse,
-    ActigraphyDataResponse
+    ActigraphyDataResponse,
+    ActigraphyAnalysisResult,
+    AnalysisType
 )
 
 # Define interface for the PAT service following Interface Segregation Principle
@@ -43,22 +45,22 @@ class IPATService:
 class MockPATService(IPATService):
     """Temporary mock service for PAT analysis to make tests pass."""
     
-    async def analyze_actigraphy(self, data: AnalyzeActigraphyRequest) -> dict[str, Any]:
-        """Mock implementation of actigraphy analysis."""
+    async def analyze_actigraphy(self, data: ActigraphyAnalysisRequest) -> dict[str, Any]:
+        """Mock implementation of actigraphy analysis. Now returns a dict matching AnalyzeActigraphyResponse structure."""
+        now = datetime.now()
+        # Create a mock ActigraphyAnalysisResult
+        mock_analysis_result = ActigraphyAnalysisResult(
+            analysis_type=data.analysis_types[0] if data.analysis_types else AnalysisType.SLEEP_QUALITY, # Use first requested or default
+            analysis_time=now,
+            # sleep_metrics, activity_metrics, circadian_metrics can be None or mocked simply
+            raw_results={"mock_key": "mock_value"}
+        ).model_dump() # Convert to dict for the outer dict structure
+
         return {
-            "analysis_id": str(uuid.uuid4()),
             "patient_id": str(data.patient_id),
-            "timestamp": datetime.now().isoformat(),
-            "results": {"status": "success", "score": 85},
-            "data_summary": {
-                "readings_count": len(data.readings if data.readings else []),
-                "start_time": (data.readings[0].timestamp 
-                              if data.readings else None),
-                "end_time": (data.readings[-1].timestamp 
-                            if data.readings else None)
-            },
-            "message": "Analysis mock successful",
-            "status": "completed"
+            "time_range": {"start_time": data.start_time if data.start_time else now, "end_time": data.end_time if data.end_time else now},
+            "results": [mock_analysis_result] # List of results
+            # Fields like 'analysis_id', 'timestamp', 'message', 'status' from the simpler version are not in the main AnalyzeActigraphyResponse
         }
     
     async def get_embeddings(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -93,7 +95,7 @@ async def get_pat_service(db: AsyncSession = Depends(get_db)) -> IPATService:
     description="Analyze actigraphy data and return results"
 )
 async def analyze_actigraphy(
-    request_data: AnalyzeActigraphyRequest,
+    request_data: ActigraphyAnalysisRequest,
     current_user: User = Depends(get_current_active_user),
     pat_service: IPATService = Depends(get_pat_service)
 ) -> AnalyzeActigraphyResponse:
@@ -185,10 +187,10 @@ async def get_actigraphy_model_info(current_user: CurrentUserDep):
     summary="Upload Actigraphy Data (Stub for tests)"
 )
 async def upload_actigraphy_data_stub(
-    file: Any = Depends(),
-    current_user: CurrentUserDep = Depends(get_current_user)
+    current_user: CurrentUserDep,
+    file: UploadFile = File(...)
 ):
-    filename = file.filename if hasattr(file, 'filename') else "mockfile.csv"
+    filename = file.filename
     return ActigraphyUploadResponse(message="File upload stub successful from routes/actigraphy.py", file_id="mock_file_id_routes", filename=filename)
 
 @router.get(
@@ -199,7 +201,7 @@ async def upload_actigraphy_data_stub(
 )
 async def get_actigraphy_summary_stub(
     patient_id: str, 
-    current_user: CurrentUserDep = Depends(get_current_user)
+    current_user: CurrentUserDep
 ):
     return ActigraphySummaryResponse(patient_id=patient_id, summary_data={}, message="Summary stub from routes/actigraphy.py")
 
@@ -211,6 +213,6 @@ async def get_actigraphy_summary_stub(
 )
 async def get_specific_actigraphy_data_stub(
     data_id: str, 
-    current_user: CurrentUserDep = Depends(get_current_user)
+    current_user: CurrentUserDep
 ):
     return ActigraphyDataResponse(data_id=data_id, raw_data={}, metadata={}, message="Data retrieval stub from routes/actigraphy.py")
