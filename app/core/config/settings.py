@@ -129,8 +129,16 @@ def get_settings() -> Settings:
     """
     # Check for test environment
     if os.environ.get("ENVIRONMENT") == "test" or os.environ.get("PYTEST_CURRENT_TEST"):
-        # Create test-specific settings with in-memory SQLite DB
-        test_db_url = "sqlite+aiosqlite:///:memory:"  # Use in-memory DB for better test isolation
+        # Determine test database type: in-memory (default) or file-based
+        use_in_memory = os.environ.get("TEST_IN_MEMORY_DB", "True").lower() in ("true", "1", "yes")
+        
+        if use_in_memory:
+            # In-memory SQLite for isolated, fast tests
+            test_db_url = "sqlite+aiosqlite:///:memory:"
+        else:
+            # File-based SQLite in proper architecture location for persistent test data
+            test_db_url = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
+        
         logger.info(f"Running in TEST environment, using DB: {test_db_url}")
         test_settings = Settings(
             TESTING=True, 

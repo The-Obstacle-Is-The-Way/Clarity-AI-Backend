@@ -301,8 +301,8 @@ class Settings(BaseSettings):
     def set_test_db_url(self) -> 'Settings':
         """Overrides DATABASE_URL for the test environment."""
         if self.ENVIRONMENT == "test":
-            # Force SQLite absolute path for testing
-            abs_test_db_path = "sqlite+aiosqlite:////tmp/test_db.sqlite3"
+            # Force SQLite absolute path for testing that aligns with clean architecture
+            abs_test_db_path = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
             self.DATABASE_URL = abs_test_db_path
             # Add print for verification during test runs
             print(f"\n--- INFO: Test environment detected. Forcing DATABASE_URL to: {self.DATABASE_URL} ---")

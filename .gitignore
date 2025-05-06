@@ -100,6 +100,9 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.db
+# Specific data directory but keep .gitkeep
+app/infrastructure/persistence/data/*
+!app/infrastructure/persistence/data/.gitkeep
 
 # -------------------
 # Docker

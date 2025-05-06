@@ -316,9 +316,9 @@ async def test_app(mock_pat_service: MagicMock, actigraphy_data: dict[str, Any])
     # Create application instance
     app_instance = create_application()
 
-    # Setup database for tests with the correct async driver
-    # Override the DATABASE_URL to use sqlite+aiosqlite (required for async operations)
-    test_db_url = "sqlite+aiosqlite:///./test_db.sqlite3"
+    # Setup database for tests with the correct async driver following clean architecture principles
+    # Use a properly structured path for the database file aligned with infrastructure layer organization
+    test_db_url = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
     db_engine, db_session_factory = create_db_engine_and_session(test_db_url)
     app_instance.state.db_engine = db_engine
     app_instance.state.db_session_factory = db_session_factory
