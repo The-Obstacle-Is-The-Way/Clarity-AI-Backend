@@ -211,20 +211,25 @@ def log_security_event(*args, **kwargs):  # type: ignore[missing-return-type-doc
     return AuditLogger.log_security_event(*args, **kwargs)
 
 
-# Implementation of IAuditLogger interface methods
-async def log_event(
-    self,
-    event_type: AuditEventType,
-    actor_id: Optional[str] = None,
-    target_resource: Optional[str] = None,
-    target_id: Optional[str] = None,
-    action: Optional[str] = None,
-    status: Optional[str] = None,
-    details: Optional[Dict[str, Any]] = None,
-    severity: AuditSeverity = AuditSeverity.INFO,
-    metadata: Optional[Dict[str, Any]] = None,
-    timestamp: Optional[datetime] = None,
-) -> str:
+class AuditLogger(IAuditLogger):
+    # -----------------
+    # ... [Previous class content remains unchanged] ...
+    # -----------------
+    
+    # Implementation of IAuditLogger interface methods
+    async def log_event(
+        self,
+        event_type: AuditEventType,
+        actor_id: Optional[str] = None,
+        target_resource: Optional[str] = None,
+        target_id: Optional[str] = None,
+        action: Optional[str] = None,
+        status: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: Optional[Dict[str, Any]] = None,
+        timestamp: Optional[datetime] = None,
+    ) -> str:
     """Log an audit event in the system.
     
     Implements the IAuditLogger.log_event method by mapping to the existing
