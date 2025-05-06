@@ -98,7 +98,7 @@ async def client(
     mock_batch_process_use_case: MagicMock,
     mock_user: MagicMock
 ):
-    app_instance = create_application(settings=test_settings)
+    app_instance = create_application(settings_override=test_settings)
     # Override dependencies for the specific use cases on the app_instance
     app_instance.dependency_overrides[get_process_analytics_event_use_case] = lambda: mock_process_event_use_case
     app_instance.dependency_overrides[get_batch_process_analytics_use_case] = lambda: mock_batch_process_use_case
