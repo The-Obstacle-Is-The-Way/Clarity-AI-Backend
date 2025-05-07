@@ -22,7 +22,7 @@ from app.domain.utils.datetime_utils import UTC, now_utc
 from app.domain.value_objects.emergency_contact import EmergencyContact  # Import EmergencyContact
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.types import GUID
-from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON
+# from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references

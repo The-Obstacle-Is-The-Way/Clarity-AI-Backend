@@ -7,17 +7,31 @@ of concerning patterns in patient biometric data.
 """
 
 import uuid
-
-from sqlalchemy import JSON, Column, DateTime, Enum, String
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    String,
+    Text,
+    JSON,
+    Boolean,
+    DateTime,
+    Enum as SQLAlchemyEnum,
+    UUID as SQLAlchemyUUID
+)
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 
 from app.domain.services.biometric_event_processor import AlertPriority, AlertStatus
 from app.domain.utils.datetime_utils import now_utc
 # from app.infrastructure.persistence.sqlalchemy.config.database import Base # Old Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.models.base import Base # Canonical Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+# from app.infrastructure.persistence.sqlalchemy.types import GUID # REMOVED
+from app.domain.enums.alert_status import AlertStatusEnum # Assuming domain enum
+from app.domain.enums.alert_priority import AlertPriorityEnum # Assuming domain enum
 
 
-class BiometricAlertModel(Base):
+class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for BiometricAlert entities.
     
@@ -27,35 +41,42 @@ class BiometricAlertModel(Base):
     
     __tablename__ = "biometric_alerts"
     
-    alert_id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    patient_id = Column(GUID, index=True, nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
     alert_type = Column(String, index=True, nullable=False)
     description = Column(String, nullable=False)
-    priority = Column(Enum(AlertPriority), nullable=False, index=True)
-    rule_id = Column(GUID, index=True, nullable=False)
-    status = Column(Enum(AlertStatus), nullable=False, default=AlertStatus.NEW, index=True)
+    priority = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
+    rule_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("biometric_rules.id"), nullable=False, index=True)
+    status = Column(SQLAlchemyEnum(AlertStatusEnum), default=AlertStatusEnum.ACTIVE, nullable=False, index=True)
     
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=now_utc, index=True)
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     
     # Acknowledgment and resolution
-    acknowledged_by = Column(GUID, nullable=True)
     acknowledged_at = Column(DateTime, nullable=True)
-    resolved_by = Column(GUID, nullable=True)
+    acknowledged_by_user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     resolved_at = Column(DateTime, nullable=True)
+    resolved_by_user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     resolution_notes = Column(String, nullable=True)
     
     # Additional data
     data_points = Column(JSON, nullable=False)  # Serialized list of data points that triggered the alert
     alert_metadata = Column(JSON, nullable=True)  # Renamed from metadata
     
+    triggering_event_details = Column(MutableDict.as_mutable(JSON), nullable=True)
+    notes = Column(Text, nullable=True)
+    
+    patient = relationship("Patient") # Add backref in Patient model if needed
+    rule = relationship("BiometricRuleModel") # Add backref in BiometricRuleModel if needed
+    acknowledged_by_user = relationship("User", foreign_keys=[acknowledged_by_user_id])
+    resolved_by_user = relationship("User", foreign_keys=[resolved_by_user_id])
+    
     def __repr__(self) -> str:
         """String representation of the model."""
         return (
-            f"<BiometricAlert(alert_id={self.alert_id}, "
+            f"<BiometricAlertModel(id={self.id}, "
             f"patient_id={self.patient_id}, "
-            f"alert_type={self.alert_type}, "
-            f"priority={self.priority}, "
+            f"rule_id={self.rule_id}, "
             f"status={self.status})>"
         )

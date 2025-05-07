@@ -11,4 +11,7 @@ from app.infrastructure.persistence.sqlalchemy.types.list_decorators import (
     StringListDecorator,
 )
 
-__all__ = ["GUID", "FloatListDecorator", "JSONEncodedDict", "StringListDecorator"]
+# Import encrypted types
+from .encrypted_types import EncryptedString
+
+__all__ = ["GUID", "FloatListDecorator", "JSONEncodedDict", "StringListDecorator", "EncryptedString"]
