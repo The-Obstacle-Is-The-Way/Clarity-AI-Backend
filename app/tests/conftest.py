@@ -29,7 +29,7 @@ from app.core.interfaces.repositories.user_repository_interface import IUserRepo
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.registry import metadata as main_metadata
-from app.presentation.api.dependencies.auth import get_current_user as app_get_current_user
+from app.presentation.api.dependencies.auth import get_current_user as app_get_current_user, get_jwt_service as actual_get_jwt_service_dependency
 
 logger = logging.getLogger(__name__)
 
@@ -187,101 +187,76 @@ def mock_get_current_user() -> User:
 
 @pytest.fixture
 def mock_jwt_service() -> MagicMock:
-    """Provides a MagicMock for JWTService."""
+    """Provides a MagicMock for JWTService with stateful token handling."""
     import datetime
+    import uuid
+    from unittest.mock import MagicMock
     from app.core.domain.entities.user import UserRole
-    from app.infrastructure.security.jwt_service import JWTService # Correct path
-    from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException # Import exceptions
+    from app.infrastructure.security.jwt_service import JWTService # RESTORED for spec
+    from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 
-    logger.info("--- mock_jwt_service FIXTURE CREATED (Stateful) ---") # Log fixture creation
+    logger.info("--- mock_jwt_service FIXTURE CREATED (Stateful, Correct Decode, WITH Spec) ---")
 
-    mock = MagicMock(spec=JWTService)
+    mock = MagicMock(spec=JWTService) # RESTORED spec
     
-    # Internal store for tokens
     issued_tokens_store = {} # token_string: {"payload": dict, "exp_timestamp": float}
 
-    TEST_USER_ID_STR = "00000000-0000-0000-0000-000000000001" # Default, can be overridden by create_access_token data
-    now_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
-    default_payload_template = { # Used if create_access_token isn't called and decode is hit directly with an unmocked token
-        "sub": TEST_USER_ID_STR, 
-        "roles": [UserRole.PATIENT.value], 
-        "exp": now_ts + 3600, 
-        "type": "access", 
-        "jti": str(uuid.uuid4())
-    }
+    TEST_USER_ID_STR = "00000000-0000-0000-0000-000000000001" # Default test user UUID
+    DEFAULT_EXP_DELTA_MINUTES = 30
 
     def mock_create_access_token(data: dict, expires_delta: datetime.timedelta | None = None) -> str:
-        token_string = f"mock_token_{uuid.uuid4()}"
-        
-        # Calculate expiry timestamp
-        if expires_delta:
-            expire = datetime.datetime.now(datetime.timezone.utc) + expires_delta
-        else:
-            # Default expiry if not provided (e.g., 15 minutes, adapt as needed)
-            expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
-        exp_timestamp = expire.timestamp()
-
-        # Construct payload, ensuring 'exp' is present
         payload = data.copy()
-        payload["exp"] = exp_timestamp
-        payload.setdefault("type", "access") # Ensure type is set
-        payload.setdefault("jti", str(uuid.uuid4())) # Ensure JTI is set
+        user_id = payload.get("sub", TEST_USER_ID_STR)
+        roles = payload.get("roles", [UserRole.PATIENT.value])
+        
+        if expires_delta is None:
+            expires_delta = datetime.timedelta(minutes=DEFAULT_EXP_DELTA_MINUTES)
+            
+        expire_timestamp = (datetime.datetime.now(datetime.timezone.utc) + expires_delta).timestamp()
+        
+        # Ensure required claims are present
+        payload["exp"] = expire_timestamp
+        payload.setdefault("type", "access")
+        payload.setdefault("jti", str(uuid.uuid4())) # Add unique token ID
 
-        issued_tokens_store[token_string] = {"payload": payload, "exp_timestamp": exp_timestamp}
+        # Simple mock token string (doesn't need to be real JWT for mock)
+        token_string = f"mock_token_{payload['jti']}"
+        
+        # Store the token and its data
+        issued_tokens_store[token_string] = {
+            "payload": payload,
+            "exp_timestamp": expire_timestamp
+        }
         logger.info(f"Mock JWTService: Created token {token_string} with payload: {payload}")
         return token_string
 
-    def mock_decode_token(token: str, settings_param = None) -> dict: # settings_param kept for signature compatibility
+    def mock_decode_token(token: str) -> dict:
         logger.info(f"Mock JWTService: Attempting to decode token: {token}")
-        if token not in issued_tokens_store:
-            # Fallback for specific hardcoded tokens if necessary for some legacy tests,
-            # but ideally all tokens come from create_access_token
-            if token == "VALID_PATIENT_TOKEN": # Example of a specific known token
-                 logger.warning(f"Mock JWTService: Using default payload for unmanaged token {token}")
-                 return {**default_payload_template, "sub": "patient-sub-id", "roles": [UserRole.PATIENT.value]}
-            logger.error(f"Mock JWTService: Invalid token - not found in store: {token}")
-            raise InvalidTokenException("Mock JWTService: Token not found in store.")
-
-        token_info = issued_tokens_store[token]
+        stored_data = issued_tokens_store.get(token)
         
-        # Check expiry
-        if datetime.datetime.now(datetime.timezone.utc).timestamp() > token_info["exp_timestamp"]:
-            logger.error(f"Mock JWTService: Token expired: {token}")
-            raise TokenExpiredException("Mock JWTService: Token has expired.")
+        if not stored_data:
+            logger.warning(f"Mock JWTService: Token {token} not found in store.")
+            raise InvalidTokenException("Token not found in mock store")
             
-        logger.info(f"Mock JWTService: Decoded token {token} to payload: {token_info['payload']}")
-        return token_info["payload"]
+        # Check expiry
+        now_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
+        if now_timestamp > stored_data["exp_timestamp"]:
+            logger.warning(f"Mock JWTService: Token {token} expired at {stored_data['exp_timestamp']} (current: {now_timestamp}).")
+            raise TokenExpiredException("Mock token expired")
+            
+        logger.info(f"Mock JWTService: Decoded token {token} to payload: {stored_data['payload']}")
+        return stored_data["payload"]
 
-    mock.create_access_token = MagicMock(side_effect=mock_create_access_token)
-    mock.decode_token = MagicMock(side_effect=mock_decode_token)
-    mock.create_refresh_token = MagicMock(return_value="mock_refresh_token") # Remains simple for now
-    
-    def _mock_verify_token(token_str: str) -> bool:
-        # logger.info(f"!!! MOCK VERIFY TOKEN (stateful) CALLED WITH: {token_str} !!!")
-        try:
-            mock.decode_token(token_str) # This will now use the stateful decode with expiry checks
-            return True
-        except (InvalidTokenException, TokenExpiredException):
-            return False
-        except Exception as e: # Catch any other unexpected errors during decode
-            logger.error(f"Mock JWTService: Unexpected error during verify_token for {token_str}: {e}")
-            return False
-    mock.verify_token = MagicMock(side_effect=_mock_verify_token)
-
-    mock.generate_tokens_for_user = MagicMock(
-        return_value={"access_token": "mock_access_token_for_user", "refresh_token": "mock_refresh_token_for_user"}
-    )
-    mock.refresh_access_token = MagicMock(return_value="new_mock_access_token_via_refresh")
-    mock.get_token_expiration = MagicMock(
-        return_value=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
-    )
-    
-    # Add a way to clear the store for test isolation if needed, e.g., via a nested function or attribute
-    def clear_store():
-        issued_tokens_store.clear()
+    def clear_issued_tokens():
         logger.info("Mock JWTService: Token store cleared.")
-    mock.clear_issued_tokens = MagicMock(side_effect=clear_store)
+        issued_tokens_store.clear()
 
+    mock.create_access_token.side_effect = mock_create_access_token
+    mock.decode_token.side_effect = mock_decode_token
+    mock.clear_issued_tokens = MagicMock(side_effect=clear_issued_tokens)
+    mock._issued_tokens_store = issued_tokens_store
+
+    logger.info(f"--- mock_jwt_service FIXTURE ID: {id(mock)} ---")
     return mock
 
 
@@ -380,34 +355,40 @@ async def mock_override_user() -> User:
     )
 
 @pytest_asyncio.fixture(scope="function")
-async def client_app_tuple(test_settings: Settings, mock_override_user: User) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
+async def client_app_tuple(
+    test_settings: Settings, 
+    mock_override_user: User, # This param might be from an older version of the fixture, review if still needed
+    mock_jwt_service: MagicMock # ADD mock_jwt_service as a fixture dependency here
+) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     """Creates a FastAPI app instance and an AsyncClient for it.
-    Uses LifespanManager for consistency with integration tests.
-    Auth is NOT globally overridden here anymore. Tests should rely on mock_jwt_service.
-    The app instance yielded is the direct result from create_application, ensuring
-    tests receive the actual FastAPI object, while the client still uses the
-    LifespanManager-processed app for transport.
+    The app instance yielded is the direct result from create_application.
+    Crucially, overrides the app's get_jwt_service dependency with mock_jwt_service.
     """
-    logger.info("Creating client_app_tuple. Yielding direct app_instance to tests.")
+    logger.info("Creating client_app_tuple. Overriding get_jwt_service with mock.")
     
     from asgi_lifespan import LifespanManager
     from httpx import ASGITransport
 
-    # Create the FastAPI application instance
     app_instance = create_application(settings_override=test_settings)
-    logger.info(f"CONTEST: app_instance created. Type: {type(app_instance)}, id: {id(app_instance)}")
 
-    # LifespanManager is used to ensure startup/shutdown events are run for the app
-    # The AsyncClient's transport needs to be connected to the app *within* the LifespanManager context.
+    # Override the dependency here
+    app_instance.dependency_overrides[actual_get_jwt_service_dependency] = lambda: mock_jwt_service
+
+    logger.info(f"CONTEST (before LifespanManager): Type of app_instance: {type(app_instance)}, id: {id(app_instance)}")
+    logger.info(f"CONTEST: Overrode get_jwt_service. Current overrides: {app_instance.dependency_overrides}")
+
     async with LifespanManager(app_instance) as manager:
+        # The client must use manager.app which is the app processed by LifespanManager
+        # This ensures startup/shutdown events are handled correctly for the client.
         logger.info(f"CONTEST: LifespanManager active. Type of manager.app: {type(manager.app)}, id: {id(manager.app)}")
-        transport = ASGITransport(app=manager.app) # Client transport uses the app from LifespanManager
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-            # Yield the original app_instance to the test, not manager.app
+        async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://testserver") as client:
+            # Yield the client and the ORIGINAL app_instance (for direct state/override manipulation in tests if needed)
             logger.info(f"CONTEST: Yielding client and ORIGINAL app_instance (id: {id(app_instance)}) to test.")
-            yield client, app_instance 
-
+            yield client, app_instance
+    
     logger.info("Cleaning up client_app_tuple.")
+    # Clear overrides after test to prevent interference
+    app_instance.dependency_overrides.clear()
 
 @pytest_asyncio.fixture(scope="function")
 async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:

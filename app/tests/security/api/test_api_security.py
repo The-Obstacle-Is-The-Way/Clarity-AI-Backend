@@ -62,10 +62,8 @@ class TestAuthentication:
         headers = {"Authorization": "Bearer invalid.token.format"}
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        # FastAPI/Starlette auth middleware or jose.jwt should catch this
-        # Check detail message if provided by the framework
-        assert "Not authenticated" in response.json().get("detail", "") or \
-               "Invalid token" in response.json().get("detail", "")
+        # Check for the specific detail message raised when token decoding fails
+        assert response.json().get("detail") == "Could not validate credentials"
 
     @pytest.mark.asyncio
     async def test_expired_token(self, client_app_tuple: tuple[AsyncClient, FastAPI], mock_jwt_service: JWTService) -> None:

@@ -6,7 +6,7 @@ authentication and authorization within the API endpoints.
 """
 
 # Standard Library Imports
-import logging # Ensure logging is imported
+import logging # MODULE LEVEL
 from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
@@ -28,12 +28,14 @@ from app.core.interfaces.services.jwt_service_interface import JWTServiceInterfa
 from app.infrastructure.database.session import get_async_session
 from app.infrastructure.repositories.user_repository import get_user_repository
 from app.infrastructure.security.auth_service import get_auth_service
-from app.infrastructure.security.jwt_service import get_jwt_service
+from app.infrastructure.security.jwt_service import get_jwt_service, JWTService
 from app.domain.exceptions import AuthenticationError, AuthorizationError # Corrected path
 from app.core.interfaces.services.jwt_service import IJwtService
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 
-# Initialize logger for this module
-logger = logging.getLogger(__name__) # Ensure this is at module level
+# Initialize logger for this module - MODULE LEVEL
+logger = logging.getLogger(__name__)
 
 # --- Type Hinting for Dependencies --- #
 
@@ -47,7 +49,7 @@ async def get_user_repository_dependency(
     session: AsyncSession = Depends(get_async_session), 
 ) -> IUserRepository:
     """Provides an instance of IUserRepository using the injected session."""
-    return get_user_repository(session=session) 
+    return SQLAlchemyUserRepository(session=session) 
 
 # Use the new explicit dependency function
 UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository_dependency)]
@@ -55,6 +57,8 @@ UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository_dependency)
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 TokenDep = Annotated[str, Depends(oauth2_scheme)]
+
+bearer_scheme = HTTPBearer(auto_error=False)
 
 # --- Dependency Functions --- #
 
@@ -66,15 +70,18 @@ def get_authentication_service(
 
 def get_jwt_service(settings: Settings = Depends(get_settings)) -> IJwtService:
     """Provides an instance of the JWT Service."""
-    return get_jwt_service(settings)
+    return JWTService(settings=settings)
 
 async def get_current_user(
-    token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(oauth2_scheme)],
+    token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
     jwt_service: IJwtService = Depends(get_jwt_service),
     session: AsyncSession = Depends(get_async_session),
 ) -> DomainUser:
-    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}") # This should now work
+    # Log received jwt_service ID and type
+    logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
+
+    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
     """
     Dependency to get the current user from a JWT token.
     Handles token validation, user retrieval, and role checks.
@@ -89,7 +96,6 @@ async def get_current_user(
         )
     
     token = token_credentials.credentials 
-    logger.info(f"get_current_user: Extracted token string: {token[:20] if token else 'None'}...") 
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -103,9 +109,7 @@ async def get_current_user(
     )
 
     try:
-        logger.info("get_current_user: Attempting to decode token with jwt_service...") 
         payload = jwt_service.decode_token(token=token)
-        logger.info(f"get_current_user: Token decoded successfully. Payload sub: {payload.get('sub')}") 
         
         username: str | None = payload.get("sub") 
         if username is None:
@@ -122,12 +126,11 @@ async def get_current_user(
         logger.warning(f"get_current_user: JWTError - {e}")
         raise credentials_exception from e
 
-    user_repo = UserRepositoryImpl(session) 
+    user_repo = SQLAlchemyUserRepository(session) 
     user_service = UserService(user_repo, jwt_service, settings) 
     
     try:
         user_id_from_token = payload["sub"] 
-        logger.info(f"get_current_user: Attempting to fetch user by ID: {user_id_from_token}") 
         user = await user_service.get_user_by_id_str(user_id_str=user_id_from_token)
         
     except ValueError as e: 
