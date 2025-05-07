@@ -369,9 +369,11 @@ async def client_app_tuple(
     from asgi_lifespan import LifespanManager
     from httpx import ASGITransport
 
-    app_instance = create_application(settings_override=test_settings)
+    # CRITICAL: Pass test_settings here if create_application expects it
+    # and ensure include_test_routers is appropriately set if needed.
+    app_instance = create_application(settings_override=test_settings, include_test_routers=True)
 
-    # Override the dependency here
+    # Override dependencies
     app_instance.dependency_overrides[actual_get_jwt_service_dependency] = lambda: mock_jwt_service
 
     logger.info(f"CONTEST (before LifespanManager): Type of app_instance: {type(app_instance)}, id: {id(app_instance)}")

@@ -7,11 +7,13 @@ from unittest.mock import AsyncMock
 
 # Third-Party Imports
 import sentry_sdk
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException, status as http_status
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import ConnectionPool, Redis
 from redis.exceptions import RedisError
 from sqlalchemy.exc import SQLAlchemyError
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 # Application-Specific Imports
 from app.core.config import Settings, settings as global_settings
@@ -327,17 +329,42 @@ def create_application(
         app.include_router(admin_test_router, prefix=f"{app_settings.API_V1_STR}/admin", tags=["Test Admin"])
         logger.info(f"Including TEST admin router prefix: {app_settings.API_V1_STR}/admin")
 
-    # --- Custom Exception Handlers ---
-    # Example: Add a custom handler for a specific exception type if needed
-    # @app.exception_handler(ValueError)
-    # async def value_error_exception_handler(request: Request, exc: ValueError):
-    #     # Note: If re-enabling this, re-import Request and JSONResponse
-    #     from fastapi import Request
-    #     from fastapi.responses import JSONResponse
-    #     return JSONResponse(
-    #         status_code=400,
-    #         content={"message": f"Invalid value provided: {exc}"},
-    #     )
+    # --- Global Exception Handlers ---
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        # Log the detailed validation error for internal review
+        logger.error(f"Request validation error: {exc.errors()} for request: {request.method} {request.url}")
+        # Return a generic Pydantic validation error structure
+        return JSONResponse(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": exc.errors()}, # Pydantic's default error structure
+        )
 
+    @app.exception_handler(HTTPException)
+    async def custom_http_exception_handler(request: Request, exc: HTTPException):
+        # Log the HTTP exception details
+        logger.error(f"HTTP exception: {exc.detail} (Status: {exc.status_code}) for request: {request.method} {request.url}")
+        # Return the standard HTTPException response
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )
+
+    @app.exception_handler(Exception)
+    async def generic_exception_handler(request: Request, exc: Exception):
+        # Log the full, unhandled exception for internal review
+        # Be cautious about logging potentially sensitive parts of `exc` or `request`
+        # if they could contain PHI in a real scenario.
+        logger.critical(
+            f"Unhandled exception: {exc.__class__.__name__}: {exc} for request: {request.method} {request.url}",
+            exc_info=True # Include traceback
+        )
+        # Return a generic 500 error to the client, masking internal details.
+        return JSONResponse(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Internal server error"}, # MATCHES TEST EXPECTATION
+        )
+        
     logger.info("FastAPI application creation complete.")
     return app
