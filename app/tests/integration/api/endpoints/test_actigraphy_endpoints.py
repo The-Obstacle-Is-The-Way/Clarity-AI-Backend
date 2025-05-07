@@ -253,35 +253,42 @@ class TestActigraphyEndpoints:
         self, 
         test_client: AsyncClient, 
         provider_token: str, 
-        sample_readings: list[dict[str, Any]], 
-        sample_device_info: dict[str, Any]
+        # sample_readings: list[dict[str, Any]], # REMOVED: Not part of ActigraphyAnalysisRequest
+        # sample_device_info: dict[str, Any] # REMOVED: Not part of ActigraphyAnalysisRequest
     ) -> None:
-        """Test that relevant actions trigger HIPAA audit logs."""
-        # Mock the audit logger dependency used by the endpoint/service
-        # This requires knowing which logger is used (e.g., injected via DI)
-        mock_audit_logger = AsyncMock()
-        with patch("app.infrastructure.logging.audit_logger.log_phi_access", mock_audit_logger):
-            analysis_request_payload = {
-                "patient_id": "audit-test-patient-001",
-                "start_time": "2023-01-10T10:00:00Z",
-                "end_time": "2023-01-10T10:00:02Z",
-                "analysis_types": ["sleep_quality"]
-            }
+        """Test that PHI access is logged for HIPAA compliance."""
+        headers = {"Authorization": f"Bearer {provider_token}"}
+        
+        # Define a patient ID for this test
+        test_patient_id = str(uuid.uuid4())
+        
+        # Construct a valid ActigraphyAnalysisRequest payload
+        request_payload = {
+            "patient_id": test_patient_id,
+            "analysis_types": ["sleep_quality"], # Simplified to one type
+            "start_time": "2023-01-01T00:00:00Z", # Optional
+            "end_time": "2023-01-01T01:00:00Z"    # Optional
+        }
+
+        # Patch the audit_log_phi_access function
+        with patch("app.presentation.api.v1.routes.actigraphy.audit_log_phi_access") as mock_audit_logger:
             response = await test_client.post(
                 "/api/v1/actigraphy/analyze", 
-                json=analysis_request_payload, 
-                headers={"Authorization": f"Bearer {provider_token}"}
+                json=request_payload, 
+                headers=headers
             )
-            assert response.status_code == 200
-
-            # Assert that the audit logger was called
-            mock_audit_logger.assert_awaited()
-            # More specific checks on call arguments can be added:
-            # mock_audit_logger.assert_awaited_with(
-            #     event_type="ACTIGRAPHY_ANALYSIS_REQUESTED", # Example event type
-            #     user_id="test-provider-id", # From provider_token mock
-            #     details=Any # Or more specific check
-            # )
+        
+        assert response.status_code == 200 # Expect 200 for a successful request
+        
+        # Verify that the audit logger was called correctly
+        # Note: The current_user.id is mocked as "test_provider_user_id" by conftest.py's client fixture
+        # when VALID_PROVIDER_TOKEN is used.
+        mock_audit_logger.assert_called_once_with(
+            "00000000-0000-0000-0000-000000000002",  # Corrected: Expected user_id from the mock token
+            test_patient_id,          # The patient_id from the request
+            "analyze_actigraphy_data",  # The action being logged
+            details={"analysis_types": ["sleep_quality"]} # Details from the request, simplified
+        )
 
     @pytest.mark.asyncio
     async def test_secure_data_transmission(
@@ -394,20 +401,20 @@ async def test_get_actigraphy_data_summary(
     provider_token: str,
     # upload_data: dict[str, Any] # This was for a POST to /analyze
 ):
-    """Test retrieving actigraphy data summary."""
-    patient_id_for_test = "patient-d32dbc8e-3d58-4df0-ba55-0d074f4ff0e7" # Example or from fixture
+    """Test getting actigraphy data summary."""
     headers = {"Authorization": f"Bearer {provider_token}"}
-    
-    # Corrected URL from /summary/patient-{id} to /patient/{id}/summary
+    patient_id_for_summary = f"patient-{uuid.uuid4()}" # Generate a unique patient_id for the test
     response = await test_client.get(
-        f"/api/v1/actigraphy/patient/{patient_id_for_test}/summary", headers=headers
+        f"/api/v1/actigraphy/patient/{patient_id_for_summary}/summary", 
+        headers=headers
     )
-    
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["patient_id"] == patient_id_for_test
-    assert "summary_data" in response_data
-    assert response_data["message"] == "Summary stub from routes/actigraphy.py"
+    # Update assertion to check for a field that exists in the current ActigraphySummaryResponse
+    assert "summaries" in response_data 
+    assert "patient_id" in response_data
+    assert response_data["patient_id"] == patient_id_for_summary
+    assert isinstance(response_data["summaries"], list)
 
 @pytest.mark.asyncio
 async def test_get_specific_actigraphy_data(

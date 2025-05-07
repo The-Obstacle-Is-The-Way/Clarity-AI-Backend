@@ -43,8 +43,7 @@ try:
     )
     from app.infrastructure.logging.audit_logger import (
         AuditLogger,
-        log_phi_access,
-        sanitize_phi,
+        log_phi_access
     )
     from app.infrastructure.security.auth.jwt_handler import (
         create_access_token,
@@ -58,7 +57,7 @@ try:
         encrypt_phi,
         generate_phi_key,
     )
-    from app.infrastructure.security.phi import PHIAuditHandler
+    from app.infrastructure.security.phi import PHIAuditHandler, sanitize_phi
     from app.infrastructure.security.rbac.role_manager import (
         RoleBasedAccessControl,
         check_permission,
