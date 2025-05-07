@@ -318,40 +318,48 @@ def mock_user_service() -> MagicMock:
 
 @pytest_asyncio.fixture(scope="function")
 async def mock_override_user() -> User:
-    """Provides a mock domain User object for overriding get_current_user."""
-    # Using a fixed UUID for predictability in tests if needed, or uuid.uuid4() for uniqueness
-    TEST_OVERRIDE_USER_ID = uuid.UUID("fab0df22-5f59-4f28-a783-a8dfbce68820") 
+    """Provides a mock user that can be used for overriding get_current_user."""
+    # logger.info("--- mock_override_user FIXTURE CALLED ---")
     return User(
-        id=TEST_OVERRIDE_USER_ID,
-        username="override_testuser",
+        id=uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"), # Example UUID
         email="override_user@example.com",
-        full_name="Override Test User",
-        roles={UserRole.PATIENT}, # Set desired role
-        password_hash="fakepassword", # CORRECTED from hashed_password
-        status=UserStatus.ACTIVE # SETTING USER TO ACTIVE VIA STATUS
-        # REMOVED: is_active=True, is_verified=True, email_verified=True
+        username="override_user",
+        roles=[UserRole.PATIENT.value], # Default to patient
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
+        # Add other fields as necessary for your User model
     )
 
 @pytest_asyncio.fixture(scope="function")
 async def client_app_tuple(test_settings: Settings, mock_override_user: User) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
-    """Provides an AsyncClient and the FastAPI app instance it uses, with auth dependencies overridden."""
-    logger.info("Creating client_app_tuple with overridden auth.")
+    """Creates a FastAPI app instance and an AsyncClient for it, with auth overridden.
+    Uses LifespanManager for consistency with integration tests.
+    """
+    logger.info("Creating client_app_tuple with overridden auth and LifespanManager.")
     
-    # Use the application factory to create the app instance
+    # Import LifespanManager here to keep fixture self-contained if moved
+    from asgi_lifespan import LifespanManager
+    from httpx import ASGITransport # Ensure ASGITransport is imported
+
+    # Create a new app instance for this test
     app_instance = create_application(settings_override=test_settings)
 
+    # Override the get_current_user dependency
     async def mock_get_current_user_dependency_override() -> User:
-        # logger.info(f"--- mock_get_current_user_dependency_override CALLED, RETURNING: {mock_override_user.email} ---")
         return mock_override_user
 
-    # Override the main get_current_user dependency
     app_instance.dependency_overrides[app_get_current_user] = mock_get_current_user_dependency_override
-    
-    async with AsyncClient(app=app_instance, base_url="http://testserver") as client_instance:
-        yield client_instance, app_instance # Yield both client and app
-    
+
+    async with LifespanManager(app_instance) as manager:
+        logger.info(f"client_app_tuple: LifespanManager active for app id: {id(manager.app)}")
+        transport = ASGITransport(app=manager.app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            yield client, manager.app # Yield client and the app instance from LifespanManager
+
     logger.info("Cleaning up client_app_tuple overrides.")
-    app_instance.dependency_overrides.clear()
+    if app_get_current_user in app_instance.dependency_overrides: # Check on original app_instance
+        del app_instance.dependency_overrides[app_get_current_user]
 
 @pytest_asyncio.fixture(scope="function")
 async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:

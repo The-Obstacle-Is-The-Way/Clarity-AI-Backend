@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asgi_lifespan import LifespanManager
@@ -234,52 +234,40 @@ async def provider_auth_headers(jwt_service: IJwtService) -> dict[str, str]:
 # API Testing Fixtures
 @pytest_asyncio.fixture
 async def test_app(
-    # db_session: AsyncSession, # REMOVE THIS - Lifespan handles DB init for the app
     test_settings: Settings,
-    mock_s3_service: MagicMock, # This is the MagicMock for S3ServiceInterface
-    mock_encryption_service: MagicMock, # This is the MagicMock for IEncryptionService
-    mock_jwt_service_with_placeholder_handling: JWTServiceInterface # Added new mock JWT service
+    mock_s3_service: MagicMock, 
+    mock_encryption_service: MagicMock, 
+    mock_jwt_service_with_placeholder_handling: JWTServiceInterface
 ) -> FastAPI:
-    logger.info("Creating FastAPI app instance for integration tests via integration/conftest.py.")
+    logger.info("Creating FastAPI app instance for integration tests via integration/conftest.py (test_app fixture).")
     
-    # Use the application factory
-    from app.main import create_application
+    from app.app_factory import create_application # Moved import here to be self-contained
     app = create_application(settings_override=test_settings)
 
-    # Create a mock for the AWS Service Factory
     mock_aws_factory = MagicMock(spec=AWSServiceFactory)
-    # Configure the mock factory to return our specific mock S3 service
     mock_aws_factory.get_s3_service.return_value = mock_s3_service
-    # If other services from the factory are needed by tests, they can be mocked here too.
-    # For example: mock_aws_factory.get_dynamodb_service.return_value = MagicMock(spec=DynamoDBServiceInterface)
-
-    # Apply common overrides for integration tests
-    # Override the AWS service factory provider
+    
     app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
-    # Override the encryption service provider (assuming it's a direct dependency)
     app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
-    # Override the JWT service provider with our placeholder-handling mock
     app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
     
-    # It's important that this fixture yields the app wrapped in LifespanManager
-    # for proper startup and shutdown event handling (like database connections).
-    async with LifespanManager(app):
-        # Any setup that needs to happen after app startup events but before yielding to the test
-        # Example: ensure_all_models_loaded_after_startup(app.state.db_engine)
-        yield app
+    # Removed: async with LifespanManager(app):
+    yield app # Just yield the configured app
 
 @pytest_asyncio.fixture
 async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
-    """Provides an AsyncClient instance configured for the test_app."""
-    # from httpx import ASGITransport # REMOVED
-    # from asgi_lifespan import LifespanManager # REMOVED
+    """Provides an AsyncClient instance configured for the test_app, managing its lifespan."""
+    from httpx import ASGITransport # Moved import here
+    from asgi_lifespan import LifespanManager # Moved import here
     
-    logger.info(f"test_client fixture: Using test_app with id: {id(test_app)} directly with AsyncClient")
+    logger.info(f"test_client fixture: Managing lifespan for test_app with id: {id(test_app)}")
     
-    # Let AsyncClient manage the lifespan of test_app
-    async with AsyncClient(app=test_app, base_url="http://test") as client:
-        logger.info(f"test_client fixture: Yielding client for test_app id: {id(test_app)}")
-        yield client
+    async with LifespanManager(test_app) as manager:
+        logger.info(f"test_client fixture: LifespanManager active for app id: {id(manager.app)}")
+        transport = ASGITransport(app=manager.app) 
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            logger.info(f"test_client fixture: Yielding client for app id used by transport: {id(manager.app)}")
+            yield client
 
 
 @pytest.fixture

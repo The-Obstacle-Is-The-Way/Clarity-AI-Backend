@@ -31,6 +31,10 @@ from app.presentation.api.schemas.digital_twin_schemas import (
 )
 from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
 
+# Add imports for create_application and Settings
+from app.app_factory import create_application
+from app.core.config.settings import Settings as AppSettings # Use alias
+
 # Define UTC timezone
 UTC = timedelta(0) # Simple UTC offset
 
@@ -61,12 +65,19 @@ def mock_current_user():
     return User(id=UUID("00000000-0000-0000-0000-000000000001"), role="admin", email="test@example.com")
 
 @pytest.fixture
-def app() -> FastAPI:
+def app(mock_digital_twin_service: AsyncMock, mock_current_user: User) -> FastAPI:
     """Override the app fixture to use a real FastAPI instance for these tests."""
-    from app.main import app as actual_app # Ensure this import is correct for your project structure
-    # Apply any necessary test-specific configurations or dependency overrides here
-    # For example, overriding services if needed, though mocks are passed to tests directly
-    return actual_app
+    # from app.main import app as actual_app # REMOVED
+    test_settings = AppSettings() # Create a default settings instance for tests
+    app_instance = create_application(settings_override=test_settings)
+    
+    # Apply dependency overrides relevant for these unit tests
+    app_instance.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
+    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
+    # Include the router for these tests
+    app_instance.include_router(digital_twins_router, prefix="/digital-twins")
+
+    return app_instance
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncClient:  # Changed to async fixture and AsyncClient
