@@ -21,14 +21,13 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
-from app.domain.services.biometric_event_processor import AlertPriority, AlertStatus
 from app.domain.utils.datetime_utils import now_utc
 # from app.infrastructure.persistence.sqlalchemy.config.database import Base # Old Base
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.models.base import Base # Canonical Base
 # from app.infrastructure.persistence.sqlalchemy.types import GUID # REMOVED
-from app.domain.enums.alert_status import AlertStatusEnum # Assuming domain enum
-from app.domain.enums.alert_priority import AlertPriorityEnum # Assuming domain enum
+from app.domain.entities.biometric_alert import AlertStatusEnum 
+from app.domain.entities.biometric_alert_rule import AlertPriority as AlertPriorityEnum
 
 
 class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
@@ -47,7 +46,7 @@ class BiometricAlertModel(Base, TimestampMixin, AuditMixin):
     description = Column(String, nullable=False)
     priority = Column(SQLAlchemyEnum(AlertPriorityEnum), nullable=False)
     rule_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("biometric_rules.id"), nullable=False, index=True)
-    status = Column(SQLAlchemyEnum(AlertStatusEnum), default=AlertStatusEnum.ACTIVE, nullable=False, index=True)
+    status = Column(SQLAlchemyEnum(AlertStatusEnum), default=AlertStatusEnum.NEW, nullable=False, index=True)
     
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=now_utc, index=True)

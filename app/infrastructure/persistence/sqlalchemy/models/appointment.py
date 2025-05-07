@@ -12,7 +12,7 @@ from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
-from app.domain.enums.appointment_status import AppointmentStatusEnum
+from app.domain.entities.appointment import AppointmentStatus
 from app.domain.utils.datetime_utils import now_utc
 
 
@@ -32,7 +32,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     appointment_type = Column(String(50), nullable=False)
-    status = Column(String(20), nullable=False)
+    status = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
     notes = Column(Text, nullable=True)
     virtual = Column(Boolean, default=False, nullable=False)
     location = Column(String(255), nullable=True)
@@ -86,7 +86,6 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         """
         from app.domain.entities.appointment import (
             Appointment,
-            AppointmentStatus,
             AppointmentType,
         )
 
@@ -97,7 +96,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
             start_time=self.start_time,
             end_time=self.end_time,
             appointment_type=AppointmentType(self.appointment_type),
-            status=AppointmentStatus(self.status),
+            status=self.status,
             notes=self.notes,
             virtual=self.virtual,
             location=self.location,

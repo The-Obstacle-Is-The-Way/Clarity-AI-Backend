@@ -16,101 +16,55 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base, Timestam
 
 class MedicationModel(Base, TimestampMixin, AuditMixin):
     """
-    SQLAlchemy model for the Medication entity.
+    SQLAlchemy model for the Medication catalog.
 
     This model maps to the 'medications' table in the database and
-    represents medications prescribed to patients by providers.
+    represents general information about medications.
     """
 
     __tablename__ = "medications"
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
-    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False)
     name = Column(String(255), nullable=False, index=True)
-    dosage = Column(String(100), nullable=False)
-    frequency = Column(String(100), nullable=False)
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=True)
-    instructions = Column(Text, nullable=True)
-    active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.now, nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=datetime.now,
-        onupdate=datetime.now,
-        nullable=False,
-    )
+    description = Column(Text, nullable=True)
+    form = Column(String(100), nullable=True)  # e.g., tablet, capsule, liquid
+    strength = Column(String(100), nullable=True) # e.g., 10mg, 50mg/mL
+    # manufacturer = Column(String(255), nullable=True) # Optional
 
-    # Relationships with correct model references
-    patient = relationship("Patient", back_populates="medication_records")
-    provider = relationship("ProviderModel", back_populates="medications")
+    # Relationship to the association table
+    prescriptions = relationship("PatientMedicationModel", back_populates="medication_catalog_item")
 
     def __repr__(self) -> str:
-        """Return string representation of the medication."""
-        return f"<Medication(id={self.id}, name={self.name}, patient_id={self.patient_id})>"
+        return f"<MedicationModel(id={self.id}, name='{self.name}')>"
 
-    @classmethod
-    def from_domain(cls, medication) -> "MedicationModel":
-        """
-        Create a SQLAlchemy model instance from a domain entity.
-
-        Args:
-            medication: Domain Medication entity
-
-        Returns:
-            MedicationModel: SQLAlchemy model instance
-        """
-        return cls(
-            id=medication.id,
-            patient_id=medication.patient_id,
-            provider_id=medication.provider_id,
-            name=medication.name,
-            dosage=(
-                medication.dosage.value
-                if hasattr(medication.dosage, "value")
-                else medication.dosage
-            ),
-            frequency=medication.frequency,
-            start_date=medication.start_date,
-            end_date=medication.end_date,
-            instructions=medication.instructions,
-            active=medication.active,
-        )
-
-    def to_domain(self):
-        """
-        Convert SQLAlchemy model instance to domain entity.
-
-        Returns:
-            Medication: Domain entity instance
-        """
-        from app.domain.entities.medication import Medication
-        from app.domain.value_objects.medication_dosage import MedicationDosage
-
-        # Try to convert dosage string to MedicationDosage value object if possible
-        try:
-            dosage = MedicationDosage.from_string(self.dosage)
-        except (ValueError, AttributeError):
-            dosage = self.dosage
-
-        return Medication(
-            id=self.id,
-            patient_id=self.patient_id,
-            provider_id=self.provider_id,
-            name=self.name,
-            dosage=dosage,
-            frequency=self.frequency,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            instructions=self.instructions,
-            active=self.active,
-        )
 
 class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
+    """
+    SQLAlchemy model for patient-specific medication prescriptions (association table).
+
+    Links a Patient to a Medication from the catalog and stores prescription details.
+    """
     __tablename__ = "patient_medications"
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
     medication_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("medications.id"), nullable=False, index=True)
-    # ... other fields ...
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True) # Assuming provider is a User
+
+    # Prescription-specific details
+    dosage = Column(String(100), nullable=False)
+    frequency = Column(String(100), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    instructions = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False) # Renamed from 'active' to avoid conflict
+
+    # Relationships
+    patient = relationship("Patient", back_populates="prescriptions")
+    medication_catalog_item = relationship("MedicationModel", back_populates="prescriptions")
+    # Consider relationship to Provider/User if ProviderModel separate from User
+    prescribing_provider = relationship("User", foreign_keys=[provider_id])
+
+
+    def __repr__(self) -> str:
+        return f"<PatientMedicationModel(id={self.id}, patient_id={self.patient_id}, medication_id={self.medication_id})>"

@@ -124,9 +124,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
         lazy="selectin"  # Efficient loading pattern
     )
     
-    # Relationship with medications with proper viewonly setting
-    medication_records = relationship(
-        "MedicationModel", 
+    # UPDATED: Relationship with patient-specific prescriptions
+    prescriptions = relationship(
+        "PatientMedicationModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
         lazy="selectin"  # Efficient loading pattern
