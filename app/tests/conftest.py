@@ -384,31 +384,30 @@ async def client_app_tuple(test_settings: Settings, mock_override_user: User) ->
     """Creates a FastAPI app instance and an AsyncClient for it.
     Uses LifespanManager for consistency with integration tests.
     Auth is NOT globally overridden here anymore. Tests should rely on mock_jwt_service.
+    The app instance yielded is the direct result from create_application, ensuring
+    tests receive the actual FastAPI object, while the client still uses the
+    LifespanManager-processed app for transport.
     """
-    logger.info("Creating client_app_tuple with LifespanManager. Auth NOT globally overridden.")
+    logger.info("Creating client_app_tuple. Yielding direct app_instance to tests.")
     
-    # Import LifespanManager here to keep fixture self-contained if moved
     from asgi_lifespan import LifespanManager
-    from httpx import ASGITransport # Ensure ASGITransport is imported
+    from httpx import ASGITransport
 
-    # Create a new app instance for this test
+    # Create the FastAPI application instance
     app_instance = create_application(settings_override=test_settings)
+    logger.info(f"CONTEST: app_instance created. Type: {type(app_instance)}, id: {id(app_instance)}")
 
-    # REMOVED: Global get_current_user override
-    # async def mock_get_current_user_dependency_override() -> User:
-    #     return mock_override_user
-    # app_instance.dependency_overrides[app_get_current_user] = mock_get_current_user_dependency_override
-
+    # LifespanManager is used to ensure startup/shutdown events are run for the app
+    # The AsyncClient's transport needs to be connected to the app *within* the LifespanManager context.
     async with LifespanManager(app_instance) as manager:
-        logger.info(f"client_app_tuple: LifespanManager active for app id: {id(manager.app)}")
-        transport = ASGITransport(app=manager.app)
+        logger.info(f"CONTEST: LifespanManager active. Type of manager.app: {type(manager.app)}, id: {id(manager.app)}")
+        transport = ASGITransport(app=manager.app) # Client transport uses the app from LifespanManager
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-            yield client, manager.app # Yield client and the app instance from LifespanManager
+            # Yield the original app_instance to the test, not manager.app
+            logger.info(f"CONTEST: Yielding client and ORIGINAL app_instance (id: {id(app_instance)}) to test.")
+            yield client, app_instance 
 
     logger.info("Cleaning up client_app_tuple.")
-    # REMOVED: Cleanup for the global override
-    # if app_get_current_user in app_instance.dependency_overrides: 
-    #     del app_instance.dependency_overrides[app_get_current_user]
 
 @pytest_asyncio.fixture(scope="function")
 async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:

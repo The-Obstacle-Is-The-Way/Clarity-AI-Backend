@@ -108,7 +108,7 @@ class TestAuthentication:
         mock_jwt_service: MagicMock 
     ) -> None:
         """Test that a valid token allows access."""
-        client, app_instance = client_app_tuple
+        client, current_fastapi_app = client_app_tuple
         headers = get_valid_auth_headers
 
         token = headers["Authorization"].replace("Bearer ", "")
@@ -146,16 +146,16 @@ class TestAuthentication:
             return None
         mock_user_repo_for_auth.get_by_id = mock_get_user_by_id_for_auth
 
-        app_instance.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo_for_endpoint
-        app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo_for_auth
+        current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo_for_endpoint
+        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo_for_auth
         
         response = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
         
         # Clean up overrides
-        if get_repository(IPatientRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IPatientRepository)]
-        if get_repository(IUserRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IUserRepository)]
+        if get_repository(IPatientRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)]
+        if get_repository(IUserRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
         assert response.status_code == status.HTTP_200_OK # This might still fail if authz checks Patient.id vs User.id
         assert response.json()["id"] == str(mock_user_id)
@@ -173,7 +173,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         mock_jwt_service: MagicMock 
     ) -> None:
         """Patient with valid token can access their own resource."""
-        client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+        client, current_fastapi_app = client_app_tuple
         headers = get_valid_auth_headers
         
         token = headers["Authorization"].replace("Bearer ", "")
@@ -195,7 +195,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
                 )
             return None
         mock_user_repo.get_by_id = mock_get_user_by_id_from_repo
-        app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
 
         # Mock IPatientRepository for the endpoint's direct use
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
@@ -217,16 +217,16 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
                 )
             return None
         mock_patient_repo.get_by_id = mock_get_patient_record # This service call is specific to the patient endpoint
-        app_instance.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
+        current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
 
 
         response_patient = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
         
         # Clean up
-        if get_repository(IPatientRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IPatientRepository)]
-        if get_repository(IUserRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IUserRepository)]
+        if get_repository(IPatientRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)]
+        if get_repository(IUserRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
         assert response_patient.status_code == status.HTTP_200_OK
         assert response_patient.json().get("id") == str(mock_user_id)
@@ -239,7 +239,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         mock_jwt_service: MagicMock # Added to decode token for user details
     ) -> None:
         """Patient with valid token CANNOT access another patient's resource."""
-        client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+        client, current_fastapi_app = client_app_tuple
         headers = get_valid_auth_headers
 
         # Setup current_user for the authorization check
@@ -261,13 +261,13 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
                 )
             return None
         mock_user_repo.get_by_id = mock_get_user_by_id_from_repo
-        app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
         
         # No IPatientRepository mock needed as auth should fail before DB access for the OTHER_PATIENT_ID
         response = await client.get(f"/api/v1/patients/{OTHER_PATIENT_ID}", headers=headers)
 
-        if get_repository(IUserRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IUserRepository)]
+        if get_repository(IUserRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
             
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -279,7 +279,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         mock_jwt_service: MagicMock # Added
     ) -> None:
         """Provider with valid token CAN access any patient's resource."""
-        client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+        client, current_fastapi_app = client_app_tuple
         headers = get_valid_provider_auth_headers
         
         # Setup provider user for get_current_user
@@ -301,7 +301,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
                 )
             return None
         mock_user_repo.get_by_id = mock_get_user_by_id_from_repo
-        app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
 
         # Mock IPatientRepository for the endpoint
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
@@ -319,14 +319,14 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
                  )
              return None
         mock_patient_repo.get_by_id = mock_get_patient_record
-        app_instance.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
+        current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
 
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         
-        if get_repository(IPatientRepository) in app_instance.dependency_overrides:
-             del app_instance.dependency_overrides[get_repository(IPatientRepository)]
-        if get_repository(IUserRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IUserRepository)]
+        if get_repository(IPatientRepository) in current_fastapi_app.dependency_overrides:
+             del current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)]
+        if get_repository(IUserRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json().get("id") == TEST_PATIENT_ID
@@ -340,7 +340,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         mock_jwt_service: JWTService 
     ) -> None:
         """Test access to endpoints protected by role dependencies."""
-        client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+        client, current_fastapi_app = client_app_tuple
         admin_endpoint = "/api/v1/admin/users" 
 
         # --- Setup mock User Repo for all user types ---
@@ -363,7 +363,7 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
                 )
             return None
         mock_user_repo.get_by_id = universal_mock_get_user_by_id
-        app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
         # --- End User Repo Mock Setup ---
 
         # Test with patient token
@@ -397,8 +397,8 @@ class TestAuthorization: # Removed BaseSecurityTest inheritance
         assert response_admin.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN] # Admin endpoint might not be fully implemented or may have own auth
 
         # Cleanup
-        if get_repository(IUserRepository) in app_instance.dependency_overrides:
-            del app_instance.dependency_overrides[get_repository(IUserRepository)]
+        if get_repository(IUserRepository) in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
 
 # TestRateLimiting class removed previously
@@ -416,7 +416,7 @@ class TestInputValidation:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         """FastAPI should return 422 for missing/invalid fields."""
-        client, _ = client_app_tuple # app_instance not usually needed for pure validation tests unless deps are involved
+        client, _ = client_app_tuple
         headers = get_valid_provider_auth_headers 
         invalid_payload = {"name": {"first_name": "Test", "last_name": "PatientOnly"}}
 
@@ -430,7 +430,7 @@ class TestInputValidation:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         """Test how potentially malicious input is handled (framework/model validation)."""
-        client, _ = client_app_tuple # app_instance not usually needed
+        client, _ = client_app_tuple
         headers = get_valid_provider_auth_headers
         malicious_input = {
             "name": {"first_name": "Valid<script>alert('XSS')</script>", "last_name": "Name"},
@@ -448,7 +448,7 @@ class TestInputValidation:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         """Test Pydantic model length constraints."""
-        client, _ = client_app_tuple # app_instance not usually needed
+        client, _ = client_app_tuple
         headers = get_valid_provider_auth_headers
         long_name = "a" * 100
         payload = {
@@ -469,7 +469,7 @@ class TestSecureHeaders:
     @pytest.mark.asyncio
     async def test_required_security_headers_present(self, client_app_tuple: tuple[AsyncClient, FastAPI]) -> None: 
         """Check for headers like Strict-Transport-Security, X-Content-Type-Options etc."""
-        client, _ = client_app_tuple # app_instance likely not needed
+        client, _ = client_app_tuple
         response = await client.get("/api/v1/health") 
         assert response.status_code == status.HTTP_200_OK
         assert "strict-transport-security" in response.headers
@@ -481,8 +481,8 @@ class TestSecureHeaders:
     @pytest.mark.asyncio
     async def test_cors_headers_configuration(self, client_app_tuple: tuple[AsyncClient, FastAPI]) -> None: 
         """Verify CORS headers for allowed origins."""
-        client, app_instance = client_app_tuple # Corrected: Unpack app_instance
-        settings = app_instance.state.settings # Use app_instance for state
+        client, current_fastapi_app = client_app_tuple
+        settings = current_fastapi_app.state.settings
         allowed_origin = settings.BACKEND_CORS_ORIGINS[0] if settings.BACKEND_CORS_ORIGINS else "http://testallowed.com"
 
         headers = {"Origin": allowed_origin}
@@ -506,10 +506,10 @@ class TestErrorHandling:
     async def test_not_found_error_generic(
         self,
         client_app_tuple: tuple[AsyncClient, FastAPI], 
-        get_valid_provider_auth_headers: dict[str, str] # Provider to ensure some level of auth for route attempt
+        get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         """Test that 404 errors return a generic message."""
-        client, _ = client_app_tuple # app_instance not needed for this
+        client, _ = client_app_tuple
         headers = get_valid_provider_auth_headers 
         response = await client.get("/api/v1/non_existent_endpoint/123", headers=headers)
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -523,33 +523,28 @@ class TestErrorHandling:
         get_valid_provider_auth_headers: dict[str, str],
     ) -> None:
         """Test that unexpected errors result in a generic 500 response."""
-        client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+        client, current_fastapi_app = client_app_tuple
         headers = get_valid_provider_auth_headers
 
-        target_repo_interface = IPatientRepository # Example, could be any repo
-        original_repo_dep = app_instance.dependency_overrides.get(get_repository(target_repo_interface))
+        target_repo_interface = IPatientRepository
+        original_repo_dep = current_fastapi_app.dependency_overrides.get(get_repository(target_repo_interface))
 
         mock_repo_instance = AsyncMock(spec=target_repo_interface)
         mock_repo_instance.get_by_id.side_effect = Exception("Simulated unexpected internal error")
-        # Override the dependency for the app instance used in this test
-        app_instance.dependency_overrides[get_repository(target_repo_interface)] = lambda: mock_repo_instance
+        current_fastapi_app.dependency_overrides[get_repository(target_repo_interface)] = lambda: mock_repo_instance
 
         try:
-            # Make a request to an endpoint that uses the mocked repository
-            # Assuming /api/v1/patients/{id} uses IPatientRepository.get_by_id
             response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
             assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
             response_json = response.json()
             assert "detail" in response_json
-            # Standard FastAPI 500 error does not leak internal error messages by default
             assert "Internal server error" in response_json["detail"] 
             assert "Simulated unexpected internal error" not in response_json["detail"]
         finally:
-            # Clean up the override
             if original_repo_dep:
-                 app_instance.dependency_overrides[get_repository(target_repo_interface)] = original_repo_dep
-            elif get_repository(target_repo_interface) in app_instance.dependency_overrides:
-                 del app_instance.dependency_overrides[get_repository(target_repo_interface)]
+                 current_fastapi_app.dependency_overrides[get_repository(target_repo_interface)] = original_repo_dep
+            elif get_repository(target_repo_interface) in current_fastapi_app.dependency_overrides:
+                 del current_fastapi_app.dependency_overrides[get_repository(target_repo_interface)]
 
 # --- Standalone Tests (Potentially move to specific endpoint test files) ---
 
@@ -557,10 +552,10 @@ class TestErrorHandling:
 async def test_access_patient_phi_data_success_provider(
     client_app_tuple: tuple[AsyncClient, FastAPI], 
     get_valid_provider_auth_headers: dict[str, str],
-    mock_jwt_service: MagicMock # Added
+    mock_jwt_service: MagicMock
 ) -> None:
     """Provider successfully retrieves patient data (mocked repo)."""
-    client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+    client, current_fastapi_app = client_app_tuple
     headers = get_valid_provider_auth_headers 
 
     # Setup provider user for get_current_user
@@ -582,7 +577,7 @@ async def test_access_patient_phi_data_success_provider(
             )
         return None
     mock_user_repo.get_by_id = mock_get_user_by_id_from_repo
-    app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+    current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
 
     # Mock IPatientRepository for the endpoint
     mock_patient_repo = AsyncMock(spec=IPatientRepository)
@@ -596,26 +591,26 @@ async def test_access_patient_phi_data_success_provider(
         contact_info={"email": "phi@test.com", "phone":"555-1212"}
     )
     mock_patient_repo.get_by_id = AsyncMock(return_value=mock_patient_domain_entity) 
-    app_instance.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
+    current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
 
     response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["id"] == TEST_PATIENT_ID
-    mock_patient_repo.get_by_id.assert_awaited_once_with(patient_to_access_id) # Check with the UUID object
+    mock_patient_repo.get_by_id.assert_awaited_once_with(patient_to_access_id)
 
-    del app_instance.dependency_overrides[get_repository(IPatientRepository)]
-    del app_instance.dependency_overrides[get_repository(IUserRepository)]
+    del current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)]
+    del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
 
 @pytest.mark.asyncio
 async def test_access_patient_phi_data_unauthorized_patient(
     client_app_tuple: tuple[AsyncClient, FastAPI], 
-    get_valid_auth_headers: dict[str, str], # Patient headers
-    mock_jwt_service: MagicMock # Added
+    get_valid_auth_headers: dict[str, str],
+    mock_jwt_service: MagicMock
 ) -> None:
     """Patient attempts to access another patient's data and fails (403)."""
-    client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+    client, current_fastapi_app = client_app_tuple
     headers = get_valid_auth_headers 
 
     # Setup current_user (patient) for the authorization check
@@ -637,21 +632,21 @@ async def test_access_patient_phi_data_unauthorized_patient(
             )
         return None
     mock_user_repo.get_by_id = mock_get_user_by_id_from_repo
-    app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+    current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
     
     response = await client.get(f"/api/v1/patients/{OTHER_PATIENT_ID}", headers=headers)
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    del app_instance.dependency_overrides[get_repository(IUserRepository)]
+    del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
 @pytest.mark.asyncio
 async def test_access_patient_phi_data_patient_not_found(
     client_app_tuple: tuple[AsyncClient, FastAPI], 
     get_valid_provider_auth_headers: dict[str, str],
-    mock_jwt_service: MagicMock # Added
+    mock_jwt_service: MagicMock
 ) -> None:
     """Accessing a non-existent patient returns 404."""
-    client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+    client, current_fastapi_app = client_app_tuple
     headers = get_valid_provider_auth_headers
 
     # Setup provider user for get_current_user
@@ -673,21 +668,21 @@ async def test_access_patient_phi_data_patient_not_found(
             )
         return None
     mock_user_repo.get_by_id = mock_get_user_by_id_from_repo
-    app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
+    current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo
 
     # Mock IPatientRepository for the endpoint to return None
     mock_patient_repo = AsyncMock(spec=IPatientRepository)
     patient_to_lookup_id = uuid.UUID(TEST_PATIENT_ID) # ID that won't be found
     mock_patient_repo.get_by_id = AsyncMock(return_value=None) 
-    app_instance.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
+    current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo
 
     response = await client.get(f"/api/v1/patients/{patient_to_lookup_id}", headers=headers)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     mock_patient_repo.get_by_id.assert_awaited_once_with(patient_to_lookup_id)
 
-    del app_instance.dependency_overrides[get_repository(IPatientRepository)]
-    del app_instance.dependency_overrides[get_repository(IUserRepository)]
+    del current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)]
+    del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
 
 
 @pytest.mark.asyncio
@@ -697,7 +692,7 @@ async def test_authenticated_but_unknown_role(
     mock_jwt_service: MagicMock 
 ) -> None:
     """Test scenario where token is valid but has an unrecognized role."""
-    client, app_instance = client_app_tuple # Corrected: Unpack app_instance
+    client, current_fastapi_app = client_app_tuple
     
     unknown_role_user_sub = str(uuid.uuid4())
     unknown_role_user_data = {
@@ -709,10 +704,9 @@ async def test_authenticated_but_unknown_role(
     unknown_role_token = mock_jwt_service.create_access_token(data=unknown_role_user_data)
     headers = {"Authorization": f"Bearer {unknown_role_token}"}
 
-    # Mock IUserRepository for get_current_user
     mock_user_repo_for_unknown_role = AsyncMock(spec=IUserRepository)
     async def mock_get_user_for_unknown_role(user_id_from_token: uuid.UUID, session = None) -> User | None:
-        if str(user_id_from_token) == unknown_role_user_sub: # Compare as strings or ensure UUID objects
+        if str(user_id_from_token) == unknown_role_user_sub:
             return User(
                 id=user_id_from_token, 
                 email=unknown_role_user_data["email"], 
@@ -725,20 +719,15 @@ async def test_authenticated_but_unknown_role(
         return None
     mock_user_repo_for_unknown_role.get_by_id = mock_get_user_for_unknown_role
     
-    # Temporarily override get_current_user itself for this specific nuanced case
-    # OR rely on IUserRepository mock if get_current_user uses it as expected.
-    # For this test, we are testing how get_current_user + RoleChecker handles an unknown role
-    # So, we need get_current_user to successfully return a User object with this strange role.
-    
-    original_user_repo_override = app_instance.dependency_overrides.get(get_repository(IUserRepository))
-    app_instance.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo_for_unknown_role
+    original_user_repo_override = current_fastapi_app.dependency_overrides.get(get_repository(IUserRepository))
+    current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo_for_unknown_role
     
     response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN # RoleChecker should deny
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
     # Cleanup
     if original_user_repo_override:
-        app_instance.dependency_overrides[get_repository(IUserRepository)] = original_user_repo_override
+        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = original_user_repo_override
     else:
-        del app_instance.dependency_overrides[get_repository(IUserRepository)] 
+        del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] 
