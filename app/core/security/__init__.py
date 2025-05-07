@@ -11,8 +11,10 @@ from typing import Any, Dict, List, Optional, Union
 
 from fastapi import HTTPException, Request, status
 
-# Import middleware components
-from app.core.security.middleware import AuthenticationMiddleware
+# AuthenticationMiddleware has been moved to app.presentation.middleware.authentication
+# Do not import it here from app.core.security.middleware anymore.
+# from app.core.security.middleware import AuthenticationMiddleware 
+
 from app.core.security.rate_limiting import (
     RateLimitConfig,
     RateLimitStrategy,
@@ -125,7 +127,7 @@ def verify_output_sanitization(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 __all__ = [
-    "AuthenticationMiddleware",
+    # "AuthenticationMiddleware", # Removed, as it has moved
     "PHIMiddleware",
     "RateLimitConfig",
     "RateLimitStrategy",

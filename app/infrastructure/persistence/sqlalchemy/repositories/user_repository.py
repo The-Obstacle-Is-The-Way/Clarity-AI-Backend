@@ -12,7 +12,7 @@ import logging
 import uuid
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.future import select
 
 # Domain imports
@@ -37,15 +37,14 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
     interface for domain entities while abstracting the persistence details.
     """
     
-    def __init__(self, db_session: AsyncSession):
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         """
-        Initialize the UserRepository with a SQLAlchemy session.
+        Initialize the UserRepository with a SQLAlchemy session factory.
         
         Args:
-            db_session: The SQLAlchemy async session to use for database operations
+            session_factory: The SQLAlchemy async session factory to create sessions.
         """
-        self._db_session = db_session
-        # Implement these methods to make the interface concrete
+        self._session_factory = session_factory
         self._mapper = UserMapper()
     
     async def create(self, user: DomainUser) -> DomainUser:
@@ -62,6 +61,34 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             SQLAlchemyError: If there's an error during database operations
             IntegrityError: If there's a constraint violation (e.g., duplicate username or email)
         """
+        async with self._session_factory() as session:
+            try:
+                user_model = UserMapper.to_persistence(user)
+                if not user_model.created_at:
+                    user_model.created_at = now_utc()
+                user_model.updated_at = now_utc()
+                
+                session.add(user_model)
+                await session.flush()
+                await session.refresh(user_model)
+                return UserMapper.to_domain(user_model)
+            except IntegrityError as e:
+                logger.error(f"Integrity error when creating user: {e}")
+                await session.rollback()
+                raise
+            except SQLAlchemyError as e:
+                logger.error(f"Database error when creating user: {e}")
+                await session.rollback()
+                raise
+    
+    async def get_by_id(self, user_id: str | uuid.UUID) -> DomainUser | None:
+        """
+        Retrieve a user by their ID.
+        
+        Args:
+            user_id: The ID of the user to retrieve
+            
+        Returns:
         try:
             # Convert domain entity to model using the mapper
             user_model = UserMapper.to_persistence(user)
