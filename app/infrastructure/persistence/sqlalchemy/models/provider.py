@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Any
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, JSON, UUID as SQLAlchemyUUID
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, JSON, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
@@ -33,8 +33,8 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "providers"
 
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey('users.id'), unique=True, nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), unique=True, nullable=False, index=True)
     specialty = Column(String(100), nullable=False)
     license_number = Column(String(100), nullable=False)
     npi_number = Column(String(20), nullable=True)
@@ -47,12 +47,11 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
     )
 
-    # Relationship with User model - Explicit foreign_keys
+    # Relationship with User model - Simplified + Explicit FK
     user = relationship(
         "User", 
         back_populates="provider",
-        uselist=False,  # A provider belongs to a single user
-        foreign_keys=[user_id]
+        uselist=False  # A provider belongs to a single user
     )
     
     # Define all required relationships to ensure proper SQLAlchemy mapping

@@ -12,7 +12,7 @@ import uuid
 from typing import Any
 
 from dateutil import parser
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON, UUID as SQLAlchemyUUID
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
@@ -21,7 +21,6 @@ from app.core.domain.entities.patient import Patient as DomainPatient
 from app.domain.utils.datetime_utils import UTC, now_utc
 from app.domain.value_objects.emergency_contact import EmergencyContact  # Import EmergencyContact
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
-from app.infrastructure.persistence.sqlalchemy.types import GUID
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 
 # Break circular import by using string reference to User model
@@ -49,13 +48,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
     __table_args__ = {'extend_existing': True}
     
     # --- Core Identification and Metadata ---
-    # Store UUIDs as String(36) for SQLite compatibility
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    # external_id could be from an EMR or other system
+    # MODIFIED: Use standard sqlalchemy.UUID
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     external_id = Column(String(64), unique=True, index=True, nullable=True)
-    # Foreign key to the associated user account (if applicable)
-    # Use string reference "users.id"
-    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True, index=True)
+    # MODIFIED: Use standard sqlalchemy.UUID
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True, index=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)

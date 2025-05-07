@@ -23,7 +23,7 @@ from sqlalchemy.dialects import sqlite
 # Application-specific Imports
 from app.app_factory import create_application
 from app.application.security.jwt_service import JWTService
-from app.core.config import Settings
+from app.core.config import settings, Settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface

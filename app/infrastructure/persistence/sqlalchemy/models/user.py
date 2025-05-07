@@ -18,9 +18,9 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func, UUID as SQLAlchemyUUID
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func, UUID
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship, declared_attr, foreign
+from sqlalchemy.orm import relationship, declared_attr
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -32,6 +32,15 @@ from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 
 logger = logging.getLogger(__name__)
 
+# --- Define PK Column Separately --- 
+user_id_column = Column(
+    UUID(as_uuid=True),
+    primary_key=True, 
+    index=True,
+    nullable=False,
+    default=uuid.uuid4,
+    comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
+)
 
 class JSONType(TypeDecorator):
     """
@@ -69,30 +78,6 @@ class JSONType(TypeDecorator):
             return None
             
 
-# Simplified, robust UUID type implementation for SQLAlchemy 
-class UUIDType(TypeDecorator):
-    """
-    Platform-independent UUID type that works consistently across databases.
-    
-    This implementation prioritizes stability and correct mapping over flexibility.
-    """
-    impl = String(36)
-    cache_ok = True
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        return str(value)
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        try:
-            return uuid.UUID(value) if isinstance(value, str) else value
-        except (ValueError, TypeError):
-            return value
-
-
 class UserRole(enum.Enum):
     """Enum representing possible user roles in the system."""
     ADMIN = "admin"
@@ -123,18 +108,11 @@ class User(Base, TimestampMixin, AuditMixin):
         # Ensure __table_args__ is a tuple, even with one item
         # (models.UniqueConstraint('username', name='uq_user_username'),)
         # Add other table-level constraints or indexes here if needed
-        {'extend_existing': True} # Allows redefinition in tests, important for our setup
+        # No extend_existing here anymore
     )
     
     # --- Core Identification and Metadata ---
-    id = Column(
-        SQLAlchemyUUID(as_uuid=True),
-        primary_key=True, 
-        index=True,
-        nullable=False,
-        default=uuid.uuid4,
-        comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
-    )
+    id = user_id_column 
     username = Column(String(64), unique=True, nullable=False, comment="Username for login")
     email = Column(String(255), unique=True, nullable=False, index=True, comment="Email address for user contact")
     first_name = Column(String(100), nullable=True, comment="User's first name")
@@ -157,30 +135,31 @@ class User(Base, TimestampMixin, AuditMixin):
     last_login = Column(DateTime, nullable=True, comment="When user last logged in")
     failed_login_attempts = Column(Integer, default=0, nullable=False, comment="Number of consecutive failed login attempts")
     account_locked_until = Column(DateTime, nullable=True, comment="When account lockout expires")
-    password_changed_at = Column(DateTime, default=now_utc, nullable=False, comment="When password was last changed")
     reset_token = Column(String(255), nullable=True, comment="Password reset token")
     reset_token_expires_at = Column(DateTime, nullable=True, comment="When reset token expires")
     verification_token = Column(String(255), nullable=True, comment="Account verification token")
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
     preferences = Column(JSON, nullable=True, comment="User UI and system preferences")  
-    access_logs = Column(JSON, nullable=True)  # Stores recent access logs
 
-    # --- Relationships --- 
-    # Simplest possible provider relationship
+    # Explicitly define primary key for the mapper using the column object
+    __mapper_args__ = {
+        'primary_key': [user_id_column]
+    }
+
+    # --- Relationships (Simplified Again) --- 
+    # Revert provider to simple state
     provider = relationship(
         "ProviderModel", 
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan"
-        # Removed explicit primaryjoin and foreign_keys
+        # Removed viewonly=True and foreign_keys string
     )
     
-    # Simplest possible patients relationship
     patients = relationship(
         "Patient", 
         back_populates="user",
         cascade="all, delete-orphan"
-        # Removed explicit primaryjoin and foreign_keys
     )
     
     # Relationship to AnalyticsEventModel 
@@ -215,9 +194,16 @@ class User(Base, TimestampMixin, AuditMixin):
             return False
         return self.account_locked_until > now_utc()
     
+    def password_needs_change(self, max_days: int = 90) -> bool:
+        """Check if password needs to be changed based on age."""
+        if not hasattr(self, 'password_changed_at') or not self.password_changed_at: # Check if attribute exists
+            return True
+        password_age = now_utc() - self.password_changed_at
+        return password_age.days > max_days
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert user to dictionary representation suitable for API responses."""
-        return {
+        data = {
             "id": str(self.id),
             "username": self.username,
             "email": self.email,
@@ -225,13 +211,16 @@ class User(Base, TimestampMixin, AuditMixin):
             "is_verified": self.is_verified,
             "role": self.role.value if self.role else None,
             "roles": self.roles if isinstance(self.roles, list) else [],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
             "first_name": self.first_name,
             "last_name": self.last_name,
             "phone_number": self.phone_number
         }
+        if hasattr(self, 'created_at') and self.created_at:
+            data['created_at'] = self.created_at.isoformat()
+        if hasattr(self, 'updated_at') and self.updated_at:
+            data['updated_at'] = self.updated_at.isoformat()
+        return data
     
     def increment_failed_login(self) -> None:
         """Increment failed login counter and maybe lock account."""
@@ -275,10 +264,3 @@ class User(Base, TimestampMixin, AuditMixin):
         """Clear password reset token after use."""
         self.reset_token = None
         self.reset_token_expires_at = None
-    
-    def password_needs_change(self, max_days: int = 90) -> bool:
-        """Check if password needs to be changed based on age."""
-        if not self.password_changed_at:
-            return True
-        password_age = now_utc() - self.password_changed_at
-        return password_age.days > max_days
