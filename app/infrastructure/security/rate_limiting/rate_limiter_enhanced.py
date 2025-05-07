@@ -14,8 +14,10 @@ from unittest.mock import AsyncMock
 
 import redis
 from pydantic import BaseModel
+from slowapi.util import get_remote_address
 
-from app.config.settings import get_settings
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 
 settings = get_settings()
 

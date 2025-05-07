@@ -10,10 +10,15 @@ from typing import Annotated, TypeVar
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.infrastructure.database.session import get_async_session
 from app.infrastructure.di.provider import get_repository_instance
+
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
+from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_instance
 
 # Generic type for repository interfaces
 T = TypeVar('T', bound=BaseRepositoryInterface)

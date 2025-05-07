@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 from app.core.domain.entities.user import User
 from app.core.utils.logging import get_logger
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
@@ -19,6 +19,7 @@ from app.presentation.api.dependencies.auth import (
     get_optional_user,
 )
 from app.presentation.api.dependencies.auth_service import get_auth_service
+from app.core.domain.dto.auth import TokenRefreshRequest, UserLoginRequest
 
 # Initialize router
 router = APIRouter()

@@ -18,7 +18,7 @@ from app.core.interfaces.services.audit_logger_interface import IAuditLogger, Au
 
 # Corrected import path
 # from app.config.settings import settings # Keep only get_settings
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 
 # Load settings once
 settings = get_settings()
@@ -32,6 +32,9 @@ except (ImportError, AttributeError):
     AUDIT_ENABLED = True
     AUDIT_LOG_DIR = os.path.join(tempfile.gettempdir(), "novamind_audit")
 
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.domain.entities.user import User, UserRole
 
 class AuditLogger(IAuditLogger):
     """

@@ -6,11 +6,11 @@ This module implements the MentaLLaMA service interface.
 
 import json
 import uuid
-from typing import Any
+from typing import Any, AsyncGenerator, List, Optional, Union, cast
 
 import requests
 
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 from app.core.patterns.observer import Subject  # Corrected import path for Subject
 
 # Removed incorrect import of domain service: from app.domain.services.mentallama_service import MentaLLaMAService

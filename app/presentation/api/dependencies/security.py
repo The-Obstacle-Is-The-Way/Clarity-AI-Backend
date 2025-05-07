@@ -9,9 +9,16 @@ import logging
 from typing import Annotated
 
 from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 
 # Import the concrete implementation from the infrastructure layer
 from app.infrastructure.security.password.password_handler import PasswordHandler
+
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
+from app.domain.entities.user import User
+from app.domain.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
 

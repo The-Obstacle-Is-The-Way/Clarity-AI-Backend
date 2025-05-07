@@ -12,9 +12,10 @@ from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import FallbackAsyncAdaptedQueuePool, NullPool
+from sqlalchemy.orm import sessionmaker
 
-# Use canonical config path
-from app.config.settings import Settings, get_settings
+# from app.config.settings import Settings, get_settings # Legacy import
+from app.core.config.settings import Settings, get_settings # Corrected import
 from app.core.utils.logging import get_logger
 from app.infrastructure.persistence.sqlalchemy.config.base import Base
 

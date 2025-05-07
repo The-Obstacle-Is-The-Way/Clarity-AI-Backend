@@ -15,7 +15,7 @@ from jose import JWTError, jwt
 from pydantic import ValidationError
 
 # Import settings for JWT configuration
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 
 # Configure logger
 logger = logging.getLogger(__name__)

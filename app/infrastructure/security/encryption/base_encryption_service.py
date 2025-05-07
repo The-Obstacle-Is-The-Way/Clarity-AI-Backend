@@ -12,10 +12,10 @@ from typing import Any
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from pydantic import SecretStr
 
-# Use canonical config import
-# from app.core.config import get_settings
-from app.config.settings import get_settings
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 
 # Configure logger
 logger = logging.getLogger(__name__)

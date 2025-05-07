@@ -11,7 +11,8 @@ from typing import Any
 from uuid import UUID
 
 # Use canonical config path
-from app.config.settings import get_settings
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 from app.domain.interfaces.ml_services import SymptomForecastingService
 from app.infrastructure.ml.symptom_forecasting.ensemble_model import (
     SymptomEnsembleModel,

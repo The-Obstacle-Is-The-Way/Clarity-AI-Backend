@@ -37,10 +37,11 @@ except ModuleNotFoundError:  # pragma: no cover - only in test env
         "ip": get_remote_address,
     }
 
-from app.config.settings import Settings
+from app.core.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
+settings = Settings()  # Global settings instance
 
 class RateLimiter:
     """

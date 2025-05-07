@@ -9,9 +9,10 @@ import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-
-# Use canonical config path
-from app.config.settings import get_settings
+import numpy as np
+import pandas as pd
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 from app.domain.interfaces.ml_services import BiometricCorrelationService
 from app.infrastructure.ml.biometric_correlation.lstm_model import BiometricLSTMModel
 from app.infrastructure.ml.utils.preprocessing import preprocess_biometric_data

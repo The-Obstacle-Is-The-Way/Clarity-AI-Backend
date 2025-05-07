@@ -20,13 +20,16 @@ import os
 import uuid
 from datetime import timezone
 from typing import Any
+from sqlalchemy.orm import Session
 
-# Use canonical config import
-from app.config.settings import get_settings
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 
 # REMOVED: settings = get_settings() - Defer loading
 logger = logging.getLogger(__name__) # Use standard logger
 
+# from app.core.domain.entities.audit_log import AuditLogEntry # Incorrect import
+from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog as AuditLogEntry # Corrected import
 
 class AuditLogger:
     """

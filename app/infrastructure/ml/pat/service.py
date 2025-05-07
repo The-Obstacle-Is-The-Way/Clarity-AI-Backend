@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 import tensorflow as tf
 
-from app.config.settings import get_settings  # Import main settings function
+from app.core.config.settings import get_settings  # Import main settings function
 
 # import sagemaker # Removed unused import
 # from sagemaker.predictor import Predictor # Removed unused import
@@ -27,6 +27,8 @@ from app.core.exceptions import (
     ModelNotFoundError,
     ValidationError,  # Replaced DataPreprocessingError
 )
+from app.core.domain.entities.actigraphy_analysis import ActigraphyAnalysis
+from app.core.domain.entities.patient import Patient
 
 logger = logging.getLogger(__name__)
 

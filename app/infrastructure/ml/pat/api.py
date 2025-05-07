@@ -11,7 +11,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 from app.core.auth.jwt_handler import verify_jwt_token
 from app.infrastructure.ml.pat.models import (
     AccelerometerDataRequest,
@@ -21,6 +21,7 @@ from app.infrastructure.ml.pat.models import (
     PATModelSizeEnum,
 )
 from app.infrastructure.ml.pat.service import AnalysisType, PATService
+from app.core.services.ml.pat.pat_service_abc import PATServiceABC
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()

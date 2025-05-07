@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from jose import ExpiredSignatureError, JWTError, jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.entities.user import User
@@ -21,7 +21,7 @@ try:
     from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 except ImportError:
     IUserRepository = Any
-from app.config.settings import Settings
+from app.core.config.settings import Settings
 
 # Import necessary exceptions from domain layer
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
@@ -413,7 +413,7 @@ def get_jwt_service() -> IJwtService:
         An instance of IJwtService
     """
     # Import get_settings here to avoid circular imports at module level if any
-    from app.config.settings import get_settings
+    from app.core.config.settings import get_settings
     settings = get_settings()
     
     # user_repository can be None if get_user_from_token is not strictly needed by all callers

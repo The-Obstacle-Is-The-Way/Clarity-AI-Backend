@@ -72,8 +72,13 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
     # annotations like `aioredis.Redis` continue to resolve.
     aioredis.Redis = _InMemoryRedisShim  # type: ignore
 
-from app.application.interfaces.services.cache_service import CacheService
-from app.config.settings import get_settings
+from redis import asyncio as aioredis
+from redis.exceptions import RedisError
+
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
+
+from app.core.interfaces.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
 

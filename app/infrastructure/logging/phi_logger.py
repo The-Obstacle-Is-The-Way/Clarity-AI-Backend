@@ -6,17 +6,19 @@ ensuring HIPAA compliance by automatically sanitizing sensitive data.
 """
 
 import logging
-import os
+import sys
 from typing import Any
 
-from app.config.settings import get_settings
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 
-settings = get_settings()
+settings = get_settings() # Restore to original position
+
 from app.infrastructure.security.phi.log_sanitizer import (  # Import LogSanitizer and LogSanitizerConfig
     LogSanitizerConfig,
     PHIFormatter,
 )
-
+from .audit_logger import AuditLogger # Restore to original position
 
 class PHILogger:
     """

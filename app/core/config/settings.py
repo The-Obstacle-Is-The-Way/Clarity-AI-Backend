@@ -140,17 +140,25 @@ def get_settings() -> Settings:
             test_db_url = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
         
         logger.info(f"Running in TEST environment, using DB: {test_db_url}")
-        test_settings = Settings(
-            TESTING=True, 
-            ENVIRONMENT="test", # Explicitly set environment for tests
-            DATABASE_URL=test_db_url,
-            ASYNC_DATABASE_URL=test_db_url,  # Ensure async URL is set correctly
-            SENTRY_DSN=None
-        )
-        return test_settings
+        
+        # Modify the global settings instance for tests
+        global settings
+        settings.TESTING = True
+        settings.ENVIRONMENT = "test"
+        settings.DATABASE_URL = test_db_url
+        settings.ASYNC_DATABASE_URL = test_db_url
+        settings.SENTRY_DSN = None
+        # Ensure JWT_SECRET_KEY is set for tests, even if default_factory had issues
+        if not hasattr(settings, 'JWT_SECRET_KEY') or not settings.JWT_SECRET_KEY:
+            settings.JWT_SECRET_KEY = "test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz"
+            logger.warning("JWT_SECRET_KEY was not set for test environment, fallback applied.")
+            
+        return settings # Return the modified global instance
     
     # For non-test environments, ensure we have an async version of the database URL
-    current_settings = settings
+    # This part will now operate on the potentially already modified global settings if in test mode,
+    # or the original global settings if not in test mode.
+    current_settings = settings 
     
     # If ASYNC_DATABASE_URL isn't explicitly set, derive it from DATABASE_URL
     if not current_settings.ASYNC_DATABASE_URL:

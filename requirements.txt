@@ -1,5 +1,5 @@
 fastapi==0.111.1 # Core web framework
-uvicorn[standard]==0.30.1 # ASGI server
+uvicorn[standard]==0.23.2 # ASGI server
 sqlalchemy[asyncio]==2.0.31 # ORM
 aiosqlite==0.20.0 # Async SQLite driver
 psycopg[binary]==3.1.18 # PostgreSQL driver compatible with Python <3.10
@@ -63,4 +63,13 @@ tensorflow
 # uuid is in Python stdlib; remove external backport to avoid conflicts
 
 # ADDED: Sentry SDK
-sentry-sdk[fastapi]==2.7.1 
+sentry-sdk[fastapi]==2.7.1
+
+# ADDED: watchfiles
+watchfiles==0.18.1
+
+# ADDED: websockets
+websockets==11.0.3
+
+# ADDED: zxcvbn
+zxcvbn==1.0 

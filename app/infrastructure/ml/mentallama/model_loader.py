@@ -12,9 +12,12 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+import logging
+from huggingface_hub import snapshot_download
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Use canonical config path
-from app.config.settings import get_settings
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 
 settings = get_settings()
 from app.core.exceptions.ml_exceptions import MentalLLaMAInferenceError, ModelLoadingError

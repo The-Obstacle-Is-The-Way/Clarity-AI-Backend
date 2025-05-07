@@ -10,8 +10,10 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError
 
-# Correct service/factory imports
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings # Corrected import
 from app.core.domain.entities.user import User, UserRole
 from app.core.errors.security_exceptions import InvalidCredentialsError
 from app.core.interfaces.repositories.user_repository_interface import (
@@ -25,6 +27,7 @@ from app.infrastructure.database.session import get_async_session
 from app.infrastructure.repositories.user_repository import get_user_repository
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service
+from app.core.domain.exceptions import AuthenticationError, AuthorizationError
 
 # --- Type Hinting for Dependencies --- #
 

@@ -13,10 +13,12 @@ import secrets
 import string
 
 from passlib.context import CryptContext
+from passlib.hash import bcrypt
+from zxcvbn import zxcvbn
 
 # Use canonical config import
 # from app.core.config import get_settings
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 
 # Initialize logger
 # logger = get_logger(__name__) # Use the standard logger function

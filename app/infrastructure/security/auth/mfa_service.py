@@ -28,7 +28,7 @@ from io import BytesIO
 # ---------------------------------------------------------------------------
 # Configuration utilities
 # ---------------------------------------------------------------------------
-from app.config.settings import get_settings
+from app.core.config.settings import get_settings
 
 # Expose a *module‑level* "settings" attribute so that legacy tests can patch
 # it directly via ``patch('app.infrastructure.security.auth.mfa_service.settings', ...)``.
