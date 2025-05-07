@@ -296,7 +296,7 @@ def mock_auth_service() -> MagicMock:
         user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         roles=[UserRole.PATIENT.value]
     )
-    service.refresh_token = AsyncMock(return_value=mock_refresh_success_return)
+    service.refresh_access_token = AsyncMock(return_value=mock_refresh_success_return)
 
     # Mock register user behavior
     mock_register_success_return = UserRegistrationResponseSchema(

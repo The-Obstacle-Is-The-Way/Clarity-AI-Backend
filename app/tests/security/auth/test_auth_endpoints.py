@@ -136,8 +136,8 @@ async def test_refresh_token_success(
 ) -> None:
     """Test successful token refresh using async client."""
     client, _ = client_app_tuple
-    mock_auth_service.refresh_token.side_effect = None # Use refresh_token
-    mock_auth_service.refresh_token.return_value = TokenResponseSchema(
+    mock_auth_service.refresh_access_token.side_effect = None # Use refresh_access_token
+    mock_auth_service.refresh_access_token.return_value = TokenResponseSchema(
         access_token="mock_new_access_token_789",
         refresh_token="mock_refresh_token_456",
         token_type="bearer",
@@ -161,7 +161,7 @@ async def test_refresh_token_success(
     assert "expires_in" in data
     
     # Verify the mock was called correctly
-    mock_auth_service.refresh_token.assert_called_once_with( # Use refresh_token
+    mock_auth_service.refresh_access_token.assert_called_once_with( # Use refresh_access_token
         refresh_token_str="mock_refresh_token_for_user123"
     )
     
@@ -183,7 +183,7 @@ async def test_refresh_token_invalid(
     }
     
     # Configure mock to raise InvalidTokenException for this test
-    mock_auth_service.refresh_token.side_effect = InvalidTokenException("Invalid or expired refresh token") # Use refresh_token
+    mock_auth_service.refresh_access_token.side_effect = InvalidTokenException("Invalid or expired refresh token") # Use refresh_access_token
 
     # Act
     response = await client.post("/api/v1/auth/refresh", json=refresh_data)
@@ -195,7 +195,7 @@ async def test_refresh_token_invalid(
     assert data["detail"] == "Invalid or expired refresh token"
     
     # Verify the mock was called correctly
-    mock_auth_service.refresh_token.assert_called_once_with(refresh_token_str="invalid_token") # Use refresh_token
+    mock_auth_service.refresh_access_token.assert_called_once_with(refresh_token_str="invalid_token") # Use refresh_access_token
     
     # Correctly assert no cookies for failure cases
     assert "access_token" not in response.cookies

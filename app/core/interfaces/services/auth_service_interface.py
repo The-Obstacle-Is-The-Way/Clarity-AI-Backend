@@ -9,6 +9,9 @@ and dependency inversion.
 from abc import ABC, abstractmethod
 
 from app.core.domain.entities.user import User
+# Import Pydantic Schemas for type hinting in the interface
+from app.presentation.api.schemas.auth import TokenResponseSchema, UserRegistrationResponseSchema, SessionInfoResponseSchema
+from fastapi import Response # For logout method
 
 
 class AuthServiceInterface(ABC):
@@ -138,5 +141,68 @@ class AuthServiceInterface(ABC):
         
         Returns:
             The generated MFA secret
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def login(self, username: str, password: str, remember_me: bool) -> TokenResponseSchema:
+        """
+        Authenticate a user and return access and refresh tokens.
+
+        Args:
+            username: User's email address.
+            password: User's password.
+            remember_me: Whether to issue a long-lived refresh token.
+
+        Returns:
+            TokenResponseSchema containing token information.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def refresh_access_token(self, refresh_token_str: str) -> TokenResponseSchema:
+        """
+        Refresh an access token using a valid refresh token.
+
+        Args:
+            refresh_token_str: The refresh token string.
+
+        Returns:
+            TokenResponseSchema containing new token information.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def register_user(self, email: str, password: str, full_name: str | None) -> UserRegistrationResponseSchema:
+        """
+        Register a new user.
+
+        Args:
+            email: User's email.
+            password: User's password.
+            full_name: User's full name (optional).
+
+        Returns:
+            UserRegistrationResponseSchema containing the new user's details.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def logout(self, response: Response) -> None:
+        """
+        Log out the current user, potentially invalidating tokens or clearing cookies.
+
+        Args:
+            response: The FastAPI Response object to manage cookies if necessary.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_current_session_info(self) -> SessionInfoResponseSchema:
+        """
+        Get information about the current user's session.
+
+        Returns:
+            SessionInfoResponseSchema containing session details.
         """
         raise NotImplementedError
