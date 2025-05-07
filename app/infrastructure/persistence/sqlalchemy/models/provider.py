@@ -9,11 +9,11 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Any
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, JSON, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.models.user import User
 
 # Type-checking only imports to avoid circular imports
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from app.domain.entities.provider import Provider as DomainProvider
 
 
-class ProviderModel(Base):
+class ProviderModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for the Provider entity.
 
@@ -31,8 +31,8 @@ class ProviderModel(Base):
 
     __tablename__ = "providers"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id"), nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True)
     specialty = Column(String(100), nullable=False)
     license_number = Column(String(100), nullable=False)
     npi_number = Column(String(20), nullable=True)

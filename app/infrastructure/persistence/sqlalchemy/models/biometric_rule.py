@@ -9,29 +9,25 @@ biometric rules in the Novamind platform.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 
 
-class BiometricRuleModel(Base):
+class BiometricRuleModel(Base, TimestampMixin, AuditMixin):
     """SQLAlchemy model for storing BiometricRule entities."""
 
     __tablename__ = "biometric_rules"
 
     # Core fields
-    id = Column(
-        GUID, 
-        primary_key=True,
-        default=uuid.uuid4,
-        doc="Unique identifier for the rule"
-    )
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(
         String(255), 
         nullable=False,
-        doc="Name of the rule"
+        doc="Name of the rule",
+        unique=True
     )
     description = Column(
         Text, 
@@ -65,14 +61,13 @@ class BiometricRuleModel(Base):
     
     # Relationships
     patient_id = Column(
-        GUID, 
+        SQLAlchemyUUID(as_uuid=True), 
         ForeignKey("patients.id", ondelete="CASCADE"), 
         nullable=True,
-        doc="ID of the patient this rule is for (NULL for global rules)"
-    )
+        doc="ID of the patient this rule is for (NULL for global rules")
     patient = relationship("Patient", back_populates="biometric_rules")
     provider_id = Column(
-        GUID, 
+        SQLAlchemyUUID(as_uuid=True), 
         ForeignKey("users.id", ondelete="SET NULL"), 
         nullable=True,
         doc="ID of the provider who created this rule"
@@ -99,3 +94,11 @@ class BiometricRuleModel(Base):
     def __repr__(self) -> str:
         """Get string representation of the model."""
         return f"<BiometricRuleModel(id={self.id}, name={self.name})>"
+
+
+class PatientBiometricRuleModel(Base, TimestampMixin):
+    __tablename__ = "patient_biometric_rules"
+
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    rule_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("biometric_rules.id"), nullable=False, index=True)

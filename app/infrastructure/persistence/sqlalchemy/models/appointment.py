@@ -8,14 +8,15 @@ mapping the domain entity to the database schema.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Enum as SQLAlchemyEnum, Integer, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.domain.enums.appointment_status import AppointmentStatusEnum
+from app.domain.utils.datetime_utils import now_utc
 
 
-class AppointmentModel(Base):
+class AppointmentModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for the Appointment entity.
 
@@ -25,9 +26,9 @@ class AppointmentModel(Base):
 
     __tablename__ = "appointments"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    patient_id = Column(GUID, ForeignKey("patients.id"), nullable=False)
-    provider_id = Column(GUID, ForeignKey("providers.id"), nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     appointment_type = Column(String(50), nullable=False)

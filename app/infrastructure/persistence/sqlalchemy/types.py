@@ -133,52 +133,5 @@ class FloatListDecorator(TypeDecorator):
         return None
 
 
-class GUID(TypeDecorator):
-    """
-    Platform-independent GUID type for SQLAlchemy.
-    
-    Uses PostgreSQL's UUID type when available, otherwise uses String.
-    Ensures consistent UUID handling across database backends.
-    """
-    impl = String(36)
-    cache_ok = True
-    
-    def load_dialect_impl(self, dialect: Any) -> Any:
-        """Load dialect-specific implementation."""
-        if dialect.name == 'postgresql':
-            return dialect.type_descriptor(UUID())
-        else:
-            return dialect.type_descriptor(String(36))
-    
-    def process_bind_param(self, value: Optional[uuid.UUID | str], dialect: Any) -> Optional[str | uuid.UUID]:
-        """Convert UUID to string before saving to database, or ensure UUID type for PG."""
-        if value is None:
-            return None
-        if dialect.name == 'postgresql':
-            if isinstance(value, str):
-                try:
-                    return uuid.UUID(value)
-                except ValueError:
-                    # Optionally, log this error or handle it as per application needs
-                    # For now, re-raise to make the issue visible during tests
-                    raise ValueError(f"Invalid UUID string for PostgreSQL: {value}")
-            # If it's already a UUID object or other compatible type for pg driver, pass as is
-            return value 
-        else:
-            # For SQLite and others, ensure it's a string
-            return str(value)
-    
-    def process_result_value(self, value: Optional[str | uuid.UUID], dialect: Any) -> Optional[uuid.UUID]:
-        """Convert database value to UUID object."""
-        if value is None:
-            return None
-        if isinstance(value, uuid.UUID):
-            return value
-        try:
-            return uuid.UUID(value)
-        except (ValueError, TypeError, AttributeError):
-            return None
-
-
 # Export the custom types
-__all__ = ['JSONEncodedDict', 'StringListDecorator', 'FloatListDecorator', 'GUID']
+__all__ = ['JSONEncodedDict', 'StringListDecorator', 'FloatListDecorator']

@@ -7,15 +7,24 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    JSON,
+    UUID as SQLAlchemyUUID
+)
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.domain.utils.datetime_utils import now_utc
 
 
-class ClinicalNoteModel(Base):
+class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for the ClinicalNote entity.
 
@@ -25,27 +34,25 @@ class ClinicalNoteModel(Base):
 
     __tablename__ = "clinical_notes"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    patient_id = Column(GUID, ForeignKey("patients.id"), nullable=False)
-    provider_id = Column(GUID, ForeignKey("providers.id"), nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     appointment_id = Column(
-        GUID, ForeignKey("appointments.id"), nullable=True
+        SQLAlchemyUUID(as_uuid=True), ForeignKey("appointments.id"), nullable=True
     )
-    note_type = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.now, nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=datetime.now,
-        onupdate=datetime.now,
-        nullable=False,
-    )
+    redacted_content = Column(Text, nullable=True)
+    note_type = Column(String(50), nullable=True)
+    tags = Column(MutableDict.as_mutable(JSON), nullable=True)
     version = Column(Integer, default=1, nullable=False)
+    parent_note_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("clinical_notes.id"), nullable=True)
 
     # Relationships with correct model references
     patient = relationship("Patient", back_populates="clinical_notes")
-    provider = relationship("ProviderModel", back_populates="clinical_notes")
+    provider = relationship("User", foreign_keys=[provider_id])
     appointment = relationship("AppointmentModel", back_populates="clinical_notes")
+    parent_note = relationship("ClinicalNoteModel", remote_side=[id], backref="revisions")
 
     def __repr__(self) -> str:
         """Return string representation of the clinical note."""
@@ -67,9 +74,13 @@ class ClinicalNoteModel(Base):
             patient_id=clinical_note.patient_id,
             provider_id=clinical_note.provider_id,
             appointment_id=clinical_note.appointment_id,
-            note_type=clinical_note.note_type.value,
+            note_type=clinical_note.note_type.value if clinical_note.note_type else None,
             content=clinical_note.content,
+            redacted_content=clinical_note.redacted_content,
+            title=clinical_note.title,
+            tags=clinical_note.tags,
             version=clinical_note.version,
+            parent_note_id=clinical_note.parent_note_id,
         )
 
     def to_domain(self):
@@ -86,9 +97,13 @@ class ClinicalNoteModel(Base):
             patient_id=self.patient_id,
             provider_id=self.provider_id,
             appointment_id=self.appointment_id,
-            note_type=NoteType(self.note_type),
+            note_type=NoteType(self.note_type) if self.note_type else None,
             content=self.content,
+            redacted_content=self.redacted_content,
+            title=self.title,
+            tags=self.tags,
             version=self.version,
+            parent_note_id=self.parent_note_id,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )

@@ -8,14 +8,13 @@ mapping the domain entity to the database schema.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, String, Text, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 
 
-class MedicationModel(Base):
+class MedicationModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for the Medication entity.
 
@@ -25,10 +24,10 @@ class MedicationModel(Base):
 
     __tablename__ = "medications"
 
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    patient_id = Column(GUID, ForeignKey("patients.id"), nullable=False)
-    provider_id = Column(GUID, ForeignKey("providers.id"), nullable=False)
-    name = Column(String(255), nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False)
+    name = Column(String(255), nullable=False, index=True)
     dosage = Column(String(100), nullable=False)
     frequency = Column(String(100), nullable=False)
     start_date = Column(Date, nullable=False)
@@ -107,3 +106,11 @@ class MedicationModel(Base):
             instructions=self.instructions,
             active=self.active,
         )
+
+class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
+    __tablename__ = "patient_medications"
+
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
+    medication_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("medications.id"), nullable=False, index=True)
+    # ... other fields ...

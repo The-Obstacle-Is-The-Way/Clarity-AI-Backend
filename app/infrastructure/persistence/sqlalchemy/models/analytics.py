@@ -7,7 +7,7 @@ mapping domain entities to database tables.
 
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, ForeignKey
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, ForeignKey, UUID as SQLAlchemyUUID
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
@@ -18,7 +18,7 @@ from app.domain.utils.datetime_utils import now_utc
 # Use the canonical Base and TimestampMixin from the models package
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.models.base import TimestampMixin # Canonical TimestampMixin
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+# from app.infrastructure.persistence.sqlalchemy.types import GUID # MODIFIED: Comment out GUID
 
 
 class AnalyticsEventModel(Base, TimestampMixin):
@@ -31,10 +31,10 @@ class AnalyticsEventModel(Base, TimestampMixin):
     
     __tablename__ = "analytics_events"
     
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_type = Column(String(100), nullable=False, index=True)
     event_data = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
-    user_id = Column(GUID, ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     session_id = Column(String(100), nullable=True, index=True)
     timestamp = Column(DateTime, nullable=False, default=now_utc, index=True)
     processed_at = Column(DateTime, nullable=True, index=True)
@@ -70,7 +70,7 @@ class AnalyticsAggregateModel(Base, TimestampMixin):
     
     __tablename__ = "analytics_aggregates"
     
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     aggregate_type = Column(String(50), nullable=False, index=True)
     dimensions = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
     metrics = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
@@ -101,7 +101,7 @@ class AnalyticsJobModel(Base, TimestampMixin):
     
     __tablename__ = "analytics_jobs"
     
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default="pending", index=True)
     parameters = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)

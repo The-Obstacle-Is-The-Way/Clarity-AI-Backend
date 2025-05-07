@@ -18,7 +18,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func, UUID as SQLAlchemyUUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, declared_attr
 from sqlalchemy.types import TEXT, TypeDecorator
@@ -28,7 +28,7 @@ from app.domain.utils.datetime_utils import now_utc
 # Import the canonical Base and registry
 from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, Base, TimestampMixin
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
-from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
+from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class User(Base, TimestampMixin, AuditMixin):
     # --- Core Identification and Metadata ---
     # Use consistent GUID type implementation to ensure proper ORM mapping across all database backends
     id = Column(
-        GUID, 
+        SQLAlchemyUUID(as_uuid=True),
         primary_key=True, 
         index=True,  # Add index for performance
         nullable=False,

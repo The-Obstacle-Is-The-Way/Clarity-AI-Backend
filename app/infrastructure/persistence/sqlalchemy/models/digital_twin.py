@@ -10,12 +10,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text, UUID as SQLAlchemyUUID
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
+from app.domain.utils.datetime_utils import now_utc
 
 
 class DigitalTwinDataPoint(Base):
@@ -28,8 +29,8 @@ class DigitalTwinDataPoint(Base):
     __tablename__ = "digital_twin_data_points"
     __table_args__ = {'extend_existing': True}
     
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    timeseries_id = Column(GUID, ForeignKey("biometric_timeseries.id"), nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    timeseries_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("biometric_timeseries.id"), nullable=False)
     timestamp = Column(DateTime, nullable=False)
     value_json = Column(Text, nullable=False)
     source = Column(String(50), nullable=False)
@@ -74,8 +75,8 @@ class BiometricTimeseriesModel(Base):
     
     __tablename__ = "biometric_timeseries"
     
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    twin_id = Column(GUID, ForeignKey("digital_twins.id"), nullable=False)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    twin_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("digital_twins.id"), nullable=False)
     biometric_type = Column(String(50), nullable=False)
     unit = Column(String(20), nullable=False)
     physiological_range_json = Column(Text, nullable=True)
@@ -102,7 +103,7 @@ class BiometricTimeseriesModel(Base):
             self.physiological_range_json = None
 
 
-class DigitalTwinModel(Base):
+class DigitalTwinModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for digital twins.
     
@@ -111,8 +112,8 @@ class DigitalTwinModel(Base):
     
     __tablename__ = "digital_twins"
     
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    patient_id = Column(GUID, nullable=False, unique=True, index=True)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), unique=True, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     version = Column(Integer, default=1, nullable=False)

@@ -12,15 +12,17 @@ import uuid
 from typing import Any
 
 from dateutil import parser
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON, UUID as SQLAlchemyUUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableDict
 
 # Use the core domain model, which has phone_number attribute
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.domain.utils.datetime_utils import UTC, now_utc
 from app.domain.value_objects.emergency_contact import EmergencyContact  # Import EmergencyContact
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.types import GUID
+from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON
 
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references
@@ -31,7 +33,7 @@ logger = logging.getLogger(__name__)
 import dataclasses  # Add this import
 
 
-class Patient(Base):
+class Patient(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for patient data.
 
@@ -48,12 +50,12 @@ class Patient(Base):
     
     # --- Core Identification and Metadata ---
     # Store UUIDs as String(36) for SQLite compatibility
-    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # external_id could be from an EMR or other system
     external_id = Column(String(64), unique=True, index=True, nullable=True)
     # Foreign key to the associated user account (if applicable)
     # Use string reference "users.id"
-    user_id = Column(GUID, ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True, index=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
@@ -140,7 +142,7 @@ class Patient(Base):
 
     # Digital twin relationships
     # Store as String(36) for SQLite compatibility
-    biometric_twin_id = Column(GUID, nullable=True)
+    biometric_twin_id = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)
 
     # --- Encrypted Fields Set --- 
     # QUANTUM FIX: Update encrypted_fields set to use prefixed column names with underscores
