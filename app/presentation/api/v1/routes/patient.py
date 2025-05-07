@@ -2,6 +2,7 @@ import logging
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 
 from app.application.services.patient_service import PatientService
 from app.domain.repositories.patient_repository import PatientRepository
@@ -18,7 +19,7 @@ from app.presentation.api.schemas.patient import (
     # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
 )
 from app.core.domain.entities.patient import Patient
-from app.core.domain.entities.user import UserRole
+from app.core.domain.entities.user import UserRole, UserStatus
 
 # Placeholder dependency - replace with actual service implementation later
 def get_patient_service(
@@ -31,6 +32,18 @@ def get_patient_service(
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# MODIFIED: Remove the local mock dependency function
+# async def mock_get_current_user_for_route() -> DomainUser:
+#     return DomainUser(
+#         id=uuid.uuid4(),
+#         email="route_mock_user@example.com",
+#         username="route_mock_user",
+#         full_name="Route Mock User",
+#         password_hash="somehash",
+#         roles={UserRole.ADMIN},
+#         status=UserStatus.ACTIVE
+#     )
 
 @router.get(
     "/{patient_id}",
@@ -64,12 +77,12 @@ async def create_patient_endpoint(
     current_user: DomainUser = Depends(CurrentUserDep)
 ) -> PatientCreateResponse: 
     """Create a new patient."""
-    logger.info(f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}")
+    logger.info(f"User {{current_user.id}} attempting to create patient: {{patient_data.first_name}} {{patient_data.last_name}}")
     try:
         created_patient = await service.create_patient(patient_data, created_by_id=current_user.id)
         return created_patient
     except Exception as e:
-        logger.error(f"Error creating patient by user {current_user.id}: {e}", exc_info=True)
+        logger.error(f"Error creating patient by user {{current_user.id}}: {{e}}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while creating the patient."

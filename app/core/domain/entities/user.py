@@ -50,6 +50,7 @@ class User:
         mfa_enabled: Whether multi-factor authentication is enabled
         attempts: Number of consecutive failed login attempts
     """
+    # MODIFIED: Revert to original field definitions without custom __init__
     email: str
     username: str
     full_name: str

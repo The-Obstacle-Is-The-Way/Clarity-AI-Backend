@@ -9,6 +9,7 @@ authentication and authorization within the API endpoints.
 import logging # MODULE LEVEL
 from typing import Annotated, AsyncGenerator
 import uuid # ADDED IMPORT
+# from unittest.mock import Mock # MODIFIED: Removed import for Mock
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
@@ -81,16 +82,18 @@ async def get_current_user(
     jwt_service: IJwtService = Depends(get_jwt_service),
     user_repo: IUserRepository = Depends(get_user_repository_dependency)
 ) -> DomainUser:
-    # Log received jwt_service ID and type
-    logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
-    logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
-
-    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
+    # MODIFIED: Restore original logging and docstring
+    logger.info(f"--- get_current_user received jwt_service ID: {{id(jwt_service)}}, Type: {{type(jwt_service)}} ---")
+    logger.info(f"--- get_current_user received user_repo Type: {{type(user_repo)}} ---")
+    logger.info(f"--- get_current_user CALLED --- Token credentials: {{token_credentials}}")
     """
     Dependency to get the current user from a JWT token.
     Handles token validation, user retrieval, and role checks.
     """
+    # MODIFIED: Remove the mock return and uncomment original logic
+    # return DomainUser(...)
 
+    # Original logic restored below
     if token_credentials is None:
         logger.warning("get_current_user: No token credentials provided (token is None).")
         raise HTTPException(
@@ -99,7 +102,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    token = token_credentials.credentials 
+    token = token_credentials.credentials
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -121,13 +124,13 @@ async def get_current_user(
             raise credentials_exception
         
     except InvalidTokenException as e: 
-        logger.warning(f"get_current_user: Invalid token - {e}")
+        logger.warning(f"get_current_user: Invalid token - {{e}}")
         raise credentials_exception from e
     except TokenExpiredException as e: 
-        logger.warning(f"get_current_user: Expired token - {e}")
+        logger.warning(f"get_current_user: Expired token - {{e}}")
         raise expired_token_exception from e
     except JWTError as e:
-        logger.warning(f"get_current_user: JWTError - {e}")
+        logger.warning(f"get_current_user: JWTError - {{e}}")
         raise credentials_exception from e
 
     try:
@@ -136,18 +139,18 @@ async def get_current_user(
         user = await user_repo.get_user_by_id(user_id=user_id_from_token)
         
     except ValueError as e:
-        logger.error(f"get_current_user: Invalid user ID format in token: {payload.get('sub')}. Error: {e}")
+        logger.error(f"get_current_user: Invalid user ID format in token: {{payload.get('sub')}}. Error: {{e}}")
         raise credentials_exception from e
 
     if user is None:
-        logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")
+        logger.warning(f"get_current_user: User not found for ID: {{payload.get('sub')}}")
         raise credentials_exception
     
     if user.status != UserStatus.ACTIVE:
-        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
+        logger.warning(f"get_current_user: User {{user.username}} is not active. Status: {{user.status}}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
-    logger.info(f"get_current_user: User {user.username} authenticated successfully.")
+    logger.info(f"get_current_user: User {{user.username}} authenticated successfully.")
     return user
 
 CurrentUserDep = Annotated[DomainUser, Depends(get_current_user)]

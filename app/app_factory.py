@@ -61,10 +61,10 @@ def _initialize_sentry(settings: Settings) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events (startup and shutdown)."""
     logger.info("Application lifespan startup sequence initiated.")
-    current_settings = app.state.settings
+    current_settings = fastapi_app.state.settings
     logger.info(f"Lifespan using settings from app.state. ENVIRONMENT: {current_settings.ENVIRONMENT}, DB_URL: {current_settings.DATABASE_URL}")
 
     db_engine = None
@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Ensure all models are loaded into metadata by importing the package
             import app.infrastructure.persistence.sqlalchemy.models 
             from app.infrastructure.persistence.sqlalchemy.models.base import Base
-            from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, sessionmaker
+            from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
             from sqlalchemy.pool import StaticPool
 
             db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
@@ -96,11 +96,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await conn.run_sync(Base.metadata.create_all)
             logger.info("Test environment: Tables created.")
 
-            session_factory = sessionmaker(
+            session_factory = async_sessionmaker(
                 bind=db_engine, class_=AsyncSession, expire_on_commit=False
             )
-            app.state.db_engine = db_engine
-            app.state.db_session_factory = session_factory
+            fastapi_app.state.db_engine = db_engine
+            fastapi_app.state.db_session_factory = session_factory
             logger.info("Test environment: DB Engine and Session Factory configured.")
 
             # Create test users
@@ -126,8 +126,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             mock_redis_pool.disconnect = AsyncMock()
             redis_client = mock_redis_client
             redis_pool = mock_redis_pool
-            app.state.redis = redis_client
-            app.state.redis_pool = redis_pool
+            fastapi_app.state.redis = redis_client
+            fastapi_app.state.redis_pool = redis_pool
 
         # --- Production/Other Environment Setup ---
         else:
@@ -136,8 +136,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             from app.infrastructure.database.session import create_db_engine_and_session # Import here
             db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
             db_engine, session_factory = create_db_engine_and_session(db_url)
-            app.state.db_engine = db_engine
-            app.state.db_session_factory = session_factory
+            fastapi_app.state.db_engine = db_engine
+            fastapi_app.state.db_session_factory = session_factory
             logger.info("Database connection initialized successfully.")
 
             # Initialize Real Redis 
@@ -145,15 +145,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             from redis.asyncio import ConnectionPool, Redis # Import here
             try:
                 redis_pool = ConnectionPool.from_url(str(current_settings.REDIS_URL), decode_responses=True)
-                app.state.redis_pool = redis_pool
+                fastapi_app.state.redis_pool = redis_pool
                 redis_client = Redis(connection_pool=redis_pool)
-                app.state.redis = redis_client
+                fastapi_app.state.redis = redis_client
                 await redis_client.ping()
                 logger.info("Redis connection successful.")
             except Exception as e:
                 logger.error(f"Redis connection failed: {e}", exc_info=True)
-                app.state.redis_pool = None
-                app.state.redis = None
+                fastapi_app.state.redis_pool = None
+                fastapi_app.state.redis = None
                 redis_client = None # Ensure vars are None
                 redis_pool = None
 
@@ -228,11 +228,8 @@ def create_application(
     else:
         logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
 
-    # Create an initial state object to pass to FastAPI constructor
-    # initial_state = {"settings": app_settings} # OLD
-
-    # Initialize FastAPI app with lifespan context manager and initial state
-    app = FastAPI(
+    # Create FastAPI app with lifespan context manager
+    app_instance = FastAPI(
         title=app_settings.PROJECT_NAME,
         version=app_settings.API_VERSION,
         description=app_settings.PROJECT_DESCRIPTION,
@@ -240,44 +237,35 @@ def create_application(
         docs_url="/docs" if app_settings.ENVIRONMENT != "production" else None,
         redoc_url="/redoc" if app_settings.ENVIRONMENT != "production" else None,
         lifespan=lifespan,  # Use the lifespan context manager
-        # state=initial_state # OLD Pass initial state here
     )
-    app.state.settings = app_settings # Set settings directly on app.state
+    app_instance.state.settings = app_settings 
 
-    logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app.state.settings.ENVIRONMENT if hasattr(app.state, 'settings') and app.state.settings is not None else 'NOT FOUND ON app.state'}") # Diagnostic log
-    # REMOVED: Apply overrides if provided
-    # if dependency_overrides_param:
-    #     app.dependency_overrides = dependency_overrides_param
-    #     logger.info(f"Factory: Applied dependency overrides: {list(dependency_overrides_param.keys())}")
-    # else:
-    #     logger.info("Factory: No dependency overrides provided.")
-
-    # Settings are now in app.state via initial_state, no need to set app.state.settings explicitly here
+    logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app_instance.state.settings.ENVIRONMENT if hasattr(app_instance.state, 'settings') and app_instance.state.settings is not None else 'NOT FOUND ON app.state'}") # Diagnostic log
 
     # --- Middleware Configuration (Order Matters!) ---
     # 1. Security Headers Middleware
-    app.add_middleware(SecurityHeadersMiddleware)
+    app_instance.add_middleware(SecurityHeadersMiddleware)
     logger.info("Security headers middleware added.")
 
     # 2. Request ID Middleware
-    app.add_middleware(RequestIdMiddleware)
+    app_instance.add_middleware(RequestIdMiddleware)
     logger.info("Request ID middleware added.")
 
     # 3. Logging Middleware
     # Temporarily commented due to import/implementation issues
-    # app.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
+    # app_instance.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
     logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
     # 4. Rate Limiting Middleware
     # Temporarily disabled due to implementation issues
     # rate_limiter_service = get_rate_limiter_service(app_settings)
-    # app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
+    # app_instance.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
     logger.warning("Rate limiting middleware TEMPORARILY DISABLED due to implementation issue.")
 
     # 4. CORS
     if app_settings.BACKEND_CORS_ORIGINS:
         logger.info(f"Configuring CORS for origins: {app_settings.BACKEND_CORS_ORIGINS}")
-        app.add_middleware(
+        app_instance.add_middleware(
             CORSMiddleware,
             allow_origins=[str(origin) for origin in app_settings.BACKEND_CORS_ORIGINS],
             allow_credentials=True,
@@ -289,14 +277,14 @@ def create_application(
 
     # --- Routers ---
     logger.info(f"Including API router prefix: {app_settings.API_V1_STR}")
-    app.include_router(api_v1_router, prefix=app_settings.API_V1_STR)
+    app_instance.include_router(api_v1_router, prefix=app_settings.API_V1_STR)
 
     if include_test_routers:
-        app.include_router(admin_test_router, prefix=f"{app_settings.API_V1_STR}/admin", tags=["Test Admin"])
+        app_instance.include_router(admin_test_router, prefix=f"{app_settings.API_V1_STR}/admin", tags=["Test Admin"])
         logger.info(f"Including TEST admin router prefix: {app_settings.API_V1_STR}/admin")
 
     # --- Global Exception Handlers ---
-    @app.exception_handler(RequestValidationError)
+    @app_instance.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         # Log the detailed validation error for internal review
         logger.error(f"Request validation error: {exc.errors()} for request: {request.method} {request.url}")
@@ -306,7 +294,7 @@ def create_application(
             content={"detail": exc.errors()}, # Pydantic's default error structure
         )
 
-    @app.exception_handler(HTTPException)
+    @app_instance.exception_handler(HTTPException)
     async def custom_http_exception_handler(request: Request, exc: HTTPException):
         # Log the HTTP exception details
         logger.error(f"HTTP exception: {exc.detail} (Status: {exc.status_code}) for request: {request.method} {request.url}")
@@ -317,7 +305,7 @@ def create_application(
             headers=exc.headers,
         )
 
-    @app.exception_handler(Exception)
+    @app_instance.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         # Log the full, unhandled exception for internal review
         # Be cautious about logging potentially sensitive parts of `exc` or `request`
@@ -333,4 +321,4 @@ def create_application(
         )
         
     logger.info("FastAPI application creation complete.")
-    return app
+    return app_instance

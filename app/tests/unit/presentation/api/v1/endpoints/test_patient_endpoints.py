@@ -4,7 +4,7 @@ from faker import Faker
 from fastapi import status, FastAPI, HTTPException
 from httpx import AsyncClient, Response, ASGITransport
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 # Add imports for managing lifespan explicitly
 import asyncio
@@ -157,13 +157,35 @@ async def test_read_patient_not_found(client: tuple[FastAPI, AsyncClient], mock_
     del app_instance.dependency_overrides[get_current_user]
     del app_instance.dependency_overrides[get_patient_id] # CORRECTED NAME
 
-@pytest.mark.skip(reason="Temporarily skipping due to persistent unexplained 422 validation error looking for query args/kwargs on POST.")
 @pytest.mark.asyncio
 async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker: Faker, mock_current_user: DomainUser) -> None:
-    """Test POST /patients/ successfully creating a patient."""
+    """Test successful creation of a patient."""
     app_instance, async_client = client
+
+    # Define stubs and overrides
+    async def stub_create_patient(payload: PatientCreateRequest, created_by_id: uuid.UUID) -> PatientCreateResponse:
+        # Simulate service creating the patient
+        assert created_by_id == mock_current_user.id # Verify correct user ID passed
+        return PatientCreateResponse(
+            id=uuid.uuid4(), # Generate a new ID for the response
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            date_of_birth=payload.date_of_birth,
+            created_at=datetime.now(timezone.utc), # Use timezone-aware datetime
+            updated_at=datetime.now(timezone.utc),
+            created_by=created_by_id
+        )
+
+    class StubPatientService:
+        create_patient = stub_create_patient
+
+    # Override the service dependency with the stub instance
+    app_instance.dependency_overrides[get_patient_service] = lambda: StubPatientService()
     
-    # Arrange
+    # MODIFIED: Revert to simple lambda override
+    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
+
+    # Setup a domain user that would be returned by the (now real but simplified) get_current_user
     patient_payload = { 
         "first_name": faker.first_name(),
         "last_name": faker.last_name(),
@@ -196,10 +218,21 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
 
     # Override the service dependency with the stub instance
     app_instance.dependency_overrides[get_patient_service] = lambda: StubPatientService()
+    # MODIFIED: Restore the override for get_current_user
     app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
 
     # Act
-    response: Response = await async_client.post("/api/v1/patients/", json=patient_payload)
+    # WORKAROUND: Add dummy query params '?args=ignore&kwargs=ignore'.
+    # This is required to bypass a FastAPI issue where dependency_overrides combined
+    # with the original dependency's use of HTTPBearer causes FastAPI to incorrectly 
+    # demand 'args' and 'kwargs' query parameters (resulting in a 422 error).
+    # See FastAPI GitHub issue #3331. 
+    # NOTE: This workaround currently leads to a subsequent TypeError during dependency 
+    # resolution (User.__init__() got an unexpected keyword argument 'args'), as FastAPI 
+    # attempts to pass these query params into the User dataclass initialization.
+    # This test is expected to FAIL with that TypeError until the underlying issue 
+    # or a better workaround is found.
+    response: Response = await async_client.post("/api/v1/patients/?args=ignore&kwargs=ignore", json=patient_payload)
 
     # Assert Status Code
     assert response.status_code == status.HTTP_201_CREATED, f"Expected 201, got {response.status_code}. Response: {response.text}"
@@ -226,17 +259,16 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
 
     # Clean up overrides
     del app_instance.dependency_overrides[get_patient_service]
-    del app_instance.dependency_overrides[get_current_user]
+    # MODIFIED: Restore deletion of get_current_user override
+    if get_current_user in app_instance.dependency_overrides:
+        del app_instance.dependency_overrides[get_current_user]
 
 @pytest.mark.asyncio
-async def test_create_patient_validation_error(
-    client: tuple[FastAPI, AsyncClient],
-    faker: Faker,
-    mock_current_user: DomainUser 
-) -> None:
+async def test_create_patient_validation_error(client: tuple[FastAPI, AsyncClient], faker: Faker, mock_current_user: DomainUser) -> None:
     """Test validation error during patient creation (e.g., missing fields)."""
     app_instance, async_client = client
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user # MODIFIED: Override get_current_user directly
+    # MODIFIED: Restore the override here as well
+    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
 
     # Invalid payload missing required fields (first_name, last_name, date_of_birth)
     invalid_payload = {
@@ -244,21 +276,28 @@ async def test_create_patient_validation_error(
     }
 
     # Act: Make the request using the client
-    response: Response = await async_client.post("/api/v1/patients/", json=invalid_payload)
+    # WORKAROUND: Add dummy query params '?args=ignore&kwargs=ignore'.
+    # See explanation in test_create_patient_success.
+    # This test is also expected to FAIL with TypeError: User.__init__() got an unexpected keyword argument 'args'.
+    response: Response = await async_client.post("/api/v1/patients/?args=ignore&kwargs=ignore", json=invalid_payload)
 
     # Assertions
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    errors = response.json()["detail"]
+    response_data = response.json()
+    assert "detail" in response_data
     
-    # Ensure all expected fields are reported as missing
-    expected_missing_fields = ["first_name", "last_name", "date_of_birth"]
-    actual_missing_fields_locs = [tuple(err["loc"]) for err in errors if err.get("type") == "missing"]
+    # Check for specific missing field errors
+    # This part depends on your exact Pydantic model and FastAPI version error formatting.
+    # Example check assuming detail is a list of error objects:
+    actual_missing_fields_locs = sorted([tuple(err["loc"]) for err in response_data["detail"] if err["type"] == "missing"])
+    expected_missing_fields_locs = sorted([("body", "first_name"), ("body", "last_name"), ("body", "date_of_birth")])
+    
+    assert actual_missing_fields_locs == expected_missing_fields_locs, \
+        f"Expected missing fields {{expected_missing_fields_locs}}, got {{actual_missing_fields_locs}}"
 
-    for field_name in expected_missing_fields:
-        assert ("body", field_name) in actual_missing_fields_locs, \
-               f"Missing field error for '{field_name}' not found in {actual_missing_fields_locs}"
-
-    del app_instance.dependency_overrides[get_current_user] # MODIFIED
+    # MODIFIED: Restore deletion of get_current_user override
+    if get_current_user in app_instance.dependency_overrides:
+        del app_instance.dependency_overrides[get_current_user]
 
 # Placeholder for future tests
 @pytest.mark.asyncio
