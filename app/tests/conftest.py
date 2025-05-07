@@ -461,37 +461,38 @@ async def authenticated_user(
     db_session: AsyncSession,
     faker: Faker,
 ) -> User:
-    """Creates an authenticated user in the database for testing purposes."""
-    # Import PasswordHandler only when needed to avoid circular imports
-    from app.infrastructure.security.password_handler import PasswordHandler
-    
-    # Create password handler directly - following DI principles would be better but this is a test fixture
+    """Creates a user in the database and returns the User model."""
+    # Import the specific SQLAlchemy model and ITS UserRole enum
+    from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole as SQLAUserRole
+    from app.infrastructure.security.password_handler import PasswordHandler 
+
     password_handler = PasswordHandler()
+
+    user_email = f"{faker.uuid4()}-{faker.email()}" 
+    user_username = f"{faker.uuid4()}-{faker.user_name()}"
     
-    # Create SQLAlchemy User model (not domain entity)
-    # Import the SQLAlchemy User model and the UserRole enum it expects
-    from app.infrastructure.persistence.sqlalchemy.models.user import User as SQLAUser, UserRole as SQLAUserRole
-    
-    # Generate a UUID for the user
-    user_id = uuid.uuid4()
-    
-    # Create a SQLAlchemy User model instance with required fields
-    user = SQLAUser(
-        id=user_id,
-        username=faker.user_name(),
-        email=TEST_USERNAME,
+    logger.info(f"Attempting to create authenticated_user with email: {user_email}, username: {user_username}")
+
+    user = UserModel(
+        id=uuid.uuid4(),
+        email=user_email,
+        username=user_username, 
         password_hash=password_handler.hash_password(TEST_PASSWORD),
         is_active=True,
         is_verified=True,
         email_verified=True,
-        role=SQLAUserRole.PATIENT,  # Use the actual Enum value not string
-        roles=[SQLAUserRole.PATIENT.value],  # JSON field should be a list of string values
+        role=SQLAUserRole.PATIENT,  # Use the SQLAlchemy UserRole Enum member
+        roles=[SQLAUserRole.PATIENT.value] # Use its value for the JSON field
     )
     db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    logger.debug(f"Created authenticated test user: {user.email} (ID: {user.id})")
-    return user
+    try:
+        await db_session.commit()
+        await db_session.refresh(user)
+        logger.debug(f"Created authenticated test user: {user.email} (ID: {user.id})")
+        return user
+    except Exception as e:
+        logger.error(f"Error creating authenticated_user: {e}")
+        raise
 
 
 # @pytest_asyncio.fixture

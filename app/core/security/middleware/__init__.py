@@ -26,7 +26,7 @@ from app.core.interfaces.services.authentication_service import IAuthenticationS
 from app.core.interfaces.services.jwt_service import IJwtService
 # Import exceptions directly from their specific modules for clarity
 from app.domain.exceptions.auth_exceptions import (
-    AuthenticationError,
+    AuthenticationException,
     InvalidTokenException,
     TokenExpiredException,
     UserNotFoundException,
@@ -180,32 +180,24 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return None
 
     async def validate_token_and_get_user(self, token: str) -> Any:
-        """Validate the provided token and retrieve the corresponding user."""
-        try:
-            # The mock should also conform to this (will be adjusted in the test file).
-            # token_payload = self._jwt_service_instance.decode_token(token)
-            # Reverting to await, as AsyncMock might wrap sync side_effect results
-            # in a coroutine if the method on AsyncMock is called without await.
-            # Awaiting ensures we get the actual result from the (potentially async) side_effect.
-            token_payload = await self._jwt_service_instance.decode_token(token)
-                
-            user = await self._auth_service_instance.get_user_by_id(token_payload.sub)
+        """
+        Validate the provided token and retrieve the corresponding user.
+        Lets exceptions from underlying services propagate up.
+        """
+        # Removed inner try...except block to let exceptions propagate to dispatch
+        token_payload = await self._jwt_service_instance.decode_token(token)
+            
+        user = await self._auth_service_instance.get_user_by_id(token_payload.sub)
 
-            if not user:
-                logger.warning(f"User not found for ID: {token_payload.sub}")
-                raise UserNotFoundException(f"User with ID {token_payload.sub} not found.")
+        if not user:
+            logger.warning(f"User not found for ID: {token_payload.sub}")
+            raise UserNotFoundException(f"User with ID {token_payload.sub} not found.")
 
-            if not user.is_active: # Assuming User model has is_active
-                logger.warning(f"Attempt to authenticate inactive user: {user.id}")
-                raise AuthenticationError("User account is inactive.")
+        if not user.is_active: # Assuming User model has is_active
+            logger.warning(f"Attempt to authenticate inactive user: {user.id}")
+            raise AuthenticationException("User account is inactive.")
 
-            return user
-        except (InvalidTokenException, TokenExpiredException) as e:
-            logger.info(f"Token validation failed: {e}")
-            raise e
-        except UserNotFoundException as e:
-             logger.warning(f"User lookup failed during auth: {e}")
-             raise e
+        return user
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response: # Changed from RequestResponseEndpoint for type consistency
         """Process the request through the authentication middleware."""
@@ -253,22 +245,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                  status_code=HTTP_401_UNAUTHORIZED,
                  content={"detail": "User associated with token not found."},
              )
-        except AuthenticationError as e:
-             logger.warning(f"Authentication failed for path {request_path}: {e}") 
-             error_message = str(e).lower()
-             if "inactive" in error_message:
-                 detail = "User account is inactive."
-                 status_code = HTTP_403_FORBIDDEN
-             elif "Simulated auth service error" in str(e): 
-                 logger.error(f"Caught specific AuthenticationError meant to cause 500: {e}", exc_info=True)
-                 raise Exception("Simulated internal auth error") from e
-             else:
-                 detail = "Authentication failed."
-                 status_code = HTTP_401_UNAUTHORIZED
-             
+        except AuthenticationException as e:
+             logger.warning(f"Authentication failed for path {request_path}: {e}")
              return JSONResponse(
-                 status_code=status_code,
-                 content={"detail": detail},
+                 status_code=HTTP_401_UNAUTHORIZED,
+                 content={"detail": str(e) or "Authentication failed."},
              )
         except Exception as e:
             logger.error(

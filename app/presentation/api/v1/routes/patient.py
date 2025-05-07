@@ -64,7 +64,7 @@ async def create_patient_endpoint(
     current_user: DomainUser = Depends(CurrentUserDep)
 ) -> PatientCreateResponse: 
     """Create a new patient."""
-    logger.info(f"User {current_user.id} attempting to create patient: {patient_data.name.first_name} {patient_data.name.last_name}")
+    logger.info(f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}")
     try:
         created_patient = await service.create_patient(patient_data, created_by_id=current_user.id)
         return created_patient

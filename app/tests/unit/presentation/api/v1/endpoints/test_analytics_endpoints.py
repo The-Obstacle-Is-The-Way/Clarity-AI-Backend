@@ -62,6 +62,9 @@ from app.presentation.api.v1.endpoints.analytics_endpoints import (
 import asyncio # For MockableBackgroundTasks
 import inspect # For MockableBackgroundTasks signature printing
 
+# Import UserStatus enum
+from app.core.domain.entities.user import UserStatus, UserRole # Added UserRole import
+
 # --- Test Fixtures ---
 
 @pytest.fixture
@@ -89,7 +92,10 @@ def mock_user():
     user = MagicMock()
     user.id = uuid.uuid4()
     user.email = "test@example.com"
-    user.role = "provider"
+    user.role = UserRole.ADMIN # Changed to ADMIN for broader access if needed, or keep as needed
+    user.roles = {UserRole.ADMIN} # Use a set for roles, matching domain entity
+    user.status = UserStatus.ACTIVE # Set status to ACTIVE
+    user.is_active = True # Also ensure is_active is True if checked elsewhere
     return user
 
 @pytest.fixture
@@ -148,7 +154,7 @@ class TestAnalyticsEndpoints:
 
         expected_task_data = {
             "event_data": event_data,
-            "user_id": mock_user.id,
+            "user_id": str(mock_user.id),
         }
 
         mock_process_event_use_case.reset_mock() 
@@ -206,11 +212,11 @@ class TestAnalyticsEndpoints:
         expected_task_data = [
             {
                 "event_data": batch_event_list[0],
-                "user_id": mock_user.id,
+                "user_id": str(mock_user.id),
             },
             {
                 "event_data": batch_event_list[1],
-                "user_id": mock_user.id,
+                "user_id": str(mock_user.id),
             }
         ]
 
@@ -268,7 +274,7 @@ class TestAnalyticsEndpoints:
 
         expected_task_data_phi = {
             "event_data": event_data_with_phi,
-            "user_id": mock_user.id,
+            "user_id": str(mock_user.id),
         }
 
         mock_process_event_use_case.reset_mock()

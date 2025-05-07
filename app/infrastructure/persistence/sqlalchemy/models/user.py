@@ -118,7 +118,6 @@ class User(Base, TimestampMixin, AuditMixin):
     
     __tablename__ = "users"
     __table_args__ = {
-        'extend_existing': True,  # This allows mapping to an existing table which may be defined elsewhere
         'comment': 'User accounts with authentication and authorization information'
     }
     
