@@ -101,7 +101,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # Define relationships with string references to avoid circular imports
     # and ensure proper lazy loading
     
-    # Relationship with User (owner of the patient record)
+    # Relationship with User (owner of the patient record) - Simplified
     user = relationship(
         "User", 
         back_populates="patients",

@@ -18,49 +18,49 @@ from app.infrastructure.persistence.sqlalchemy.registry import ensure_all_models
 from .base import Base, AuditMixin, TimestampMixin
 
 # Import models in dependency order (models with no dependencies first)
+from .provider import ProviderModel
 from .analytics import AnalyticsEventModel
 from .user import User, UserRole
-from .provider import ProviderModel
 
 # Biometric and Digital Twin models should be imported before Patient if Patient refers to them
-# try: # MODIFIED: Comment out try
-from .biometric_alert_model import BiometricAlertModel
-from .biometric_rule import BiometricRuleModel
-from .biometric_twin_model import BiometricTwinModel # Contains BiometricDataPointModel as well
-from .digital_twin import DigitalTwinModel # Contains its own BiometricDataPointModel and BiometricTimeseriesModel
-# except ImportError as e: # MODIFIED: Comment out except
-#     logging.warning(f"Some biometric or digital twin models could not be imported: {e}")
-#     BiometricAlertModel = None
-#     BiometricRuleModel = None
-#     BiometricTwinModel = None
-#     DigitalTwinModel = None 
+try: # MODIFIED: Comment out try
+    from .biometric_alert_model import BiometricAlertModel
+    from .biometric_rule import BiometricRuleModel
+    from .biometric_twin_model import BiometricTwinModel # Contains BiometricDataPointModel as well
+    from .digital_twin import DigitalTwinModel # Contains its own BiometricDataPointModel and BiometricTimeseriesModel
+except ImportError as e: # MODIFIED: Comment out except
+    logging.warning(f"Some biometric or digital twin models could not be imported: {e}")
+    BiometricAlertModel = None
+    BiometricRuleModel = None
+    BiometricTwinModel = None
+    DigitalTwinModel = None 
 
 from .patient import Patient
 
 # Import models safely with try/except blocks to avoid breaking imports
-# try: # MODIFIED: Comment out try
-from .appointment import AppointmentModel
-# except ImportError: # MODIFIED: Comment out except
-#     AppointmentModel = None
-#     logging.warning("AppointmentModel could not be imported")
+try: # MODIFIED: Comment out try
+    from .appointment import AppointmentModel
+except ImportError: # MODIFIED: Comment out except
+    AppointmentModel = None
+    logging.warning("AppointmentModel could not be imported")
 
-# try: # MODIFIED: Comment out try
-from .clinical_note import ClinicalNoteModel
-# except ImportError: # MODIFIED: Comment out except
-#     ClinicalNoteModel = None
-#     logging.warning("ClinicalNoteModel could not be imported")
+try: # MODIFIED: Comment out try
+    from .clinical_note import ClinicalNoteModel
+except ImportError: # MODIFIED: Comment out except
+    ClinicalNoteModel = None
+    logging.warning("ClinicalNoteModel could not be imported")
 
-# try: # MODIFIED: Comment out try
-from .medication import MedicationModel
-# except ImportError: # MODIFIED: Comment out except
-#     MedicationModel = None
-#     logging.warning("MedicationModel could not be imported")
+try: # MODIFIED: Comment out try
+    from .medication import MedicationModel
+except ImportError: # MODIFIED: Comment out except
+    MedicationModel = None
+    logging.warning("MedicationModel could not be imported")
 
-# try: # MODIFIED: Comment out try
-from .audit_log import AuditLog
-# except ImportError: # MODIFIED: Comment out except
-#     AuditLog = None
-#     logging.warning("AuditLog could not be imported")
+try: # MODIFIED: Comment out try
+    from .audit_log import AuditLog
+except ImportError: # MODIFIED: Comment out except
+    AuditLog = None
+    logging.warning("AuditLog could not be imported")
 
 # Optional: Import additional models if they exist and are needed
 # try: # MODIFIED: Comment out try

@@ -429,38 +429,81 @@ async def authenticated_user(
     db_session: AsyncSession,
     faker: Faker,
 ) -> User:
-    """Creates a user in the database and returns the User model."""
+    """
+    Creates a user (and potentially a provider) and saves them to the database.
+    Returns the authenticated User domain entity.
+    """
     # Import the specific SQLAlchemy model and ITS UserRole enum
-    from app.infrastructure.persistence.sqlalchemy.models.user import User as UserModel, UserRole as SQLAUserRole
-    from app.infrastructure.security.password_handler import PasswordHandler 
-
-    password_handler = PasswordHandler()
-
-    user_email = f"{faker.uuid4()}-{faker.email()}" 
-    user_username = f"{faker.uuid4()}-{faker.user_name()}"
-    
-    logger.info(f"Attempting to create authenticated_user with email: {user_email}, username: {user_username}")
-
-    user = UserModel(
-        id=uuid.uuid4(),
-        email=user_email,
-        username=user_username, 
-        password_hash=password_handler.hash_password(TEST_PASSWORD),
-        is_active=True,
-        is_verified=True,
-        email_verified=True,
-        role=SQLAUserRole.PATIENT,  # Use the SQLAlchemy UserRole Enum member
-        roles=[SQLAUserRole.PATIENT.value] # Use its value for the JSON field
+    from app.infrastructure.persistence.sqlalchemy.models.user import (
+        User as UserModel,
+        UserRole as SQLAUserRole,
     )
+    from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel
+    from app.infrastructure.security.password_handler import PasswordHandler
+    import random # Ensure random is imported if not already
+
+    pwd_handler = PasswordHandler()
+    username = f"{uuid.uuid4()}-{faker.user_name()}"
+    email = faker.email()
+    password = faker.password()
+    hashed_password = pwd_handler.hash_password(password)
+
+    logger.info(
+        f"Attempting to create authenticated_user with email: {email}, username: {username}"
+    )
+
+    user_data = {
+        "id": uuid.uuid4(),
+        "username": username,
+        "email": email,
+        "hashed_password": hashed_password,
+        "is_active": True,
+        "is_verified": True,
+        "email_verified": True,
+        "role": random.choice(list(SQLAUserRole)), # Random role for variety
+        "roles": [], # Will be set based on role
+        "first_name": faker.first_name(),
+        "last_name": faker.last_name(),
+    }
+    user_data["roles"] = [user_data["role"].value]
+
+    user = UserModel(**user_data)
     db_session.add(user)
+    
+    # Commit the user first to ensure its ID is persisted
     try:
         await db_session.commit()
-        await db_session.refresh(user)
-        logger.debug(f"Created authenticated test user: {user.email} (ID: {user.id})")
-        return user
+        logger.info(f"Successfully created user: {user.id}, role: {user.role}")
+        await db_session.refresh(user) # Refresh to ensure state is up-to-date
     except Exception as e:
-        logger.error(f"Error creating authenticated_user: {e}")
-        raise
+        logger.error(f"Error committing initial user: {e}")
+        await db_session.rollback()
+        raise e
+
+    provider_instance = None
+    if user.role == SQLAUserRole.CLINICIAN:
+        provider_data = {
+            "id": uuid.uuid4(),
+            "user_id": user.id, # Use committed user.id
+            "specialty": faker.job(),
+            "license_number": faker.bothify(text="LIC-#######??"),
+            "npi_number": faker.bothify(text="##########"),
+            "active": True,
+        }
+        provider_instance = ProviderModel(**provider_data)
+        db_session.add(provider_instance)
+        
+        # Commit the provider separately
+        try:
+            await db_session.commit()
+            logger.info(f"Successfully created associated provider: {provider_instance.id} for user {user.id}")
+            await db_session.refresh(provider_instance)
+        except Exception as e:
+            logger.error(f"Error committing provider for user {user.id}: {e}")
+            await db_session.rollback()
+            raise e
+
+    return user
 
 
 # @pytest_asyncio.fixture

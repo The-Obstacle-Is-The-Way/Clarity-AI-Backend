@@ -20,7 +20,7 @@ from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func, UUID as SQLAlchemyUUID
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, foreign
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -37,7 +37,7 @@ class JSONType(TypeDecorator):
     """
     Platform-independent JSON type.
     
-    Uses PostgreSQL's JSONB type when available, otherwise 
+    Uses PostgreSQL\'s JSONB type when available, otherwise 
     uses TEXT type with JSON serialization for SQLite compatibility.
     """
     impl = TEXT
@@ -117,82 +117,73 @@ class User(Base, TimestampMixin, AuditMixin):
     """
     
     __tablename__ = "users"
-    __table_args__ = {
-        'comment': 'User accounts with authentication and authorization information'
-    }
+    __table_args__ = (
+        # Example: Index for email if frequently searched
+        # models.Index('ix_user_email', 'email'),
+        # Ensure __table_args__ is a tuple, even with one item
+        # (models.UniqueConstraint('username', name='uq_user_username'),)
+        # Add other table-level constraints or indexes here if needed
+        {'extend_existing': True} # Allows redefinition in tests, important for our setup
+    )
     
     # --- Core Identification and Metadata ---
-    # Use consistent GUID type implementation to ensure proper ORM mapping across all database backends
     id = Column(
         SQLAlchemyUUID(as_uuid=True),
         primary_key=True, 
-        index=True,  # Add index for performance
+        index=True,
         nullable=False,
-        default=uuid.uuid4,  # Default generates UUID object
+        default=uuid.uuid4,
         comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
     )
     username = Column(String(64), unique=True, nullable=False, comment="Username for login")
     email = Column(String(255), unique=True, nullable=False, index=True, comment="Email address for user contact")
-    
-    # Personal information - minimal necessary for function
     first_name = Column(String(100), nullable=True, comment="User's first name")
     last_name = Column(String(100), nullable=True, comment="User's last name")
     
     @declared_attr
     def phone_number(cls):
         return Column(String(20), nullable=True, unique=True, index=True, comment="User's phone number")
-    
-    # Password hash - never store plaintext passwords
+        
     password_hash = Column(String(255), nullable=False, comment="Securely hashed password")
-    
-    # User account status
     is_active = Column(Boolean, default=True, nullable=False, comment="Whether account is active")
     is_verified = Column(Boolean, default=False, nullable=False, comment="Whether account is verified")
+    
     @declared_attr
     def email_verified(cls):
         return Column(Boolean, default=False, nullable=False, comment="Whether email address is verified")
-    
-    # User role - using enum to enforce valid values
+        
     role = Column(Enum(UserRole), nullable=False, default=UserRole.PATIENT, comment="Primary user role")
-    
-    # Roles are stored as a JSON array for more flexible role management
-    # Use our custom JSONEncodedDict type for cross-database compatibility
     roles = Column(JSONEncodedDict, default=list, nullable=False, comment="List of all user roles")
-    
-    # Additional audit fields beyond the mixin
     last_login = Column(DateTime, nullable=True, comment="When user last logged in")
-    
-    # Security-related fields
     failed_login_attempts = Column(Integer, default=0, nullable=False, comment="Number of consecutive failed login attempts")
     account_locked_until = Column(DateTime, nullable=True, comment="When account lockout expires")
     password_changed_at = Column(DateTime, default=now_utc, nullable=False, comment="When password was last changed")
-    
-    # Token-related fields for password reset, account verification
     reset_token = Column(String(255), nullable=True, comment="Password reset token")
     reset_token_expires_at = Column(DateTime, nullable=True, comment="When reset token expires")
     verification_token = Column(String(255), nullable=True, comment="Account verification token")
-    
-    # Additional data
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
     preferences = Column(JSON, nullable=True, comment="User UI and system preferences")  
-    
-    # Relationships - using string references to avoid circular imports
+    access_logs = Column(JSON, nullable=True)  # Stores recent access logs
+
+    # --- Relationships --- 
+    # Simplest possible provider relationship
     provider = relationship(
-        "ProviderModel",
+        "ProviderModel", 
         back_populates="user",
         uselist=False,
-        cascade="all, delete-orphan",
-        # Explicitly define the join condition
-        primaryjoin="User.id == ProviderModel.user_id"
-    )
-    # Use string reference for Patient to break circular dependency
-    patients = relationship(
-        "Patient",
-        back_populates="user",
         cascade="all, delete-orphan"
+        # Removed explicit primaryjoin and foreign_keys
     )
     
-    # Relationship to AnalyticsEventModel
+    # Simplest possible patients relationship
+    patients = relationship(
+        "Patient", 
+        back_populates="user",
+        cascade="all, delete-orphan"
+        # Removed explicit primaryjoin and foreign_keys
+    )
+    
+    # Relationship to AnalyticsEventModel 
     analytics_events = relationship(
         "AnalyticsEventModel", 
         back_populates="user", 

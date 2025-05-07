@@ -15,12 +15,14 @@ from sqlalchemy.ext.mutable import MutableDict
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.models.user import User
+from app.infrastructure.persistence.sqlalchemy.registry import register_model
 
 # Type-checking only imports to avoid circular imports
 if TYPE_CHECKING:
     from app.domain.entities.provider import Provider as DomainProvider
 
 
+@register_model
 class ProviderModel(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for the Provider entity.
@@ -32,7 +34,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     __tablename__ = "providers"
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey('users.id'), unique=True, nullable=False, index=True)
     specialty = Column(String(100), nullable=False)
     license_number = Column(String(100), nullable=False)
     npi_number = Column(String(20), nullable=True)
@@ -45,13 +47,12 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
     )
 
-    # Relationship with User model
+    # Relationship with User model - Explicit foreign_keys
     user = relationship(
         "User", 
         back_populates="provider",
         uselist=False,  # A provider belongs to a single user
-        # Explicitly define the join condition
-        primaryjoin="ProviderModel.user_id == User.id"
+        foreign_keys=[user_id]
     )
     
     # Define all required relationships to ensure proper SQLAlchemy mapping
