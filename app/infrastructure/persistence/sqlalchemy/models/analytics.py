@@ -41,7 +41,11 @@ class AnalyticsEventModel(Base, TimestampMixin):
     correlation_id = Column(String(100), nullable=True, index=True)
     
     # Define the relationship to the User model
-    user = relationship("User", back_populates="analytics_events")
+    user = relationship(
+        "User", 
+        back_populates="analytics_events"
+        # primaryjoin="AnalyticsEventModel.user_id == User.id" # REVERTED
+    )
     
     # Useful indexes for analytics queries
     __table_args__ = (

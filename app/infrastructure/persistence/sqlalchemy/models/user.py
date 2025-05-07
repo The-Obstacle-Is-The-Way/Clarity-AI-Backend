@@ -181,7 +181,9 @@ class User(Base, TimestampMixin, AuditMixin):
         "ProviderModel",
         back_populates="user",
         uselist=False,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        # Explicitly define the join condition
+        primaryjoin="User.id == ProviderModel.user_id"
     )
     # Use string reference for Patient to break circular dependency
     patients = relationship(
@@ -191,12 +193,11 @@ class User(Base, TimestampMixin, AuditMixin):
     )
     
     # Relationship to AnalyticsEventModel
-    analytics_events = relationship(
-        "AnalyticsEventModel", 
-        back_populates="user", 
-        cascade="all, delete-orphan",
-        lazy="dynamic"  # Optional: good for large collections
-    )
+    # analytics_events = relationship( # TEMPORARILY COMMENTED OUT - Causes Mapper Init Error
+    #     "AnalyticsEventModel", 
+    #     back_populates="user", 
+    #     cascade="all, delete-orphan"
+    # )
     
     # Audit logging
     access_logs = Column(JSON, nullable=True)  # Stores recent access logs

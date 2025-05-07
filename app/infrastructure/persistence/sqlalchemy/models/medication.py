@@ -63,7 +63,7 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
     patient = relationship("Patient", back_populates="prescriptions")
     medication_catalog_item = relationship("MedicationModel", back_populates="prescriptions")
     # Consider relationship to Provider/User if ProviderModel separate from User
-    prescribing_provider = relationship("User", foreign_keys=[provider_id])
+    prescribing_provider = relationship("User", foreign_keys="PatientMedicationModel.provider_id")
 
 
     def __repr__(self) -> str:

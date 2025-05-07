@@ -49,7 +49,9 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     user = relationship(
         "User", 
         back_populates="provider",
-        uselist=False  # A provider belongs to a single user
+        uselist=False,  # A provider belongs to a single user
+        # Explicitly define the join condition
+        primaryjoin="ProviderModel.user_id == User.id"
     )
     
     # Define all required relationships to ensure proper SQLAlchemy mapping
