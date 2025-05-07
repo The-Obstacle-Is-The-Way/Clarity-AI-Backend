@@ -43,7 +43,7 @@ except ImportError:
 # For biometric alert and rule repositories, we'll use Any as placeholder if they don't exist yet
 from typing import Any
 
-from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 
 # Try to import concrete repository implementations, use placeholders if not found
 try:
@@ -70,7 +70,7 @@ def register_repository(interface: type[T], implementation: type[T]) -> None:
 # --- Register Concrete Implementations ---
 
 # Register the actual implementations for the application runtime
-register_repository(IUserRepository, SqlAlchemyUserRepository)
+register_repository(IUserRepository, SQLAlchemyUserRepository)
 register_repository(IBiometricRuleRepository, BiometricRuleRepository)
 register_repository(IBiometricAlertRepository, BiometricAlertRepository)
 
@@ -121,7 +121,7 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
         implementation = _lookup_implementation()
         try:
             # Instantiate the concrete repository, passing the session
-            instance = implementation(session=session)
+            instance = implementation(db_session=session)
             logger.debug(f"Successfully instantiated repository {implementation.__name__} for {repo_type.__name__}")
             return instance
         except Exception as e:

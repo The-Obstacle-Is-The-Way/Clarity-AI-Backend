@@ -28,7 +28,7 @@ from app.core.interfaces.services.auth_service_interface import (
 )
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.infrastructure.database.session import get_async_session
-from app.infrastructure.repositories.user_repository import get_user_repository
+# from app.infrastructure.repositories.user_repository import get_user_repository # DELETED OLD IMPORT
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service, JWTService
 from app.domain.exceptions import AuthenticationError, AuthorizationError # Corrected path

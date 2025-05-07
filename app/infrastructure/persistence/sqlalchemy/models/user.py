@@ -20,7 +20,7 @@ from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship, declared_attr, foreign
+from sqlalchemy.orm import relationship, declared_attr
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -138,15 +138,17 @@ class User(Base, TimestampMixin, AuditMixin):
     verification_token = Column(String(255), nullable=True, comment="Account verification token")
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
     preferences = Column(JSON, nullable=True, comment="User UI and system preferences")  
+    password_changed_at = Column(DateTime, nullable=True, comment="Timestamp when user last changed their password")
 
     # --- Relationships --- 
-    # Simplified relationship
+    # Reverted to simpler relationship definition, now adding foreign_keys as per error hint
+    # Adding remote_side as well for maximum clarity to the ORM
     provider = relationship(
-        "ProviderModel", # Use string reference 
+        "ProviderModel", 
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
-        primaryjoin='User.id == foreign(ProviderModel.user_id)'
+        foreign_keys='ProviderModel.user_id'
     )
     
     patients = relationship(

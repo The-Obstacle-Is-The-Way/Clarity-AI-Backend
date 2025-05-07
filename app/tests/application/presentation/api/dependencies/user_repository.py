@@ -10,7 +10,7 @@ from fastapi import Depends
 from app.core.utils.logging import get_logger
 from app.domain.repositories.user_repository import UserRepository
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_session
-from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 
 logger = get_logger(__name__)
 
@@ -30,4 +30,4 @@ async def get_user_repository_provider(
         UserRepository implementation
     """
     # Create and return user repository
-    return SqlAlchemyUserRepository(session=db_session) 
+    return SQLAlchemyUserRepository(db_session=db_session) 

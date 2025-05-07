@@ -46,10 +46,9 @@ class TestJWTService:
     async def test_create_access_token_structure(self, jwt_service: JWTService):
         """Test structure and basic claims of a created access token."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
-        token = await jwt_service.create_access_token(data=user_data)
+        token = jwt_service.create_access_token(data=user_data)
 
-        # Decode using the service itself
-        payload = await jwt_service.decode_token(token)
+        payload = jwt_service.decode_token(token)
 
         assert isinstance(token, str)
         assert payload.sub == self.user_subject
@@ -73,8 +72,8 @@ class TestJWTService:
     async def test_create_access_token_expiration(self, jwt_service: JWTService):
         """Test that access tokens have correct expiration times based on settings."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
-        token = await jwt_service.create_access_token(data=user_data)
-        payload = await jwt_service.decode_token(token)
+        token = jwt_service.create_access_token(data=user_data)
+        payload = jwt_service.decode_token(token)
 
         issued_at = payload.iat
         expiration = payload.exp
@@ -89,9 +88,9 @@ class TestJWTService:
     async def test_decode_token_valid(self, jwt_service: JWTService):
         """Test that valid tokens are properly decoded and validated."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
-        token = await jwt_service.create_access_token(data=user_data)
+        token = jwt_service.create_access_token(data=user_data)
 
-        payload = await jwt_service.decode_token(token)
+        payload = jwt_service.decode_token(token)
 
         assert isinstance(payload, TokenPayload)
         assert payload.sub == self.user_subject
@@ -103,18 +102,18 @@ class TestJWTService:
         """Test that expired tokens raise TokenExpiredException during decoding."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
         # Create token that expired 1 minute ago
-        expired_token = await jwt_service.create_access_token(data=user_data, expires_delta_minutes=-1)
+        expired_token = jwt_service.create_access_token(data=user_data, expires_delta_minutes=-1)
         
         await asyncio.sleep(0.1) # Ensure time passes expiry
         
         with pytest.raises(TokenExpiredException):
-            await jwt_service.decode_token(expired_token)
+            jwt_service.decode_token(expired_token)
 
     @pytest.mark.asyncio
     async def test_decode_token_invalid_signature(self, jwt_service: JWTService):
         """Test that tokens with invalid signatures raise InvalidTokenException."""
         user_data = {"sub": self.user_subject, "roles": self.user_roles}
-        token = await jwt_service.create_access_token(data=user_data)
+        token = jwt_service.create_access_token(data=user_data)
 
         parts = token.split('.')
         if len(parts) == 3:
@@ -124,7 +123,7 @@ class TestJWTService:
             pytest.fail("Generated token does not have 3 parts separated by dots.")
 
         with pytest.raises(InvalidTokenException) as exc_info:
-            await jwt_service.decode_token(tampered_token)
+            jwt_service.decode_token(tampered_token)
         assert "Signature verification failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -134,7 +133,7 @@ class TestJWTService:
         invalid_token = bytes([0x9e, 0x8f]) + b"invalid"
 
         with pytest.raises(InvalidTokenException) as exc_info:
-            await jwt_service.decode_token(invalid_token)
+            jwt_service.decode_token(invalid_token)
         
         # The exact error message may vary based on the JWT library version
         # So we'll check for common error patterns instead of exact text

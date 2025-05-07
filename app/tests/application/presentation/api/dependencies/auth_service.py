@@ -12,7 +12,8 @@ from app.infrastructure.persistence.sqlalchemy.config.database import get_db_ses
 
 # Use infrastructure implementation of user repository
 # Use the concrete SqlAlchemy implementation
-from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
+# from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.infrastructure.security.jwt_service import JWTService
 from app.infrastructure.security.password.password_handler import PasswordHandler
@@ -41,7 +42,8 @@ async def get_auth_service_provider(
         Configured AuthenticationService instance
     """
     # Create user repository with the session
-    user_repository = SqlAlchemyUserRepository(session=db_session)
+    # user_repository = SqlAlchemyUserRepository(session=db_session)
+    user_repository = SQLAlchemyUserRepository(db_session=db_session)
     
     # Create and return authentication service
     auth_service = AuthenticationService(

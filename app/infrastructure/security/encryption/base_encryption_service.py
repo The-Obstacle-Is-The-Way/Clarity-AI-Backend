@@ -58,10 +58,10 @@ def get_encryption_key() -> str:
         str: Current encryption key
     """
     settings = get_settings()
-    if not settings.ENCRYPTION_KEY:
-        logger.error("ENCRYPTION_KEY is not set in settings!")
+    if not settings.PHI_ENCRYPTION_KEY:
+        logger.error("PHI_ENCRYPTION_KEY is not set in settings!")
         raise ValueError("Encryption key is missing in configuration.")
-    return settings.ENCRYPTION_KEY
+    return settings.PHI_ENCRYPTION_KEY
 
 
 class BaseEncryptionService:
@@ -145,14 +145,14 @@ decryption methods for strings and dictionaries.
                 raise ValueError("Invalid format for direct_key")
         
         settings = get_settings()
-        if settings.ENCRYPTION_KEY:
-            prepared_key = self._prepare_key_for_fernet(settings.ENCRYPTION_KEY)
+        if settings.PHI_ENCRYPTION_KEY:
+            prepared_key = self._prepare_key_for_fernet(settings.PHI_ENCRYPTION_KEY)
             if prepared_key:
                 return prepared_key
             else:
-                logger.error("Invalid ENCRYPTION_KEY format in settings.")
+                logger.error("Invalid PHI_ENCRYPTION_KEY format in settings.")
         
-        logger.warning("ENCRYPTION_KEY not found or invalid, attempting key derivation as fallback.")
+        logger.warning("PHI_ENCRYPTION_KEY not found or invalid, attempting key derivation as fallback.")
         salt_str = getattr(settings, 'ENCRYPTION_SALT', None)
         if not salt_str:
              logger.error("ENCRYPTION_SALT is required for key derivation fallback.")

@@ -548,7 +548,8 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             'created_at': model.created_at,
             'updated_at': model.updated_at,
             'last_login': model.last_login,
-            'preferences': model.preferences
+            'preferences': model.preferences,
+            'mfa_secret': model.mfa_secret if hasattr(model, 'mfa_secret') else None,
         }
         
         # Create and return domain entity
@@ -558,3 +559,18 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
 # For backward compatibility - provide the old name as an alias
 # This allows existing code to continue working with our refactored implementation
 UserRepository = SQLAlchemyUserRepository
+
+def get_user_repository(db_session: AsyncSession) -> UserRepositoryInterface:
+    """
+    Factory function to create a SQLAlchemyUserRepository instance.
+    
+    This function allows for dependency injection of the repository
+    in FastAPI dependency functions.
+    
+    Args:
+        db_session: SQLAlchemy async session for database operations
+        
+    Returns:
+        An instance of UserRepositoryInterface
+    """
+    return SQLAlchemyUserRepository(db_session)

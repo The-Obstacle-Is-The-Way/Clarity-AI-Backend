@@ -213,7 +213,7 @@ class DIContainer:
         from app.infrastructure.persistence.sqlalchemy.repositories.biometric_rule_repository import (
             get_biometric_rule_repository,
         )
-        from app.infrastructure.repositories.user_repository import get_user_repository
+        from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import get_user_repository
 
         # Register repository factories
         self.register_repository_factory(IUserRepository, get_user_repository)

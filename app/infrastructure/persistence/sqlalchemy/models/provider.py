@@ -48,14 +48,13 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
     )
 
-    # Relationship with User model - Apply viewonly=True workaround
+    # Relationship with User model - Reverted to simpler viewonly=True setup
     user = relationship(
         "User", # Use string reference
         back_populates="provider",
         uselist=False,  # A provider belongs to a single user
-        viewonly=True, # Prevent sync rule execution from this side
-        foreign_keys="[ProviderModel.user_id]" # Explicitly state the FK column here
-        # Removed foreign_keys=[User.id]
+        viewonly=True # Prevent sync rule execution from this side
+        # Removed explicit foreign_keys here
     )
     
     # Define all required relationships to ensure proper SQLAlchemy mapping

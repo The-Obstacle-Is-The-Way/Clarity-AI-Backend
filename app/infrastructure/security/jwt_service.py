@@ -96,7 +96,7 @@ class JWTService(IJwtService):
         
         logger.info(f"JWT service initialized with algorithm {self.algorithm}")
 
-    def create_access_token(
+    async def create_access_token(
         self,
         data: dict[str, Any],
         *,
@@ -195,7 +195,7 @@ class JWTService(IJwtService):
         logger.debug(f"Created {token_type} token with ID {token_id} for subject {subject_str}")
         return encoded_token
 
-    def decode_token(self, token: str) -> TokenPayload:
+    async def decode_token(self, token: str) -> TokenPayload:
         """
         Decodes a token, verifies signature, expiration, and checks blacklist.
         Raises AuthenticationError or specific token exceptions for validation failures.
@@ -275,7 +275,7 @@ class JWTService(IJwtService):
         
         try:
             logger.debug("Decoding token to extract user payload...")
-            payload: TokenPayload = self.decode_token(token) # Calls sync decode_token
+            payload: TokenPayload = await self.decode_token(token) # Calls async decode_token
             logger.debug(f"Token decoded successfully. Payload: {payload}")
 
             # Extract user identifier (assuming it's stored in 'sub' claim)
@@ -351,7 +351,7 @@ class JWTService(IJwtService):
     async def revoke_token(self, token: str) -> None:
         """Revokes a token by adding its JTI to the blacklist."""
         try:
-            payload = self.decode_token(token) # Calls sync decode_token
+            payload = await self.decode_token(token) # Calls async decode_token
             jti = payload.jti # jti is now an attribute
             exp = payload.exp # exp is now an attribute
 
