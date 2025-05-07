@@ -7,7 +7,7 @@ and proper audit logging.
 """
 
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status as http_status
 from pydantic import UUID4
 import uuid
 
@@ -39,7 +39,7 @@ router = APIRouter(
     description="Get a list of biometric alerts with optional filtering"
 )
 async def get_alerts(
-    status: AlertStatus | None = Query(None, description="Filter by alert status"),
+    status_param: AlertStatus | None = Query(None, alias="status", description="Filter by alert status"),
     priority: AlertPriority | None = Query(None, description="Filter by alert priority"),
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
     start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
@@ -82,7 +82,7 @@ async def get_alerts(
                 patient_id = uuid.UUID(patient_id_str, version=4)
             except ValueError:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid patient_id format: Must be a valid UUIDv4. Received: {patient_id_str}"
                 )
         
@@ -96,7 +96,7 @@ async def get_alerts(
             
         # Convert filter params
         filters = AlertsFilterParams(
-            status=status,
+            status=status_param,
             priority=priority,
             alert_type=alert_type,
             start_date=start_date,
@@ -130,14 +130,14 @@ async def get_alerts(
         
     except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to access this patient's alert data"
         ) from e
     except Exception as e:
         # Log the exception but don't expose details in response
         # This is for HIPAA compliance
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred processing the alerts request"
         ) from e
 
@@ -176,7 +176,7 @@ async def get_alert(
         
         if not alert:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Alert not found"
             )
             
@@ -196,13 +196,13 @@ async def get_alert(
         
     except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to access this alert"
         ) from e
     except Exception as e:
         # HIPAA-compliant error handling
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred retrieving the alert"
         ) from e
 
@@ -210,7 +210,7 @@ async def get_alert(
 @router.post(
     "",
     response_model=AlertResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=http_status.HTTP_201_CREATED,
     summary="Create alert",
     description="Create a new biometric alert"
 )
@@ -271,18 +271,18 @@ async def create_alert(
         
     except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to create an alert for this patient"
         ) from e
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         ) from e
     except Exception as e:
         # HIPAA-compliant error handling
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred creating the alert"
         ) from e
 
@@ -323,7 +323,7 @@ async def update_alert(
         
         if not existing_alert:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Alert not found"
             )
             
@@ -360,25 +360,25 @@ async def update_alert(
         
     except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to update this alert"
         ) from e
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         ) from e
     except Exception as e:
         # HIPAA-compliant error handling
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred updating the alert"
         ) from e
 
 
 @router.delete(
     "/{alert_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=http_status.HTTP_204_NO_CONTENT,
     summary="Delete alert",
     description="Delete a specific alert by ID"
 )
@@ -407,14 +407,14 @@ async def delete_alert(
         
         if not existing_alert:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Alert not found"
             )
             
         # Check if user has admin rights for alert deletion
         if not await alert_service.can_delete_alert(current_user.id, str(alert_id)):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to delete this alert"
             )
             
@@ -425,18 +425,18 @@ async def delete_alert(
         
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to delete alert"
             )
             
     except InvalidCredentialsError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Not authorized to delete this alert"
         ) from e
     except Exception as e:
         # HIPAA-compliant error handling
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred deleting the alert"
         ) from e

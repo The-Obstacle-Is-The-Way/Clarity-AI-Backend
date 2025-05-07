@@ -396,10 +396,10 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: uuid.UUID
+        sample_patient_id: uuid.UUID,
+        mock_alert_service: MagicMock,
     ) -> None:
         headers = get_valid_provider_auth_headers
-        patient_id_str = str(sample_patient_id)
         status_filter = AlertStatus.OPEN.value
         priority_filter = AlertPriority.HIGH.value
         start_time = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
@@ -413,12 +413,19 @@ class TestBiometricAlertsEndpoints:
             "offset": 1,
             "limit": 5
         }
+        
+        mock_alert_service.validate_access = AsyncMock()
+        mock_alert_service.get_alerts = AsyncMock(return_value=[])
+        
         response = await client.get(
             "/api/v1/biometric-alerts",
             headers=headers,
             params=params
         )
         assert response.status_code == status.HTTP_200_OK
+        assert response.json() == []
+        mock_alert_service.validate_access.assert_awaited_once()
+        mock_alert_service.get_alerts.assert_awaited_once()
 
     async def test_update_alert_status_acknowledge(
         self,
