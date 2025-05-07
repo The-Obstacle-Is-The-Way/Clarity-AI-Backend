@@ -12,7 +12,7 @@ import uuid
 from typing import Any
 
 from dateutil import parser
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON, UUID
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
@@ -31,7 +31,12 @@ logger = logging.getLogger(__name__)
 
 import dataclasses  # Add this import
 
+# Correct import: Use absolute path to types.py file
+from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict 
+from app.infrastructure.persistence.sqlalchemy.registry import register_model
 
+
+@register_model
 class Patient(Base, TimestampMixin, AuditMixin):
     """
     SQLAlchemy model for patient data.
@@ -47,12 +52,10 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # the HIPAA-compliant security model of the codebase
     __table_args__ = {'extend_existing': True}
     
-    # --- Core Identification and Metadata ---
-    # MODIFIED: Use standard sqlalchemy.UUID
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # --- Primary Key and Foreign Keys ---
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4) # Use GUID
     external_id = Column(String(64), unique=True, index=True, nullable=True)
-    # MODIFIED: Use standard sqlalchemy.UUID
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True, index=True)
+    user_id = Column(GUID(), ForeignKey('users.id'), nullable=False, index=True) # Use GUID
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)

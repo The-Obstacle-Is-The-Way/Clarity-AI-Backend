@@ -18,9 +18,9 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func, UUID
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, foreign
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -28,7 +28,8 @@ from app.domain.utils.datetime_utils import now_utc
 # Import the canonical Base and registry
 from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, Base, TimestampMixin
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
-from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
+# Correct import: Use absolute path to types.py file
+from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict, GUID
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ class User(Base, TimestampMixin, AuditMixin):
     
     # --- Core Identification and Metadata ---
     id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True, 
         index=True,
         nullable=False,
@@ -138,13 +139,14 @@ class User(Base, TimestampMixin, AuditMixin):
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
     preferences = Column(JSON, nullable=True, comment="User UI and system preferences")  
 
-    # --- Relationships (Simplified) --- 
+    # --- Relationships --- 
+    # Simplified relationship
     provider = relationship(
-        "ProviderModel", 
+        "ProviderModel", # Use string reference 
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",
-        foreign_keys="[ProviderModel.user_id]"
+        primaryjoin='User.id == foreign(ProviderModel.user_id)'
     )
     
     patients = relationship(

@@ -9,13 +9,14 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Any
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, JSON, UUID
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 from app.infrastructure.persistence.sqlalchemy.models.user import User
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 # Type-checking only imports to avoid circular imports
 if TYPE_CHECKING:
@@ -33,8 +34,8 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
 
     __tablename__ = "providers"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), unique=True, nullable=False, index=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey('users.id'), unique=True, nullable=False, index=True)
     specialty = Column(String(100), nullable=False)
     license_number = Column(String(100), nullable=False)
     npi_number = Column(String(20), nullable=True)
@@ -47,11 +48,14 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
     )
 
-    # Relationship with User model - Simplified again
+    # Relationship with User model - Apply viewonly=True workaround
     user = relationship(
-        "User", 
+        "User", # Use string reference
         back_populates="provider",
-        uselist=False  # A provider belongs to a single user
+        uselist=False,  # A provider belongs to a single user
+        viewonly=True, # Prevent sync rule execution from this side
+        foreign_keys="[ProviderModel.user_id]" # Explicitly state the FK column here
+        # Removed foreign_keys=[User.id]
     )
     
     # Define all required relationships to ensure proper SQLAlchemy mapping
