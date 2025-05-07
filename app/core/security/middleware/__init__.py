@@ -24,14 +24,13 @@ from app.core.config.settings import Settings, get_settings
 # Import interfaces from the core layer
 from app.core.interfaces.services.authentication_service import IAuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
-# Import necessary domain exceptions for token validation
-from app.domain.exceptions import (
+# Import exceptions directly from their specific modules for clarity
+from app.domain.exceptions.auth_exceptions import (
     AuthenticationError,
     InvalidTokenException,
     TokenExpiredException,
+    UserNotFoundException,
 )
-# Import UserNotFoundException from its specific module
-from app.domain.exceptions.auth_exceptions import UserNotFoundException
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service
@@ -183,7 +182,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def validate_token_and_get_user(self, token: str) -> Any:
         """Validate the provided token and retrieve the corresponding user."""
         try:
-            token_payload = await self._jwt_service_instance.verify_token(token)
+            # The mock should also conform to this (will be adjusted in the test file).
+            # token_payload = self._jwt_service_instance.decode_token(token)
+            # Reverting to await, as AsyncMock might wrap sync side_effect results
+            # in a coroutine if the method on AsyncMock is called without await.
+            # Awaiting ensures we get the actual result from the (potentially async) side_effect.
+            token_payload = await self._jwt_service_instance.decode_token(token)
+                
             user = await self._auth_service_instance.get_user_by_id(token_payload.sub)
 
             if not user:
