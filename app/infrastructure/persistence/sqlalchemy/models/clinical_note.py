@@ -36,7 +36,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
-    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False, index=True)
     appointment_id = Column(
         SQLAlchemyUUID(as_uuid=True), ForeignKey("appointments.id"), nullable=True
     )
@@ -50,7 +50,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
 
     # Relationships with correct model references
     patient = relationship("Patient", back_populates="clinical_notes")
-    provider = relationship("User", foreign_keys=[provider_id])
+    provider = relationship("ProviderModel", foreign_keys=[provider_id], back_populates="clinical_notes")
     appointment = relationship("AppointmentModel", back_populates="clinical_notes")
     parent_note = relationship("ClinicalNoteModel", remote_side=[id], backref="revisions")
 

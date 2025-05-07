@@ -65,9 +65,9 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
     )
     
     # Define medications relationship with proper viewonly setting
-    medications = relationship(
-        "MedicationModel", 
-        back_populates="provider",
+    prescriptions_made = relationship(
+        "PatientMedicationModel", 
+        back_populates="prescribing_provider",
         lazy="selectin"
     )
     

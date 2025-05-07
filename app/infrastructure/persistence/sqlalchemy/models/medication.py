@@ -49,7 +49,7 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
     medication_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("medications.id"), nullable=False, index=True)
-    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True) # Assuming provider is a User
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False, index=True) # MODIFIED: Changed from users.id to providers.id
 
     # Prescription-specific details
     dosage = Column(String(100), nullable=False)
@@ -62,8 +62,7 @@ class PatientMedicationModel(Base, TimestampMixin, AuditMixin):
     # Relationships
     patient = relationship("Patient", back_populates="prescriptions")
     medication_catalog_item = relationship("MedicationModel", back_populates="prescriptions")
-    # Consider relationship to Provider/User if ProviderModel separate from User
-    prescribing_provider = relationship("User", foreign_keys="PatientMedicationModel.provider_id")
+    prescribing_provider = relationship("ProviderModel", foreign_keys=[provider_id], back_populates="prescriptions_made") # MODIFIED: Point to ProviderModel, add back_populates
 
 
     def __repr__(self) -> str:

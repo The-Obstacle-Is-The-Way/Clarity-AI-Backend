@@ -28,7 +28,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("patients.id"), nullable=False, index=True)
-    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    provider_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("providers.id"), nullable=False, index=True)
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     appointment_type = Column(String(50), nullable=False)

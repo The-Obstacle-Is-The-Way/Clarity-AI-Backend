@@ -142,7 +142,15 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
     # Digital twin relationships
     # Store as String(36) for SQLite compatibility
-    biometric_twin_id = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)
+    # biometric_twin_id = Column(SQLAlchemyUUID(as_uuid=True), nullable=True) # REMOVED: Handled by relationship
+
+    # ADDED: Relationship to BiometricTwinModel
+    biometric_twin = relationship(
+        "BiometricTwinModel",
+        back_populates="patient",
+        uselist=False, # One-to-one relationship
+        cascade="all, delete-orphan" # Cascade delete/orphan operations
+    )
 
     # --- Encrypted Fields Set --- 
     # QUANTUM FIX: Update encrypted_fields set to use prefixed column names with underscores
@@ -370,11 +378,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model._insurance_info = await _encrypt_serializable(getattr(patient, 'insurance_info', None), '_insurance_info') 
 
         # Assign remaining non-encrypted fields, converting UUIDs to string
-        biometric_twin_id_obj = getattr(patient, 'biometric_twin_id', None)
-        if isinstance(biometric_twin_id_obj, uuid.UUID):
-            model.biometric_twin_id = str(biometric_twin_id_obj) # Store as string
-        else:
-            model.biometric_twin_id = biometric_twin_id_obj # Assume None or already string
+        # biometric_twin_id_obj = getattr(patient, 'biometric_twin_id', None)
+        # if isinstance(biometric_twin_id_obj, uuid.UUID):
+        #     model.biometric_twin_id = str(biometric_twin_id_obj) # Store as string
+        # else:
+        #     model.biometric_twin_id = biometric_twin_id_obj # Assume None or already string
 
         # Set id only if it exists on the domain object (for updates), store as string
         patient_id_obj = getattr(patient, 'id', None)
