@@ -17,7 +17,7 @@ from app.core.utils.logging import get_logger
 from .auth import get_current_user
 
 # Import from database module
-from app.presentation.api.dependencies.database import get_repository
+from app.presentation.api.dependencies.database import get_patient_repository_dependency
 
 # Import from patient repository module
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 async def get_patient_id(
     patient_id: Annotated[str, Path(description="The UUID of the patient.")],
     current_user: CurrentUserDep,
-    patient_repo: IPatientRepository = Depends(get_repository(IPatientRepository)),
+    patient_repo: IPatientRepository = Depends(get_patient_repository_dependency),
     # session: AsyncSession = Depends(get_async_session) # Not used directly, repo uses it
 ) -> Patient: # Return type should be the domain entity
     logger.info(f"get_patient_id called for patient_id: {patient_id} by user: {current_user.username}")
@@ -88,5 +88,9 @@ async def get_patient_id(
 
     if db_patient is None:
         logger.warning(f"Patient with id {validated_patient_uuid} not found in database.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Patient with id {validated_patient_uuid} not found"
+        )
 
     return db_patient

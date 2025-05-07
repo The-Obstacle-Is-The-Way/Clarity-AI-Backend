@@ -15,7 +15,10 @@ from app.presentation.api.schemas.patient import (
     PatientRead,
     PatientCreateRequest,
     PatientCreateResponse,
+    # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
 )
+from app.core.domain.entities.patient import Patient
+from app.core.domain.entities.user import UserRole
 
 # Placeholder dependency - replace with actual service implementation later
 def get_patient_service(
@@ -73,3 +76,22 @@ async def create_patient_endpoint(
         ) from e
 
 # Add other routes (PUT, DELETE, LIST) later
+
+# @router.put(
+#     "/{patient_id}", 
+#     response_model=PatientRead, 
+#     name="patients:update_patient",
+#     summary="Update an existing patient",
+#     dependencies=[Depends(require_roles([UserRole.ADMIN, UserRole.CLINICIAN]))]
+# )
+# async def update_patient(
+#     patient_id: UUID, 
+#     patient_update_data: PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
+#     service: PatientService = Depends(get_patient_service),
+#     # current_user: CurrentUserDep = Depends(get_current_user) # Authorization handled by require_roles
+# ) -> PatientRead:
+#     logger.info(f"Endpoint update_patient called for patient_id: {patient_id}")
+#     updated_patient = await service.update_patient(patient_id, patient_update_data)
+#     if updated_patient is None:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+#     return updated_patient

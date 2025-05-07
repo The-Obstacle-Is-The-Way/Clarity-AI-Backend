@@ -64,3 +64,13 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
         return get_repository_instance(repo_type, session)
     
     return _get_repo_with_session
+
+# Specific dependency for Patient Repository
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository as SQLAlchemyPatientRepository
+
+async def get_patient_repository_dependency(
+    session: AsyncSession = Depends(get_async_session),
+) -> IPatientRepository:
+    """Provides an instance of IPatientRepository (SQLAlchemyPatientRepository)."""
+    return SQLAlchemyPatientRepository(db_session=session)
