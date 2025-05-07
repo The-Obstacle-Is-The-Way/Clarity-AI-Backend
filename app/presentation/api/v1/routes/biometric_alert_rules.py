@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 # Router without global dependencies that might interfere with static analysis
 router = APIRouter(
-    prefix="/alert-rules",
     tags=["biometric-alert-rules"],
 )
 
@@ -87,11 +86,6 @@ async def get_alert_rules(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> list[AlertRuleResponse]:
-    """
-    Get a list of biometric alert rules for the current user.
-
-    (Placeholder Implementation)
-    """
     logger.info(f"User {current_user.id} fetching alert rules with limit {limit}, offset {offset}. DB session temporarily removed.")
     # TODO: Implement actual repository call using the 'db' session
     # rules = await rule_repo.get_rules_by_user(db=db, user_id=current_user.id, limit=limit, offset=offset)

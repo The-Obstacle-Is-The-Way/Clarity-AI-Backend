@@ -29,8 +29,6 @@ from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 
 # Potentially import test routers conditionally or via a flag
-from app.presentation.api.v1.routes.patient import router as patient_router
-from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
 from app.tests.routers.admin_test_router import router as admin_test_router
 
 # Initialize logging early

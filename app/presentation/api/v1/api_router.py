@@ -13,9 +13,7 @@ from app.presentation.api.v1.endpoints.analytics_endpoints import router as anal
 from app.presentation.api.v1.routes.auth import router as auth_router
 from app.presentation.api.v1.routes.actigraphy import router as actigraphy_router
 from app.presentation.api.v1.routes.biometric import router as biometric_router
-# from app.presentation.api.v1.routes.biometric_alert_rules import (
-#     router as biometric_alert_rules_router,
-# )
+from app.presentation.api.v1.routes.biometric_alert_rules import router as biometric_alert_rules_router
 from app.presentation.api.v1.routes.biometric_alerts import (
     router as biometric_alerts_router,
 )
@@ -43,11 +41,11 @@ api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biom
 api_v1_router.include_router(
     biometric_alerts_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
 )
-# api_v1_router.include_router(
-#     biometric_alert_rules_router,
-#     prefix="/biometric-alert-rules",
-#     tags=["Biometric Alert Rules"],
-# )
+api_v1_router.include_router(
+    biometric_alert_rules_router,
+    prefix="/biometric-alerts/rules",
+    tags=["Biometric Alert Rules"],
+)
 api_v1_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])
 api_v1_router.include_router(
     temporal_neurotransmitter_router,
@@ -55,7 +53,7 @@ api_v1_router.include_router(
     tags=["Temporal Neurotransmitter"],
 )
 api_v1_router.include_router(xgboost_router, prefix="/xgboost", tags=["XGBoost"])
-api_v1_router.include_router(digital_twin_router, prefix="/digital-twin", tags=["Digital Twin"])
+api_v1_router.include_router(digital_twin_router, prefix="/digital-twins", tags=["Digital Twins"])
 api_v1_router.include_router(patient_router, prefix="/patients", tags=["patients"])
 
 # Add a simple health check endpoint for v1

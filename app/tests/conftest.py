@@ -102,45 +102,13 @@ def test_settings() -> Settings:
 
 
 # --- Database Fixtures ---
-@pytest_asyncio.fixture(scope="function")
-async def test_db_engine(test_settings: Settings) -> AsyncGenerator[AsyncEngine, None]:
-    """Provides a clean SQLAlchemy engine for each test function."""
-    logger.info(f"Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL}")
-    
-    # Import model validation utilities
-    from app.infrastructure.persistence.sqlalchemy.registry import validate_models
-    
-    # Ensure all models are loaded before creating tables
-    # ensure_all_models_loaded() # Removed call
-    
-    # Create async engine with proper configuration for testing
-    engine = create_async_engine(
-        test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL,
-        echo=False,  # Set to True for SQL logging
-        connect_args={"check_same_thread": False},  # Required for SQLite
-        poolclass=StaticPool,  # Use StaticPool for SQLite in-memory
-    )
-    
-    # Validate all models to ensure proper registration
-    validate_models()
-    
-    # Create all tables in a transaction
-    async with engine.begin() as conn:
-        logger.debug("Dropping all tables.")
-        await conn.run_sync(Base.metadata.drop_all)
-        logger.debug("Creating all tables.")
-        await conn.run_sync(Base.metadata.create_all)
-
-    logger.debug(f"Yielding test DB engine: {engine}")
-    yield engine
-
-    logger.debug("Disposing test DB engine.")
-    await engine.dispose()
-
+# The following function-scoped test_db_engine is REMOVED (lines 104-131 in original)
+# It was causing issues by potentially re-creating tables per function.
+# We will rely on the session-scoped test_db_engine defined later in this file.
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session(
-    test_db_engine: AsyncEngine,
+    test_db_engine: AsyncEngine, # This will now use the session-scoped engine
 ) -> AsyncGenerator[AsyncSession, None]:
     """Provides a clean SQLAlchemy session with automatic rollback for each test."""
     session_factory = sessionmaker(
@@ -607,7 +575,7 @@ async def event_loop() -> asyncio.AbstractEventLoop:
     """Provide a session-scoped event loop, managed by pytest-asyncio."""
     # This simply allows pytest-asyncio to provide its default loop.
     # No explicit creation/closing needed here; pytest-asyncio handles it.
-    return asyncio.get_event_loop()
+    return asyncio.get_running_loop()
 
 
 # Event listener to enable foreign keys for SQLite connections
@@ -644,37 +612,26 @@ def set_sqlite_pragma(dbapi_connection, connection_record, **kwargs):
             # aiosqlite connections from an async engine should have a running loop.
             logger.warning("Event loop for DBAPI connection not running, cannot set PRAGMA.")
 
+# Ensure this is the only test_db_engine fixture
 @pytest_asyncio.fixture(scope="session")
-async def test_db_engine(event_loop, test_settings: Settings) -> AsyncEngine:
-    """Provides a clean SQLAlchemy engine for each test function."""
-    logger.info(f"Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL}")
+async def test_db_engine(event_loop, test_settings: Settings) -> AsyncEngine: # RETAINED and ensure it's AsyncEngine
+    """Provides a SQLAlchemy engine for the entire test session."""
+    logger.info(f"SESSION SCOPE: Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL}")
     
-    # Import model validation utilities
-    from app.infrastructure.persistence.sqlalchemy.registry import validate_models
-    
-    # Ensure all models are loaded before creating tables
-    # ensure_all_models_loaded() # Removed call
-    
-    # Create async engine with proper configuration for testing
     engine = create_async_engine(
-        test_settings.ASYNC_DATABASE_URL or test_settings.DATABASE_URL,
-        echo=False,  # Set to True for SQL logging
-        connect_args={"check_same_thread": False},  # Required for SQLite
-        poolclass=StaticPool,  # Use StaticPool for SQLite in-memory
+        test_settings.ASYNC_DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
-    
-    # Validate all models to ensure proper registration
-    validate_models()
-    
-    # Create all tables in a transaction
-    async with engine.begin() as conn:
-        logger.debug("Dropping all tables.")
-        await conn.run_sync(Base.metadata.drop_all)
-        logger.debug("Creating all tables.")
-        await conn.run_sync(Base.metadata.create_all)
 
-    logger.debug(f"Yielding test DB engine: {engine}")
+    async with engine.begin() as conn:
+        logger.info("SESSION SCOPE: Dropping all tables.")
+        await conn.run_sync(main_metadata.drop_all) # Use main_metadata from registry
+        logger.info("SESSION SCOPE: Creating all tables.")
+        await conn.run_sync(main_metadata.create_all) # Use main_metadata from registry
+
     yield engine
 
-    logger.debug("Disposing test DB engine.")
+    logger.info("SESSION SCOPE: Disposing test DB engine.")
     await engine.dispose()

@@ -9,6 +9,7 @@ and proper audit logging.
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
+import uuid
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User
@@ -26,7 +27,6 @@ from app.presentation.api.v1.dependencies.biometric import get_alert_service
 
 # Create router with prefix and tags for OpenAPI documentation
 router = APIRouter(
-    prefix="/alerts",
     tags=["biometric-alerts"],
     dependencies=[Depends(sensitive_rate_limit())]  # Apply HIPAA-compliant rate limiting
 )
@@ -44,7 +44,7 @@ async def get_alerts(
     alert_type: AlertType | None = Query(None, description="Filter by alert type"),
     start_date: str | None = Query(None, description="Filter by start date (ISO format)"),
     end_date: str | None = Query(None, description="Filter by end date (ISO format)"),
-    patient_id: UUID4 | None = Query(None, description="Patient ID if accessing as provider"),
+    patient_id_str: str | None = Query(None, alias="patient_id", description="Patient ID if accessing as provider"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
@@ -76,11 +76,21 @@ async def get_alerts(
         HTTPException: If user is not authorized to access this data
     """
     try:
+        patient_id: uuid.UUID | None = None
+        if patient_id_str:
+            try:
+                patient_id = uuid.UUID(patient_id_str, version=4)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid patient_id format: Must be a valid UUIDv4. Received: {patient_id_str}"
+                )
+        
         # Determine if request is for self or for a patient (provider access)
         subject_id = str(patient_id) if patient_id else current_user.id
         
         # Check authorization if requesting patient data
-        if patient_id and str(patient_id) != current_user.id:
+        if patient_id and patient_id != current_user.id:
             # This will raise an exception if not authorized
             await alert_service.validate_access(current_user.id, str(patient_id))
             
