@@ -127,6 +127,28 @@ async def get_current_active_user(
         )
     return current_user
 
+# New dependency for role checking
+def require_roles(required_roles: list[UserRole]):
+    """
+    Dependency that requires the current user to have AT LEAST ONE of the specified roles.
+    """
+    async def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
+        # The User domain entity has `roles: set[UserRole]` and a `has_role` method.
+        user_has_required_role = False
+        for role in required_roles:
+            if current_user.has_role(role):
+                user_has_required_role = True
+                break
+        
+        if not user_has_required_role:
+            allowed_roles_str = ", ".join(role.value for role in required_roles)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"User requires one of the following roles: {allowed_roles_str}",
+            )
+        return current_user
+    return role_checker
+
 async def get_current_active_user_wrapper(user: User = Depends(get_current_active_user)) -> User:
     """Simple wrapper around get_current_active_user."""
     return user
@@ -196,4 +218,5 @@ __all__ = [
     "oauth2_scheme",
     "require_admin_role",
     "require_clinician_role",
+    "require_roles",
 ]

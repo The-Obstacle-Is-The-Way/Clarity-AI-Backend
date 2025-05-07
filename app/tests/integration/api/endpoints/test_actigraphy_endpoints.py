@@ -136,7 +136,7 @@ class TestActigraphyEndpoints:
     async def test_input_validation(
         self,
         test_client: AsyncClient,
-        patient_token: str
+        provider_token: str
     ) -> None:
         """Test that input validation works correctly."""
         # Try to analyze actigraphy with invalid input
@@ -153,7 +153,7 @@ class TestActigraphyEndpoints:
         response = await test_client.post(
             "/api/v1/actigraphy/analyze", 
             json=invalid_request, 
-            headers={"Authorization": f"Bearer {patient_token}"}
+            headers={"Authorization": f"Bearer {provider_token}"}
         )
 
         # Should return 422 Unprocessable Entity
@@ -260,22 +260,16 @@ class TestActigraphyEndpoints:
         # Mock the audit logger dependency used by the endpoint/service
         # This requires knowing which logger is used (e.g., injected via DI)
         mock_audit_logger = AsyncMock()
-        with patch("app.infrastructure.logging.audit_logger.log_audit_event", mock_audit_logger): # Example patch path
-
-            # Perform an action that should be audited (e.g., creating analysis)
-            # Payload conforms to ActigraphyAnalysisRequest
-            analysis_request = {
-                "patient_id": "test-patient-auditlog",
-                # "readings": sample_readings,           # REMOVED
-                "start_time": "2025-01-01T00:00:00Z", # Optional
-                "end_time": "2025-01-01T00:00:02Z",   # Optional
-                # "sampling_rate_hz": 1.0,           # REMOVED
-                # "device_info": sample_device_info, # REMOVED
-                "analysis_types": ["sleep_quality"] # Correct enum value
+        with patch("app.infrastructure.logging.audit_logger.log_phi_access", mock_audit_logger):
+            analysis_request_payload = {
+                "patient_id": "audit-test-patient-001",
+                "start_time": "2023-01-10T10:00:00Z",
+                "end_time": "2023-01-10T10:00:02Z",
+                "analysis_types": ["sleep_quality"]
             }
             response = await test_client.post(
                 "/api/v1/actigraphy/analyze", 
-                json=analysis_request, 
+                json=analysis_request_payload, 
                 headers={"Authorization": f"Bearer {provider_token}"}
             )
             assert response.status_code == 200

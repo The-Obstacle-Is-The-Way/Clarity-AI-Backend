@@ -470,3 +470,22 @@ def integration_fixture():
     """Basic fixture for integration tests."""
     
     return "integration_fixture"
+
+
+@pytest.fixture
+def actigraphy_file_name() -> str:
+    """Provides a sample filename for actigraphy data uploads."""
+    return "test_actigraphy_data.csv"
+
+
+@pytest.fixture
+def actigraphy_file_content() -> bytes:
+    """Provides sample CSV content for actigraphy data uploads."""
+    # Simple CSV: timestamp,x,y,z
+    csv_content = (
+        "timestamp,x,y,z\\n"
+        "2023-01-01T00:00:00Z,0.1,0.2,0.9\\n"
+        "2023-01-01T00:00:01Z,0.2,0.3,0.8\\n"
+        "2023-01-01T00:00:02Z,0.3,0.4,0.7\\n"
+    )
+    return csv_content.encode('utf-8')

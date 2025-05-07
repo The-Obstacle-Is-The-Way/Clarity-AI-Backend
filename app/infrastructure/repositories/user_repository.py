@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.user import User
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.infrastructure.persistence.sqlalchemy.models.user import (
     User as UserModel,
@@ -33,14 +34,38 @@ class SqlAlchemyUserRepository(BaseSQLAlchemyRepository, IUserRepository):
         super().__init__(session=session, model_class=UserModel)
         # self._session = session # Redundant assignment handled by BaseSQLAlchemyRepository
     
-    async def _to_entity(self, model: UserModel) -> User:
+    def _to_entity(self, model: UserModel) -> User:
         """Convert SQLAlchemy model to domain entity."""
-        return User(
-            id=model.id,
-            username=model.username,
-            email=model.email,
-            # Add other fields as necessary
-        )
+        # Map UserModel attributes to User domain entity fields
+        # Ensure all required fields for User domain entity are provided
+        domain_user_data = {
+            "id": model.id,
+            "username": model.username,
+            "email": model.email,
+            "roles": {UserRole(role_str.lower()) for role_str in model.roles} if isinstance(model.roles, list) else set(),
+            "status": UserStatus.ACTIVE if model.is_active else UserStatus.INACTIVE,
+            # Map other fields from UserModel to User domain entity carefully
+            # The User domain entity has specific __init__ params
+            # password_hash is required by User domain entity
+            "password_hash": model.password_hash, 
+            # full_name is required by User domain entity
+            "full_name": f"{model.first_name or ''} {model.last_name or ''}".strip(),
+            # Optional fields in User domain entity that have defaults or can be None
+            "created_at": model.created_at if hasattr(model, 'created_at') else None,
+            "last_login": model.last_login if hasattr(model, 'last_login') else None,
+            # mfa_enabled and mfa_secret might need specific mapping if available in UserModel
+            # attempts might need mapping if available in UserModel
+        }
+        
+        # Filter out None values for optional fields if User dataclass doesn't handle them well
+        # or if we want to rely on dataclass defaults for Nones.
+        # For now, assume User dataclass handles optional fields appropriately or has defaults.
+
+        # Ensure all fields required by User domain entity's __init__ are present
+        # Current User domain entity requires: email, username, full_name, password_hash
+        # id, roles, status, created_at, etc., have defaults or are handled above.
+        
+        return User(**domain_user_data)
     
     async def get_by_id(self, user_id: str | UUID) -> User | None:
         """
@@ -54,10 +79,9 @@ class SqlAlchemyUserRepository(BaseSQLAlchemyRepository, IUserRepository):
         """
         # Use the base class implementation inherited from BaseSQLAlchemyRepository
         # This already handles all the SQLAlchemy session management
-        model = await super().get_by_id(user_id)
-        if model is None:
-            return None
-        return await self._to_entity(model)
+        # super().get_by_id now returns the User entity directly or None
+        user_entity = await super().get_by_id(user_id)
+        return user_entity # No need to call _to_entity again
         
     async def get_user_by_id(self, user_id: str | UUID) -> User | None:
         """

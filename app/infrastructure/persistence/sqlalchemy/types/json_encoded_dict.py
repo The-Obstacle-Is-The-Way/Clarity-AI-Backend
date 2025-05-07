@@ -22,19 +22,16 @@ class JSONEncodedDict(types.TypeDecorator):
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
-        """Convert Python dictionary to a JSON string before storing."""
+        """Convert Python dictionary/list to a JSON-compatible format before storing."""
         if value is None:
             return None
-        return json.dumps(value)
+        return value
 
     def process_result_value(self, value, dialect):
-        """Convert JSON string to Python dictionary when retrieving from DB."""
+        """Convert JSON data from DB to Python dictionary/list when retrieving."""
         if value is None:
             return None
-        if isinstance(value, dict):
-            # Already a dictionary (SQLAlchemy may have already deserialized it)
-            return value
-        return json.loads(value)
+        return value
     
     def coerce_compared_value(self, op, value):
         """Properly handle operators with JSON values."""

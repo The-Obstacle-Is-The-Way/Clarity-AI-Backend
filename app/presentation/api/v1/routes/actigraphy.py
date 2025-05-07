@@ -12,10 +12,11 @@ from pydantic import BaseModel, UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Proper imports following Clean Architecture principles
-from app.presentation.api.dependencies.auth import get_current_active_user, get_current_user
+from app.presentation.api.dependencies.auth import require_roles
 from app.presentation.api.dependencies.auth import CurrentUserDep
 from app.presentation.api.dependencies.database import get_db
-from app.core.domain.entities.user import User
+from app.core.domain.entities.user import User, UserRole
+from app.infrastructure.logging.audit_logger import log_phi_access as audit_log_phi_access
 
 # Import centralized schemas
 from app.presentation.api.schemas.actigraphy import (
@@ -100,7 +101,7 @@ async def get_pat_service(db: AsyncSession = Depends(get_db)) -> IPATService:
 )
 async def analyze_actigraphy(
     request_data: ActigraphyAnalysisRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN])),
     pat_service: IPATService = Depends(get_pat_service)
 ) -> AnalyzeActigraphyResponse:
     """Analyze actigraphy data and return results.
@@ -118,7 +119,12 @@ async def analyze_actigraphy(
     """
     try:
         # Log the request (in a real implementation, use proper audit logging)
-        print(f"Processing actigraphy data analysis for {current_user.email}")
+        audit_log_phi_access(
+            str(current_user.id),  # Positional: user_id
+            str(request_data.patient_id),  # Positional: patient_id
+            "analyze_actigraphy_data",  # Positional: action
+            details={"analysis_types": [atype.value for atype in request_data.analysis_types]} # Keyword: details
+        )
         
         # Process the data through the service
         analysis_result_dict = await pat_service.analyze_actigraphy(request_data)
@@ -141,7 +147,7 @@ async def analyze_actigraphy(
 )
 async def get_actigraphy_embeddings(
     data: dict[str, Any],
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN])),
     pat_service: IPATService = Depends(get_pat_service)
 ) -> dict[str, Any]:
     """Generate embeddings from actigraphy data.
@@ -170,7 +176,7 @@ async def get_actigraphy_embeddings(
 # Keep the placeholder endpoint for backward compatibility
 @router.get("/placeholder", summary="Placeholder Actigraphy Endpoint")
 async def get_placeholder_actigraphy(
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN]))
 ) -> dict[str, str]:
     """Example placeholder endpoint."""
     return {"message": "Placeholder endpoint for actigraphy data"}

@@ -88,7 +88,7 @@ async def create_test_users(session: AsyncSession) -> None:
             """)
             
             # Create a JSON array with the patient role for the roles column
-            patient_roles = json.dumps([UserRole.PATIENT.value])
+            patient_roles = json.dumps([UserRole.PATIENT.name])
             
             # Generate a UUID for audit tracking
             audit_id = str(uuid.uuid4())
@@ -101,8 +101,8 @@ async def create_test_users(session: AsyncSession) -> None:
                 "is_active": True,
                 "is_verified": True,
                 "email_verified": True,
-                "role": UserRole.PATIENT.value,  # Use the string value of enum
-                "roles": patient_roles,  # Add JSON array of roles
+                "role": UserRole.PATIENT.name,  # Use the NAME of enum for SQLAlchemy Enum type
+                "roles": patient_roles,  # Use NAME for consistency in JSON array
                 "failed_login_attempts": 0,  # Add required failed_login_attempts field
                 "audit_id": audit_id,  # Add required audit_id field
                 "first_name": "Test",
@@ -128,7 +128,7 @@ async def create_test_users(session: AsyncSession) -> None:
             """)
             
             # Create a JSON array with the clinician role for the roles column
-            clinician_roles = json.dumps([UserRole.CLINICIAN.value])
+            clinician_roles = json.dumps([UserRole.CLINICIAN.name])
             
             # Generate a UUID for audit tracking - unique for this clinician
             clinician_audit_id = str(uuid.uuid4())
@@ -141,8 +141,8 @@ async def create_test_users(session: AsyncSession) -> None:
                 "is_active": True,
                 "is_verified": True,
                 "email_verified": True,
-                "role": UserRole.CLINICIAN.value,  # Use the string value of enum
-                "roles": clinician_roles,  # Add JSON array of roles
+                "role": UserRole.CLINICIAN.name,  # Use the NAME of enum
+                "roles": clinician_roles,  # Use NAME for consistency in JSON array
                 "failed_login_attempts": 0,  # Add required failed_login_attempts field
                 "audit_id": clinician_audit_id,  # Add required audit_id field
                 "first_name": "Test",
@@ -182,29 +182,27 @@ async def create_minimal_test_users(session: AsyncSession) -> None:
         current_time = datetime.now(timezone.utc).isoformat()
         
         # Insert patient user
-        patient_roles = json.dumps([UserRole.PATIENT.value])
         await session.execute(minimal_insert, {
             "id": str(TEST_USER_ID),
             "username": "testuser",
             "email": "test.user@novamind.ai",
             "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC",
             "is_active": True,
-            "role": UserRole.PATIENT.value,
-            "roles": patient_roles,
+            "role": UserRole.PATIENT.name, # Use NAME
+            "roles": json.dumps([UserRole.PATIENT.name]), # Use NAME
             "created_at": current_time,
             "updated_at": current_time
         })
         
         # Insert clinician user
-        clinician_roles = json.dumps([UserRole.CLINICIAN.value])
         await session.execute(minimal_insert, {
             "id": str(TEST_CLINICIAN_ID),
             "username": "testclinician",
             "email": "test.clinician@novamind.ai",
             "password_hash": "$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC",
             "is_active": True,
-            "role": UserRole.CLINICIAN.value,
-            "roles": clinician_roles,
+            "role": UserRole.CLINICIAN.name, # Use NAME
+            "roles": json.dumps([UserRole.CLINICIAN.name]), # Use NAME
             "created_at": current_time,
             "updated_at": current_time
         })
