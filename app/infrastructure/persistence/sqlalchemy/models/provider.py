@@ -47,7 +47,7 @@ class ProviderModel(Base, TimestampMixin, AuditMixin):
         nullable=False,
     )
 
-    # Relationship with User model - Simplified + Explicit FK
+    # Relationship with User model - Simplified again
     user = relationship(
         "User", 
         back_populates="provider",

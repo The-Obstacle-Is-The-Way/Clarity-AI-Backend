@@ -32,16 +32,6 @@ from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 
 logger = logging.getLogger(__name__)
 
-# --- Define PK Column Separately --- 
-user_id_column = Column(
-    UUID(as_uuid=True),
-    primary_key=True, 
-    index=True,
-    nullable=False,
-    default=uuid.uuid4,
-    comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
-)
-
 class JSONType(TypeDecorator):
     """
     Platform-independent JSON type.
@@ -112,7 +102,14 @@ class User(Base, TimestampMixin, AuditMixin):
     )
     
     # --- Core Identification and Metadata ---
-    id = user_id_column 
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True, 
+        index=True,
+        nullable=False,
+        default=uuid.uuid4,
+        comment="Unique user identifier - HIPAA compliance: Not PHI, used only for internal references"
+    )
     username = Column(String(64), unique=True, nullable=False, comment="Username for login")
     email = Column(String(255), unique=True, nullable=False, index=True, comment="Email address for user contact")
     first_name = Column(String(100), nullable=True, comment="User's first name")
@@ -141,19 +138,13 @@ class User(Base, TimestampMixin, AuditMixin):
     bio = Column(Text, nullable=True, comment="Short bio for clinical staff")  
     preferences = Column(JSON, nullable=True, comment="User UI and system preferences")  
 
-    # Explicitly define primary key for the mapper using the column object
-    __mapper_args__ = {
-        'primary_key': [user_id_column]
-    }
-
-    # --- Relationships (Simplified Again) --- 
-    # Revert provider to simple state
+    # --- Relationships (Simplified) --- 
     provider = relationship(
         "ProviderModel", 
         back_populates="user",
         uselist=False,
-        cascade="all, delete-orphan"
-        # Removed viewonly=True and foreign_keys string
+        cascade="all, delete-orphan",
+        foreign_keys="[ProviderModel.user_id]"
     )
     
     patients = relationship(

@@ -430,78 +430,74 @@ async def authenticated_user(
     faker: Faker,
 ) -> User:
     """
-    Creates a user (and potentially a provider) and saves them to the database.
-    Returns the authenticated User domain entity.
+    Creates a user (and potentially a provider), associates them,
+    and saves them to the database in a single transaction.
+    Returns the authenticated User model instance.
     """
-    # Import the specific SQLAlchemy model and ITS UserRole enum
     from app.infrastructure.persistence.sqlalchemy.models.user import (
         User as UserModel,
         UserRole as SQLAUserRole,
     )
-    from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel
+    from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel # RESTORED
     from app.infrastructure.security.password_handler import PasswordHandler
-    import random # Ensure random is imported if not already
+    import random
 
     pwd_handler = PasswordHandler()
     username = f"{uuid.uuid4()}-{faker.user_name()}"
     email = faker.email()
     password = faker.password()
     hashed_password = pwd_handler.hash_password(password)
+    user_id = uuid.uuid4()
+    selected_role = random.choice(list(SQLAUserRole))
 
     logger.info(
-        f"Attempting to create authenticated_user with email: {email}, username: {username}"
+        f"Attempting to create authenticated_user with email: {email}, username: {username}, role: {selected_role.name}"
     )
 
     user_data = {
-        "id": uuid.uuid4(),
+        "id": user_id,
         "username": username,
         "email": email,
         "hashed_password": hashed_password,
         "is_active": True,
         "is_verified": True,
         "email_verified": True,
-        "role": random.choice(list(SQLAUserRole)), # Random role for variety
-        "roles": [], # Will be set based on role
+        "role": selected_role,
+        "roles": [selected_role.value],
         "first_name": faker.first_name(),
         "last_name": faker.last_name(),
     }
-    user_data["roles"] = [user_data["role"].value]
 
     user = UserModel(**user_data)
     db_session.add(user)
-    
-    # Commit the user first to ensure its ID is persisted
-    try:
-        await db_session.commit()
-        logger.info(f"Successfully created user: {user.id}, role: {user.role}")
-        await db_session.refresh(user) # Refresh to ensure state is up-to-date
-    except Exception as e:
-        logger.error(f"Error committing initial user: {e}")
-        await db_session.rollback()
-        raise e
+    logger.debug(f"Added user {user.id} to session.")
 
+    # --- PROVIDER CREATION RE-ENABLED ---
     provider_instance = None
     if user.role == SQLAUserRole.CLINICIAN:
         provider_data = {
             "id": uuid.uuid4(),
-            "user_id": user.id, # Use committed user.id
+            "user_id": user.id, 
             "specialty": faker.job(),
             "license_number": faker.bothify(text="LIC-#######??"),
             "npi_number": faker.bothify(text="##########"),
             "active": True,
         }
         provider_instance = ProviderModel(**provider_data)
+        user.provider = provider_instance 
         db_session.add(provider_instance)
-        
-        # Commit the provider separately
-        try:
-            await db_session.commit()
-            logger.info(f"Successfully created associated provider: {provider_instance.id} for user {user.id}")
+        logger.debug(f"Added provider {provider_instance.id} for user {user.id} to session and associated.")
+
+    # Commit transaction once after adding all objects
+    try:
+        await db_session.commit()
+        logger.info(f"Successfully committed user {user.id} and provider {provider_instance.id if provider_instance else 'N/A'}")
+        await db_session.refresh(user)
+        if provider_instance:
             await db_session.refresh(provider_instance)
-        except Exception as e:
-            logger.error(f"Error committing provider for user {user.id}: {e}")
-            await db_session.rollback()
-            raise e
+    except Exception as e:
+        logger.error(f"Error committing user/provider transaction: {e}")
+        raise e
 
     return user
 
