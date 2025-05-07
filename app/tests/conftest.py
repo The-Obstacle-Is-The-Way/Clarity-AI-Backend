@@ -30,6 +30,17 @@ from app.core.interfaces.services.auth_service_interface import AuthServiceInter
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.registry import metadata as main_metadata
 from app.presentation.api.dependencies.auth import get_current_user as app_get_current_user, get_jwt_service as actual_get_jwt_service_dependency
+from app.presentation.api.dependencies.auth_service import get_auth_service as actual_get_auth_service_dependency
+# Import Pydantic Schemas needed for mock return values
+from app.presentation.api.schemas.auth import TokenResponseSchema, SessionInfoResponseSchema, UserRegistrationResponseSchema
+# Import Exceptions for mocking error conditions
+from app.domain.exceptions.auth_exceptions import (
+    InvalidCredentialsException,
+    AccountDisabledException,
+    InvalidTokenException,
+    TokenExpiredException,
+    UserAlreadyExistsException
+)
 
 logger = logging.getLogger(__name__)
 
@@ -264,28 +275,57 @@ def mock_jwt_service() -> MagicMock:
 def mock_auth_service() -> MagicMock:
     """Provides a MagicMock for AuthService based on AuthServiceInterface."""
     service = MagicMock(spec=AuthServiceInterface)
-    service.authenticate_user = AsyncMock(
-        return_value=User(
-            id=uuid.uuid4(),
-            email=TEST_USERNAME,
-            username="testuser",
-            full_name="Test User",
-            password_hash="hashed_password_placeholder",
-            roles={UserRole.PATIENT},
-            status=UserStatus.ACTIVE,
-        )
+    
+    # Mock login behavior
+    mock_login_success_return = TokenResponseSchema(
+        access_token="mock_access_token_123",
+        refresh_token="mock_refresh_token_456",
+        token_type="bearer",
+        expires_in=3600, # Example: 1 hour
+        user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"), # Example UUID
+        roles=[UserRole.PATIENT.value]
     )
-    service.register_user = AsyncMock(
-        return_value=User(
-            id=uuid.uuid4(),
-            email="newuser@example.com",
-            username="newuser",
-            full_name="New User",
-            password_hash="hashed_new_password",
-            roles={UserRole.PATIENT},
-            status=UserStatus.PENDING_VERIFICATION,
-        )
+    service.login = AsyncMock(return_value=mock_login_success_return)
+    
+    # Mock refresh token behavior
+    mock_refresh_success_return = TokenResponseSchema(
+        access_token="mock_new_access_token_789",
+        refresh_token="mock_refresh_token_456", # Usually refresh token stays the same or is reissued
+        token_type="bearer",
+        expires_in=3600,
+        user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        roles=[UserRole.PATIENT.value]
     )
+    service.refresh_token = AsyncMock(return_value=mock_refresh_success_return)
+
+    # Mock register user behavior
+    mock_register_success_return = UserRegistrationResponseSchema(
+        id=uuid.uuid4(),
+        email="newly_registered@example.com",
+        is_active=True, 
+        is_verified=False # Typically false after registration
+    )
+    service.register_user = AsyncMock(return_value=mock_register_success_return)
+    
+    # Mock logout behavior (often just needs to run without error, might clear cookies via response object)
+    service.logout = AsyncMock(return_value=None)
+    
+    # Mock session info behavior
+    mock_session_info_return = SessionInfoResponseSchema(
+        authenticated=True,
+        session_active=True,
+        user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        roles=[UserRole.PATIENT.value],
+        permissions=["read:self"], # Example permissions
+        exp=int(datetime.datetime.now(datetime.timezone.utc).timestamp() + 3600) # Example expiry
+    )
+    service.get_current_session_info = AsyncMock(return_value=mock_session_info_return)
+
+    # --- Mocking specific failure scenarios (can be overridden in tests) ---
+    # You might set up side_effects in specific tests if needed, but this provides defaults
+    # Example: How to mock raising an exception for invalid login
+    # service.login.side_effect = InvalidCredentialsException("Mock invalid login")
+    
     return service
 
 
@@ -358,26 +398,31 @@ async def mock_override_user() -> User:
 async def client_app_tuple(
     test_settings: Settings, 
     mock_override_user: User, # This param might be from an older version of the fixture, review if still needed
-    mock_jwt_service: MagicMock # ADD mock_jwt_service as a fixture dependency here
+    mock_jwt_service: MagicMock, # ADD mock_jwt_service as a fixture dependency here
+    mock_auth_service: MagicMock  # ADD mock_auth_service as a fixture dependency
 ) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
-    """Creates a FastAPI app instance and an AsyncClient for it.
-    The app instance yielded is the direct result from create_application.
-    Crucially, overrides the app's get_jwt_service dependency with mock_jwt_service.
-    """
-    logger.info("Creating client_app_tuple. Overriding get_jwt_service with mock.")
+    """Provides an AsyncClient and the FastAPI app instance, with JWT service mocked."""
+    logger.info("Creating client_app_tuple. Overriding get_jwt_service and get_auth_service with mocks.")
     
-    from asgi_lifespan import LifespanManager
-    from httpx import ASGITransport
-
-    # CRITICAL: Pass test_settings here if create_application expects it
-    # and ensure include_test_routers is appropriately set if needed.
     app_instance = create_application(settings_override=test_settings, include_test_routers=True)
 
-    # Override dependencies
-    app_instance.dependency_overrides[actual_get_jwt_service_dependency] = lambda: mock_jwt_service
+    # Override JWTService dependency
+    def mock_get_jwt_service_override():
+        logger.info("Overridden get_jwt_service called, returning MOCK_JWT_SERVICE")
+        return mock_jwt_service
+    app_instance.dependency_overrides[actual_get_jwt_service_dependency] = mock_get_jwt_service_override
 
-    logger.info(f"CONTEST (before LifespanManager): Type of app_instance: {type(app_instance)}, id: {id(app_instance)}")
-    logger.info(f"CONTEST: Overrode get_jwt_service. Current overrides: {app_instance.dependency_overrides}")
+    # Override AuthServiceInterface dependency
+    def mock_get_auth_service_override():
+        logger.info("Overridden get_auth_service called, returning MOCK_AUTH_SERVICE")
+        return mock_auth_service
+    app_instance.dependency_overrides[actual_get_auth_service_dependency] = mock_get_auth_service_override
+    
+    logger.info(f"CONTEST: Current dependency_overrides: {list(app_instance.dependency_overrides.keys())}")
+
+    # Start the app with lifespan events
+    from asgi_lifespan import LifespanManager
+    from httpx import ASGITransport
 
     async with LifespanManager(app_instance) as manager:
         # The client must use manager.app which is the app processed by LifespanManager
