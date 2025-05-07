@@ -18,7 +18,7 @@ from httpx import AsyncClient
 # from app.config.settings import get_settings # Not used directly in this file after review
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository # Added
-from app.core.domain.entities.user import UserRole, UserStatus, User # Added for mocks
+from app.core.domain.entities.user import UserRole, UserStatus, User # This should be THE User DTO
 
 # Import necessary modules for testing API security
 # REMOVE Mocks specific to BaseSecurityTest if not needed directly
@@ -30,11 +30,11 @@ from app.core.interfaces.services.jwt_service import IJwtService
 
 # AuthenticationService might be needed if testing it directly
 from app.domain.entities.patient import Patient
-from app.domain.entities.user import User  # Ensure User is imported for type hints
+# from app.domain.entities.user import User # REMOVE THIS LINE - it conflicts with the core User
 
 # JWTService might be needed for direct token manipulation if required beyond fixtures
 from app.infrastructure.security.jwt_service import JWTService # For type hinting mock_jwt_service param
-from app.presentation.api.dependencies.auth import get_current_user as app_get_current_user # For test_authenticated_but_unknown_role
+from app.presentation.api.dependencies.auth import get_user_repository_dependency # ADDED for overriding IUserRepository
 from app.presentation.api.dependencies.database import get_repository
 
 # Global test patient ID for consistency
@@ -115,10 +115,10 @@ class TestAuthentication:
 
         # Mock IPatientRepository for the endpoint itself
         mock_patient_repo_for_endpoint = AsyncMock(spec=IPatientRepository)
-        async def mock_get_patient_for_endpoint(patient_id_param: uuid.UUID, session = None) -> Patient | None:
-            if patient_id_param == mock_user_id: # Assuming patient_id in URL is user_id for this test case
+        async def mock_get_patient_for_endpoint_kw(*, patient_id: uuid.UUID, session = None) -> Patient | None:
+            if patient_id == mock_user_id: # Assuming patient_id in URL is user_id for this test case
                 return Patient(
-                    id=patient_id_param,
+                    id=patient_id,
                     user_id=mock_user_id,
                     name={"first_name": "Test", "last_name": "Patient"},
                     date_of_birth="2000-01-01",
@@ -126,14 +126,14 @@ class TestAuthentication:
                     contact_info={"email": decoded_payload.get("email","patient@example.com"), "phone": "123-456-7890"}
                 )
             return None
-        mock_patient_repo_for_endpoint.get_by_id = mock_get_patient_for_endpoint
+        mock_patient_repo_for_endpoint.get_by_id = mock_get_patient_for_endpoint_kw
         
         # Mock IUserRepository for get_current_user dependency
         mock_user_repo_for_auth = AsyncMock(spec=IUserRepository)
-        async def mock_get_user_by_id_for_auth(user_id_from_token: uuid.UUID, session = None) -> User | None:
-            if user_id_from_token == mock_user_id:
+        async def mock_get_user_by_id_for_auth(*, user_id: uuid.UUID) -> User | None: 
+            if user_id == mock_user_id:
                 return User(
-                    id=user_id_from_token, 
+                    id=user_id, 
                     email=decoded_payload.get("email", "test@example.com"), 
                     username=decoded_payload.get("username", "testuser"),
                     full_name="Test User FullName from UserRepo",
@@ -143,19 +143,20 @@ class TestAuthentication:
                 )
             return None
         mock_user_repo_for_auth.get_by_id = mock_get_user_by_id_for_auth
+        mock_user_repo_for_auth.get_user_by_id = mock_get_user_by_id_for_auth
 
         current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)] = lambda: mock_patient_repo_for_endpoint
-        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo_for_auth
+        current_fastapi_app.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo_for_auth
         
         response = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
         
         # Clean up overrides
         if get_repository(IPatientRepository) in current_fastapi_app.dependency_overrides:
             del current_fastapi_app.dependency_overrides[get_repository(IPatientRepository)]
-        if get_repository(IUserRepository) in current_fastapi_app.dependency_overrides:
-            del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)]
+        if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_user_repository_dependency]
 
-        assert response.status_code == status.HTTP_200_OK # This might still fail if authz checks Patient.id vs User.id
+        assert response.status_code == status.HTTP_200_OK
         assert response.json()["id"] == str(mock_user_id)
 
 # Remove class inheritance and usefixtures marker
@@ -703,10 +704,10 @@ async def test_authenticated_but_unknown_role(
     headers = {"Authorization": f"Bearer {unknown_role_token}"}
 
     mock_user_repo_for_unknown_role = AsyncMock(spec=IUserRepository)
-    async def mock_get_user_for_unknown_role(user_id_from_token: uuid.UUID, session = None) -> User | None:
-        if str(user_id_from_token) == unknown_role_user_sub:
+    async def mock_get_user_for_unknown_role(*, user_id: uuid.UUID) -> User | None: 
+        if str(user_id) == unknown_role_user_sub:
             return User(
-                id=user_id_from_token, 
+                id=user_id, 
                 email=unknown_role_user_data["email"], 
                 username=unknown_role_user_data["username"], 
                 full_name="Unknown Role User FullName",
@@ -716,9 +717,10 @@ async def test_authenticated_but_unknown_role(
             )
         return None
     mock_user_repo_for_unknown_role.get_by_id = mock_get_user_for_unknown_role
+    mock_user_repo_for_unknown_role.get_user_by_id = mock_get_user_for_unknown_role
     
-    original_user_repo_override = current_fastapi_app.dependency_overrides.get(get_repository(IUserRepository))
-    current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = lambda: mock_user_repo_for_unknown_role
+    original_user_repo_override = current_fastapi_app.dependency_overrides.get(get_user_repository_dependency)
+    current_fastapi_app.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo_for_unknown_role
     
     response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
 
@@ -726,6 +728,7 @@ async def test_authenticated_but_unknown_role(
 
     # Cleanup
     if original_user_repo_override:
-        current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] = original_user_repo_override
+        current_fastapi_app.dependency_overrides[get_user_repository_dependency] = original_user_repo_override
     else:
-        del current_fastapi_app.dependency_overrides[get_repository(IUserRepository)] 
+        if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
+            del current_fastapi_app.dependency_overrides[get_user_repository_dependency] 

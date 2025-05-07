@@ -318,6 +318,63 @@ class SQLAlchemyUserRepository(UserRepositoryInterface):
             logger.error(f"Database error when retrieving users by role {role}: {e}")
             raise
     
+    async def count(self) -> int:
+        """
+        Count the total number of users.
+        
+        Returns:
+            The total number of users in the repository
+        """
+        from sqlalchemy import func # Import func for count
+        try:
+            stmt = select(func.count()).select_from(UserModel)
+            result = await self._db_session.execute(stmt)
+            count = result.scalar_one_or_none()
+            return count if count is not None else 0
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when counting users: {e}")
+            raise
+
+    async def exists(self, user_id: uuid.UUID) -> bool:
+        """
+        Check if a user exists by their ID.
+        
+        Args:
+            user_id: The UUID of the user to check
+            
+        Returns:
+            True if the user exists, False otherwise
+        """
+        from sqlalchemy import func # Import func for count
+        try:
+            stmt = select(func.count(UserModel.id)).where(UserModel.id == user_id)
+            result = await self._db_session.execute(stmt)
+            count = result.scalar_one_or_none()
+            return (count if count is not None else 0) > 0
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when checking if user exists by ID {user_id}: {e}")
+            raise # Or return False depending on desired error handling
+
+    async def exists_by_email(self, email: str) -> bool:
+        """
+        Check if a user exists by their email.
+        
+        Args:
+            email: The email address to check
+            
+        Returns:
+            True if a user with the given email exists, False otherwise
+        """
+        from sqlalchemy import func # Import func for count
+        try:
+            stmt = select(func.count(UserModel.id)).where(UserModel.email == email)
+            result = await self._db_session.execute(stmt)
+            count = result.scalar_one_or_none()
+            return (count if count is not None else 0) > 0
+        except SQLAlchemyError as e:
+            logger.error(f"Database error when checking if user exists by email {email}: {e}")
+            raise # Or return False
+    
     async def _to_model(self, user: DomainUser) -> UserModel:
         """
         Convert a User domain entity to a User model.

@@ -8,6 +8,7 @@ authentication and authorization within the API endpoints.
 # Standard Library Imports
 import logging # MODULE LEVEL
 from typing import Annotated, AsyncGenerator
+import uuid # ADDED IMPORT
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
@@ -49,7 +50,9 @@ async def get_user_repository_dependency(
     session: AsyncSession = Depends(get_async_session), 
 ) -> IUserRepository:
     """Provides an instance of IUserRepository using the injected session."""
-    return SQLAlchemyUserRepository(session=session) 
+    # Import here to avoid potential circular on module load if other files import this and SQLAlchemyUserRepository imports something from auth too early
+    from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+    return SQLAlchemyUserRepository(db_session=session) # CHANGED: session -> db_session
 
 # Use the new explicit dependency function
 UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository_dependency)]
@@ -76,10 +79,11 @@ async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
     jwt_service: IJwtService = Depends(get_jwt_service),
-    session: AsyncSession = Depends(get_async_session),
+    user_repo: IUserRepository = Depends(get_user_repository_dependency)
 ) -> DomainUser:
     # Log received jwt_service ID and type
     logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
+    logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
 
     logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
     """
@@ -111,9 +115,9 @@ async def get_current_user(
     try:
         payload = jwt_service.decode_token(token=token)
         
-        username: str | None = payload.get("sub") 
-        if username is None:
-            logger.warning("get_current_user: Username (sub) not in token payload.")
+        username_from_sub: str | None = payload.get("sub")
+        if username_from_sub is None:
+            logger.warning("get_current_user: Subject (sub) not in token payload.")
             raise credentials_exception
         
     except InvalidTokenException as e: 
@@ -122,27 +126,24 @@ async def get_current_user(
     except TokenExpiredException as e: 
         logger.warning(f"get_current_user: Expired token - {e}")
         raise expired_token_exception from e
-    except JWTError as e: 
+    except JWTError as e:
         logger.warning(f"get_current_user: JWTError - {e}")
         raise credentials_exception from e
 
-    user_repo = SQLAlchemyUserRepository(session) 
-    user_service = UserService(user_repo, jwt_service, settings) 
-    
     try:
-        user_id_from_token = payload["sub"] 
-        user = await user_service.get_user_by_id_str(user_id_str=user_id_from_token)
+        user_id_str_from_payload = str(payload["sub"])
+        user_id_from_token = uuid.UUID(user_id_str_from_payload)
+        user = await user_repo.get_user_by_id(user_id=user_id_from_token)
         
-    except ValueError as e: 
+    except ValueError as e:
         logger.error(f"get_current_user: Invalid user ID format in token: {payload.get('sub')}. Error: {e}")
         raise credentials_exception from e
-
 
     if user is None:
         logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")
         raise credentials_exception
     
-    if user.status != UserStatus.ACTIVE: # Check against Enum member
+    if user.status != UserStatus.ACTIVE:
         logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 

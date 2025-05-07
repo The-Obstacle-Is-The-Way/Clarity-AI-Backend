@@ -31,22 +31,22 @@ router = APIRouter()
 
 @router.get(
     "/{patient_id}",
-    response_model=PatientRead, 
-    summary="Get Patient by ID",
-    description="Retrieve details for a specific patient."
+    response_model=PatientRead,
+    name="patients:read_patient",
+    summary="Get a specific patient by ID",
+    description="Retrieve detailed information about a specific patient using their UUID.",
+    tags=["Patients"],
 )
 async def read_patient(
-    patient_uuid: UUID = Depends(get_validated_patient_id_for_read),
+    patient_domain_entity: Patient = Depends(get_validated_patient_id_for_read),
     service: PatientService = Depends(get_patient_service)
-) -> PatientRead: 
-    """Retrieve a patient by their unique ID after authorization."""
-    patient = await service.get_patient_by_id(patient_uuid)
-    if patient is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient with id {patient_uuid} not found"
-        )
-    return patient 
+) -> PatientRead:
+    """
+    Retrieve a patient by their ID.
+    The actual patient object is already fetched and authorized by the dependency.
+    """
+    logger.info(f"Endpoint read_patient: Returning data for patient {patient_domain_entity.id}")
+    return PatientRead.model_validate(patient_domain_entity)
 
 @router.post(
     "/",
