@@ -5,16 +5,18 @@ This module provides FastAPI dependency functions required for handling
 authentication and authorization within the API endpoints.
 """
 
-from typing import Annotated
+# Standard Library Imports
+import logging # Ensure logging is imported
+from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError
 
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings # Corrected import
-from app.core.domain.entities.user import User, UserRole
+from app.core.config.settings import get_settings, Settings
+from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
 from app.core.errors.security_exceptions import InvalidCredentialsError
 from app.core.interfaces.repositories.user_repository_interface import (
     IUserRepository,
@@ -28,6 +30,10 @@ from app.infrastructure.repositories.user_repository import get_user_repository
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service
 from app.domain.exceptions import AuthenticationError, AuthorizationError # Corrected path
+from app.core.interfaces.services.jwt_service import IJwtService
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__) # Ensure this is at module level
 
 # --- Type Hinting for Dependencies --- #
 
@@ -47,7 +53,7 @@ async def get_user_repository_dependency(
 UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository_dependency)]
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 TokenDep = Annotated[str, Depends(oauth2_scheme)]
 
 # --- Dependency Functions --- #
@@ -58,72 +64,118 @@ def get_authentication_service(
     """Provides an instance of the Authentication Service."""
     return auth_service
 
-def get_jwt_service(
-    jwt_service: JWTServiceInterface = Depends(get_jwt_service),
-) -> JWTServiceInterface:
+def get_jwt_service(settings: Settings = Depends(get_settings)) -> IJwtService:
     """Provides an instance of the JWT Service."""
-    return jwt_service
+    return get_jwt_service(settings)
 
 async def get_current_user(
-    token: TokenDep,
-    jwt_service: JWTServiceDep,
-    user_repo: UserRepoDep,
-) -> User:
-    """Dependency to get the current authenticated user from the token."""
-    # --- DIAGNOSTIC LOG --- #
-    import logging # Make sure logging is imported if not already
-    logger = logging.getLogger(__name__) # Or use a specific logger
-    logger.info(f"--- ORIGINAL get_current_user CALLED with token: {token[:20]}... ---") # Log first 20 chars of token
-    # --- END DIAGNOSTIC LOG --- #
+    token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(oauth2_scheme)],
+    settings: Settings = Depends(get_settings),
+    jwt_service: IJwtService = Depends(get_jwt_service),
+    session: AsyncSession = Depends(get_async_session),
+) -> DomainUser:
+    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}") # This should now work
+    """
+    Dependency to get the current user from a JWT token.
+    Handles token validation, user retrieval, and role checks.
+    """
+
+    if token_credentials is None:
+        logger.warning("get_current_user: No token credentials provided (token is None).")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    token = token_credentials.credentials 
+    logger.info(f"get_current_user: Extracted token string: {token[:20] if token else 'None'}...") 
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt_service.decode_token(token)
-        user_id: str = payload.sub
-        if user_id is None:
-            raise credentials_exception
-    except InvalidCredentialsError: # Or specific JWT errors
-        raise credentials_exception from None
+    expired_token_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Signature has expired", 
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
-    user = await user_repo.get_user_by_id(user_id)
+    try:
+        logger.info("get_current_user: Attempting to decode token with jwt_service...") 
+        payload = jwt_service.decode_token(token=token)
+        logger.info(f"get_current_user: Token decoded successfully. Payload sub: {payload.get('sub')}") 
+        
+        username: str | None = payload.get("sub") 
+        if username is None:
+            logger.warning("get_current_user: Username (sub) not in token payload.")
+            raise credentials_exception
+        
+    except InvalidTokenException as e: 
+        logger.warning(f"get_current_user: Invalid token - {e}")
+        raise credentials_exception from e
+    except TokenExpiredException as e: 
+        logger.warning(f"get_current_user: Expired token - {e}")
+        raise expired_token_exception from e
+    except JWTError as e: 
+        logger.warning(f"get_current_user: JWTError - {e}")
+        raise credentials_exception from e
+
+    user_repo = UserRepositoryImpl(session) 
+    user_service = UserService(user_repo, jwt_service, settings) 
+    
+    try:
+        user_id_from_token = payload["sub"] 
+        logger.info(f"get_current_user: Attempting to fetch user by ID: {user_id_from_token}") 
+        user = await user_service.get_user_by_id_str(user_id_str=user_id_from_token)
+        
+    except ValueError as e: 
+        logger.error(f"get_current_user: Invalid user ID format in token: {payload.get('sub')}. Error: {e}")
+        raise credentials_exception from e
+
+
     if user is None:
+        logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")
         raise credentials_exception
+    
+    if user.status != UserStatus.ACTIVE: # Check against Enum member
+        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+
+    logger.info(f"get_current_user: User {user.username} authenticated successfully.")
     return user
 
-CurrentUserDep = Annotated[User, Depends(get_current_user)]
+CurrentUserDep = Annotated[DomainUser, Depends(get_current_user)]
 
-async def require_admin_role(current_user: CurrentUserDep) -> User:
+async def require_admin_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the ADMIN role."""
-    if current_user.role != UserRole.ADMIN:
+    if UserRole.ADMIN not in current_user.roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have permission to perform this action.",
         )
     return current_user
 
-AdminUserDep = Annotated[User, Depends(require_admin_role)]
+AdminUserDep = Annotated[DomainUser, Depends(require_admin_role)]
 
-async def require_clinician_role(current_user: CurrentUserDep) -> User:
+async def require_clinician_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the CLINICIAN role."""
     # Allow ADMINs to also pass this check, as they often have superset permissions
-    if current_user.role not in [UserRole.CLINICIAN, UserRole.ADMIN]:
+    if not ({UserRole.CLINICIAN, UserRole.ADMIN} & current_user.roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User requires Clinician or Admin role.",
         )
     return current_user
 
-ClinicianUserDep = Annotated[User, Depends(require_clinician_role)]
+ClinicianUserDep = Annotated[DomainUser, Depends(require_clinician_role)]
 
 async def get_current_active_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
+    current_user: DomainUser = Depends(get_current_user),
+) -> DomainUser:
     """Dependency to get the current active user."""
-    if not current_user.is_active:
+    if current_user.status != UserStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account is inactive"
@@ -135,13 +187,14 @@ def require_roles(required_roles: list[UserRole]):
     """
     Dependency that requires the current user to have AT LEAST ONE of the specified roles.
     """
-    async def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
+    async def role_checker(current_user: DomainUser = Depends(get_current_active_user)) -> DomainUser:
         # The User domain entity has `roles: set[UserRole]` and a `has_role` method.
         user_has_required_role = False
-        for role in required_roles:
-            if current_user.has_role(role):
-                user_has_required_role = True
-                break
+        if current_user.roles:
+            for role in required_roles:
+                if role in current_user.roles:
+                    user_has_required_role = True
+                    break
         
         if not user_has_required_role:
             allowed_roles_str = ", ".join(role.value for role in required_roles)
@@ -152,7 +205,7 @@ def require_roles(required_roles: list[UserRole]):
         return current_user
     return role_checker
 
-async def get_current_active_user_wrapper(user: User = Depends(get_current_active_user)) -> User:
+async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current_active_user)) -> DomainUser:
     """Simple wrapper around get_current_active_user."""
     return user
 
@@ -160,7 +213,7 @@ async def get_optional_user(
     token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)),
     jwt_service: JWTServiceDep = None,
     user_repo: UserRepoDep = None,
-) -> User | None:
+) -> DomainUser | None:
     """Dependency to get the current user if authenticated, or None if not."""
     if not token:
         return None
@@ -171,9 +224,9 @@ async def get_optional_user(
 
 
 async def verify_provider_access(
-    current_user: User = Depends(get_current_user),
+    current_user: DomainUser = Depends(get_current_user),
     patient_id: str | None = None,
-) -> User:
+) -> DomainUser:
     """Dependency to verify a provider has access to a patient's data.
     
     This implements HIPAA-compliant access control to ensure that providers
