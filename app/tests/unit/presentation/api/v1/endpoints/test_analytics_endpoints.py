@@ -25,7 +25,7 @@ from app.core.config.settings import Settings
 # Defer service import
 # from app.domain.services.analytics_service import AnalyticsService
 from app.infrastructure.cache.redis_cache import RedisCache
-from app.main import app
+# from app.main import app # REMOVED
 
 # Import the *actual* service for type hints where necessary
 # from app.domain.services.analytics_service import AnalyticsService

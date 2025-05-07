@@ -33,7 +33,7 @@ from app.tests.security.utils.test_mocks import MockAuditLogger, MockRBACService
 
 # Import application code
 try:
-    from app.config.settings import get_settings
+    from app.core.config.settings import get_settings
     settings = get_settings()
     from app.domain.exceptions import (
         AuthenticationError,

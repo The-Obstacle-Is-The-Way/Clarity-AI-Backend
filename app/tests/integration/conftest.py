@@ -270,14 +270,15 @@ async def test_app(
 
 @pytest_asyncio.fixture
 async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
-    """
-    Provides an HTTPX AsyncClient for making requests to the test FastAPI application.
-    Uses the application instance managed by LifespanManager.
-    """
-    # Using app_with_mocked_services fixture that includes LifespanManager
-    # This ensures that startup and shutdown events of the app are handled correctly
-    # which is crucial for database initialization and cleanup.
-    async with AsyncClient(app=test_app, base_url="http://testserver") as client:
+    """Provides an AsyncClient instance configured for the test_app."""
+    # from httpx import ASGITransport # REMOVED
+    # from asgi_lifespan import LifespanManager # REMOVED
+    
+    logger.info(f"test_client fixture: Using test_app with id: {id(test_app)} directly with AsyncClient")
+    
+    # Let AsyncClient manage the lifespan of test_app
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
+        logger.info(f"test_client fixture: Yielding client for test_app id: {id(test_app)}")
         yield client
 
 

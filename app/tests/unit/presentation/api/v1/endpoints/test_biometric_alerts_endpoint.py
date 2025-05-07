@@ -18,7 +18,6 @@ from app.domain.services.biometric_event_processor import (
     ClinicalRuleEngine,
 )
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine # type: ignore
-from app.main import app
 from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,
@@ -47,6 +46,10 @@ except ImportError:
     InfraRuleRepo = AsyncMock(spec=BiometricAlertRuleRepository)
     InfraTemplateRepo = AsyncMock(spec=BiometricAlertTemplateRepository)
     InfraEventProcessor = AsyncMock(spec=BiometricEventProcessor)
+
+# Add import for create_application and Settings
+from app.app_factory import create_application
+from app.core.config.settings import Settings as AppSettings # Use alias to avoid conflict if any
 
 T = TypeVar("T")
 
@@ -157,18 +160,26 @@ def test_app(
     mock_biometric_rule_repository: AsyncMock,
     mock_template_repository: AsyncMock,
     mock_biometric_event_processor: AsyncMock,
-    mock_current_user: User
+    mock_current_user: User,
+    test_settings: AppSettings # Add test_settings fixture
 ) -> FastAPI:
-    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
-    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
-    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
-    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
+    # Create a new app instance for this test scope
+    app_instance = create_application(settings_override=test_settings)
+    
+    app_instance.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
+    app_instance.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
+    app_instance.dependency_overrides[get_template_repository] = lambda: mock_template_repository
+    app_instance.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
+    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
 
-    app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    yield app_instance # Yield the new instance
 
-    yield app
+    app_instance.dependency_overrides.clear() # Clear overrides on the new instance
 
-    app.dependency_overrides = {}
+@pytest.fixture
+async def client(test_app: FastAPI) -> AsyncClient: # Add client fixture that uses test_app
+    async with AsyncClient(app=test_app, base_url="http://testserver") as async_client:
+        yield async_client
 
 @pytest.fixture
 def sample_patient_id() -> uuid.UUID:

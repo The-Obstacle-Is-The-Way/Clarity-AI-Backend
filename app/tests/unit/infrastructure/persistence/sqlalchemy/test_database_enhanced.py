@@ -36,11 +36,23 @@ def mock_settings_module():
     settings.DATABASE_URL = "sqlite:///:memory:"
     settings.DATABASE_ECHO = False
     settings.DATABASE_POOL_SIZE = 5
+    settings.DATABASE_MAX_OVERFLOW = 10  # Explicitly set
+    settings.DATABASE_POOL_TIMEOUT = 30  # Explicitly set
+    settings.DATABASE_POOL_RECYCLE = 3600 # Explicitly set
+    settings.DATABASE_SSL_MODE = None      # Explicitly set
+    settings.DATABASE_SSL_CA = None        # Explicitly set
+    settings.DATABASE_SSL_VERIFY = None    # Explicitly set
     settings.DATABASE_SSL_ENABLED = False
-    settings.DATABASE_ENCRYPTION_ENABLED = True # Example setting
-    settings.DATABASE_AUDIT_ENABLED = True # Example setting
-    with patch("app.infrastructure.persistence.sqlalchemy.database.get_settings", return_value=settings):
-        yield settings
+    settings.DATABASE_ENCRYPTION_ENABLED = True
+    settings.DATABASE_AUDIT_ENABLED = True
+    settings.ENVIRONMENT = "test" # Ensure environment is test
+    
+    # Patch the get_settings function where it's used by the database module
+    with patch("app.infrastructure.persistence.sqlalchemy.database.get_settings", return_value=settings) as p1:
+        # Also patch the canonical get_settings in core.config.settings, as it might be imported
+        # directly by other modules or even the database module if imports are complex.
+        with patch("app.core.config.settings.get_settings", return_value=settings) as p2:
+            yield settings
 
 @pytest.fixture(scope="function") # Use function scope for isolation
 def in_memory_db(mock_settings_module):

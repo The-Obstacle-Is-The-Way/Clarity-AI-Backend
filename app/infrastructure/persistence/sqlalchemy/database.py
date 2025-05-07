@@ -66,19 +66,25 @@ class Database:
             ssl_ca: SSL certificate authority path
             ssl_verify: Whether to verify SSL certificates
         """
-        self.db_url = db_url or settings.DATABASE_URL
-        self.echo = echo if echo is not None else settings.DATABASE_ECHO
-        self.pool_size = pool_size or settings.DATABASE_POOL_SIZE
-        self.max_overflow = max_overflow or 10
-        self.pool_timeout = pool_timeout or 30
-        self.ssl_mode = ssl_mode or settings.DATABASE_SSL_MODE
-        self.ssl_ca = ssl_ca or settings.DATABASE_SSL_CA
-        self.ssl_verify = ssl_verify if ssl_verify is not None else settings.DATABASE_SSL_VERIFY
+        # Call get_settings() at instantiation time
+        current_app_settings = get_settings()
+
+        self.db_url = db_url or current_app_settings.DATABASE_URL
+        self.echo = echo if echo is not None else current_app_settings.DATABASE_ECHO
+        self.pool_size = pool_size or current_app_settings.DATABASE_POOL_SIZE
+        self.max_overflow = max_overflow or getattr(current_app_settings, 'DATABASE_MAX_OVERFLOW', 10) # Added getattr for safety
+        self.pool_timeout = pool_timeout or getattr(current_app_settings, 'DATABASE_POOL_TIMEOUT', 30) # Added getattr for safety
+        
+        # For SSL settings, ensure they exist on current_app_settings or provide defaults
+        self.ssl_mode = ssl_mode or getattr(current_app_settings, 'DATABASE_SSL_MODE', None)
+        self.ssl_ca = ssl_ca or getattr(current_app_settings, 'DATABASE_SSL_CA', None)
+        self.ssl_verify = ssl_verify if ssl_verify is not None else getattr(current_app_settings, 'DATABASE_SSL_VERIFY', None)
         
         connect_args = {}
         
         # Add SSL configuration for PostgreSQL
-        if self.db_url.startswith("postgresql") and settings.DATABASE_SSL_ENABLED:
+        # Use getattr for DATABASE_SSL_ENABLED as well
+        if self.db_url.startswith("postgresql") and getattr(current_app_settings, 'DATABASE_SSL_ENABLED', False):
             connect_args["sslmode"] = self.ssl_mode
             if self.ssl_ca:
                 connect_args["sslrootcert"] = self.ssl_ca
@@ -427,18 +433,20 @@ class DatabaseFactory:
         if cls._instance is None:
             with cls._lock:  # Thread safety - double-checked locking pattern
                 if cls._instance is None:
-                    settings = cls._settings_provider()
+                    # Ensure DatabaseFactory uses its _settings_provider
+                    factory_settings = cls._settings_provider()
                     cls._instance = EnhancedDatabase(
-                        db_url=settings.DATABASE_URL,
-                        echo=settings.DATABASE_ECHO,
-                        pool_size=settings.DATABASE_POOL_SIZE,
-                        max_overflow=10,
-                        pool_timeout=30,
-                        ssl_mode=settings.DATABASE_SSL_MODE,
-                        ssl_ca=settings.DATABASE_SSL_CA,
-                        ssl_verify=settings.DATABASE_SSL_VERIFY,
-                        enable_encryption=settings.DATABASE_SSL_ENABLED,
-                        enable_audit=True
+                        db_url=factory_settings.DATABASE_URL,
+                        echo=factory_settings.DATABASE_ECHO,
+                        pool_size=factory_settings.DATABASE_POOL_SIZE,
+                        max_overflow=getattr(factory_settings, 'DATABASE_MAX_OVERFLOW', 10),
+                        pool_timeout=getattr(factory_settings, 'DATABASE_POOL_TIMEOUT', 30),
+                        ssl_mode=getattr(factory_settings, 'DATABASE_SSL_MODE', None),
+                        ssl_ca=getattr(factory_settings, 'DATABASE_SSL_CA', None),
+                        ssl_verify=getattr(factory_settings, 'DATABASE_SSL_VERIFY', None),
+                        # Pass enable_encryption and enable_audit based on factory_settings
+                        enable_encryption=getattr(factory_settings, 'DATABASE_ENCRYPTION_ENABLED', False),
+                        enable_audit=getattr(factory_settings, 'DATABASE_AUDIT_ENABLED', True) # Defaulting to True for audit
                     )
         return cls._instance
 

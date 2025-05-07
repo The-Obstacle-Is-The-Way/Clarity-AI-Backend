@@ -99,8 +99,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
         logger.info(f"Using database URL: {db_url}")
         engine, session_factory = create_db_engine_and_session(db_url)
+        
+        # Diagnostic log
+        if session_factory is None:
+            logger.critical("CRITICAL: session_factory is None AFTER create_db_engine_and_session call!")
+        else:
+            logger.info(f"session_factory obtained: {type(session_factory)}")
+            
         app.state.db_engine = engine
         app.state.db_session_factory = session_factory
+        logger.info(f"Lifespan: id(app) is {id(app)}, id(app.state) is {id(app.state)}")
         logger.info("Database connection initialized successfully.")
 
         # In a test environment, ensure tables are created.

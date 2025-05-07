@@ -5,15 +5,23 @@ from fastapi import status, FastAPI
 from httpx import AsyncClient, Response
 
 from app.application.services.patient_service import PatientService
-from app.main import app
+# from app.main import app # REMOVED
 from app.presentation.api.v1.routes.patient import get_patient_service
+
+# Add imports for create_application and Settings
+from app.app_factory import create_application
+from app.core.config.settings import Settings as AppSettings # Use alias
 
 # Fixture for AsyncClient
 @pytest.fixture(scope="function") 
-async def client() -> AsyncClient:
+async def client(test_settings: AppSettings) -> AsyncClient: # Add test_settings
     """Provides an AsyncClient instance scoped per test function."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
+    # Create a new app instance for this test scope
+    app_instance = create_application(settings_override=test_settings)
+    # Note: dependency overrides for get_patient_service will be handled within each test
+    async with AsyncClient(app=app_instance, base_url="http://test") as async_client:
+        yield async_client
+    app_instance.dependency_overrides.clear() # Ensure overrides are cleared
 
 # Fixture to mock PatientService
 @pytest.fixture(scope="function") 
@@ -35,7 +43,8 @@ async def test_read_patient_success(client: AsyncClient, mock_service: AsyncMock
     # Configure the mock to return the expected data when called
     mock_service.get_patient_by_id.return_value = expected_patient_data
     # Override the dependency for this test
-    app.dependency_overrides[get_patient_service] = lambda: mock_service
+    # app.dependency_overrides[get_patient_service] = lambda: mock_service # MODIFIED: Use client.app.dependency_overrides
+    client.app.dependency_overrides[get_patient_service] = lambda: mock_service
 
     # Act
     response: Response = await client.get(f"/api/v1/patients/{test_patient_id}")
@@ -46,7 +55,8 @@ async def test_read_patient_success(client: AsyncClient, mock_service: AsyncMock
     mock_service.get_patient_by_id.assert_awaited_once_with(test_patient_id)
 
     # Clean up the dependency override after the test
-    del app.dependency_overrides[get_patient_service]
+    # del app.dependency_overrides[get_patient_service] # MODIFIED
+    del client.app.dependency_overrides[get_patient_service]
 
 @pytest.mark.asyncio
 async def test_read_patient_not_found(client: AsyncClient, mock_service: AsyncMock) -> None:
@@ -54,7 +64,8 @@ async def test_read_patient_not_found(client: AsyncClient, mock_service: AsyncMo
     # Arrange
     patient_id = "non-existent-patient"
     mock_service.get_patient_by_id.return_value = None # Service returns None
-    app.dependency_overrides[get_patient_service] = lambda: mock_service
+    # app.dependency_overrides[get_patient_service] = lambda: mock_service # MODIFIED
+    client.app.dependency_overrides[get_patient_service] = lambda: mock_service
 
     # Act
     response: Response = await client.get(f"/api/v1/patients/{patient_id}")
@@ -65,7 +76,8 @@ async def test_read_patient_not_found(client: AsyncClient, mock_service: AsyncMo
     mock_service.get_patient_by_id.assert_awaited_once_with(patient_id)
 
     # Clean up
-    del app.dependency_overrides[get_patient_service]
+    # del app.dependency_overrides[get_patient_service] # MODIFIED
+    del client.app.dependency_overrides[get_patient_service]
 
 @pytest.mark.asyncio
 async def test_create_patient_success(client: AsyncClient, mock_service: AsyncMock) -> None:
@@ -79,7 +91,8 @@ async def test_create_patient_success(client: AsyncClient, mock_service: AsyncMo
     # Configure the mock to return the expected data when called
     mock_service.create_patient.return_value = expected_created_patient
     # Override the dependency for this test
-    app.dependency_overrides[get_patient_service] = lambda: mock_service
+    # app.dependency_overrides[get_patient_service] = lambda: mock_service # MODIFIED
+    client.app.dependency_overrides[get_patient_service] = lambda: mock_service
 
     # Act
     response: Response = await client.post("/api/v1/patients/", json=patient_payload)
@@ -99,7 +112,8 @@ async def test_create_patient_success(client: AsyncClient, mock_service: AsyncMo
     # or assert call_args[0] == PatientCreateRequest(**patient_payload)
 
     # Clean up the dependency override after the test
-    del app.dependency_overrides[get_patient_service]
+    # del app.dependency_overrides[get_patient_service] # MODIFIED
+    del client.app.dependency_overrides[get_patient_service]
 
 @pytest.mark.asyncio
 async def test_create_patient_validation_error(

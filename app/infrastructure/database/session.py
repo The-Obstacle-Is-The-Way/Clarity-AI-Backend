@@ -80,9 +80,11 @@ async def get_async_session(request: Request) -> AsyncGenerator[AsyncSession, No
     """
     session_factory = getattr(request.app.state, "db_session_factory", None)
     
-    logger.debug(f"get_async_session: id(request.app): {id(request.app)}, id(request.app.state): {id(request.app.state)}") # DEBUG
-    logger.debug(f"get_async_session: request.app.state contents: {vars(request.app.state) if hasattr(request.app.state, '__dict__') else request.app.state}") # DEBUG
-    logger.debug(f"get_async_session: session_factory from state: {session_factory} (type: {type(session_factory)})") # DEBUG
+    # logger.debug(f"get_async_session: id(request.app): {id(request.app)}, id(request.app.state): {id(request.app.state)}") # DEBUG - Already present
+    # Updated log to be INFO level for better visibility during tests without full debug
+    logger.info(f"get_async_session: id(request.app) is {id(request.app)}, id(request.app.state) is {id(request.app.state)}") 
+    logger.info(f"get_async_session: request.app.state contents: {vars(request.app.state) if hasattr(request.app.state, '__dict__') else request.app.state}") 
+    logger.info(f"get_async_session: session_factory from state: {session_factory} (type: {type(session_factory)})")
 
     if session_factory is None or not callable(session_factory):
         error_msg = "Database session factory not found or invalid in application state."
