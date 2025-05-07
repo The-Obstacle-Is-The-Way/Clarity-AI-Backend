@@ -19,7 +19,7 @@ from app.presentation.api.dependencies.auth import (
     get_optional_user,
 )
 from app.presentation.api.dependencies.auth_service import get_auth_service
-from app.core.domain.dto.auth import TokenRefreshRequest, UserLoginRequest
+from app.application.dtos.auth_dtos import RefreshTokenRequestDTO as TokenRefreshRequest, LoginRequestDTO as UserLoginRequest
 
 # Initialize router
 router = APIRouter()

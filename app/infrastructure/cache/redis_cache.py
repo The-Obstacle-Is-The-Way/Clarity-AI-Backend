@@ -78,7 +78,8 @@ from redis.exceptions import RedisError
 # from app.config.settings import get_settings # Legacy import
 from app.core.config.settings import get_settings # Corrected import
 
-from app.core.interfaces.cache_service import CacheService
+# from app.core.interfaces.cache_service import CacheService # Incorrect import
+from app.application.interfaces.services.cache_service import CacheService # Corrected import
 
 logger = logging.getLogger(__name__)
 

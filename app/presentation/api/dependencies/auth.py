@@ -27,7 +27,7 @@ from app.infrastructure.database.session import get_async_session
 from app.infrastructure.repositories.user_repository import get_user_repository
 from app.infrastructure.security.auth_service import get_auth_service
 from app.infrastructure.security.jwt_service import get_jwt_service
-from app.core.domain.exceptions import AuthenticationError, AuthorizationError
+from app.domain.exceptions import AuthenticationError, AuthorizationError # Corrected path
 
 # --- Type Hinting for Dependencies --- #
 

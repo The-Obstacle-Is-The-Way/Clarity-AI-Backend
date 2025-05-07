@@ -27,7 +27,7 @@ from app.core.exceptions import (
     ModelNotFoundError,
     ValidationError,  # Replaced DataPreprocessingError
 )
-from app.core.domain.entities.actigraphy_analysis import ActigraphyAnalysis
+# from app.core.domain.entities.actigraphy_analysis import ActigraphyAnalysis # Commented out unused import from non-existent module
 from app.core.domain.entities.patient import Patient
 
 logger = logging.getLogger(__name__)
