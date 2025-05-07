@@ -26,6 +26,11 @@ from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 
+# Potentially import test routers conditionally or via a flag
+from app.presentation.api.v1.routes.patient import router as patient_router
+from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
+from app.tests.routers.admin_test_router import router as admin_test_router
+
 # Initialize logging early
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
@@ -223,7 +228,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # --- Application Factory ---
 def create_application(
     settings_override: Settings | None = None,
-    # dependency_overrides_param: dict | None = None  # REMOVED PARAMETER
+    include_test_routers: bool = False
 ) -> FastAPI:
     """Factory function to create and configure the FastAPI application."""
     logger.info("Creating FastAPI application instance...")
@@ -317,6 +322,10 @@ def create_application(
     # --- Routers ---
     logger.info(f"Including API router prefix: {app_settings.API_V1_STR}")
     app.include_router(api_v1_router, prefix=app_settings.API_V1_STR)
+
+    if include_test_routers:
+        app.include_router(admin_test_router, prefix=f"{app_settings.API_V1_STR}/admin", tags=["Test Admin"])
+        logger.info(f"Including TEST admin router prefix: {app_settings.API_V1_STR}/admin")
 
     # --- Custom Exception Handlers ---
     # Example: Add a custom handler for a specific exception type if needed

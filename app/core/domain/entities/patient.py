@@ -46,6 +46,20 @@ class Patient(BaseModel):
 
     @field_validator('date_of_birth', mode='before')
     def ensure_dob_is_past(cls, v):
+        if isinstance(v, str):
+            try:
+                v = date.fromisoformat(v) # Convert string to date
+            except ValueError:
+                # Let Pydantic's main validation attempt to parse it or raise its own error
+                # if the format is truly invalid for the 'date' type.
+                # This validator specifically checks the logical condition (must be in the past).
+                pass # Fall through to Pydantic's parsing / or the type check below
+
+        if not isinstance(v, date):
+            # This case should ideally be caught by Pydantic's own type validation if the string wasn't parseable
+            # and 'v' remained something other than a date object. However, being explicit can help.
+            raise ValueError("date_of_birth must be a valid date object or an ISO format string.")
+
         if v >= date.today():
             raise ValueError('Date of birth must be in the past')
         return v

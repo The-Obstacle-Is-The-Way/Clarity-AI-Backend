@@ -1,18 +1,31 @@
-from pydantic import BaseModel, Field
+import uuid # Add import for uuid
+from datetime import date # Add import for date
+from pydantic import BaseModel, Field, EmailStr, computed_field # Add EmailStr and computed_field
 
 
 class PatientBase(BaseModel):
-    name: str = Field(..., min_length=1, description="Name of the patient")
-    # Add other relevant patient fields here as needed
+    # name: str = Field(..., min_length=1, description="Name of the patient") # Removed
+    # Keep other common base fields if any, or make it very minimal
+    first_name: str = Field(..., description="Patient's first name")
+    last_name: str = Field(..., description="Patient's last name")
+    date_of_birth: date = Field(..., description="Patient's date of birth")
+    email: EmailStr | None = Field(None, description="Patient's email address")
+    phone_number: str | None = Field(None, description="Patient's phone number")
 
 
 class PatientCreateRequest(PatientBase):
-    # Fields specific to creation, if any
+    # Fields specific to creation, if any. For now, inherits all from PatientBase.
     pass
 
 
 class PatientRead(PatientBase):
-    id: str = Field(..., description="Unique identifier for the patient")
+    id: uuid.UUID = Field(..., description="Unique identifier for the patient") # Changed to uuid.UUID
+    # Inherits first_name, last_name, dob, email, phone_number from PatientBase
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
 
     class Config:
         from_attributes = True # orm_mode = True for Pydantic v1
