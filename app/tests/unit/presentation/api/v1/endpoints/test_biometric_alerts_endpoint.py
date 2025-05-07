@@ -405,7 +405,7 @@ class TestBiometricAlertsEndpoints:
         start_time = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         end_time = datetime.now(timezone.utc).isoformat()
         params = {
-            "patient_id": sample_patient_id,
+            "patient_id": str(sample_patient_id),
             "status": status_filter,
             "priority": priority_filter,
             "start_date": start_time,
