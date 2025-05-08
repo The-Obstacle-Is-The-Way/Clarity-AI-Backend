@@ -7,7 +7,7 @@ mapping domain entities to database tables.
 
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, ForeignKey, UUID as SQLAlchemyUUID
+from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, ForeignKey
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
@@ -31,20 +31,22 @@ class AnalyticsEventModel(Base, TimestampMixin):
     
     __tablename__ = "analytics_events"
     
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     event_type = Column(String(100), nullable=False, index=True)
     event_data = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
-    user_id = Column(SQLAlchemyUUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     session_id = Column(String(100), nullable=True, index=True)
     timestamp = Column(DateTime, nullable=False, default=now_utc, index=True)
     processed_at = Column(DateTime, nullable=True, index=True)
     correlation_id = Column(String(100), nullable=True, index=True)
     
-    # Define the relationship to the User model
+    # Define the relationship to the User model using string-based references
+    # to avoid circular import issues
     user = relationship(
         "User", 
-        back_populates="analytics_events"
-        # primaryjoin="AnalyticsEventModel.user_id == User.id" # REVERTED
+        back_populates="analytics_events",
+        foreign_keys=[user_id],
+        primaryjoin="AnalyticsEventModel.user_id == User.id"
     )
     
     # Useful indexes for analytics queries
@@ -74,7 +76,7 @@ class AnalyticsAggregateModel(Base, TimestampMixin):
     
     __tablename__ = "analytics_aggregates"
     
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     aggregate_type = Column(String(50), nullable=False, index=True)
     dimensions = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
     metrics = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)
@@ -105,7 +107,7 @@ class AnalyticsJobModel(Base, TimestampMixin):
     
     __tablename__ = "analytics_jobs"
     
-    id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     job_type = Column(String(50), nullable=False, index=True)
     status = Column(String(20), nullable=False, default="pending", index=True)
     parameters = Column(MutableDict.as_mutable(JSON), nullable=False, default=dict)

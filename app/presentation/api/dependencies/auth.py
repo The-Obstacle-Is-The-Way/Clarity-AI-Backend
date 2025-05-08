@@ -80,12 +80,14 @@ async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
     jwt_service: IJwtService = Depends(get_jwt_service),
-    user_repo: IUserRepository = Depends(get_user_repository_dependency)
+    user_repo: IUserRepository = Depends(get_user_repository_dependency),
+    # Add kwargs parameter to collect any unexpected query parameters
+    **kwargs
 ) -> DomainUser:
     # MODIFIED: Restore original logging and docstring
-    logger.info(f"--- get_current_user received jwt_service ID: {{id(jwt_service)}}, Type: {{type(jwt_service)}} ---")
-    logger.info(f"--- get_current_user received user_repo Type: {{type(user_repo)}} ---")
-    logger.info(f"--- get_current_user CALLED --- Token credentials: {{token_credentials}}")
+    logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
+    logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
+    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
     """
     Dependency to get the current user from a JWT token.
     Handles token validation, user retrieval, and role checks.
@@ -124,13 +126,13 @@ async def get_current_user(
             raise credentials_exception
         
     except InvalidTokenException as e: 
-        logger.warning(f"get_current_user: Invalid token - {{e}}")
+        logger.warning(f"get_current_user: Invalid token - {e}")
         raise credentials_exception from e
     except TokenExpiredException as e: 
-        logger.warning(f"get_current_user: Expired token - {{e}}")
+        logger.warning(f"get_current_user: Expired token - {e}")
         raise expired_token_exception from e
     except JWTError as e:
-        logger.warning(f"get_current_user: JWTError - {{e}}")
+        logger.warning(f"get_current_user: JWTError - {e}")
         raise credentials_exception from e
 
     try:
@@ -139,23 +141,23 @@ async def get_current_user(
         user = await user_repo.get_user_by_id(user_id=user_id_from_token)
         
     except ValueError as e:
-        logger.error(f"get_current_user: Invalid user ID format in token: {{payload.get('sub')}}. Error: {{e}}")
+        logger.error(f"get_current_user: Invalid user ID format in token: {payload.get('sub')}. Error: {e}")
         raise credentials_exception from e
 
     if user is None:
-        logger.warning(f"get_current_user: User not found for ID: {{payload.get('sub')}}")
+        logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")
         raise credentials_exception
     
     if user.status != UserStatus.ACTIVE:
-        logger.warning(f"get_current_user: User {{user.username}} is not active. Status: {{user.status}}")
+        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
-    logger.info(f"get_current_user: User {{user.username}} authenticated successfully.")
+    logger.info(f"get_current_user: User {user.username} authenticated successfully.")
     return user
 
 CurrentUserDep = Annotated[DomainUser, Depends(get_current_user)]
 
-async def require_admin_role(current_user: CurrentUserDep) -> DomainUser:
+async def require_admin_role(current_user: CurrentUserDep, **kwargs) -> DomainUser:
     """Dependency that requires the current user to have the ADMIN role."""
     if UserRole.ADMIN not in current_user.roles:
         raise HTTPException(
@@ -166,7 +168,7 @@ async def require_admin_role(current_user: CurrentUserDep) -> DomainUser:
 
 AdminUserDep = Annotated[DomainUser, Depends(require_admin_role)]
 
-async def require_clinician_role(current_user: CurrentUserDep) -> DomainUser:
+async def require_clinician_role(current_user: CurrentUserDep, **kwargs) -> DomainUser:
     """Dependency that requires the current user to have the CLINICIAN role."""
     # Allow ADMINs to also pass this check, as they often have superset permissions
     if not ({UserRole.CLINICIAN, UserRole.ADMIN} & current_user.roles):
@@ -180,6 +182,7 @@ ClinicianUserDep = Annotated[DomainUser, Depends(require_clinician_role)]
 
 async def get_current_active_user(
     current_user: DomainUser = Depends(get_current_user),
+    **kwargs
 ) -> DomainUser:
     """Dependency to get the current active user."""
     if current_user.status != UserStatus.ACTIVE:
@@ -194,7 +197,7 @@ def require_roles(required_roles: list[UserRole]):
     """
     Dependency that requires the current user to have AT LEAST ONE of the specified roles.
     """
-    async def role_checker(current_user: DomainUser = Depends(get_current_active_user)) -> DomainUser:
+    async def role_checker(current_user: DomainUser = Depends(get_current_active_user), **kwargs) -> DomainUser:
         # The User domain entity has `roles: set[UserRole]` and a `has_role` method.
         user_has_required_role = False
         if current_user.roles:
@@ -212,7 +215,7 @@ def require_roles(required_roles: list[UserRole]):
         return current_user
     return role_checker
 
-async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current_active_user)) -> DomainUser:
+async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current_active_user), **kwargs) -> DomainUser:
     """Simple wrapper around get_current_active_user."""
     return user
 
@@ -220,12 +223,13 @@ async def get_optional_user(
     token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)),
     jwt_service: JWTServiceDep = None,
     user_repo: UserRepoDep = None,
+    **kwargs
 ) -> DomainUser | None:
     """Dependency to get the current user if authenticated, or None if not."""
     if not token:
         return None
     try:
-        return await get_current_user(token, jwt_service, user_repo)
+        return await get_current_user(token, jwt_service, user_repo, **kwargs)
     except HTTPException:
         return None
 
@@ -233,6 +237,7 @@ async def get_optional_user(
 async def verify_provider_access(
     current_user: DomainUser = Depends(get_current_user),
     patient_id: str | None = None,
+    **kwargs
 ) -> DomainUser:
     """Dependency to verify a provider has access to a patient's data.
     

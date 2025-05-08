@@ -182,8 +182,11 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
     # Override the service dependency with the stub instance
     app_instance.dependency_overrides[get_patient_service] = lambda: StubPatientService()
     
-    # MODIFIED: Revert to simple lambda override
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
+    # More robust dependency override for get_current_user
+    async def override_get_current_user(*args, **kwargs):
+        return mock_current_user
+    
+    app_instance.dependency_overrides[get_current_user] = override_get_current_user
 
     # Setup a domain user that would be returned by the (now real but simplified) get_current_user
     patient_payload = { 
@@ -218,21 +221,10 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
 
     # Override the service dependency with the stub instance
     app_instance.dependency_overrides[get_patient_service] = lambda: StubPatientService()
-    # MODIFIED: Restore the override for get_current_user
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
 
     # Act
-    # WORKAROUND: Add dummy query params '?args=ignore&kwargs=ignore'.
-    # This is required to bypass a FastAPI issue where dependency_overrides combined
-    # with the original dependency's use of HTTPBearer causes FastAPI to incorrectly 
-    # demand 'args' and 'kwargs' query parameters (resulting in a 422 error).
-    # See FastAPI GitHub issue #3331. 
-    # NOTE: This workaround currently leads to a subsequent TypeError during dependency 
-    # resolution (User.__init__() got an unexpected keyword argument 'args'), as FastAPI 
-    # attempts to pass these query params into the User dataclass initialization.
-    # This test is expected to FAIL with that TypeError until the underlying issue 
-    # or a better workaround is found.
-    response: Response = await async_client.post("/api/v1/patients/?args=ignore&kwargs=ignore", json=patient_payload)
+    # FIXED: Remove query parameters causing issues
+    response: Response = await async_client.post("/api/v1/patients/", json=patient_payload)
 
     # Assert Status Code
     assert response.status_code == status.HTTP_201_CREATED, f"Expected 201, got {response.status_code}. Response: {response.text}"
@@ -267,8 +259,12 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
 async def test_create_patient_validation_error(client: tuple[FastAPI, AsyncClient], faker: Faker, mock_current_user: DomainUser) -> None:
     """Test validation error during patient creation (e.g., missing fields)."""
     app_instance, async_client = client
-    # MODIFIED: Restore the override here as well
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
+    
+    # More robust dependency override for get_current_user
+    async def override_get_current_user(*args, **kwargs):
+        return mock_current_user
+    
+    app_instance.dependency_overrides[get_current_user] = override_get_current_user
 
     # Invalid payload missing required fields (first_name, last_name, date_of_birth)
     invalid_payload = {
@@ -276,10 +272,8 @@ async def test_create_patient_validation_error(client: tuple[FastAPI, AsyncClien
     }
 
     # Act: Make the request using the client
-    # WORKAROUND: Add dummy query params '?args=ignore&kwargs=ignore'.
-    # See explanation in test_create_patient_success.
-    # This test is also expected to FAIL with TypeError: User.__init__() got an unexpected keyword argument 'args'.
-    response: Response = await async_client.post("/api/v1/patients/?args=ignore&kwargs=ignore", json=invalid_payload)
+    # FIXED: Remove query parameters causing issues
+    response: Response = await async_client.post("/api/v1/patients/", json=invalid_payload)
 
     # Assertions
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -293,7 +287,7 @@ async def test_create_patient_validation_error(client: tuple[FastAPI, AsyncClien
     expected_missing_fields_locs = sorted([("body", "first_name"), ("body", "last_name"), ("body", "date_of_birth")])
     
     assert actual_missing_fields_locs == expected_missing_fields_locs, \
-        f"Expected missing fields {{expected_missing_fields_locs}}, got {{actual_missing_fields_locs}}"
+        f"Expected missing fields {expected_missing_fields_locs}, got {actual_missing_fields_locs}"
 
     # MODIFIED: Restore deletion of get_current_user override
     if get_current_user in app_instance.dependency_overrides:
