@@ -107,7 +107,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
     user = relationship(
         "User",  # Use the correct class name
         foreign_keys=[user_id],
-        primaryjoin="Patient.user_id == User.id", 
+        primaryjoin="foreign(Patient.user_id) == User.id", 
         back_populates="patients",
         lazy="selectin"
     )

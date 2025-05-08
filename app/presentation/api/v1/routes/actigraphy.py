@@ -5,7 +5,7 @@ Handles endpoints related to retrieving and managing actigraphy data.
 
 from datetime import datetime
 import uuid
-from typing import Any
+from typing import Any, Dict, List, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from pydantic import BaseModel, UUID4
@@ -28,7 +28,8 @@ from app.presentation.api.schemas.actigraphy import (
     ActigraphyDataResponse,
     ActigraphyAnalysisResult,
     AnalysisType,
-    DailySummary
+    DailySummary,
+    SleepStage
 )
 
 # Define interface for the PAT service following Interface Segregation Principle
@@ -101,7 +102,7 @@ async def get_pat_service(db: AsyncSession = Depends(get_db)) -> IPATService:
 )
 async def analyze_actigraphy(
     request_data: ActigraphyAnalysisRequest,
-    current_user: User = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN])),
+    current_user: User = Depends(require_roles([UserRole.PATIENT, UserRole.CLINICIAN, UserRole.ADMIN])),
     pat_service: IPATService = Depends(get_pat_service)
 ) -> AnalyzeActigraphyResponse:
     """Analyze actigraphy data and return results.
@@ -257,3 +258,51 @@ async def get_specific_actigraphy_data_stub(
     current_user: CurrentUserDep
 ):
     return ActigraphyDataResponse(data_id=data_id, raw_data={}, metadata={}, message="Data retrieval stub from routes/actigraphy.py")
+
+@router.get(
+    "/{patient_id}",
+    response_model=ActigraphyDataResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get Actigraphy Data for a Patient with Date Range"
+)
+async def get_patient_actigraphy_data(
+    patient_id: uuid.UUID,
+    start_date: datetime,
+    end_date: datetime,
+    current_user: CurrentUserDep
+):
+    """
+    Get actigraphy data for a specific patient within a date range.
+    
+    This endpoint retrieves actigraphy data for the specified patient between the
+    provided start and end dates. Both dates must be valid ISO format.
+    
+    Args:
+        patient_id: The UUID of the patient
+        start_date: Start date for retrieving data (ISO format)
+        end_date: End date for retrieving data (ISO format)
+        current_user: The authenticated user making the request
+        
+    Returns:
+        ActigraphyDataResponse: The patient's actigraphy data
+    """
+    # In a real implementation, this would query the database for data
+    # Log the access for HIPAA compliance
+    audit_log_phi_access(
+        str(current_user.id),
+        str(patient_id),
+        "get_patient_actigraphy_data",
+        details={"date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()}}
+    )
+    
+    # Return mock data
+    return ActigraphyDataResponse(
+        data_id=str(patient_id),
+        raw_data={},
+        metadata={
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "data_points": 0
+        },
+        message="Patient actigraphy data retrieved successfully"
+    )

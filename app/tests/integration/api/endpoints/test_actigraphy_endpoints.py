@@ -212,7 +212,11 @@ class TestActigraphyEndpoints:
         # Attempt to post to analyze endpoint (which should be accessible)
         patient_analysis_response = await authenticated_client.post(
             "/api/v1/actigraphy/analyze",
-            json={"data_id": "test-data", "parameters": {"threshold": 100}}
+            json={
+                "patient_id": "test-patient-123",
+                "analysis_types": ["sleep_quality", "activity_level"],
+                "parameters": {"threshold": 100}
+            }
         )
         
         # Patient should be able to analyze their own data

@@ -12,6 +12,24 @@ from datetime import date, datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
+class ContactInfo(BaseModel):
+    """
+    Represents a patient's contact information.
+    
+    Attributes:
+        email: Patient's email address (optional).
+        phone: Patient's phone number (optional).
+    """
+    email: EmailStr | None = Field(None, description="Patient's email address")
+    phone: str | None = Field(None, description="Patient's phone number")
+    
+    model_config = {
+        'from_attributes': True,
+        'str_strip_whitespace': True,
+        'validate_assignment': True
+    }
+
+
 class Patient(BaseModel):
     """
     Represents a Patient in the domain layer.
@@ -25,6 +43,7 @@ class Patient(BaseModel):
         date_of_birth: Patient's date of birth.
         email: Patient's email address (optional).
         phone_number: Patient's phone number (optional).
+        contact_info: Patient's contact information (containing email and phone)
         # Add other relevant non-PHI identifying or clinical summary fields here.
         # Sensitive PHI (e.g., detailed address, SSN, full medical history)
         # should ideally be managed separately or encrypted.
@@ -37,12 +56,24 @@ class Patient(BaseModel):
     date_of_birth: date = Field(..., description="Patient's date of birth")
     email: EmailStr | None = Field(None, description="Patient's email address")
     phone_number: str | None = Field(None, description="Patient's phone number")
+    contact_info: ContactInfo = Field(default_factory=ContactInfo, description="Patient's contact information")
 
     model_config = {
         'from_attributes': True,  # Renamed from orm_mode
         'str_strip_whitespace': True,  # Renamed from anystr_strip_whitespace
         'validate_assignment': True  # Ensure validators run on assignment
     }
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Sync email and phone between the direct fields and contact_info
+        if hasattr(self, 'contact_info') and self.contact_info:
+            if not self.contact_info.email and self.email:
+                self.contact_info.email = self.email
+            if not self.contact_info.phone and self.phone_number:
+                self.contact_info.phone = self.phone_number
+        else:
+            self.contact_info = ContactInfo(email=self.email, phone=self.phone_number)
 
     @field_validator('date_of_birth', mode='before')
     def ensure_dob_is_past(cls, v):

@@ -154,7 +154,9 @@ class User(Base, TimestampMixin, AuditMixin):
     patients = relationship(
         "Patient", 
         back_populates="user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        foreign_keys="Patient.user_id",
+        primaryjoin="User.id == foreign(Patient.user_id)"
     )
     
     # Relationship to AnalyticsEventModel 
