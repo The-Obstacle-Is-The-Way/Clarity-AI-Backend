@@ -96,12 +96,23 @@ class TestPHIMiddleware:
     @pytest.fixture
     def whitelist_client(self, app):
         """Create a test client with PHI middleware and whitelist patterns."""
-        # Add PHI middleware with whitelist patterns
+        # Add PHI middleware with whitelist patterns as a dictionary mapping paths to patterns
         add_phi_middleware(
             app,
             whitelist_patterns={
-                "/data-with-phi": ["John Smith"]  # Whitelist this name
+                "/data-with-phi": ["John Smith"]  # Whitelist this name on this specific path
             }
+        )
+        
+        return TestClient(app)
+    
+    @pytest.fixture
+    def global_whitelist_client(self, app):
+        """Create a test client with PHI middleware and global whitelist patterns."""
+        # Add PHI middleware with global whitelist patterns as a list
+        add_phi_middleware(
+            app,
+            whitelist_patterns=["Jane Doe"]  # Whitelist this name globally
         )
         
         return TestClient(app)
@@ -167,6 +178,23 @@ class TestPHIMiddleware:
         assert "123-45-6789" not in json.dumps(data)
         assert "john.smith@example.com" not in json.dumps(data)
         assert "(555) 123-4567" not in json.dumps(data)
+    
+    def test_global_whitelist_patterns(self, global_whitelist_client):
+        """Test that globally whitelisted patterns are not sanitized."""
+        response = global_whitelist_client.get("/nested-phi")
+        
+        # Verify response
+        assert response.status_code == 200
+        data = response.json()
+        records_json = json.dumps(data["records"])
+        
+        # Verify globally whitelisted PHI is preserved
+        assert "Jane Doe" in records_json
+        
+        # Verify non-whitelisted PHI is still sanitized
+        assert "Bob Johnson" not in records_json
+        assert "987-65-4321" not in records_json
+        assert "jane.doe@example.com" not in records_json
         
     def test_audit_mode(self, audit_client):
         """Test that audit mode logs PHI but doesn't sanitize it."""

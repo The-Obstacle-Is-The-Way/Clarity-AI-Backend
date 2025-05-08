@@ -8,7 +8,7 @@ requests and responses, ensuring HIPAA compliance at the API layer.
 import json
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Dict, List, Set, Union
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -39,23 +39,37 @@ class PHIMiddleware(BaseHTTPMiddleware):
         phi_sanitizer: PHISanitizer | None = None,
         audit_mode: bool = False,
         exclude_paths: list[str] | None = None,
-        whitelist_patterns: list[str] | None = None
+        whitelist_patterns: dict[str, list[str]] | list[str] | None = None
     ):
         """
         Initialize PHI middleware.
         
         Args:
             app: The ASGI application
-            phi_service: Optional PHIService for PHI detection and sanitization
+            phi_sanitizer: Optional PHISanitizer for PHI detection and sanitization
             audit_mode: Whether to log PHI exposure without sanitizing
             exclude_paths: Optional list of paths to exclude from sanitization
-            whitelist_patterns: Optional list of patterns to exclude from sanitization
+            whitelist_patterns: Optional dict of paths to patterns or list of global patterns to exclude from sanitization
         """
         super().__init__(app)
         self.phi_sanitizer = phi_sanitizer or PHISanitizer()
         self.audit_mode = audit_mode
         self.exclude_paths = exclude_paths or []
-        self.whitelist_patterns = whitelist_patterns or []
+        
+        # Process whitelist patterns appropriately based on type
+        if whitelist_patterns is None:
+            self.whitelist_patterns: Dict[str, List[str]] = {}
+            self.global_whitelist_patterns: List[str] = []
+        elif isinstance(whitelist_patterns, dict):
+            self.whitelist_patterns = whitelist_patterns
+            self.global_whitelist_patterns = []
+        elif isinstance(whitelist_patterns, list):
+            self.whitelist_patterns = {}
+            self.global_whitelist_patterns = whitelist_patterns
+        else:
+            self.whitelist_patterns = {}
+            self.global_whitelist_patterns = []
+            logger.warning(f"Invalid whitelist_patterns format: {type(whitelist_patterns)}")
         
         # Default paths to exclude (common API docs and health check paths)
         self.default_exclude_paths = [
@@ -94,21 +108,31 @@ class PHIMiddleware(BaseHTTPMiddleware):
         """
         return any(path.startswith(excluded) for excluded in self.exclude_paths)
     
-    def is_whitelisted(self, text: str) -> bool:
+    def is_whitelisted(self, text: str, path: str) -> bool:
         """
         Check if a string contains whitelisted patterns that should not be sanitized.
         
         Args:
             text: Text to check against whitelist
+            path: Current request path
             
         Returns:
             True if text contains a whitelisted pattern, False otherwise
         """
         if not text or not isinstance(text, str):
             return False
-            
-        for pattern in self.whitelist_patterns:
+        
+        # Check path-specific whitelist patterns
+        path_patterns = self.whitelist_patterns.get(path, [])
+        for pattern in path_patterns:
             if pattern in text:
+                logger.debug(f"Text contains whitelisted pattern '{pattern}' for path {path}")
+                return True
+        
+        # Check global whitelist patterns
+        for pattern in self.global_whitelist_patterns:
+            if pattern in text:
+                logger.debug(f"Text contains global whitelisted pattern '{pattern}'")
                 return True
                 
         return False
@@ -124,8 +148,11 @@ class PHIMiddleware(BaseHTTPMiddleware):
         Returns:
             Sanitized response
         """
+        # Get the current path for whitelist checking
+        current_path = request.url.path
+        
         # Skip excluded paths
-        if self.is_excluded_path(request.url.path):
+        if self.is_excluded_path(current_path):
             return await call_next(request)
             
         # Process the request with timing for performance monitoring
@@ -160,15 +187,15 @@ class PHIMiddleware(BaseHTTPMiddleware):
             # Parse the response body as JSON
             body_json = json.loads(response_body)
             
-            # Check for PHI in the response
-            contains_phi = self._check_for_phi(body_json)
+            # Check for PHI in the response, considering whitelisted patterns
+            contains_phi = self._check_for_phi(body_json, current_path)
             
             # Sanitize or audit the response
             if contains_phi:
                 logger.warning(
                     "PHI detected in API response for %s %s",
                     request.method,
-                    request.url.path
+                    current_path
                 )
                 
                 if self.audit_mode:
@@ -176,16 +203,16 @@ class PHIMiddleware(BaseHTTPMiddleware):
                     logger.info(
                         "Audit mode: PHI would be sanitized in response to %s %s",
                         request.method,
-                        request.url.path
+                        current_path
                     )
                     sanitized_body = body_json
                 else:
-                    # Sanitize the response body
-                    sanitized_body = self.phi_sanitizer.sanitize(body_json)
+                    # Sanitize the response body, preserving whitelisted patterns
+                    sanitized_body = self._sanitize_response_json(body_json, current_path)
                     logger.info(
                         "PHI sanitized in response to %s %s",
                         request.method,
-                        request.url.path
+                        current_path
                     )
             else:
                 # No PHI detected, just pass through
@@ -202,7 +229,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             logger.debug(
                 "Processed %s %s in %.3fs",
                 request.method,
-                request.url.path,
+                current_path,
                 process_time
             )
             
@@ -220,7 +247,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "Error processing response from %s %s: %s",
                 request.method,
-                request.url.path,
+                current_path,
                 str(e)
             )
             self._add_security_headers(response)
@@ -250,109 +277,136 @@ class PHIMiddleware(BaseHTTPMiddleware):
             body_json = json.loads(body)
             
             # Check for PHI
-            contains_phi = self._check_for_phi(body_json)
+            current_path = request.url.path
+            contains_phi = self._check_for_phi(body_json, current_path)
             
             if contains_phi:
+                # Log a warning about PHI in the request (without including the PHI)
                 logger.warning(
                     "PHI detected in request to %s %s",
                     request.method,
-                    request.url.path
+                    current_path
                 )
                 
-                if self.audit_mode:
-                    # In audit mode, just log the finding
-                    logger.info(
-                        "Audit mode: PHI found in request to %s %s",
-                        request.method,
-                        request.url.path
-                    )
-                    sanitized_body = body_json
-                else:
-                    # Sanitize the body for logging
-                    sanitized_body = self.phi_sanitizer.sanitize(body_json)
-                    logger.info(
-                        "PHI sanitized in request logging for %s %s",
-                        request.method,
-                        request.url.path
-                    )
-                    
-                # Store sanitized body for logging if needed
-                request.state.sanitized_request_body = sanitized_body
+                # Create a sanitized version for debugging if needed
+                sanitized_json = self._sanitize_response_json(body_json, current_path)
+                
+                # We could log the sanitized body here, but we don't to minimize logging
+                logger.debug("Request body contained PHI and was sanitized for logging")
                 
         except json.JSONDecodeError:
-            # Not JSON, ignore
+            # Not a valid JSON request, nothing to sanitize
             pass
         except Exception as e:
+            # Log the error and continue
             logger.error(
-                "Error sanitizing request to %s %s: %s",
+                "Error sanitizing request body from %s %s: %s",
                 request.method,
                 request.url.path,
                 str(e)
             )
     
-    def _check_for_phi(self, data: Any) -> bool:
+    def _check_for_phi(self, data: Any, path: str) -> bool:
         """
-        Check if data contains PHI.
+        Check if the data contains PHI, respecting whitelisted patterns.
         
         Args:
-            data: Data to check for PHI (string, dict, list, etc.)
+            data: Data to check (JSON structure)
+            path: Current request path
             
         Returns:
-            True if data contains PHI, False otherwise
+            True if PHI is detected that is not whitelisted, False otherwise
         """
-        if data is None:
-            return False
-            
+        # For primitive types, check directly (but respect whitelist)
         if isinstance(data, str):
-            # Skip whitelisted patterns
-            if self.is_whitelisted(data):
+            # If text is whitelisted, don't consider it PHI
+            if self.is_whitelisted(data, path):
                 return False
             return self.phi_sanitizer.contains_phi(data)
+            
+        # For dictionaries, check each value
         elif isinstance(data, dict):
-            # Check each value in the dictionary
             for key, value in data.items():
-                if self._check_for_phi(value):
-                    return True
-        elif isinstance(data, (list, tuple)):
-            # Check each item in the list
-            for item in data:
-                if self._check_for_phi(item):
+                # Skip non-PHI keys like metadata
+                if key.lower() in {"id", "timestamp", "meta", "count", "total", "type", "status"}:
+                    continue
+                    
+                # Check if value contains PHI
+                if self._check_for_phi(value, path):
                     return True
                     
+        # For lists, check each item
+        elif isinstance(data, list):
+            for item in data:
+                if self._check_for_phi(item, path):
+                    return True
+                    
+        # Other types are not PHI
         return False
+    
+    def _sanitize_response_json(self, data: Any, path: str) -> Any:
+        """
+        Sanitize JSON data while preserving whitelisted patterns.
+        
+        Args:
+            data: Data to sanitize (JSON structure)
+            path: Current request path
+            
+        Returns:
+            Sanitized data
+        """
+        # For strings, check whitelist first
+        if isinstance(data, str):
+            if self.is_whitelisted(data, path):
+                return data
+            return self.phi_sanitizer.sanitize(data)
+            
+        # For dictionaries, sanitize each value
+        elif isinstance(data, dict):
+            sanitized = {}
+            for key, value in data.items():
+                sanitized[key] = self._sanitize_response_json(value, path)
+            return sanitized
+            
+        # For lists, sanitize each item
+        elif isinstance(data, list):
+            return [self._sanitize_response_json(item, path) for item in data]
+            
+        # Other types are returned unchanged
+        return data
     
     def _add_security_headers(self, response: Response) -> None:
         """
-        Add HIPAA-compliant security headers to the response.
+        Add security headers to a response.
         
         Args:
-            response: Response to modify
+            response: Response to add headers to
         """
-        for name, value in self.security_headers.items():
-            response.headers[name] = value
+        for header, value in self.security_headers.items():
+            response.headers[header] = value
 
 
-# Dependency for FastAPI routes
 def get_phi_middleware(
     phi_sanitizer: PHISanitizer | None = None,
     audit_mode: bool = False,
     exclude_paths: list[str] | None = None,
-    whitelist_patterns: list[str] | None = None
+    whitelist_patterns: dict[str, list[str]] | list[str] | None = None
 ) -> PHIMiddleware:
     """
-    Get a PHI middleware instance for use with FastAPI.
+    Factory function to create a PHI middleware instance.
     
     Args:
-        phi_service: Optional PHIService for PHI detection and sanitization
+        phi_sanitizer: Optional PHISanitizer for PHI detection and sanitization
         audit_mode: Whether to log PHI exposure without sanitizing
         exclude_paths: Optional list of paths to exclude from sanitization
-        whitelist_patterns: Optional list of patterns to exclude from sanitization
-        
+        whitelist_patterns: Optional dict of paths to patterns or list of global patterns 
+                           to exclude from sanitization
+    
     Returns:
-        PHI middleware instance
+        A configured PHIMiddleware instance
     """
-    return PHIMiddleware(
-        app=None,  # Will be set by FastAPI
+    return lambda app: PHIMiddleware(
+        app=app,
         phi_sanitizer=phi_sanitizer,
         audit_mode=audit_mode,
         exclude_paths=exclude_paths,
@@ -365,29 +419,23 @@ def add_phi_middleware(
     phi_sanitizer: PHISanitizer | None = None,
     audit_mode: bool = False,
     exclude_paths: list[str] | None = None,
-    whitelist_patterns: list[str] | None = None
+    whitelist_patterns: dict[str, list[str]] | list[str] | None = None
 ) -> None:
     """
     Add PHI middleware to a FastAPI application.
     
     Args:
-        app: FastAPI application instance
-        phi_service: Optional PHIService for PHI detection and sanitization
+        app: FastAPI application to add middleware to
+        phi_sanitizer: Optional PHISanitizer for PHI detection and sanitization
         audit_mode: Whether to log PHI exposure without sanitizing
-        exclude_paths: Optional list of paths to exclude from sanitization
-        whitelist_patterns: Optional list of patterns to exclude from sanitization
+        exclude_paths: Optional list of paths to exclude from sanitization  
+        whitelist_patterns: Optional dict of paths to patterns or list of global patterns 
+                           to exclude from sanitization
     """
-    middleware = PHIMiddleware(
-        app=app,
+    app.add_middleware(
+        PHIMiddleware,
         phi_sanitizer=phi_sanitizer,
         audit_mode=audit_mode,
         exclude_paths=exclude_paths,
         whitelist_patterns=whitelist_patterns
-    )
-    
-    app.add_middleware(BaseHTTPMiddleware, dispatch=middleware.dispatch)
-    
-    logger.info(
-        "PHI middleware added to FastAPI application (audit_mode=%s)",
-        audit_mode
     )

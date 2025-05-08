@@ -9,7 +9,7 @@ using abstracted AWS service interfaces instead of direct boto3 calls.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, List, Dict
 
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -74,7 +74,6 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             self._config = config or {}
             
             # Extract configuration values
-            aws_region = self._config.get("aws_region")
             self._audit_log_enabled = self._config.get("enable_audit_logging", True)
             
             # Get Comprehend Medical service from factory
@@ -160,7 +159,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             f"with metadata: {details}"
         )
     
-    def detect_phi(self, text: str) -> dict[str, Any]:
+    def detect_phi(self, text: str) -> list[dict[str, Any]]:
         """
         Detect PHI in text.
         
@@ -168,7 +167,7 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             text: Text to check for PHI
             
         Returns:
-            Dictionary containing PHI detection results
+            List of dictionaries containing PHI entity information
             
         Raises:
             ServiceUnavailableError: If service is not initialized
@@ -184,31 +183,31 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             # Extract PHI entities
             phi_entities = response.get("Entities", [])
             
-            # Check if any PHI was detected
-            has_phi = len(phi_entities) > 0
+            # Format entities as required by the interface
+            entities_list = []
             
-            # Format results
-            result = {
-                "has_phi": has_phi,
-                "phi_entities": phi_entities,
-                "phi_count": len(phi_entities),
-                "phi_types": list(set(entity["Type"] for entity in phi_entities)) if has_phi else [],
-                "model_version": response.get("ModelVersion", "Unknown"),
-                "timestamp": datetime.now(UTC).isoformat()
-            }
+            for entity in phi_entities:
+                entities_list.append({
+                    "text": entity.get("Text", ""),
+                    "type": entity.get("Type", "UNKNOWN"),
+                    "score": entity.get("Score", 0.0),
+                    "begin_offset": entity.get("BeginOffset", 0),
+                    "end_offset": entity.get("EndOffset", 0),
+                    "id": f"phi-{len(entities_list)}"
+                })
             
             # Create audit log (without PHI content)
             audit_details = {
                 "operation": "detect_phi",
-                "has_phi": has_phi,
-                "phi_count": len(phi_entities),
-                "phi_types": result["phi_types"],
+                "has_phi": len(entities_list) > 0,
+                "phi_count": len(entities_list),
+                "phi_types": list(set(entity["type"] for entity in entities_list)) if entities_list else [],
                 "text_length": len(text),
-                "timestamp": result["timestamp"]
+                "timestamp": datetime.now(UTC).isoformat()
             }
             self._record_audit_log("detect_phi", audit_details)
                 
-            return result
+            return entities_list
             
         except (BotoCoreError, ClientError) as e:
             logger.error(f"Error detecting PHI: {e!s}")
@@ -217,15 +216,16 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
             logger.error(f"Unexpected error during PHI detection: {e!s}")
             raise ServiceUnavailableError(f"Unexpected error during PHI detection: {e!s}")
     
-    def redact_phi(self, text: str) -> dict[str, Any]:
+    def redact_phi(self, text: str, replacement: str = "[PHI]") -> str:
         """
         Redact PHI in text.
         
         Args:
             text: Text to redact PHI from
+            replacement: String to replace PHI with (default: "[PHI]")
             
         Returns:
-            Dictionary containing redacted text and redaction statistics
+            Text with PHI redacted
             
         Raises:
             ServiceUnavailableError: If service is not initialized
@@ -235,81 +235,96 @@ class AWSComprehendMedicalPHIDetection(PHIDetectionInterface):
         self._validate_text(text)
         
         try:
-            # First detect PHI using our AWS service abstraction
-            detection_result = self.detect_phi(text)
-            phi_entities = detection_result.get("phi_entities", [])
+            # First detect PHI using our interface method
+            entities = self.detect_phi(text)
             
             # If no PHI detected, return original text
-            if not phi_entities:
-                result = {
-                    "redacted_text": text,
-                    "original_text_length": len(text),
-                    "redacted_text_length": len(text),
-                    "redaction_count": 0,
-                    "redaction_types": [],
-                    "timestamp": datetime.now(UTC).isoformat()
-                }
-                
-                # Record audit log for HIPAA compliance
+            if not entities:
+                # Record audit log for no-op
                 audit_details = {
                     "operation": "redact_phi",
+                    "has_phi": False,
                     "redaction_count": 0,
                     "text_length": len(text),
-                    "timestamp": result["timestamp"]
+                    "timestamp": datetime.now(UTC).isoformat()
                 }
                 self._record_audit_log("redact_phi", audit_details)
-                
-                return result
+                return text
             
-            # Sort entities by begin_offset in descending order to avoid indexing issues
-            # when replacing text
-            phi_entities.sort(key=lambda x: x["BeginOffset"], reverse=True)
+            # Sort entities by position from end to beginning to avoid offset issues
+            sorted_entities = sorted(entities, key=lambda x: x["begin_offset"], reverse=True)
             
-            # Redact PHI entities
+            # Apply redactions
             redacted_text = text
             redaction_types = set()
             
-            for entity in phi_entities:
-                begin_offset = entity["BeginOffset"]
-                end_offset = entity["EndOffset"]
-                entity_type = entity["Type"]
-                redaction_types.add(entity_type)
+            for entity in sorted_entities:
+                entity_type = entity.get("type", "UNKNOWN")
+                # Create customized replacement with entity type for more informative redaction
+                typed_replacement = f"[REDACTED-{entity_type}]"
                 
-                # Replace entity with redaction marker
-                redaction_marker = f"[REDACTED-{entity_type}]"
-                redacted_text = (
-                    redacted_text[:begin_offset] + 
-                    redaction_marker + 
-                    redacted_text[end_offset:]
-                )
+                # Get the offset positions
+                begin = entity.get("begin_offset", 0)
+                end = entity.get("end_offset", 0)
+                
+                # Apply the redaction
+                if 0 <= begin < end <= len(redacted_text):
+                    redacted_text = redacted_text[:begin] + typed_replacement + redacted_text[end:]
+                    redaction_types.add(entity_type)
             
-            # Prepare result
-            timestamp = datetime.now(UTC).isoformat()
-            result = {
-                "redacted_text": redacted_text,
-                "original_text_length": len(text),
-                "redacted_text_length": len(redacted_text),
-                "redaction_count": len(phi_entities),
-                "redaction_types": list(redaction_types),
-                "timestamp": timestamp,
-                "model_version": detection_result.get("model_version", "Unknown")
-            }
-            
-            # Record audit log for HIPAA compliance (without PHI content)
+            # Create audit log (without PHI content)
             audit_details = {
                 "operation": "redact_phi",
-                "redaction_count": len(phi_entities),
+                "has_phi": True,
+                "redaction_count": len(sorted_entities),
                 "redaction_types": list(redaction_types),
                 "text_length": len(text),
-                "timestamp": result["timestamp"]
+                "timestamp": datetime.now(UTC).isoformat()
             }
             self._record_audit_log("redact_phi", audit_details)
             
-            return result
+            return redacted_text
             
+        except (BotoCoreError, ClientError) as e:
+            logger.error(f"Error redacting PHI: {e!s}")
+            raise ServiceUnavailableError(f"Error redacting PHI: {e!s}")
+        except InvalidRequestError:
+            # Pass through validation errors
+            raise
         except ServiceUnavailableError:
             # Pass through service errors
             raise
         except Exception as e:
             logger.error(f"Unexpected error during PHI redaction: {e!s}")
             raise ServiceUnavailableError(f"Unexpected error during PHI redaction: {e!s}")
+    
+    def contains_phi(self, text: str) -> bool:
+        """
+        Check if text contains PHI.
+        
+        Args:
+            text: Text to check
+            
+        Returns:
+            True if PHI is detected, False otherwise
+            
+        Raises:
+            ServiceUnavailableError: If service is not initialized
+            InvalidRequestError: If text is empty or invalid
+        """
+        # Empty strings have no PHI
+        if not text or not isinstance(text, str):
+            return False
+            
+        self._check_service_initialized()
+        
+        try:
+            # Use our detect_phi method and check if any entities were returned
+            entities = self.detect_phi(text)
+            return len(entities) > 0
+        except InvalidRequestError:
+            # Invalid text has no PHI
+            return False
+        except Exception as e:
+            logger.error(f"Error checking for PHI: {e!s}")
+            raise ServiceUnavailableError(f"Error checking for PHI: {e!s}")
