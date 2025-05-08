@@ -188,7 +188,23 @@ async def get_placeholder_actigraphy(
     summary="Get Actigraphy Model Info (Stub for tests)"
 )
 async def get_actigraphy_model_info(current_user: CurrentUserDep):
-    return ActigraphyModelInfoResponse(message="Actigraphy model info stub from routes/actigraphy.py", version="1.0")
+    """Get information about the actigraphy analysis model.
+    
+    This endpoint returns metadata about the model currently used for actigraphy analysis,
+    including version, name, and descriptive message.
+    
+    Args:
+        current_user: The authenticated user making the request
+        
+    Returns:
+        ActigraphyModelInfoResponse: Information about the actigraphy model
+    """
+    return ActigraphyModelInfoResponse(
+        message="Actigraphy model info",
+        version="1.0",
+        model_version="1.0.0",
+        model_name="ActigraphyAnalyzer"
+    )
 
 @router.post(
     "/upload", 

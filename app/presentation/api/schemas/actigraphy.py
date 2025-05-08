@@ -162,3 +162,5 @@ class ActigraphyDataResponse(BaseSchema):
 class ActigraphyModelInfoResponse(BaseSchema):
     message: str
     version: str
+    model_version: str = "1.0.0"
+    model_name: str = "ActigraphyAnalyzer"

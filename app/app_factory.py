@@ -138,10 +138,19 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         if current_settings.REDIS_URL:
             try:
                 logger.info(f"Connecting to Redis: {current_settings.REDIS_URL}")
+                # Create Redis connection pool with appropriate settings for the environment
+                connection_kwargs = {
+                    "max_connections": 10,
+                }
+                
+                # Only include SSL parameter in production environments
+                # Omit during testing to avoid compatibility issues
+                if current_settings.ENVIRONMENT != "test" and current_settings.REDIS_SSL:
+                    connection_kwargs["ssl"] = current_settings.REDIS_SSL
+                
                 redis_pool = ConnectionPool.from_url(
                     current_settings.REDIS_URL,
-                    max_connections=10,
-                    ssl=current_settings.REDIS_SSL,
+                    **connection_kwargs
                 )
                 redis_client = Redis(connection_pool=redis_pool)
                 
