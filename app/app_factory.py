@@ -85,18 +85,32 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             current_settings = fastapi_app.state.settings
             logger.info(f"Lifespan: Creating AsyncEngine with URL: {current_settings.ASYNC_DATABASE_URL}")
             
-            # Create engine with desired pool settings
+            # Create engine with SQLite-compatible settings
+            is_sqlite = current_settings.ASYNC_DATABASE_URL.startswith('sqlite')
+            
+            # Base configuration
+            engine_args = {
+                "echo": current_settings.ENVIRONMENT in ["development", "test"],
+            }
+            
+            # Add connection arguments based on database type
+            if is_sqlite:
+                # SQLite-specific settings (no pooling)
+                engine_args["connect_args"] = {"check_same_thread": False}
+            else:
+                # PostgreSQL/other database settings
+                engine_args.update({
+                    "pool_pre_ping": True,
+                    "pool_size": 5,
+                    "max_overflow": 10,
+                    "pool_recycle": 300,  # Recycle connections after 5 minutes
+                    "connect_args": {"isolation_level": "SERIALIZABLE"}  # HIPAA requirement
+                })
+                
+            # Create the engine with appropriate args
             db_engine = create_async_engine(
                 current_settings.ASYNC_DATABASE_URL,
-                echo=current_settings.ENVIRONMENT in ["development", "test"],
-                pool_pre_ping=True,
-                pool_size=5,
-                max_overflow=10,
-                pool_recycle=300,  # Recycle connections after 5 minutes
-                # Connect arguments with proper transaction isolation level for HIPAA
-                connect_args={"isolation_level": "SERIALIZABLE"} 
-                  if current_settings.ASYNC_DATABASE_URL.startswith("postgresql")
-                  else {},
+                **engine_args
             )
             
             # Create session factory - CRITICAL for application to work
