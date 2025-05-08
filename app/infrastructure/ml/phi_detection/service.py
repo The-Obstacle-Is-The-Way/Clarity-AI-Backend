@@ -17,7 +17,7 @@ import yaml
 
 # Core Imports
 from app.core.domain.entities.phi.phi_match import PHIMatch
-from app.core.exceptions.ml_exceptions import PHIDetectionError
+from app.core.exceptions.ml_exceptions import PHIDetectionError, PHISecurityError
 from app.core.utils.logging import get_logger
 
 # Decorator for PHI detection error handling
@@ -27,8 +27,18 @@ def phi_error_handler(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            # Wrap all exceptions in PHIDetectionError for consistent handling
-            raise PHIDetectionError(f"Failed in {func.__name__}: {str(e)}") from e
+            # Determine appropriate error type based on function name
+            if func.__name__ == 'contains_phi':
+                raise PHISecurityError(f"Failed to detect PHI: {str(e)}") from e
+            elif func.__name__ == 'detect_phi':
+                raise PHISecurityError(f"Failed to detect PHI details: {str(e)}") from e
+            elif func.__name__ == 'redact_phi':
+                raise PHISecurityError(f"Failed to redact PHI: {str(e)}") from e
+            elif func.__name__ == 'anonymize_phi':
+                raise PHISecurityError(f"Failed to anonymize PHI: {str(e)}") from e
+            else:
+                # Default error message for other functions
+                raise PHIDetectionError(f"Failed in {func.__name__}: {str(e)}") from e
     return wrapper
 
 
@@ -64,8 +74,11 @@ class PHIDetectionService:
         self.pattern_file: Path = Path(pattern_file) if pattern_file else default_pattern_path
         self.patterns: list[PHIPattern] = []
         self._initialized = False
-        self._load_patterns() # Initialize on creation
-        self._initialized = True
+    
+    @property
+    def initialized(self) -> bool:
+        """Property to check if service is initialized."""
+        return self._initialized
 
     def initialize(self) -> None:
          """Explicit initialization method."""
@@ -76,8 +89,7 @@ class PHIDetectionService:
     def ensure_initialized(self) -> None:
         """Ensure the service is initialized."""
         if not self._initialized:
-            self._load_patterns()
-            self._initialized = True
+            self.initialize()
 
     def _load_patterns(self) -> None:
         """Load PHI detection patterns from file."""
@@ -227,7 +239,9 @@ class PHIDetectionService:
             # Map categories to expected test values
             category_map = {
                 "contact": "CONTACT-INFO",
-                "name": "NAME"
+                "name": "NAME",
+                "government_id": "ID",
+                "date": "DATE"
             }
             category = phi.get('category', '')
             placeholder = f"[{category_map.get(category, phi['pattern_name'].upper())}]"
@@ -238,7 +252,7 @@ class PHIDetectionService:
     def get_phi_types(self) -> list[str]:
         """Returns the list of PHI types supported by the service."""
         self.ensure_initialized()
-        return sorted(list(set(pattern.category for pattern in self.patterns)))
+        return sorted(list(set(pattern.name for pattern in self.patterns)))
         
     def get_statistics(self) -> dict:
         """Returns statistics about the loaded PHI patterns."""
