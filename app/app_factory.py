@@ -27,6 +27,9 @@ from app.presentation.middleware.logging import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
+from app.presentation.middleware.authentication import AuthenticationMiddleware
+from app.infrastructure.security.jwt_service import get_jwt_service
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 
 # Potentially import test routers conditionally or via a flag
 from app.tests.routers.admin_test_router import router as admin_test_router
@@ -254,7 +257,34 @@ def create_application(
     # app_instance.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
     logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
-    # 4. Rate Limiting Middleware
+    # 4. Authentication Middleware
+    # Initialize and register the authentication middleware
+    logger.info("Initializing and registering AuthenticationMiddleware...")
+    try:
+        jwt_service = get_jwt_service()
+        user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.db_session_factory)
+        
+        # Define public paths - keep in sync with middleware defaults or settings
+        public_paths = {
+            "/docs", "/openapi.json", "/redoc",  # API docs
+            "/health", "/metrics", "/",  # Public monitoring endpoints
+            f"{app_settings.API_V1_STR}/auth/login",  # Auth endpoints
+            f"{app_settings.API_V1_STR}/auth/register",
+            f"{app_settings.API_V1_STR}/auth/refresh",
+        }
+        
+        app_instance.add_middleware(
+            AuthenticationMiddleware,
+            jwt_service=jwt_service,
+            user_repo=user_repository,
+            public_paths=public_paths
+        )
+        logger.info("Authentication middleware added successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize AuthenticationMiddleware: {e}", exc_info=True)
+        logger.warning("Authentication middleware NOT ADDED - application will not enforce authentication!")
+
+    # 5. Rate Limiting Middleware
     # Temporarily disabled due to implementation issues
     # rate_limiter_service = get_rate_limiter_service(app_settings)
     # app_instance.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
@@ -266,10 +296,11 @@ def create_application(
         app_instance.add_middleware(
             CORSMiddleware,
             allow_origins=[str(origin) for origin in app_settings.BACKEND_CORS_ORIGINS],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_credentials=app_settings.CORS_ALLOW_CREDENTIALS,
+            allow_methods=app_settings.CORS_ALLOW_METHODS,
+            allow_headers=app_settings.CORS_ALLOW_HEADERS,
         )
+        logger.info("CORS middleware configured with specific settings from environment.")
     else:
         logger.warning("No CORS origins configured. CORS middleware not added.")
 

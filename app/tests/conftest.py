@@ -653,7 +653,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record, **kwargs):
 
 # Ensure this is the only test_db_engine fixture
 @pytest_asyncio.fixture(scope="session")
-async def test_db_engine(event_loop, test_settings: Settings) -> AsyncEngine: # RETAINED and ensure it's AsyncEngine
+async def test_db_engine(test_settings: Settings) -> AsyncEngine: # Removed event_loop dependency
     """Provides a SQLAlchemy engine for the entire test session."""
     logger.info(f"SESSION SCOPE: Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL}")
     

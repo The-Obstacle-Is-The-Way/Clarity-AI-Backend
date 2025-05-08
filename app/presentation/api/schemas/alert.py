@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import Field, validator, UUID4, BaseModel
+from pydantic import Field, field_validator, UUID4, BaseModel
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.domain.entities.biometric_rule import (
@@ -30,7 +30,7 @@ class AlertBase(BaseModelConfig):
     message: str = Field(..., min_length=1, max_length=500)
     data: dict[str, Any] | None = Field(default_factory=dict)
 
-    @validator("timestamp")
+    @field_validator("timestamp")
     def validate_timestamp(cls, v):
         """Ensure timestamp is not in the future."""
         if v > datetime.now():
@@ -54,9 +54,11 @@ class AlertUpdateRequest(BaseModelConfig):
     resolved_at: datetime | None = None
     resolution_notes: str | None = Field(None, min_length=1, max_length=1000)
 
-    @validator("resolved_at")
-    def validate_resolved_at(cls, v, values):
+    @field_validator("resolved_at")
+    def validate_resolved_at(cls, v, info):
         """Ensure resolved_at is only set when status is RESOLVED."""
+        # In v2, we need to access the data differently
+        values = info.data
         if v and values.get("status") != AlertStatus.RESOLVED:
             raise ValueError("Resolved timestamp can only be set when status is RESOLVED")
         return v

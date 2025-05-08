@@ -484,7 +484,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Build domain Patient using only the fields that exist in the domain entity
         # Check app.core.domain.entities.patient.Patient for the correct attributes
         patient_args = {
-            'id': uuid.UUID(self.id) if self.id else uuid.uuid4(),
+            'id': self.id if isinstance(self.id, uuid.UUID) else uuid.UUID(str(self.id)) if self.id else uuid.uuid4(),
             'created_at': self.created_at.replace(tzinfo=UTC) if self.created_at else datetime.now(),
             'updated_at': self.updated_at.replace(tzinfo=UTC) if self.updated_at else datetime.now(),
             'first_name': first_name,

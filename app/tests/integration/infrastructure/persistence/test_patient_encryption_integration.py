@@ -188,6 +188,9 @@ class TestPatientEncryptionIntegration:
         # This will map fields like first_name -> _first_name and encrypt them
         patient_model = await PatientModel.from_domain(sample_patient, encryption_service)
         
+        # Explicitly set user_id to TEST_USER_ID to fix NULL constraint issue
+        patient_model.user_id = TEST_USER_ID
+        
         # STEP 2: Save to database
         db_session.add(patient_model)
         await db_session.commit()
@@ -244,6 +247,10 @@ class TestPatientEncryptionIntegration:
         # Create a patient model and save to database
         encryption_service = BaseEncryptionService()
         patient_model = await PatientModel.from_domain(sample_patient, encryption_service)
+        
+        # Explicitly set user_id to TEST_USER_ID to fix NULL constraint issue
+        patient_model.user_id = TEST_USER_ID
+        
         db_session.add(patient_model)
         await db_session.commit()
         patient_id = patient_model.id

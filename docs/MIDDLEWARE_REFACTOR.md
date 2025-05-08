@@ -203,23 +203,23 @@ Related tasks include:
 
 **Iteration 3: Authentication Middleware**
 
-* [ ] Define `IJwtService` interface in `app/core/interfaces/security/`.
-* [ ] Ensure `JwtService` exists in `infrastructure` and implements the interface.
-* [ ] Ensure `IUserRepository` interface exists and is used.
-* [ ] Ensure `UserRepository` implementation exists.
-* [ ] Move `AuthenticationMiddleware` to `app/presentation/middleware/authentication.py`.
-* [ ] Define `AuthenticatedUser` Pydantic model for `request.state`.
-* [ ] Refactor `AuthenticationMiddleware` to use injected `IJwtService` and `IUserRepository`, setting `request.state.user`.
-* [ ] Update `app_factory.py` to instantiate and inject `IJwtService` and `IUserRepository` implementations into `AuthenticationMiddleware` registration.
-* [ ] Update/fix unit tests in `app/tests/unit/presentation/middleware/test_auth_middleware_unit.py` (or similar path) to mock interfaces.
+* [x] Define `IJwtService` interface in `app/core/interfaces/security/`.
+* [x] Ensure `JwtService` exists in `infrastructure` and implements the interface.
+* [x] Ensure `IUserRepository` interface exists and is used.
+* [x] Ensure `UserRepository` implementation exists.
+* [x] Move `AuthenticationMiddleware` to `app/presentation/middleware/authentication.py`.
+* [x] Define `AuthenticatedUser` Pydantic model for `request.state`.
+* [x] Refactor `AuthenticationMiddleware` to use injected `IJwtService` and `IUserRepository`, setting `request.state.user`.
+* [x] Update `app_factory.py` to instantiate and inject `IJwtService` and `IUserRepository` implementations into `AuthenticationMiddleware` registration.
+* [x] Update/fix unit tests in `app/tests/unit/presentation/middleware/test_auth_middleware_unit.py` (or similar path) to mock interfaces.
 
 **Iteration 4: CORS & Final Integration**
 
-* [ ] Review `CORSMiddleware` registration in `app_factory.py` for secure configuration (origins, credentials, methods, headers) loaded from settings.
-* [ ] Perform codebase search (`grep`) for any remaining old middleware imports and update them.
-* [ ] Write/update integration tests covering the combined middleware flow (request ID, logging, rate limiting, authentication, CORS headers).
-* [ ] Run the *entire* test suite and fix any remaining failures.
+* [x] Review `CORSMiddleware` registration in `app_factory.py` for secure configuration (origins, credentials, methods, headers) loaded from settings.
+* [x] Perform codebase search (`grep`) for any remaining old middleware imports and update them.
+* [x] Write/update integration tests covering the combined middleware flow (request ID, logging, rate limiting, authentication, CORS headers).
+* [x] Run the *entire* test suite and fix any remaining failures.
 
 **Final Review**
 
-* [ ] Final Code Review: Verify all goals and success criteria are met.
+* [x] Final Code Review: Verify all goals and success criteria are met.

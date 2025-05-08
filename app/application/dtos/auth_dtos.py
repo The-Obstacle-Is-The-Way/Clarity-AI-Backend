@@ -8,7 +8,7 @@ providing clean data structures for token management and user sessions.
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class TokenPairDTO(BaseModel):
@@ -39,10 +39,11 @@ class UserSessionDTO(BaseModel):
     created_at: datetime
     expires_at: datetime
     
-    class Config:
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             datetime: lambda dt: dt.isoformat()
         }
+    }
 
 
 class LoginRequestDTO(BaseModel):
@@ -51,7 +52,7 @@ class LoginRequestDTO(BaseModel):
     email: EmailStr
     password: str
     
-    @validator('password')
+    @field_validator('password')
     def password_must_be_valid(cls, v):
         """Validate that the password field is not empty."""
         if not v or len(v) < 1:
@@ -64,7 +65,7 @@ class RefreshTokenRequestDTO(BaseModel):
     
     refresh_token: str
     
-    @validator('refresh_token')
+    @field_validator('refresh_token')
     def refresh_token_must_be_valid(cls, v):
         """Validate that the refresh token field is not empty."""
         if not v or len(v) < 10:  # Arbitrary minimum length for token validation

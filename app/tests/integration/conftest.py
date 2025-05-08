@@ -478,3 +478,75 @@ def actigraphy_file_content() -> bytes:
         "2023-01-01T00:00:02Z,0.3,0.4,0.7\\n"
     )
     return csv_content.encode('utf-8')
+
+@pytest_asyncio.fixture
+async def test_app_with_db_session(
+    test_settings: Settings,
+    mock_s3_service: MagicMock, 
+    mock_encryption_service: MagicMock, 
+    mock_jwt_service_with_placeholder_handling: JWTServiceInterface,
+    test_db_engine
+) -> AsyncGenerator[FastAPI, None]:
+    """
+    Creates a FastAPI app with fully initialized database session factory in app.state
+    for tests that require database access through FastAPI dependency injection.
+    """
+    logger.info("Creating FastAPI app instance with DB session factory for integration tests")
+    
+    from app.app_factory import create_application
+    app = create_application(settings_override=test_settings)
+
+    # Create session factory from engine
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    
+    session_factory = sessionmaker(
+        test_db_engine, 
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False
+    )
+    
+    # Set session factory in app state
+    app.state.db_session_factory = session_factory
+
+    # Configure mock services
+    mock_aws_factory = MagicMock(spec=AWSServiceFactory)
+    mock_aws_factory.get_s3_service.return_value = mock_s3_service
+    
+    app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
+    app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
+    app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
+    
+    # Initialize database schema if needed
+    async with test_db_engine.begin() as conn:
+        from app.infrastructure.persistence.sqlalchemy.registry import metadata as sa_metadata
+        await conn.run_sync(sa_metadata.create_all)
+    
+    async with LifespanManager(app) as manager:
+        yield manager.app
+
+@pytest_asyncio.fixture
+async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
+    """Provides an AsyncClient instance configured with DB session factory"""
+    async with AsyncClient(app=test_app_with_db_session, base_url="http://test") as client:
+        yield client
+
+@pytest_asyncio.fixture
+async def test_app_with_auth_override(test_app_with_db_session: FastAPI) -> FastAPI:
+    """
+    Provides a test app with authentication dependencies overridden for testing different
+    user roles without actual authentication.
+    """
+    from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
+    
+    # Import the mock auth fixture
+    from app.tests.integration.api.endpoints.test_actigraphy_endpoints import mock_auth_dependency
+    
+    # Override authentication dependencies
+    # This allows tests to bypass actual JWT validation
+    test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency
+    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency
+    
+    return test_app_with_db_session

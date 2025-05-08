@@ -60,9 +60,12 @@ class TimestampMixin:
 
 class AuditMixin:
     """Mixin for audit trail fields using Column syntax."""
+    # Add audit_id column for HIPAA compliance
+    audit_id = Column(SQLAlchemyUUID(as_uuid=True), default=uuid.uuid4, nullable=True)
+    
     # Example: Use SQLAlchemyUUID directly or import your custom type if needed
-    created_by_id = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)
-    updated_by_id = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)
+    created_by = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)
+    updated_by = Column(SQLAlchemyUUID(as_uuid=True), nullable=True)
 
     # If you want string usernames instead/as well:
     # created_by_username = Column(String(64), nullable=True)

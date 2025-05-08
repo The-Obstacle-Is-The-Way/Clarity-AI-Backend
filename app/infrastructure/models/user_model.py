@@ -31,7 +31,7 @@ except ImportError as e:
     logger.warning(f"Using UserModel fallback implementation due to import error: {e}")
     
     # Import only what's needed for the type definition
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import declarative_base  # SQLAlchemy 2.0-compatible import
 
     from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, TimestampMixin
     
