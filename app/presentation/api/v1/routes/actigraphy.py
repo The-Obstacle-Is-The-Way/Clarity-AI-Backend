@@ -13,11 +13,11 @@ from pydantic import BaseModel, UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Proper imports following Clean Architecture principles
-from app.presentation.api.dependencies.auth import require_roles
+from app.presentation.api.dependencies.auth import require_roles, get_current_user
 from app.presentation.api.dependencies.auth import CurrentUserDep
 from app.presentation.api.dependencies.database import get_db
-from app.core.domain.entities.user import User, UserRole
-from app.infrastructure.logging.audit_logger import log_phi_access as audit_log_phi_access
+from app.core.domain.entities.user import UserRole, User
+from app.infrastructure.logging.audit_logger import audit_log_phi_access
 
 # Import centralized schemas
 from app.presentation.api.schemas.actigraphy import (
@@ -154,7 +154,7 @@ async def analyze_actigraphy(
 )
 async def get_actigraphy_embeddings(
     data: dict[str, Any],
-    current_user: User = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN])),
+    current_user = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN])),
     pat_service: IPATService = Depends(get_pat_service)
 ) -> dict[str, Any]:
     """Generate embeddings from actigraphy data.
@@ -183,7 +183,7 @@ async def get_actigraphy_embeddings(
 # Keep the placeholder endpoint for backward compatibility
 @router.get("/placeholder", summary="Placeholder Actigraphy Endpoint")
 async def get_placeholder_actigraphy(
-    current_user: User = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN]))
+    current_user = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN]))
 ) -> dict[str, str]:
     """Example placeholder endpoint."""
     return {"message": "Placeholder endpoint for actigraphy data"}

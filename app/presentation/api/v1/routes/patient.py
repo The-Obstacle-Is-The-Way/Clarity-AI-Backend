@@ -75,10 +75,7 @@ async def read_patient(
 async def create_patient_endpoint(
     patient_data: PatientCreateRequest, 
     service: PatientService = Depends(get_patient_service),
-    current_user: DomainUser = Depends(CurrentUserDep),
-    # Make query parameters truly optional with explicit defaults
-    args: Optional[str] = Query(default=None, description="Optional arguments (for backward compatibility)"),
-    kwargs: Optional[str] = Query(default=None, description="Optional keyword arguments (for backward compatibility)")
+    current_user: DomainUser = Depends(CurrentUserDep)
 ) -> PatientCreateResponse: 
     """Create a new patient."""
     logger.info(f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}")

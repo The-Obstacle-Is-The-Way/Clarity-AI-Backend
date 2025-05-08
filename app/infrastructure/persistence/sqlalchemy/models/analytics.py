@@ -40,8 +40,7 @@ class AnalyticsEventModel(Base, TimestampMixin):
     processed_at = Column(DateTime, nullable=True, index=True)
     correlation_id = Column(String(100), nullable=True, index=True)
     
-    # Define the relationship to the User model using string-based references
-    # to avoid circular import issues
+    # Define the relationship to the User model with explicit foreign_keys and primaryjoin
     user = relationship(
         "User", 
         back_populates="analytics_events",

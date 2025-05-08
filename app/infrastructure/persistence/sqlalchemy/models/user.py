@@ -164,7 +164,9 @@ class User(Base, TimestampMixin, AuditMixin):
         "AnalyticsEventModel", 
         back_populates="user", 
         cascade="all, delete-orphan",
-        lazy="selectin"
+        lazy="selectin",
+        foreign_keys="AnalyticsEventModel.user_id",
+        primaryjoin="User.id == foreign(AnalyticsEventModel.user_id)"
     )
     
     # Audit logging

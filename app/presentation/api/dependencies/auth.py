@@ -198,21 +198,21 @@ def require_roles(required_roles: list[UserRole]):
     Dependency that requires the current user to have AT LEAST ONE of the specified roles.
     """
     async def role_checker(current_user: DomainUser = Depends(get_current_active_user), **kwargs) -> DomainUser:
-        # The User domain entity has `roles: set[UserRole]` and a `has_role` method.
-        user_has_required_role = False
-        if current_user.roles:
-            for role in required_roles:
-                if role in current_user.roles:
-                    user_has_required_role = True
-                    break
-        
-        if not user_has_required_role:
-            allowed_roles_str = ", ".join(role.value for role in required_roles)
+        # The User domain entity stores roles as a set, so we can use set operations
+        if not set(required_roles) & current_user.roles:
+            # No intersection between required_roles and user.roles, access denied
+            logger.warning(
+                f"Role-based access control denied: User {current_user.id} with roles {current_user.roles} "
+                f"attempted to access endpoint requiring one of: {required_roles}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User requires one of the following roles: {allowed_roles_str}",
+                detail="The user does not have sufficient permissions to perform this action.",
             )
         return current_user
+    
+    # Give the dependency a descriptive __name__ for better error messages
+    role_checker.__name__ = f"require_roles({[r.name for r in required_roles]})"
     return role_checker
 
 async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current_active_user), **kwargs) -> DomainUser:
