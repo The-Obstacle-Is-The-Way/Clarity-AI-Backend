@@ -494,53 +494,49 @@ async def test_app_with_db_session(
     logger.info("Creating FastAPI app instance with DB session factory for integration tests")
     
     from app.app_factory import create_application
-    app = create_application(settings_override=test_settings)
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    # Create session factory from engine
-    from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.orm import sessionmaker
+    # Create the app instance
+    app = create_application(settings_override=test_settings)
     
-    # Configure session factory
-    session_factory = sessionmaker(
-        test_db_engine, 
+    # Create a properly configured session factory
+    db_session_factory = async_sessionmaker(
+        bind=test_db_engine,
         class_=AsyncSession,
         expire_on_commit=False,
-        autocommit=False,
         autoflush=False
     )
     
-    # Set session factory in app state
-    app.state.db_session_factory = session_factory
-
-    # Configure mock services
+    # CRITICAL: Set the session factory directly in app.state
+    # This is what the app will use for database access in API endpoints
+    app.state.db_session_factory = db_session_factory
+    
+    # Add mock service overrides
     mock_aws_factory = MagicMock(spec=AWSServiceFactory)
     mock_aws_factory.get_s3_service.return_value = mock_s3_service
     
-    # Override dependencies
     app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
     app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
     app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
     
-    # Override database session dependency if needed
-    from app.presentation.api.dependencies.repository import get_db_session
+    # Verify session factory was set correctly
+    logger.info(f"Created db_session_factory in app.state: {app.state.db_session_factory}")
     
-    async def get_test_db_session():
-        async with session_factory() as session:
-            yield session
-    
-    app.dependency_overrides[get_db_session] = get_test_db_session
-    
-    # Initialize database schema if needed
-    async with test_db_engine.begin() as conn:
-        from app.infrastructure.persistence.sqlalchemy.registry import metadata as sa_metadata
-        await conn.run_sync(sa_metadata.create_all)
-        
-        # Create test data if needed
-        # You can add code here to create necessary test data in the database
-    
-    # Use LifespanManager to properly manage app startup/shutdown
-    async with LifespanManager(app) as manager:
-        yield manager.app
+    # Initialize the application's lifespan context to ensure proper setup
+    async with LifespanManager(app):
+        try:
+            # Verify session factory is available
+            if not hasattr(app.state, 'db_session_factory') or app.state.db_session_factory is None:
+                logger.error("db_session_factory not available in app.state after lifespan initialization!")
+                raise RuntimeError("Failed to set db_session_factory in app.state")
+                
+            logger.info("Application lifespan startup completed, db_session_factory is properly set")
+            yield app
+        finally:
+            # Clean up as needed
+            logger.info("Cleaning up test_app_with_db_session fixture")
+            if hasattr(app.state, 'db_session_factory'):
+                app.state.db_session_factory = None
 
 @pytest_asyncio.fixture
 async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
@@ -570,12 +566,119 @@ async def test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_au
     return test_app_with_db_session
 
 @pytest_asyncio.fixture
-async def authenticated_client(test_app_with_auth_override: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+async def authenticated_client(
+    test_app_with_db_session: FastAPI,
+    mock_auth_dependency
+) -> AsyncGenerator[AsyncClient, None]:
     """
-    An authenticated test client that can be used to make requests to the API.
+    Creates an authenticated test client with DB session factory properly initialized.
     
-    Yields:
-        AsyncClient: A test client with authentication overrides
+    This fixture provides a client that:
+    1. Uses the app with DB session properly set
+    2. Has authentication dependencies overridden
+    3. Is ready to make authenticated API requests
+    
+    Returns:
+        An authenticated AsyncClient for testing protected endpoints
     """
-    async with AsyncClient(app=test_app_with_auth_override, base_url="http://test") as client:
+    # Override auth dependencies to bypass authentication in tests
+    from app.presentation.api.dependencies.auth import (
+        get_current_user, 
+        get_current_active_user,
+        require_admin_role,
+        require_clinician_role
+    )
+    
+    # Set up the authentication overrides using the patient role by default
+    test_app_with_db_session.dependency_overrides[get_current_user] = lambda: mock_auth_dependency("PATIENT")
+    test_app_with_db_session.dependency_overrides[get_current_active_user] = lambda: mock_auth_dependency("PATIENT")
+    
+    # Create the client with the authenticated app
+    async with AsyncClient(
+        app=test_app_with_db_session,
+        base_url="http://test"
+    ) as client:
+        logger.info("Created authenticated AsyncClient for testing protected endpoints")
         yield client
+
+@pytest.fixture
+def mock_auth_dependency():
+    """
+    Creates a dependency override to bypass authentication checks in tests.
+    
+    This allows tests to run without requiring a valid JWT token,
+    while still providing the expected user object to the endpoints.
+    """
+    # Import here to avoid circular imports
+    from app.presentation.api.dependencies.auth import (
+        get_current_user, 
+        get_current_active_user,
+        require_admin_role,
+        require_clinician_role
+    )
+    from app.core.domain.entities.user import User, UserRole, UserStatus
+    
+    # Create mock users for different roles
+    mock_patient = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),  # TEST_USER_ID
+        username="test_patient",
+        email="test.patient@example.com",
+        full_name="Test Patient",
+        password_hash="not_a_real_hash",
+        roles={UserRole.PATIENT},
+        status=UserStatus.ACTIVE
+    )
+    
+    mock_provider = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000002"),  # TEST_CLINICIAN_ID 
+        username="test_provider",
+        email="test.provider@example.com",
+        full_name="Test Provider",
+        password_hash="not_a_real_hash",
+        roles={UserRole.CLINICIAN},
+        status=UserStatus.ACTIVE
+    )
+    
+    mock_admin = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
+        username="test_admin",
+        email="test.admin@example.com",
+        full_name="Test Admin",
+        password_hash="not_a_real_hash",
+        roles={UserRole.ADMIN},
+        status=UserStatus.ACTIVE
+    )
+    
+    # Store the mock users by role type
+    mock_users = {
+        "PATIENT": mock_patient,
+        "CLINICIAN": mock_provider,
+        "ADMIN": mock_admin,
+        "DEFAULT": mock_provider,  # Default to provider since many endpoints require a clinician
+    }
+    
+    # Create async dependency override functions
+    async def mock_get_current_user():
+        return mock_users["DEFAULT"]
+        
+    async def mock_get_current_active_user():
+        return mock_users["DEFAULT"]
+        
+    async def mock_require_admin_role():
+        return mock_users["ADMIN"]
+        
+    async def mock_require_clinician_role():
+        return mock_users["CLINICIAN"]
+    
+    # Return a function that can be used to override dependencies
+    def override_dependency(role: str = "DEFAULT"):
+        if role == "ADMIN":
+            return mock_require_admin_role
+        elif role == "CLINICIAN":
+            return mock_require_clinician_role
+        elif role == "PATIENT":
+            return mock_get_current_user
+        else:
+            return mock_get_current_active_user
+    
+    return override_dependency

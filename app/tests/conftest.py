@@ -674,3 +674,68 @@ async def test_db_engine(test_settings: Settings) -> AsyncEngine: # Removed even
 
     logger.info("SESSION SCOPE: Disposing test DB engine.")
     await engine.dispose()
+
+@pytest.fixture
+def mock_auth_dependency():
+    """
+    Creates a dependency override to bypass authentication checks in tests.
+    
+    This allows tests to run without requiring a valid JWT token,
+    while still providing the expected user object to the endpoints.
+    """
+    # Import here to avoid circular imports
+    from app.core.domain.entities.user import User, UserRole
+    
+    # Create mock users for different roles
+    mock_patient = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),  # TEST_USER_ID
+        username="test_patient",
+        email="test.patient@example.com",
+        full_name="Test Patient",
+        hashed_password="not_a_real_hash",
+        roles=[UserRole.PATIENT.value],  # Use uppercase role values (PATIENT instead of patient)
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
+    )
+    
+    mock_provider = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000002"),  # TEST_CLINICIAN_ID 
+        username="test_provider",
+        email="test.provider@example.com",
+        full_name="Test Provider",
+        hashed_password="not_a_real_hash",
+        roles=[UserRole.CLINICIAN.value],  # Use uppercase role values (CLINICIAN instead of clinician)
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
+    )
+    
+    mock_admin = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
+        username="test_admin",
+        email="test.admin@example.com",
+        full_name="Test Admin",
+        hashed_password="not_a_real_hash",
+        roles=[UserRole.ADMIN.value],  # Use uppercase role values (ADMIN instead of admin)
+        is_active=True,
+        is_verified=True,
+        email_verified=True,
+    )
+    
+    # Store the mock users by role type
+    mock_users = {
+        "PATIENT": mock_patient,
+        "CLINICIAN": mock_provider,
+        "ADMIN": mock_admin,
+        "DEFAULT": mock_provider,  # Default to provider since many endpoints require a clinician
+    }
+    
+    # Return a function that can be used to override dependencies
+    def override_dependency(role: str = "DEFAULT"):
+        # Create an async function to return the appropriate user
+        async def get_mock_user():
+            return mock_users.get(role, mock_users["DEFAULT"])
+        return get_mock_user
+    
+    return override_dependency

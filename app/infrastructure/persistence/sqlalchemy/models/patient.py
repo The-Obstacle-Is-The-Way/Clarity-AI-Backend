@@ -13,12 +13,13 @@ from typing import Any
 
 from dateutil import parser
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.mutable import MutableDict
 
 # Use the core domain model, which has phone_number attribute
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.domain.utils.datetime_utils import UTC, now_utc
+from app.domain.value_objects.address import Address
 from app.domain.value_objects.emergency_contact import EmergencyContact  # Import EmergencyContact
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
@@ -53,9 +54,10 @@ class Patient(Base, TimestampMixin, AuditMixin):
     __table_args__ = {'extend_existing': True}
     
     # --- Primary Key and Foreign Keys ---
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4) # Use GUID
+    # Note: id column MUST be defined precisely to avoid SQLAlchemy mapping issues
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4) 
     external_id = Column(String(64), unique=True, index=True, nullable=True)
-    user_id = Column(GUID(), ForeignKey('users.id'), nullable=False, index=True) # Use GUID
+    user_id = Column(GUID(), ForeignKey('users.id'), nullable=False, index=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
@@ -103,25 +105,32 @@ class Patient(Base, TimestampMixin, AuditMixin):
     
     # Relationship with User (owner of the patient record) - Simplified
     user = relationship(
-        "User", 
+        "User",  # Use the correct class name
+        foreign_keys=[user_id],
+        primaryjoin="Patient.user_id == User.id", 
         back_populates="patients",
-        uselist=False,  # One user per patient
+        lazy="selectin"
     )
 
-    # Define appointments relationship with proper viewonly to prevent sync errors
+    # Define appointments relationship with proper foreign_keys and viewonly
     appointments = relationship(
         "AppointmentModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
-        lazy="selectin"  # Efficient loading pattern
+        lazy="selectin",  # Efficient loading pattern
+        foreign_keys="AppointmentModel.patient_id",  # Explicit foreign key reference 
+        viewonly=False,  # Allow changes to propagate
+        primaryjoin="Patient.id == AppointmentModel.patient_id",  # Explicit join condition
     )
     
-    # Relationship with clinical notes with proper viewonly setting
+    # Relationship with clinical notes with proper foreign_keys setting
     clinical_notes = relationship(
         "ClinicalNoteModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
-        lazy="selectin"  # Efficient loading pattern
+        lazy="selectin",  # Efficient loading pattern
+        foreign_keys="ClinicalNoteModel.patient_id",  # Explicit foreign key reference
+        primaryjoin="Patient.id == ClinicalNoteModel.patient_id",  # Explicit join condition
     )
     
     # UPDATED: Relationship with patient-specific prescriptions
@@ -129,7 +138,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
         "PatientMedicationModel", 
         back_populates="patient", 
         cascade="all, delete-orphan",
-        lazy="selectin"  # Efficient loading pattern
+        lazy="selectin",  # Efficient loading pattern
+        foreign_keys="PatientMedicationModel.patient_id",  # Explicit foreign key reference
+        primaryjoin="Patient.id == PatientMedicationModel.patient_id",  # Explicit join condition
     )
 
     # Relationship to BiometricRuleModel
@@ -137,19 +148,19 @@ class Patient(Base, TimestampMixin, AuditMixin):
         "BiometricRuleModel",
         back_populates="patient",
         cascade="all, delete-orphan",
-        lazy="dynamic"
+        lazy="dynamic",
+        foreign_keys="BiometricRuleModel.patient_id",  # Explicit foreign key reference
+        primaryjoin="Patient.id == BiometricRuleModel.patient_id",  # Explicit join condition
     )
-
-    # Digital twin relationships
-    # Store as String(36) for SQLite compatibility
-    # biometric_twin_id = Column(SQLAlchemyUUID(as_uuid=True), nullable=True) # REMOVED: Handled by relationship
 
     # ADDED: Relationship to BiometricTwinModel
     biometric_twin = relationship(
         "BiometricTwinModel",
         back_populates="patient",
         uselist=False, # One-to-one relationship
-        cascade="all, delete-orphan" # Cascade delete/orphan operations
+        cascade="all, delete-orphan", # Cascade delete/orphan operations
+        foreign_keys="BiometricTwinModel.patient_id",  # Explicit foreign key reference
+        primaryjoin="Patient.id == BiometricTwinModel.patient_id",  # Explicit join condition
     )
 
     # --- Encrypted Fields Set --- 

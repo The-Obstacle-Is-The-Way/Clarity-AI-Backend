@@ -19,9 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Import domain entities with clear namespace
 from app.core.domain.entities.patient import Patient as DomainPatient
+from app.core.domain.entities.user import UserRole  # Import from core domain, not SQLAlchemy models
 from app.domain.value_objects.address import Address
 from app.domain.value_objects.emergency_contact import EmergencyContact
-from app.infrastructure.persistence.sqlalchemy.models import Base, UserRole
+from app.infrastructure.persistence.sqlalchemy.models import Base
 from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
 
 # Import SQLAlchemy models with clear namespace
@@ -88,7 +89,7 @@ async def integration_db_session() -> AsyncGenerator[AsyncSession, None]:
                 audit_id = str(uuid.uuid4())
                 
                 # Create roles JSON array as string
-                roles_json = json.dumps([UserRole.PATIENT.value])
+                roles_json = json.dumps(["PATIENT"])  # Use uppercase values that match the enum
                 
                 # Current timestamp for created_at and updated_at
                 current_time = datetime.now(timezone.utc).isoformat()
@@ -98,7 +99,7 @@ async def integration_db_session() -> AsyncGenerator[AsyncSession, None]:
                     "username": "integration_testuser",
                     "email": "integration.test@novamind.ai",
                     "password_hash": "hashed_password",  # Placeholder
-                    "role": UserRole.PATIENT.value,  # Use string value of enum
+                    "role": "PATIENT",  # Use uppercase PATIENT string to match enum
                     "roles": roles_json,  # JSON array as string
                     "is_active": True,
                     "is_verified": True,

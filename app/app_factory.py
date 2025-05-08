@@ -14,6 +14,7 @@ from redis.exceptions import RedisError
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 # Application-Specific Imports
 from app.core.config import Settings, settings as global_settings
@@ -63,94 +64,81 @@ def _initialize_sentry(settings: Settings) -> None:
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage application lifespan events (startup and shutdown)."""
-    logger.info("Application lifespan startup sequence initiated.")
-    current_settings = fastapi_app.state.settings
-    logger.info(f"Lifespan using settings from app.state. ENVIRONMENT: {current_settings.ENVIRONMENT}, DB_URL: {current_settings.DATABASE_URL}")
-
-    db_engine = None
+    """
+    Lifespan context manager for FastAPI application.
+    
+    Handles application startup and shutdown operations:
+    1. Connects to database and initializes session factory
+    2. Sets up Redis connection (if configured)
+    3. Initializes Sentry (if configured)
+    4. Cleans up resources on shutdown
+    """
+    # Local variables to store connections that need clean-up
     redis_client = None
     redis_pool = None
-
+    db_engine = None
+    
     try:
-        # --- Test Environment Specific Setup ---
-        if current_settings.ENVIRONMENT == "test":
-            logger.info("Test environment: Initializing DB and creating tables directly.")
-            # Ensure all models are loaded into metadata by importing the package
-            import app.infrastructure.persistence.sqlalchemy.models 
-            from app.infrastructure.persistence.sqlalchemy.models.base import Base
-            from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-            from sqlalchemy.pool import StaticPool
-
-            db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
-            logger.info(f"Test environment: Creating engine for {db_url}")
+        # --- Database Configuration ---
+        try:
+            # Get settings (dependency already configured)
+            current_settings = fastapi_app.state.settings
+            logger.info(f"Lifespan: Creating AsyncEngine with URL: {current_settings.ASYNC_DATABASE_URL}")
+            
+            # Create engine with desired pool settings
             db_engine = create_async_engine(
-                db_url,
-                echo=False, 
-                connect_args={"check_same_thread": False}, # Required for SQLite
-                poolclass=StaticPool
+                current_settings.ASYNC_DATABASE_URL,
+                echo=current_settings.ENVIRONMENT in ["development", "test"],
+                pool_pre_ping=True,
+                pool_size=5,
+                max_overflow=10,
+                pool_recycle=300,  # Recycle connections after 5 minutes
+                # Connect arguments with proper transaction isolation level for HIPAA
+                connect_args={"isolation_level": "SERIALIZABLE"} 
+                  if current_settings.ASYNC_DATABASE_URL.startswith("postgresql")
+                  else {},
             )
             
-            async with db_engine.begin() as conn:
-                logger.info("Test environment: Dropping and Creating all tables...")
-                # await conn.run_sync(Base.metadata.drop_all)
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("Test environment: Tables created.")
-
+            # Create session factory - CRITICAL for application to work
             session_factory = async_sessionmaker(
-                bind=db_engine, class_=AsyncSession, expire_on_commit=False
+                db_engine, 
+                expire_on_commit=False, 
+                autoflush=False,
+                autocommit=False,
+                class_=AsyncSession
             )
-            fastapi_app.state.db_engine = db_engine
+            
+            # Set factory on application state
             fastapi_app.state.db_session_factory = session_factory
-            logger.info("Test environment: DB Engine and Session Factory configured.")
-
-            # Create test users
-            logger.info("Test environment: Creating test users...")
-            from app.tests.integration.utils.test_db_initializer import create_test_users
-            async with session_factory() as session:
-                try:
-                    await create_test_users(session)
-                    await session.commit() 
-                    logger.info("Test environment: Test users created successfully.")
-                except Exception as e_users:
-                    logger.error(f"Test environment: Error creating test users: {e_users}", exc_info=True)
-                    await session.rollback()
-                    raise RuntimeError(f"Failed to create test users: {e_users}") from e_users
-
-            # Mock Redis for tests
-            logger.info("Test environment: Mocking Redis connection.")
-            from redis.asyncio import ConnectionPool, Redis # Import here
-            mock_redis_client = AsyncMock(spec=Redis)
-            mock_redis_client.ping = AsyncMock()
-            mock_redis_client.close = AsyncMock()
-            mock_redis_pool = AsyncMock(spec=ConnectionPool)
-            mock_redis_pool.disconnect = AsyncMock()
-            redis_client = mock_redis_client
-            redis_pool = mock_redis_pool
-            fastapi_app.state.redis = redis_client
-            fastapi_app.state.redis_pool = redis_pool
-
-        # --- Production/Other Environment Setup ---
-        else:
-            logger.info("Production/Other environment: Initializing DB connection.")
-            # Use the existing create_db_engine_and_session for non-test envs
-            from app.infrastructure.database.session import create_db_engine_and_session # Import here
-            db_url = str(current_settings.ASYNC_DATABASE_URL or current_settings.DATABASE_URL)
-            db_engine, session_factory = create_db_engine_and_session(db_url)
             fastapi_app.state.db_engine = db_engine
-            fastapi_app.state.db_session_factory = session_factory
-            logger.info("Database connection initialized successfully.")
-
-            # Initialize Real Redis 
-            logger.info("Initializing Redis connection pool...")
-            from redis.asyncio import ConnectionPool, Redis # Import here
+            
+            logger.info("Database engine and session factory initialized successfully")
+            
+        except Exception as e:
+            logger.critical(f"Failed to initialize database connection: {e}", exc_info=True)
+            fastapi_app.state.db_session_factory = None
+            fastapi_app.state.db_engine = None
+            raise
+            
+        # --- Redis Configuration (if enabled) ---
+        if current_settings.REDIS_URL:
             try:
-                redis_pool = ConnectionPool.from_url(str(current_settings.REDIS_URL), decode_responses=True)
-                fastapi_app.state.redis_pool = redis_pool
+                logger.info(f"Connecting to Redis: {current_settings.REDIS_URL}")
+                redis_pool = ConnectionPool.from_url(
+                    current_settings.REDIS_URL,
+                    max_connections=10,
+                    ssl=current_settings.REDIS_SSL,
+                )
                 redis_client = Redis(connection_pool=redis_pool)
-                fastapi_app.state.redis = redis_client
+                
+                # Test connection
                 await redis_client.ping()
-                logger.info("Redis connection successful.")
+                
+                # Assign to app state for use in services
+                fastapi_app.state.redis_pool = redis_pool
+                fastapi_app.state.redis = redis_client
+                logger.info("Redis connection successfully established")
+                
             except Exception as e:
                 logger.error(f"Redis connection failed: {e}", exc_info=True)
                 fastapi_app.state.redis_pool = None
@@ -262,24 +250,31 @@ def create_application(
     logger.info("Initializing and registering AuthenticationMiddleware...")
     try:
         jwt_service = get_jwt_service()
-        user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.db_session_factory)
         
-        # Define public paths - keep in sync with middleware defaults or settings
-        public_paths = {
-            "/docs", "/openapi.json", "/redoc",  # API docs
-            "/health", "/metrics", "/",  # Public monitoring endpoints
-            f"{app_settings.API_V1_STR}/auth/login",  # Auth endpoints
-            f"{app_settings.API_V1_STR}/auth/register",
-            f"{app_settings.API_V1_STR}/auth/refresh",
-        }
-        
-        app_instance.add_middleware(
-            AuthenticationMiddleware,
-            jwt_service=jwt_service,
-            user_repo=user_repository,
-            public_paths=public_paths
-        )
-        logger.info("Authentication middleware added successfully.")
+        # Check if db_session_factory is available in app_instance.state
+        # This could be None during tests or when running without lifespan management
+        if hasattr(app_instance.state, 'db_session_factory') and app_instance.state.db_session_factory is not None:
+            user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.db_session_factory)
+            
+            # Define public paths - keep in sync with middleware defaults or settings
+            public_paths = {
+                "/docs", "/openapi.json", "/redoc",  # API docs
+                "/health", "/metrics", "/",  # Public monitoring endpoints
+                f"{app_settings.API_V1_STR}/auth/login",  # Auth endpoints
+                f"{app_settings.API_V1_STR}/auth/register",
+                f"{app_settings.API_V1_STR}/auth/refresh",
+            }
+            
+            app_instance.add_middleware(
+                AuthenticationMiddleware,
+                jwt_service=jwt_service,
+                user_repo=user_repository,
+                public_paths=public_paths
+            )
+            logger.info("Authentication middleware added successfully.")
+        else:
+            logger.warning("db_session_factory not found in app.state - skipping AuthenticationMiddleware")
+            logger.warning("Authentication will not be enforced!")
     except Exception as e:
         logger.error(f"Failed to initialize AuthenticationMiddleware: {e}", exc_info=True)
         logger.warning("Authentication middleware NOT ADDED - application will not enforce authentication!")
