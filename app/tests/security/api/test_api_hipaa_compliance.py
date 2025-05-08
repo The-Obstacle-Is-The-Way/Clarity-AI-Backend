@@ -42,7 +42,7 @@ from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository i
 
 # Import Encryption Service for mocking
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.infrastructure.security.jwt_service import TokenPayload
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
 
 # Import the actual dependency function used by the router
 from app.presentation.api.dependencies.auth import get_current_user

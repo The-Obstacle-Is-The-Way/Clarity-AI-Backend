@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session, declarative_base
 Base = declarative_base()
 
 # Correct import - Assuming these are the intended imports
+from app.infrastructure.persistence.sqlalchemy.config.database import Database
 from app.infrastructure.persistence.sqlalchemy.database import (
-    Database,
     DatabaseFactory,
     EnhancedDatabase,
     get_database,

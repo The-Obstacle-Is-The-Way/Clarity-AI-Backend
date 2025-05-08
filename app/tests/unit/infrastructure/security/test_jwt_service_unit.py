@@ -16,7 +16,7 @@ from app.config.settings import Settings  # Import actual Settings
 from app.domain.exceptions import InvalidTokenException, TokenExpiredException
 
 # Corrected imports
-from app.infrastructure.security.jwt_service import JWTService, TokenPayload
+from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
 
 # Define test constants directly
 TEST_SECRET_KEY = "test-jwt-secret-key-must-be-at-least-32-chars-long"

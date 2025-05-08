@@ -34,7 +34,7 @@ from app.core.interfaces.services.jwt_service import IJwtService
 # from app.domain.entities.patient import Patient # REMOVE THIS - it conflicts with CorePatient or is legacy
 
 # JWTService might be needed for direct token manipulation if required beyond fixtures
-from app.infrastructure.security.jwt_service import JWTService # For type hinting mock_jwt_service param
+from app.infrastructure.security.jwt.jwt_service import JWTService # For type hinting mock_jwt_service param
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency # ADDED for overriding IPatientRepository used by patient dependency
 

@@ -273,3 +273,6 @@ def get_biometric_rule_repository(session: AsyncSession) -> IBiometricRuleReposi
     """Factory function to create an instance of SQLAlchemyBiometricRuleRepository."""
     logger.debug("Creating SQLAlchemyBiometricRuleRepository instance via factory.")
     return SQLAlchemyBiometricRuleRepository(session=session)
+
+# Export alias to maintain backward compatibility with names used in UnitOfWorkFactory
+BiometricRuleRepositoryImpl = SQLAlchemyBiometricRuleRepository

@@ -17,7 +17,7 @@ try:
     from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
         PatientRepository,
     )
-    from app.infrastructure.persistence.sqlalchemy.unit_of_work import UnitOfWork
+    from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work import UnitOfWork
     # Assuming these are defined elsewhere or should be mocked too
     # from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
 

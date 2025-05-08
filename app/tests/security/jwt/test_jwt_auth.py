@@ -29,7 +29,8 @@ from pydantic import SecretStr
 
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.domain.models.user import User, UserRole
-from app.infrastructure.security.jwt_service import JWTService, TokenPayload
+from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 
 # Mock data for testing
 TEST_USERS = {
@@ -145,7 +146,6 @@ def jwt_service(mock_settings: MagicMock, monkeypatch) -> JWTService:
     monkeypatch.setenv("REFRESH_TOKEN_EXPIRE_DAYS", str(mock_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS))
 
     # Import the factory locally to ensure it picks up monkeypatched env vars if needed by its imports
-    from app.infrastructure.security.jwt_service import get_jwt_service
     return get_jwt_service() # This should now return a fully implemented JWTService instance
 
 @pytest.fixture

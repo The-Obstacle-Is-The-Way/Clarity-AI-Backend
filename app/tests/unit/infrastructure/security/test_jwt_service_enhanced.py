@@ -17,7 +17,7 @@ import uuid
 
 # Use canonical config path
 from app.config.settings import Settings
-from app.infrastructure.security.jwt_service import JWTService, TokenType, TokenPayload
+from app.infrastructure.security.jwt.jwt_service import JWTService, TokenType, TokenPayload
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 
 # Define UTC if not imported elsewhere (Python 3.11+)

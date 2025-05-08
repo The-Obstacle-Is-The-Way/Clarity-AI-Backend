@@ -486,3 +486,6 @@ def get_user_repository(session_factory=None, db_session=None) -> SQLAlchemyUser
         return SQLAlchemyUserRepository(db_session=db_session)
     else:
         raise ValueError("Either session_factory or db_session must be provided")
+
+# Export aliases to maintain backward compatibility with names used in UnitOfWorkFactory
+UserRepositoryImpl = SQLAlchemyUserRepository

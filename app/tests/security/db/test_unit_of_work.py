@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 
 from app.domain.exceptions import RepositoryError
-from app.infrastructure.persistence.sqlalchemy.unit_of_work import SQLAlchemyUnitOfWork
+from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work import SQLAlchemyUnitOfWork
 
 
 class TestSQLAlchemyUnitOfWork:

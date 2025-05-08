@@ -34,7 +34,7 @@ from app.domain.exceptions.token_exceptions import (
 
 # Assuming TokenPayload is used by IJwtService.decode_token or its mock
 # This import might be needed if the mock_jwt_service directly returns this type
-from app.infrastructure.security.jwt_service import TokenPayload 
+from app.infrastructure.security.jwt.jwt_service import TokenPayload 
 
 import logging
 logger = logging.getLogger(__name__)

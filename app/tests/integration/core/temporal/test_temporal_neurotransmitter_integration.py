@@ -30,7 +30,7 @@ from app.domain.repositories.temporal_repository import EventRepository, Tempora
 from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
 from app.domain.services.visualization_preprocessor import NeurotransmitterVisualizationPreprocessor
 from app.infrastructure.models.temporal_sequence_model import Base
-from app.infrastructure.persistence.sqlalchemy.database import Base
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.repositories.temporal_event_repository import SqlAlchemyEventRepository
 from app.infrastructure.repositories.temporal_sequence_repository import (
     SqlAlchemyTemporalSequenceRepository,

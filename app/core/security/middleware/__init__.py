@@ -39,8 +39,8 @@ from app.domain.exceptions.token_exceptions import (
     TokenExpiredException,
 )
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.auth_service import get_auth_service # Not used by new middleware directly
-from app.infrastructure.security.jwt_service import get_jwt_service # Not used by new middleware directly
+from app.infrastructure.security.auth.auth_service import get_auth_service # Not used by new middleware directly
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service # Not used by new middleware directly
 
 logger = get_logger(__name__)
 

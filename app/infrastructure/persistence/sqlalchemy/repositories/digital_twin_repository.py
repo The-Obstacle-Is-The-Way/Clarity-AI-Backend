@@ -170,3 +170,6 @@ class DigitalTwinRepositoryImpl(DigitalTwinRepository):
         result = await self.session.execute(stmt)
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
+
+# Export alias for UnitOfWorkFactory compatibility
+SQLAlchemyDigitalTwinRepository = DigitalTwinRepositoryImpl

@@ -12,7 +12,7 @@ import pytest
 
 from app.config.settings import Settings
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
-from app.infrastructure.security.jwt_service import JWTService, TokenType
+from app.infrastructure.security.jwt.jwt_service import JWTService, TokenType
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:

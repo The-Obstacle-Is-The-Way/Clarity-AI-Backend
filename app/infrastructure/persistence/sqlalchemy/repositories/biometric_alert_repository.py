@@ -617,3 +617,6 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
         except Exception as e:
             self.logger.error(f"Error updating model from entity: {e}")
             raise RepositoryError(f"Failed to update database model from domain entity: {e!s}") from e
+
+# Export alias to maintain backward compatibility with names used in UnitOfWorkFactory
+BiometricAlertRepositoryImpl = SQLAlchemyBiometricAlertRepository

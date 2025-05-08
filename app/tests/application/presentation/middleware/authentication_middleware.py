@@ -37,8 +37,8 @@ from app.domain.exceptions import (
 # Import UserNotFoundException from its specific module
 from app.domain.exceptions.auth_exceptions import UserNotFoundException
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.auth_service import get_auth_service
-from app.infrastructure.security.jwt_service import get_jwt_service
+from app.infrastructure.security.auth.auth_service import get_auth_service
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 
 logger = get_logger(__name__)
 

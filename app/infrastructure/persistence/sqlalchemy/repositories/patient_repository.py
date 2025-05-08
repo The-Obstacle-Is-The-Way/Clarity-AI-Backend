@@ -757,3 +757,6 @@ class PatientRepository:
 class PatientRepositoryFactory:
     # TODO: Implement factory logic if needed, or remove if unused.
     pass # Add pass to make the class definition valid
+
+# Export alias to maintain backward compatibility with names used in UnitOfWorkFactory
+PatientRepositoryImpl = PatientRepository

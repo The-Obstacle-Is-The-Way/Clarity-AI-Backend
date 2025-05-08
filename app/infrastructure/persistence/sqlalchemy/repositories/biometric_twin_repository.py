@@ -363,3 +363,6 @@ class SQLAlchemyBiometricTwinRepository(BiometricTwinRepository):
             return json.loads(value)
         else:
             return value
+
+# Export alias to maintain backward compatibility with names used in UnitOfWorkFactory
+BiometricTwinRepositoryImpl = SQLAlchemyBiometricTwinRepository

@@ -86,7 +86,7 @@ async def get_auth_service_dep(settings: Settings = Depends(get_settings)) -> IA
     Returns:
         IAuthenticationService instance ready for use
     """
-    from app.infrastructure.security.auth_service import get_auth_service
+    from app.infrastructure.security.auth.auth_service import get_auth_service
     # Properly await the coroutine
     auth_service = await get_auth_service(settings)
     return auth_service
@@ -107,7 +107,7 @@ async def get_jwt_service_dep(settings: Settings = Depends(get_settings)) -> IJw
     Returns:
         IJwtService instance ready for use
     """
-    from app.infrastructure.security.jwt_service import get_jwt_service
+    from app.infrastructure.security.jwt.jwt_service import get_jwt_service
     # Properly await the coroutine
     jwt_service = await get_jwt_service(settings)
     return jwt_service

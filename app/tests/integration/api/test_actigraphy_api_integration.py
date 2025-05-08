@@ -33,7 +33,7 @@ from app.core.errors.security_exceptions import TokenValidationError
 
 # Infrastructure imports
 from app.infrastructure.persistence.sqlalchemy.models.user import UserRole  # Used for SQLAUserRole
-from app.infrastructure.security.jwt_service import get_jwt_service
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Presentation/API imports

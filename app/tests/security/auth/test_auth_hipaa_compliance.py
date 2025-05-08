@@ -13,7 +13,7 @@ import pytest
 from app.domain.utils.datetime_utils import UTC
 
 try:
-    from app.infrastructure.security.jwt_service import JWTService
+    from app.infrastructure.security.jwt.jwt_service import JWTService
 except ImportError:
     JWTService = MagicMock()
 

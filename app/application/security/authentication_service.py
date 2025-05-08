@@ -26,7 +26,7 @@ from app.domain.exceptions import (
 )
 from app.domain.interfaces.user_repository import UserRepositoryInterface
 from app.infrastructure.logging.audit_logger import AuditLogger
-from app.infrastructure.security.jwt_service import JWTService
+from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.infrastructure.security.password.password_service import PasswordService
 
 

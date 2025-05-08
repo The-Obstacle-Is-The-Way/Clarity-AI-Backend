@@ -15,7 +15,7 @@ from app.infrastructure.persistence.sqlalchemy.config.database import get_db_ses
 # from app.infrastructure.repositories.user_repository import SqlAlchemyUserRepository
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
-from app.infrastructure.security.jwt_service import JWTService
+from app.infrastructure.security.jwt.jwt_service import JWTService
 from app.infrastructure.security.password.password_handler import PasswordHandler
 from app.presentation.api.dependencies.auth import get_jwt_service
 

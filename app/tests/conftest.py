@@ -41,6 +41,7 @@ from app.domain.exceptions.auth_exceptions import (
     TokenExpiredException,
     UserAlreadyExistsException
 )
+from app.infrastructure.security.password.password_handler import PasswordHandler
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ def mock_jwt_service() -> MagicMock:
     import uuid
     from unittest.mock import MagicMock
     from app.core.domain.entities.user import UserRole
-    from app.infrastructure.security.jwt_service import JWTService # RESTORED for spec
+    from app.infrastructure.security.jwt.jwt_service import JWTService # Using updated path
     from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 
     logger.info("--- mock_jwt_service FIXTURE CREATED (Stateful, Correct Decode, WITH Spec) ---")
@@ -439,7 +440,7 @@ async def authenticated_user(
         UserRole as SQLAUserRole,
     )
     from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel # RESTORED
-    from app.infrastructure.security.password_handler import PasswordHandler
+    from app.infrastructure.security.password.password_handler import PasswordHandler
     import random
 
     pwd_handler = PasswordHandler()

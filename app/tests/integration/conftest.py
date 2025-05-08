@@ -29,7 +29,7 @@ from app.core.config import Settings
 
 # Added imports for mock JWT service
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.infrastructure.security.jwt_service import get_jwt_service as get_jwt_service_provider
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service as get_jwt_service_provider
 from app.core.models.token_models import TokenPayload
 from app.core.domain.entities.user import UserRole
 from app.domain.exceptions.token_exceptions import InvalidTokenException
@@ -172,7 +172,7 @@ def jwt_service(test_settings: Settings) -> IJwtService:
     Returns:
         IJwtService: Configured JWT service instance
     """
-    from app.infrastructure.security.jwt_service import JWTService
+    from app.infrastructure.security.jwt.jwt_service import JWTService
     # JWTService expects a Settings object
     return JWTService(settings=test_settings, user_repository=None)
 
