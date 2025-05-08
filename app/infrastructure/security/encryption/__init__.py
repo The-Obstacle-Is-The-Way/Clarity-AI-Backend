@@ -102,7 +102,8 @@ __all__ = [
     'encrypt_phi',
     'encrypt_value',
     'generate_phi_key',
-    'get_encryption_key'
+    'get_encryption_key',
+    'get_settings'
 ]
 
 # Potentially import from encryption_service if needed elsewhere
@@ -111,4 +112,17 @@ __all__ = [
 #     EncryptionHandler, 
 #     KeyRotationManager, 
 #     AESEncryption
-# ) 
+# )
+
+def get_settings():
+    """
+    Get application settings.
+    
+    This function is a proxy to the core get_settings function to allow mocking
+    in tests without disturbing the actual settings module.
+    
+    Returns:
+        The application settings object
+    """
+    from app.core.config.settings import get_settings as core_get_settings
+    return core_get_settings() 

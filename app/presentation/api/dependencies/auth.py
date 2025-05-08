@@ -80,9 +80,7 @@ async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
     jwt_service: IJwtService = Depends(get_jwt_service),
-    user_repo: IUserRepository = Depends(get_user_repository_dependency),
-    # Add kwargs parameter to collect any unexpected query parameters
-    **kwargs
+    user_repo: IUserRepository = Depends(get_user_repository_dependency)
 ) -> DomainUser:
     # MODIFIED: Restore original logging and docstring
     logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
@@ -157,9 +155,12 @@ async def get_current_user(
 
 CurrentUserDep = Annotated[DomainUser, Depends(get_current_user)]
 
-async def require_admin_role(current_user: CurrentUserDep, **kwargs) -> DomainUser:
+async def require_admin_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the ADMIN role."""
-    if UserRole.ADMIN not in current_user.roles:
+    # Convert to set to ensure we can use role checking safely
+    user_roles = set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
+    
+    if UserRole.ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have permission to perform this action.",
@@ -168,10 +169,14 @@ async def require_admin_role(current_user: CurrentUserDep, **kwargs) -> DomainUs
 
 AdminUserDep = Annotated[DomainUser, Depends(require_admin_role)]
 
-async def require_clinician_role(current_user: CurrentUserDep, **kwargs) -> DomainUser:
+async def require_clinician_role(current_user: CurrentUserDep) -> DomainUser:
     """Dependency that requires the current user to have the CLINICIAN role."""
+    # Convert to set to ensure we can use set operations safely
+    user_roles_set = set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
+    allowed_roles = {UserRole.CLINICIAN, UserRole.ADMIN}
+    
     # Allow ADMINs to also pass this check, as they often have superset permissions
-    if not ({UserRole.CLINICIAN, UserRole.ADMIN} & current_user.roles):
+    if not (allowed_roles & user_roles_set):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User requires Clinician or Admin role.",
@@ -181,8 +186,7 @@ async def require_clinician_role(current_user: CurrentUserDep, **kwargs) -> Doma
 ClinicianUserDep = Annotated[DomainUser, Depends(require_clinician_role)]
 
 async def get_current_active_user(
-    current_user: DomainUser = Depends(get_current_user),
-    **kwargs
+    current_user: DomainUser = Depends(get_current_user)
 ) -> DomainUser:
     """Dependency to get the current active user."""
     if current_user.status != UserStatus.ACTIVE:
@@ -197,9 +201,14 @@ def require_roles(required_roles: list[UserRole]):
     """
     Dependency that requires the current user to have AT LEAST ONE of the specified roles.
     """
-    async def role_checker(current_user: DomainUser = Depends(get_current_active_user), **kwargs) -> DomainUser:
-        # The User domain entity stores roles as a set, so we can use set operations
-        if not set(required_roles) & current_user.roles:
+    async def role_checker(current_user: DomainUser = Depends(get_current_active_user)) -> DomainUser:
+        # The User domain entity should store roles as a set, but it might be a list in tests
+        # Convert both to sets to ensure we can use set operations safely
+        user_roles_set = set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
+        required_roles_set = set(required_roles)
+        
+        # Check for intersection between required_roles and user.roles
+        if not required_roles_set & user_roles_set:
             # No intersection between required_roles and user.roles, access denied
             logger.warning(
                 f"Role-based access control denied: User {current_user.id} with roles {current_user.roles} "
@@ -215,7 +224,7 @@ def require_roles(required_roles: list[UserRole]):
     role_checker.__name__ = f"require_roles({[r.name for r in required_roles]})"
     return role_checker
 
-async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current_active_user), **kwargs) -> DomainUser:
+async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current_active_user)) -> DomainUser:
     """Simple wrapper around get_current_active_user."""
     return user
 
@@ -229,7 +238,7 @@ async def get_optional_user(
     if not token:
         return None
     try:
-        return await get_current_user(token, jwt_service, user_repo, **kwargs)
+        return await get_current_user(token, jwt_service, user_repo)
     except HTTPException:
         return None
 

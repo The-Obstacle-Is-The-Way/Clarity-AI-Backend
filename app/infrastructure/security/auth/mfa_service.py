@@ -365,7 +365,7 @@ class MFAService:
     
     def get_backup_codes(self, count: int = 10) -> list[str]:
         """
-        Generate backup codes for MFA recovery.
+        Generate backup codes for MFA.
         
         Args:
             count: Number of backup codes to generate
@@ -373,12 +373,12 @@ class MFAService:
         Returns:
             List of backup codes
         """
+        # Generate 'count' unique backup codes
         codes = []
         for _ in range(count):
-            # Generate a unique code
-            code = str(uuid.uuid4()).replace("-", "")[:10].upper()
+            # Generate a UUID and use part of it
+            code = str(uuid.uuid4().hex).upper()[:10]  # Take first 10 chars of hex representation in uppercase
             codes.append(code)
-        
         return codes
     
     def hash_backup_code(self, code: str) -> str:

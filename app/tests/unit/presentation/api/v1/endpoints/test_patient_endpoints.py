@@ -279,10 +279,21 @@ async def test_create_patient_validation_error(client: tuple[FastAPI, AsyncClien
     assert isinstance(validation_errors, list)
     assert any(error["loc"][1] == "date_of_birth" for error in validation_errors)
 
-# Placeholder for future tests
 @pytest.mark.asyncio
-async def test_read_patient_unauthorized() -> None:
-    pytest.skip("Placeholder test - needs implementation")
+async def test_read_patient_unauthorized(client: tuple[FastAPI, AsyncClient]) -> None:
+    """Test that accessing patient data without authentication returns 401 Unauthorized."""
+    app_instance, async_client = client
+    
+    # No authentication token provided (no Authorization header)
+    patient_id = str(uuid.uuid4()) # Use a valid UUID format
+    
+    # Act - Call the endpoint without authentication
+    response: Response = await async_client.get(f"/api/v1/patients/{patient_id}")
+    
+    # Assert - Should return 401 Unauthorized
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "detail" in response.json()
+    assert response.json()["detail"] == "Not authenticated"  # Standard FastAPI response for missing credentials
 
 @pytest.mark.asyncio
 async def test_read_patient_invalid_id() -> None:
