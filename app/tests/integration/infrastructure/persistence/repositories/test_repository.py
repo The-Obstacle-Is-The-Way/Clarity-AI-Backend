@@ -388,15 +388,15 @@ class TestPatientRepositoryIntegration:
 
         # --- Decryption Check (using mock service) ---
         # Decrypt first name to verify encryption happened (even with mock)
-        decrypted_first_name = mock_encryption_service.decrypt(db_model.first_name).decode()
+        decrypted_first_name = mock_encryption_service.decrypt(db_model._first_name).decode()
         assert decrypted_first_name == "Integration"
 
         # Decrypt email
-        decrypted_email = mock_encryption_service.decrypt(db_model.email).decode()
+        decrypted_email = mock_encryption_service.decrypt(db_model._email).decode()
         assert decrypted_email == "integration.test@example.com"
 
         # Decrypt emergency contact (assuming stored as encrypted JSON)
-        decrypted_emergency_json = mock_encryption_service.decrypt(db_model.emergency_contact).decode()
+        decrypted_emergency_json = mock_encryption_service.decrypt(db_model._emergency_contact).decode()
         emergency_contact_data = json.loads(decrypted_emergency_json)
         assert emergency_contact_data["name"] == "Emergency Contact"
         assert emergency_contact_data["phone"] == "9876543210"

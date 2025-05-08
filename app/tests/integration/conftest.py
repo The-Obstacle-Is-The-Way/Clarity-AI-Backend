@@ -291,14 +291,35 @@ def mock_encryption_service() -> IEncryptionService:
     Provides a mock implementation of the IEncryptionService for testing.
     
     This allows testing of encryption-related logic without actual encryption operations.
+    The mock provides a simple encryption simulation where encrypt adds a prefix
+    and decrypt removes it, ensuring proper testing of encryption/decryption flows.
     
     Returns:
-        MagicMock: Mocked IEncryptionService instance
+        MagicMock: Mocked IEncryptionService instance with realistic behavior
     """
     mock_service = MagicMock(spec=IEncryptionService)
-    # Define specific mock behaviors as needed by tests
-    # Example: mock_service.encrypt.return_value = \"encrypted_data\"
-    # Example: mock_service.decrypt.return_value = \"decrypted_data\"
+    
+    # Define specific mock behaviors to simulate encryption/decryption
+    def mock_encrypt(data):
+        """Mock encrypt by prefixing data with 'ENCRYPTED_' marker."""
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        elif not isinstance(data, bytes):
+            data = str(data).encode('utf-8')
+        return b'ENCRYPTED_' + data
+    
+    def mock_decrypt(data):
+        """Mock decrypt by removing 'ENCRYPTED_' prefix."""
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        
+        if data.startswith(b'ENCRYPTED_'):
+            return data[len(b'ENCRYPTED_'):]
+        return data  # Return as-is if not properly encrypted
+    
+    mock_service.encrypt.side_effect = mock_encrypt
+    mock_service.decrypt.side_effect = mock_decrypt
+    
     return mock_service
 
 
