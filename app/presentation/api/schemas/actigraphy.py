@@ -160,7 +160,11 @@ class ActigraphyDataResponse(BaseSchema):
 
 
 class ActigraphyModelInfoResponse(BaseSchema):
-    message: str
-    version: str
+    """Schema for actigraphy model information response."""
+    message: str = "Actigraphy model info"
+    version: str = "1.0"
     model_version: str = "1.0.0"
-    model_name: str = "ActigraphyAnalyzer"
+    model_name: str = "ActigraphyAnalyzer" 
+    supported_analysis_types: list[AnalysisType] = []
+    last_updated: datetime | None = None
+    model_id: str = "actigraph-v1"

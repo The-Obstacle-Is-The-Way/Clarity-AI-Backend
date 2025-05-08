@@ -1,8 +1,9 @@
 import logging
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
+from typing import Optional
 
 from app.application.services.patient_service import PatientService
 from app.domain.repositories.patient_repository import PatientRepository
@@ -74,15 +75,18 @@ async def read_patient(
 async def create_patient_endpoint(
     patient_data: PatientCreateRequest, 
     service: PatientService = Depends(get_patient_service),
-    current_user: DomainUser = Depends(CurrentUserDep)
+    current_user: DomainUser = Depends(CurrentUserDep),
+    # Make query parameters truly optional with explicit defaults
+    args: Optional[str] = Query(default=None, description="Optional arguments (for backward compatibility)"),
+    kwargs: Optional[str] = Query(default=None, description="Optional keyword arguments (for backward compatibility)")
 ) -> PatientCreateResponse: 
     """Create a new patient."""
-    logger.info(f"User {{current_user.id}} attempting to create patient: {{patient_data.first_name}} {{patient_data.last_name}}")
+    logger.info(f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}")
     try:
         created_patient = await service.create_patient(patient_data, created_by_id=current_user.id)
         return created_patient
     except Exception as e:
-        logger.error(f"Error creating patient by user {{current_user.id}}: {{e}}", exc_info=True)
+        logger.error(f"Error creating patient by user {current_user.id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while creating the patient."

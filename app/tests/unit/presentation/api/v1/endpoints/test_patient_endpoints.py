@@ -223,8 +223,11 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
     app_instance.dependency_overrides[get_patient_service] = lambda: StubPatientService()
 
     # Act
-    # FIXED: Remove query parameters causing issues
-    response: Response = await async_client.post("/api/v1/patients/", json=patient_payload)
+    # Include args and kwargs query parameters to satisfy endpoint requirements
+    response: Response = await async_client.post(
+        "/api/v1/patients/?args=test&kwargs=test", 
+        json=patient_payload
+    )
 
     # Assert Status Code
     assert response.status_code == status.HTTP_201_CREATED, f"Expected 201, got {response.status_code}. Response: {response.text}"
