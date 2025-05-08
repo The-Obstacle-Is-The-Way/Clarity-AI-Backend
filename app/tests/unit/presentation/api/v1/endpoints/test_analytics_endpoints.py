@@ -69,30 +69,44 @@ from app.core.domain.entities.user import UserStatus, UserRole # Added UserRole 
 @pytest.fixture(autouse=True)
 def mock_sqlalchemy_base(monkeypatch):
     """Prevent SQLAlchemy mapper initialization errors in tests."""
-    # Create mock SQLAlchemy classes/modules
+    # Create comprehensive mock SQLAlchemy objects
     mock_base = MagicMock()
     mock_registry = MagicMock()
     mock_metadata = MagicMock()
-    
-    # Mock the SQLAlchemy registry to return our mock Base
-    monkeypatch.setattr(
-        'app.infrastructure.persistence.sqlalchemy.registry.registry', 
-        mock_registry
-    )
-    monkeypatch.setattr(
-        'app.infrastructure.persistence.sqlalchemy.registry.metadata', 
-        mock_metadata
-    )
+    mock_mapper = MagicMock()
+    mock_session = MagicMock()
+    mock_engine = MagicMock()
     
     # Create a fake Base class that doesn't trigger actual SQLAlchemy initialization
     class FakeBase:
         __abstract__ = True
+        metadata = mock_metadata
+        registry = mock_registry
         
-    # Patch the various places where Base might be imported
-    monkeypatch.setattr(
-        'app.infrastructure.persistence.sqlalchemy.models.base.Base',
-        FakeBase
-    )
+    # Patch SQLAlchemy's configure_mappers function to prevent mapping errors
+    monkeypatch.setattr('sqlalchemy.orm.configure_mappers', MagicMock())
+    
+    # Patch SQLAlchemy's registry and metadata in multiple locations
+    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry.registry', mock_registry)
+    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry.metadata', mock_metadata)
+    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.models.base.Base', FakeBase)
+    # Remove the base_class.Base patch since that module doesn't have a Base class
+    
+    # Patch mixins to avoid initialization errors
+    monkeypatch.setattr('app.infrastructure.database.base_class.TimestampMixin', MagicMock())
+    monkeypatch.setattr('app.infrastructure.database.base_class.AuditMixin', MagicMock())
+    
+    # Prevent model registration, which can trigger mapper validation
+    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry.register_model', 
+                       lambda model_class: model_class)
+    
+    # Also patch the Session factory to prevent attempts to use the real database
+    monkeypatch.setattr('sqlalchemy.orm.sessionmaker', lambda **kwargs: lambda: mock_session)
+    monkeypatch.setattr('sqlalchemy.ext.asyncio.AsyncSession', MagicMock())
+    
+    # Mock engine creation to prevent connection attempts
+    monkeypatch.setattr('sqlalchemy.create_engine', lambda *args, **kwargs: mock_engine)
+    monkeypatch.setattr('sqlalchemy.ext.asyncio.create_async_engine', lambda *args, **kwargs: mock_engine)
     
     return FakeBase
 
@@ -130,13 +144,34 @@ def mock_user():
     return user
 
 @pytest.fixture
+def mock_jwt_service():
+    """Create a mock JWT service."""
+    mock = MagicMock()
+    mock.create_access_token = MagicMock(return_value="mock_access_token")
+    mock.decode_token = MagicMock(return_value={"sub": "user_id", "roles": ["admin"]})
+    return mock
+
+@pytest.fixture
+def mock_auth_service():
+    """Create a mock authentication service."""
+    mock = MagicMock()
+    mock.authenticate_user = AsyncMock(return_value=True)
+    mock.authorize_action = AsyncMock(return_value=True)
+    return mock
+
+@pytest.fixture
+def auth_headers(mock_user):
+    """Create authentication headers for testing."""
+    return {"Authorization": f"Bearer mock_token_for_{mock_user.id}"}
+
+@pytest.fixture
 async def client(
     test_settings: Settings,
     mock_process_event_use_case: MagicMock,
     mock_batch_process_use_case: MagicMock,
     mock_user: MagicMock
 ):
-    # Mock SQLAlchemy models initialization
+    # Create application with disabled SQLAlchemy initialization
     with patch('sqlalchemy.orm.configure_mappers'):
         app_instance = create_application(settings_override=test_settings)
         # Override dependencies for the specific use cases on the app_instance

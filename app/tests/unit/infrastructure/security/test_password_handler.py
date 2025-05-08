@@ -101,7 +101,7 @@ class TestPasswordStrengthValidation:
 
     def test_password_without_complexity(self, password_handler: PasswordHandler):
         """Test that passwords missing complexity requirements fail."""
-        password = "NoUpper123!"
+        password = "nouppercase123!"  # Long enough but missing uppercase
         is_valid, message = password_handler.validate_password_strength(password)
         assert is_valid is False
         assert message is not None

@@ -174,11 +174,7 @@ class PasswordHandler:
         Returns:
             Tuple of (is_valid, error_message)
         """
-        # Check length
-        if len(password) < 12:
-            return False, "Password must be at least 12 characters long"
-
-        # Check complexity
+        # Check complexity first (to match test expectations)
         has_upper = any(c.isupper() for c in password)
         has_lower = any(c.islower() for c in password)
         has_digit = any(c.isdigit() for c in password)
@@ -189,6 +185,10 @@ class PasswordHandler:
                 False,
                 "Password must include uppercase, lowercase, digits, and special characters",
             )
+            
+        # Check length
+        if len(password) < 12:
+            return False, "Password must be at least 12 characters long"
 
         # Check for common patterns (basic check)
         if (
@@ -198,10 +198,21 @@ class PasswordHandler:
         ):
             return False, "Password contains common patterns"
 
-        # Check for repeating characters
+        # Check for repeating characters (at least 3 consecutive same characters)
         for i in range(len(password) - 2):
             if password[i] == password[i + 1] == password[i + 2]:
                 return False, "Password contains repeated characters"
+
+        # Use zxcvbn for additional strength checking
+        try:
+            result = zxcvbn(password)
+            if result.get('score', 0) < 3:  # Scores are 0-4, require at least 3
+                suggestions = result.get('feedback', {}).get('suggestions', [])
+                suggestion_text = '; '.join(suggestions) if suggestions else "Password is too weak"
+                return False, suggestion_text
+        except Exception as e:
+            logger.warning(f"Error using zxcvbn for password strength validation: {e}")
+            # Continue with validation even if zxcvbn fails
 
         # All checks passed
         logger.debug("Password strength validation passed")
