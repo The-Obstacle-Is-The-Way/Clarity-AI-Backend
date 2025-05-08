@@ -11,21 +11,12 @@ from enum import Enum
 # Middleware for API protection
 from .middleware import PHIMiddleware, add_phi_middleware, get_phi_middleware
 
-# PHI detection patterns
-from .patterns import PHI_PATTERNS
-
 # Core PHI protection components
 from .sanitizer import (
-    PatternRepository,
     PHISanitizer,
-    RedactionStrategy,
-    SanitizedLogger,
+    PHISafeLogger,
+    get_sanitizer,
     get_sanitized_logger,
-    redact_address,
-    redact_email,
-    redact_name,
-    redact_phone,
-    redact_ssn,
 )
 
 
@@ -46,43 +37,27 @@ class PHIType(str, Enum):
     CREDIT_CARD = "CREDIT_CARD"
 
 # PHI Service
-# PHI Code Analysis
-from .code_analyzer import CodeSeverity, PHICodeAnalyzer
-
-# PHI Auditing
-from .phi_auditor import PHIAuditHandler
 from .phi_service import PHIService, RedactionMode, contains_phi, get_phi_service, sanitize_phi
 
 __all__ = [
     # Core components
     'PHISanitizer',
-    'SanitizedLogger',
+    'PHISafeLogger',
     # Service
     'PHIService',
     'RedactionMode',
     'sanitize_phi',
     'contains_phi',
     'get_phi_service',
-    # Audit and analysis
-    'PHIAuditHandler',
-    'PHICodeAnalyzer',
-    'CodeSeverity',
-    # Utility functions
+    # Sanitizer utilities
+    'get_sanitizer',
     'get_sanitized_logger',
-    'RedactionStrategy',
-    'PatternRepository',
     
     # Middleware components
     'PHIMiddleware',
     'add_phi_middleware',
     'get_phi_middleware',
     
-    # Utilities and types
+    # Types
     'PHIType',
-    'PHI_PATTERNS',
-    'redact_ssn',
-    'redact_phone',
-    'redact_email',
-    'redact_name',
-    'redact_address'
 ]

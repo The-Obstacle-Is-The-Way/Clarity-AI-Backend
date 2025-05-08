@@ -28,6 +28,7 @@ NON_SENSITIVE_FIELDS = {
     "id", "patient_id", "clinician_id", "organization_id", "status"
 }
 
+# --- Helper Functions --- #
 
 def encrypt_value(value: str, key: str = None) -> str:
     """Encrypt a single value using the encryption service.
@@ -71,6 +72,8 @@ def get_encryption_key() -> str:
         raise ValueError("Encryption key is missing in configuration.")
     return settings.PHI_ENCRYPTION_KEY
 
+
+# --- Primary Encryption Service Class --- #
 
 class BaseEncryptionService:
     """HIPAA-compliant encryption service using Fernet.
@@ -489,3 +492,18 @@ decryption methods for strings and dictionaries.
         except Exception as e:
             logger.error(f"Error decrypting file: {e}")
             raise ValueError(f"File decryption failed: {e}")
+
+# --- Factory Function --- #
+
+def get_encryption_service() -> BaseEncryptionService:
+    """
+    Factory function to get an encryption service instance.
+    
+    Returns:
+        BaseEncryptionService: Configured encryption service
+    """
+    settings = get_settings()
+    key = getattr(settings, 'PHI_ENCRYPTION_KEY', None)
+    previous_key = getattr(settings, 'PREVIOUS_PHI_ENCRYPTION_KEY', None)
+    
+    return BaseEncryptionService(direct_key=key, previous_key=previous_key)

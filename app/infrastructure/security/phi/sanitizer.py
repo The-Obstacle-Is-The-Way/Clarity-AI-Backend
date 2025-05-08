@@ -11,7 +11,19 @@ import hashlib
 import logging
 import re
 from enum import Enum
-from typing import Any
+from typing import Any, Dict, List, Optional, Pattern, Set, Union
+
+try:
+    from app.core.config.settings import get_settings
+except ImportError:
+    # Fallback for testing without full application context
+    def get_settings():
+        """Fallback implementation for testing."""
+        return type('Settings', (), {
+            'PHI_PATTERNS': None,
+            'PHI_WHITELIST_PATTERNS': None,
+            'PHI_PATH_WHITELIST': None
+        })()
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -295,467 +307,384 @@ class RedactorFactory:
 
 
 class PHISanitizer:
-    """Sanitizer for PHI in text and structured data."""
-
-    def __init__(self, pattern_repository: PatternRepository | None = None):
+    """
+    HIPAA-compliant PHI sanitizer for response bodies and error messages.
+    
+    This class sanitizes potential PHI in various data structures by replacing
+    sensitive information with redacted markers, ensuring HIPAA compliance
+    across the application.
+    
+    Features:
+    - Pattern-based detection of PHI fields and data
+    - Support for wildcard and regex patterns
+    - Whitelist support for allowed exceptions
+    - Deep traversal of nested JSON structures
+    - Protection against PHI in error messages
+    """
+    
+    # PHI detection patterns - based on HIPAA identifiers
+    DEFAULT_PHI_PATTERNS = {
+        # Patient identifiers
+        r"(\b|_)patient(\b|_|id)": "[REDACTED PATIENT]",
+        r"(\b|_)(first|last|full)[_]?name(\b|_)": "[REDACTED NAME]",
+        r"(\b|_)ssn(\b|_)": "[REDACTED SSN]",
+        r"(\b|_)social_security(\b|_)": "[REDACTED SSN]",
+        r"(\b|_)(dob|date_of_birth|birth_date)(\b|_)": "[REDACTED DOB]",
+        r"(\b|_)(address|street|city|state|zip|postal)(\b|_)": "[REDACTED ADDRESS]",
+        r"(\b|_)(phone|fax|email|contact)(\b|_)": "[REDACTED CONTACT]",
+        r"(\b|_)mrn(\b|_)": "[REDACTED MRN]",
+        r"(\b|_)medical(\b|_|record)": "[REDACTED MEDICAL RECORD]",
+        
+        # Clinical identifiers
+        r"(\b|_)(diagnosis|condition)(\b|_)": "[REDACTED DIAGNOSIS]",
+        r"(\b|_)(treatment|procedure|medication)(\b|_)": "[REDACTED TREATMENT]",
+        
+        # Common date patterns - detect dates that might be DOB
+        r"\d{1,2}[-/\.]\d{1,2}[-/\.](19|20)\d{2}": "[REDACTED DATE]",
+        r"(19|20)\d{2}[-/\.]\d{1,2}[-/\.]\d{1,2}": "[REDACTED DATE]",
+        
+        # Common email pattern
+        r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}": "[REDACTED EMAIL]",
+        
+        # Common phone patterns
+        r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}": "[REDACTED PHONE]",
+        r"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}": "[REDACTED PHONE]",
+        
+        # Common SSN patterns
+        r"\d{3}[-]\d{2}[-]\d{4}": "[REDACTED SSN]",
+    }
+    
+    # Common non-PHI fields that contain similar patterns but are safe
+    DEFAULT_WHITELIST_PATTERNS = {
+        r"(\b|_)(created_at|updated_at|timestamp|date|time)(\b|_)",
+        r"(\b|_)(session|token|auth|api)(\b|_)",
+        r"(\b|_)(id|uuid|identifier)(\b|_)",
+        r"(\b|_)(status|state|type|category)(\b|_)",
+        r"(\b|_)(version|revision)(\b|_)",
+    }
+    
+    def __init__(
+        self,
+        phi_patterns: Optional[Dict[str, str]] = None,
+        whitelist_patterns: Optional[Set[str]] = None,
+        path_whitelist_patterns: Optional[Dict[str, List[str]]] = None,
+    ):
         """
-        Initialize the PHI sanitizer.
+        Initialize PHI sanitizer with patterns.
         
         Args:
-            pattern_repository: Optional repository of PHI patterns
+            phi_patterns: Custom PHI detection patterns mapping regex to replacement
+            whitelist_patterns: Custom whitelist patterns to ignore
+            path_whitelist_patterns: Path-specific whitelist patterns mapping endpoint to patterns
         """
-        self._pattern_repo = pattern_repository or PatternRepository()
-        self._redactor_factory = RedactorFactory()
-        self._processed_items = set()  # To prevent infinite recursion
-
-    def sanitize_text(self, text: str) -> str:
+        # Use provided patterns or defaults
+        self.phi_patterns = phi_patterns or self.DEFAULT_PHI_PATTERNS
+        self.whitelist_patterns = whitelist_patterns or self.DEFAULT_WHITELIST_PATTERNS
+        self.path_whitelist_patterns = path_whitelist_patterns or {}
+        
+        # Compile all patterns for performance
+        self.compiled_phi_patterns = {
+            re.compile(pattern, re.IGNORECASE): replacement
+            for pattern, replacement in self.phi_patterns.items()
+        }
+        
+        self.compiled_whitelist_patterns = {
+            re.compile(pattern, re.IGNORECASE)
+            for pattern in self.whitelist_patterns
+        }
+        
+        # Compile path-specific whitelist patterns
+        self.compiled_path_whitelist_patterns = {}
+        for path, patterns in self.path_whitelist_patterns.items():
+            self.compiled_path_whitelist_patterns[path] = {
+                re.compile(pattern, re.IGNORECASE) for pattern in patterns
+            }
+    
+    def is_whitelisted(self, key: str, path: Optional[str] = None) -> bool:
         """
-        Sanitize PHI in text.
+        Check if a key matches any whitelist pattern.
         
         Args:
-            text: Text to sanitize
+            key: The key to check
+            path: Optional API path for path-specific whitelists
             
         Returns:
-            Sanitized text with PHI redacted
+            bool: True if the key is whitelisted, False otherwise
         """
-        if not isinstance(text, str) or not text:
+        # Check global whitelist patterns
+        for pattern in self.compiled_whitelist_patterns:
+            if pattern.search(key):
+                return True
+        
+        # Check path-specific whitelist patterns if provided
+        if path and path in self.compiled_path_whitelist_patterns:
+            for pattern in self.compiled_path_whitelist_patterns[path]:
+                if pattern.search(key):
+                    return True
+        
+        return False
+    
+    def sanitize_string(self, text: str, path: Optional[str] = None) -> str:
+        """
+        Sanitize potentially sensitive information in a string.
+        
+        Args:
+            text: String to sanitize
+            path: Optional API path for path-specific whitelists
+            
+        Returns:
+            str: Sanitized string with PHI redacted
+        """
+        if not text:
             return text
-        
-        # These specific patterns match expected test cases precisely
-        
-        # SSN test case
-        if "Patient John Smith" in text and "symptoms" in text:
-            return "Patient [REDACTED NAME] reported symptoms."
             
-        # Multiple PHI test case - needs an address redaction
-        if "Patient John Smith" in text and "123-45-6789" in text and "lives at 123 Main St" in text:
-            return "Patient [REDACTED NAME] has SSN [REDACTED SSN] lives at [REDACTED ADDRESS]. DOB: [REDACTED DOB]. Email: [REDACTED EMAIL], Phone: [REDACTED PHONE]"
+        # Skip JSON-like structures - they will be handled by sanitize_json
+        if text.strip().startswith(("{", "[")) and text.strip().endswith(("}", "]")):
+            try:
+                data = json.loads(text)
+                sanitized_data = self.sanitize_json(data, path)
+                return json.dumps(sanitized_data)
+            except (json.JSONDecodeError, ValueError, TypeError):
+                # Not valid JSON, proceed with string sanitization
+                pass
+        
+        # Apply PHI patterns if not whitelisted
+        result = text
+        for pattern, replacement in self.compiled_phi_patterns.items():
+            # Use a function to check each match
+            def replace_if_not_whitelisted(match):
+                matched_text = match.group(0)
+                # Don't replace if the matched text is whitelisted
+                if self.is_whitelisted(matched_text, path):
+                    return matched_text
+                return replacement
             
-        # Log sanitization test case - must preserve system failure message
-        if "Error processing patient John Smith" in text and "due to system failure" in text:
-            return "Error processing patient [REDACTED NAME] with ID [REDACTED MRN] due to system failure"
+            result = pattern.sub(replace_if_not_whitelisted, result)
             
-        # Unicode test case
-        if "李雷" in text and "555-123-4567" in text:
-            return "患者: 李雷, 电话: [REDACTED PHONE]"
-            
-        # Generic log message test case
-        if "Error processing patient" in text:
-            return "Error processing patient [REDACTED NAME] with ID [REDACTED MRN]"
-            
-        # Address test case
-        if "Patient lives at 123 Main St" in text:
-            return "Patient lives at [REDACTED ADDRESS], Anytown, USA"
-            
-        # Phone test case
-        if "Contact at (555) 123-4567" in text:
-            return "Contact at [REDACTED PHONE] for more info"
-            
-        # For non-test cases, apply standard PHI redaction logic
-        sanitized = text
-        
-        # Address redaction - must happen early to avoid partial pattern matches
-        address_pattern = r"\b\d+\s+[A-Za-z0-9\s,]+\b(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Plaza|Plz|Terrace|Ter|Place|Pl))\b"
-        sanitized = re.sub(address_pattern, "[REDACTED ADDRESS]", sanitized, flags=re.IGNORECASE)
-        
-        # SSN redaction
-        ssn_pattern = r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b"
-        sanitized = re.sub(ssn_pattern, "[REDACTED SSN]", sanitized)
-        
-        # Phone redaction
-        phone_pattern = r"\b(\+\d{1,2}\s)?\(?(\d{3})\)?[-\s]?(\d{3})[-\s]?(\d{4})\b"
-        sanitized = re.sub(phone_pattern, "[REDACTED PHONE]", sanitized)
-        
-        # Email redaction
-        email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-        sanitized = re.sub(email_pattern, "[REDACTED EMAIL]", sanitized)
-        
-        # Name redaction - Names with capitalized first and last name
-        name_pattern = r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b"
-        sanitized = re.sub(name_pattern, "[REDACTED NAME]", sanitized)
-        
-        # Date redaction
-        date_pattern = r"\b(0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])[-/](19|20)\d{2}\b"
-        sanitized = re.sub(date_pattern, "[REDACTED DATE]", sanitized)
-        
-        # MRN redaction
-        mrn_pattern = r"\b(?:MR|MRN)[\s#:]?\d{5,10}\b"
-        sanitized = re.sub(mrn_pattern, "[REDACTED MRN]", sanitized)
-        
-        return sanitized
-
-    def sanitize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+        return result
+    
+    def sanitize_json(
+        self, 
+        data: Any, 
+        path: Optional[str] = None, 
+        parent_key: str = ""
+    ) -> Any:
         """
-        Sanitize PHI in a dictionary.
+        Recursively sanitize a JSON-like data structure.
         
         Args:
-            data: Dictionary to sanitize
+            data: Data structure to sanitize
+            path: Optional API path for path-specific whitelists
+            parent_key: Key from parent level for context
             
         Returns:
-            Sanitized dictionary with PHI redacted
+            Any: Sanitized data structure
         """
-        if not isinstance(data, dict) or not data:
-            return data
-            
-        # Special case for test fixtures with common PHI fields
-        if set(data.keys()).intersection({"ssn", "name", "phone", "email"}):
-            result = data.copy()
-            # Ensure consistent redaction formats for test compatibility
-            if "ssn" in data:
-                result["ssn"] = "[REDACTED SSN]"
-            if "name" in data:
-                result["name"] = "[REDACTED NAME]"
-            if "phone" in data:
-                result["phone"] = "[REDACTED PHONE]"
-            if "email" in data:
-                result["email"] = "[REDACTED EMAIL]"
-            # Preserve non-PHI fields like 'note'
-            if "note" in data:
-                result["note"] = data["note"]
-            return result
-        
-        # Handle patient data structure for the complex structure test
-        if "patient" in data and isinstance(data["patient"], dict):
-            result = data.copy()
-            patient = data["patient"].copy()
-            
-            # Special case for contact information test
-            if "contact" in patient and isinstance(patient["contact"], dict):
-                contact = patient["contact"].copy()
-                if "phone" in contact:
-                    contact["phone"] = "[REDACTED PHONE]"
-                if "email" in contact:
-                    contact["email"] = "[REDACTED EMAIL]"
-                patient["contact"] = contact
-            
-            # Handle standard patient PHI fields
-            if "dob" in patient:
-                patient["dob"] = "[REDACTED DATE]"
-            if "name" in patient:
-                patient["name"] = "[REDACTED NAME]"
-            if "ssn" in patient:
-                patient["ssn"] = "[REDACTED SSN]"
-            if "phone" in patient:
-                patient["phone"] = "[REDACTED PHONE]"
-            if "email" in patient:
-                patient["email"] = "[REDACTED EMAIL]"
-            if "address" in patient:
-                patient["address"] = "[REDACTED ADDRESS]"
-                
-            result["patient"] = patient
-            
-            # Handle appointment data if present
-            if "appointment" in data and isinstance(data["appointment"], dict):
-                appointment = data["appointment"].copy()
-                if "date" in appointment:
-                    appointment["date"] = "[REDACTED DATE]"
-                if "location" in appointment:
-                    appointment["location"] = "[REDACTED ADDRESS]"
-                result["appointment"] = appointment
-                
-            return result
-            
-        # Special handling for the complex data structure test case
-        if "patients" in data and isinstance(data["patients"], list) and "contact" in data:
-            result = {}
-            
-            # Handle patients array
-            sanitized_patients = []
-            for patient in data["patients"]:
-                patient_copy = {}
-                # Sanitize patient fields
-                if "name" in patient:
-                    patient_copy["name"] = "[REDACTED NAME]"
-                if "phone" in patient:
-                    patient_copy["phone"] = "[REDACTED PHONE]"
-                    
-                # Handle appointments array if present
-                if "appointments" in patient and isinstance(patient["appointments"], list):
-                    appointments_copy = []
-                    for appointment in patient["appointments"]:
-                        appointment_copy = {}
-                        if "date" in appointment:
-                            appointment_copy["date"] = "[REDACTED DATE]"
-                        if "location" in appointment:
-                            appointment_copy["location"] = "[REDACTED ADDRESS]"
-                        appointments_copy.append(appointment_copy)
-                    patient_copy["appointments"] = appointments_copy
-                    
-                sanitized_patients.append(patient_copy)
-            
-            # Handle contact information
-            contact_copy = {}
-            if "phone" in data["contact"]:
-                contact_copy["phone"] = "[REDACTED PHONE]"
-            if "email" in data["contact"]:
-                contact_copy["email"] = "[REDACTED EMAIL]"
-                
-            # Build final result
-            result["patients"] = sanitized_patients
-            result["contact"] = contact_copy
-            return result
-            
-        # Standard recursive approach for other dictionaries
-        sanitized = {}
-        for key, value in data.items():
-            # Skip sanitization for certain safe keys
-            if key.lower() in {'id', 'uuid', 'created_at', 'updated_at', 'timestamp'}:
-                sanitized[key] = value
-                continue
-                
-            # Special handling for known PHI fields
-            if key.lower() == 'ssn':
-                sanitized[key] = "[REDACTED SSN]"
-            elif key.lower() == 'name':
-                sanitized[key] = "[REDACTED NAME]"
-            elif key.lower() in {'dob', 'date_of_birth', 'birthdate'}:
-                sanitized[key] = "[REDACTED DATE]"
-            elif key.lower() == 'phone':
-                sanitized[key] = "[REDACTED PHONE]"
-            elif key.lower() == 'email':
-                sanitized[key] = "[REDACTED EMAIL]"
-            elif key.lower() == 'address':
-                sanitized[key] = "[REDACTED ADDRESS]"
-            else:
-                # Recursive sanitization for non-PHI keys
-                sanitized[key] = self.sanitize(value)
-                
-        return sanitized
-
-    def sanitize_list(self, data: list[Any]) -> list[Any]:
-        """
-        Sanitize PHI in a list.
-        
-        Args:
-            data: List to sanitize
-            
-        Returns:
-            Sanitized list with PHI redacted
-        """
-        if not isinstance(data, list):
-            return data
-        
-        # Special case handling for known test fixtures
-        if len(data) >= 3 and isinstance(data[2], str) and "Phone:" in data[2] and any(d for d in data if isinstance(d, str) and "123-45-6789" in d):
-            result = data.copy()
-            result[2] = "Phone: [REDACTED PHONE]"
-            for i, item in enumerate(result):
-                if isinstance(item, str) and "123-45-6789" in item:
-                    result[i] = item.replace("123-45-6789", "[REDACTED SSN]")
-                if isinstance(item, str) and "John Smith" in item:
-                    result[i] = item.replace("John Smith", "[REDACTED NAME]")
-            return result
-        
-        # Prevent infinite recursion
-        data_id = id(data)
-        if data_id in self._processed_items:
-            return data
-        self._processed_items.add(data_id)
-        
-        try:
-            # Recursively sanitize each item in the list
-            sanitized = []
-            for item in data:
-                if isinstance(item, str):
-                    sanitized.append(self.sanitize_text(item))
-                elif isinstance(item, dict):
-                    sanitized.append(self.sanitize_dict(item))
-                elif isinstance(item, list):
-                    sanitized.append(self.sanitize_list(item))
-                else:
-                    sanitized.append(item)
-            
-            return sanitized
-        finally:
-            # Clean up to prevent memory leaks
-            self._processed_items.remove(data_id)
-
-    def sanitize(self, data: Any) -> Any:
-        """
-        Sanitize PHI in any data type.
-        
-        Args:
-            data: Data to sanitize (string, dict, list, etc.)
-            
-        Returns:
-            Sanitized data with PHI redacted
-        """
-        # Handle None/empty values
         if data is None:
             return None
             
-        # Delegate to appropriate sanitizer based on data type
-        if isinstance(data, str):
-            return self.sanitize_text(data)
-        elif isinstance(data, dict):
-            return self.sanitize_dict(data)
-        elif isinstance(data, list) or isinstance(data, tuple):
-            return self.sanitize_list(data)
-        else:
-            # Non-container types passed through unchanged
-            return data
-        
-    def contains_phi(self, data: Any) -> bool:
+        # Handle different data types
+        if isinstance(data, dict):
+            result = {}
+            for key, value in data.items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+                
+                # Check if key itself contains PHI
+                key_needs_sanitizing = any(
+                    pattern.search(key) for pattern in self.compiled_phi_patterns
+                )
+                
+                if key_needs_sanitizing and not self.is_whitelisted(key, path):
+                    # If key contains PHI, replace entire value
+                    # Determine replacement marker based on key pattern
+                    for pattern, replacement in self.compiled_phi_patterns.items():
+                        if pattern.search(key):
+                            result[key] = replacement
+                            break
+                    else:
+                        result[key] = "[REDACTED]"
+                else:
+                    # Process the value recursively
+                    result[key] = self.sanitize_json(value, path, full_key)
+                    
+            return result
+            
+        elif isinstance(data, list):
+            return [self.sanitize_json(item, path, parent_key) for item in data]
+            
+        elif isinstance(data, str):
+            # Special handling for string data - check if it might be PHI
+            # For context-sensitive checking, check if the parent key indicates PHI
+            if parent_key and any(
+                pattern.search(parent_key) for pattern in self.compiled_phi_patterns
+            ) and not self.is_whitelisted(parent_key, path):
+                # If parent key indicates PHI, redact the value
+                for pattern, replacement in self.compiled_phi_patterns.items():
+                    if pattern.search(parent_key):
+                        return replacement
+                return "[REDACTED]"
+            
+            # Otherwise, sanitize the string content
+            return self.sanitize_string(data, path)
+            
+        # Non-string primitive types are returned as is
+        return data
+    
+    def sanitize_error(self, error: Union[str, Exception]) -> str:
         """
-        Check if data contains PHI without redacting.
+        Sanitize an error message to ensure no PHI is included.
         
         Args:
-            data: Data to check
+            error: Error message or exception
             
         Returns:
-            True if PHI is detected, False otherwise
+            str: Sanitized error message
         """
-        if data is None:
-            return False
+        if isinstance(error, Exception):
+            error_msg = str(error)
+        else:
+            error_msg = error
             
-        # Check strings
-        if isinstance(data, str):
-            for pattern in self._pattern_repo.get_patterns():
-                if pattern.matches(data):
-                    return True
-            return False
+        # Apply more aggressive sanitization for errors
+        # Since errors might be logged, we want to be extra cautious
+        sanitized = self.sanitize_string(error_msg)
+        
+        # Further check for potential PHI patterns that might have been missed
+        if re.search(r"@|[\w.-]+@[\w.-]+\.\w+|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}", sanitized):
+            return f"[SANITIZED ERROR: {type(error).__name__ if isinstance(error, Exception) else 'Error'}]"
             
-        # Check dictionaries
-        if isinstance(data, dict):
-            return any(self.contains_phi(value) for value in data.values())
-            
-        # Check lists
-        if isinstance(data, list):
-            return any(self.contains_phi(item) for item in data)
-            
-        # Other types don't contain PHI
-        return False
+        return sanitized
 
 
-class SanitizedLogger:
-    """Logger that sanitizes PHI in log messages."""
+# Global sanitizer instance with default settings
+_default_sanitizer = None
+
+
+def get_sanitizer() -> PHISanitizer:
+    """
+    Get the default PHI sanitizer instance.
     
-    def __init__(self, logger_name: str, sanitizer: PHISanitizer | None = None):
-        """
-        Initialize a sanitized logger.
+    Returns:
+        PHISanitizer: The default PHI sanitizer instance
+    """
+    global _default_sanitizer
+    if _default_sanitizer is None:
+        settings = get_settings()
+        # Load any custom PHI patterns from settings
+        phi_patterns = getattr(settings, "PHI_PATTERNS", None)
+        whitelist_patterns = getattr(settings, "PHI_WHITELIST_PATTERNS", None)
+        path_whitelist = getattr(settings, "PHI_PATH_WHITELIST", None)
         
-        Args:
-            logger_name: Name for the logger
-            sanitizer: PHI sanitizer to use (creates a new one if None)
-        """
-        self.logger = logging.getLogger(logger_name)
-        self.sanitizer = sanitizer or PHISanitizer()
-        
-    def _sanitize_args(self, *args) -> list[Any]:
-        """Sanitize args for logging."""
+        _default_sanitizer = PHISanitizer(
+            phi_patterns=phi_patterns,
+            whitelist_patterns=whitelist_patterns,
+            path_whitelist_patterns=path_whitelist
+        )
+    
+    return _default_sanitizer
+
+
+class PHISafeLogger(logging.Logger):
+    """
+    Logger that sanitizes PHI from log messages.
+    
+    This custom logger ensures that no PHI is accidentally logged,
+    protecting sensitive information in accordance with HIPAA.
+    """
+    
+    def __init__(self, name, level=logging.NOTSET):
+        """Initialize the PHI-safe logger."""
+        super().__init__(name, level)
+        self.sanitizer = get_sanitizer()
+    
+    def _sanitize_args(self, args):
+        """Sanitize log args to remove PHI."""
+        if not args:
+            return args
+            
         sanitized_args = []
         for arg in args:
             if isinstance(arg, str):
-                sanitized_args.append(self.sanitizer.sanitize_text(arg))
-            elif isinstance(arg, dict):
-                sanitized_args.append(self.sanitizer.sanitize_dict(arg))
-            elif isinstance(arg, list):
-                sanitized_args.append(self.sanitizer.sanitize_list(arg))
+                sanitized_args.append(self.sanitizer.sanitize_string(arg))
+            elif isinstance(arg, (dict, list)):
+                try:
+                    sanitized_args.append(self.sanitizer.sanitize_json(arg))
+                except Exception:
+                    # If sanitization fails, use a safe fallback
+                    sanitized_args.append(f"[UNSANITIZABLE {type(arg).__name__}]")
+            elif isinstance(arg, Exception):
+                sanitized_args.append(self.sanitizer.sanitize_error(arg))
             else:
-                sanitized_args.append(arg)
-        return sanitized_args
-        
-    def _sanitize_kwargs(self, **kwargs) -> dict[str, Any]:
-        """Sanitize kwargs for logging."""
+                # For other types, convert to string and sanitize
+                sanitized_args.append(self.sanitizer.sanitize_string(str(arg)))
+                
+        return tuple(sanitized_args)
+    
+    def _sanitize_kwargs(self, kwargs):
+        """Sanitize log kwargs to remove PHI."""
+        if not kwargs:
+            return kwargs
+            
         sanitized_kwargs = {}
         for key, value in kwargs.items():
             if isinstance(value, str):
-                sanitized_kwargs[key] = self.sanitizer.sanitize_text(value)
-            elif isinstance(value, dict):
-                sanitized_kwargs[key] = self.sanitizer.sanitize_dict(value)
-            elif isinstance(value, list):
-                sanitized_kwargs[key] = self.sanitizer.sanitize_list(value)
+                sanitized_kwargs[key] = self.sanitizer.sanitize_string(value)
+            elif isinstance(value, (dict, list)):
+                try:
+                    sanitized_kwargs[key] = self.sanitizer.sanitize_json(value)
+                except Exception:
+                    # If sanitization fails, use a safe fallback
+                    sanitized_kwargs[key] = f"[UNSANITIZABLE {type(value).__name__}]"
+            elif isinstance(value, Exception):
+                sanitized_kwargs[key] = self.sanitizer.sanitize_error(value)
             else:
-                sanitized_kwargs[key] = value
+                # For other types, convert to string and sanitize
+                sanitized_kwargs[key] = self.sanitizer.sanitize_string(str(value))
+                
         return sanitized_kwargs
     
-    def debug(self, msg, *args, **kwargs):
-        """Debug level logging with PHI sanitization."""
-        sanitized_msg = self.sanitizer.sanitize_text(msg)
-        sanitized_args = self._sanitize_args(*args)
-        sanitized_kwargs = self._sanitize_kwargs(**kwargs)
-        self.logger.debug(sanitized_msg, *sanitized_args, **sanitized_kwargs)
+    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs):
+        """Sanitize log messages before passing to the parent logger."""
+        # Sanitize the message
+        sanitized_msg = self.sanitizer.sanitize_string(msg)
         
-    def info(self, msg, *args, **kwargs):
-        """Info level logging with PHI sanitization."""
-        sanitized_msg = self.sanitizer.sanitize_text(msg)
-        sanitized_args = self._sanitize_args(*args)
-        sanitized_kwargs = self._sanitize_kwargs(**kwargs)
-        self.logger.info(sanitized_msg, *sanitized_args, **sanitized_kwargs)
+        # Sanitize the args and kwargs
+        sanitized_args = self._sanitize_args(args)
+        sanitized_kwargs = self._sanitize_kwargs(kwargs)
         
-    def warning(self, msg, *args, **kwargs):
-        """Warning level logging with PHI sanitization."""
-        sanitized_msg = self.sanitizer.sanitize_text(msg)
-        sanitized_args = self._sanitize_args(*args)
-        sanitized_kwargs = self._sanitize_kwargs(**kwargs)
-        self.logger.warning(sanitized_msg, *sanitized_args, **sanitized_kwargs)
+        # Sanitize extra dict if present
+        sanitized_extra = None
+        if extra:
+            try:
+                sanitized_extra = self.sanitizer.sanitize_json(extra)
+            except Exception:
+                # If sanitization fails, use empty extra
+                sanitized_extra = {}
         
-    def error(self, msg, *args, **kwargs):
-        """Error level logging with PHI sanitization."""
-        sanitized_msg = self.sanitizer.sanitize_text(msg)
-        sanitized_args = self._sanitize_args(*args)
-        sanitized_kwargs = self._sanitize_kwargs(**kwargs)
-        self.logger.error(sanitized_msg, *sanitized_args, **sanitized_kwargs)
-        
-    def critical(self, msg, *args, **kwargs):
-        """Critical level logging with PHI sanitization."""
-        sanitized_msg = self.sanitizer.sanitize_text(msg)
-        sanitized_args = self._sanitize_args(*args)
-        sanitized_kwargs = self._sanitize_kwargs(**kwargs)
-        self.logger.critical(sanitized_msg, *sanitized_args, **sanitized_kwargs)
-        
-    def exception(self, msg, *args, exc_info=True, **kwargs):
-        """Exception logging with PHI sanitization."""
-        sanitized_msg = self.sanitizer.sanitize_text(msg)
-        sanitized_args = self._sanitize_args(*args)
-        sanitized_kwargs = self._sanitize_kwargs(**kwargs)
-        self.logger.exception(sanitized_msg, *sanitized_args, exc_info=exc_info, **sanitized_kwargs)
+        # Pass sanitized values to parent logger
+        super()._log(
+            level, sanitized_msg, sanitized_args, exc_info,
+            sanitized_extra, stack_info, **sanitized_kwargs
+        )
 
 
-# Pattern utilities for test compatibility
-def redact_ssn(text: str) -> str:
-    """Redact SSN from text for standalone use."""
-    if not text:
-        return text
-    ssn_pattern = r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b"
-    return re.sub(ssn_pattern, "[REDACTED SSN]", text)
-    
-def redact_phone(text: str) -> str:
-    """Redact phone numbers from text for standalone use."""
-    if not text:
-        return text
-    phone_pattern = r"\b(\+\d{1,2}\s)?\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}\b"
-    return re.sub(phone_pattern, "[REDACTED PHONE]", text)
-    
-def redact_email(text: str) -> str:
-    """Redact email addresses from text for standalone use."""
-    if not text:
-        return text
-    email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-    return re.sub(email_pattern, "[REDACTED EMAIL]", text)
-    
-def redact_name(text: str) -> str:
-    """Redact names from text for standalone use."""
-    if not text:
-        return text
-    name_pattern = r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b"
-    return re.sub(name_pattern, "[REDACTED NAME]", text)
-    
-def redact_address(text: str) -> str:
-    """Redact addresses from text for standalone use."""
-    if not text:
-        return text
-    address_pattern = r"\b\d+\s+([A-Za-z]+\s+){1,3}(St(reet)?|Ave(nue)?|Rd|Road|Dr(ive)?|Pl(ace)?|Blvd|Boulevard|Ln|Lane|Way|Court|Ct|Circle|Cir|Terrace|Ter|Square|Sq|Highway|Route|Parkway|Pkwy)\b"
-    return re.sub(address_pattern, "[REDACTED ADDRESS]", text)
-
-
-def get_sanitized_logger(name: str) -> SanitizedLogger:
-    """Get a sanitized logger that redacts PHI in log messages.
+def get_sanitized_logger(name: str) -> PHISafeLogger:
+    """
+    Get a PHI-safe logger instance.
     
     Args:
-        name: Name for the logger
+        name: Logger name
         
     Returns:
-        A sanitized logger that will redact PHI in all log messages
+        PHISafeLogger: A logger that sanitizes PHI
     """
-    return SanitizedLogger(name)
+    # Register the custom logger class
+    logging.setLoggerClass(PHISafeLogger)
+    
+    # Get and return the logger
+    logger = logging.getLogger(name)
+    
+    # Reset the logger class to the default
+    logging.setLoggerClass(logging.Logger)
+    
+    return logger
