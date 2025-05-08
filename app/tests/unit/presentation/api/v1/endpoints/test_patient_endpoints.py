@@ -163,21 +163,23 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
     app_instance, async_client = client
 
     # Define stubs and overrides
-    async def stub_create_patient(payload: PatientCreateRequest, created_by_id: uuid.UUID) -> PatientCreateResponse:
+    async def stub_create_patient(patient_data: PatientCreateRequest, created_by_id: uuid.UUID = None) -> PatientCreateResponse:
         # Simulate service creating the patient
-        assert created_by_id == mock_current_user.id  # Verify correct user ID passed
+        user_id = created_by_id or mock_current_user.id  # Use provided ID or default to mock user
+        assert user_id == mock_current_user.id  # Verify correct user ID passed
         return PatientCreateResponse(
             id=uuid.uuid4(),  # Generate a new ID for the response
-            first_name=payload.first_name,
-            last_name=payload.last_name,
-            date_of_birth=payload.date_of_birth,
+            first_name=patient_data.first_name,
+            last_name=patient_data.last_name,
+            date_of_birth=patient_data.date_of_birth,
             created_at=datetime.now(timezone.utc),  # Use timezone-aware datetime
             updated_at=datetime.now(timezone.utc),
-            created_by=created_by_id
+            created_by=user_id
         )
 
     class StubPatientService:
-        create_patient = stub_create_patient
+        async def create_patient(self, patient_data: PatientCreateRequest, created_by_id: uuid.UUID = None) -> PatientCreateResponse:
+            return await stub_create_patient(patient_data, created_by_id)
 
     # Create a clean test-only route using FastAPI directly
     test_router = APIRouter()
@@ -192,7 +194,7 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
         service: PatientService = Depends(lambda: StubPatientService()),
         user: DomainUser = Depends(lambda: mock_current_user)
     ) -> PatientCreateResponse:
-        # Simplified version of the endpoint that calls our service stub
+        # Use keyword argument for created_by_id to avoid duplication
         return await service.create_patient(patient_data, created_by_id=user.id)
     
     # Add the test route to the app

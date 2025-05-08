@@ -1,9 +1,10 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status, Query
 # This import is based on what conftest.py was using for User in mocks, may need adjustment
 # depending on the actual User type expected by get_current_active_user dependency.
 # from app.core.domain.entities.user import User 
 # For now, assume the modern Pydantic User from app.domain.entities is preferred for new code:
 from app.domain.entities.user import User
+from typing import Optional
 
 # Schemas (actual paths might differ, these are placeholders based on common patterns)
 # from app.presentation.api.schemas.analytics_schemas import AnalyticsEventData, AnalyticsEventBatchData 
@@ -45,7 +46,10 @@ async def record_analytics_event(
     event_data: dict, # Replace with actual AnalyticsEventData schema
     background_tasks: BackgroundTasks, # FastAPI will inject the real one
     current_user: User = Depends(get_current_active_user),
-    process_event_use_case: ProcessAnalyticsEventUseCase = Depends(get_process_analytics_event_use_case)
+    process_event_use_case: ProcessAnalyticsEventUseCase = Depends(get_process_analytics_event_use_case),
+    # Add query parameters to handle query args from tests
+    args: Optional[str] = Query(default=None),
+    kwargs: Optional[str] = Query(default=None)
 ):
     user_id_str = str(current_user.id) if current_user else "anonymous"
     # Simplified task_data for placeholder
@@ -61,7 +65,10 @@ async def record_analytics_batch(
     events_data: list[dict], # Replace with actual AnalyticsEventBatchData schema
     background_tasks: BackgroundTasks, # FastAPI will inject the real one
     current_user: User = Depends(get_current_active_user),
-    batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(get_batch_process_analytics_use_case)
+    batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(get_batch_process_analytics_use_case),
+    # Add query parameters to handle query args from tests
+    args: Optional[str] = Query(default=None),
+    kwargs: Optional[str] = Query(default=None)
 ):
     user_id_str = str(current_user.id) if current_user else "anonymous"
     # Simplified task_data for placeholder

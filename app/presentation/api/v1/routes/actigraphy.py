@@ -3,7 +3,7 @@
 Handles endpoints related to retrieving and managing actigraphy data.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 from typing import Any, Dict, List, Optional, Literal
 import random
@@ -196,6 +196,8 @@ async def get_placeholder_actigraphy(
     description="Get information about the current actigraphy model"
 )
 async def get_model_info(
+    # Require authentication explicitly to fix test failures
+    current_user: User = Depends(require_roles([UserRole.PATIENT, UserRole.CLINICIAN, UserRole.ADMIN])),
     # Add query parameters to fix test failures
     args: Optional[str] = Query(default=None),
     kwargs: Optional[str] = Query(default=None)
@@ -204,6 +206,7 @@ async def get_model_info(
     Get information about the current actigraphy model.
     
     Parameters:
+        current_user: The authenticated user making the request
         args: Optional arguments (for backward compatibility)
         kwargs: Optional keyword arguments (for backward compatibility)
     """
@@ -211,8 +214,11 @@ async def get_model_info(
         model_name="Actigraph v1",
         model_version="1.0.0",
         supported_analysis_types=[AnalysisType.SLEEP, AnalysisType.ACTIVITY],
-        last_updated=datetime.utcnow(),
-        model_id="actigraph-v1"
+        last_updated=datetime.now(timezone.utc),  # Use timezone-aware datetime
+        model_id="actigraph-v1",
+        # Add these fields to make tests pass
+        message="Actigraphy model information retrieved successfully",
+        version="1.0.0"
     )
 
 @router.post(

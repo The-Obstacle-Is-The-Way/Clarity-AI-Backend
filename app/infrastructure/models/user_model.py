@@ -9,43 +9,44 @@ All new code should use the canonical User model directly.
 """
 
 import logging
+import sys
+from typing import Any, ClassVar, Type
 
 logger = logging.getLogger(__name__)
 
-try:
-    # Import the canonical User model to ensure we only have one source of truth
-    from app.infrastructure.persistence.sqlalchemy.models.user import User
-
-    # Create a backward-compatible alias
-    UserModel = User
+# This proxy class forwards all operations to the canonical User class
+# This avoids circular imports while ensuring UserModel and User are identical in behavior
+class UserModelProxy:
+    """
+    Proxy class that forwards all operations to the canonical User class.
+    This acts like User in all respects but avoids circular imports.
+    """
+    _user_class: ClassVar[Type[Any]] = None
     
-    # Log this usage for debugging and future migration
-    logger.debug("UserModel alias used - this codebase should be migrated to use User directly")
-    
-    # WARNING: It's critical that we don't create a new model here!
-    # UserModel is just an alias to the canonical User model.
-except ImportError as e:
-    # Fallback implementation for circular import protection
-    # This prevents circular imports during module initialization
-    # The proper User model will be used at runtime
-    logger.warning(f"Using UserModel fallback implementation due to import error: {e}")
-    
-    # Import only what's needed for the type definition
-    from sqlalchemy.orm import declarative_base  # SQLAlchemy 2.0-compatible import
-
-    from app.infrastructure.persistence.sqlalchemy.models.base import AuditMixin, TimestampMixin
-    
-    # Create a placeholder Base that won't be used for actual mapping
-    _Base = declarative_base()
-    
-    # Define a placeholder UserModel that will be replaced at runtime
-    class UserModel(_Base, TimestampMixin, AuditMixin):
-        __tablename__ = "users"
-        # This is just a placeholder and won't be used for actual mapping
-        __abstract__ = True
+    def __new__(cls, *args, **kwargs):
+        if cls._user_class is None:
+            from app.infrastructure.persistence.sqlalchemy.models.user import User
+            cls._user_class = User
+            logger.debug("UserModel proxy initialized with canonical User class")
         
-        def __repr__(self):
-            return "<UserModel Placeholder - NOT FOR ACTUAL USE>"
+        # Return an instance of the actual User class instead of this proxy
+        return cls._user_class(*args, **kwargs)
+    
+    @classmethod
+    def __class_getitem__(cls, key):
+        if cls._user_class is None:
+            from app.infrastructure.persistence.sqlalchemy.models.user import User
+            cls._user_class = User
+        return cls._user_class.__class_getitem__(key)
+    
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if cls._user_class is None:
+            from app.infrastructure.persistence.sqlalchemy.models.user import User
+            cls._user_class = User
+
+# Use the proxy as the UserModel
+UserModel = UserModelProxy
 
 # Export the alias
 __all__ = ['UserModel']

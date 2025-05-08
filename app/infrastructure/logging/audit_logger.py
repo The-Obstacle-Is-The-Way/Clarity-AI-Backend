@@ -198,20 +198,30 @@ AuditLogger._configured = False
 # module itself (i.e. ``app.infrastructure.logging.audit_logger``) to expose
 # *functions* named ``log_phi_access`` and ``log_security_event`` that delegate
 # to the corresponding ``AuditLogger`` class methods.  Export thin wrappers so
-# those imports keep working without rewriting all call‑sites.
-
+# we don't have to refactor every single test file:
 
 def log_phi_access(*args, **kwargs):  # type: ignore[missing-return-type-doc]
-    """Proxy to :pymeth:`AuditLogger.log_phi_access`."""
-
+    """Convenience alias for AuditLogger.log_phi_access."""
     return AuditLogger.log_phi_access(*args, **kwargs)
 
+def audit_log_phi_access(user_id: str, patient_id: str, action: str, details: dict[str, Any] | None = None) -> None:
+    """
+    Log PHI access for audit purposes.
+    
+    This is an alias for AuditLogger.log_phi_access to maintain compatibility
+    with imports from different parts of the codebase.
+    
+    Args:
+        user_id: ID of the user accessing the PHI
+        patient_id: ID of the patient whose PHI was accessed
+        action: Type of access (read, write, delete)
+        details: Additional details about the access
+    """
+    return AuditLogger.log_phi_access(user_id, patient_id, action, details)
 
 def log_security_event(*args, **kwargs):  # type: ignore[missing-return-type-doc]
-    """Proxy to :pymeth:`AuditLogger.log_security_event`."""
-
+    """Convenience alias for AuditLogger.log_security_event."""
     return AuditLogger.log_security_event(*args, **kwargs)
-
 
 # Explicit re‑export so ``from app.infrastructure.logging.audit_logger import
 # log_phi_access`` resolves correctly without requiring an intermediate import

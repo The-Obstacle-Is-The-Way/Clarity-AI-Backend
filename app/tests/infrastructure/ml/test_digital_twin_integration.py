@@ -268,18 +268,27 @@ async def test_handle_microservice_failure(integration_service, patient_data):
     patient_id = uuid4()
 
     # Make symptom forecasting service fail
-    integration_service.symptom_forecasting_service.forecast_symptoms.side_effect = ModelInferenceError("Test error")
+    original_method = integration_service.symptom_forecasting_service.forecast_symptoms
+    
+    async def failing_forecast(*args, **kwargs):
+        raise ModelInferenceError("Test error")
+    
+    integration_service.symptom_forecasting_service.forecast_symptoms = failing_forecast
 
-    # Generate insights despite the failure
-    insights = await integration_service.generate_comprehensive_patient_insights(
-        patient_id=patient_id, patient_data=patient_data
-    )
+    try:
+        # Generate insights despite the failure
+        insights = await integration_service.generate_comprehensive_patient_insights(
+            patient_id=patient_id, patient_data=patient_data
+        )
 
-    # Verify that other services still produced results
-    assert "symptom_forecasting" not in insights
-    assert "biometric_correlation" in insights
-    assert "pharmacogenomics" in insights
-    assert "integrated_recommendations" in insights
+        # Verify that other services still produced results
+        assert "symptom_forecasting" not in insights
+        assert "biometric_correlation" in insights
+        assert "pharmacogenomics" in insights
+        assert "integrated_recommendations" in insights
+    finally:
+        # Restore the original method
+        integration_service.symptom_forecasting_service.forecast_symptoms = original_method
 
 
 @pytest.mark.asyncio

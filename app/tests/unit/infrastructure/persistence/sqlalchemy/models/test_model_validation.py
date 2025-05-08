@@ -74,4 +74,25 @@ class TestUserModelValidation:
 
     def test_legacy_model_aliasing(self):
         """Verify legacy model is properly aliased to canonical model."""
-        assert UserModel is LegacyUserModel, "Legacy UserModel should be an alias to canonical UserModel"
+        # Test creating an instance of UserModel
+        from app.infrastructure.models.user_model import UserModel
+        import uuid
+        
+        # Create a test user with the UserModel class
+        test_id = uuid.uuid4()
+        test_user = UserModel(
+            id=test_id,
+            username="test_legacy_alias",
+            email="legacy_alias@example.com",
+            hashed_password="test_password",
+            is_active=True
+        )
+        
+        # Verify it's actually a User instance
+        from app.infrastructure.persistence.sqlalchemy.models.user import User
+        assert isinstance(test_user, User), "UserModel should create User instances"
+        
+        # Test identity or compatibility of values
+        assert test_user.id == test_id
+        assert test_user.username == "test_legacy_alias"
+        assert test_user.email == "legacy_alias@example.com"

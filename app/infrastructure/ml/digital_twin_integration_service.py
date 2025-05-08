@@ -25,7 +25,8 @@ class DigitalTwinIntegrationService:
         self,
         symptom_forecasting_service: Any,
         biometric_correlation_service: Any,
-        medication_response_service: Any,
+        pharmacogenomics_service: Any,
+        recommendation_engine: Any,
         patient_repository: Any = None,
     ):
         """
@@ -34,12 +35,14 @@ class DigitalTwinIntegrationService:
         Args:
             symptom_forecasting_service: Service for forecasting symptom trajectory
             biometric_correlation_service: Service for analyzing biometric correlations
-            medication_response_service: Service for predicting medication responses
+            pharmacogenomics_service: Service for predicting pharmacogenomic responses
+            recommendation_engine: Service for generating recommendations
             patient_repository: Optional repository for patient data
         """
         self.symptom_forecasting_service = symptom_forecasting_service
         self.biometric_correlation_service = biometric_correlation_service
-        self.medication_response_service = medication_response_service
+        self.pharmacogenomics_service = pharmacogenomics_service
+        self.recommendation_engine = recommendation_engine
         self.patient_repository = patient_repository
         self._digital_twins = {}  # Cache for digital twins
         logger.info("Digital Twin Integration Service initialized")
@@ -163,7 +166,7 @@ class DigitalTwinIntegrationService:
                 med_dose = intervention_params.get("dose")
                 
                 if med_name and med_dose:
-                    response = await self.medication_response_service.predict_medication_response(
+                    response = await self.pharmacogenomics_service.analyze_medication_response(
                         patient_id=digital_twin.patient_id,
                         medication_name=med_name,
                         dose=med_dose
@@ -191,6 +194,116 @@ class DigitalTwinIntegrationService:
             
         logger.info(f"Simulated {intervention_type} intervention on digital twin {digital_twin_id}")
         return result
+
+    async def generate_comprehensive_patient_insights(self, patient_id: UUID, patient_data: dict) -> dict:
+        """
+        Generate comprehensive insights for a patient by integrating outputs from all services.
+        
+        Args:
+            patient_id: Patient identifier
+            patient_data: Dictionary containing patient data for analysis
+            
+        Returns:
+            Dictionary containing integrated insights
+        """
+        logger.info(f"Generating comprehensive insights for patient {patient_id}")
+        
+        # Sanitize the patient data to ensure no PHI is present
+        sanitized_data = self._sanitize_patient_data(patient_data)
+        
+        # Initialize the results dictionary
+        result = {}
+        error_occurred = False
+        
+        # Try to get symptom forecasting insights
+        try:
+            forecast_result = await self.symptom_forecasting_service.forecast_symptoms(
+                patient_id=str(patient_id),
+                symptom_history=sanitized_data.get("symptom_history", {}),
+                mental_health_indicators=sanitized_data.get("mental_health_indicators", {})
+            )
+            # Only add to result if successful
+            result["symptom_forecasting"] = forecast_result
+        except Exception as e:
+            logger.error(f"Error in symptom forecasting service: {e}")
+            error_occurred = True
+            # Do not add symptom_forecasting to result
+        
+        # Try to get biometric correlation insights
+        try:
+            correlation_result = await self.biometric_correlation_service.analyze_correlations(
+                patient_id=str(patient_id),
+                biometric_data=sanitized_data.get("biometric_data", {}),
+                symptom_history=sanitized_data.get("symptom_history", {})
+            )
+            # Only add to result if successful
+            result["biometric_correlation"] = correlation_result
+        except Exception as e:
+            logger.error(f"Error in biometric correlation service: {e}")
+            error_occurred = True
+        
+        # Try to get pharmacogenomics insights
+        try:
+            pharma_result = await self.pharmacogenomics_service.analyze_medication_response(
+                patient_id=str(patient_id),
+                genetic_markers=sanitized_data.get("genetic_markers", {}),
+                medications=sanitized_data.get("medications", [])
+            )
+            # Only add to result if successful
+            result["pharmacogenomics"] = pharma_result
+        except Exception as e:
+            logger.error(f"Error in pharmacogenomics service: {e}")
+            error_occurred = True
+        
+        # Generate integrated recommendations if we have enough data
+        if len(result) > 0:
+            try:
+                recommendations = await self.recommendation_engine.generate_recommendations(
+                    patient_id=str(patient_id),
+                    insights=result
+                )
+                result["integrated_recommendations"] = recommendations
+            except Exception as e:
+                logger.error(f"Error in recommendation engine: {e}")
+                error_occurred = True
+        
+        # Add error status if any service failed
+        if error_occurred:
+            result["partial_results"] = True
+            result["error"] = "One or more services failed to generate insights"
+        
+        return result
+            
+    def _sanitize_patient_data(self, patient_data: dict) -> dict:
+        """
+        Sanitize patient data to ensure no PHI is included.
+        
+        Args:
+            patient_data: Dictionary containing patient data
+            
+        Returns:
+            Sanitized copy of patient data
+        """
+        # Create a deep copy to avoid modifying the original
+        sanitized = patient_data.copy()
+        
+        # List of PHI fields to remove at top level and within nested dictionaries
+        phi_fields = ["name", "address", "phone", "email", "dob", "ssn", "date_of_birth", 
+                      "personal_info", "contact_info", "location"]
+        
+        # Remove PHI fields at the top level
+        for field in phi_fields:
+            if field in sanitized:
+                del sanitized[field]
+        
+        # Remove PHI fields in nested dictionaries
+        for key, value in list(sanitized.items()):
+            if isinstance(value, dict):
+                for field in phi_fields:
+                    if field in value:
+                        del value[field]
+        
+        return sanitized
 
     async def generate_comprehensive_insights(self, patient_id: str, options: dict) -> dict:
         """
@@ -242,7 +355,7 @@ class DigitalTwinIntegrationService:
         # Predict medication responses if requested
         if options.get("include_medication_predictions", True):
             try:
-                medication_predictions = await self.medication_response_service.predict_medication_response(
+                medication_predictions = await self.pharmacogenomics_service.analyze_medication_response(
                     patient_id=patient_id
                 )
                 result["medication_predictions"] = medication_predictions

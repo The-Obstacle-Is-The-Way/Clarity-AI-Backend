@@ -389,7 +389,11 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         headers = get_valid_provider_auth_headers
-        response = await client.get("/api/v1/biometric-alerts", headers=headers)
+        response = await client.get(
+            "/api/v1/biometric-alerts", 
+            headers=headers,
+            params={"kwargs": "dummy"}
+        )
         assert response.status_code == status.HTTP_200_OK
 
     async def test_get_alerts_with_filters(
@@ -411,7 +415,8 @@ class TestBiometricAlertsEndpoints:
             "start_date": start_time,
             "end_date": end_time,
             "offset": 1,
-            "limit": 5
+            "limit": 5,
+            "kwargs": "dummy"
         }
         
         mock_alert_service.validate_access = AsyncMock()

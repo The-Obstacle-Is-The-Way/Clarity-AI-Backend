@@ -84,11 +84,11 @@ def mock_biometric_correlation_service():
     return service
 
 @pytest.fixture
-def mock_medication_response_service():
-    """Create a mock MedicationResponseService."""
+def mock_pharmacogenomics_service():
+    """Create a mock PharmacogenomicsService."""
     service = AsyncMock()
     # Corrected return value dictionary
-    service.predict_medication_response = AsyncMock(return_value={
+    service.analyze_medication_response = AsyncMock(return_value={
         "medication_predictions": {
             "fluoxetine": {
                 "efficacy": {
@@ -166,6 +166,35 @@ def mock_medication_response_service():
     return service
 
 @pytest.fixture
+def mock_recommendation_engine():
+    """Create a mock RecommendationEngine."""
+    engine = AsyncMock()
+    engine.generate_recommendations = AsyncMock(return_value=[
+        {
+            "type": "medication",
+            "recommendation": "Consider fluoxetine as first-line treatment based on predicted efficacy.",
+            "confidence": 0.85,
+            "supporting_evidence": [
+                "High predicted efficacy score (0.72)",
+                "Normal metabolizer status for relevant enzymes",
+                "Low side effect risk profile"
+            ],
+            "priority": "high"
+        },
+        {
+            "type": "behavioral",
+            "recommendation": "Implement sleep hygiene interventions to improve mood stability.",
+            "confidence": 0.82,
+            "supporting_evidence": [
+                "Strong correlation between sleep duration and mood (r=0.65)",
+                "24-hour lag observed between sleep disruption and mood changes"
+            ],
+            "priority": "medium"
+        }
+    ])
+    return engine
+
+@pytest.fixture
 def mock_patient_repository():
     """Create a mock PatientRepository."""
     repo = AsyncMock()
@@ -185,14 +214,16 @@ def mock_patient_repository():
 def integration_service(
     mock_symptom_forecasting_service,
     mock_biometric_correlation_service,
-    mock_medication_response_service,
+    mock_pharmacogenomics_service,
+    mock_recommendation_engine,
     mock_patient_repository
 ):
     """Create a DigitalTwinIntegrationService with mock dependencies."""
     return DigitalTwinIntegrationService(
         symptom_forecasting_service=mock_symptom_forecasting_service,
         biometric_correlation_service=mock_biometric_correlation_service,
-        medication_response_service=mock_medication_response_service,
+        pharmacogenomics_service=mock_pharmacogenomics_service,
+        recommendation_engine=mock_recommendation_engine,
         patient_repository=mock_patient_repository
     )
 
@@ -232,7 +263,7 @@ class TestDigitalTwinIntegrationService:
         # Verify all services were called
         integration_service.symptom_forecasting_service.generate_forecast.assert_called_once()
         integration_service.biometric_correlation_service.analyze_correlations.assert_called_once()
-        integration_service.medication_response_service.predict_medication_response.assert_called_once()
+        integration_service.pharmacogenomics_service.analyze_medication_response.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_generate_comprehensive_insights_partial_services(
@@ -260,7 +291,7 @@ class TestDigitalTwinIntegrationService:
 
         # Verify only requested services were called
         integration_service.symptom_forecasting_service.generate_forecast.assert_called_once()
-        integration_service.medication_response_service.predict_medication_response.assert_called_once()
+        integration_service.pharmacogenomics_service.analyze_medication_response.assert_called_once()
         integration_service.biometric_correlation_service.analyze_correlations.assert_not_called() # Corrected assertion
 
     @pytest.mark.asyncio
