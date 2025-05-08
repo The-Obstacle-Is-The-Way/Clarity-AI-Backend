@@ -10,11 +10,8 @@ import logging
 from sqlalchemy import types, Text
 
 # Import the core encryption/decryption functions
-# Assuming these handle the key loading internally via settings
-from app.infrastructure.security.encryption.base_encryption_service import (
-    encrypt_value, 
-    decrypt_value
-)
+# from the encryption module which re-exports them properly
+from app.infrastructure.security.encryption import encrypt_value, decrypt_value
 
 logger = logging.getLogger(__name__)
 

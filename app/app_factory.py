@@ -29,7 +29,7 @@ from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 from app.presentation.middleware.authentication import AuthenticationMiddleware
-from app.infrastructure.security.jwt_service import get_jwt_service
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 
 # Potentially import test routers conditionally or via a flag

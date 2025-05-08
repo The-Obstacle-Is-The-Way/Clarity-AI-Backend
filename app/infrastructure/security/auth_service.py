@@ -1,6 +1,8 @@
 """
-DEPRECATED: For backward compatibility only. 
+DEPRECATED: This module is maintained for backward compatibility only.
 Import from app.infrastructure.security.auth.auth_service instead.
+
+This file will be removed in a future version. Update your imports to use the new path.
 """
 
 import warnings

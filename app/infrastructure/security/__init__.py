@@ -1,12 +1,25 @@
 """
-Security infrastructure layer for the Novamind Digital Twin Platform.
+Security infrastructure layer for the Clarity AI Digital Twin Platform.
 
-This module serves as a bridge between the security core and application layers,
-providing seamless integration with the clean architecture pattern.
+This module consolidates all security-related functionality from subdirectories,
+providing a clean, unified interface following clean architecture principles.
 """
 
+import warnings
+
+# Warn about direct imports from deprecated locations
+warnings.warn(
+    "Direct imports from app.infrastructure.security.auth_service, "
+    "app.infrastructure.security.jwt_service, "
+    "app.infrastructure.security.encryption_service, and "
+    "app.infrastructure.security.password_handler are deprecated. "
+    "Use the subdirectory versions instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 # PHI Security Components
-from app.infrastructure.security.phi import PHISanitizer
+from app.infrastructure.security.phi.sanitizer import PHISanitizer, get_sanitizer
 from app.infrastructure.security.phi.log_sanitizer import (
     LogSanitizer,
     PHIFormatter,
@@ -14,33 +27,26 @@ from app.infrastructure.security.phi.log_sanitizer import (
 )
 
 # Audit Components
-from app.infrastructure.security.audit import AuditLogger
+from app.infrastructure.security.audit.audit import AuditLogger
 
 # Authentication Components
-from app.infrastructure.security.auth import (
-    AuthService,
+from app.infrastructure.security.auth.auth_service import (
     AuthenticationService,
-    MFAService,
-    create_access_token,
-    decode_token,
     get_auth_service,
-    validate_access_token
 )
 
 # Encryption Components
 from app.infrastructure.security.encryption import (
-    BaseEncryptionService,
     EncryptionService,
-    FieldEncryptor,
-    decrypt_field,
-    decrypt_phi,
     encrypt_field,
+    decrypt_field,
     encrypt_phi,
+    decrypt_phi,
     get_encryption_key
 )
 
 # JWT Components
-from app.infrastructure.security.jwt import (
+from app.infrastructure.security.jwt.jwt_service import (
     JWTService,
     TokenPayload,
     TokenType,
@@ -56,10 +62,10 @@ from app.infrastructure.security.password import (
 )
 
 # Rate Limiting Components
-from app.infrastructure.security.rate_limiting import DistributedRateLimiter
+from app.infrastructure.security.rate_limiting.rate_limiter import DistributedRateLimiter
 
 # RBAC Components
-from app.infrastructure.security.rbac import RBACService
+from app.infrastructure.security.rbac.rbac_service import RBACService
 
 __all__ = [
     # PHI Security
@@ -67,15 +73,11 @@ __all__ = [
     'PHIFormatter',
     'PHIRedactionHandler',
     'PHISanitizer',
+    'get_sanitizer',
     
     # Authentication
-    'AuthService',
     'AuthenticationService',
-    'MFAService',
-    'create_access_token',
-    'decode_token',
     'get_auth_service',
-    'validate_access_token',
     
     # JWT
     'JWTService',
@@ -84,13 +86,11 @@ __all__ = [
     'get_jwt_service',
     
     # Encryption
-    'BaseEncryptionService',
     'EncryptionService',
-    'FieldEncryptor',
-    'decrypt_field',
-    'decrypt_phi',
     'encrypt_field',
+    'decrypt_field',
     'encrypt_phi',
+    'decrypt_phi',
     'get_encryption_key',
     
     # Password

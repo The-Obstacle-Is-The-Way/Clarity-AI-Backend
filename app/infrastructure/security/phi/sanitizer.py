@@ -345,18 +345,20 @@ class PHISanitizer:
         r"\b(SSN\s+)\d{3}-\d{2}-\d{4}\b": r"\1[REDACTED SSN]",  # Match "SSN 123-45-6789"
         r"\d{3}-\d{2}-\d{4}": "[REDACTED SSN]",  # Match standalone SSNs
         
-        # Updated Address patterns
+        # Updated Address patterns - fixed to properly replace in test cases
         r"\b(lives\s+at\s+)(\d+\s+[A-Za-z]+\s+[A-Za-z]+)(,\s+[A-Za-z]+,\s+[A-Z]{2}\s+\d{5})\b": 
             r"\1[REDACTED ADDRESS]\3",  # Match "lives at 123 Main St, Anytown, CA 90210"
         r"\b\d+\s+[A-Za-z]+\s+[A-Za-z]+\b": "[REDACTED ADDRESS]",  # Match standalone "123 Main St"
+        r"\b\d+\s+[A-Za-z]+\s+St\b": "[REDACTED ADDRESS]",  # Match "123 Main St"
         
         # Updated Email patterns
         r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b": "[REDACTED EMAIL]",  # Match email addresses
         r"\b(at\s+)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\s+for)\b": r"\1[REDACTED EMAIL]\2",  # Match "at john.smith@example.com for"
         
-        # Updated MRN patterns
-        r"\bMRN#\d+\b": "[REDACTED MRN]",  # Match "MRN#987654"
-        r"\bMRN\s*\d+\b": "[REDACTED MRN]",  # Match "MRN 123456"
+        # MRN patterns completely redone
+        r"MRN#\d+": "[REDACTED MRN]",  # Match "MRN#987654" 
+        r"MRN\s*\d+": "[REDACTED MRN]",  # Match "MRN 123456"
+        r"Patient\s+MRN#\d+": "Patient [REDACTED MRN]",  # Match "Patient MRN#987654"
     }
     
     # Common non-PHI fields that contain similar patterns but are safe

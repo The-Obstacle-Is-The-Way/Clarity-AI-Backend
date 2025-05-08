@@ -1,6 +1,8 @@
 """
-DEPRECATED: For backward compatibility only. 
+DEPRECATED: This module is maintained for backward compatibility only.
 Import from app.infrastructure.security.encryption.encryption_service instead.
+
+This file will be removed in a future version. Update your imports to use the new path.
 """
 
 import warnings
@@ -13,8 +15,13 @@ warnings.warn(
 )
 
 from app.infrastructure.security.encryption.encryption_service import (
-    EncryptionService
+    EncryptionService,
+    encrypt_field,
+    decrypt_field,
+    encrypt_phi,
+    decrypt_phi,
+    get_encryption_key
 )
 
 # Re-export for backward compatibility
-__all__ = ["EncryptionService"]
+__all__ = ["EncryptionService", "encrypt_field", "decrypt_field", "encrypt_phi", "decrypt_phi", "get_encryption_key"]
