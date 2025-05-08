@@ -164,6 +164,55 @@ class Database:
 _db_instance = None
 
 
+class DatabaseFactory:
+    """
+    Factory class for creating and managing database instances.
+    
+    This singleton factory ensures that only one database instance is created
+    per application lifecycle, improving performance and resource utilization.
+    """
+    _instance = None
+    _settings_provider = None
+    
+    @classmethod
+    def initialize(cls, settings_provider=None):
+        """
+        Initialize the factory with a settings provider function.
+        
+        Args:
+            settings_provider: Function that returns Settings instance
+        """
+        cls._settings_provider = settings_provider or get_settings
+        
+    @classmethod
+    def get_database(cls):
+        """
+        Get or create the database instance.
+        
+        Returns:
+            Database: The singleton database instance
+        """
+        if cls._instance is None:
+            if cls._settings_provider is None:
+                cls._settings_provider = get_settings
+            
+            settings = cls._settings_provider()
+            cls._instance = Database(settings)
+            
+        return cls._instance
+    
+    @classmethod
+    def reset(cls):
+        """Reset the singleton instance for testing purposes."""
+        cls._instance = None
+        cls._settings_provider = None
+
+
+def get_database():
+    """Legacy get_database function that uses DatabaseFactory."""
+    return DatabaseFactory.get_database()
+
+
 def get_db_instance() -> Database:
     """
     Get the database singleton instance.
