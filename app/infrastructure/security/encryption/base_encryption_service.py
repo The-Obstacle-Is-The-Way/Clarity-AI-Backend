@@ -269,63 +269,50 @@ decryption methods for strings and dictionaries.
             logger.exception(f"Encryption failed: {e}")
             raise ValueError("Encryption operation failed.") from e
 
-    def decrypt(self, encrypted_value: Optional[str]) -> Optional[str]:
-        """
-        Decrypt a value encrypted by this service (or previous key).
+    def decrypt(self, data: str) -> str:
+        """Decrypt data encrypted with the current or previous encryption key.
         
         Args:
-            encrypted_value: Encrypted string (with version prefix).
+            data: Encrypted data as base64-encoded string with version prefix
             
         Returns:
-            Decrypted string value, or None if input is None.
+            str: Decrypted data
             
         Raises:
-            ValueError: If decryption fails (invalid format, bad key, etc.).
-            InvalidToken: If the token is not valid for any available keys.
+            ValueError: If decryption fails
+            
+        Note:
+            This method handles keys gracefully, showing no PHI in error messages.
         """
-        if encrypted_value is None:
-            return None
-
-        # Handle potential non-string inputs (bytes, invalid formats, etc.)
+        if not data:
+            return data
+            
         try:
-            if not isinstance(encrypted_value, str):
-                encrypted_value = str(encrypted_value)
-                logger.warning(f"Attempting to decrypt non-string type: {type(encrypted_value)}")
-
-            # Strip version prefix if it exists
-            if encrypted_value.startswith(self.VERSION_PREFIX):
-                encrypted_data = encrypted_value[len(self.VERSION_PREFIX):]
+            if data.startswith(self.VERSION_PREFIX):
+                encrypted_data = data[len(self.VERSION_PREFIX):].encode()
+                try:
+                    # Try with primary key first
+                    return self.cipher.decrypt(encrypted_data).decode('utf-8')
+                except Exception as e:
+                    # If primary key fails and we have a previous key, try with previous key
+                    if self.previous_cipher:
+                        try:
+                            return self.previous_cipher.decrypt(encrypted_data).decode('utf-8')
+                        except Exception as previous_e:
+                            logger.error(f"Failed to decrypt with primary and previous keys: {type(e).__name__}, {type(previous_e).__name__}")
+                            raise ValueError("Decryption failed with both primary and previous keys")
+                    else:
+                        # No previous key available
+                        logger.error(f"Decryption failed: {type(e).__name__}")
+                        raise ValueError("Decryption failed")
             else:
-                encrypted_data = encrypted_value
-                logger.warning(f"Decrypting data without version prefix: {encrypted_value[:10]}...")
-
-            try:
-                # First try with primary key
-                encrypted_bytes = encrypted_data.encode()
-                decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
-                return decrypted_bytes.decode()
-            except InvalidToken:
-                # If primary key fails, try with previous key if available
-                if self.previous_cipher:
-                    try:
-                        decrypted_bytes = self.previous_cipher.decrypt(encrypted_bytes)
-                        return decrypted_bytes.decode()
-                    except InvalidToken:
-                        logger.error("Decryption failed with both primary and previous keys.")
-                        raise InvalidToken("Invalid Token: Decryption failed with all available keys.")
-                else:
-                    logger.error("Decryption failed with primary key and no previous key is available.")
-                    raise InvalidToken("Invalid Token: Decryption failed with all available keys.")
-
-        except InvalidToken:
-            # Propagate InvalidToken for specific error handling in callers
-            raise
-        except UnicodeDecodeError as ude:
-            logger.error(f"Decrypted data is not valid UTF-8: {ude}")
-            raise ValueError("Decrypted data is not valid UTF-8.") from ude
+                logger.warning(f"Attempted to decrypt data without version prefix")
+                raise ValueError("Invalid encrypted data format (missing version prefix)")
         except Exception as e:
-            logger.exception(f"Decryption failed: {e}")
-            raise ValueError(f"Decryption failed: {e}") from e
+            logger.error(f"Error during decryption: {type(e).__name__}")
+            if "utf-8" in str(e):
+                raise ValueError("Decryption failed - invalid UTF-8 data") 
+            raise ValueError(f"Decryption failed: {type(e).__name__}")
 
     def encrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively encrypt all string values in a dictionary.

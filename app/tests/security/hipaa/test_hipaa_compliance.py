@@ -31,6 +31,15 @@ from app.tests.security.utils.base_security_test import BaseSecurityTest
 # Import necessary modules for testing HIPAA compliance
 from app.tests.security.utils.test_mocks import MockAuditLogger, MockRBACService
 
+# Create mock settings first to avoid AttributeError during test collection
+settings_mock = MagicMock()
+# Ensure PHI_ENCRYPTION_KEY is always set to prevent collection errors
+settings_mock.PHI_ENCRYPTION_KEY = "test_key_for_phi_encryption_testing_only"
+settings_mock.JWT_SECRET_KEY = "test_jwt_secret_key_for_testing_only"
+settings_mock.JWT_ALGORITHM = "HS256"
+settings_mock.JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+settings_mock.USE_TLS = True
+
 # Import application code
 try:
     from app.core.config.settings import get_settings
@@ -67,26 +76,8 @@ except ImportError as e:
     # This allows the tests to be defined even before implementation
     print(f"Warning: Could not import required modules: {e!s}")
 
-    # Mock the missing modules/functions
-    # from unittest.mock import MagicMock # Already imported at top level
-
-    # Mock the settings object directly if imports fail
-    # Define the expected attributes for the spec
-    settings_spec = {
-        'PHI_ENCRYPTION_KEY': str,
-        'JWT_SECRET_KEY': str,
-        'JWT_ALGORITHM': str,
-        'JWT_ACCESS_TOKEN_EXPIRE_MINUTES': int,
-        'USE_TLS': bool
-    }
-    settings = MagicMock(
-        spec_set=settings_spec,
-        PHI_ENCRYPTION_KEY="test_key_for_phi_encryption_testing_only",
-        JWT_SECRET_KEY="test_jwt_secret_key_for_testing_only",
-        JWT_ALGORITHM="HS256",
-        JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30,
-        USE_TLS=True
-    )
+    # Use the already created mock settings - this is the key fix
+    settings = settings_mock
 
     @pytest.mark.db_required
     class AuthenticationError(Exception):

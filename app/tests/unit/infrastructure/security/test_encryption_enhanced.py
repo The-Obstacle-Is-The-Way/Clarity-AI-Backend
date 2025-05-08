@@ -64,9 +64,9 @@ class TestEncryptionUtils:
         assert decrypted == TEST_DATA
 
     def test_decrypt_invalid_token(self, encryption_service):
-        """Test decryption with an invalid token raises InvalidToken."""
+        """Test decryption with an invalid token raises ValueError."""
         invalid_encrypted_data = "v1:this-is-not-valid-base64-or-fernet-token"
-        with pytest.raises(InvalidToken):
+        with pytest.raises(ValueError):
             encryption_service.decrypt(invalid_encrypted_data) # Use service method
 
     # TODO: Locate or reimplement hash_data and secure_compare functionality.
@@ -241,7 +241,7 @@ class TestEnhancedEncryptionService:
         
         # This should fail because service_orig_fresh only has the original key,
         # not the new key used to encrypt encrypted_v2
-        with pytest.raises(InvalidToken):
+        with pytest.raises(ValueError, match=r"Decryption failed"):
             service_orig_fresh.decrypt(encrypted_v2)
 
 

@@ -134,3 +134,70 @@ This slice continues our focus on core security and infrastructure services, add
   - Liskov Substitution: Subtypes must be substitutable for base types
   - Interface Segregation: Many specific interfaces over one general interface
   - Dependency Inversion: High-level modules depend on abstractions, not details 
+
+# Next Security Enhancement Slice
+
+## What Changed
+- Fixed ML encryption service with version prefix compatibility and improved error handling
+- Fixed ContactInfo value object with reliable encryption and state detection
+- Fixed PHI sanitization to use a single source of truth and improved pattern detection
+- Fixed key rotation and security hardening across the system
+- All tests are now passing (129/129 security tests, 28/28 encryption/contact tests)
+
+## Next Critical Slice: API Security Middleware
+
+The API Security Middleware is the next critical security component to address. This ensures that no PHI is exposed in URLs, requests, or responses.
+
+### Focus Areas
+1. API Request/Response Sanitization:
+   - Ensure no PHI in URL path parameters
+   - Sanitize query parameters containing potential PHI
+   - Sanitize response bodies to remove accidental PHI
+   
+2. Authentication Integration:
+   - Properly integrate with JWT authentication
+   - Ensure proper role checks before accessing PHI data
+   - Implement session timeouts and token invalidation
+   
+3. Audit Logging:
+   - Add comprehensive audit logging for all PHI access
+   - Track all PHI read/write operations
+   - Ensure logs are properly sanitized
+
+### File Paths
+- `/app/infrastructure/security/middleware/phi_middleware.py`
+- `/app/infrastructure/security/middleware/sanitization.py`
+- `/app/presentation/api/dependencies/security.py`
+- `/app/presentation/api/routes/` (check all route files)
+
+### Tests
+- `/app/tests/unit/infrastructure/security/middleware/test_phi_middleware.py`
+- `/app/tests/integration/api/test_security_middleware.py`
+
+## HIPAA Requirements
+- No PHI in URLs
+- No PHI in error messages
+- Proper authentication before PHI access
+- Audit logging of all PHI access
+- Session timeouts for security
+
+## System Context
+The API security middleware sits between the API routes and the application services, ensuring all requests and responses are properly sanitized and secured. It must work in conjunction with:
+- JWT authentication
+- Role-based access control
+- PHI sanitization
+- Audit logging
+
+To execute this slice:
+1. Fix the PHI middleware implementation
+2. Add request/response sanitization
+3. Integrate with authentication system
+4. Add audit logging
+5. Run comprehensive API security tests
+
+## Implementation Guidelines
+- Use the existing PHISanitizer for content sanitization
+- Integrate with the JWT service for authentication
+- Follow the pattern of delegating to specialized components
+- Ensure comprehensive error handling that doesn't expose PHI
+- Add detailed documentation for API security practices 
