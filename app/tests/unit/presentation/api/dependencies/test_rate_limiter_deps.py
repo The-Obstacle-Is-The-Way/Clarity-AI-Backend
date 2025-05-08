@@ -256,12 +256,20 @@ class TestRateLimitDependencyIntegration:
 
         # Get the config passed to limiter.track_request
         call_args = mock_limiter.track_request.call_args
-        args = call_args[0] if call_args and len(call_args) > 0 else ()
-        kwargs = call_args[1] if call_args and len(call_args) > 1 else {}
         
-        config = kwargs.get('config', args[1] if len(args) > 1 else None)
+        # Extract the config parameter (the second positional argument)
+        # Handle the fact that AsyncMock stores args differently
+        config = None
+        if call_args and len(call_args) >= 2:
+            if isinstance(call_args[1], dict) and 'config' in call_args[1]:
+                # It was passed as a keyword argument
+                config = call_args[1]['config']
+            elif len(call_args[0]) >= 2:
+                # It was passed as a positional argument
+                config = call_args[0][1]
         
         # Verify higher limits
+        assert config is not None
         assert config.requests == 100
 
     @pytest.mark.asyncio

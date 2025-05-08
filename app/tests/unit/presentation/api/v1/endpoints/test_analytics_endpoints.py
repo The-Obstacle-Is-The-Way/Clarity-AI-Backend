@@ -72,7 +72,11 @@ def mock_sqlalchemy_base(monkeypatch):
     # Create comprehensive mock SQLAlchemy objects
     mock_base = MagicMock()
     mock_registry = MagicMock()
-    mock_registry._class_registry = {}  # Use correct attribute
+    
+    # Properly set up the registry with a dictionary for _class_registry
+    mock_registry._class_registry = {}
+    
+    # Set up metadata and other attributes
     mock_metadata = MagicMock()
     mock_mapper = MagicMock()
     mock_session = MagicMock()
@@ -84,6 +88,9 @@ def mock_sqlalchemy_base(monkeypatch):
         metadata = mock_metadata
         registry = mock_registry
         
+    # Properly set up critical attributes for the mock registry
+    mock_registry.metadata = mock_metadata
+    
     # Patch SQLAlchemy's configure_mappers function to prevent mapping errors
     monkeypatch.setattr('sqlalchemy.orm.configure_mappers', MagicMock())
     
@@ -92,7 +99,7 @@ def mock_sqlalchemy_base(monkeypatch):
     monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry.metadata', mock_metadata)
     monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.models.base.Base', FakeBase)
     
-    # Patch the entire registry module if needed
+    # Patch the entire registry module
     monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry', mock_registry)
     
     # Patch mixins to avoid initialization errors
@@ -111,6 +118,7 @@ def mock_sqlalchemy_base(monkeypatch):
     monkeypatch.setattr('sqlalchemy.create_engine', lambda *args, **kwargs: mock_engine)
     monkeypatch.setattr('sqlalchemy.ext.asyncio.create_async_engine', lambda *args, **kwargs: mock_engine)
     
+    # Return the mock Base class for additional patching if needed
     return FakeBase
 
 # --- Test Fixtures ---
