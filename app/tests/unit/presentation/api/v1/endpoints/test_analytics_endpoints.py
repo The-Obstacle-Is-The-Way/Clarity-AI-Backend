@@ -72,6 +72,7 @@ def mock_sqlalchemy_base(monkeypatch):
     # Create comprehensive mock SQLAlchemy objects
     mock_base = MagicMock()
     mock_registry = MagicMock()
+    mock_registry._class_registry = {}  # Use correct attribute
     mock_metadata = MagicMock()
     mock_mapper = MagicMock()
     mock_session = MagicMock()
@@ -86,11 +87,13 @@ def mock_sqlalchemy_base(monkeypatch):
     # Patch SQLAlchemy's configure_mappers function to prevent mapping errors
     monkeypatch.setattr('sqlalchemy.orm.configure_mappers', MagicMock())
     
-    # Patch SQLAlchemy's registry and metadata in multiple locations
-    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry.registry', mock_registry)
+    # Patch SQLAlchemy's registry attributes at the module level
+    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry._class_registry', {})
     monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry.metadata', mock_metadata)
     monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.models.base.Base', FakeBase)
-    # Remove the base_class.Base patch since that module doesn't have a Base class
+    
+    # Patch the entire registry module if needed
+    monkeypatch.setattr('app.infrastructure.persistence.sqlalchemy.registry', mock_registry)
     
     # Patch mixins to avoid initialization errors
     monkeypatch.setattr('app.infrastructure.database.base_class.TimestampMixin', MagicMock())

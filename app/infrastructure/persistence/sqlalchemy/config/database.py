@@ -67,15 +67,20 @@ class Database:
         env_uri_override = os.getenv("SQLALCHEMY_DATABASE_URI")
         logger.info(f"[DB._create_engine] ENTERING. ENVIRONMENT={self.settings.ENVIRONMENT}")
         logger.info(f"[DB._create_engine] Settings URI: {self.settings.DATABASE_URL}")
-        logger.info(f"[DB._create_engine] Env Var Override URI: {env_uri_override}")
+        logger.info(f"[DB._create_engine] [REDACTED NAME] Override URI: {env_uri_override}")
 
         # Use the assembled connection string directly from main settings
         connection_url = str(self.settings.DATABASE_URL)
-        logger.info(f"[DB._create_engine] Final Connection URL for create_async_engine: {connection_url}")
+        
+        # Ensure SQLite connections use the correct async driver (sqlite+aiosqlite)
+        if connection_url.startswith("sqlite:"):
+            connection_url = connection_url.replace("sqlite:", "sqlite+aiosqlite:", 1)
+        
+        logger.info(f"[DB._create_engine] [REDACTED NAME] URL for create_async_engine: {connection_url}")
 
         # --- Pooling configuration --- 
         # Use NullPool for SQLite in test environment to avoid potential issues
-        if connection_url.startswith("sqlite"):
+        if connection_url.startswith("sqlite+aiosqlite:"):
             pooling_args = {"poolclass": NullPool}
             logger.info("[DB._create_engine] Using NullPool for SQLite.")
         else:
@@ -132,6 +137,11 @@ class Database:
         """Create all tables defined in the models."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            
+    async def drop_tables(self):
+        """Drop all tables defined in the models."""
+        async with self.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
             
     async def dispose(self):
         """Dispose the engine and all connections."""

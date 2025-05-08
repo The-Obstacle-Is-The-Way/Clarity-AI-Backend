@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
 from app.presentation.api.dependencies.rate_limiter_deps import (
@@ -81,13 +82,14 @@ def app_with_rate_limited_routes(mock_limiter):
     async def factory_endpoint(rate_check=Depends(rate_limit(requests=15, window_seconds=30))):
         return {"message": "factory"}
 
-    return TestClient(app)
+    return app  # Return the FastAPI app directly instead of a TestClient
 
 
 @pytest.fixture
-def client(app_with_rate_limited_routes):
+async def client(app_with_rate_limited_routes):
     """Create a test client for the FastAPI app."""
-    return app_with_rate_limited_routes
+    async with AsyncClient(app=app_with_rate_limited_routes, base_url="http://testserver") as async_client:
+        yield async_client
 
 
 class TestRateLimitDependency:
@@ -204,13 +206,14 @@ class TestRateLimitDependency:
 class TestRateLimitDependencyIntegration:
     """Integration tests for the rate limit dependency with FastAPI."""
 
-    def test_basic_route_allowed(self, client, mock_limiter):
+    @pytest.mark.asyncio
+    async def test_basic_route_allowed(self, client, mock_limiter):
         """Test a basic route that is under the rate limit."""
         # Configure limiter to return under limit
         mock_limiter.track_request.return_value = (5, 60)  # 5 requests, 60 seconds left
 
         # Make request
-        response = client.get("/api/basic")
+        response = await client.get("/api/basic")
 
         # Should succeed
         assert response.status_code == 200
@@ -219,22 +222,24 @@ class TestRateLimitDependencyIntegration:
         # Check limiter was called
         assert mock_limiter.track_request.called
 
-    def test_basic_route_blocked(self, client, mock_limiter):
+    @pytest.mark.asyncio
+    async def test_basic_route_blocked(self, client, mock_limiter):
         """Test a basic route that exceeds the rate limit."""
         # Configure limiter to return over limit
         mock_limiter.track_request.return_value = (11, 30)  # 11 requests, 30 seconds left
 
         # Make request
-        response = client.get("/api/basic")
+        response = await client.get("/api/basic")
 
         # Should be rate limited
         assert response.status_code == 429
         assert "exceeded" in response.json()["detail"].lower()
 
-    def test_sensitive_route_uses_scope(self, client, mock_limiter):
+    @pytest.mark.asyncio
+    async def test_sensitive_route_uses_scope(self, client, mock_limiter):
         """Test that the sensitive route uses the correct scope key."""
         # Make request
-        client.post("/api/sensitive")
+        await client.post("/api/sensitive")
 
         # Get the key used in limiter.track_request
         args, _ = mock_limiter.track_request.call_args
@@ -243,25 +248,31 @@ class TestRateLimitDependencyIntegration:
         # Verify correct scope was used
         assert "sensitive:" in key
 
-    def test_admin_route_uses_higher_limits(self, client, mock_limiter):
+    @pytest.mark.asyncio
+    async def test_admin_route_uses_higher_limits(self, client, mock_limiter):
         """Test that the admin route uses higher rate limits."""
         # Make request
-        client.get("/api/admin")
+        await client.get("/api/admin")
 
         # Get the config passed to limiter.track_request
-        _, kwargs = mock_limiter.track_request.call_args
+        call_args = mock_limiter.track_request.call_args
+        args = call_args[0] if call_args and len(call_args) > 0 else ()
+        kwargs = call_args[1] if call_args and len(call_args) > 1 else {}
+        
         config = kwargs.get('config', args[1] if len(args) > 1 else None)
         
         # Verify higher limits
         assert config.requests == 100
 
-    def test_factory_route(self, client, mock_limiter):
+    @pytest.mark.asyncio
+    async def test_factory_route(self, client, mock_limiter):
         """Test a route using the factory function."""
         # Make request
-        client.get("/api/factory")
+        response = await client.get("/api/factory")
 
         # Verify limiter was called
-        assert mock_limiter.track_request.called
+        # For AsyncMock we need to wait for it to be called
+        assert mock_limiter.track_request.called or mock_limiter.track_request.await_count > 0
 
 
 @pytest.fixture
