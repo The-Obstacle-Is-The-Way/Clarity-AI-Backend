@@ -22,7 +22,7 @@ from app.infrastructure.logging.logger import get_logger
 
 # CORRECTED Import: Use UserModel from infrastructure, and Role from domain
 from app.infrastructure.models.user_model import UserModel
-from app.infrastructure.security.jwt_service import IJwtService
+from app.infrastructure.security.jwt.jwt_service import IJwtService
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 logger = get_logger(__name__)

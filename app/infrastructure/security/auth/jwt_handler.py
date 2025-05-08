@@ -59,6 +59,44 @@ def create_access_token(
         logger.error(f"Token generation failed: {e}")
         raise ValueError(f"Token generation failed: {e}")
 
+def create_refresh_token(
+    data: dict[str, Any], 
+    expires_delta: timedelta | None = None
+) -> str:
+    """
+    Create a new JWT refresh token with longer expiration.
+    
+    Args:
+        data: Data to encode in the token
+        expires_delta: Optional expiration time delta
+        
+    Returns:
+        Encoded JWT refresh token
+    """
+    settings = get_settings()
+    
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        # Default refresh token expiration (typically longer than access token)
+        days = getattr(settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', 7)
+        expire = datetime.utcnow() + timedelta(days=days)
+        
+    to_encode.update({"exp": expire, "token_type": "refresh"})
+    
+    # Encode the token
+    try:
+        encoded_jwt = jwt.encode(
+            to_encode, 
+            settings.JWT_SECRET_KEY, 
+            algorithm=settings.JWT_ALGORITHM
+        )
+        return encoded_jwt
+    except Exception as e:
+        logger.error(f"Refresh token generation failed: {e}")
+        raise ValueError(f"Refresh token generation failed: {e}")
+
 def decode_token(token: str) -> dict[str, Any]:
     """
     Decode and validate a JWT token.
@@ -84,6 +122,64 @@ def decode_token(token: str) -> dict[str, Any]:
     except JWTError as e:
         logger.warning(f"JWT token validation failed: {e}")
         raise
+
+def get_token_data(token: str) -> dict[str, Any]:
+    """
+    Get the data from a JWT token without validating signature or expiration.
+    
+    Args:
+        token: The JWT token to decode
+        
+    Returns:
+        Decoded token payload without validation
+        
+    Raises:
+        ValueError: If token format is invalid
+    """
+    try:
+        # Decode without verification for inspection purposes only
+        payload = jwt.decode(
+            token,
+            options={"verify_signature": False, "verify_exp": False}
+        )
+        return payload
+    except Exception as e:
+        logger.error(f"Token data extraction failed: {e}")
+        raise ValueError(f"Invalid token format: {e}")
+
+def validate_access_token(token: str) -> dict[str, Any]:
+    """
+    Validate an access token and return its payload if valid.
+    
+    Args:
+        token: The JWT token to validate
+        
+    Returns:
+        Decoded token payload if valid
+        
+    Raises:
+        HTTPException: If token is invalid, expired, or not an access token
+    """
+    try:
+        payload = decode_token(token)
+        
+        # Check if this is an access token (optional, based on your token structure)
+        token_type = payload.get("token_type", "access")
+        if token_type != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        return payload
+        
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict[str, Any]:
     """

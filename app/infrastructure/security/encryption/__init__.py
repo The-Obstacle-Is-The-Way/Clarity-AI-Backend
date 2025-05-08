@@ -19,6 +19,9 @@ from app.infrastructure.security.encryption.base_encryption_service import (
     get_encryption_key,
 )
 
+# Include the EncryptionService implementation
+from app.infrastructure.security.encryption.encryption_service import EncryptionService
+
 # Field-level encryption utilities
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
 
@@ -94,6 +97,7 @@ def generate_phi_key() -> str:
 # Set default exports to maintain clean imports across the codebase
 __all__ = [
     'BaseEncryptionService',
+    'EncryptionService',
     'FieldEncryptor',
     'decrypt_field',
     'decrypt_phi',

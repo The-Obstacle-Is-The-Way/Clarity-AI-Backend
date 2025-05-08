@@ -17,7 +17,7 @@ except ImportError:
 # Import TokenPayload from its new canonical location
 try:
     # Ensure this path matches the actual location of TokenPayload in jwt_service.py
-    from app.infrastructure.security.jwt_service import TokenPayload 
+    from app.infrastructure.security.jwt.jwt_service import TokenPayload 
 except ImportError:
     TokenPayload = Any # Fallback
 

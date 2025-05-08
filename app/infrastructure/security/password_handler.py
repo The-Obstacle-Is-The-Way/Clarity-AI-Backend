@@ -1,10 +1,23 @@
 """
-Password handling implementation.
-
-This module provides secure password handling functionality including
-hashing and verification using industry-standard libraries and algorithms
-suitable for HIPAA-compliant healthcare applications.
+DEPRECATED: For backward compatibility only. 
+Import from app.infrastructure.security.password.password_handler instead.
 """
+
+import warnings
+
+warnings.warn(
+    "Importing from app.infrastructure.security.password_handler is deprecated. "
+    "Please import from app.infrastructure.security.password.password_handler instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
+from app.infrastructure.security.password.password_handler import (
+    PasswordHandler
+)
+
+# Re-export for backward compatibility
+__all__ = ["PasswordHandler"]
 
 import logging
 

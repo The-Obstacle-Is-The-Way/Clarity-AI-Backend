@@ -12,7 +12,7 @@ from app.core.interfaces.services.encryption_service_interface import (
     IEncryptionService,
 )
 from app.infrastructure.di.container import get_container
-from app.infrastructure.security.encryption_service import EncryptionService
+from app.infrastructure.security.encryption.encryption_service import EncryptionService
 
 # Re-export from database.py for backward compatibility
 from app.presentation.api.dependencies.database import DatabaseSessionDep, get_repository

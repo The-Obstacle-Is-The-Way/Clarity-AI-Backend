@@ -8,7 +8,7 @@ Protected Health Information in accordance with HIPAA Security Rule requirements
 from enum import Enum
 from typing import Any
 
-from .sanitizer import PHISanitizer, get_sanitized_logger
+from .sanitizer import PHISanitizer as OriginalSanitizer, get_sanitized_logger
 
 # Configure logger
 logger = get_sanitized_logger(__name__)
@@ -31,7 +31,7 @@ class PHIService:
     
     def __init__(self):
         """Initialize with the consolidated PHI sanitizer."""
-        self._sanitizer = PHISanitizer()
+        self._sanitizer = OriginalSanitizer()
     
     def sanitize(self, data: Any, sensitivity: str | None = None) -> Any:
         """
@@ -44,19 +44,40 @@ class PHIService:
         Returns:
             Sanitized data with PHI redacted
         """
-        return self._sanitizer.sanitize(data)
+        if data is None:
+            return None
+        
+        if isinstance(data, str):
+            return self.sanitize_text(data)
+        elif isinstance(data, dict):
+            return self.sanitize_dict(data)
+        elif isinstance(data, list):
+            return self.sanitize_list(data)
+        
+        # Default case, try to stringify
+        try:
+            str_data = str(data)
+            return self.sanitize_text(str_data)
+        except:
+            # If we can't stringify it, return as is
+            return data
     
-    def sanitize_text(self, text: str) -> str:
+    def sanitize_text(self, text: str, sensitivity: str | None = None, replacement: str | None = None) -> str:
         """
         Sanitize a string by redacting PHI.
         
         Args:
             text: Text to sanitize
+            sensitivity: Optional sensitivity level (ignored)
+            replacement: Optional replacement template (ignored)
             
         Returns:
             Sanitized text with PHI redacted
         """
-        return self._sanitizer.sanitize_text(text)
+        if text is None:
+            return None
+        
+        return self._sanitizer.sanitize_string(text)
     
     def sanitize_string(self, text: str) -> str:
         """
@@ -68,7 +89,7 @@ class PHIService:
         Returns:
             Sanitized text with PHI redacted
         """
-        return self._sanitizer.sanitize_text(text)
+        return self._sanitizer.sanitize_string(text)
     
     def sanitize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """
@@ -80,7 +101,21 @@ class PHIService:
         Returns:
             Dictionary with PHI values sanitized
         """
-        return self._sanitizer.sanitize_dict(data)
+        if data is None:
+            return None
+        
+        result = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                result[key] = self.sanitize_text(value)
+            elif isinstance(value, dict):
+                result[key] = self.sanitize_dict(value)
+            elif isinstance(value, list):
+                result[key] = self.sanitize_list(value)
+            else:
+                result[key] = value
+        
+        return result
     
     def sanitize_list(self, data: list[Any]) -> list[Any]:
         """
@@ -92,7 +127,21 @@ class PHIService:
         Returns:
             List with PHI values sanitized
         """
-        return self._sanitizer.sanitize_list(data)
+        if data is None:
+            return None
+        
+        result = []
+        for item in data:
+            if isinstance(item, str):
+                result.append(self.sanitize_text(item))
+            elif isinstance(item, dict):
+                result.append(self.sanitize_dict(item))
+            elif isinstance(item, list):
+                result.append(self.sanitize_list(item))
+            else:
+                result.append(item)
+        
+        return result
     
     def contains_phi(self, text: str) -> bool:
         """
@@ -104,7 +153,11 @@ class PHIService:
         Returns:
             True if PHI found, False otherwise
         """
-        return self._sanitizer.contains_phi(text)
+        if text is None:
+            return False
+            
+        sanitized = self.sanitize_text(text)
+        return sanitized != text
     
     def sanitize_json(self, json_str: str) -> str:
         """
@@ -145,8 +198,8 @@ def sanitize_phi(data: Any) -> Any:
     Returns:
         Sanitized data
     """
-    sanitizer = PHISanitizer()
-    return sanitizer.sanitize(data)
+    service = PHIService()
+    return service.sanitize(data)
     
 def contains_phi(text: str) -> bool:
     """
@@ -158,8 +211,8 @@ def contains_phi(text: str) -> bool:
     Returns:
         True if PHI found, False otherwise
     """
-    sanitizer = PHISanitizer()
-    return sanitizer.contains_phi(text)
+    service = PHIService()
+    return service.contains_phi(text)
     
 def get_phi_service() -> PHIService:
     """

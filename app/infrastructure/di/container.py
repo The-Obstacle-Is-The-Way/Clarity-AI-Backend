@@ -222,8 +222,8 @@ class DIContainer:
         # Import services and their interfaces
         from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
         from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-        from app.infrastructure.security.auth_service import get_auth_service
-        from app.infrastructure.security.jwt_service import get_jwt_service
+        from app.infrastructure.security.auth.auth_service import get_auth_service
+        from app.infrastructure.security.jwt.jwt_service import get_jwt_service
         
         # Register services directly or via factories
         self.register_factory(AuthServiceInterface, get_auth_service)

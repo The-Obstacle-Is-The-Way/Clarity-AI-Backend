@@ -9,7 +9,7 @@ from fastapi import Depends
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.infrastructure.di.container import get_container
-from app.infrastructure.security.password_handler import PasswordHandler
+from app.infrastructure.security.password.password_handler import PasswordHandler
 from app.presentation.api.dependencies.repositories import get_user_repository
 from app.presentation.api.dependencies.security import get_password_handler
 
