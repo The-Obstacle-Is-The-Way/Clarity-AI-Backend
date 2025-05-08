@@ -500,6 +500,7 @@ async def test_app_with_db_session(
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm import sessionmaker
     
+    # Configure session factory
     session_factory = sessionmaker(
         test_db_engine, 
         class_=AsyncSession,
@@ -515,15 +516,29 @@ async def test_app_with_db_session(
     mock_aws_factory = MagicMock(spec=AWSServiceFactory)
     mock_aws_factory.get_s3_service.return_value = mock_s3_service
     
+    # Override dependencies
     app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
     app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
     app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
+    
+    # Override database session dependency if needed
+    from app.presentation.api.dependencies.repository import get_db_session
+    
+    async def get_test_db_session():
+        async with session_factory() as session:
+            yield session
+    
+    app.dependency_overrides[get_db_session] = get_test_db_session
     
     # Initialize database schema if needed
     async with test_db_engine.begin() as conn:
         from app.infrastructure.persistence.sqlalchemy.registry import metadata as sa_metadata
         await conn.run_sync(sa_metadata.create_all)
+        
+        # Create test data if needed
+        # You can add code here to create necessary test data in the database
     
+    # Use LifespanManager to properly manage app startup/shutdown
     async with LifespanManager(app) as manager:
         yield manager.app
 
@@ -534,19 +549,33 @@ async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> Asyn
         yield client
 
 @pytest_asyncio.fixture
-async def test_app_with_auth_override(test_app_with_db_session: FastAPI) -> FastAPI:
+async def test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_auth_dependency) -> FastAPI:
     """
     Provides a test app with authentication dependencies overridden for testing different
     user roles without actual authentication.
     """
-    from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
+    from app.presentation.api.dependencies.auth import (
+        get_current_user, 
+        get_current_active_user,
+        require_admin_role,
+        require_clinician_role
+    )
     
-    # Import the mock auth fixture
-    from app.tests.integration.api.endpoints.test_actigraphy_endpoints import mock_auth_dependency
-    
-    # Override authentication dependencies
-    # This allows tests to bypass actual JWT validation
-    test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency
-    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency
+    # Override authentication dependencies with appropriate role handlers
+    test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency("PATIENT")
+    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency("DEFAULT")
+    test_app_with_db_session.dependency_overrides[require_admin_role] = mock_auth_dependency("ADMIN")
+    test_app_with_db_session.dependency_overrides[require_clinician_role] = mock_auth_dependency("CLINICIAN")
     
     return test_app_with_db_session
+
+@pytest_asyncio.fixture
+async def authenticated_client(test_app_with_auth_override: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+    """
+    An authenticated test client that can be used to make requests to the API.
+    
+    Yields:
+        AsyncClient: A test client with authentication overrides
+    """
+    async with AsyncClient(app=test_app_with_auth_override, base_url="http://test") as client:
+        yield client
