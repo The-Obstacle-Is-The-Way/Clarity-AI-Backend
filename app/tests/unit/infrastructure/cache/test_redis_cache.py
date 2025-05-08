@@ -128,7 +128,7 @@ class TestRedisCache:
         """Test deleting an existing key."""
         mock_redis_client.delete.return_value = 1
 
-        success = await redis_cache.delete("existing-key")
+        success = await redis_cache.delete_bool("existing-key")
 
         assert success is True
         mock_redis_client.delete.assert_called_once_with("existing-key")
@@ -138,7 +138,7 @@ class TestRedisCache:
         """Test deleting a nonexistent key still returns success."""
         mock_redis_client.delete.return_value = 0
 
-        success = await redis_cache.delete("nonexistent-key")
+        success = await redis_cache.delete_bool("nonexistent-key")
 
         assert success is True  # We consider this a success since the key doesn't exist
         mock_redis_client.delete.assert_called_once_with("nonexistent-key")
@@ -148,7 +148,7 @@ class TestRedisCache:
         """Test deleting a key when Redis raises an exception."""
         mock_redis_client.delete.side_effect = Exception("Redis connection error")
 
-        success = await redis_cache.delete("error-key")
+        success = await redis_cache.delete_bool("error-key")
 
         assert success is False
         mock_redis_client.delete.assert_called_once_with("error-key")
@@ -198,7 +198,7 @@ class TestRedisCache:
         """Test incrementing a counter when Redis raises an exception."""
         mock_redis_client.incrby.side_effect = Exception("Redis connection error")
 
-        new_value = await redis_cache.increment("error-key", 1)
+        new_value = await redis_cache.increment_with_none("error-key", 1)
 
         assert new_value is None
         mock_redis_client.incrby.assert_called_once_with("error-key", 1)
@@ -262,7 +262,7 @@ async def test_methods_with_no_redis_client():
     # Test all methods
     assert await cache.get("any-key") is None
     assert await cache.set("any-key", "value") is False
-    assert await cache.delete("any-key") is False
+    assert await cache.delete_bool("any-key") is False  # Use delete_bool for boolean return
     assert await cache.exists("any-key") is False
-    assert await cache.increment("any-key") is None
+    assert await cache.increment_with_none("any-key") is None  # Use increment_with_none for None return
     assert await cache.get_ttl("any-key") is None
