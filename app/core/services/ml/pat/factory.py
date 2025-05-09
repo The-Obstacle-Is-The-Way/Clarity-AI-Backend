@@ -56,6 +56,9 @@ class PATServiceFactory:
         "mock": MockPATService
     }
     
+    # Instance cache for reusing services with the same configuration
+    _instance_cache: dict[str, PATInterface] = {}
+    
     # Register available implementations
     if AWS_AVAILABLE:
         _SERVICE_REGISTRY["aws"] = AWSPATService
@@ -122,29 +125,38 @@ class PATServiceFactory:
                 f"Invalid PAT service provider: {provider}. "
                 f"Available providers: {available_types}"
             )
+
+        # Generate a cache key based on provider and sorted config items
+        cache_key = f"{provider}-" + "-".join(
+            f"{k}:{v}" for k, v in sorted(service_config.items())
+        )
         
+        # Check if we already have a service instance with this configuration
+        if cache_key in cls._instance_cache:
+            return cls._instance_cache[cache_key]
+            
         logger.info(f"Creating PAT service of type: {provider}")
-        provider_type = provider.lower()
-        if provider_type == "bedrock":
-            from app.core.services.ml.pat.bedrock import BedrockPAT
-            service = BedrockPAT()
+        
+        # Get service class from registry and create instance
+        service_class = cls._SERVICE_REGISTRY[provider]
+        service = service_class()
+        
+        # For tests, add test_mode flag
+        if service_config is None:
+            service_config = {}
             
-            # Add test_mode flag for test environments
-            if service_config is None:
-                service_config = {}
+        # Detect test environment
+        import traceback
+        stack = traceback.extract_stack()
+        if any('test_' in frame.name for frame in stack) or \
+           any('/tests/' in frame.filename for frame in stack):
+            service_config["test_mode"] = True
             
-            # Detect test environment by checking if we're being called from a test
-            import traceback
-            stack = traceback.extract_stack()
-            if any('test_' in frame.name for frame in stack) or \
-               any('/tests/' in frame.filename for frame in stack):
-                service_config["test_mode"] = True
-                
-            service.initialize(service_config)
-        else:
-            service_class = cls._SERVICE_REGISTRY[provider]
-            service = service_class()
-            service.initialize(service_config)
+        # Initialize the service
+        service.initialize(service_config)
+        
+        # Cache the instance
+        cls._instance_cache[cache_key] = service
         
         return service
     

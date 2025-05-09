@@ -15,6 +15,7 @@ from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
     ServiceUnavailableError,
+    ResourceNotFoundError,
 )
 from app.infrastructure.ml.digital_twin.mock import MockDigitalTwinService  # Corrected import path
 
@@ -51,19 +52,18 @@ class TestMockDigitalTwinService:
 
         # Test shutdown
         service.shutdown()
+        # The service should now report as not healthy
         assert not service.is_healthy()
 
         # Test initialization with empty config
         service = MockDigitalTwinService()
         with pytest.raises(InvalidConfigurationError):
             service.initialize({})
-            assert not service.is_healthy()
-
+            
         # Test initialization with invalid config
         service = MockDigitalTwinService()
         with pytest.raises(InvalidConfigurationError):
             service.initialize("not-a-dict")
-            assert not service.is_healthy()
 
     def test_create_session(self, mock_service, sample_patient_id):
         """Test creating a new Digital Twin session."""
@@ -103,10 +103,10 @@ class TestMockDigitalTwinService:
         assert "context" in result
         assert "metadata" in result
 
-        # Test getting a non-existent session (should create a new session)
+        # Test getting a non-existent session
         non_existent_id = str(uuid.uuid4())
-        result = mock_service.get_session(non_existent_id)
-        assert "session_id" in result  # New session created
+        with pytest.raises(ResourceNotFoundError):
+            mock_service.get_session(non_existent_id)
 
         # Test with uninitialized service
         uninitialized_service = MockDigitalTwinService()
@@ -145,10 +145,10 @@ class TestMockDigitalTwinService:
         result = mock_service.send_message(session_id, message)
         assert result["response"] is not None
 
-        # Test sending to a non-existent session (should create a new session)
+        # Test sending to a non-existent session 
         non_existent_id = str(uuid.uuid4())
-        result = mock_service.send_message(non_existent_id, "Test message")
-        assert "session_id" in result  # New session created
+        with pytest.raises(ResourceNotFoundError):
+            mock_service.send_message(non_existent_id, "Test message")
 
         # Test with uninitialized service
         uninitialized_service = MockDigitalTwinService()
@@ -224,13 +224,13 @@ class TestMockDigitalTwinService:
         assert "ended_at" in result
         assert result["metadata"]["status"] == "ended"
 
-        # Verify session no longer exists
+        # Verify session can't be ended again
         with pytest.raises(InvalidRequestError):
             mock_service.end_session(session_id)
 
         # Test ending a non-existent session
         non_existent_id = str(uuid.uuid4())
-        with pytest.raises(InvalidRequestError):
+        with pytest.raises(ResourceNotFoundError):
             mock_service.end_session(non_existent_id)
 
         # Test with uninitialized service

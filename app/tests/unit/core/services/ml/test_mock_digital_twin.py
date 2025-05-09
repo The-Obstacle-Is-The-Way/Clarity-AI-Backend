@@ -84,7 +84,14 @@ class TestMockDigitalTwinService:
         """Test service initialization with various configurations."""
         # Test default initialization
         service = MockDigitalTwinService()
-        service.initialize({})
+        # Empty configuration should raise an error
+        with pytest.raises(InvalidConfigurationError):
+            service.initialize({})
+
+        # Test with valid configuration
+        valid_config = {"mock_config": True}
+        service = MockDigitalTwinService()
+        service.initialize(valid_config)
         assert service.is_healthy() # Converted assertion
 
         # Test with custom configuration
@@ -103,7 +110,7 @@ class TestMockDigitalTwinService:
 
         # Test shutdown (need a service instance)
         service_to_shutdown = MockDigitalTwinService()
-        service_to_shutdown.initialize({})
+        service_to_shutdown.initialize(valid_config)
         service_to_shutdown.shutdown()
         assert not service_to_shutdown.is_healthy() # Converted assertion
 

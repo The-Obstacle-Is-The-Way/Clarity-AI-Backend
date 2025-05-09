@@ -47,6 +47,10 @@ class MockDigitalTwinService(DigitalTwinInterface):
         if not isinstance(config, dict):
             raise InvalidConfigurationError("Configuration must be a dictionary.")
             
+        # Explicitly reject empty dictionaries
+        if not config:
+            raise InvalidConfigurationError("Configuration dictionary cannot be empty.")
+            
         # Special case for tests: when config contains 'invalid' key, raise error
         if 'invalid' in config:
             raise InvalidConfigurationError("Invalid configuration: contains reserved 'invalid' key")
@@ -434,7 +438,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             "duration": f"{duration_minutes:.2f} minutes",
             "summary": summary,
             "metadata": {
-                "status": "completed",
+                "status": "ended",
                 "duration_minutes": duration_minutes,
                 "message_count": len(session["messages"]),
                 "mock": True
