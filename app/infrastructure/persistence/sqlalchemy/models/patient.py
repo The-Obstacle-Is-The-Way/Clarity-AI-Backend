@@ -23,7 +23,8 @@ from sqlalchemy import Enum as SQLEnum
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.domain.utils.datetime_utils import UTC, now_utc
 from app.domain.value_objects.address import Address
-from app.domain.value_objects.emergency_contact import EmergencyContact  # Import EmergencyContact
+from app.domain.value_objects.emergency_contact import EmergencyContact
+from app.core.domain.enums import Gender # Corrected Gender import
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 
@@ -33,7 +34,7 @@ from app.infrastructure.security.encryption.base_encryption_service import BaseE
 from app.infrastructure.security.encryption.encryption_service import EncryptionService
 from app.core.config import settings
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
-from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location
+# from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location # This line will be removed
 import base64 # Import base64 for decoding the key
 
 logger = logging.getLogger(__name__)
