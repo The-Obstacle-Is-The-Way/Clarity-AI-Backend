@@ -262,39 +262,45 @@ class TestPatientEncryptionIntegration:
         
         logger.info(f"[Test] Added and committed PatientModel to session: ID {patient_model.id}")
         
-        stmt = text("SELECT _first_name, _email, _medical_record_number_lve, _contact_details_json FROM patients WHERE id = :patient_id")
+        # CORRECTED: Use actual database column names based on PatientModel definition
+        stmt = text("SELECT first_name, email, mrn, contact_info FROM patients WHERE id = :patient_id")
         result = await session.execute(stmt, {"patient_id": TEST_PATIENT_ID.hex})
         raw_db_row = result.fetchone()
         assert raw_db_row is not None, "Patient not found in DB after commit."
         
         logger.info(f"[Test] Raw DB row: {raw_db_row}")
 
-        assert raw_db_row._first_name != domain_patient.first_name, "First name was not encrypted."
-        decrypted_first_name = encryption_service_fixture.decrypt_string(raw_db_row._first_name)
+        assert raw_db_row.first_name != domain_patient.first_name, "First name was not encrypted."
+        decrypted_first_name = encryption_service_fixture.decrypt_string(raw_db_row.first_name)
         assert decrypted_first_name == domain_patient.first_name, "Decrypted first name mismatch."
 
-        # Assuming domain_patient.email is a simple string attribute
-        if domain_patient.email: # Check if email is not None
-             assert raw_db_row._email != domain_patient.email, "Email was not encrypted."
-             decrypted_email = encryption_service_fixture.decrypt_string(raw_db_row._email)
+        if domain_patient.email:
+             assert raw_db_row.email != domain_patient.email, "Email was not encrypted."
+             decrypted_email = encryption_service_fixture.decrypt_string(raw_db_row.email)
              assert decrypted_email == domain_patient.email, "Decrypted email mismatch."
 
-        # Check EncryptedText field (assuming medical_record_number_lve is one)
-        # This requires domain_patient to have medical_record_number_lve
+        # Check EncryptedString field (mrn)
         if hasattr(domain_patient, 'medical_record_number_lve') and domain_patient.medical_record_number_lve:
-            assert raw_db_row._medical_record_number_lve != domain_patient.medical_record_number_lve
-            decrypted_mrn = encryption_service_fixture.decrypt_string(raw_db_row._medical_record_number_lve)
-            assert decrypted_mrn == domain_patient.medical_record_number_lve
+            # Assuming domain_patient.medical_record_number_lve maps to model._mrn (DB column "mrn")
+            assert raw_db_row.mrn != domain_patient.medical_record_number_lve, "MRN was not encrypted or matches raw domain value."
+            decrypted_mrn = encryption_service_fixture.decrypt_string(raw_db_row.mrn)
+            assert decrypted_mrn == domain_patient.medical_record_number_lve, "Decrypted MRN mismatch."
         
-        # Check EncryptedJSON field (assuming contact_details_json is one)
-        # This requires domain_patient to have contact_details_json (as dict)
-        if hasattr(domain_patient, 'contact_details_json') and domain_patient.contact_details_json:
-            raw_contact_details_str = raw_db_row._contact_details_json
-            assert raw_contact_details_str is not None
-            decrypted_contact_details_str = encryption_service_fixture.decrypt_string(raw_contact_details_str)
-            decrypted_contact_details = json.loads(decrypted_contact_details_str)
-            assert decrypted_contact_details == domain_patient.contact_details_json
-            assert raw_contact_details_str != json.dumps(domain_patient.contact_details_json)
+        # Check EncryptedJSON field (contact_info)
+        if hasattr(domain_patient, 'contact_info') and domain_patient.contact_info:
+            # Assuming domain_patient.contact_info maps to model._contact_info (DB column "contact_info")
+            raw_contact_info_str = raw_db_row.contact_info # This will be the encrypted string from DB
+            assert raw_contact_info_str is not None
+            
+            # Domain patient's contact_info is a Pydantic model (ContactInfo), convert to dict for comparison if needed by test logic
+            domain_contact_info_dict = domain_patient.contact_info.model_dump() if hasattr(domain_patient.contact_info, 'model_dump') else domain_patient.contact_info
+
+            decrypted_contact_info_str = encryption_service_fixture.decrypt_string(raw_contact_info_str)
+            decrypted_contact_info_obj = json.loads(decrypted_contact_info_str) # Parse the decrypted JSON string
+            
+            assert decrypted_contact_info_obj == domain_contact_info_dict, "Decrypted contact_info mismatch."
+            # Ensure the raw string from DB is not the same as a simple json.dumps of the domain dict (means it was encrypted)
+            assert raw_contact_info_str != json.dumps(domain_contact_info_dict), "contact_info was not encrypted."
 
 
     @pytest.mark.asyncio
@@ -317,7 +323,7 @@ class TestPatientEncryptionIntegration:
         
         logger.info(f"[Test] Retrieved PatientModel: ID {retrieved_patient_model.id}, Email (model): {retrieved_patient_model._email}")
 
-        retrieved_domain_patient = retrieved_patient_model.to_domain() # to_domain must handle comprehensive model
+        retrieved_domain_patient = await retrieved_patient_model.to_domain() # ADDED await
         logger.info(f"[Test] Converted to DomainPatient: ID {retrieved_domain_patient.id}, Email (domain): {retrieved_domain_patient.email}")
 
         assert retrieved_domain_patient.id == original_domain_patient.id

@@ -297,36 +297,50 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Emergency Contact components - NOT in core DomainPatient (it has EmergencyContact VO)
         emergency_contact_vo = getattr(patient, 'emergency_contact', None)
         if isinstance(emergency_contact_vo, EmergencyContact):
+            # Store individual fields if direct columns are ever used (legacy or specific queries)
             model._emergency_contact_name = getattr(emergency_contact_vo, 'name', None)
             model._emergency_contact_phone = getattr(emergency_contact_vo, 'phone', None)
             model._emergency_contact_relationship = getattr(emergency_contact_vo, 'relationship', None)
+            # Serialize the VO to the EncryptedJSON field
+            model._emergency_contact_details = emergency_contact_vo.to_dict() # Assuming EmergencyContact has to_dict()
         else:
             model._emergency_contact_name = None
             model._emergency_contact_phone = None
             model._emergency_contact_relationship = None
+            model._emergency_contact_details = None # Ensure it's None if no VO
 
         # Complex / JSON / Text fields - use getattr and then str() for EncryptedText
         # EncryptedJSON fields can take the direct object if it's serializable or None.
-        model._contact_info = getattr(patient, 'contact_info', None) # DomainPatient has this (ContactInfo VO)
-        model._address_details = getattr(patient, 'address_details', None) # Not in DomainPatient, potentially Address VO or dict
-        model._emergency_contact_details = getattr(patient, 'emergency_contact_details', None) # Not in DomainPatient, potentially EC VO or dict
-        model._preferences = getattr(patient, 'preferences', None) # Not in DomainPatient
-        
-        # For EncryptedText fields that might take complex objects from an extended DomainPatient or test data:
-        med_hist_val = getattr(patient, 'medical_history', None)
-        model._medical_history = str(med_hist_val) if med_hist_val is not None else None
-        
-        meds_val = getattr(patient, 'medications', None)
-        model._medications = str(meds_val) if meds_val is not None else None
-        
-        allerg_val = getattr(patient, 'allergies', None)
-        model._allergies = str(allerg_val) if allerg_val is not None else None
-        
-        notes_val = getattr(patient, 'notes', None)
-        model._notes = str(notes_val) if notes_val is not None else None # notes could be complex or simple string
+        # For EncryptedText/EncryptedJSON that store serialized complex types, use json.dumps.
 
-        model._custom_fields = getattr(patient, 'custom_fields', None) # Not in DomainPatient
-        model._extra_data = getattr(patient, 'extra_data', None) # Not in DomainPatient
+        contact_info_vo = getattr(patient, 'contact_info', None)
+        model._contact_info = contact_info_vo # EncryptedJSON handles Pydantic model serialization directly
+
+        address_details_vo = getattr(patient, 'address_details', None) # Not in current DomainPatient, but if it were a VO/dict
+        model._address_details = address_details_vo # EncryptedJSON handles Pydantic model/dict serialization
+
+        preferences_val = getattr(patient, 'preferences', None)
+        model._preferences = preferences_val # EncryptedJSON handles dict serialization
+        
+        # For EncryptedText fields that store JSON strings of complex Python objects:
+        def _serialize_to_json_string(value: Any) -> str | None:
+            if value is None:
+                return None
+            try:
+                return json.dumps(value)
+            except TypeError:
+                logger.warning(f"Could not JSON serialize value for model: {value}. Storing as string repr.")
+                return str(value) # Fallback, though ideally this shouldn't happen for expected list/dict types
+
+        model._medical_history = _serialize_to_json_string(getattr(patient, 'medical_history', None))
+        model._medications = _serialize_to_json_string(getattr(patient, 'medications', None))
+        model._allergies = _serialize_to_json_string(getattr(patient, 'allergies', None))
+        
+        notes_val = getattr(patient, 'notes', None) # Assuming notes is a simple string
+        model._notes = str(notes_val) if notes_val is not None else None
+
+        model._custom_fields = getattr(patient, 'custom_fields', None) # EncryptedJSON handles dict serialization
+        model._extra_data = getattr(patient, 'extra_data', None) # EncryptedJSON handles dict serialization
 
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
         return model
@@ -379,16 +393,28 @@ class Patient(Base, TimestampMixin, AuditMixin):
         logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
         contact_info_dict = self._contact_info
         address_details_dict = self._address_details
-        emergency_contact_details_dict = self._emergency_contact_details
+        # emergency_contact_details_dict will be automatically deserialized by EncryptedJSON if it was stored as JSON
+        # The DomainPatient model expects a field named 'emergency_contact' that can take a dict.
+        raw_emergency_contact_details = self._emergency_contact_details 
         preferences_dict = self._preferences
-        medical_history_list = self._medical_history
-        medications_list = self._medications
-        allergies_list = self._allergies
-        notes_list = self._notes
+        
+        # Parse list-like fields from their string representation after decryption
+        medical_history_list_str = self._medical_history
+        medications_list_str = self._medications
+        allergies_list_str = self._allergies
+        
+        notes_list = self._notes # Assuming notes is intended to be a simple string or handled as such by EncryptedText
         extra_data_dict = self._extra_data
         
-        # Build domain Patient using only the fields that exist in the domain entity
-        # Check app.core.domain.entities.patient.Patient for the correct attributes
+        def _parse_json_string_to_list(json_str: str | None, field_name: str) -> list | None:
+            if json_str is None:
+                return None
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse {field_name} for patient {self.id} from JSON string: '{json_str}'")
+                return None # Or an empty list: [] ? Or raise error?
+
         patient_args = {
             'id': self.id if isinstance(self.id, uuid.UUID) else uuid.UUID(str(self.id)) if self.id else uuid.uuid4(),
             'created_at': self.created_at.replace(tzinfo=UTC) if self.created_at else datetime.now(),
@@ -410,20 +436,24 @@ class Patient(Base, TimestampMixin, AuditMixin):
         if address_details_dict is not None:
             patient_args['address_details'] = address_details_dict
 
-        if emergency_contact_details_dict is not None:
-            patient_args['emergency_contact_details'] = emergency_contact_details_dict
+        # Pass the deserialized dict from _emergency_contact_details to 'emergency_contact' field for DomainPatient
+        if raw_emergency_contact_details is not None:
+            patient_args['emergency_contact'] = raw_emergency_contact_details 
 
         if preferences_dict is not None:
             patient_args['preferences'] = preferences_dict
 
-        if medical_history_list is not None:
-            patient_args['medical_history'] = medical_history_list
+        parsed_medical_history = _parse_json_string_to_list(medical_history_list_str, "medical_history")
+        if parsed_medical_history is not None:
+            patient_args['medical_history'] = parsed_medical_history
 
-        if medications_list is not None:
-            patient_args['medications'] = medications_list
+        parsed_medications = _parse_json_string_to_list(medications_list_str, "medications")
+        if parsed_medications is not None:
+            patient_args['medications'] = parsed_medications
 
-        if allergies_list is not None:
-            patient_args['allergies'] = allergies_list
+        parsed_allergies = _parse_json_string_to_list(allergies_list_str, "allergies")
+        if parsed_allergies is not None:
+            patient_args['allergies'] = parsed_allergies
 
         if notes_list is not None:
             patient_args['notes'] = notes_list
