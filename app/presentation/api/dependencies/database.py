@@ -20,6 +20,9 @@ from app.infrastructure.di.provider import get_repository_instance
 from app.core.config.settings import get_settings # Corrected import
 from app.infrastructure.persistence.sqlalchemy.config.database import Database, get_db_instance
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Generic type for repository interfaces
 T = TypeVar('T', bound=BaseRepositoryInterface)
 
@@ -33,6 +36,24 @@ async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession: SQLAlchemy async session.
     """
+    logger.debug(f"GET_DB_SESSION: Entered. ID of request.app: {id(request.app)}")
+    if hasattr(request.app, 'state'):
+        logger.debug(f"GET_DB_SESSION: request.app.state exists. Attributes: {dir(request.app.state)}")
+        if hasattr(request.app.state, 'db_session_factory'):
+            logger.debug(f"GET_DB_SESSION: db_session_factory FOUND in request.app.state. Type: {type(request.app.state.db_session_factory)}")
+        else:
+            logger.error("GET_DB_SESSION: db_session_factory NOT FOUND in request.app.state")
+    else:
+        logger.error("GET_DB_SESSION: request.app has NO 'state' attribute.")
+
+    session_factory = getattr(request.app.state, "db_session_factory", None)
+    if session_factory is None:
+        logger.error("GET_DB_SESSION: Critical - session_factory is None after getattr. Raising RuntimeError.")
+        raise RuntimeError(
+            "Database session factory not found or invalid on app.state. "
+            "Ensure it's initialized during startup."
+        )
+
     async for session in get_async_session(request=request):
         yield session
 
