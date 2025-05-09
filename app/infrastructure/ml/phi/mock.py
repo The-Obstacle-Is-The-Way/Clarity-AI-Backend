@@ -157,6 +157,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         self,
         text: str,
         replacement: str = "[REDACTED]",
+        redaction_marker: str | None = None,
         detection_level: str | None = None,
         **kwargs
     ) -> dict[str, Any]:
@@ -166,6 +167,7 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         Args:
             text: Text to redact
             replacement: Replacement text for redacted PHI
+            redaction_marker: Alternative name for replacement parameter (for compatibility)
             detection_level: Optional detection level (strict, moderate, relaxed)
             **kwargs: Additional parameters
             
@@ -183,6 +185,10 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             raise InvalidRequestError("Invalid request: text must be a non-empty string")
         if detection_level is not None and detection_level.lower() not in ["minimal", "moderate", "aggressive"]:
             raise InvalidRequestError("Invalid detection level: must be one of minimal, moderate, aggressive")
+        
+        # Use redaction_marker if provided (for test compatibility)
+        if redaction_marker is not None:
+            replacement = redaction_marker
         
         logger.info("Performing mock PHI redaction")
         
@@ -216,7 +222,8 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
             "phi_instances": phi_instances,
             "detection_level": detection_result["detection_level"],
             "processing_time": detection_result["processing_time"],
-            "metadata": detection_result["metadata"]
+            "metadata": detection_result["metadata"],
+            "replacement_used": replacement
         }
         
         return result
@@ -249,10 +256,11 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
                     entity = {
                         "id": f"entity-{entity_id}",
                         "type": phi_type,
-                        "value": value,
+                        "text": value,
                         "start": start,
                         "end": end,
-                        "confidence": round(random.uniform(0.85, 0.98), 2)
+                        "position": {"start": start, "end": end},
+                        "confidence": round(random.uniform(0.85, 0.99), 2)
                     }
                     
                     entities.append(entity)
