@@ -12,6 +12,7 @@ import sys
 from datetime import datetime
 from typing import Any
 
+# Import joblib at the top-level module scope
 import joblib
 import numpy as np
 
@@ -145,7 +146,9 @@ class XGBoostSymptomModel:
         }
 
         # Load pretrained model if provided
-        if model_path and os.path.exists(model_path):
+        if model_path:
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Model file not found: {model_path}")
             self._load_model(model_path)
 
     def _load_model(self, model_path: str) -> None:
@@ -154,7 +157,14 @@ class XGBoostSymptomModel:
 
         Args:
             model_path: Path to the model file
+            
+        Raises:
+            FileNotFoundError: If the model file doesn't exist
+            Exception: If there's an error loading the model
         """
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+            
         try:
             model_data = joblib.load(model_path)
             self.models = model_data.get("models", {})

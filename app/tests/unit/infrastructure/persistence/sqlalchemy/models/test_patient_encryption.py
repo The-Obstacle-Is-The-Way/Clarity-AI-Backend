@@ -5,6 +5,7 @@ ensuring proper PHI protection while maintaining data integrity.
 """
 import base64
 import json  # Moved import to top level
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -19,6 +20,8 @@ from app.infrastructure.security.encryption.base_encryption_service import (
     encrypt_value,
 )
 
+# Configure logger
+logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="module") # Use module scope for efficiency
 def mock_encryption_key():
@@ -75,7 +78,12 @@ class Patient:
     @property
     def first_name(self):
         """Get decrypted first name."""
-        return decrypt_value(self._first_name) if self._first_name else None
+        try:
+            return decrypt_value(self._first_name) if self._first_name else None
+        except Exception as e:
+            # Safely handle decryption errors - return None without exposing PHI in errors
+            logger.error(f"Decryption error for first_name field: {type(e).__name__}")
+            return None
 
     @first_name.setter
     def first_name(self, value):

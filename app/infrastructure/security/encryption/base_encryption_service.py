@@ -269,11 +269,11 @@ decryption methods for strings and dictionaries.
             logger.exception(f"Encryption failed: {e}")
             raise ValueError("Encryption operation failed.") from e
 
-    def decrypt(self, data: str) -> str:
+    def decrypt(self, data: Union[str, bytes]) -> str:
         """Decrypt data encrypted with the current or previous encryption key.
         
         Args:
-            data: Encrypted data as base64-encoded string with version prefix
+            data: Encrypted data as base64-encoded string/bytes with version prefix
             
         Returns:
             str: Decrypted data
@@ -288,30 +288,43 @@ decryption methods for strings and dictionaries.
             return data
             
         try:
-            if data.startswith(self.VERSION_PREFIX):
-                encrypted_data = data[len(self.VERSION_PREFIX):].encode()
+            # Handle both string and bytes input
+            if isinstance(data, bytes):
+                # Convert to string if it's actually a utf-8 encoded string
                 try:
-                    # Try with primary key first
-                    return self.cipher.decrypt(encrypted_data).decode('utf-8')
-                except Exception as e:
-                    # If primary key fails and we have a previous key, try with previous key
-                    if self.previous_cipher:
-                        try:
-                            return self.previous_cipher.decrypt(encrypted_data).decode('utf-8')
-                        except Exception as previous_e:
-                            logger.error(f"Failed to decrypt with primary and previous keys: {type(e).__name__}, {type(previous_e).__name__}")
-                            raise ValueError("Decryption failed with both primary and previous keys")
+                    data_str = data.decode('utf-8')
+                    if data_str.startswith(self.VERSION_PREFIX):
+                        encrypted_data = data_str[len(self.VERSION_PREFIX):].encode()
                     else:
-                        # No previous key available
-                        logger.error(f"Decryption failed: {type(e).__name__}")
-                        raise ValueError("Decryption failed")
+                        # It's raw bytes data (potentially already encrypted)
+                        encrypted_data = data
+                except UnicodeDecodeError:
+                    # It's not a UTF-8 string, just use the raw bytes
+                    encrypted_data = data
+            elif isinstance(data, str) and data.startswith(self.VERSION_PREFIX):
+                encrypted_data = data[len(self.VERSION_PREFIX):].encode()
             else:
-                logger.warning(f"Attempted to decrypt data without version prefix")
+                # Unknown format - probably not encrypted with our system
+                logger.warning(f"Attempted to decrypt data with invalid format")
                 raise ValueError("Invalid encrypted data format (missing version prefix)")
+            
+            try:
+                # Try with primary key first
+                return self.cipher.decrypt(encrypted_data).decode('utf-8')
+            except Exception as e:
+                # If primary key fails and we have a previous key, try with previous key
+                if self.previous_cipher:
+                    try:
+                        return self.previous_cipher.decrypt(encrypted_data).decode('utf-8')
+                    except Exception as previous_e:
+                        logger.error(f"Failed to decrypt with primary and previous keys: {type(e).__name__}, {type(previous_e).__name__}")
+                        raise ValueError("Decryption failed with both primary and previous keys")
+                else:
+                    # No previous key available
+                    logger.error(f"Decryption failed: {type(e).__name__}")
+                    raise ValueError(f"Decryption failed: {type(e).__name__}")
         except Exception as e:
             logger.error(f"Error during decryption: {type(e).__name__}")
-            if "utf-8" in str(e):
-                raise ValueError("Decryption failed - invalid UTF-8 data") 
             raise ValueError(f"Decryption failed: {type(e).__name__}")
 
     def encrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:

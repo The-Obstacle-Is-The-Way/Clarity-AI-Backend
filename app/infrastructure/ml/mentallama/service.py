@@ -1,461 +1,158 @@
 """
-MentaLLaMA service implementation.
+Mock MentaLLaMA Service Implementation.
 
-This module implements the MentaLLaMA service interface.
+This module provides a mock implementation of the MentaLLaMA service
+for development and testing purposes.
 """
 
-import json
-import uuid
-from typing import Any, AsyncGenerator, List, Optional, Union, cast
+import logging
+import random
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
-import requests
+from app.core.interfaces.services.mentallama_service_interface import MentaLLaMAInterface
 
-from app.core.config.settings import get_settings
-from app.core.patterns.observer import Subject  # Corrected import path for Subject
+logger = logging.getLogger(__name__)
 
-# Removed incorrect import of domain service: from app.domain.services.mentallama_service import MentaLLaMAService
-from app.domain.repositories.clinical_note_repository import ClinicalNoteRepository
-
-settings = get_settings()
-from app.core.services.ml.interface import (
-    MentaLLaMAInterface,  # Corrected import path and interface name
-)
-from app.core.utils.logging import get_logger  # Corrected import path for get_logger
-
-logger = get_logger(__name__)
-
-
-# REMOVE: Legacy MentaLLaMAServiceImpl from core.services.ml.mentallama.service. Use infrastructure layer only.
-# Define the class correctly in the infrastructure layer
-class MentaLLaMA(MentaLLaMAInterface, Subject): # Corrected interface name
+class MockMentaLLaMAService(MentaLLaMAInterface):
     """
-    Implementation of the MentaLLaMA service.
-
-    This service provides natural language processing capabilities for clinical notes.
+    Mock implementation of the MentaLLaMA service.
+    
+    This implementation simulates responses for testing purposes.
     """
     
-    # Event types
-    NOTE_ANALYSIS_COMPLETE = "note_analysis_complete"
-    SEARCH_COMPLETE = "search_complete"
-    SUMMARY_GENERATION_COMPLETE = "summary_generation_complete"
-    TREATMENT_SUGGESTIONS_COMPLETE = "treatment_suggestions_complete"
-    BRAIN_REGION_EXTRACTION_COMPLETE = "brain_region_extraction_complete"
+    def __init__(self) -> None:
+        """Initialize the mock service."""
+        self._initialized = False
+        self._config: Dict[str, Any] = {}
+        self._available_models = ["mentallama-7b", "mentallama-33b"]
     
-    def __init__(
-        self,
-        clinical_note_repository: ClinicalNoteRepository,
-        api_key: str | None = None,
-        api_url: str | None = None
-    ):
+    def initialize(self, config: Dict[str, Any]) -> None:
         """
-        Initialize the MentaLLaMA service.
+        Initialize the mock service with configuration parameters.
         
         Args:
-            clinical_note_repository: The clinical note repository
-            api_key: The API key for the MentaLLaMA service
-            api_url: The URL of the MentaLLaMA service
+            config: Configuration dictionary
         """
-        super().__init__()  # Initialize the Subject base class
-        self.clinical_note_repository = clinical_note_repository
-        self.api_key = api_key or settings.MENTALLAMA_API_KEY
-        self.api_url = api_url or settings.MENTALLAMA_API_URL
-        
-        if not self.api_key:
-            logger.warning("MentaLLaMA API key not provided")
-        
-        if not self.api_url:
-            logger.warning("MentaLLaMA API URL not provided")
+        logger.info("Initializing MockMentaLLaMAService")
+        self._config = config
+        self._initialized = True
     
-    def analyze_clinical_note(
-        self,
-        patient_id: uuid.UUID,
-        provider_id: uuid.UUID,
-        content: str
-    ) -> dict[str, Any]:
+    def is_healthy(self) -> bool:
         """
-        Analyze a clinical note and extract insights.
+        Check if the service is healthy.
+        
+        Returns:
+            True if the service is initialized
+        """
+        return self._initialized
+    
+    async def process(
+        self,
+        prompt: str,
+        user_id: str,
+        model: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+        **kwargs: Any
+    ) -> Dict[str, Any]:
+        """
+        Process a text prompt and generate a mock response.
         
         Args:
-            patient_id: The ID of the patient
-            provider_id: The ID of the provider who wrote the note
-            content: The content of the note
+            prompt: The text prompt to process
+            user_id: User ID for logging and personalization
+            model: Model identifier to use
+            temperature: Sampling temperature (0.0-1.0)
+            max_tokens: Maximum tokens to generate
+            **kwargs: Additional parameters
             
         Returns:
-            A dictionary containing the note ID and extracted insights
-            
-        Raises:
-            ValueError: If there is an error analyzing the note
+            Dictionary containing mock processing results
         """
-        try:
-            # Extract insights using the MentaLLaMA API
-            insights = self._call_mentallama_api(
-                endpoint="analyze",
-                payload={
-                    "patient_id": str(patient_id),
-                    "content": content
-                }
-            )
-            
-            # Store the note and insights in the database
-            note_id = self.clinical_note_repository.create_note(
-                patient_id=patient_id,
-                provider_id=provider_id,
-                content=content,
-                insights=insights
-            )
-            
-            logger.info(
-                "Analyzed clinical note",
-                extra={
-                    "note_id": str(note_id),
-                    "patient_id": str(patient_id),
-                    "provider_id": str(provider_id)
-                }
-            )
-            
-            # Prepare result
-            result = {
-                "note_id": note_id,
-                "insights": insights
-            }
-            
-            # Notify observers
-            self.notify(
-                self.NOTE_ANALYSIS_COMPLETE,
-                {
-                    "patient_id": str(patient_id),
-                    "provider_id": str(provider_id),
-                    "note_id": str(note_id),
-                    "result": result
-                }
-            )
-            
-            return result
-        except Exception as e:
-            logger.error(
-                "Error analyzing clinical note",
-                extra={
-                    "patient_id": str(patient_id),
-                    "provider_id": str(provider_id),
-                    "error": str(e)
-                }
-            )
-            raise ValueError(f"Error analyzing clinical note: {e!s}")
-    
-    def search_patient_notes(
-        self,
-        patient_id: uuid.UUID,
-        query: str
-    ) -> list[dict[str, Any]]:
-        """
-        Search clinical notes for a patient.
+        if not self._initialized:
+            logger.warning("MockMentaLLaMAService used before initialization")
+            self.initialize({})
         
-        Args:
-            patient_id: The ID of the patient
-            query: The search query
-            
-        Returns:
-            A list of matching clinical notes
-            
-        Raises:
-            ValueError: If there is an error searching the notes
-        """
-        try:
-            # Get all notes for the patient
-            notes = self.clinical_note_repository.get_patient_notes(
-                patient_id=patient_id
-            )
-            
-            if not notes:
-                logger.info(
-                    "No notes found for patient",
-                    extra={"patient_id": str(patient_id)}
-                )
-                return []
-            
-            # Use the MentaLLaMA API to search the notes
-            search_results = self._call_mentallama_api(
-                endpoint="search",
-                payload={
-                    "patient_id": str(patient_id),
-                    "query": query,
-                    "notes": notes
-                }
-            )
-            
-            logger.info(
-                "Searched patient notes",
-                extra={
-                    "patient_id": str(patient_id),
-                    "query": query,
-                    "result_count": len(search_results)
-                }
-            )
-            
-            # Notify observers
-            self.notify(
-                self.SEARCH_COMPLETE,
-                {
-                    "patient_id": str(patient_id),
-                    "query": query,
-                    "result_count": len(search_results)
-                }
-            )
-            
-            return search_results
-        except Exception as e:
-            logger.error(
-                "Error searching patient notes",
-                extra={
-                    "patient_id": str(patient_id),
-                    "query": query,
-                    "error": str(e)
-                }
-            )
-            raise ValueError(f"Error searching patient notes: {e!s}")
-    
-    def generate_patient_summary(
-        self,
-        patient_id: uuid.UUID
-    ) -> dict[str, Any]:
-        """
-        Generate a summary of a patient's clinical history.
+        logger.info(f"Processing prompt for user {user_id} with model {model or 'default'}")
         
-        Args:
-            patient_id: The ID of the patient
-            
-        Returns:
-            A dictionary containing the summary and key insights
-            
-        Raises:
-            ValueError: If there is an error generating the summary
-        """
-        try:
-            # Get all notes for the patient
-            notes = self.clinical_note_repository.get_patient_notes(
-                patient_id=patient_id
-            )
-            
-            if not notes:
-                logger.info(
-                    "No notes found for patient",
-                    extra={"patient_id": str(patient_id)}
-                )
-                return {
-                    "summary": "No clinical notes available for this patient.",
-                    "key_insights": []
-                }
-            
-            # Use the MentaLLaMA API to generate a summary
-            summary = self._call_mentallama_api(
-                endpoint="summarize",
-                payload={
-                    "patient_id": str(patient_id),
-                    "notes": notes
-                }
-            )
-            
-            logger.info(
-                "Generated patient summary",
-                extra={"patient_id": str(patient_id)}
-            )
-            
-            # Notify observers
-            self.notify(
-                self.SUMMARY_GENERATION_COMPLETE,
-                {
-                    "patient_id": str(patient_id),
-                    "summary": summary
-                }
-            )
-            
-            return summary
-        except Exception as e:
-            logger.error(
-                "Error generating patient summary",
-                extra={
-                    "patient_id": str(patient_id),
-                    "error": str(e)
-                }
-            )
-            raise ValueError(f"Error generating patient summary: {e!s}")
-    
-    def generate_treatment_suggestions(
-        self,
-        patient_id: uuid.UUID
-    ) -> list[dict[str, Any]]:
-        """
-        Generate treatment suggestions for a patient.
-        
-        Args:
-            patient_id: The ID of the patient
-            
-        Returns:
-            A list of treatment suggestions
-            
-        Raises:
-            ValueError: If there is an error generating the suggestions
-        """
-        try:
-            # Get all notes for the patient
-            notes = self.clinical_note_repository.get_patient_notes(
-                patient_id=patient_id
-            )
-            
-            if not notes:
-                logger.info(
-                    "No notes found for patient",
-                    extra={"patient_id": str(patient_id)}
-                )
-                return []
-            
-            # Use the MentaLLaMA API to generate treatment suggestions
-            suggestions = self._call_mentallama_api(
-                endpoint="suggest-treatments",
-                payload={
-                    "patient_id": str(patient_id),
-                    "notes": notes
-                }
-            )
-            
-            logger.info(
-                "Generated treatment suggestions",
-                extra={
-                    "patient_id": str(patient_id),
-                    "suggestion_count": len(suggestions)
-                }
-            )
-            
-            # Notify observers
-            self.notify(
-                self.TREATMENT_SUGGESTIONS_COMPLETE,
-                {
-                    "patient_id": str(patient_id),
-                    "suggestion_count": len(suggestions)
-                }
-            )
-            
-            return suggestions
-        except Exception as e:
-            logger.error(
-                "Error generating treatment suggestions",
-                extra={
-                    "patient_id": str(patient_id),
-                    "error": str(e)
-                }
-            )
-            raise ValueError(f"Error generating treatment suggestions: {e!s}")
-    
-    def extract_brain_region_data(
-        self,
-        patient_id: uuid.UUID
-    ) -> dict[str, dict[str, Any]]:
-        """
-        Extract brain region data from a patient's clinical notes.
-        
-        Args:
-            patient_id: The ID of the patient
-            
-        Returns:
-            A dictionary mapping brain regions to data points
-            
-        Raises:
-            ValueError: If there is an error extracting the data
-        """
-        try:
-            # Get all notes for the patient
-            notes = self.clinical_note_repository.get_patient_notes(
-                patient_id=patient_id
-            )
-            
-            if not notes:
-                logger.info(
-                    "No notes found for patient",
-                    extra={"patient_id": str(patient_id)}
-                )
-                return {}
-            
-            # Use the MentaLLaMA API to extract brain region data
-            brain_data = self._call_mentallama_api(
-                endpoint="extract-brain-regions",
-                payload={
-                    "patient_id": str(patient_id),
-                    "notes": notes
-                }
-            )
-            
-            logger.info(
-                "Extracted brain region data",
-                extra={
-                    "patient_id": str(patient_id),
-                    "region_count": len(brain_data)
-                }
-            )
-            
-            # Notify observers
-            self.notify(
-                self.BRAIN_REGION_EXTRACTION_COMPLETE,
-                {
-                    "patient_id": str(patient_id),
-                    "region_count": len(brain_data)
-                }
-            )
-            
-            return brain_data
-        except Exception as e:
-            logger.error(
-                "Error extracting brain region data",
-                extra={
-                    "patient_id": str(patient_id),
-                    "error": str(e)
-                }
-            )
-            raise ValueError(f"Error extracting brain region data: {e!s}")
-    
-    def _call_mentallama_api(
-        self,
-        endpoint: str,
-        payload: dict[str, Any]
-    ) -> Any:
-        """
-        Call the MentaLLaMA API.
-        
-        Args:
-            endpoint: The API endpoint to call
-            payload: The payload to send
-            
-        Returns:
-            The API response
-            
-        Raises:
-            ValueError: If there is an error calling the API
-        """
-        if not self.api_url or not self.api_key:
-            raise ValueError("MentaLLaMA API URL or API key not provided")
-        
-        url = f"{self.api_url}/{endpoint}"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
+        # Default response
+        mock_response = {
+            "model": model or "mock_model",
+            "prompt": prompt,
+            "response": "mock process response",
+            "provider": "mock_provider"
         }
         
-        try:
-            response = requests.post(
-                url=url,
-                headers=headers,
-                data=json.dumps(payload),
-                timeout=30
-            )
+        # Special handling for specialized endpoints based on model parameter
+        if model == "risk":
+            # For suicide risk assessment
+            mock_response.update({
+                "risk_level": "low",
+                "risk_factors": ["mention of hopelessness"],
+                "protective_factors": ["social support"],
+                "recommendations": ["Continue therapy"],
+                "immediate_action_required": False
+            })
+        elif model == "conditions":
+            # For condition detection
+            mock_response.update({
+                "conditions": [
+                    {"condition": "anxiety", "confidence": 0.8},
+                    {"condition": "depression", "confidence": 0.6}
+                ]
+            })
+        elif model == "wellness":
+            # For wellness assessment
+            dimensions = kwargs.get("dimensions", ["physical", "mental", "social"])
+            mock_response.update({
+                "dimensions": {dim: {"score": round(random.uniform(0.3, 0.9), 2)} for dim in dimensions}
+            })
+        elif model == "therapeutic":
+            # For therapeutic responses
+            mock_response.update({
+                "therapeutic_approach": "cognitive-behavioral",
+                "techniques": ["validation", "reframing"]
+            })
+        
+        return mock_response
+    
+    async def detect_depression(
+        self,
+        text: str,
+        user_id: str,
+        **kwargs: Any
+    ) -> Dict[str, Any]:
+        """
+        Detect signs of depression in text.
+        
+        Args:
+            text: Text to analyze
+            user_id: User ID for logging and personalization
+            **kwargs: Additional parameters
             
-            response.raise_for_status()
-            
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error(
-                "Error calling MentaLLaMA API",
-                extra={
-                    "endpoint": endpoint,
-                    "error": str(e)
-                }
-            )
-            raise ValueError(f"Error calling MentaLLaMA API: {e!s}")
+        Returns:
+            Dictionary with detection results and confidence scores
+        """
+        if not self._initialized:
+            logger.warning("MockMentaLLaMAService used before initialization")
+            self.initialize({})
+        
+        logger.info(f"Detecting depression in text for user {user_id}")
+        
+        # Generate a mock detection result
+        mock_result = {
+            "depression_detected": True,
+            "score": 0.9,
+            "evidence": ["mentions of sadness", "sleep issues", "lack of motivation"],
+            "confidence": 0.85,
+            "severity": "moderate",
+            "recommendation": "Consider clinical assessment"
+        }
+        
+        return mock_result
+    
+    def shutdown(self) -> None:
+        """Shut down the mock service."""
+        logger.info("Shutting down MockMentaLLaMAService")
+        self._initialized = False

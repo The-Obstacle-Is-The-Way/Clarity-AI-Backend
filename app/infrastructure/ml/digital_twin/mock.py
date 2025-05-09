@@ -46,10 +46,6 @@ class MockDigitalTwinService(DigitalTwinInterface):
         # Validate configuration parameters
         if not isinstance(config, dict):
             raise InvalidConfigurationError("Configuration must be a dictionary.")
-
-        # Empty config is invalid (required by test_initialization)
-        if not config:
-            raise InvalidConfigurationError("Empty configuration is not valid.")
             
         # Special case for tests: when config contains 'invalid' key, raise error
         if 'invalid' in config:
@@ -247,7 +243,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
             
         Raises:
             ServiceUnavailableError: If service is not initialized
-            ResourceNotFoundError: If session not found and can't be created automatically
+            ResourceNotFoundError: If session not found
         """
         if not self._initialized:
             raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
@@ -256,13 +252,8 @@ class MockDigitalTwinService(DigitalTwinInterface):
         if session_id in self._sessions:
             return self._sessions[session_id]
             
-        # Test expects auto-creation of new session when ID not found
-        # For test expectations, we'll create a dummy patient ID for non-existent sessions
-        # This handles the case in test_get_session where it calls get_session with a random UUID
-        dummy_patient_id = f"test-patient-{uuid.uuid4()}"
-        
-        logger.info(f"Auto-creating new session (ID: {session_id}) for non-existent session test")
-        return self.create_session(dummy_patient_id)
+        # Raise ResourceNotFoundError for non-existent sessions
+        raise ResourceNotFoundError(f"Session with ID {session_id} not found.")
     
     def send_message(self, session_id: str, message: str) -> dict[str, Any]:
         """
@@ -277,18 +268,14 @@ class MockDigitalTwinService(DigitalTwinInterface):
             
         Raises:
             ServiceUnavailableError: If service is not initialized
-            ResourceNotFoundError: If session not found and can't be created automatically
+            ResourceNotFoundError: If session not found
         """
         if not self._initialized:
             raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
         
-        # If session doesn't exist, create a new one (to match test expectations)
+        # If session doesn't exist, raise ResourceNotFoundError
         if session_id not in self._sessions:
-            # For test expectations, we'll create a dummy patient ID for non-existent sessions
-            dummy_patient_id = f"test-patient-{uuid.uuid4()}"
-            logger.info(f"Auto-creating new session for non-existent session ID: {session_id}")
-            new_session = self.create_session(dummy_patient_id)
-            session_id = new_session["session_id"]  # Use the new session ID
+            raise ResourceNotFoundError(f"Session with ID {session_id} not found.")
         
         session = self._sessions[session_id]
 
@@ -408,20 +395,21 @@ class MockDigitalTwinService(DigitalTwinInterface):
             
         Raises:
             ServiceUnavailableError: If service is not initialized
-            InvalidRequestError: If session not found or already ended
+            ResourceNotFoundError: If session not found
+            InvalidRequestError: If session already ended
         """
         if not self._initialized:
             raise ServiceUnavailableError("Mock Digital Twin service is not initialized.")
         
         if session_id not in self._sessions:
-            # Test explicitly expects InvalidRequestError for non-existent sessions
-            raise InvalidRequestError(f"Session with ID {session_id} not found.")
+            # Test explicitly expects ResourceNotFoundError for non-existent sessions
+            raise ResourceNotFoundError(f"Session with ID {session_id} not found.")
         
         session = self._sessions[session_id]
-        if session.get("status") == "ended":
+        if session.get("status") == "completed":
             raise InvalidRequestError(f"Session {session_id} already ended.")
             
-        session["status"] = "ended"
+        session["status"] = "completed"
         session["ended_at"] = format_iso8601(now_utc())
         
         end_time = session["ended_at"]
@@ -441,12 +429,12 @@ class MockDigitalTwinService(DigitalTwinInterface):
         return {
             "session_id": session_id,
             "patient_id": session["patient_id"],
-            "status": "ended",
+            "status": "completed",
             "ended_at": end_time,
-            "duration": duration_minutes,
+            "duration": f"{duration_minutes:.2f} minutes",
             "summary": summary,
             "metadata": {
-                "status": "ended",
+                "status": "completed",
                 "duration_minutes": duration_minutes,
                 "message_count": len(session["messages"]),
                 "mock": True

@@ -39,7 +39,7 @@ class TestXGBoostSymptomModel:
             # Return the mocked model instance
             return model
 
-    @patch("joblib.load")
+    @patch("app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib")
     def test_load_model_success(self, mock_joblib):
         # Setup
         mock_model = MagicMock()
@@ -52,15 +52,17 @@ class TestXGBoostSymptomModel:
             "params": {"n_estimators": 100},
         }
 
-        # Execute
-        model = XGBoostSymptomModel(model_path="test/model/path.json")
+        # Patch os.path.exists to return True for the test model path
+        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists', return_value=True):
+            # Execute
+            model = XGBoostSymptomModel(model_path="test/model/path.json")
 
-        # Verify
-        mock_joblib.load.assert_called_once_with("test/model/path.json")
-        assert "depression_score" in model.models
-        assert model.feature_names == ["f1", "f2", "f3"]
-        assert model.target_names == ["t1"]
-        assert model.params["n_estimators"] == 100
+            # Verify
+            mock_joblib.load.assert_called_once_with("test/model/path.json")
+            assert "depression_score" in model.models
+            assert model.feature_names == ["f1", "f2", "f3"]
+            assert model.target_names == ["t1"]
+            assert model.params["n_estimators"] == 100
 
     def test_load_model_file_not_found(self):
         # Setup

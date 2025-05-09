@@ -29,13 +29,13 @@ def phi_error_handler(func):
         except Exception as e:
             # Determine appropriate error type based on function name
             if func.__name__ == 'contains_phi':
-                raise PHISecurityError(f"Failed to detect PHI: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to detect PHI: {str(e)}") from e
             elif func.__name__ == 'detect_phi':
-                raise PHISecurityError(f"Failed to detect PHI details: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to detect PHI details: {str(e)}") from e
             elif func.__name__ == 'redact_phi':
-                raise PHISecurityError(f"Failed to redact PHI: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to redact PHI: {str(e)}") from e
             elif func.__name__ == 'anonymize_phi':
-                raise PHISecurityError(f"Failed to anonymize PHI: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to anonymize PHI: {str(e)}") from e
             else:
                 # Default error message for other functions
                 raise PHIDetectionError(f"Failed in {func.__name__}: {str(e)}") from e
