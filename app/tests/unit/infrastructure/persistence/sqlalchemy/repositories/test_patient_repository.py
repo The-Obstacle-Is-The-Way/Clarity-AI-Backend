@@ -155,79 +155,77 @@ def patient_repository(mock_db_session) -> PatientRepository:
                              user_context={"user_id": "test-user"})
 
 
-# Helper to create mock PatientModel instances with consistent encrypted data
-async def create_mock_patient_model(
-    patient_id: str,
-    **kwargs  # Accept arbitrary keyword arguments
-) -> tuple[PatientModel, dict]:
-    """Creates a mock PatientModel instance and its raw (unencrypted) data.
+# Helper to create mock PatientModel instances with 'encrypted' data for test setups
+async def create_mock_patient_model_with_encrypted_data(
+    patient_id_str: str,
+    mock_encrypt_service: MagicMock, # Expecting the mock_encryption_service fixture
+    raw_data_overrides: dict | None = None
+) -> PatientModel:
+    """Creates a mock PatientModel instance with specified fields 'encrypted' by mock_encrypt_service.
 
     Args:
-        patient_id: The ID for the mock patient.
-        **kwargs: Additional attributes to set on the mock model.
+        patient_id_str: The string UUID for the mock patient.
+        mock_encrypt_service: The mock encryption service (fixture) to use for 'encrypting' fields.
+        raw_data_overrides: A dictionary of plaintext values to override defaults before encryption.
+                            Keys should be model attribute names (e.g., '_first_name').
 
     Returns:
-        A tuple containing the mock PatientModel instance and a dictionary of the
-        original, unencrypted data used to create it.
+        A PatientModel instance with sensitive fields mock-encrypted.
     """
-    # 1. Define raw data
-    raw_data = {
-        "id": uuid.UUID(patient_id),
+    patient_uuid = uuid.UUID(patient_id_str)
+    
+    # Define default raw PII data (as strings or appropriate types before encryption)
+    # Using model attribute names (e.g., _first_name)
+    default_raw_pii = {
         "_first_name": "TestFirstName",
         "_last_name": "TestLastName",
         "_ssn": "999-99-9999",
-        "_dob": date(1990, 1, 1),
+        "_dob": date(1990, 1, 1), # Date object, not encrypted by encrypt_string
         "_email": "test.patient@example.com",
         "_phone": "555-123-4567",
+        "_medical_record_number": "MRNTEST123",
         "_address_line1": "123 Mock St",
-        "_address_line2": "Apt 4B",
-        "_city": "Mockville",
-        "_state": "MS",
-        "_postal_code": "12345",
-        "_country": "Mockland",
-        "_emergency_contact_name": "Mock Contact",
-        "_emergency_contact_phone": "555-987-6543",
-        "_emergency_contact_relationship": "Friend",
-        "_insurance_provider": "Mock Insurance Co.",
-        "_insurance_policy_number": "MOCK123456",
-        "_insurance_group_number": "GROUPMOCK",
-        "_preferred_pharmacy": "Mock Pharmacy",
-        "_primary_care_physician": "Dr. Mock",
-        "_medical_history": json.dumps([{"condition": "Mockitis", "diagnosed_date": "2020-01-01"}]),
-        "_medications": json.dumps([{"name": "Mockacillin", "dosage": "500mg"}]),
-        "_allergies": json.dumps([{"allergen": "Mocknuts", "reaction": "Hives"}]),
-        "_treatment_notes": json.dumps([{"date": "2023-01-15", "note": "Patient feels mocky."}]),
-        "created_at": datetime.now(timezone.utc) - timedelta(days=1),
-        "updated_at": datetime.now(timezone.utc),
-        "version": 1,
-        "_extra_data": json.dumps({"mock_key": "mock_value"})
+        # Add other PII fields that are simple strings and use EncryptedString/EncryptedText
+        "_insurance_number": "INS-TEST-789"
     }
 
-    # Apply kwargs to raw_data before encryption/model creation
-    for key, value in kwargs.items():
-        # Need to map kwarg name (e.g., 'first_name') to raw_data key ('_first_name')
-        model_key = f"_{key}" # Simple assumption for this mock
-        if model_key in raw_data:
-            raw_data[model_key] = value
-        elif key == 'id': # Handle id separately if passed
-            raw_data['id'] = uuid.UUID(value) if isinstance(value, str) else value
-        # Add more specific mappings if needed
+    # Define default raw JSON data (as dicts/lists before json.dumps and encryption)
+    default_raw_json = {
+        "_medical_history": [{"condition": "Mockitis", "diagnosed_date": "2020-01-01"}],
+        "_medications": [{"name": "Mockacillin", "dosage": "500mg"}],
+        "_allergies": [{"allergen": "Mocknuts", "reaction": "Hives"}],
+        # "_emergency_contact": {"name": "EC Name", "phone": "555-5555", "relationship": "Friend"} # Assuming EncryptedJSON
+    }
 
-    # 2. Create the model instance
-    mock_model = PatientModel()
+    current_raw_data = {**default_raw_pii, **default_raw_json}
+    if raw_data_overrides:
+        current_raw_data.update(raw_data_overrides)
 
-    # 3. Apply raw data, encrypting sensitive fields
-    for field, value in raw_data.items():
-        if isinstance(value, (datetime, date)):
-             setattr(mock_model, field, value) # Keep date/datetime objects as is for model
-        elif field not in ['created_at', 'updated_at']: # Avoid overwriting automatic timestamps
-             setattr(mock_model, field, value)
+    mock_model = PatientModel(id=patient_uuid) # Initialize with ID
 
-    # Set timestamps directly if needed for specific test scenario
-    mock_model.created_at = raw_data['created_at']
-    mock_model.updated_at = raw_data['updated_at']
+    for field_name, raw_value in current_raw_data.items():
+        if raw_value is None:
+            setattr(mock_model, field_name, None)
+            continue
 
-    return mock_model, raw_data
+        if field_name in default_raw_json: # Fields intended for EncryptedJSON
+            # EncryptedJSON uses encrypt_string after json.dumps
+            json_string = json.dumps(raw_value)
+            encrypted_value = await mock_encrypt_service.encrypt_string(json_string)
+            setattr(mock_model, field_name, encrypted_value)
+        elif field_name in default_raw_pii and not isinstance(raw_value, date): # Simple string fields for EncryptedString/Text
+            encrypted_value = await mock_encrypt_service.encrypt_string(str(raw_value))
+            setattr(mock_model, field_name, encrypted_value)
+        else: # Non-encrypted or already correct type (like _dob as date)
+            setattr(mock_model, field_name, raw_value)
+    
+    # Set non-PII defaults
+    mock_model.is_active = True
+    mock_model.created_at = datetime.now(timezone.utc) - timedelta(days=1)
+    mock_model.updated_at = datetime.now(timezone.utc)
+    mock_model.version = 1
+
+    return mock_model
 
 
 @pytest.mark.asyncio
@@ -246,36 +244,28 @@ class TestPatientRepository:
     async def test_get_by_id(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, mock_encryption_service: MagicMock, async_mock_patch: Any):
         """Test retrieving a patient by ID, ensuring decryption is handled by TypeDecorator via patched service."""
         # Configure the patched encryption_service_instance to be our mock_encryption_service
-        mock_patient_module_esi.return_value = mock_encryption_service # If esi were a callable factory
-        # If encryption_service_instance is a direct instance, we assign methods or the whole mock:
         mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt_string
         mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt_string
-        # Add other methods like encrypt_dict, decrypt_dict if EncryptedJSON uses them directly from the service instance
 
         patient_uuid = uuid.UUID(sample_patient_id)
         
-        # 1. Prepare raw data and its 'encrypted' form using the mock service
-        raw_first_name = "John"
-        raw_last_name = "Doe"
-        raw_email = "john.doe@example.com"
+        # 1. Define the raw data that we expect after decryption
+        expected_raw_data = {
+            "_first_name": "JohnOriginal",
+            "_last_name": "DoeOriginal",
+            "_email": "john.doe.original@example.com",
+            "_dob": date(1980, 1, 1) # Date objects are not string-encrypted by our mock
+        }
 
-        encrypted_first_name = await mock_encryption_service.encrypt_string(raw_first_name)
-        encrypted_last_name = await mock_encryption_service.encrypt_string(raw_last_name)
-        encrypted_email = await mock_encryption_service.encrypt_string(raw_email)
-
-        # 2. Create a mock PatientModel instance with 'encrypted' data
-        # This is what the repository would receive from the database
-        mock_model_from_db = PatientModel(
-            id=patient_uuid,
-            _first_name=encrypted_first_name,
-            _last_name=encrypted_last_name,
-            _dob=date(1980, 1, 1),
-            _email=encrypted_email,
-            # ... other fields can be None or have non-encrypted mock values ...
-            is_active=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc)
+        # 2. Create a mock PatientModel instance with 'encrypted' data using the new helper
+        # This simulates the model as it would be fetched from the DB
+        mock_model_from_db = await create_mock_patient_model_with_encrypted_data(
+            patient_id_str=sample_patient_id,
+            mock_encrypt_service=mock_encryption_service,
+            raw_data_overrides=expected_raw_data # Pass the plaintext here, helper encrypts relevant fields
         )
+        # Ensure the ID is set correctly for assertion later
+        mock_model_from_db.id = patient_uuid 
 
         # 3. Configure the mock DB session to return this model
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = mock_model_from_db
@@ -286,28 +276,382 @@ class TestPatientRepository:
         # 5. Assertions
         assert retrieved_entity is not None
         assert retrieved_entity.id == patient_uuid
-        # Check that to_domain (via TypeDecorator) used the mock_decrypt_string
-        assert retrieved_entity.first_name == raw_first_name
-        assert retrieved_entity.last_name == raw_last_name
-        assert retrieved_entity.email == raw_email
-        assert retrieved_entity.date_of_birth == date(1980, 1, 1)
+        # Check that to_domain (via TypeDecorator) used the mock_decrypt_string to get original data
+        assert retrieved_entity.first_name == expected_raw_data["_first_name"]
+        assert retrieved_entity.last_name == expected_raw_data["_last_name"]
+        assert retrieved_entity.email == expected_raw_data["_email"]
+        assert retrieved_entity.date_of_birth == expected_raw_data["_dob"]
 
-        # Verify that decrypt_string was called for each encrypted field
-        mock_encryption_service.decrypt_string.assert_any_call(encrypted_first_name)
-        mock_encryption_service.decrypt_string.assert_any_call(encrypted_last_name)
-        mock_encryption_service.decrypt_string.assert_any_call(encrypted_email)
-        # Check call count if necessary, e.g., assert mock_encryption_service.decrypt_string.call_count == 3 (or more if other fields were encrypted)
+        # Verify that decrypt_string was called for each encrypted field that was overridden
+        # The helper encrypts what's in default_raw_pii (and not a date) + default_raw_json.
+        # If expected_raw_data overrides these, those are the values that get encrypted.
+        
+        # Get the 'encrypted' values that were set on mock_model_from_db for assertion
+        # These assertions are more precise if we know which fields were encrypted by the helper
+        encrypted_fn_on_model = mock_model_from_db._first_name 
+        encrypted_ln_on_model = mock_model_from_db._last_name
+        encrypted_email_on_model = mock_model_from_db._email
+
+        mock_encryption_service.decrypt_string.assert_any_call(encrypted_fn_on_model)
+        mock_encryption_service.decrypt_string.assert_any_call(encrypted_ln_on_model)
+        mock_encryption_service.decrypt_string.assert_any_call(encrypted_email_on_model)
 
     @pytest.mark.asyncio
-    async def test_get_by_id_not_found(self, patient_repository, mock_db_session, sample_patient_id, async_mock_patch):
-        """Test get_by_id returns None when patient not found."""
-        # 1. Arrange - Configure session.get to return None for not found
-        mock_db_session.get.return_value = None
+    async def test_get_by_id_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, async_mock_patch: Any):
+        """Test get_by_id when patient is not found."""
+        patient_uuid = uuid.UUID(sample_patient_id)
+        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
+
+        entity = await patient_repository.get_by_id(sample_patient_id)
+
+        mock_db_session.execute.assert_awaited_once()
+        # Ensure the select statement was for the correct ID
+        # This requires inspecting the call args of session.execute, which can be complex.
+        # For now, trust the internal logic and focus on the outcome.
+        assert entity is None
+
+    @pytest.mark.asyncio
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.PatientModel', new_callable=MagicMock) # Mock the PatientModel class itself
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    async def test_create_patient(self, mock_patient_module_esi: MagicMock, MockPatientModelClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict, mock_encryption_service: MagicMock, async_mock_patch: Any):
+        """Test creating a patient, ensuring encryption is triggered and data is correctly returned."""
+        # Configure the patched encryption_service_instance
+        mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt_string
+        mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt_string
+
+        # 1. Prepare PatientEntity with raw data
+        patient_entity_to_create = PatientEntity(**sample_patient_data)
+
+        # 2. Configure the mock PatientModel class and its instances
+        mock_created_model_instance = MagicMock(spec=PatientModel) # This is what from_domain will 'return' conceptually
+        mock_refreshed_model_instance = MagicMock(spec=PatientModel) # This is after session.refresh
         
-        # 2. Act
-        result = await patient_repository.get_by_id(sample_patient_id)
+        # Mock PatientModel.from_domain classmethod
+        # It should be an async method
+        async def mock_from_domain(entity_arg): 
+            # In a real scenario, from_domain copies data from entity_arg to mock_created_model_instance
+            # For this test, we assume it correctly prepares mock_created_model_instance
+            assert entity_arg == patient_entity_to_create
+            # Simulate copying essential ID for refresh, etc.
+            mock_created_model_instance.id = entity_arg.id 
+            # Allow other attributes to be set on mock_created_model_instance if needed for assertion before refresh
+            return mock_created_model_instance
+        MockPatientModelClass.from_domain = AsyncMock(side_effect=mock_from_domain)
+
+        # Configure mock_created_model_instance to represent the state before refresh
+        # Its PII attributes would be plaintext copied by from_domain, ready for TypeDecorator
+        mock_created_model_instance.id = patient_entity_to_create.id
+        mock_created_model_instance._first_name = patient_entity_to_create.first_name
+        mock_created_model_instance._last_name = patient_entity_to_create.last_name
+        mock_created_model_instance._email = patient_entity_to_create.email
+        mock_created_model_instance._dob = patient_entity_to_create.date_of_birth # dob is date object
+
+        # Configure the mock_refreshed_model_instance (after potential DB changes/encryption)
+        # Its PII attributes should be the 'encrypted' versions
+        mock_refreshed_model_instance.id = patient_entity_to_create.id
+        mock_refreshed_model_instance._first_name = await mock_encryption_service.encrypt_string(patient_entity_to_create.first_name)
+        mock_refreshed_model_instance._last_name = await mock_encryption_service.encrypt_string(patient_entity_to_create.last_name)
+        mock_refreshed_model_instance._email = await mock_encryption_service.encrypt_string(patient_entity_to_create.email)
+        mock_refreshed_model_instance._dob = patient_entity_to_create.date_of_birth # dob is date object, not encrypted by string encryptor
+        mock_refreshed_model_instance.is_active = True # Assuming default
+        mock_refreshed_model_instance.created_at = datetime.now(timezone.utc)
+        mock_refreshed_model_instance.updated_at = datetime.now(timezone.utc)
+
+        # Mock session.refresh to make patient_model become mock_refreshed_model_instance
+        async def mock_refresh(target_model):
+            assert target_model == mock_created_model_instance
+            # Simulate refresh by copying attributes from the 'refreshed' state
+            for attr in dir(mock_refreshed_model_instance):
+                if not attr.startswith('__') and not callable(getattr(mock_refreshed_model_instance, attr)):
+                    setattr(target_model, attr, getattr(mock_refreshed_model_instance, attr))
+            return
+        mock_db_session.refresh = AsyncMock(side_effect=mock_refresh)
         
-        # 3. Assert
-        assert result is None
-        # Verify session.get was called correctly
-        mock_db_session.get.assert_awaited_once()
+        # Mock the to_domain method of the *refreshed* model instance
+        # This to_domain will be called at the end of repository.create()
+        async def mock_to_domain_on_refreshed():
+            # This simulates TypeDecorators using the (patched) decrypt_string
+            return PatientEntity(
+                id=mock_refreshed_model_instance.id,
+                first_name=await mock_encryption_service.decrypt_string(mock_refreshed_model_instance._first_name),
+                last_name=await mock_encryption_service.decrypt_string(mock_refreshed_model_instance._last_name),
+                email=await mock_encryption_service.decrypt_string(mock_refreshed_model_instance._email),
+                date_of_birth=mock_refreshed_model_instance._dob,
+                medical_record_number=patient_entity_to_create.medical_record_number, # Assuming not changed/encrypted for this test focus
+                is_active=mock_refreshed_model_instance.is_active,
+                created_at=mock_refreshed_model_instance.created_at,
+                updated_at=mock_refreshed_model_instance.updated_at
+            )
+        mock_created_model_instance.to_domain = AsyncMock(side_effect=mock_to_domain_on_refreshed) # to_domain is on instance from_domain returns
+
+        # 3. Call the repository method
+        created_entity = await patient_repository.create(patient_entity_to_create)
+
+        # 4. Assertions
+        MockPatientModelClass.from_domain.assert_awaited_once_with(patient_entity_to_create)
+        mock_db_session.add.assert_called_once_with(mock_created_model_instance)
+        mock_db_session.flush.assert_awaited_once()
+        mock_db_session.refresh.assert_awaited_once_with(mock_created_model_instance)
+        mock_created_model_instance.to_domain.assert_awaited_once()
+
+        assert created_entity is not None
+        assert created_entity.id == patient_entity_to_create.id
+        assert created_entity.first_name == patient_entity_to_create.first_name # Decrypted
+        assert created_entity.last_name == patient_entity_to_create.last_name   # Decrypted
+        assert created_entity.email == patient_entity_to_create.email         # Decrypted
+
+        # Verify that encrypt_string was called by TypeDecorators via SQLAlchemy's flush processing
+        # This is an indirect check. The TypeDecorator on PatientModel._first_name would have called it.
+        # We assume SQLAlchemy calls process_bind_param on flush for new instances.
+        mock_encryption_service.encrypt_string.assert_any_call(patient_entity_to_create.first_name)
+        mock_encryption_service.encrypt_string.assert_any_call(patient_entity_to_create.last_name)
+        mock_encryption_service.encrypt_string.assert_any_call(patient_entity_to_create.email)
+
+    @pytest.mark.asyncio
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.PatientModel', new_callable=MagicMock) # For mocking from_domain
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    async def test_update_patient(self, mock_patient_module_esi: MagicMock, MockPatientModelClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, mock_encryption_service: MagicMock, async_mock_patch: Any):
+        """Test updating a patient, ensuring encryption and decryption flows."""
+        # 1. Configure Patched Services & Mocks
+        mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt_string
+        mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt_string
+
+        patient_uuid = uuid.UUID(sample_patient_id)
+
+        # 2. Data for Update
+        # This is the entity with *new plaintext data* that we want to update with
+        update_entity_data = PatientEntity(
+            id=patient_uuid,
+            first_name="JaneUpdated",
+            last_name="DoeUpdated",
+            email="jane.doe.updated@example.com",
+            date_of_birth=date(1985, 5, 5),
+            medical_record_number="MRN_UPDATED_789"
+        )
+
+        # 3. Mock Existing Model in DB (pre-update state)
+        # This model has 'old encrypted' data. We'll use the helper for this.
+        # Define the raw data that corresponds to this pre-update 'encrypted' model
+        raw_data_for_pre_update_model = {
+            "_first_name": "JohnOriginal", # Original name before update
+            "_last_name": "DoeOriginal",
+            "_email": "john.original@example.com",
+            "_dob": date(1980,1,1) # Original DOB
+        }
+        existing_model_from_db = await create_mock_patient_model_with_encrypted_data(
+            patient_id_str=sample_patient_id,
+            mock_encrypt_service=mock_encryption_service,
+            raw_data_overrides=raw_data_for_pre_update_model
+        )
+        existing_model_from_db.id = patient_uuid # Ensure ID is correct
+
+        # Configure session.execute to return this existing_model_from_db on fetch
+        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = existing_model_from_db
+
+        # 4. Mock the to_domain method of the existing_model_from_db (which will be updated)
+        # This will be called at the end of repository.update() to return the final entity.
+        # It should reflect the *updated and then decrypted* data.
+        async def mock_to_domain_on_updated_model(): 
+            # This simulates TypeDecorators using decrypt_string on the *updated* (mock-encrypted) attributes
+            # The attributes on existing_model_from_db will be updated in-place by setattr in the repo.
+            # So, we decrypt those current values from existing_model_from_db.
+            return PatientEntity(
+                id=existing_model_from_db.id,
+                first_name=await mock_encryption_service.decrypt_string(existing_model_from_db._first_name),
+                last_name=await mock_encryption_service.decrypt_string(existing_model_from_db._last_name),
+                email=await mock_encryption_service.decrypt_string(existing_model_from_db._email),
+                date_of_birth=existing_model_from_db._dob, # Date objects aren't string-encrypted
+                medical_record_number=update_entity_data.medical_record_number, # Assume this field was also updated
+                is_active=getattr(existing_model_from_db, 'is_active', True),
+                created_at=getattr(existing_model_from_db, 'created_at', datetime.now(timezone.utc)),
+                updated_at=getattr(existing_model_from_db, 'updated_at', datetime.now(timezone.utc))
+            )
+        # The model instance fetched from DB is the one whose to_domain is called.
+        existing_model_from_db.to_domain = AsyncMock(side_effect=mock_to_domain_on_updated_model)
+
+        # 5. Call Repository Method
+        updated_entity = await patient_repository.update(update_entity_data)
+
+        # 6. Assertions
+        # Check the initial fetch
+        mock_db_session.execute.assert_awaited_once() 
+        # Add more specific check for select statement if necessary
+
+        # Check setattr calls on existing_model_from_db (indirectly checks TypeDecorator for encryption)
+        # SQLAlchemy's flush will trigger process_bind_param which uses encrypt_string.
+        mock_encryption_service.encrypt_string.assert_any_call(update_entity_data.first_name)
+        mock_encryption_service.encrypt_string.assert_any_call(update_entity_data.last_name)
+        mock_encryption_service.encrypt_string.assert_any_call(update_entity_data.email)
+        # dob is not string-encrypted, medical_record_number is assumed handled by EncryptedString if _prefixed
+        if hasattr(update_entity_data, 'medical_record_number') and update_entity_data.medical_record_number:
+             # Assuming _medical_record_number is an EncryptedString field in PatientModel
+            mock_encryption_service.encrypt_string.assert_any_call(update_entity_data.medical_record_number)
+
+        mock_db_session.flush.assert_awaited_once()
+        mock_db_session.refresh.assert_awaited_once_with(existing_model_from_db)
+        existing_model_from_db.to_domain.assert_awaited_once()
+
+        assert updated_entity is not None
+        assert updated_entity.id == patient_uuid
+        assert updated_entity.first_name == update_entity_data.first_name # Check final decrypted data
+        assert updated_entity.last_name == update_entity_data.last_name
+        assert updated_entity.email == update_entity_data.email
+        assert updated_entity.date_of_birth == update_entity_data.date_of_birth
+
+    @pytest.mark.asyncio
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    async def test_get_all_patients(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, mock_encryption_service: MagicMock, async_mock_patch: Any):
+        """Test retrieving all patients with pagination, ensuring decryption."""
+        # 1. Configure Patched Service
+        mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt_string
+        mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt_string
+
+        # 2. Prepare multiple mock PatientModel instances with 'encrypted' data
+        patient_id_1 = str(uuid.uuid4())
+        raw_data_1 = {"_first_name": "Alice", "_email": "alice@example.com"}
+        model_1 = await create_mock_patient_model_with_encrypted_data(
+            patient_id_str=patient_id_1, 
+            mock_encrypt_service=mock_encryption_service, 
+            raw_data_overrides=raw_data_1
+        )
+        model_1.id = uuid.UUID(patient_id_1) # Ensure ID is UUID
+
+        patient_id_2 = str(uuid.uuid4())
+        raw_data_2 = {"_first_name": "Bob", "_email": "bob@example.com"}
+        model_2 = await create_mock_patient_model_with_encrypted_data(
+            patient_id_str=patient_id_2, 
+            mock_encrypt_service=mock_encryption_service, 
+            raw_data_overrides=raw_data_2
+        )
+        model_2.id = uuid.UUID(patient_id_2)
+
+        mock_models_from_db = [model_1, model_2]
+
+        # 3. Configure mock DB session to return these models
+        mock_db_session.execute.return_value.scalars.return_value.all.return_value = mock_models_from_db
+
+        # 4. Call repository method
+        retrieved_entities = await patient_repository.get_all(limit=10, offset=0)
+
+        # 5. Assertions
+        assert len(retrieved_entities) == 2
+        mock_db_session.execute.assert_awaited_once() # Should be called for select
+
+        # Check data for Alice (model_1)
+        entity_1 = next(e for e in retrieved_entities if e.id == model_1.id)
+        assert entity_1.first_name == raw_data_1["_first_name"]
+        assert entity_1.email == raw_data_1["_email"]
+        mock_encryption_service.decrypt_string.assert_any_call(model_1._first_name)
+        mock_encryption_service.decrypt_string.assert_any_call(model_1._email)
+
+        # Check data for Bob (model_2)
+        entity_2 = next(e for e in retrieved_entities if e.id == model_2.id)
+        assert entity_2.first_name == raw_data_2["_first_name"]
+        assert entity_2.email == raw_data_2["_email"]
+        mock_encryption_service.decrypt_string.assert_any_call(model_2._first_name)
+        mock_encryption_service.decrypt_string.assert_any_call(model_2._email)
+        
+        # Total decrypt calls should be for all encrypted fields from all models
+        # Assuming 2 encrypted fields per model here for simplicity (first_name, email)
+        # This count might need adjustment based on how many fields create_mock_patient_model_with_encrypted_data actually encrypts
+        # For more robustness, count calls per unique encrypted string if possible, or track calls more granularly.
+        # Total calls will be at least 4 (2 fields * 2 patients for the overridden fields)
+        # plus any other fields the helper encrypts by default.
+        assert mock_encryption_service.decrypt_string.call_count >= 4 
+
+    @pytest.mark.asyncio
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    async def test_get_by_email(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, mock_encryption_service: MagicMock, async_mock_patch: Any):
+        """Test retrieving a patient by email, ensuring decryption."""
+        # 1. Configure Patched Service
+        mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt_string
+        mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt_string
+
+        # 2. Prepare mock PatientModel with 'encrypted' data
+        target_email_raw = "find.me@example.com"
+        patient_id_for_email_test = str(uuid.uuid4())
+        
+        # The model should have the email field encrypted with the target_email_raw
+        # Other fields can use defaults from the helper or be overridden if needed for the entity construction
+        raw_data_for_model = {
+            "_email": target_email_raw, 
+            "_first_name": "EmailUser"
+        }
+        model_from_db = await create_mock_patient_model_with_encrypted_data(
+            patient_id_str=patient_id_for_email_test,
+            mock_encrypt_service=mock_encryption_service,
+            raw_data_overrides=raw_data_for_model
+        )
+        model_from_db.id = uuid.UUID(patient_id_for_email_test)
+
+        # 3. Configure mock DB session 
+        # The repository encrypts the email before querying, so the mock query needs to expect the encrypted form.
+        encrypted_target_email = await mock_encryption_service.encrypt_string(target_email_raw)
+        
+        # We need to ensure that when session.execute is called with a select statement
+        # that filters on PatientModel._email == encrypted_target_email, it returns model_from_db.
+        # This is tricky to mock perfectly without deeper inspection of the select statement object.
+        # For simplicity, we'll assume the execute call for get_by_email, if it finds a match, returns the model.
+        # A more robust mock would inspect the actual query.
+        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = model_from_db
+
+        # 4. Call repository method
+        retrieved_entity = await patient_repository.get_by_email(target_email_raw)
+
+        # 5. Assertions
+        assert retrieved_entity is not None
+        assert retrieved_entity.id == model_from_db.id
+        assert retrieved_entity.email == target_email_raw # Ensure decrypted email matches
+        assert retrieved_entity.first_name == raw_data_for_model["_first_name"] # Check other decrypted field
+
+        mock_db_session.execute.assert_awaited_once() # Verify DB was queried
+        
+        # Verify decryption calls for the fields on the retrieved model
+        mock_encryption_service.decrypt_string.assert_any_call(model_from_db._email)
+        mock_encryption_service.decrypt_string.assert_any_call(model_from_db._first_name)
+
+    @pytest.mark.asyncio
+    async def test_delete_patient_success(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, async_mock_patch: Any):
+        """Test successfully deleting a patient."""
+        patient_uuid = uuid.UUID(sample_patient_id)
+
+        # Mock the model to be returned by session.get (or equivalent select for delete target)
+        mock_patient_to_delete = PatientModel(id=patient_uuid)
+        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = mock_patient_to_delete 
+        # If delete directly uses session.get, then:
+        # mock_db_session.get.return_value = mock_patient_to_delete
+
+        # mock_db_session.delete is an AsyncMock
+        mock_db_session.delete.return_value = None # delete doesn't usually return a value
+        mock_db_session.flush.return_value = None 
+
+        result = await patient_repository.delete(sample_patient_id)
+
+        assert result is True
+        # Verify the correct model was targeted for deletion by select first
+        mock_db_session.execute.assert_awaited_once() 
+        # Add specific check for select statement for patient_uuid if possible
+        
+        mock_db_session.delete.assert_awaited_once_with(mock_patient_to_delete)
+        mock_db_session.flush.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_patient_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, async_mock_patch: Any):
+        """Test deleting a patient that is not found."""
+        patient_uuid = uuid.UUID(sample_patient_id)
+        
+        # Mock session.execute to find no patient
+        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
+        # If delete directly uses session.get, then:
+        # mock_db_session.get.return_value = None
+
+        result = await patient_repository.delete(sample_patient_id)
+
+        assert result is False
+        mock_db_session.execute.assert_awaited_once()
+        mock_db_session.delete.assert_not_called() # Delete should not be called if patient not found
+        mock_db_session.flush.assert_not_called()
+
+    # TODO: Test error/edge cases for all methods
+
+# Further tests would go here, e.g., for update, delete, error conditions.

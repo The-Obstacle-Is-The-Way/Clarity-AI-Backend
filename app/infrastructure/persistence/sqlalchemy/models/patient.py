@@ -15,6 +15,8 @@ from dateutil import parser
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Enum as SQLEnum
 
 # Use the core domain model, which has phone_number attribute
 from app.core.domain.entities.patient import Patient as DomainPatient
@@ -30,6 +32,8 @@ from app.infrastructure.security.encryption.base_encryption_service import BaseE
 from app.infrastructure.security.encryption.encryption_service import EncryptionService
 from app.core.config import settings
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
+from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location
+import base64 # Import base64 for decoding the key
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +43,7 @@ import dataclasses  # Add this import
 from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict 
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
 
-# Prepare EncryptionService instance for TypeDecorators
-encryption_service_instance = EncryptionService(secret_key=settings.ENCRYPTION_KEY)
-
+# encryption_service_instance = EncryptionService() # No key passed. TODO: Review if this instance is needed here at all. -> REMOVED
 
 @register_model
 class Patient(Base, TimestampMixin, AuditMixin):
@@ -72,38 +74,42 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
     # QUANTUM FIX: Use prefixed column names with underscore for encrypted fields
     # This ensures compatibility with test expectations and encryption handling
-    _first_name = Column("first_name", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _last_name = Column("last_name", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    # Storing DOB as encrypted text is common for flexibility, though dedicated date types exist
-    _dob = Column("date_of_birth", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _email = Column("email", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _phone = Column("phone", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    # Legacy generic address storage removed in favor of structured address fields
-    _medical_record_number = Column("medical_record_number", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
-    # Use Text for potentially long encrypted JSON strings or large text fields
-    _ssn = Column("ssn", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
-    _insurance_number = Column("insurance_number", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _medical_history = Column("medical_history", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)  # Assumed stored as encrypted JSON list/text
-    _medications = Column("medications_data", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)      # Encrypted medications data stored as JSON list/text
-    _allergies = Column("allergies", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)        # Assumed stored as encrypted JSON list/text
-    _treatment_notes = Column("treatment_notes", EncryptedText(encryption_service=encryption_service_instance), nullable=True)  # Assumed stored as encrypted JSON list/text
-    _gender = Column("gender", EncryptedString(encryption_service=encryption_service_instance), nullable=True)           # Encrypted gender identity/expression
+    _first_name = Column("first_name", EncryptedString, nullable=True)
+    _last_name = Column("last_name", EncryptedString, nullable=True)
+    _middle_name = Column("middle_name", EncryptedString, nullable=True)
+    _gender = Column("gender", SQLEnum(Gender, name="gender_enum"), nullable=True)
+    _date_of_birth = Column("date_of_birth", EncryptedString, nullable=True)
+    _ssn = Column("ssn", EncryptedString, nullable=True)
+    _mrn = Column("mrn", EncryptedString, nullable=True)
+    _email = Column("email", EncryptedString, nullable=True)
+    _phone_number = Column("phone_number", EncryptedString, nullable=True)
+    _insurance_provider = Column("insurance_provider", EncryptedString, nullable=True)
+    _insurance_policy_number = Column("insurance_policy_number", EncryptedString, nullable=True)
+    _insurance_group_number = Column("insurance_group_number", EncryptedString, nullable=True)
+    _address_line1 = Column("address_line1", EncryptedString, nullable=True)
+    _address_line2 = Column("address_line2", EncryptedString, nullable=True)
+    _city = Column("city", EncryptedString, nullable=True)
+    _state = Column("state", EncryptedString, nullable=True)
+    _zip_code = Column("zip_code", EncryptedString, nullable=True)
+    _country = Column("country", EncryptedString, nullable=True)
+    _emergency_contact_name = Column("emergency_contact_name", EncryptedString, nullable=True)
+    _emergency_contact_phone = Column("emergency_contact_phone", EncryptedString, nullable=True)
+    _emergency_contact_relationship = Column("emergency_contact_relationship", EncryptedString, nullable=True)
+    
+    # Fields that might be JSON or larger text
+    _contact_info = Column("contact_info", EncryptedJSON, nullable=True)
+    _address_details = Column("address_details", EncryptedJSON, nullable=True)
+    _emergency_contact_details = Column("emergency_contact_details", EncryptedJSON, nullable=True)
+    _preferences = Column("preferences", EncryptedJSON, nullable=True)
+    _medical_history = Column("medical_history", EncryptedText, nullable=True)
+    _medications = Column("medications", EncryptedText, nullable=True)
+    _allergies = Column("allergies", EncryptedText, nullable=True)
+    _notes = Column("notes", EncryptedText, nullable=True)
+    _custom_fields = Column("custom_fields", EncryptedJSON, nullable=True)
 
     # --- Other Fields (Potentially Sensitive/Encrypted or Not) ---
     # Example: Encrypted JSON blob for arbitrary additional structured data
-    _extra_data = Column("extra_data", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)
-    # Structured address fields
-    _address_line1 = Column("address_line1", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
-    _address_line2 = Column("address_line2", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
-    _city = Column("city", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _state = Column("state", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _postal_code = Column("postal_code", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-    _country = Column("country", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
-
-    # Emergency contact 
-    _emergency_contact = Column("emergency_contact", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)
-    # Add insurance_info field expected by the test
-    _insurance_info = Column("insurance_info", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True) # Uncommenting for proper access
+    _extra_data = Column("extra_data", EncryptedJSON, nullable=True)
 
     # --- Relationships ---
     # Define relationships with string references to avoid circular imports
@@ -172,23 +178,29 @@ class Patient(Base, TimestampMixin, AuditMixin):
         '_first_name',
         '_last_name',
         '_email',
-        '_phone',
+        '_phone_number',
         '_ssn',
-        '_medical_record_number',
+        '_mrn',
         '_gender',
         '_address_line1',
         '_address_line2',
         '_city',
         '_state',
-        '_postal_code',
+        '_zip_code',
         '_country',
-        '_emergency_contact',  # Stored as encrypted JSON string
-        '_insurance_number',   # Stored as encrypted string
-        '_medical_history',    # Stored as encrypted JSON string (list)
-        '_medications',        # Stored as encrypted JSON string (list)
-        '_allergies',          # Stored as encrypted JSON string (list)
-        '_treatment_notes',    # Stored as encrypted JSON string (list)
-        '_extra_data'          # Stored as encrypted JSON string (dict/list)
+        '_emergency_contact_name',
+        '_emergency_contact_phone',
+        '_emergency_contact_relationship',
+        '_contact_info',
+        '_address_details',
+        '_emergency_contact_details',
+        '_preferences',
+        '_medical_history',
+        '_medications',
+        '_allergies',
+        '_notes',
+        '_custom_fields',
+        '_extra_data'
     }
     # --- END ADD --- 
 
@@ -236,6 +248,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Assign values to prefixed fields directly. TypeDecorators will handle encryption.
         model._first_name = getattr(patient, 'first_name', None)
         model._last_name = getattr(patient, 'last_name', None)
+        model._middle_name = getattr(patient, 'middle_name', None)
+        model._gender = getattr(patient, 'gender', None)
         
         # Handle date_of_birth (convert date/datetime to isoformat string first)
         dob_value = getattr(patient, 'date_of_birth', None)
@@ -249,15 +263,12 @@ class Patient(Base, TimestampMixin, AuditMixin):
              except (ValueError, TypeError):
                  logger.warning(f"Could not parse date_of_birth string '{dob_value}' for patient {getattr(patient, 'id', 'N/A')}. Storing as is.")
                  dob_iso_str = dob_value # Keep original string if parsing fails
-        model._dob = dob_iso_str # Assign string, EncryptedString will handle it
+        model._date_of_birth = dob_iso_str # Assign string, EncryptedString will handle it
         
         model._email = getattr(patient, 'email', None)
-        # Updated to use phone_number from domain model instead of phone
-        model._phone = getattr(patient, 'phone_number', None)
+        model._phone_number = getattr(patient, 'phone_number', None)
         model._ssn = getattr(patient, 'ssn', None)
-        model._medical_record_number = getattr(patient, 'medical_record_number', None)
-        model._gender = getattr(patient, 'gender', None)
-        model._insurance_number = getattr(patient, 'insurance_number', None)
+        model._mrn = getattr(patient, 'medical_record_number', None)
         logger.debug(f"[from_domain] Assigned direct PII/PHI strings for {getattr(patient, 'id', 'N/A')}")
 
         # --- Handle Address (Domain likely has Address object, Model stores string) ---
@@ -265,7 +276,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         if isinstance(address_obj, str): # Handle legacy string case if necessary
              logger.warning(f"Received raw string for address: '{address_obj[:50]}...'. Using directly.")
              full_address_string = address_obj
-             model._address_line1 = full_address_string # Assign string, EncryptedText will handle it
+             model._address_line1 = full_address_string # Assign string, EncryptedString will handle it
         elif address_obj and hasattr(address_obj, 'street'): # Check if it's likely an Address object
             # Construct the full address string from components - adapt attributes as needed
             # Ensure components exist before concatenating
@@ -281,7 +292,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             
             if full_address_string:
                  logger.debug(f"[from_domain] Assigning constructed address string '{full_address_string[:50]}...' to _address_line1 for {getattr(patient, 'id', 'N/A')}")
-                 model._address_line1 = full_address_string # Assign string, EncryptedText will handle it
+                 model._address_line1 = full_address_string # Assign string, EncryptedString will handle it
             else:
                  logger.debug(f"[from_domain] Address object provided but resulted in empty string for {getattr(patient, 'id', 'N/A')}")
                  model._address_line1 = None
@@ -295,25 +306,31 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._address_line2 = getattr(address_obj, 'line2', None)
             model._city = getattr(address_obj, 'city', None)
             model._state = getattr(address_obj, 'state', None)
-            model._postal_code = getattr(address_obj, 'postal_code', None)
+            model._zip_code = getattr(address_obj, 'zip_code', None)
             model._country = getattr(address_obj, 'country', None)
         else: # If not Address VO or string, clear other fields or handle as per logic
             model._address_line2 = None 
             model._city = None
             model._state = None
-            model._postal_code = None
+            model._zip_code = None
             model._country = None
         # --- End Address Handling ---
         
         # Assign serializable complex fields directly. EncryptedJSON will handle serialization & encryption.
         logger.debug(f"[from_domain] Assigning complex fields for {getattr(patient, 'id', 'N/A')}")
-        model._emergency_contact = getattr(patient, 'emergency_contact', None) # Pass dict/EmergencyContact obj
-        model._medical_history = getattr(patient, 'medical_history', []) 
-        model._medications = getattr(patient, 'medications', []) 
+        model._contact_info = getattr(patient, 'contact_info', None)
+        model._address_details = getattr(patient, 'address_details', None)
+        model._emergency_contact_details = getattr(patient, 'emergency_contact_details', None)
+        model._preferences = getattr(patient, 'preferences', None)
+        model._medical_history = getattr(patient, 'medical_history', [])
+        model._medications = getattr(patient, 'medications', [])
         model._allergies = getattr(patient, 'allergies', [])
-        model._treatment_notes = getattr(patient, 'treatment_notes', [])
+        model._notes = getattr(patient, 'notes', [])
+        model._custom_fields = getattr(patient, 'custom_fields', None)
+        model._insurance_provider = getattr(patient, 'insurance_provider', None)
+        model._insurance_policy_number = getattr(patient, 'insurance_policy_number', None)
+        model._insurance_group_number = getattr(patient, 'insurance_group_number', None)
         model._extra_data = getattr(patient, 'extra_data', {})
-        model._insurance_info = getattr(patient, 'insurance_info', None) 
 
         # Assign remaining non-encrypted fields, converting UUIDs to string
         # biometric_twin_id_obj = getattr(patient, 'biometric_twin_id', None)
@@ -362,8 +379,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
         last_name = self._last_name
         from datetime import datetime
         # Parse date_of_birth after decryption by TypeDecorator
-        if self._dob: # _dob is now the decrypted string from EncryptedString
-            decrypted_dob_str = self._dob
+        if self._date_of_birth: # _date_of_birth is now the decrypted string from EncryptedString
+            decrypted_dob_str = self._date_of_birth
             if decrypted_dob_str:
                 try:
                     # Use dateutil.parser for robust parsing
@@ -377,11 +394,11 @@ class Patient(Base, TimestampMixin, AuditMixin):
         else:
             date_of_birth = None
         email = self._email
-        phone = self._phone
+        phone = self._phone_number
         ssn = self._ssn
-        medical_record_number = self._medical_record_number
+        medical_record_number = self._mrn
         gender = self._gender
-        insurance_number = self._insurance_number
+        insurance_provider = self._insurance_provider
 
         logger.debug(f"[to_domain] Accessed simple PII for {self.id}")
 
@@ -390,23 +407,22 @@ class Patient(Base, TimestampMixin, AuditMixin):
         address_line2 = self._address_line2
         city = self._city
         state = self._state
-        postal_code = self._postal_code
+        zip_code = self._zip_code
         country = self._country
         logger.debug(f"[to_domain] Accessed address components for {self.id}")
 
         # Access complex fields directly. EncryptedJSON handles decryption & deserialization.
         logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
-        emergency_contact_obj = self._emergency_contact
-        
+        contact_info_dict = self._contact_info
+        address_details_dict = self._address_details
+        emergency_contact_details_dict = self._emergency_contact_details
+        preferences_dict = self._preferences
         medical_history_list = self._medical_history
         medications_list = self._medications
         allergies_list = self._allergies
-        treatment_notes_list = self._treatment_notes
+        notes_list = self._notes
         extra_data_dict = self._extra_data
         
-        # QUANTUM FIX: Decrypt insurance_info
-        insurance_info_obj = self._insurance_info
-
         # Build domain Patient using only the fields that exist in the domain entity
         # Check app.core.domain.entities.patient.Patient for the correct attributes
         patient_args = {
@@ -424,24 +440,35 @@ class Patient(Base, TimestampMixin, AuditMixin):
         if self.is_active is not None:
             patient_args['active'] = self.is_active
             
-        if emergency_contact_obj is not None:
-            # Ensure emergency_contact_obj is a dict before passing to EmergencyContact
-            if isinstance(emergency_contact_obj, dict):
-                patient_args['emergency_contact'] = EmergencyContact(**emergency_contact_obj)
-            elif isinstance(emergency_contact_obj, EmergencyContact): # If already an object
-                 patient_args['emergency_contact'] = emergency_contact_obj
-            else:
-                logger.warning(f"Decrypted emergency_contact for patient {self.id} is not a dict: {type(emergency_contact_obj)}")
+        if contact_info_dict is not None:
+            patient_args['contact_info'] = contact_info_dict
 
-        if insurance_info_obj is not None:
-            patient_args['insurance_info'] = insurance_info_obj # Assuming it's already in correct domain type or dict
+        if address_details_dict is not None:
+            patient_args['address_details'] = address_details_dict
 
-        # Handle lists and dicts for complex types, defaulting to empty if None after decryption
-        patient_args['medical_history'] = medical_history_list if medical_history_list is not None else []
-        patient_args['medications'] = medications_list if medications_list is not None else []
-        patient_args['allergies'] = allergies_list if allergies_list is not None else []
-        patient_args['treatment_notes'] = treatment_notes_list if treatment_notes_list is not None else []
-        patient_args['extra_data'] = extra_data_dict if extra_data_dict is not None else {}
+        if emergency_contact_details_dict is not None:
+            patient_args['emergency_contact_details'] = emergency_contact_details_dict
+
+        if preferences_dict is not None:
+            patient_args['preferences'] = preferences_dict
+
+        if medical_history_list is not None:
+            patient_args['medical_history'] = medical_history_list
+
+        if medications_list is not None:
+            patient_args['medications'] = medications_list
+
+        if allergies_list is not None:
+            patient_args['allergies'] = allergies_list
+
+        if notes_list is not None:
+            patient_args['notes'] = notes_list
+
+        if extra_data_dict is not None:
+            patient_args['extra_data'] = extra_data_dict
+
+        if insurance_provider is not None:
+            patient_args['insurance_provider'] = insurance_provider
 
         # Construct Address value object if components are present
         address_components = {
@@ -449,7 +476,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             'line2': address_line2,
             'city': city,
             'state': state,
-            'postal_code': postal_code,
+            'zip_code': zip_code,
             'country': country
         }
         # Only create Address object if at least one component is not None

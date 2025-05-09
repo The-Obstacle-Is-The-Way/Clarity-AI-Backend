@@ -8,6 +8,7 @@ using the application's configured encryption service.
 
 import logging
 from sqlalchemy import types, Text
+import json
 
 # Import the core encryption/decryption functions
 # from the encryption module which re-exports them properly
@@ -75,8 +76,63 @@ class EncryptedString(EncryptedTypeBase):
 # TODO: Define EncryptedDate (handle date/datetime objects, store encrypted ISO string)
 # TODO: Define EncryptedJSON (handle dict/list, serialize to JSON, encrypt string)
 
+class EncryptedText(EncryptedTypeBase):
+    """SQLAlchemy TypeDecorator for automatically encrypting/decrypting large text fields."""
+    
+    @property
+    def python_type(self):
+        # The underlying Python type for Text is also str
+        return str
+
+class EncryptedJSON(EncryptedTypeBase):
+    """SQLAlchemy TypeDecorator for automatically encrypting/decrypting JSON serializable objects."""
+
+    @property
+    def python_type(self):
+        # Could be dict, list, etc. The base type decorator handles the actual SQL type.
+        # For flexibility, we don't pin it to a specific collection type here.
+        return object 
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        try:
+            json_string = json.dumps(value)
+            # logger.debug(f"EncryptedJSON process_bind_param: Serialized to JSON: '{json_string[:100]}...'")
+            encrypted = super().process_bind_param(json_string, dialect)
+            # logger.debug(f"EncryptedJSON process_bind_param: Encryption result: '{encrypted[:50] if encrypted else 'None'}...'")
+            return encrypted
+        except TypeError as e:
+            logger.error(f"JSON serialization failed for value: {value}. Error: {e}", exc_info=True)
+            raise ValueError("JSON serialization failed during bind parameter processing.") from e
+        except Exception as e:
+            logger.error(f"Encryption failed for JSON object: {e}", exc_info=True)
+            raise ValueError("Encryption for JSON object failed during bind parameter processing.") from e
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        try:
+            decrypted_string = super().process_result_value(value, dialect)
+            if decrypted_string is None: # Superclass might return None on decryption failure
+                # logger.debug("EncryptedJSON process_result_value: Decrypted string is None, returning None.")
+                return None
+            # logger.debug(f"EncryptedJSON process_result_value: Decrypted string: '{decrypted_string[:100]}...'")
+            deserialized_json = json.loads(decrypted_string)
+            # logger.debug(f"EncryptedJSON process_result_value: Deserialized JSON: type {type(deserialized_json)}")
+            return deserialized_json
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON deserialization failed for decrypted string: '{decrypted_string if 'decrypted_string' in locals() else value[:100]}...'. Error: {e}", exc_info=True)
+            # Depending on policy, could return the raw decrypted string, None, or raise
+            return None # Or raise ValueError("JSON deserialization failed.")
+        except Exception as e:
+            logger.error(f"Decryption or JSON deserialization failed: {e}", exc_info=True)
+            return None # Or raise
+
 __all__ = [
     "EncryptedString",
+    "EncryptedText",
+    "EncryptedJSON",
     # Add other encrypted types here when defined
 ]
 

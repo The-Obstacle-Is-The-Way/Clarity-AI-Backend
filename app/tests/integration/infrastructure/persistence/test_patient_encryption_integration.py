@@ -185,9 +185,10 @@ class TestPatientEncryptionIntegration:
         # Use the provided integration_db_session fixture
         db_session = integration_db_session
         
-        # STEP 1: Convert domain entity to SQLAlchemy model with encryption
-        # This will map fields like first_name -> _first_name and encrypt them
-        patient_model = await PatientModel.from_domain(sample_patient, encryption_service)
+        # STEP 1: Convert domain entity to SQLAlchemy model
+        # The from_domain method no longer takes an encryption_service argument
+        # as the TypeDecorators handle encryption internally.
+        patient_model = await PatientModel.from_domain(sample_patient)
         
         # Explicitly set user_id to TEST_USER_ID to fix NULL constraint issue
         patient_model.user_id = TEST_USER_ID
@@ -246,8 +247,8 @@ class TestPatientEncryptionIntegration:
         db_session = integration_db_session
         
         # Create a patient model and save to database
-        encryption_service = BaseEncryptionService()
-        patient_model = await PatientModel.from_domain(sample_patient, encryption_service)
+        # The from_domain method no longer takes an encryption_service argument.
+        patient_model = await PatientModel.from_domain(sample_patient)
         
         # Explicitly set user_id to TEST_USER_ID to fix NULL constraint issue
         patient_model.user_id = TEST_USER_ID
@@ -262,7 +263,7 @@ class TestPatientEncryptionIntegration:
         assert retrieved_model is not None
 
         # Convert back to domain using the model's method
-        retrieved_patient = await retrieved_model.to_domain(encryption_service)
+        retrieved_patient = await retrieved_model.to_domain()
 
         # Verify PHI fields are correctly decrypted
         assert retrieved_patient.id == sample_patient.id
