@@ -71,12 +71,16 @@ async def process_text(
     """
     _check_health(service)
     
+    options = {
+        "user_id": user_id,
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+    
     result = await service.process(
-        prompt=prompt,
-        user_id=user_id,
-        model=model,
-        temperature=temperature,
-        max_tokens=max_tokens
+        text=prompt,
+        model_type=model,
+        options=options
     )
     
     return result
@@ -104,11 +108,15 @@ async def analyze_text(
     _check_health(service)
     
     # For tests, forward to the process method
+    options = {
+        "user_id": user_id,
+        "analysis_type": analysis_type
+    }
+    
     return await service.process(
-        prompt=text,
-        user_id=user_id,
-        model="analysis",
-        analysis_type=analysis_type
+        text=text,
+        model_type="analysis",
+        options=options
     )
 
 
@@ -132,10 +140,12 @@ async def detect_conditions(
     _check_health(service)
     
     # For tests, forward to the process method
+    options = {"user_id": user_id}
+    
     return await service.process(
-        prompt=text,
-        user_id=user_id,
-        model="conditions"
+        text=text,
+        model_type="conditions",
+        options=options
     )
 
 
@@ -162,10 +172,12 @@ async def generate_therapeutic_response(
     prompt = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in conversation_history])
     
     # For tests, forward to the process method
+    options = {"user_id": user_id}
+    
     return await service.process(
-        prompt=prompt,
-        user_id=user_id,
-        model="therapeutic"
+        text=prompt,
+        model_type="therapeutic",
+        options=options
     )
 
 

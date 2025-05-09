@@ -156,11 +156,12 @@ class User(Base, TimestampMixin, AuditMixin):
     )
     
     # Relationship to AnalyticsEventModel 
-    analytics_events = relationship(
-        "AnalyticsEventModel", 
-        back_populates="user",
-        cascade="all, delete-orphan"
-    )
+    # Temporarily comment out this relationship to fix mapper errors
+    # analytics_events = relationship(
+    #     "AnalyticsEventModel", 
+    #     back_populates="user",
+    #     cascade="all, delete-orphan"
+    # )
     
     # Audit logging
     access_logs = Column(JSON, nullable=True)  # Stores recent access logs

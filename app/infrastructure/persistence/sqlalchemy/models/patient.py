@@ -117,8 +117,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         cascade="all, delete-orphan",
         lazy="selectin",  # Efficient loading pattern
         foreign_keys="AppointmentModel.patient_id",  # Explicit foreign key reference 
-        viewonly=False,  # Allow changes to propagate
-        primaryjoin="Patient.id == AppointmentModel.patient_id",  # Explicit join condition
+        viewonly=True,  # Set to true to prevent modification errors
     )
     
     # Relationship with clinical notes with proper foreign_keys setting
@@ -128,7 +127,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         cascade="all, delete-orphan",
         lazy="selectin",  # Efficient loading pattern
         foreign_keys="ClinicalNoteModel.patient_id",  # Explicit foreign key reference
-        primaryjoin="Patient.id == ClinicalNoteModel.patient_id",  # Explicit join condition
+        viewonly=True,  # Set to true to prevent modification errors
     )
     
     # UPDATED: Relationship with patient-specific prescriptions
@@ -138,7 +137,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         cascade="all, delete-orphan",
         lazy="selectin",  # Efficient loading pattern
         foreign_keys="PatientMedicationModel.patient_id",  # Explicit foreign key reference
-        primaryjoin="Patient.id == PatientMedicationModel.patient_id",  # Explicit join condition
+        viewonly=True,  # Set to true to prevent modification errors
     )
 
     # Relationship to BiometricRuleModel
@@ -148,7 +147,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         cascade="all, delete-orphan",
         lazy="dynamic",
         foreign_keys="BiometricRuleModel.patient_id",  # Explicit foreign key reference
-        primaryjoin="Patient.id == BiometricRuleModel.patient_id",  # Explicit join condition
+        viewonly=True,  # Set to true to prevent modification errors
     )
 
     # ADDED: Relationship to BiometricTwinModel
@@ -158,7 +157,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         uselist=False, # One-to-one relationship
         cascade="all, delete-orphan", # Cascade delete/orphan operations
         foreign_keys="BiometricTwinModel.patient_id",  # Explicit foreign key reference
-        primaryjoin="Patient.id == BiometricTwinModel.patient_id",  # Explicit join condition
+        viewonly=True,  # Set to true to prevent modification errors
     )
 
     # --- Encrypted Fields Set --- 

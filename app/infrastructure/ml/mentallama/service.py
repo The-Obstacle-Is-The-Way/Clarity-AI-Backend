@@ -10,7 +10,7 @@ import random
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from app.core.interfaces.services.mentallama_service_interface import MentaLLaMAInterface
+from app.core.services.ml.interface import MentaLLaMAInterface
 
 logger = logging.getLogger(__name__)
 
@@ -49,23 +49,17 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
     
     async def process(
         self,
-        prompt: str,
-        user_id: str,
-        model: Optional[str] = None,
-        temperature: float = 0.7,
-        max_tokens: int = 1024,
-        **kwargs: Any
-    ) -> Dict[str, Any]:
+        text: str,
+        model_type: str | None = None,
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Process a text prompt and generate a mock response.
         
         Args:
-            prompt: The text prompt to process
-            user_id: User ID for logging and personalization
-            model: Model identifier to use
-            temperature: Sampling temperature (0.0-1.0)
-            max_tokens: Maximum tokens to generate
-            **kwargs: Additional parameters
+            text: The text prompt to process
+            model_type: Model type to use
+            options: Additional options
             
         Returns:
             Dictionary containing mock processing results
@@ -74,18 +68,19 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
             logger.warning("MockMentaLLaMAService used before initialization")
             self.initialize({})
         
-        logger.info(f"Processing prompt for user {user_id} with model {model or 'default'}")
+        user_id = options.get("user_id", "default_user") if options else "default_user"
+        logger.info(f"Processing text for user {user_id} with model {model_type or 'default'}")
         
         # Default response
         mock_response = {
-            "model": model or "mock_model",
-            "prompt": prompt,
+            "model": model_type or "mock_model",
+            "prompt": text,
             "response": "mock process response",
             "provider": "mock_provider"
         }
         
         # Special handling for specialized endpoints based on model parameter
-        if model == "risk":
+        if model_type == "risk":
             # For suicide risk assessment
             mock_response.update({
                 "risk_level": "low",
@@ -94,7 +89,7 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
                 "recommendations": ["Continue therapy"],
                 "immediate_action_required": False
             })
-        elif model == "conditions":
+        elif model_type == "conditions":
             # For condition detection
             mock_response.update({
                 "conditions": [
@@ -102,13 +97,13 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
                     {"condition": "depression", "confidence": 0.6}
                 ]
             })
-        elif model == "wellness":
+        elif model_type == "wellness":
             # For wellness assessment
-            dimensions = kwargs.get("dimensions", ["physical", "mental", "social"])
+            dimensions = options.get("dimensions", ["physical", "mental", "social"]) if options else ["physical", "mental", "social"]
             mock_response.update({
                 "dimensions": {dim: {"score": round(random.uniform(0.3, 0.9), 2)} for dim in dimensions}
             })
-        elif model == "therapeutic":
+        elif model_type == "therapeutic":
             # For therapeutic responses
             mock_response.update({
                 "therapeutic_approach": "cognitive-behavioral",
@@ -120,16 +115,14 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
     async def detect_depression(
         self,
         text: str,
-        user_id: str,
-        **kwargs: Any
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Detect signs of depression in text.
         
         Args:
             text: Text to analyze
-            user_id: User ID for logging and personalization
-            **kwargs: Additional parameters
+            options: Additional options
             
         Returns:
             Dictionary with detection results and confidence scores
@@ -138,7 +131,7 @@ class MockMentaLLaMAService(MentaLLaMAInterface):
             logger.warning("MockMentaLLaMAService used before initialization")
             self.initialize({})
         
-        logger.info(f"Detecting depression in text for user {user_id}")
+        logger.info(f"Detecting depression in text")
         
         # Generate a mock detection result
         mock_result = {
