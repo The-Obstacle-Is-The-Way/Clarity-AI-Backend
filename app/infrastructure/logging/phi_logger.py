@@ -6,6 +6,7 @@ ensuring HIPAA compliance by automatically sanitizing sensitive data.
 """
 
 import logging
+import os
 import sys
 from typing import Any
 
@@ -14,10 +15,9 @@ from app.core.config.settings import get_settings # Corrected import
 
 settings = get_settings() # Restore to original position
 
-from app.infrastructure.security.phi.log_sanitizer import (  # Import LogSanitizer and LogSanitizerConfig
-    LogSanitizerConfig,
-    PHIFormatter,
-)
+# Import directly from consolidated PHI sanitizer implementation
+from app.infrastructure.security.phi import PHISafeLogger, get_sanitized_logger, PHISanitizer
+
 from .audit_logger import AuditLogger # Restore to original position
 
 class PHILogger:
@@ -37,7 +37,8 @@ class PHILogger:
             log_path: Path to log file
         """
         self.settings = get_settings()
-        self.logger = logging.getLogger(name)
+        # Use the sanitized logger directly
+        self.logger = get_sanitized_logger(name)
         
         # Use getattr to safely get the log level with a default if not present
         log_level = getattr(self.settings, "LOG_LEVEL", "INFO")
@@ -57,17 +58,12 @@ class PHILogger:
         if self.logger.handlers:
             self.logger.handlers.clear()
 
-        # Create redaction handler and formatter
-        # Instantiate LogSanitizer directly
-        # sanitizer = LogSanitizer() # Instantiate LogSanitizer, not needed if passing config
-        # Use sanitizer_config instead of sanitizer instance
-        formatter = PHIFormatter(
-            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            # sanitizer=sanitizer, # Pass sanitizer instance correctly - REMOVED
-            sanitizer_config=LogSanitizerConfig() # Pass config instead
+        # Create a basic formatter - PHISafeLogger handles PHI sanitization internally
+        formatter = logging.Formatter(
+            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
 
-        # Add console handler with redaction
+        # Add console handler
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)

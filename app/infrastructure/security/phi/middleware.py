@@ -359,7 +359,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         if isinstance(data, str):
             if self.is_whitelisted(data, path):
                 return data
-            return self.phi_sanitizer.sanitize(data)
+            return self.phi_sanitizer.sanitize_string(data)
             
         # For dictionaries, sanitize each value
         elif isinstance(data, dict):

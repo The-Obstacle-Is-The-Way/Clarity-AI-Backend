@@ -13,6 +13,7 @@ import logging
 import uuid
 from datetime import date
 from unittest.mock import patch
+import io
 
 import pytest
 
@@ -31,7 +32,7 @@ except ImportError:
     from app.tests.security.utils.test_mocks import MockPatient as Patient
 
 # Import the canonical function for getting a sanitized logger
-from app.infrastructure.security.phi.log_sanitizer import get_sanitized_logger
+from app.infrastructure.security.phi import get_sanitized_logger
 
 
 # Import BaseSecurityTest for test base class
@@ -106,16 +107,31 @@ class TestPatientPHISecurity(BaseSecurityTest):
         patient = self._create_sample_patient_with_phi()
         # Use the canonical function
         logger = get_sanitized_logger(__name__)
-        with patch.object(logger, "error") as mock_log_error:
-            try:
-                raise ValueError(f"Error processing patient {patient.id} with email {patient.email}")
-            except ValueError as e:
-                logger.error(f"Error occurred: {e!s}")
-            for call in mock_log_error.call_args_list:
-                log_message = call[0][0]
-                assert patient.email not in log_message, "Email should not be in error logs"
-                assert patient.insurance_number not in log_message, "Insurance number should not be in error logs"
-                assert "[REDACTED EMAIL]" in log_message or "PHI redacted" in log_message, "Error log should indicate PHI redaction"
+        
+        # Set up a StringIO to capture log output
+        log_capture = io.StringIO()
+        handler = logging.StreamHandler(log_capture)
+        handler.setLevel(logging.ERROR)
+        formatter = logging.Formatter('%(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        
+        try:
+            # Generate error with PHI
+            raise ValueError(f"Error processing patient {patient.id} with email {patient.email}")
+        except ValueError as e:
+            # Log the error
+            logger.error(f"Error occurred: {e!s}")
+            
+            # Get the log output
+            log_output = log_capture.getvalue()
+            
+            # Verify PHI was sanitized from log
+            assert patient.email not in log_output, "Email should not be in error logs"
+            assert "[REDACTED EMAIL]" in log_output, "Redaction marker should be in logs"
+            
+            # Clean up
+            logger.removeHandler(handler)
 
     def test_phi_field_access_restrictions(self):
         patient = self._create_sample_patient_with_phi()

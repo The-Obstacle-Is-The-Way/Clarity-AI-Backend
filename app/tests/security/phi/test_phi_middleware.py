@@ -12,7 +12,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.infrastructure.security.phi import add_phi_middleware
+from app.infrastructure.security.phi import PHIMiddleware, add_phi_middleware
 
 
 class TestPHIMiddleware:

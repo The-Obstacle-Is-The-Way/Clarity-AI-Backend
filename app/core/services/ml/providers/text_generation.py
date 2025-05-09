@@ -15,12 +15,12 @@ from app.core.exceptions import (
     ServiceUnavailableError,
 )
 from app.core.services.ml.interface import TextGenerationInterface
-from app.infrastructure.security.phi.phi_service import PHIService
+from app.infrastructure.security.phi import PHISanitizer, get_sanitizer
 
 logger = logging.getLogger(__name__)
 
 # Instantiate sanitizer for use
-sanitizer = PHIService()
+sanitizer = get_sanitizer()
 
 class TextGenerationService(TextGenerationInterface):
     """

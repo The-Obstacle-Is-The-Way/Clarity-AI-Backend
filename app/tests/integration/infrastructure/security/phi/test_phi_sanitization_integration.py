@@ -25,9 +25,8 @@ from app.domain.value_objects.emergency_contact import EmergencyContact
 # Corrected import path for PatientModel
 from app.infrastructure.database.models import PatientModel
 
-# Corrected import path for get_sanitized_logger
-from app.infrastructure.security.phi.log_sanitizer import get_sanitized_logger
-from app.infrastructure.security.phi.phi_service import PHIService
+# Import from consolidated PHI sanitization
+from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
 
 
 @pytest.fixture
@@ -94,18 +93,18 @@ class TestPHISanitization:
     @pytest.mark.asyncio
     async def test_phi_detection(self, test_patient):
         """Test that PHI detector correctly identifies PHI."""
-        # Create a PHI service instance
-        service = PHIService() # Assuming default config is sufficient for this test
+        # Create a PHI sanitizer instance
+        sanitizer = PHISanitizer() # Using the consolidated sanitizer
         
         # Test detection in string
         test_string = f"Patient {test_patient.first_name} {test_patient.last_name} " \
                       f"with email {test_patient.email} and phone {test_patient.phone}"
         
-        # Detect PHI - PHIService.detect_phi returns a list of findings
-        phi_detected_list = service.detect_phi(test_string)
+        # Detect PHI - Use contains_phi method instead of detect_phi
+        phi_detected = sanitizer.contains_phi(test_string)
         
-        # Verify PHI was detected (list is not empty)
-        assert phi_detected_list, "PHI detection list should not be empty for the test string"
+        # Verify PHI was detected
+        assert phi_detected, "PHI detection should find PHI in the test string"
         
         # Test detection in dictionary
         test_dict = {
@@ -116,11 +115,11 @@ class TestPHISanitization:
             }
         }
         
-        # Detect PHI - PHIService.detect_phi returns a list of findings
-        phi_detected_list = service.detect_phi(test_dict)
+        # Sanitize the dictionary to check if PHI is detected
+        sanitized_dict = sanitizer.sanitize_json(test_dict)
         
-        # Verify PHI was detected (list is not empty)
-        assert phi_detected_list, "PHI detection list should not be empty for the test dictionary"
+        # Verify PHI was detected and sanitized
+        assert sanitized_dict != test_dict, "PHI should be detected and sanitized in test dictionary"
     
     @pytest.mark.asyncio
     async def test_phi_sanitization_in_logs(self, test_patient, log_capture):
@@ -145,7 +144,7 @@ class TestPHISanitization:
         
         # Verify log still contains useful information
         assert "Processing patient" in log_content, "Log should still contain non-PHI information"
-        assert "[REDACTED]" in log_content, "Log should contain redaction markers"
+        assert "[REDACTED" in log_content, "Log should contain redaction markers"
     
     @pytest.mark.asyncio
     async def test_phi_sanitization_in_exception_handling(self, test_patient, log_capture):
@@ -183,7 +182,7 @@ class TestPHISanitization:
         
         # Verify log still contains useful information
         assert "Error processing patient" in log_content, "Log should still contain non-PHI information"
-        assert "[REDACTED]" in log_content, "Log should contain redaction markers"
+        assert "[REDACTED" in log_content, "Log should contain redaction markers"
     
     @pytest.mark.asyncio
     async def test_phi_protection_across_modules(self, test_patient, log_capture):

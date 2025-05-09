@@ -562,6 +562,73 @@ class PHISanitizer:
             
         return sanitized
 
+    # Add compatibility methods for PHIService API
+    def sanitize(self, data: Any, sensitivity: Optional[str] = None, *args, **kwargs) -> Any:
+        """
+        Sanitize any data by removing PHI. Main compatibility method for old PHIService API.
+        
+        Args:
+            data: The data to sanitize (string, dict, list, etc.)
+            sensitivity: Optional sensitivity level (ignored)
+            
+        Returns:
+            Sanitized data with PHI redacted
+        """
+        if data is None:
+            return None
+            
+        if isinstance(data, str):
+            return self.sanitize_text(data)
+        elif isinstance(data, dict):
+            return self.sanitize_json(data)
+        elif isinstance(data, list):
+            result = []
+            for item in data:
+                if isinstance(item, str):
+                    result.append(self.sanitize_string(item))
+                elif isinstance(item, dict):
+                    result.append(self.sanitize_json(item))
+                elif isinstance(item, list):
+                    result.append(self.sanitize(item))
+                else:
+                    result.append(item)
+            return result
+            
+        # Default case, try to stringify
+        try:
+            str_data = str(data)
+            return self.sanitize_string(str_data)
+        except:
+            # If we can't stringify it, return as is
+            return data
+    
+    def sanitize_text(self, text: str, sensitivity: Optional[str] = None, *args, **kwargs) -> str:
+        """
+        Compatibility method for PHIService's sanitize_text method.
+        
+        Args:
+            text: The text to sanitize
+            sensitivity: Optional sensitivity level (ignored)
+            
+        Returns:
+            Sanitized text with PHI redacted
+        """
+        return self.sanitize_string(text)
+    
+    def detect_phi(self, data: Any) -> list:
+        """
+        Compatibility method for PHIService's detect_phi method.
+        
+        Args:
+            data: Data to check for PHI
+            
+        Returns:
+            List containing a single True if PHI is detected, empty list otherwise
+        """
+        if self.contains_phi(data):
+            return [True]
+        return []
+
 
 # Global sanitizer instance with default settings
 _default_sanitizer = None

@@ -1,8 +1,16 @@
+import logging
+import os
+import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 
-from app.infrastructure.security.phi.log_sanitizer import LogSanitizer
+import pytest
 
-# from app.core.utils.patterns import PHI_PATTERNS # REMOVED as unused and incorrect path
+# Import from consolidated PHI sanitizer implementation
+from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
+
+# Import the consolidated PHI formatter - assuming it was moved to the sanitizer.py module
+from app.infrastructure.security.phi.sanitizer import PHISafeLogger
 
 
 class TestLogSanitizer(unittest.TestCase):
@@ -10,7 +18,7 @@ class TestLogSanitizer(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
-        self.log_sanitizer = LogSanitizer()
+        self.phi_sanitizer = PHISanitizer()
 
         # Test log messages with various types of PHI
         self.test_logs = {
@@ -25,75 +33,60 @@ class TestLogSanitizer(unittest.TestCase):
             "no_phi": "System initialized with error code 0x123",
             "mixed_case": "PATIENT JOHN SMITH has email JOHN.SMITH@EXAMPLE.COM",
         }
-        
-        # Define the expected patterns based on the current implementation
-        self.expected_patterns = {
-            "patient_name": "Patient [REDACTED NAME] visited on 2023-01-01",
-            "patient_email": "Contact patient at [REDACTED EMAIL] for follow-up",
-            "patient_phone": "Patient phone number is [REDACTED PHONE]",
-            "patient_address": "Patient lives at [REDACTED ADDRESS], Anytown, CA 90210",
-            "patient_ssn": "Patient SSN is [REDACTED SSN]",
-            "patient_mrn": "Patient [REDACTED MRN] admitted to ward",
-            "patient_dob": "Patient DOB is [REDACTED DATE]",
-            "multiple_phi": "Patient [REDACTED NAME], DOB [REDACTED DATE], SSN [REDACTED SSN] lives at [REDACTED ADDRESS]",
-            "no_phi": "System initialized with error code 0x123",
-            "mixed_case": "PATIENT [REDACTED NAME] has email [REDACTED EMAIL]",
-        }
 
     def test_sanitize_patient_names(self):
         """Test sanitization of patient names."""
         log_key = "patient_name"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("John Smith", sanitized)
         self.assertIn("[REDACTED NAME]", sanitized)
 
     def test_sanitize_email_addresses(self):
         """Test sanitization of email addresses."""
         log_key = "patient_email"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("john.smith@example.com", sanitized)
-        # Email patterns might be redacted in parts rather than as a whole
-        # self.assertIn("[REDACTED EMAIL]", sanitized)
+        self.assertIn("[REDACTED EMAIL]", sanitized)
 
     def test_sanitize_phone_numbers(self):
         """Test sanitization of phone numbers."""
         log_key = "patient_phone"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("555-123-4567", sanitized)
         self.assertIn("[REDACTED PHONE]", sanitized)
 
     def test_sanitize_addresses(self):
         """Test sanitization of physical addresses."""
         log_key = "patient_address"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("123 Main St", sanitized)
-        # The address replacement depends on the implementation
+        self.assertIn("[REDACTED ADDRESS]", sanitized)
 
     def test_sanitize_ssn(self):
         """Test sanitization of Social Security Numbers."""
         log_key = "patient_ssn"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("123-45-6789", sanitized)
         self.assertIn("[REDACTED SSN]", sanitized)
 
     def test_sanitize_mrn(self):
         """Test sanitization of Medical Record Numbers."""
         log_key = "patient_mrn"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("MRN#987654", sanitized)
-        # The MRN might be partially redacted, so we don't check for the exact replacement
+        self.assertIn("[REDACTED MRN]", sanitized)
 
     def test_sanitize_dob(self):
         """Test sanitization of Dates of Birth."""
         log_key = "patient_dob"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("01/15/1980", sanitized)
         self.assertIn("[REDACTED DATE]", sanitized)
 
     def test_sanitize_multiple_phi(self):
         """Test sanitization of logs with multiple PHI elements."""
         log_key = "multiple_phi"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         self.assertNotIn("John Smith", sanitized)
         self.assertNotIn("01/15/1980", sanitized)
         self.assertNotIn("123-45-6789", sanitized)
@@ -102,21 +95,23 @@ class TestLogSanitizer(unittest.TestCase):
     def test_no_phi_unchanged(self):
         """Test that logs without PHI don't contain sensitive information."""
         log_key = "no_phi"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
         # Check that the ID part remains in the output
         self.assertIn("code 0x123", sanitized)
 
     def test_case_insensitive_sanitization(self):
         """Test that sanitization works regardless of case."""
         log_key = "mixed_case"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
+        self.assertNotIn("JOHN SMITH", sanitized)
         self.assertNotIn("JOHN.SMITH@EXAMPLE.COM", sanitized)
+        self.assertIn("[REDACTED NAME]", sanitized)
         self.assertIn("[REDACTED EMAIL]", sanitized)
 
     def test_hipaa_compliance(self):
         """Verify compliance with HIPAA requirements for log sanitization."""
         log_key = "multiple_phi"
-        sanitized = self.log_sanitizer.sanitize(self.test_logs[log_key])
+        sanitized = self.phi_sanitizer.sanitize_string(self.test_logs[log_key])
 
         # HIPAA requires that PHI is not visible in logs
         self.assertNotIn("John Smith", sanitized)
@@ -128,7 +123,140 @@ class TestLogSanitizer(unittest.TestCase):
         self.assertIn("[REDACTED NAME]", sanitized)
         self.assertIn("[REDACTED DATE]", sanitized)
         self.assertIn("[REDACTED SSN]", sanitized)
-        # Address may be redacted in different ways depending on the implementation
+        self.assertIn("[REDACTED ADDRESS]", sanitized)
+
+
+class TestLogSanitization:
+    """Test PHI sanitization in logs to ensure HIPAA compliance."""
+
+    @pytest.fixture
+    def temp_log_file(self):
+        """Create a temporary log file for testing."""
+        fd, temp_path = tempfile.mkstemp(suffix='.log')
+        os.close(fd)
+        yield temp_path
+        # Cleanup
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+    @pytest.fixture
+    def logger_setup(self, temp_log_file):
+        """Set up a logger with PHISafeLogger for testing."""
+        # Create and configure logger
+        test_logger = logging.getLogger('test_phi_logger')
+        test_logger.setLevel(logging.DEBUG)
+
+        # Create file handler
+        file_handler = logging.FileHandler(temp_log_file)
+        file_handler.setLevel(logging.DEBUG)
+
+        # Set up a basic formatter
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+
+        # Add handler to logger
+        test_logger.addHandler(file_handler)
+
+        # Set PHISafeLogger as the logger class
+        original_logger_class = logging.getLoggerClass()
+        logging.setLoggerClass(PHISafeLogger)
+        
+        try:
+            # Get a PHI-safe logger
+            phi_safe_logger = logging.getLogger('test_phi_safe_logger')
+            phi_safe_logger.setLevel(logging.DEBUG)
+            phi_safe_logger.addHandler(file_handler)
+            
+            return phi_safe_logger, temp_log_file
+        finally:
+            # Reset logger class
+            logging.setLoggerClass(original_logger_class)
+
+    def test_phi_detection(self):
+        """Test that the sanitizer correctly detects PHI in text."""
+        sanitizer = PHISanitizer()
+        
+        # Test with PHI text
+        phi_text = "SSN: 123-45-6789"
+        contains_phi = sanitizer.sanitize_string(phi_text) != phi_text
+        assert contains_phi, "Should detect PHI in text"
+        
+        # Test with non-PHI text
+        non_phi_text = "Error code: 12345"
+        contains_phi = sanitizer.sanitize_string(non_phi_text) != non_phi_text
+        assert not contains_phi, "Should not detect PHI in non-PHI text"
+
+    def test_phi_never_reaches_logs(self, logger_setup):
+        """End-to-end test ensuring PHI doesn't make it to logs."""
+        phi_logger, log_file = logger_setup
+
+        # Create sensitive log messages with PHI
+        phi_logger.info("New appointment for John Doe (johndoe@example.com)")
+        phi_logger.warning("Failed login attempt for SSN: 123-45-6789")
+        phi_logger.error("Patient with phone number (555) 123-4567 reported an issue")
+
+        # Read the log file and check for PHI
+        with open(log_file, 'r') as f:
+            log_content = f.read()
+
+        # Verify no PHI is present
+        assert "John Doe" not in log_content
+        assert "johndoe@example.com" not in log_content
+        assert "123-45-6789" not in log_content
+        assert "(555) 123-4567" not in log_content
+
+        # Verify redaction markers are present
+        assert "[REDACTED NAME]" in log_content
+        assert "[REDACTED EMAIL]" in log_content
+        assert "[REDACTED SSN]" in log_content
+        assert "[REDACTED PHONE]" in log_content
+
+    def test_sanitization_performance(self):
+        """Test the performance of log sanitization on large log entries."""
+        sanitizer = PHISanitizer()
+
+        # Create a large log message with some PHI scattered throughout
+        log_parts = []
+        for i in range(100):
+            if i % 10 == 0:
+                log_parts.append(f"Patient-{i} John Smith (SSN: 123-45-6789)")
+            else:
+                log_parts.append(f"Normal log entry {i} with no PHI")
+
+        large_log = " | ".join(log_parts)
+
+        # Time the sanitization
+        import time
+        start_time = time.time()
+        sanitized = sanitizer.sanitize_string(large_log)
+        end_time = time.time()
+
+        # Ensure all PHI is sanitized
+        assert "John Smith" not in sanitized
+        assert "123-45-6789" not in sanitized
+
+        # Performance assertion - sanitization should be reasonably fast
+        # Even for large log entries, sanitization should complete in under 50ms
+        assert (end_time - start_time) < 0.05, "Sanitization took too long"
+
+    def test_get_sanitized_logger(self):
+        """Test the get_sanitized_logger factory function."""
+        # Get a sanitized logger
+        logger = get_sanitized_logger("test.logger")
+        
+        # Verify it's the correct type
+        assert isinstance(logger, PHISafeLogger), "Should return a PHISafeLogger instance"
+        
+        # Test logging with PHI
+        with patch.object(logger, "info") as mock_info:
+            logger.info("Patient SSN: 123-45-6789")
+            mock_info.assert_called_once()
+            
+            # The sanitizer should have been invoked
+            # This is an indirect verification since we're not mocking the sanitizer itself
+            call_args = mock_info.call_args[0][0]
+            assert "123-45-6789" not in call_args, "PHI should be sanitized before logging"
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,7 +13,8 @@ from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
 )
-from app.infrastructure.ml.phi.mock import MockPHIDetection  # Corrected import path
+from app.infrastructure.ml.phi.mock import MockPHIDetection  # ML-specific mock detector
+from app.infrastructure.security.phi import PHISanitizer  # Import the consolidated sanitizer
 from app.tests.security.utils.base_security_test import BaseSecurityTest
 
 
@@ -32,9 +33,13 @@ class TestMockPHIDetection(BaseSecurityTest):
     @pytest.fixture(autouse=True)
     def setup_phi_service(self):
         """Set up test fixtures and service instance."""
-        # Initialize the PHI detection service
+        # Initialize the PHI detection service (ML-specific)
         self.service = MockPHIDetection()
         self.service.initialize({})
+        
+        # Also initialize the consolidated PHI sanitizer for comparison
+        self.sanitizer = PHISanitizer()
+        
         self.audit_events = [] # Initialize audit_events list
 
         # Sample PHI text for testing
@@ -87,6 +92,9 @@ class TestMockPHIDetection(BaseSecurityTest):
         # Confidence score should be between 0 and 1
         assert result["metadata"]["confidence"] >= 0.0
         assert result["metadata"]["confidence"] <= 1.0
+        
+        # Compare with consolidated sanitizer
+        assert self.sanitizer.sanitize_string(self.sample_phi_text) != self.sample_phi_text
 
     def test_detect_phi_empty_text(self) -> None:
         """Test PHI detection with empty text."""
@@ -104,6 +112,9 @@ class TestMockPHIDetection(BaseSecurityTest):
         
         # Has_phi should be False
         assert result["has_phi"] is False
+        
+        # Compare with consolidated sanitizer - should match original text
+        assert self.sanitizer.sanitize_string(non_phi_text) == non_phi_text
 
     def test_detect_phi_with_threshold(self) -> None:
         """Test PHI detection with different confidence thresholds."""
@@ -141,6 +152,12 @@ class TestMockPHIDetection(BaseSecurityTest):
         for expected_type in expected_types:
             assert any(expected_type in phi_type for phi_type in phi_types), \
                 f"Failed to detect {expected_type} in the sample text"
+        
+        # Compare with consolidated sanitizer redaction
+        sanitized = self.sanitizer.sanitize_string(self.sample_phi_text)
+        assert "[REDACTED NAME]" in sanitized
+        assert "[REDACTED SSN]" in sanitized
+        assert "[REDACTED EMAIL]" in sanitized
 
     def test_redact_phi_basic(self) -> None:
         """Test basic PHI redaction functionality."""
@@ -161,6 +178,12 @@ class TestMockPHIDetection(BaseSecurityTest):
         assert "John Smith" not in result["redacted_text"]
         assert "123-45-6789" not in result["redacted_text"]
         assert "john.smith@example.com" not in result["redacted_text"]
+        
+        # Compare with consolidated sanitizer
+        sanitized = self.sanitizer.sanitize_string(self.sample_phi_text)
+        assert "John Smith" not in sanitized
+        assert "123-45-6789" not in sanitized
+        assert "john.smith@example.com" not in sanitized
 
     def test_redact_phi_empty_text(self) -> None:
         """Test PHI redaction with empty text."""
@@ -178,6 +201,9 @@ class TestMockPHIDetection(BaseSecurityTest):
         
         # Should not contain any redactions
         assert "[REDACTED]" not in result["redacted_text"]
+        
+        # Compare with consolidated sanitizer
+        assert self.sanitizer.sanitize_string(non_phi_text) == non_phi_text
 
     def test_redact_phi_with_detection_level(self) -> None:
         """Test PHI redaction with different detection levels."""
@@ -199,6 +225,10 @@ class TestMockPHIDetection(BaseSecurityTest):
         
         # Aggressive should detect more PHI (more sensitive)
         assert minimal_redactions <= aggressive_redactions
+        
+        # Compare with consolidated sanitizer's different sensitivity levels
+        # Note: Assuming our consolidated sanitizer would have similar behavior,
+        # but we can't directly test it if the API doesn't support sensitivity levels
 
     def test_redact_phi_edge_cases(self) -> None:
         """Test PHI redaction with edge cases."""
@@ -209,6 +239,10 @@ class TestMockPHIDetection(BaseSecurityTest):
         # PHI should be redacted
         assert phi_only_text not in result["redacted_text"]
         assert "[REDACTED]" in result["redacted_text"]
+        
+        # Compare with consolidated sanitizer
+        assert self.sanitizer.sanitize_string(phi_only_text) != phi_only_text
+        assert "[REDACTED SSN]" in self.sanitizer.sanitize_string(phi_only_text)
 
     def test_pattern_selection(self) -> None:
         """Test that PHI detection patterns properly match different PHI types."""
@@ -220,8 +254,20 @@ class TestMockPHIDetection(BaseSecurityTest):
         }
 
         for phi_type, test_text in test_cases.items():
-            # Test each text type individually
+            # Test each text type individually with the ML service
             result = self.service.detect_phi(test_text)
             
             # Should find at least one PHI in the text
-            assert len(result["phi_instances"]) > 0, f"Failed to detect PHI in '{test_text}'"
+            assert len(result["phi_instances"]) > 0, f"ML service failed to detect PHI in '{test_text}'"
+            
+            # Compare with consolidated sanitizer
+            sanitized = self.sanitizer.sanitize_string(test_text)
+            assert sanitized != test_text, f"Sanitizer failed to detect PHI in '{test_text}'"
+            
+            # Check specific redaction markers based on PHI type
+            if phi_type == "ssn":
+                assert "[REDACTED SSN]" in sanitized
+            elif phi_type == "email":
+                assert "[REDACTED EMAIL]" in sanitized
+            elif phi_type == "name":
+                assert "[REDACTED NAME]" in sanitized

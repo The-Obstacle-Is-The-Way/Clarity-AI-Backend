@@ -1,8 +1,8 @@
 """
-PHI code analysis for HIPAA compliance (compatibility stub).
+PHI code analysis for HIPAA compliance.
 
 This module provides analysis of code patterns to detect potential PHI leakage,
-delegating to consolidated PHI sanitization components where appropriate.
+using the consolidated PHI sanitization components.
 """
 
 import ast
@@ -12,7 +12,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from app.infrastructure.security.phi.sanitizer import PHISanitizer
+from app.infrastructure.security.phi.sanitizer import PHISanitizer, get_sanitized_logger
+
+# Create a sanitized logger
+logger = get_sanitized_logger(__name__)
 
 
 class CodeSeverity(str, Enum):
@@ -77,8 +80,8 @@ class PHICodeAnalyzer:
     """
     Analyzer for detecting potential PHI leaks in code.
     
-    This stub implementation provides backward compatibility with tests
-    while delegating to the consolidated PHI sanitization system.
+    This implementation uses the consolidated PHI sanitization system
+    to identify potential PHI leaks in code files and directories.
     """
     
     def __init__(
@@ -188,7 +191,7 @@ class PHICodeAnalyzer:
         base_dir = Path(directory_path)
         if not base_dir.is_dir():
             # Log warning or raise error?
-            print(f"Warning: Directory not found: {directory_path}")
+            logger.warning(f"Directory not found: {directory_path}")
             return all_findings
 
         exclude_set = set(exclude_dirs) if exclude_dirs else set()
@@ -251,26 +254,48 @@ class PHICodeAnalyzer:
             file_path: Virtual file path for reporting
             
         Returns:
-            List of PHI findings from AST analysis (currently basic).
+            List of PHI findings from AST analysis
         """
         findings: list[PHIFinding] = []
         try:
-            tree = ast.parse(code, filename=file_path)  # noqa: F841 - tree will be used when AST traversal is implemented
+            tree = ast.parse(code, filename=file_path)
             
-            # TODO: Implement AST traversal logic here
-            # Example: Use ast.NodeVisitor to walk the tree and check nodes
-            # - Check function calls (e.g., logging, print)
-            # - Check assignments (e.g., sensitive variable names)
-            # - Check string constants for PHI patterns
+            # Implement AST visitor to find potential PHI leaks
+            class PHIVisitor(ast.NodeVisitor):
+                def __init__(self):
+                    self.findings = []
+                    
+                def visit_Call(self, node):
+                    # Check function calls for logging and prints
+                    if hasattr(node, 'func') and hasattr(node.func, 'attr'):
+                        if node.func.attr in ('debug', 'info', 'warning', 'error', 'critical'):
+                            # Check logging calls
+                            self.findings.append(PHIFinding(
+                                file_path=file_path,
+                                line_number=node.lineno,
+                                code_snippet=ast.unparse(node),
+                                message="Potential PHI in log statement",
+                                severity=CodeSeverity.WARNING
+                            ))
+                    self.generic_visit(node)
+                    
+                def visit_Name(self, node):
+                    # Check variable names for potential PHI indicators
+                    phi_indicators = ('ssn', 'dob', 'patient', 'address', 'phone', 'email', 'mrn')
+                    if any(indicator in node.id.lower() for indicator in phi_indicators):
+                        self.findings.append(PHIFinding(
+                            file_path=file_path,
+                            line_number=node.lineno,
+                            code_snippet=node.id,
+                            message="Variable name suggests PHI",
+                            severity=CodeSeverity.INFO
+                        ))
+                    self.generic_visit(node)
             
-            # Placeholder: Add an info finding that AST analysis is pending
-            findings.append(PHIFinding(
-                file_path=file_path,
-                line_number=0, # AST nodes have line numbers, use them in real impl
-                code_snippet="<AST Analysis Pending>",
-                message="AST analysis implementation is pending.",
-                severity=CodeSeverity.INFO
-            ))
+            # Run the visitor
+            visitor = PHIVisitor()
+            visitor.visit(tree)
+            findings.extend(visitor.findings)
 
         except SyntaxError as e:
             findings.append(PHIFinding(
@@ -278,7 +303,7 @@ class PHICodeAnalyzer:
                 line_number=e.lineno,
                 code_snippet=e.text.strip() if e.text else "",
                 message=f"Syntax error during AST parsing: {e.msg}",
-                severity=CodeSeverity.WARNING # Changed from INFO as syntax errors are more severe
+                severity=CodeSeverity.WARNING
             ))
         except Exception as e:
             findings.append(PHIFinding(
@@ -286,25 +311,49 @@ class PHICodeAnalyzer:
                 line_number=0,
                 code_snippet="",
                 message=f"Unexpected error during AST analysis: {e!s}",
-                severity=CodeSeverity.WARNING # Changed from INFO
+                severity=CodeSeverity.WARNING
             ))
             
         return findings
 
-    def audit_api_endpoints(self) -> list[PHIFinding]:
-        """Audits API endpoint definitions for potential PHI exposure.
+    def audit_api_endpoints(self, app=None) -> list[PHIFinding]:
+        """
+        Audits API endpoint definitions for potential PHI exposure.
 
-        Note: This is a stub. Direct analysis of FastAPI endpoints from this
-        infrastructure component violates Clean Architecture. The actual logic
-        should reside in a higher-level component with access to the API router.
+        Args:
+            app: Optional FastAPI application to analyze. If not provided,
+                 this function will return an empty list.
 
         Returns:
-            An empty list (stub implementation).
+            List of PHI findings in API endpoints.
         """
-        # TODO: Implement API endpoint analysis in a higher-level component.
-        # This component would need access to the FastAPI app or router.
-        # Potential checks:
-        # - Analyze path parameters for sensitive names (e.g., /patients/{patient_id})
-        # - Analyze request/response Pydantic models for PHI fields.
-        # - Check for missing authentication/authorization on sensitive routes.
-        return [] # Stub implementation
+        findings = []
+        
+        if app is None:
+            logger.warning("No FastAPI app provided for endpoint analysis")
+            return []
+            
+        try:
+            # Analyze FastAPI routes if available
+            if hasattr(app, 'routes'):
+                for route in app.routes:
+                    if hasattr(route, 'path') and hasattr(route, 'endpoint'):
+                        path = route.path
+                        
+                        # Check for PHI in URL parameters
+                        if '{' in path and '}' in path:
+                            param_match = re.search(r'\{([^}]+)\}', path)
+                            if param_match:
+                                param_name = param_match.group(1)
+                                if any(phi in param_name.lower() for phi in ('id', 'patient', 'user', 'name')):
+                                    findings.append(PHIFinding(
+                                        file_path="API Routes",
+                                        line_number=0,
+                                        code_snippet=path,
+                                        message=f"URL parameter '{param_name}' may contain PHI",
+                                        severity=CodeSeverity.WARNING
+                                    ))
+        except Exception as e:
+            logger.error(f"Error auditing API endpoints: {e}")
+            
+        return findings
