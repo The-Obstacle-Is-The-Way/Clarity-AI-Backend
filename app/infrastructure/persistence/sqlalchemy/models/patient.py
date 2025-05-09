@@ -323,22 +323,23 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._country = None
         # --- End Address Handling ---
         
-        # Assign serializable complex fields directly. EncryptedJSON will handle serialization & encryption.
-        logger.debug(f"[from_domain] Assigning complex fields for {getattr(patient, 'id', 'N/A')}")
-        model._contact_info = getattr(patient, 'contact_info', None)
-        model._address_details = getattr(patient, 'address_details', None)
-        model._emergency_contact_details = getattr(patient, 'emergency_contact_details', None)
-        model._preferences = getattr(patient, 'preferences', None)
-        model._medical_history = getattr(patient, 'medical_history', [])
-        model._medications = getattr(patient, 'medications', [])
-        model._allergies = getattr(patient, 'allergies', [])
-        model._notes = getattr(patient, 'notes', [])
-        model._custom_fields = getattr(patient, 'custom_fields', None)
-        model._insurance_provider = getattr(patient, 'insurance_provider', None)
-        model._insurance_policy_number = getattr(patient, 'insurance_policy_number', None)
-        model._insurance_group_number = getattr(patient, 'insurance_group_number', None)
-        model._extra_data = getattr(patient, 'extra_data', {})
-
+        # For EncryptedText fields, ensure we are passing strings if the domain object
+        # is complex, as the TypeDecorator expects to stringify its input.
+        # Explicitly stringify Pydantic models here to avoid any dialect/type confusion.
+        model._medical_history = str(patient.medical_history) if patient.medical_history is not None else None
+        model._medications = str(patient.medications) if patient.medications is not None else None
+        model._allergies = str(patient.allergies) if patient.allergies is not None else None
+        
+        model._notes = patient.notes
+        # Handle JSON fields, ensuring they are passed as serializable structures
+        # or let EncryptedJSON handle them. EncryptedJSON is robust.
+        model._contact_info = patient.contact_info
+        model._address_details = patient.address_details
+        model._emergency_contact_details = patient.emergency_contact_details
+        model._preferences = patient.preferences
+        model._custom_fields = patient.custom_fields
+        model._extra_data = patient.extra_data # Assuming this is simple dict/list or None
+        
         # Assign remaining non-encrypted fields, converting UUIDs to string
         # biometric_twin_id_obj = getattr(patient, 'biometric_twin_id', None)
         # if isinstance(biometric_twin_id_obj, uuid.UUID):
