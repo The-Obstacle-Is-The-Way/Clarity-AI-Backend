@@ -87,67 +87,66 @@ async def integration_db_session(encryption_service_fixture: EncryptionService):
         
         try:
             # Data setup begins
-            # Single transaction for all initial setup to ensure atomicity for this block
-            async with async_session.begin():
-                logger.info(f"[Integration Fixture] Setting up initial User {TEST_USER_ID} and its AuditLog.")
+            async with async_session.begin(): # This will commit at the end or rollback on error
+                logger.info(f"[Integration Fixture] Setting up initial User {TEST_USER_ID} and its AuditLog with granular flushes.")
 
-                # 1. Create AuditLog for user creation, user_id is initially None
+                # 1. Create and flush AuditLog for user creation (user_id is None initially)
                 user_creation_audit_log = AuditLog(
                     id=uuid.uuid4(), 
-                    user_id=None, # Will be updated after User is created
+                    user_id=None, 
                     action="CREATE_USER_PENDING_UID", 
                     details=f"Audit log for User {TEST_USER_ID} creation, pending actual user_id.",
                     event_type="USER_LIFECYCLE",
                     resource_type="User",
-                    resource_id=str(TEST_USER_ID) # The ID of the user to be created
+                    resource_id=str(TEST_USER_ID)
                 )
                 async_session.add(user_creation_audit_log)
-                await async_session.flush() # Get ID for user_creation_audit_log.id
-                logger.info(f"[Integration Fixture] Added initial AuditLog {user_creation_audit_log.id} for User {TEST_USER_ID}.")
+                await async_session.flush() # FLUSH 1: Persist user_creation_audit_log with user_id=None
+                logger.info(f"[Integration Fixture] Flushed 1: Added user_creation_audit_log {user_creation_audit_log.id} (user_id=None).")
 
-                # 2. Create User, linking to the audit_log created above.
-                # User's own created_by/updated_by can point to itself as it's being created.
+                # 2. Create and flush User, linking to the now-persisted user_creation_audit_log.
                 test_user = User(
                     id=TEST_USER_ID, 
                     username="testuser_integration", 
                     email="testuser_integration@example.com",
                     password_hash=pwd_context.hash("testpassword"),
                     role=UserRole.ADMIN,
-                    audit_id=user_creation_audit_log.id, # Link to its creation audit log
-                    created_by=TEST_USER_ID, # User created themselves
-                    updated_by=TEST_USER_ID  # User updated themselves initially
+                    audit_id=user_creation_audit_log.id, # Link to existing audit log
+                    created_by=TEST_USER_ID, 
+                    updated_by=TEST_USER_ID
                 )
                 async_session.add(test_user)
-                await async_session.flush() # User object is now in the session, has an ID.
-                logger.info(f"[Integration Fixture] Added User {test_user.id} linked to AuditLog {user_creation_audit_log.id}.")
+                await async_session.flush() # FLUSH 2: Persist test_user.
+                logger.info(f"[Integration Fixture] Flushed 2: Added User {test_user.id} linked to AuditLog {user_creation_audit_log.id}.")
 
-                # 3. Update the user_creation_audit_log with the actual user_id from the created user.
+                # 3. Update user_creation_audit_log with the actual user_id.
                 user_creation_audit_log.user_id = test_user.id
-                user_creation_audit_log.action = "CREATE" # Update action to final state
+                user_creation_audit_log.action = "CREATE"
                 user_creation_audit_log.details = f"User {test_user.id} created successfully."
-                async_session.add(user_creation_audit_log) # Mark as dirty for update
-                logger.info(f"[Integration Fixture] Updated AuditLog {user_creation_audit_log.id} with User ID {test_user.id}.")
+                # async_session.add(user_creation_audit_log) # Already in session, modification will be picked up.
+                logger.info(f"[Integration Fixture] Updated user_creation_audit_log {user_creation_audit_log.id} with user_id {test_user.id}.")
 
-                # 4. Create AuditLog for subsequent Patient operations (done by the test)
-                # This log entry is for the *action of creating a patient*, performed by TEST_USER_ID
+                # 4. Create AuditLog for subsequent Patient operations.
                 patient_action_audit_log = AuditLog(
                     id=uuid.uuid4(), 
-                    user_id=test_user.id, # Action performed by the now-created TEST_USER_ID
+                    user_id=test_user.id, # Link to existing user
                     action="PATIENT_OP_SETUP", 
                     details="AuditLog created in fixture for subsequent patient operations in test.",
                     event_type="PATIENT_LIFECYCLE_PREP",
-                    resource_type="System", # Or "TestSetup"
-                    resource_id=None # Not tied to a specific patient yet
+                    resource_type="System",
+                    resource_id=None
                 )
                 async_session.add(patient_action_audit_log)
-                await async_session.flush() # Get its ID
+                
+                # FLUSH 3: Persist the update to user_creation_audit_log and insert patient_action_audit_log.
+                await async_session.flush() 
+                logger.info(f"[Integration Fixture] Flushed 3: Updated user_creation_audit_log and added patient_action_audit_log {patient_action_audit_log.id}.")
+                
                 patient_audit_log_id_for_yield = patient_action_audit_log.id
-                user_for_patient_audit_id = patient_action_audit_log.user_id # For logging
-                logger.info(f"[Integration Fixture] Added Patient Action AuditLog {patient_action_audit_log.id} (user: {user_for_patient_audit_id}).")
-            
-            # End of the single transaction for setup. All above is committed together.
+                user_for_patient_audit_id = patient_action_audit_log.user_id
 
-            logger.info(f"[Integration Fixture] Yielding session and Patient Action AuditLog ID: {patient_audit_log_id_for_yield}")
+            # The 'async with async_session.begin()' block ensures all the above is committed here if no exceptions.
+            logger.info(f"[Integration Fixture] Main setup transaction committed. Yielding session and Patient Action AuditLog ID: {patient_audit_log_id_for_yield}")
             
             yield async_session, patient_audit_log_id_for_yield
 
@@ -184,7 +183,7 @@ class TestPatientEncryptionIntegration:
             "contact_info": ContactInfo(phone="555-0100", email_secondary="secondary@example.com"), # Pydantic ContactInfo
             "gender": Gender.FEMALE, 
             "address": Address(line1="123 Encrypt Lane", city="SecureVille", state="SS", postal_code="00000", country="US"),
-            "emergency_contact": EmergencyContact(name="EC Name", phone="555-0199", relationship="Sibling"),
+            "emergency_contact": EmergencyContact(name="EC Name", phone="555-555-0199", relationship="Sibling"),
             "medical_history": ["Condition A", "Condition B"], 
             "medications": [{"name": "MedX", "dosage": "10mg"}], 
             "allergies": ["Peanuts"],
@@ -250,10 +249,8 @@ class TestPatientEncryptionIntegration:
 
         domain_patient = await self._create_sample_domain_patient(patient_id=TEST_PATIENT_ID, user_id=TEST_USER_ID)
         
-        patient_model = PatientModel.from_domain(domain_patient)
-        patient_model.id = TEST_PATIENT_ID 
-        patient_model.user_id = TEST_USER_ID 
-        patient_model.audit_id = patient_audit_log_id
+        patient_model = await PatientModel.from_domain(domain_patient)
+        patient_model.id = TEST_PATIENT_ID
 
         async with session.begin_nested(): 
             session.add(patient_model)
@@ -308,10 +305,8 @@ class TestPatientEncryptionIntegration:
         
         original_domain_patient = await self._create_sample_domain_patient(patient_id=TEST_PATIENT_ID, user_id=TEST_USER_ID)
 
-        patient_model_to_save = PatientModel.from_domain(original_domain_patient)
+        patient_model_to_save = await PatientModel.from_domain(original_domain_patient)
         patient_model_to_save.id = TEST_PATIENT_ID
-        patient_model_to_save.user_id = TEST_USER_ID
-        patient_model_to_save.audit_id = patient_audit_log_id
         
         session.add(patient_model_to_save)
         await session.commit() # Commit the changes

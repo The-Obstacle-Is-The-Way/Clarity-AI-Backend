@@ -10,16 +10,19 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import declarative_base
 
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
+# from app.infrastructure.persistence.sqlalchemy.models.base import Base # Do NOT use shared Base
 
+# Create a new Base for these test-specific models
+TestMockBase = declarative_base()
 
-class MockUser(Base):
+class MockUser(TestMockBase):
     """
     Simplified User model for testing purposes.
     """
     __tablename__ = "users"
-    __table_args__ = {'extend_existing': True}
+    # __table_args__ = {'extend_existing': True} # Not needed if using a separate Base/metadata
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(64), unique=True, nullable=False)
@@ -42,12 +45,12 @@ class MockUser(Base):
     last_name = Column(String(100), nullable=True)
     preferences = Column(String(1000), nullable=True)
 
-class TestPatient(Base):
+class TestPatient(TestMockBase):
     """
     Simplified Patient model for testing purposes.
     """
     __tablename__ = "patients"
-    __table_args__ = {'extend_existing': True}
+    # __table_args__ = {'extend_existing': True} # Not needed if using a separate Base/metadata
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
