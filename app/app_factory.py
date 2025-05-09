@@ -73,6 +73,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
     3. Initializes Sentry (if configured)
     4. Cleans up resources on shutdown
     """
+    logger.info("LIFESPAN_START: Entered lifespan context manager.")
     # Local variables to store connections that need clean-up
     redis_client = None
     redis_pool = None
@@ -82,7 +83,9 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         # --- Database Configuration ---
         try:
             # Get settings (dependency already configured)
+            logger.info("LIFESPAN_DB_CONFIG_START: Attempting to access settings from app.state")
             current_settings = fastapi_app.state.settings
+            logger.info(f"LIFESPAN_DB_CONFIG_SETTINGS_ACQUIRED: Environment from settings: {current_settings.ENVIRONMENT}")
             logger.info(f"Lifespan: Creating AsyncEngine with URL: {current_settings.ASYNC_DATABASE_URL}")
             
             # Create engine with SQLite-compatible settings
@@ -129,10 +132,10 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("Database engine and session factory initialized successfully")
             
         except Exception as e:
-            logger.critical(f"Failed to initialize database connection: {e}", exc_info=True)
+            logger.critical(f"LIFESPAN_DB_INIT_FAILURE: Failed to initialize database connection. ErrorType: {type(e).__name__}, Error: {e}", exc_info=True)
             fastapi_app.state.db_session_factory = None
             fastapi_app.state.db_engine = None
-            raise
+            raise # Re-raise the exception to ensure startup fails clearly
             
         # --- Redis Configuration (if enabled) ---
         if current_settings.REDIS_URL:
@@ -176,9 +179,9 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         yield # Application runs here
 
     except Exception as startup_exc:
-         logger.critical(f"Application startup failed critically: {startup_exc}", exc_info=True)
+         logger.critical(f"LIFESPAN_CRITICAL_STARTUP_FAILURE: Application startup failed critically. ErrorType: {type(startup_exc).__name__}, Error: {startup_exc}", exc_info=True)
          # Re-raise to prevent app from starting in a broken state
-         raise RuntimeError("Application startup failed") from startup_exc
+         raise RuntimeError(f"Application startup failed critically during lifespan: {startup_exc}") from startup_exc
     finally:
         # --- Shutdown Logic ---
         logger.info("Application lifespan shutdown sequence initiated.")
@@ -211,10 +214,11 @@ def create_application(
     include_test_routers: bool = False
 ) -> FastAPI:
     """Factory function to create and configure the FastAPI application."""
-    logger.info("Creating FastAPI application instance...")
+    logger.info("CREATE_APPLICATION_START: Entered create_application factory.")
 
     # Resolve settings: Use provided settings or load global ones
     app_settings = settings_override if settings_override is not None else global_settings
+    logger.info(f"CREATE_APPLICATION_SETTINGS_RESOLVED: Using environment: {app_settings.ENVIRONMENT}")
 
     # Configure logging early
     logging.config.dictConfig(LOGGING_CONFIG)
@@ -251,6 +255,7 @@ def create_application(
         lifespan=lifespan,  # Use the lifespan context manager
     )
     app_instance.state.settings = app_settings 
+    logger.info(f"CREATE_APPLICATION_SETTINGS_ATTACHED: app.state.settings.ENVIRONMENT is now: {app_instance.state.settings.ENVIRONMENT if hasattr(app_instance.state, 'settings') and app_instance.state.settings is not None else 'NOT FOUND'}")
 
     logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app_instance.state.settings.ENVIRONMENT if hasattr(app_instance.state, 'settings') and app_instance.state.settings is not None else 'NOT FOUND ON app.state'}") # Diagnostic log
 

@@ -19,6 +19,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool, Pool
 from sqlalchemy import event
 from sqlalchemy.dialects import sqlite
+import sys
 
 # Application-specific Imports
 from app.app_factory import create_application
@@ -740,3 +741,63 @@ def mock_auth_dependency():
         return get_mock_user
     
     return override_dependency
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_test_logging(request):
+    """
+    Configures logging for the test session to ensure visibility of INFO/DEBUG logs
+    from key application and framework loggers.
+    """
+    # Loggers to configure
+    logger_names = ["app.app_factory", "fastapi", "uvicorn.error", "uvicorn.access", "app.presentation.api.dependencies.database"]
+    log_level = logging.DEBUG
+
+    # Basic formatter
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] - %(message)s"
+    )
+
+    # Create a stream handler
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(log_level)
+    stream_handler.setFormatter(formatter)
+
+    for name in logger_names:
+        logger = logging.getLogger(name)
+        # Clear any existing handlers to avoid duplicates or conflicts
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        logger.addHandler(stream_handler)
+        logger.setLevel(log_level)
+        logger.propagate = False # Prevent duplication if root logger also has handlers
+
+    # Configure root logger as well, but be less aggressive with clearing
+    # as pytest might have its own handlers on it.
+    root_logger = logging.getLogger()
+    # Check if a similar handler is already present to avoid adding multiple stdout streams
+    has_stdout_handler = any(
+        isinstance(h, logging.StreamHandler) and h.stream == sys.stdout
+        for h in root_logger.handlers
+    )
+    if not has_stdout_handler:
+        root_stream_handler = logging.StreamHandler(sys.stdout)
+        root_stream_handler.setLevel(log_level) # Or a higher level like INFO for root
+        root_stream_handler.setFormatter(formatter)
+        root_logger.addHandler(root_stream_handler)
+    
+    # Set root logger level - be careful not to make it too verbose if not needed
+    # but for debugging our app factory, DEBUG might be useful for a bit.
+    root_logger.setLevel(log_level)
+
+    # This print helps confirm the fixture ran and when
+    print("\n>>> Test logging configured by custom fixture <<<\n")
+
+    # Optionally, you can also ensure the LOG_LEVEL env var, if used by your app's
+    # main config, is set to DEBUG for the test session if other parts of the
+    # app rely on it directly for their own logger setup.
+    # monkeypatch.setenv("LOG_LEVEL", "DEBUG") # If using monkeypatch fixture
+
+    # Teardown (if needed, e.g., to restore original logging config)
+    # For autouse session fixtures, teardown is less common unless you're
+    # modifying global state in a way that needs explicit reset.
+    # Here, we're just adding handlers, which pytest usually manages fine.

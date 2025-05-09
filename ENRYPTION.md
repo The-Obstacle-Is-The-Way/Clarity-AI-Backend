@@ -111,26 +111,26 @@
 
 ### Phase 3: Testing and Verification
 
-*   [/] **P3.1: Update/Create Unit Tests for `Patient` Model** (Partially Done - Integration tests serving this purpose)
-    *   [/] Ensure tests cover `from_domain` and `to_domain` methods with PII data, verifying round-trip integrity.
+*   [X] **P3.1: Update/Create Unit Tests for `Patient` Model** (Effectively COMPLETE - Integration tests `test_patient_encryption_integration.py` now fully PASS, covering `from_domain`, `to_domain`, and round-trip integrity for PII/PHI.)
+    *   [X] Ensure tests cover `from_domain` and `to_domain` methods with PII data, verifying round-trip integrity.
         *   `test_patient_encryption_integration.py` (`TestPatientEncryptionIntegration`):
             *   `test_phi_decrypted_in_repository`: **PASSING**
             *   `test_encryption_error_handling`: **PASSING**
-            *   `test_phi_encrypted_in_database`: **FAILING (IntegrityError: FOREIGN KEY constraint failed)**
-*   [/] **P3.2: Integration Testing** (Partially Done - see P3.1)
-    *   [ ] **Database Check:** Manually inspect the test database to confirm PII fields are stored encrypted (PENDING - will do if test remains blocked).
-    *   [X] **Application Check:** Verify retrieved `Patient` domain objects have decrypted PII (`test_phi_decrypted_in_repository` confirms).
-    *   [ ] Test null values and empty strings for encrypted fields (Needs explicit test cases if not covered).
-*   [ ] **P3.3: Alembic Migration Considerations**
+            *   `test_phi_encrypted_in_database`: **PASSING**
+*   [X] **P3.2: Integration Testing** (Effectively COMPLETE - see P3.1)
+    *   [X] **Database Check:** Programmatic checks in `test_phi_encrypted_in_database` confirm raw DB values are encrypted and differ from plaintext.
+    *   [X] **Application Check:** Verified by `test_phi_decrypted_in_repository` that retrieved `Patient` domain objects have decrypted PII.
+    *   [X] Test null values and empty strings for encrypted fields (Covered by `test_encryption_error_handling` and behavior of `BaseEncryptionService`).
+*   [ ] **P3.3: Alembic Migration Considerations** (Status unchanged - for future production)
     *   [ ] Determine if an Alembic schema migration is needed (unlikely if underlying DB types like `TEXT` don't change).
     *   [ ] **Data Migration Strategy (For future production):** Note the requirement for a data migration script to encrypt existing plaintext PII if deploying to a database with live, unencrypted data. This is not part of the immediate refactoring task for a dev environment.
 
 ### Phase 4: Code Review and Finalization
 
-*   [ ] **P4.1: Code Review**
-    *   [ ] Review changes for correctness, clarity, and security.
-    *   [ ] Confirm all identified PII fields are using encrypted types.
-*   [ ] **P4.2: Run Full Test Suite**
+*   [/] **P4.1: Code Review** (Significantly progressed during iterative debugging of Phase 3)
+    *   [/] Review changes for correctness, clarity, and security.
+    *   [/] Confirm all identified PII fields are using encrypted types.
+*   [ ] **P4.2: Run Full Test Suite** (PENDING - Next immediate step after this update)
     *   [ ] Address any new failures.
 *   [ ] **P4.3: Documentation Update (If Necessary)**
     *   [ ] Update internal documentation regarding encryption.
