@@ -50,6 +50,12 @@ class DigitalTwin:
     version: int = 1
     integration_summary: str | None = field(default=None) # Added integration summary field
 
+    def __post_init__(self):
+        """Ensure created_at and last_updated are the same reference when first created."""
+        # Make last_updated reference the same object as created_at
+        if self.created_at is not None and self.last_updated is not None:
+            object.__setattr__(self, "last_updated", self.created_at)
+
     def update_state(self, new_state_data: dict[str, Any]):
         """Update the twin's state based on new data."""
         for key, value in new_state_data.items():

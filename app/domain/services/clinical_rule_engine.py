@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from app.domain.entities.biometric_rule import (
-    AlertPriority,
+    AlertPriority as BiometricAlertPriority,
     BiometricRule,
     LogicalOperator,
     RuleCondition,
@@ -47,7 +47,7 @@ class ClinicalRuleEngine:
         description: str,
         conditions: list[dict[str, Any]],
         logical_operator: str = "AND",
-        alert_priority: str = "WARNING",
+        alert_priority: str | AlertPriority | BiometricAlertPriority = "WARNING",
         patient_id: UUID | None = None,
         provider_id: UUID = None,
         metadata: dict[str, Any] | None = None,
@@ -96,34 +96,45 @@ class ClinicalRuleEngine:
         except ValueError:
             raise ValidationError(f"Invalid logical operator: {logical_operator}")
         
-        # Parse alert priority with quantum compatibility transformation
-        try:
+        # Parse alert priority with enhanced compatibility
+        priority = None
+        
+        # Handle different alert priority types
+        if isinstance(alert_priority, (AlertPriority, BiometricAlertPriority)):
+            # Direct enum value - map between the two enum types if needed
             if isinstance(alert_priority, AlertPriority):
-                # Direct enum value - use it directly
-                priority = alert_priority
-            elif isinstance(alert_priority, str):
-                # Handle case-insensitive string lookup with transcendent mapping
-                priority_mapping = {
-                    "informational": AlertPriority.INFORMATIONAL,  # Legacy compatibility
-                    "low": AlertPriority.LOW,
-                    "medium": AlertPriority.MEDIUM,
-                    "warning": AlertPriority.WARNING,  # Legacy compatibility
-                    "high": AlertPriority.HIGH,
-                    "critical": AlertPriority.CRITICAL,
-                    "urgent": AlertPriority.URGENT,  # Legacy compatibility
+                # Map from biometric_event_processor.AlertPriority to biometric_rule.AlertPriority
+                priority_map = {
+                    AlertPriority.URGENT: BiometricAlertPriority.URGENT,
+                    AlertPriority.WARNING: BiometricAlertPriority.WARNING,
+                    AlertPriority.INFORMATIONAL: BiometricAlertPriority.INFORMATIONAL,
                 }
-                
-                # Try case-insensitive lookup
-                alert_str = alert_priority.lower()
-                if alert_str in priority_mapping:
-                    priority = priority_mapping[alert_str]
-                else:
-                    # Try direct enum lookup
-                    priority = AlertPriority(alert_str)
+                priority = priority_map.get(alert_priority, BiometricAlertPriority.MEDIUM)
             else:
-                # Last resort - try direct conversion
-                priority = AlertPriority(str(alert_priority).lower())
-        except (ValueError, AttributeError):
+                # Already correct type
+                priority = alert_priority
+        elif isinstance(alert_priority, str):
+            # Handle case-insensitive string mapping
+            try:
+                # Try direct conversion first (handles case properly)
+                priority = BiometricAlertPriority(alert_priority.lower())
+            except (ValueError, KeyError):
+                # Handle common alternate names
+                alt_map = {
+                    "urgent": BiometricAlertPriority.URGENT,
+                    "warning": BiometricAlertPriority.WARNING,
+                    "informational": BiometricAlertPriority.INFORMATIONAL,
+                    "low": BiometricAlertPriority.LOW,
+                    "medium": BiometricAlertPriority.MEDIUM,
+                    "high": BiometricAlertPriority.HIGH,
+                    "critical": BiometricAlertPriority.CRITICAL,
+                }
+                priority = alt_map.get(alert_priority.lower())
+                
+                if priority is None:
+                    raise ValidationError(f"Invalid alert priority: {alert_priority}")
+        
+        if priority is None:
             raise ValidationError(f"Invalid alert priority: {alert_priority}")
         
         # Create the rule with quantum parameter handling
@@ -133,7 +144,7 @@ class ClinicalRuleEngine:
             'description': description,
             'conditions': rule_conditions,
             'logical_operator': logical_op,
-            'alert_priority': priority,
+            'alert_priority': priority,  # Use alert_priority for BiometricRule compatibility
             'patient_id': patient_id,
             'provider_id': provider_id,
             'is_active': is_active

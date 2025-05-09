@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Union
 from uuid import UUID
 
 from app.domain.value_objects.emergency_contact import EmergencyContact
@@ -34,7 +34,7 @@ class ContactInfo:
     phone: str | None = None
     
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ContactInfo:
+    def from_dict(cls, data: dict[str, Any]) -> 'ContactInfo':
         """Create a ContactInfo instance from a dictionary."""
         if not data:
             return cls()
@@ -56,139 +56,125 @@ class ContactInfo:
         return json.dumps(self.to_dict())
 
 
-# ====================================================
-# QUANTUM ARCHITECTURE SOLUTION FOR CONTACTINFO ACCESS
-# ====================================================
-
-# Create a ContactInfo class that can be accessed both as a class attribute
-# and as an instance property, guaranteeing API consistency
+class PatientContactInfoDescriptor:
+    """Special descriptor for Patient.contact_info that handles both class and instance access.
+    
+    When accessed from the class (Patient.contact_info), returns the ContactInfo class.
+    When accessed from an instance (patient.contact_info), returns a ContactInfo instance.
+    """
+    
+    def __get__(self, instance, owner=None):
+        """Get handler that differentiates between class and instance access."""
+        # Class access: return the ContactInfo class itself
+        if instance is None:
+            return ContactInfo
+        
+        # Instance access: return ContactInfo instance with instance data
+        if instance.email is None and instance.phone is None:
+            return None
+        
+        # Create a new ContactInfo instance with the patient's email and phone
+        return ContactInfo(email=instance.email, phone=instance.phone)
+    
+    def __set__(self, instance, value):
+        """Set handler that updates the instance's email and phone."""
+        if value is None:
+            instance.email = None
+            instance.phone = None
+        elif isinstance(value, dict):
+            instance.email = value.get('email')
+            instance.phone = value.get('phone')
+        elif isinstance(value, ContactInfo):
+            instance.email = value.email
+            instance.phone = value.phone
+        elif value is ContactInfo:
+            # Just ignore this case - it's handled in __get__
+            pass
+        else:
+            raise TypeError(f"Expected ContactInfo, dict, or None; got {type(value).__name__}")
 
 
 @dataclass
 class Patient:
     """Core domain model for a patient."""
     
-    # ContactInfoDescriptor for dual access patterns
-    class ContactInfoDescriptor:
-        """Descriptor that handles dual access patterns for contact_info.
-        
-        When accessed on the class (Patient.contact_info), returns the ContactInfo class.
-        When accessed on an instance (patient.contact_info), returns a ContactInfo instance.
-        """
-        def __get__(self, instance, owner):
-            # Class-level access: return the ContactInfo class itself
-            if instance is None:
-                return ContactInfo
-            
-            # Instance-level access: return a ContactInfo object
-            # Only create an object if either email or phone is present
-            if instance.email is not None or instance.phone is not None:
-                return ContactInfo(email=instance.email, phone=instance.phone)
-            return None
-            
-        def __set__(self, instance, value):
-            # Handle assignment of contact_info
-            if value is None:
-                instance.email = None
-                instance.phone = None
-            elif isinstance(value, dict):
-                instance.email = value.get('email')
-                instance.phone = value.get('phone')
-            elif isinstance(value, ContactInfo):
-                instance.email = value.email
-                instance.phone = value.phone
-            else:
-                raise TypeError(f"Expected ContactInfo, dict, or None; got {type(value).__name__}")
-
-    # ------------------------------------------------------------------
-    # Required (non‑default) attributes – these have to come first so the
-    # dataclass‑generated ``__init__`` does not raise the classic *non‑default
-    # argument follows default argument* error.
-    # ------------------------------------------------------------------
-
-    # Fields WITHOUT defaults must come first
-    date_of_birth: datetime | str
-
-    # Fields WITH defaults can follow
-    id: UUID | None = None
-    # Gender is optional in integration scenarios
-    gender: str | None = None
+    # Required fields
+    date_of_birth: Union[datetime, str]
     
-    # Constructor parameter for contact_info - a critical field for tests
-    # This is handled in __post_init__ and not stored directly
-    _contact_info_param: dict[str, Any] | ContactInfo | None = field(default=None, repr=False)
-
-    # ------------------------------------------------------------------
-    # Dual‑API identification fields
-    # ------------------------------------------------------------------
-
-    # Full patient name (optional – may be derived from first_name/last_name)
+    # Optional fields with defaults
+    id: UUID | None = None
+    gender: str | None = None
     name: str | None = None
     first_name: str | None = None
     last_name: str | None = None
-
-    # ------------------------------------------------------------------
-    # Contact & administrative info
-    # ------------------------------------------------------------------
-
-    # Legacy fields for backwards compatibility - these store the actual data for contact_info
+    
+    # Contact info fields
     email: str | None = None
     phone: str | None = None
-    address: str | None = None
+    address: Any = None
     insurance_number: str | None = None
-    # Extra PHI fields referenced in legacy security tests
     ssn: str | None = None
     medical_record_number: str | None = None
-    # Additional PHI & administrative fields
     emergency_contact: EmergencyContact | None = None
     insurance: dict[str, Any] | None = None
     insurance_info: dict[str, Any] | None = None
+    
+    # Status fields
     active: bool = True
     created_by: Any = None
-
-    # ------------------------------------------------------------------
+    
     # Clinical data
-    # ------------------------------------------------------------------
-
     diagnoses: list[str] = field(default_factory=list)
     medications: list[str] = field(default_factory=list)
     allergies: list[str] = field(default_factory=list)
     medical_history: list[str] = field(default_factory=list)
     treatment_notes: list[dict[str, Any]] = field(default_factory=list)
-
-    # ------------------------------------------------------------------
+    
     # Audit timestamps
-    # ------------------------------------------------------------------
-
     created_at: datetime | str | None = None
     updated_at: datetime | str | None = None
-
-    # Apply the descriptor - this creates the dual-access behavior
-    # Note: This has to come after all field definitions
-    contact_info = ContactInfoDescriptor()
-
-    # ------------------------------------------------------------------
-    # Post‑initialisation normalisation helpers
-    # ------------------------------------------------------------------
     
-    def __post_init__(self) -> None:
-        """Normalise fields and ensure correct data types."""
+    # This won't be stored in the instance but will be used during initialization
+    _contact_info: Any = field(default=None, repr=False, compare=False)
+    
+    def __post_init__(self):
+        """Initialize the object after dataclass initialization."""
+        # Handle contact_info parameter if provided
+        if hasattr(self, '_contact_info') and self._contact_info is not None:
+            self._process_contact_info(self._contact_info)
+            # Remove the temporary field
+            object.__delattr__(self, '_contact_info')
+            
+        # Process names
+        self._harmonize_names()
         
-        # Handle contact_info parameter from constructor
-        # We need to check if contact_info was passed to __init__ and apply it
-        for key, value in self.__dataclass_fields__.items():
-            # Check if there's a contact_info param in kwargs
-            if key == 'contact_info' and hasattr(self, key):
-                contact_info_param = getattr(self, key)
-                if contact_info_param is not None:
-                    # Apply the contact_info parameter using the descriptor
-                    self.contact_info = contact_info_param
-                    
-                # Remove the parameter to avoid conflict with the descriptor
-                delattr(self, key)
-                break
-
-        # 1. Harmonise the name fields -------------------------------------------------
+        # Initialize timestamps
+        self._initialize_timestamps()
+        
+        # Parse date fields
+        self._parse_date_fields()
+    
+    def _process_contact_info(self, contact_info):
+        """Process the contact_info parameter."""
+        if contact_info is ContactInfo:
+            # This is the class itself, not an instance
+            return
+            
+        if isinstance(contact_info, dict):
+            # If email or phone weren't explicitly provided, get them from contact_info
+            if self.email is None:
+                self.email = contact_info.get('email')
+            if self.phone is None:
+                self.phone = contact_info.get('phone')
+        elif hasattr(contact_info, 'email') and hasattr(contact_info, 'phone'):
+            # Handle ContactInfo instance
+            if self.email is None:
+                self.email = contact_info.email
+            if self.phone is None:
+                self.phone = contact_info.phone
+    
+    def _harmonize_names(self):
+        """Harmonize first_name, last_name, and name fields."""
         if self.name and not (self.first_name or self.last_name):
             parts = self.name.split()
             if parts:
@@ -198,48 +184,74 @@ class Patient:
 
         if not self.name and (self.first_name or self.last_name):
             self.name = " ".join(p for p in (self.first_name, self.last_name) if p)
-
-        # 2. Timestamps ----------------------------------------------------------------
+    
+    def _initialize_timestamps(self):
+        """Initialize created_at and updated_at timestamps if not provided."""
         if self.created_at is None:
             self.created_at = datetime.now()
         if self.updated_at is None:
             self.updated_at = datetime.now()
-
-        # 3. Datetime parsing convenience ---------------------------------------------
-        def _ensure_datetime(value: datetime | str | None) -> datetime | date | str | None:
-            # Accept date or datetime as already valid
-            if value is None or isinstance(value, (datetime, date)):
+    
+    def _parse_date_fields(self):
+        """Parse date fields from strings if necessary."""
+        self.date_of_birth = self._ensure_datetime(self.date_of_birth)
+        self.created_at = self._ensure_datetime(self.created_at)
+        self.updated_at = self._ensure_datetime(self.updated_at)
+    
+    def _ensure_datetime(self, value):
+        """Convert string dates to datetime objects."""
+        if value is None or isinstance(value, (datetime, date)):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                pass
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
                 return value
-            # Handle simple date strings (YYYY-MM-DD)
-            if isinstance(value, str):
-                try:
-                    return date.fromisoformat(value)
-                except ValueError:
-                    pass
-                # Try ISO‑8601 datetime string
-                try:
-                    return datetime.fromisoformat(value.replace("Z", "+00:00"))
-                except ValueError:
-                    pass
-                # Fallback to simple date parsing
-                try:
-                    return datetime.strptime(value, "%Y-%m-%d").date()
-                except ValueError:
-                    return value  # leave unchanged – caller can handle
-
-        self.date_of_birth = _ensure_datetime(self.date_of_birth)
-        self.created_at = _ensure_datetime(self.created_at)  # type: ignore[arg-type]
-        self.updated_at = _ensure_datetime(self.updated_at)  # type: ignore[arg-type]
-
-    # ------------------------------------------------------------------
-    # Compatibility methods for both Pydantic v1 and v2 support
-    # ------------------------------------------------------------------
+        return value
+    
+    def update_contact_info(self, email: str | None = None, phone: str | None = None, address: str | None = None) -> None:
+        """Update contact fields and refresh updated_at timestamp."""
+        if email is not None:
+            self.email = email
+        if phone is not None:
+            self.phone = phone
+        if address is not None:
+            self.address = address
+        self.updated_at = datetime.now()
+    
+    def add_medical_history_item(self, item: str) -> None:
+        """Add an item to medical_history and refresh updated_at."""
+        self.medical_history.append(item)
+        self.updated_at = datetime.now()
+    
+    def add_medication(self, medication: str) -> None:
+        """Add a medication and refresh updated_at."""
+        self.medications.append(medication)
+        self.updated_at = datetime.now()
+    
+    def add_allergy(self, allergy: str) -> None:
+        """Add an allergy if not existing and refresh updated_at."""
+        if allergy not in self.allergies:
+            self.allergies.append(allergy)
+            self.updated_at = datetime.now()
+    
+    def add_treatment_note(self, note: dict) -> None:
+        """Add a treatment note with timestamp and refresh updated_at."""
+        entry = dict(note)
+        entry["date"] = datetime.now()
+        self.treatment_notes.append(entry)
+        self.updated_at = datetime.now()
     
     def model_copy(self, *, update: dict = None, deep: bool = False, **kwargs) -> Patient:
-        """Compatibility method similar to Pydantic v1's copy() but for dataclasses.
-        
-        Allows tests using model_copy() to work with this domain entity.
-        """
+        """Compatibility method similar to Pydantic v1's copy() but for dataclasses."""
         from copy import copy, deepcopy
         # Create a new instance with the same attributes
         if deep:
@@ -247,16 +259,15 @@ class Patient:
         else:
             data = copy(self.__dict__)
             
-        # Remove descriptor attributes and other special fields
-        if '_contact_info_param' in data:
-            data.pop('_contact_info_param')
+        # Remove special fields
+        if '_contact_info' in data:
+            data.pop('_contact_info')
             
         # Apply updates from the update dict and kwargs
         if update:
             for field, nested_update in update.items():
                 if field == 'contact_info' and isinstance(nested_update, dict):
-                    # Handle contact_info updates using the ContactInfoDescriptor
-                    # This ensures consistency between both access patterns
+                    # Handle contact_info updates
                     data['email'] = nested_update.get('email')
                     data['phone'] = nested_update.get('phone')
                 elif isinstance(nested_update, dict) and field in data and isinstance(data[field], dict):
@@ -272,19 +283,15 @@ class Patient:
         return self.__class__(**data)
     
     def model_dump(self, *, exclude=None, exclude_none=False) -> dict:
-        """Compatibility method similar to Pydantic v2's model_dump but for dataclasses.
-        
-        Returns a dictionary representation of the entity.
-        """
+        """Compatibility method similar to Pydantic v2's model_dump but for dataclasses."""
         from dataclasses import asdict
         data = asdict(self)
         
-        # Remove private fields
-        if '_contact_info_param' in data:
-            data.pop('_contact_info_param')
+        # Remove special fields
+        if '_contact_info' in data:
+            data.pop('_contact_info')
         
-        # Ensure contact_info is properly represented using email/phone fields
-        # We must explicitly add this since the contact_info property won't be included in asdict()
+        # Ensure contact_info is properly represented
         if self.email is not None or self.phone is not None:
             data['contact_info'] = {
                 'email': self.email,
@@ -302,66 +309,21 @@ class Patient:
             return {k: v for k, v in data.items() if v is not None}
             
         return data
-
-    # ------------------------------------------------------------------
-    # Dunder helpers – mostly for debug / logging purposes
-    # ------------------------------------------------------------------
-
-    def __str__(self) -> str:  # pragma: no cover – trivial
-        return f"Patient<{self.id}> {self.name or ''}".strip()
-
-    def __repr__(self) -> str:  # pragma: no cover – trivial
+    
+    def __str__(self) -> str:
+        """String representation of the patient."""
+        return f"Patient<{self.id}> {self.name or ''} {self.first_name or ''} {self.last_name or ''}".strip()
+    
+    def __repr__(self) -> str:
+        """Detailed string representation of the patient."""
         return (
             f"Patient(id={self.id!r}, name={self.name!r}, first_name={self.first_name!r}, last_name={self.last_name!r})"
         )
-
-    # Hashing: we consider the *id* to be the immutable primary key.
-    def __hash__(self) -> int:  # pragma: no cover – required for set() in tests
-        # Handle case where ID might be None before DB generation
-        return hash(self.id) if self.id is not None else hash(None)
     
-    # ------------------------------------------------------------------
-    # Helper methods for updating patient data
-    # ------------------------------------------------------------------
-    def update_contact_info(self, email: str | None = None, phone: str | None = None, address: str | None = None) -> None:
-        """Update contact fields and refresh updated_at timestamp."""
-        if email is not None:
-            self.email = email
-        if phone is not None:
-            self.phone = phone
-        if address is not None:
-            self.address = address
-        self.updated_at = datetime.now()
-
-    def add_medical_history_item(self, item: str) -> None:
-        """Add an item to medical_history and refresh updated_at."""
-        self.medical_history.append(item)
-        self.updated_at = datetime.now()
-
-    def add_medication(self, medication: str) -> None:
-        """Add a medication and refresh updated_at."""
-        self.medications.append(medication)
-        self.updated_at = datetime.now()
-
-    def add_allergy(self, allergy: str) -> None:
-        """Add an allergy if not existing and refresh updated_at."""
-        if allergy not in self.allergies:
-            self.allergies.append(allergy)
-            self.updated_at = datetime.now()
-
-    def add_treatment_note(self, note: dict) -> None:
-        """Add a treatment note with timestamp and refresh updated_at."""
-        entry = dict(note)
-        entry["date"] = datetime.now()
-        self.treatment_notes.append(entry)
-        self.updated_at = datetime.now()
+    def __hash__(self) -> int:
+        """Hash based on ID."""
+        return hash(self.id) if self.id is not None else hash(None)
 
 
-# ====================================================
-# QUANTUM ARCHITECTURE: DEFINITIVE IMPLEMENTATION
-# ====================================================
-# The critical architectural feature that enables tests to work properly:
-# We set the class-level contact_info attribute to the ContactInfo class
-# This ensures that PatientDomain.contact_info returns the ContactInfo class
-# which is required by tests that access it as a static attribute
-Patient.contact_info = ContactInfo
+# Attach the descriptor to the class after definition
+Patient.contact_info = PatientContactInfoDescriptor()

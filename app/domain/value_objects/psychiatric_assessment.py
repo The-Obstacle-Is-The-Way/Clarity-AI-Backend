@@ -1,7 +1,8 @@
 """Psychiatric assessment value object."""
 
-from dataclasses import dataclass, field
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import Optional
 from uuid import UUID, uuid4
 
 
@@ -14,44 +15,50 @@ class PsychiatricAssessment:
     """
     
     assessment_date: date
-    psychiatrist_id: UUID
-    diagnoses: list[str]
-    assessment_notes: str
+    diagnosis: str
+    severity: str
     treatment_plan: str
-    id: UUID = field(default_factory=uuid4)
-    severity_score: int | None = None
-    medications: list[dict[str, str]] = field(default_factory=list)
-    follow_up_date: date | None = None
+    notes: Optional[str] = None
+    id: UUID = uuid4()
     
     def __post_init__(self) -> None:
         """Validate assessment data."""
-        # Validate severity score if provided
-        if self.severity_score is not None and not (0 <= self.severity_score <= 10):
-            raise ValueError("Severity score must be between 0 and 10")
+        if not self.diagnosis:
+            raise ValueError("Diagnosis cannot be empty")
         
-        # Validate medication format
-        for med in self.medications:
-            if "name" not in med or "dosage" not in med:
-                raise ValueError("Medications must include name and dosage")
+        if not self.severity:
+            raise ValueError("Severity cannot be empty")
+        
+        if not self.treatment_plan:
+            raise ValueError("Treatment plan cannot be empty")
     
-    def get_primary_diagnosis(self) -> str | None:
-        """Get primary diagnosis if available."""
-        return self.diagnoses[0] if self.diagnoses else None
-    
-    def requires_follow_up(self) -> bool:
-        """Check if assessment requires follow-up."""
-        return self.follow_up_date is not None
+    def __repr__(self) -> str:
+        """String representation of the assessment."""
+        assessment_date_str = str(self.assessment_date)
+        return f"PsychiatricAssessment(date={assessment_date_str}, diagnosis='{self.diagnosis}', severity='{self.severity}')"
     
     def to_dict(self) -> dict:
-        """Convert to dictionary with PHI masking."""
+        """Convert to dictionary."""
         return {
-            "id": str(self.id),
-            "assessment_date": str(self.assessment_date),
-            "psychiatrist_id": str(self.psychiatrist_id),
-            "diagnoses": self.diagnoses,
-            "assessment_notes": "[REDACTED]",  # PHI masked
-            "treatment_plan": "[REDACTED]",  # PHI masked
-            "severity_score": self.severity_score,
-            "medications": self.medications,
-            "follow_up_date": str(self.follow_up_date) if self.follow_up_date else None
+            "assessment_date": self.assessment_date.isoformat() if isinstance(self.assessment_date, date) else self.assessment_date,
+            "diagnosis": self.diagnosis,
+            "severity": self.severity,
+            "treatment_plan": self.treatment_plan,
+            "notes": self.notes
         }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "PsychiatricAssessment":
+        """Create a PsychiatricAssessment from a dictionary."""
+        # Handle date conversion if the date is a string
+        assessment_date = data["assessment_date"]
+        if isinstance(assessment_date, str):
+            assessment_date = date.fromisoformat(assessment_date)
+        
+        return cls(
+            assessment_date=assessment_date,
+            diagnosis=data["diagnosis"],
+            severity=data["severity"],
+            treatment_plan=data["treatment_plan"],
+            notes=data.get("notes")
+        )

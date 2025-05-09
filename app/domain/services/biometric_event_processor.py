@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4  # Corrected import, add uuid4 for test BiometricAlert
 
+from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.entities.biometric_twin import BiometricDataPoint
 from app.domain.exceptions import ValidationError
 from app.domain.utils.datetime_utils import UTC
@@ -23,13 +24,8 @@ class AlertPriority(Enum):
     WARNING = "warning"
     INFORMATIONAL = "informational"
 
-# Define AlertStatus enum here
-class AlertStatus(Enum):
-    """Status of biometric alerts."""
-    NEW = "new"
-    ACKNOWLEDGED = "acknowledged"
-    RESOLVED = "resolved"
-    DISMISSED = "dismissed"
+# Define AlertStatus as an alias for AlertStatusEnum for backward compatibility
+AlertStatus = AlertStatusEnum
 
 class AlertRule:
     """Rule for triggering biometric alerts."""
@@ -252,19 +248,26 @@ class BiometricAlert:
     
     @description.setter
     def description(self, value):
-        """Setter for description (updates message)"""
+        """Setter for description (alias for message)"""
         self.message = value
     
-    def acknowledge(self, user_id: UUID) -> None:
-        """
-        Acknowledge the alert.
-        
-        Args:
-            user_id: ID of the user acknowledging the alert
-        """
+    def acknowledge(self, provider_id: str, acknowledge_time: datetime = None) -> None:
+        """Mark alert as acknowledged by provider."""
         self.acknowledged = True
-        self.acknowledged_at = datetime.now(UTC)
-        self.acknowledged_by = user_id
+        self.acknowledged_by = provider_id
+        self.acknowledged_at = acknowledge_time or datetime.now(UTC)
+        self.status = AlertStatus.ACKNOWLEDGED
+    
+    def resolve(self, provider_id: str, resolution_time: datetime = None, resolution_note: str = None) -> None:
+        """Mark alert as resolved by provider."""
+        # Make sure it's acknowledged first
+        if not self.acknowledged:
+            self.acknowledge(provider_id, resolution_time)
+        
+        self.resolved_by = provider_id
+        self.resolved_at = resolution_time or datetime.now(UTC)
+        self.resolution_note = resolution_note
+        self.status = AlertStatus.RESOLVED
 
 
 class AlertObserver:
@@ -516,7 +519,7 @@ class BiometricEventProcessor:
             priorities: List of priorities to register for
         """
         # If *priorities* not specified, register for **all** priorities so
-        # that unit‑tests which don’t care about fine‑grained control can just
+        # that unit‑tests which don't care about fine‑grained control can just
         # pass the observer instance alone.
         if priorities is None:
             priorities = list(AlertPriority)
