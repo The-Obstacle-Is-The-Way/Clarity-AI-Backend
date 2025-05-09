@@ -141,32 +141,25 @@ class User(Base, TimestampMixin, AuditMixin):
     password_changed_at = Column(DateTime, nullable=True, comment="Timestamp when user last changed their password")
 
     # --- Relationships --- 
-    # Reverted to simpler relationship definition, now adding foreign_keys as per error hint
-    # Adding remote_side as well for maximum clarity to the ORM
+    # Simplified relationship definition
     provider = relationship(
         "ProviderModel", 
         back_populates="user",
         uselist=False,
-        cascade="all, delete-orphan",
-        foreign_keys='ProviderModel.user_id'
+        cascade="all, delete-orphan"
     )
     
     patients = relationship(
         "Patient", 
         back_populates="user",
-        cascade="all, delete-orphan",
-        foreign_keys="Patient.user_id",
-        primaryjoin="User.id == foreign(Patient.user_id)"
+        cascade="all, delete-orphan"
     )
     
     # Relationship to AnalyticsEventModel 
     analytics_events = relationship(
         "AnalyticsEventModel", 
-        back_populates="user", 
-        cascade="all, delete-orphan",
-        lazy="selectin",
-        foreign_keys="AnalyticsEventModel.user_id",
-        primaryjoin="User.id == foreign(AnalyticsEventModel.user_id)"
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
     
     # Audit logging

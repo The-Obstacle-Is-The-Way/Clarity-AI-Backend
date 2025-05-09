@@ -106,8 +106,6 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # Relationship with User (owner of the patient record) - Simplified
     user = relationship(
         "User",  # Use the correct class name
-        foreign_keys=[user_id],
-        primaryjoin="foreign(Patient.user_id) == User.id", 
         back_populates="patients",
         lazy="selectin"
     )
