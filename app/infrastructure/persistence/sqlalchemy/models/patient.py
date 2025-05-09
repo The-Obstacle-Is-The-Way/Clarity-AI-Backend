@@ -27,6 +27,9 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base, Timestam
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+from app.infrastructure.security.encryption.encryption_service import EncryptionService
+from app.core.config import settings
+from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,9 @@ import dataclasses  # Add this import
 # Correct import: Use absolute path to types.py file
 from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict 
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
+
+# Prepare EncryptionService instance for TypeDecorators
+encryption_service_instance = EncryptionService(secret_key=settings.ENCRYPTION_KEY)
 
 
 @register_model
@@ -66,38 +72,38 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # --- Encrypted PHI Fields (Stored as Text/Blob in DB) ---
     # QUANTUM FIX: Use prefixed column names with underscore for encrypted fields
     # This ensures compatibility with test expectations and encryption handling
-    _first_name = Column("first_name", Text, nullable=True)
-    _last_name = Column("last_name", Text, nullable=True)
+    _first_name = Column("first_name", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _last_name = Column("last_name", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
     # Storing DOB as encrypted text is common for flexibility, though dedicated date types exist
-    _dob = Column("date_of_birth", Text, nullable=True)
-    _email = Column("email", Text, nullable=True)
-    _phone = Column("phone", Text, nullable=True)
+    _dob = Column("date_of_birth", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _email = Column("email", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _phone = Column("phone", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
     # Legacy generic address storage removed in favor of structured address fields
-    _medical_record_number = Column("medical_record_number", Text, nullable=True)
+    _medical_record_number = Column("medical_record_number", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
     # Use Text for potentially long encrypted JSON strings or large text fields
-    _ssn = Column("ssn", Text, nullable=True)
-    _insurance_number = Column("insurance_number", Text, nullable=True)
-    _medical_history = Column("medical_history", Text, nullable=True)  # Assumed stored as encrypted JSON list/text
-    _medications = Column("medications_data", Text, nullable=True)      # Encrypted medications data stored as JSON list/text
-    _allergies = Column("allergies", Text, nullable=True)        # Assumed stored as encrypted JSON list/text
-    _treatment_notes = Column("treatment_notes", Text, nullable=True)  # Assumed stored as encrypted JSON list/text
-    _gender = Column("gender", Text, nullable=True)           # Encrypted gender identity/expression
+    _ssn = Column("ssn", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
+    _insurance_number = Column("insurance_number", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _medical_history = Column("medical_history", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)  # Assumed stored as encrypted JSON list/text
+    _medications = Column("medications_data", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)      # Encrypted medications data stored as JSON list/text
+    _allergies = Column("allergies", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)        # Assumed stored as encrypted JSON list/text
+    _treatment_notes = Column("treatment_notes", EncryptedText(encryption_service=encryption_service_instance), nullable=True)  # Assumed stored as encrypted JSON list/text
+    _gender = Column("gender", EncryptedString(encryption_service=encryption_service_instance), nullable=True)           # Encrypted gender identity/expression
 
     # --- Other Fields (Potentially Sensitive/Encrypted or Not) ---
     # Example: Encrypted JSON blob for arbitrary additional structured data
-    _extra_data = Column("extra_data", Text, nullable=True)
+    _extra_data = Column("extra_data", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)
     # Structured address fields
-    _address_line1 = Column("address_line1", Text, nullable=True)
-    _address_line2 = Column("address_line2", Text, nullable=True)
-    _city = Column("city", Text, nullable=True)
-    _state = Column("state", Text, nullable=True)
-    _postal_code = Column("postal_code", Text, nullable=True)
-    _country = Column("country", Text, nullable=True)
+    _address_line1 = Column("address_line1", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
+    _address_line2 = Column("address_line2", EncryptedText(encryption_service=encryption_service_instance), nullable=True)
+    _city = Column("city", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _state = Column("state", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _postal_code = Column("postal_code", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
+    _country = Column("country", EncryptedString(encryption_service=encryption_service_instance), nullable=True)
 
     # Emergency contact 
-    _emergency_contact = Column("emergency_contact", Text, nullable=True)
+    _emergency_contact = Column("emergency_contact", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True)
     # Add insurance_info field expected by the test
-    _insurance_info = Column("insurance_info", Text, nullable=True) # Uncommenting for proper access
+    _insurance_info = Column("insurance_info", EncryptedJSON(encryption_service=encryption_service_instance), nullable=True) # Uncommenting for proper access
 
     # --- Relationships ---
     # Define relationships with string references to avoid circular imports
@@ -191,7 +197,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         return f"<Patient(id={self.id}, created_at={self.created_at}, is_active={self.is_active})>"
     
     @classmethod
-    async def from_domain(cls, patient: DomainPatient, encryption_service: BaseEncryptionService) -> "Patient":
+    async def from_domain(cls, patient: DomainPatient) -> "Patient":
         """
         Create a Patient model instance from a domain Patient entity,
         encrypting PHI fields using the provided encryption service.
@@ -227,91 +233,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model.is_active = getattr(patient, 'active', True) # Use getattr for safety
         logger.debug(f"[from_domain] Mapped core metadata for {getattr(patient, 'id', 'NO_ID_YET')}")
 
-        # --- Encryption Helpers ---
-        def _encrypt(value: Any | None, field_name: str) -> bytes | None: # Added field_name for logging
-            """Encrypts a value (assumed stringifiable), returns bytes or None."""
-            if value is None:
-                # logger.debug(f"_encrypt: Value for '{field_name}' is None, returning None.")
-                return None
-            try:
-                value_str = str(value) # Ensure it's a string
-                logger.debug(f"_encrypt: Attempting to encrypt '{field_name}': '{value_str[:50]}...'") # Log value before encryption
-                # Ensure encryption_service is available and encrypt is synchronous or async
-                if hasattr(encryption_service, 'encrypt'):
-                    encrypted_result = encryption_service.encrypt(value_str.encode('utf-8'))
-                    # Handle potential awaitable
-                    if inspect.isawaitable(encrypted_result):
-                         # This helper shouldn't be called with async encrypt, use _encrypt_serializable or direct await
-                         logger.error(f"_encrypt: Called with async encryption service for '{field_name}'. Use await directly.")
-                         return None # Or raise error
-                    encrypted = encrypted_result
-                    
-                    if not isinstance(encrypted, bytes):
-                        logger.warning(f"_encrypt: Encryption service did not return bytes for '{field_name}'. Type: {type(encrypted)}. Attempting encode.")
-                        # Attempt to encode if it's string-like, otherwise log error
-                        try:
-                             encrypted = str(encrypted).encode('utf-8')
-                        except Exception:
-                             logger.error(f"_encrypt: Failed to encode non-bytes encryption result for '{field_name}'.")
-                             return None
-                             
-                    logger.debug(f"_encrypt: Successfully encrypted '{field_name}'.")
-                    return encrypted
-                else:
-                    logger.error(f"_encrypt: encryption_service has no 'encrypt' method for field '{field_name}'.")
-                    return None # Or raise an error
-            except Exception as e:
-                logger.error(f"_encrypt: Failed to encrypt '{field_name}' ('{str(value)[:50]}...'): {e}", exc_info=True)
-                return None # Return None or re-raise specific exception
-
-        async def _encrypt_serializable(data: Any | None, field_name: str) -> bytes | None: # Added field_name
-            """Serializes data to JSON string then encrypts, returns bytes or None."""
-            if data is None:
-                # logger.debug(f"_encrypt_serializable: Data for '{field_name}' is None, returning None.")
-                return None
-            try:
-                 # Handle Pydantic models, dataclasses, dicts, lists, primitives
-                 if hasattr(data, 'model_dump'): # Pydantic V2+
-                     data_dict = data.model_dump()
-                 elif dataclasses.is_dataclass(data) and not isinstance(data, type):
-                     data_dict = dataclasses.asdict(data)
-                 elif isinstance(data, (dict, list)):
-                      data_dict = data # Already serializable
-                 elif isinstance(data, (str, int, float, bool)):
-                      data_dict = data # Primitives are serializable
-                 else:
-                     # Attempt to convert others to string as a fallback
-                     logger.warning(f"Attempting string conversion for non-standard type {type(data)} before JSON serialization for field '{field_name}'.")
-                     data_dict = str(data)
-                
-                 json_str = json.dumps(data_dict)
-                 logger.debug(f"_encrypt_serializable: Attempting to encrypt '{field_name}': JSON='{json_str[:100]}...'") # Log JSON before encrypt
-                 # Call the service's encrypt method with the JSON string (sync or async)
-                 result = encryption_service.encrypt(json_str)
-                 if inspect.isawaitable(result):
-                     encrypted_bytes = await result
-                 else:
-                     encrypted_bytes = result
-                
-                 if not isinstance(encrypted_bytes, bytes):
-                      logger.warning(f"_encrypt_serializable: Encryption service did not return bytes for '{field_name}'. Type: {type(encrypted_bytes)}. Attempting encode.")
-                      try:
-                           encrypted_bytes = str(encrypted_bytes).encode('utf-8')
-                      except Exception:
-                           logger.error(f"_encrypt_serializable: Failed to encode non-bytes encryption result for '{field_name}'.")
-                           return None
-                          
-                 logger.debug(f"_encrypt_serializable: Successfully encrypted '{field_name}'.")
-                 return encrypted_bytes
-            except TypeError as e:
-                logger.error(f"Failed to serialize/encrypt '{field_name}': {e} (Data type: {type(data)})", exc_info=True)
-                return None
-        # --- End Encryption Helpers ---
-
-        from datetime import date, datetime
-        # Assign values to prefixed fields, passing field name for logging
-        model._first_name = _encrypt(getattr(patient, 'first_name', None), '_first_name')
-        model._last_name = _encrypt(getattr(patient, 'last_name', None), '_last_name')
+        # Assign values to prefixed fields directly. TypeDecorators will handle encryption.
+        model._first_name = getattr(patient, 'first_name', None)
+        model._last_name = getattr(patient, 'last_name', None)
         
         # Handle date_of_birth (convert date/datetime to isoformat string first)
         dob_value = getattr(patient, 'date_of_birth', None)
@@ -325,23 +249,23 @@ class Patient(Base, TimestampMixin, AuditMixin):
              except (ValueError, TypeError):
                  logger.warning(f"Could not parse date_of_birth string '{dob_value}' for patient {getattr(patient, 'id', 'N/A')}. Storing as is.")
                  dob_iso_str = dob_value # Keep original string if parsing fails
-        model._dob = _encrypt(dob_iso_str, '_dob')
+        model._dob = dob_iso_str # Assign string, EncryptedString will handle it
         
-        model._email = _encrypt(getattr(patient, 'email', None), '_email')
+        model._email = getattr(patient, 'email', None)
         # Updated to use phone_number from domain model instead of phone
-        model._phone = _encrypt(getattr(patient, 'phone_number', None), '_phone')
-        model._ssn = _encrypt(getattr(patient, 'ssn', None), '_ssn')
-        model._medical_record_number = _encrypt(getattr(patient, 'medical_record_number', None), '_medical_record_number')
-        model._gender = _encrypt(getattr(patient, 'gender', None), '_gender')
-        model._insurance_number = _encrypt(getattr(patient, 'insurance_number', None), '_insurance_number')
-        logger.debug(f"[from_domain] Encrypted direct PII/PHI strings for {getattr(patient, 'id', 'N/A')}")
+        model._phone = getattr(patient, 'phone_number', None)
+        model._ssn = getattr(patient, 'ssn', None)
+        model._medical_record_number = getattr(patient, 'medical_record_number', None)
+        model._gender = getattr(patient, 'gender', None)
+        model._insurance_number = getattr(patient, 'insurance_number', None)
+        logger.debug(f"[from_domain] Assigned direct PII/PHI strings for {getattr(patient, 'id', 'N/A')}")
 
         # --- Handle Address (Domain likely has Address object, Model stores string) ---
         address_obj = getattr(patient, 'address', None) # Renamed for clarity
         if isinstance(address_obj, str): # Handle legacy string case if necessary
              logger.warning(f"Received raw string for address: '{address_obj[:50]}...'. Using directly.")
              full_address_string = address_obj
-             model._address_line1 = _encrypt(full_address_string, '_address_line1')
+             model._address_line1 = full_address_string # Assign string, EncryptedText will handle it
         elif address_obj and hasattr(address_obj, 'street'): # Check if it's likely an Address object
             # Construct the full address string from components - adapt attributes as needed
             # Ensure components exist before concatenating
@@ -356,8 +280,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
             full_address_string = ", ".join(filter(None, parts)) # Join non-empty parts
             
             if full_address_string:
-                 logger.debug(f"[from_domain] Encrypting constructed address string '{full_address_string[:50]}...' into _address_line1 for {getattr(patient, 'id', 'N/A')}")
-                 model._address_line1 = _encrypt(full_address_string, '_address_line1')
+                 logger.debug(f"[from_domain] Assigning constructed address string '{full_address_string[:50]}...' to _address_line1 for {getattr(patient, 'id', 'N/A')}")
+                 model._address_line1 = full_address_string # Assign string, EncryptedText will handle it
             else:
                  logger.debug(f"[from_domain] Address object provided but resulted in empty string for {getattr(patient, 'id', 'N/A')}")
                  model._address_line1 = None
@@ -365,25 +289,31 @@ class Patient(Base, TimestampMixin, AuditMixin):
             # logger.debug(f"[from_domain] No address object or string provided for {getattr(patient, 'id', 'N/A')}")
             model._address_line1 = None
         
-        # Ensure other address components in model are explicitly None if not handled above
-        # These might be populated if the Address object has corresponding fields and logic is added
-        model._address_line2 = None 
-        model._city = None
-        model._state = None
-        model._postal_code = None
-        model._country = None
-        # --- End Address Handling ---\
+        # For structured address fields, if domain_patient.address is an Address VO:
+        if isinstance(address_obj, Address):
+            model._address_line1 = getattr(address_obj, 'line1', None)
+            model._address_line2 = getattr(address_obj, 'line2', None)
+            model._city = getattr(address_obj, 'city', None)
+            model._state = getattr(address_obj, 'state', None)
+            model._postal_code = getattr(address_obj, 'postal_code', None)
+            model._country = getattr(address_obj, 'country', None)
+        else: # If not Address VO or string, clear other fields or handle as per logic
+            model._address_line2 = None 
+            model._city = None
+            model._state = None
+            model._postal_code = None
+            model._country = None
+        # --- End Address Handling ---
         
-        # Encrypt serializable complex fields
-        logger.debug(f"[from_domain] Encrypting complex fields for {getattr(patient, 'id', 'N/A')}")
-        # Use await for async helper function, pass field name for logging
-        model._emergency_contact = await _encrypt_serializable(getattr(patient, 'emergency_contact', None), '_emergency_contact')
-        model._medical_history = await _encrypt_serializable(getattr(patient, 'medical_history', []), '_medical_history') # Use getattr with default
-        model._medications = await _encrypt_serializable(getattr(patient, 'medications', []), '_medications') 
-        model._allergies = await _encrypt_serializable(getattr(patient, 'allergies', []), '_allergies')
-        model._treatment_notes = await _encrypt_serializable(getattr(patient, 'treatment_notes', []), '_treatment_notes')
-        model._extra_data = await _encrypt_serializable(getattr(patient, 'extra_data', {}), '_extra_data') 
-        model._insurance_info = await _encrypt_serializable(getattr(patient, 'insurance_info', None), '_insurance_info') 
+        # Assign serializable complex fields directly. EncryptedJSON will handle serialization & encryption.
+        logger.debug(f"[from_domain] Assigning complex fields for {getattr(patient, 'id', 'N/A')}")
+        model._emergency_contact = getattr(patient, 'emergency_contact', None) # Pass dict/EmergencyContact obj
+        model._medical_history = getattr(patient, 'medical_history', []) 
+        model._medications = getattr(patient, 'medications', []) 
+        model._allergies = getattr(patient, 'allergies', [])
+        model._treatment_notes = getattr(patient, 'treatment_notes', [])
+        model._extra_data = getattr(patient, 'extra_data', {})
+        model._insurance_info = getattr(patient, 'insurance_info', None) 
 
         # Assign remaining non-encrypted fields, converting UUIDs to string
         # biometric_twin_id_obj = getattr(patient, 'biometric_twin_id', None)
@@ -420,36 +350,20 @@ class Patient(Base, TimestampMixin, AuditMixin):
         logger.debug(f"[from_domain] Completed conversion for patient ID: {getattr(model, 'id', 'NO_ID_YET')}")
         return model
 
-    async def to_domain(self, encryption_service: BaseEncryptionService) -> DomainPatient:
+    async def to_domain(self) -> DomainPatient:
         """
         Convert this Patient model instance to a domain Patient entity,
         decrypting PHI fields using the provided encryption service.
         """
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
         
-        # --- Decryption Helpers ---
-        async def _decrypt(encrypted_value: bytes | None) -> str | None:
-            """Decrypts bytes value, returns string or None."""
-            if encrypted_value is None:
-                return None
-            try:
-                result = encryption_service.decrypt(encrypted_value)
-                # Support both sync and async decrypt
-                if inspect.isawaitable(result):
-                    return await result
-                return result
-            except Exception as e:
-                logger.error(f"Decryption failed for patient {self.id}: {e}", exc_info=True)
-                # Return None on decryption failure
-                return None
-
-        # Decrypt necessary fields
-        first_name = await _decrypt(self._first_name)
-        last_name = await _decrypt(self._last_name)
+        # Access fields directly. TypeDecorators will handle decryption and deserialization.
+        first_name = self._first_name
+        last_name = self._last_name
         from datetime import datetime
-        # Decrypt and parse date_of_birth
-        if self._dob:
-            decrypted_dob_str = await _decrypt(self._dob)
+        # Parse date_of_birth after decryption by TypeDecorator
+        if self._dob: # _dob is now the decrypted string from EncryptedString
+            decrypted_dob_str = self._dob
             if decrypted_dob_str:
                 try:
                     # Use dateutil.parser for robust parsing
@@ -462,32 +376,36 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 date_of_birth = None
         else:
             date_of_birth = None
-        email = await _decrypt(self._email)
-        phone = await _decrypt(self._phone)
-        ssn = await _decrypt(self._ssn)
-        medical_record_number = await _decrypt(self._medical_record_number)
-        gender = await _decrypt(self._gender)
-        insurance_number = await _decrypt(self._insurance_number)
+        email = self._email
+        phone = self._phone
+        ssn = self._ssn
+        medical_record_number = self._medical_record_number
+        gender = self._gender
+        insurance_number = self._insurance_number
 
-        logger.debug(f"[to_domain] Decrypted simple PII for {self.id}")
+        logger.debug(f"[to_domain] Accessed simple PII for {self.id}")
 
-        # Decrypt only the address string stored in _address_line1
-        decrypted_address_str = await _decrypt(self._address_line1)
-        logger.debug(f"[to_domain] Decrypted address string for {self.id}: {decrypted_address_str[:50] if decrypted_address_str else 'None'}...")
+        # Access address components directly
+        address_line1 = self._address_line1
+        address_line2 = self._address_line2
+        city = self._city
+        state = self._state
+        postal_code = self._postal_code
+        country = self._country
+        logger.debug(f"[to_domain] Accessed address components for {self.id}")
 
-        # Decrypt complex fields using the appropriate helper
-        logger.debug(f"[to_domain] Decrypting complex fields for {self.id}")
-        decrypted_emergency_contact = await _decrypt(self._emergency_contact)
-        emergency_contact_obj = EmergencyContact(**json.loads(decrypted_emergency_contact)) if decrypted_emergency_contact else None
+        # Access complex fields directly. EncryptedJSON handles decryption & deserialization.
+        logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
+        emergency_contact_obj = self._emergency_contact
         
-        decrypted_medical_history = await _decrypt(self._medical_history)
-        decrypted_medications = await _decrypt(self._medications)
-        decrypted_allergies = await _decrypt(self._allergies)
-        decrypted_treatment_notes = await _decrypt(self._treatment_notes)
-        decrypted_extra_data = await _decrypt(self._extra_data)
+        medical_history_list = self._medical_history
+        medications_list = self._medications
+        allergies_list = self._allergies
+        treatment_notes_list = self._treatment_notes
+        extra_data_dict = self._extra_data
         
         # QUANTUM FIX: Decrypt insurance_info
-        decrypted_insurance_info = await _decrypt(self._insurance_info) # Assuming dict
+        insurance_info_obj = self._insurance_info
 
         # Build domain Patient using only the fields that exist in the domain entity
         # Check app.core.domain.entities.patient.Patient for the correct attributes
@@ -507,27 +425,43 @@ class Patient(Base, TimestampMixin, AuditMixin):
             patient_args['active'] = self.is_active
             
         if emergency_contact_obj is not None:
-            patient_args['emergency_contact'] = emergency_contact_obj
-            
-        if decrypted_insurance_info is not None:
+            # Ensure emergency_contact_obj is a dict before passing to EmergencyContact
+            if isinstance(emergency_contact_obj, dict):
+                patient_args['emergency_contact'] = EmergencyContact(**emergency_contact_obj)
+            elif isinstance(emergency_contact_obj, EmergencyContact): # If already an object
+                 patient_args['emergency_contact'] = emergency_contact_obj
+            else:
+                logger.warning(f"Decrypted emergency_contact for patient {self.id} is not a dict: {type(emergency_contact_obj)}")
+
+        if insurance_info_obj is not None:
+            patient_args['insurance_info'] = insurance_info_obj # Assuming it's already in correct domain type or dict
+
+        # Handle lists and dicts for complex types, defaulting to empty if None after decryption
+        patient_args['medical_history'] = medical_history_list if medical_history_list is not None else []
+        patient_args['medications'] = medications_list if medications_list is not None else []
+        patient_args['allergies'] = allergies_list if allergies_list is not None else []
+        patient_args['treatment_notes'] = treatment_notes_list if treatment_notes_list is not None else []
+        patient_args['extra_data'] = extra_data_dict if extra_data_dict is not None else {}
+
+        # Construct Address value object if components are present
+        address_components = {
+            'line1': address_line1,
+            'line2': address_line2,
+            'city': city,
+            'state': state,
+            'postal_code': postal_code,
+            'country': country
+        }
+        # Only create Address object if at least one component is not None
+        if any(v is not None for v in address_components.values()):
+            # Replace None with empty string for Address VO constructor if it expects strings
+            for key, value in address_components.items():
+                if value is None:
+                    address_components[key] = '' # Or handle as Address VO expects
             try:
-                insurance_info = json.loads(decrypted_insurance_info) if isinstance(decrypted_insurance_info, str) else decrypted_insurance_info
-                patient_args['insurance_info'] = insurance_info
-            except (json.JSONDecodeError, TypeError):
-                logger.warning(f"Could not parse insurance_info for patient {self.id}")
-        
-        # Add address if it exists and can be parsed
-        if decrypted_address_str is not None:
-            try:
-                # If address is stored as a JSON string, parse it
-                if decrypted_address_str.startswith('{'): 
-                    address_dict = json.loads(decrypted_address_str)
-                    patient_args['address'] = Address(**address_dict)
-                else:
-                    # Otherwise use it as is
-                    patient_args['address'] = Address(line1=decrypted_address_str, line2="", city="", state="", postal_code="", country="")
-            except (json.JSONDecodeError, TypeError, ValueError):
-                logger.warning(f"Could not parse address for patient {self.id}")
+                patient_args['address'] = Address(**address_components)
+            except TypeError as e:
+                logger.error(f"Failed to create Address VO for patient {self.id}: {e}. Components: {address_components}")     
         
         # Create the patient entity with only the fields it supports
         patient = DomainPatient(**patient_args)
