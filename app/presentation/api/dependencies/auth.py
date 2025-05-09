@@ -27,7 +27,11 @@ from app.core.interfaces.services.auth_service_interface import (
     AuthServiceInterface,
 )
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.infrastructure.database.session import get_async_session
+
+# REMOVED: from app.infrastructure.database.session import get_async_session
+# ADDED: Import get_db from the local database dependency module
+from .database import get_db
+
 # from app.infrastructure.repositories.user_repository import get_user_repository # DELETED OLD IMPORT
 from app.infrastructure.security.auth.auth_service import get_auth_service
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service, JWTService
@@ -48,7 +52,7 @@ JWTServiceDep = Annotated[JWTServiceInterface, Depends(get_jwt_service)]
 
 # Define an explicit dependency function for the user repository
 async def get_user_repository_dependency(
-    session: AsyncSession = Depends(get_async_session), 
+    session: AsyncSession = Depends(get_db), # CHANGED to Depends(get_db)
 ) -> IUserRepository:
     """Provides an instance of IUserRepository using the injected session."""
     # Import here to avoid potential circular on module load if other files import this and SQLAlchemyUserRepository imports something from auth too early

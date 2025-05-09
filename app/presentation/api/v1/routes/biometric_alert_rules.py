@@ -13,7 +13,7 @@ from pydantic import UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.user import User
-from app.infrastructure.database.session import get_async_session
+from app.presentation.api.dependencies.database import get_db
 from app.infrastructure.security.rate_limiting.limiter import RateLimiter
 from app.presentation.api.dependencies.auth import (
     get_current_active_user_wrapper,
@@ -45,7 +45,7 @@ router = APIRouter(
 #     rule_data: AlertRuleCreateRequest,
 #     # rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
 #     current_user: User = Depends(get_current_active_user_wrapper),
-#     db: AsyncSession = Depends(get_async_session),
+#     db: AsyncSession = Depends(get_db),
 # ) -> AlertRuleResponse:
 #     """Endpoint to create a new biometric alert rule."""
 #     # Placeholder implementation
@@ -81,7 +81,7 @@ router = APIRouter(
     tags=["Biometric Alert Rules"],
 )
 async def get_alert_rules(
-    # db: AsyncSession = Depends(get_async_session),
+    # db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user_wrapper),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -101,7 +101,7 @@ async def get_alert_rules(
 # )
 # async def get_alert_rule(
 #     rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
-#     db: AsyncSession = Depends(get_async_session),
+#     db: AsyncSession = Depends(get_db),
 #     current_user: User = Depends(get_current_active_user_wrapper),
 # ) -> AlertRuleResponse:
 #     """
@@ -144,7 +144,7 @@ async def get_alert_rules(
 # async def update_alert_rule(
 #     rule_data: AlertRuleUpdateRequest,
 #     rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
-#     db: AsyncSession = Depends(get_async_session),
+#     db: AsyncSession = Depends(get_db),
 #     current_user: User = Depends(get_current_active_user_wrapper),
 # ) -> AlertRuleResponse:
 #     """
@@ -181,7 +181,7 @@ async def get_alert_rules(
 # )
 # async def delete_alert_rule(
 #     rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
-#     db: AsyncSession = Depends(get_async_session),
+#     db: AsyncSession = Depends(get_db),
 #     current_user: User = Depends(get_current_active_user_wrapper),
 # ) -> None:
 #     """

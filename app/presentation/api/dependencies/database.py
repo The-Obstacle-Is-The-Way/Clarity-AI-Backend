@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
-from app.infrastructure.database.session import get_async_session
+from app.infrastructure.database.session import get_async_session_utility
 from app.infrastructure.di.provider import get_repository_instance
 
 # from app.config.settings import get_settings # Legacy import
@@ -28,82 +28,40 @@ logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=BaseRepositoryInterface)
 
 # Type alias for session dependency
-DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session)]
+DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session_utility)]
 
-# INLINED VERSION FOR TESTING:
 async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """ FastAPI dependency to get an async database session. (INLINED TEST)
-        Uses the session factory stored in the application state.
+    """Injects a database session into the request.
+    This is the actual FastAPI dependency.
+    It retrieves session_factory from app.state and calls the utility function.
     """
-    logger.info(f"GET_DB_SESSION (INLINED): Entered. id(request.app) is {id(request.app)}")
+    logger.debug(f"GET_DB_SESSION (FastAPI Dependency): Entered. ID of request.app: {id(request.app)}")
+    session_factory_from_state: Callable[[], AsyncSession] | None = None
     
-    session_factory = None
     if hasattr(request.app, 'state'):
-        logger.info(f"GET_DB_SESSION (INLINED): request.app.state exists. id(request.app.state) is {id(request.app.state)}")
-        logger.info(f"GET_DB_SESSION (INLINED): request.app.state contents: {vars(request.app.state) if hasattr(request.app.state, '__dict__') else request.app.state}")
-        session_factory = getattr(request.app.state, "db_session_factory", None)
-        logger.info(f"GET_DB_SESSION (INLINED): session_factory from getattr: {session_factory} (type: {type(session_factory)})")
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): id(request.app.state) is {id(request.app.state)}")
+        # Ensure we log the actual content of the state if it exists
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): request.app.state content: {request.app.state.__dict__ if hasattr(request.app.state, '__dict__') else 'N/A'}")
+        session_factory_from_state = getattr(request.app.state, "db_session_factory", None)
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): Retrieved session_factory: {session_factory_from_state}")
     else:
-        logger.error("GET_DB_SESSION (INLINED): request.app has NO 'state' attribute.")
+        logger.warning("GET_DB_SESSION (FastAPI Dependency): request.app has NO state attribute.")
 
-
-    if session_factory is None or not callable(session_factory):
-        error_msg = "GET_DB_SESSION (INLINED): Database session factory not found or invalid in application state."
-        logger.critical(
-            f"{error_msg} Check application lifespan initialization."
-        )
-        raise RuntimeError(error_msg)
-
-    session: AsyncSession | None = None
-    try:
-        # Directly use the session_factory obtained in *this* function's scope
-        async with session_factory() as session: # Ensure session_factory here is the one we just got
-            logger.debug("GET_DB_SESSION (INLINED): Database session opened.")
-            yield session
-            logger.debug("GET_DB_SESSION (INLINED): Database session yielded.")
-    except SQLAlchemyError as e:
-        logger.exception(f"GET_DB_SESSION (INLINED): Database session error: {e}")
-        if session:
-            await session.rollback()
-            logger.warning("GET_DB_SESSION (INLINED): Session rolled back due to SQLAlchemyError.")
-        raise
-    except Exception as e:
-        logger.exception(f"GET_DB_SESSION (INLINED): Unexpected error during database session: {e}")
-        if session:
-            await session.rollback()
-            logger.error("GET_DB_SESSION (INLINED): Session rolled back due to unexpected error.")
-        raise
-    finally:
-        logger.debug("GET_DB_SESSION (INLINED): Database session context exited.")
-
-async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """
-    Dependency for getting a database session.
-    
-    Yields:
-        AsyncSession: SQLAlchemy async session.
-    """
-    logger.debug(f"GET_DB_SESSION: Entered. ID of request.app: {id(request.app)}")
-    if hasattr(request.app, 'state'):
-        logger.debug(f"GET_DB_SESSION: request.app.state exists. Attributes: {dir(request.app.state)}")
-        if hasattr(request.app.state, 'db_session_factory'):
-            logger.debug(f"GET_DB_SESSION: db_session_factory FOUND in request.app.state. Type: {type(request.app.state.db_session_factory)}")
+    if session_factory_from_state is None:
+        logger.error("GET_DB_SESSION (FastAPI Dependency): db_session_factory not found. Raising RuntimeError.")
+        if hasattr(request.app, 'state'):
+            logger.error(f"GET_DB_SESSION (FastAPI Dependency): Keys in request.app.state: {list(request.app.state.keys()) if isinstance(request.app.state, dict) else 'N/A (not a dict)'}")
+            logger.error(f"GET_DB_SESSION (FastAPI Dependency): Attributes in request.app.state: {dir(request.app.state)}")
         else:
-            logger.error("GET_DB_SESSION: db_session_factory NOT FOUND in request.app.state")
-    else:
-        logger.error("GET_DB_SESSION: request.app has NO 'state' attribute.")
+            logger.error("GET_DB_SESSION (FastAPI Dependency): request.app has no state attribute at point of error.")
+        raise RuntimeError("db_session_factory not found in request.app.state for get_db_session")
 
-    session_factory = getattr(request.app.state, "db_session_factory", None)
-    if session_factory is None:
-        logger.error("GET_DB_SESSION: Critical - session_factory is None after getattr. Raising RuntimeError.")
-        raise RuntimeError(
-            "Database session factory not found or invalid on app.state. "
-            "Ensure it's initialized during startup."
-        )
-
-    async for session in get_async_session(request=request):
+    # Call the utility function, passing the factory
+    async for session in get_async_session_utility(session_factory_from_state):
         yield session
 
+# Alias for common usage in routes
+get_db = get_db_session
 
 def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     """
@@ -134,11 +92,11 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
     return _get_repo_with_session
 
 # Specific dependency for Patient Repository
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository as SQLAlchemyPatientRepository
 
 async def get_patient_repository_dependency(
-    session: AsyncSession = Depends(get_async_session),
+    session: AsyncSession = Depends(get_db),
 ) -> IPatientRepository:
-    """Provides an instance of IPatientRepository (SQLAlchemyPatientRepository)."""
-    return SQLAlchemyPatientRepository(db_session=session)
+    """Provides an instance of IPatientRepository (PatientRepository)."""
+    return PatientRepository(db_session=session)

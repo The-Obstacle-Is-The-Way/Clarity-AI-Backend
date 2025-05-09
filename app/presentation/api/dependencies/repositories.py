@@ -14,7 +14,10 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.infrastructure.database.session import get_async_session
+# REMOVED: from app.infrastructure.database.session import get_async_session
+# ADDED: Import get_db from the local database dependency module
+from .database import get_db
+
 # Import the repository class implementation from the infrastructure layer
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
     SQLAlchemyUserRepository,
@@ -24,12 +27,12 @@ logger = logging.getLogger(__name__)
 
 
 def get_user_repository(
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    session: Annotated[AsyncSession, Depends(get_db)], # CHANGED to Depends(get_db)
 ) -> IUserRepository:
     """Dependency provider for the User Repository."""
     logger.debug("Providing User Repository dependency")
     # Instantiate the repository with the session
-    return SQLAlchemyUserRepository(session)
+    return SQLAlchemyUserRepository(db_session=session) # Ensure consistent kwarg name
 
 
 # Type hint for dependency injection

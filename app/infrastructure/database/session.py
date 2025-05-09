@@ -1,7 +1,6 @@
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 
-from fastapi import Request
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -30,7 +29,6 @@ def create_db_engine_and_session(
     """
     logger.info("Creating database engine and session factory.")
 
-    # Basic validation for async driver in URL
     if not any(
         driver in db_url
         for driver in [
@@ -39,7 +37,6 @@ def create_db_engine_and_session(
             "sqlite+aiosqlite",
         ]
     ):
-        # Shorten the f-string part for display
         url_display = db_url[: db_url.find('@')] + "@..." if '@' in db_url else db_url
         error_msg = f"Database URL '{url_display}' does not seem to use a supported async driver."
         logger.error(error_msg)
@@ -60,57 +57,65 @@ def create_db_engine_and_session(
         logger.exception(
             f"Failed to create database engine or session factory: {e}"
         )
-        raise  # Re-raise the exception after logging
+        raise
 
 
-async def get_async_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency to get an async database session.
-
-    Uses the session factory stored in the application state.
-
-    Args:
-        request: The incoming FastAPI request.
-
-    Yields:
-        An AsyncSession instance.
-
-    Raises:
-        RuntimeError: If the session factory is not found in app state.
-        SQLAlchemyError: If there is an error during session handling.
+# MODIFIED: This is now a utility, not a direct FastAPI dependency function.
+# It no longer takes 'request'.
+async def get_async_session_utility(
+    session_factory: Callable[[], AsyncSession] | None
+) -> AsyncGenerator[AsyncSession, None]:
+    """ Utility to get an async database session using a provided factory.
     """
-    session_factory = getattr(request.app.state, "db_session_factory", None)
+    logger.debug(f"GET_ASYNC_SESSION_UTILITY: Entered.")
     
-    # logger.debug(f"get_async_session: id(request.app): {id(request.app)}, id(request.app.state): {id(request.app.state)}") # DEBUG - Already present
-    # Updated log to be INFO level for better visibility during tests without full debug
-    logger.info(f"get_async_session: id(request.app) is {id(request.app)}, id(request.app.state) is {id(request.app.state)}") 
-    logger.info(f"get_async_session: request.app.state contents: {vars(request.app.state) if hasattr(request.app.state, '__dict__') else request.app.state}") 
-    logger.info(f"get_async_session: session_factory from state: {session_factory} (type: {type(session_factory)})")
+    if session_factory is None:
+        logger.error("GET_ASYNC_SESSION_UTILITY: session_factory is None. Cannot create session.")
+        raise RuntimeError("GET_ASYNC_SESSION_UTILITY: session_factory is None.")
 
-    if session_factory is None or not callable(session_factory):
-        error_msg = "Database session factory not found or invalid in application state."
-        logger.critical(
-            "Critical error: 'db_session_factory' missing or invalid in app.state. "
-            "Check application lifespan initialization."
-        )
-        raise RuntimeError(error_msg)
-
+    logger.debug(f"GET_ASYNC_SESSION_UTILITY: Using provided session_factory: {session_factory}")
+    
     session: AsyncSession | None = None
     try:
-        async with session_factory() as session:
-            logger.debug("Database session opened.")
-            yield session
-            logger.debug("Database session yielded.")
+        session = session_factory()
+        logger.debug(f"GET_ASYNC_SESSION_UTILITY: Session created: {session}")
+        yield session
     except SQLAlchemyError as e:
-        logger.exception(f"Database session error: {e}")
+        logger.error(f"GET_ASYNC_SESSION_UTILITY: SQLAlchemyError: {e}", exc_info=True)
         if session:
             await session.rollback()
-            logger.warning("Session rolled back due to SQLAlchemyError.")
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error during database session: {e}")
+        logger.error(f"GET_ASYNC_SESSION_UTILITY: Unexpected error: {e}", exc_info=True)
         if session:
             await session.rollback()
-            logger.error("Session rolled back due to unexpected error.")
         raise
     finally:
-        logger.debug("Database session context exited.")
+        if session:
+            try:
+                await session.close()
+                logger.debug("GET_ASYNC_SESSION_UTILITY: Session closed successfully.")
+            except SQLAlchemyError as e:
+                logger.error(f"GET_ASYNC_SESSION_UTILITY: SQLAlchemyError during close: {e}", exc_info=True)
+            except Exception as e:
+                logger.error(f"GET_ASYNC_SESSION_UTILITY: Unexpected error during close: {e}", exc_info=True)
+
+
+# Test function to simulate dependency usage (not part of actual app logic)
+async def example_dependency_using_session(
+    db: AsyncSession 
+):
+    logger.info(f"Example dependency received session: {db}")
+    # Use db session here
+    pass
+
+
+# Example of how a router might use it (for illustration)
+# from fastapi import APIRouter, Depends
+# router = APIRouter()
+# @router.get("/test-db")
+# async def test_db_endpoint(
+#     # This part would be tricky, as get_async_session now needs factory.
+#     # The actual dependency in routes would be get_db_session from presentation layer
+# ):
+#     return {"message": "DB session would be used here"}

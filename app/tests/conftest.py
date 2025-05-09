@@ -366,52 +366,46 @@ async def mock_override_user() -> User:
 
 @pytest_asyncio.fixture(scope="function")
 async def client_app_tuple(
-    test_settings: Settings, 
-    mock_override_user: User, # This param might be from an older version of the fixture, review if still needed
-    mock_jwt_service: MagicMock, # ADD mock_jwt_service as a fixture dependency here
-    mock_auth_service: MagicMock  # ADD mock_auth_service as a fixture dependency
+    test_settings: Settings,
+    mock_jwt_service: MagicMock, 
+    mock_auth_service: MagicMock,
+    mock_encryption_service: MagicMock, 
+    mock_mentallama_service: MagicMock,
+    mock_patient_service: MagicMock,
+    mock_user_service: MagicMock,
+    mock_audit_service: MagicMock,
+    # mock_background_tasks_fixture: BackgroundTasks, # Not needed if not explicitly used
 ) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
-    """Provides an AsyncClient and the FastAPI app instance, with JWT service mocked."""
-    logger.info("Creating client_app_tuple. Overriding get_jwt_service and get_auth_service with mocks.")
+    logger.info("CONTEST: Creating client_app_tuple. Overriding services with mocks.")
     
     app_instance = create_application(settings_override=test_settings, include_test_routers=True)
 
-    # Override JWTService dependency
-    def mock_get_jwt_service_override():
-        logger.info("Overridden get_jwt_service called, returning MOCK_JWT_SERVICE")
-        return mock_jwt_service
-    app_instance.dependency_overrides[actual_get_jwt_service_dependency] = mock_get_jwt_service_override
+    # Apply mock services via dependency overrides
+    app_instance.dependency_overrides[get_jwt_service] = lambda: mock_jwt_service
+    app_instance.dependency_overrides[get_auth_service] = lambda: mock_auth_service
+    app_instance.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
+    app_instance.dependency_overrides[get_mentallama_service] = lambda: mock_mentallama_service
+    app_instance.dependency_overrides[get_patient_service] = lambda: mock_patient_service
+    app_instance.dependency_overrides[get_user_service] = lambda: mock_user_service
+    app_instance.dependency_overrides[get_audit_service] = lambda: mock_audit_service
+    # app_instance.dependency_overrides[BackgroundTasks] = lambda: mock_background_tasks_fixture
 
-    # Override AuthServiceInterface dependency
-    def mock_get_auth_service_override():
-        logger.info("Overridden get_auth_service called, returning MOCK_AUTH_SERVICE")
-        return mock_auth_service
-    app_instance.dependency_overrides[actual_get_auth_service_dependency] = mock_get_auth_service_override
-    
-    logger.info(f"CONTEST: Current dependency_overrides: {list(app_instance.dependency_overrides.keys())}")
+    # REMOVED LifespanManager - httpx.AsyncClient will handle lifespan
+    # from asgi_lifespan import LifespanManager 
+    from httpx import ASGITransport # ASGITransport still needed
 
-    # Start the app with lifespan events
-    from asgi_lifespan import LifespanManager
-    from httpx import ASGITransport
+    # logger.info(f"CONTEST: app_instance created. ID: {id(app_instance)}")
+    # if hasattr(app_instance, 'state'):
+    #     logger.info(f"CONTEST: app_instance.state BEFORE AsyncClient: {vars(app_instance.state) if hasattr(app_instance.state, '__dict__') else app_instance.state}")
 
-    async with LifespanManager(app_instance) as manager:
-        # The client must use manager.app which is the app processed by LifespanManager
-        # This ensures startup/shutdown events are handled correctly for the client.
-        logger.info(f"CONTEST: LifespanManager active. Type of manager.app: {type(manager.app)}, id: {id(manager.app)}")
-        # ADDED: Log the state of manager.app immediately after lifespan startup completes and before client creation
-        if hasattr(manager.app, 'state'):
-            logger.info(f"CONTEST: manager.app.state AFTER lifespan startup: {vars(manager.app.state) if hasattr(manager.app.state, '__dict__') else manager.app.state}")
+    # httpx.AsyncClient will manage the lifespan of app_instance
+    async with AsyncClient(transport=ASGITransport(app=app_instance), base_url="http://testserver") as client:
+        # Log state after client is up, which means lifespan startup should have run
+        if hasattr(app_instance, 'state'):
+             logger.info(f"CONTEST: app_instance.state AFTER AsyncClient init (id: {id(app_instance.state)}): {vars(app_instance.state) if hasattr(app_instance.state, '__dict__') else app_instance.state}")
         else:
-            logger.warning("CONTEST: manager.app has NO state attribute AFTER lifespan startup.")
-            
-        async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://testserver") as client:
-            # Yield the client and the ORIGINAL app_instance (for direct state/override manipulation in tests if needed)
-            logger.info(f"CONTEST: Yielding client and ORIGINAL app_instance (id: {id(app_instance)}) to test.")
-            yield client, app_instance
-    
-    logger.info("Cleaning up client_app_tuple.")
-    # Clear overrides after test to prevent interference
-    app_instance.dependency_overrides.clear()
+            logger.warning("CONTEST: app_instance has NO state attribute AFTER AsyncClient init.")
+        yield client, app_instance
 
 @pytest_asyncio.fixture(scope="function")
 async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
