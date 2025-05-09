@@ -14,27 +14,31 @@ from datetime import date, datetime, timezone
 import pytest
 import pytest_asyncio
 from cryptography.fernet import Fernet
-from sqlalchemy import text, event
+from sqlalchemy import text, event, select, inspect as sa_inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Import domain entities with clear namespace
-from app.core.domain.entities.patient import Patient as DomainPatient
+from app.core.domain.entities.patient import Patient as DomainPatient, Gender, ContactInfo, Address, EmergencyContact
 from app.core.domain.entities.user import UserRole  # Import from core domain, not SQLAlchemy models
 from app.domain.value_objects.address import Address
 from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.infrastructure.persistence.sqlalchemy.models import Base
 from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
 from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
+from app.infrastructure.persistence.sqlalchemy.models.user import User
 
 # Import SQLAlchemy models with clear namespace
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.infrastructure.security.encryption.encryption_service import EncryptionService
+from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 # Define standard test user IDs needed for foreign keys in the real models
 TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+TEST_PATIENT_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
 # Event listener for SQLite foreign key enforcement
 @event.listens_for(Engine, "connect", once=True)
@@ -53,100 +57,117 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     # cursor.close()
 
 @pytest_asyncio.fixture(scope="function")
-async def integration_db_session() -> AsyncGenerator[tuple[AsyncSession, uuid.UUID], None]:
-    """
-    Provides an isolated database session with schema and a test user.
-    """
-    db_url = "sqlite+aiosqlite:///:memory:"
-    logger.info(f"[Integration Fixture] Setting up test database: {db_url}")
+async def encryption_service_fixture() -> EncryptionService:
+    # Uses PHI_ENCRYPTION_KEY from settings by default
+    return EncryptionService()
 
-    engine = create_async_engine(
-        db_url,
-        echo=False,
-        connect_args={"check_same_thread": False}
-    )
+@pytest_asyncio.fixture(scope="function")
+async def integration_db_session(encryption_service_fixture: EncryptionService):
+    # Make the test-scoped encryption service available to the EncryptedTypes via patient.py
+    # This ensures that during test runs, the encrypted types use the correctly configured (or mocked)
+    # service instance from the test context.
+    original_esi = getattr(patient_module_for_esi, 'encryption_service_instance', None)
+    patient_module_for_esi.encryption_service_instance = encryption_service_fixture
+    
+    logger.info(f"[Integration Fixture] Setting up test database: {settings.DATABASE_URL}")
+    
+    async with engine.connect() as conn:
+        await conn.execute(text("PRAGMA foreign_keys=ON;"))
+        logger.info("[Integration Fixture] PRAGMA foreign_keys=ON executed on new connection.")
+        await conn.commit() # Ensure PRAGMA is effective for the session
 
-    async_session_factory = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
-        class_=AsyncSession
-    )
-
-    async with async_session_factory() as session: 
+    async with async_session_factory() as session:
         try:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.drop_all) 
-                await conn.run_sync(Base.metadata.create_all) 
+            async with engine.begin() as conn: # Use engine.begin for DDL in separate transaction
+                await conn.run_sync(Base.metadata.drop_all)
+                await conn.run_sync(Base.metadata.create_all)
             logger.info("[Integration Fixture] Dropped and Created all tables.")
 
-            # Create AuditLog for the User
-            user_audit_log = AuditLog(event_type="test_setup", action="fixture_user_create", resource_type="user_test")
-            session.add(user_audit_log)
-            await session.flush() # Get ID for user_audit_log
-            user_audit_log_id = user_audit_log.id
-            logger.info(f"[Integration Fixture] Added AuditLog for User: ID {user_audit_log_id}")
+            patient_audit_log_id_for_yield: uuid.UUID | None = None
 
-            # Create Test User
-            check_user_sql = text("SELECT id FROM users WHERE id = :user_id_hex")
-            result = await session.execute(check_user_sql, {"user_id_hex": TEST_USER_ID.hex})
-            user_exists = result.scalar_one_or_none()
+            # Transaction 1: User and its AuditLog (using ORM)
+            async with session.begin():
+                # Check if user already exists (by ORM query)
+                existing_user = await session.get(User, TEST_USER_ID)
 
-            if not user_exists:
-                logger.info(f"[Integration Fixture] Test user {TEST_USER_ID.hex} not found, creating.")
-                insert_user_sql = text("""INSERT INTO users (id, username, email, password_hash, role, roles, is_active, is_verified, email_verified, created_at, updated_at, failed_login_attempts, password_changed_at, first_name, last_name, audit_id, created_by, updated_by) VALUES (:id, :username, :email, :password_hash, :role, :roles, :is_active, :is_verified, :email_verified, :created_at, :updated_at, :failed_login_attempts, :password_changed_at, :first_name, :last_name, :audit_id, :created_by, :updated_by)""")
-                roles_json = json.dumps([UserRole.PATIENT.value])
-                current_time = datetime.now(timezone.utc).isoformat()
-                # Explicitly convert UUID to hex string for the audit_id parameter
-                audit_id_hex = user_audit_log_id.hex
-                await session.execute(insert_user_sql, {
-                    "id": TEST_USER_ID.hex,
-                    "username": "integration_testuser",
-                    "email": "integration.test@novamind.ai",
-                    "password_hash": "hashed_password",
-                    "role": "PATIENT",
-                    "roles": roles_json,
-                    "is_active": True,
-                    "is_verified": True,
-                    "email_verified": True,
-                    "created_at": current_time,
-                    "updated_at": current_time,
-                    "failed_login_attempts": 0,
-                    "password_changed_at": current_time,
-                    "first_name": "Test",
-                    "last_name": "User",
-                    "audit_id": audit_id_hex, # Use the pre-converted hex string
-                    "created_by": None,
-                    "updated_by": None
-                })
-                logger.info(f"[Integration Fixture] Added test user: {TEST_USER_ID.hex} linked to audit_id {audit_id_hex}") # Log the hex string
-            else:
-                logger.info(f"[Integration Fixture] Test user {TEST_USER_ID.hex} already exists.")
+                if not existing_user:
+                    logger.info(f"[Integration Fixture] Test user {TEST_USER_ID} not found, creating via ORM.")
+                    
+                    user_audit_log = AuditLog(
+                        event_type="test_fixture_setup",
+                        action="create_test_user",
+                        resource_type="user",
+                        success=True,
+                        user_id=None, # System action, or a placeholder system user ID if available
+                        details=json.dumps({"description": "Audit log for test user creation in fixture"})
+                    )
+                    session.add(user_audit_log)
+                    await session.flush() # Ensure user_audit_log gets an ID
+                    logger.info(f"[Integration Fixture] Added AuditLog for User: ID {user_audit_log.id}")
+
+                    roles_json_str = json.dumps([UserRole.PATIENT.value])
+                    current_time_dt = datetime.now(timezone.utc)
+
+                    test_user = User(
+                        id=TEST_USER_ID,
+                        username="integration_testuser",
+                        email="integration.test@example.com",
+                        password_hash="hashed_password_for_test",
+                        role=UserRole.PATIENT,
+                        roles=roles_json_str, # Store as JSON string
+                        is_active=True,
+                        is_verified=True,
+                        email_verified=True,
+                        created_at=current_time_dt,
+                        updated_at=current_time_dt,
+                        failed_login_attempts=0,
+                        password_changed_at=current_time_dt,
+                        first_name="Test",
+                        last_name="User",
+                        audit_id=user_audit_log.id, # Link to its own audit log
+                        created_by=None, # No user to attribute to for the first user
+                        updated_by=None  # No user to attribute to for the first user
+                    )
+                    session.add(test_user)
+                    await session.flush() # Ensure user is in session for FK
+                    logger.info(f"[Integration Fixture] Added test user via ORM: {test_user.id}")
+                else:
+                    logger.info(f"[Integration Fixture] Test user {TEST_USER_ID} already exists.")
             
-            # Commit the user and its audit log to ensure FKs are met for subsequent operations
-            await session.commit()
-            logger.info(f"[Integration Fixture] Committed User (audit_id: {user_audit_log_id.hex}) and its AuditLog.")
+            logger.info(f"[Integration Fixture] Transaction for User and its AuditLog committed.")
 
-            # Create dummy AuditLog for Patient records
-            patient_audit_log = AuditLog(
-                event_type="test_setup", action="fixture_patient_create", 
-                resource_type="patient_test", user_id=TEST_USER_ID # TEST_USER_ID is uuid.UUID
-            )
-            session.add(patient_audit_log)
-            await session.flush() # This flush is for patient_audit_log to get its ID
-            patient_audit_log_id_for_yield = patient_audit_log.id
-            logger.info(f"[Integration Fixture] Added dummy AuditLog for patients: ID {patient_audit_log_id_for_yield}")
-
-            await session.commit() # Commit the patient_audit_log
-            logger.info(f"[Integration Fixture] Committed Patient AuditLog (id: {patient_audit_log_id_for_yield}).")
+            # Transaction 2: Patient's AuditLog (using ORM)
+            async with session.begin():
+                patient_audit_log = AuditLog(
+                    event_type="test_fixture_setup",
+                    action="create_test_patient_audit",
+                    resource_type="patient",
+                    user_id=TEST_USER_ID, # Link to the created/existing test user
+                    success=True,
+                    details=json.dumps({"description": "Audit log for test patient setup in fixture"})
+                )
+                session.add(patient_audit_log)
+                await session.flush() # This flush is for patient_audit_log to get its ID
+                patient_audit_log_id_for_yield = patient_audit_log.id
+                logger.info(f"[Integration Fixture] Added AuditLog for Patient: ID {patient_audit_log_id_for_yield}, UserID: {patient_audit_log.user_id}")
             
+            logger.info(f"[Integration Fixture] Transaction for Patient's AuditLog committed. Yielding session and patient_audit_log_id: {patient_audit_log_id_for_yield}")
             yield session, patient_audit_log_id_for_yield
 
+        except Exception as e:
+            logger.error(f"[Integration Fixture] Exception during setup: {e}", exc_info=True)
+            await session.rollback() # Rollback on any exception during setup
+            raise
         finally:
-            await session.rollback()
-            logger.info("[Integration Fixture] Rolled back test database session operations.")
-    
-    await engine.dispose()
-    logger.info("[Integration Fixture] Disposed engine.")
+            logger.info("[Integration Fixture] Tearing down test database session.")
+            # Restore original encryption_service_instance if it was changed
+            if hasattr(patient_module_for_esi, 'encryption_service_instance'):
+                 patient_module_for_esi.encryption_service_instance = original_esi
+            await session.close()
+            # Dropping tables again for cleanliness, though scope="function" should isolate
+            # async with engine.begin() as conn:
+            #     await conn.run_sync(Base.metadata.drop_all)
+            # logger.info("[Integration Fixture] Dropped all tables in teardown.")
 
 @pytest.mark.db_required()
 class TestPatientEncryptionIntegration:
