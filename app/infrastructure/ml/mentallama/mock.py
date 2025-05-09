@@ -10,6 +10,7 @@ import random
 import re
 from datetime import datetime
 from typing import Any
+import uuid
 
 from app.core.exceptions import (
     InvalidConfigurationError,
@@ -300,45 +301,78 @@ Remember that this is a preliminary analysis based solely on the language patter
         options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
-        Process text with the specified model type.
+        Process text using the MentaLLaMA model.
         
         Args:
             text: Text to process
-            model_type: Type of model to use (default: general)
+            model_type: Type of model to use
             options: Additional processing options
             
         Returns:
             Processing results
             
         Raises:
-            ServiceUnavailableError: If service is not available
-            InvalidRequestError: If input is invalid
-            ModelNotFoundError: If model type not supported
+            ServiceUnavailableError: If service is not initialized
+            InvalidRequestError: If text is empty or invalid
+            ModelNotFoundError: If model type is not found
         """
-        # Check service and input validity
+        # Validate service state and input
         self._validate_service_and_input(text)
         
-        # Use default model type if not specified
-        model_type = model_type or "general"
+        # Set default model type if not provided
+        if model_type is None:
+            model_type = "general"
         
         # Validate model type
-        if model_type not in self._model_types:
-            raise ModelNotFoundError(f"Model type '{model_type}' not supported")
+        model_type = model_type.lower()
+        if model_type not in [
+            "general", 
+            "depression_detection", 
+            "risk_assessment",
+            "analysis",  # Alias for general
+            "conditions",  # Alias for depression_detection
+            "therapeutic",  # Alias for general with formatting
+            "risk",  # Alias for risk_assessment
+            "wellness",  # Alias for wellness_dimensions
+            "sentiment_analysis",
+            "wellness_dimensions",
+            "digital_twin"
+        ]:
+            raise ModelNotFoundError(model_type)
         
-        # Check if we have a predefined response for this model
+        # Handle model type aliases for API compatibility
+        if model_type == "analysis":
+            model_type = "general"
+        elif model_type == "conditions":
+            model_type = "depression_detection"
+        elif model_type == "therapeutic":
+            model_type = "general"
+        elif model_type == "risk":
+            model_type = "risk_assessment"
+        elif model_type == "wellness":
+            model_type = "wellness_dimensions"
+        
+        # Initialize options if not provided
+        if options is None:
+            options = {}
+        
+        # Get the appropriate mock response
         if model_type in self._mock_responses:
             response = self._mock_responses[model_type].copy()
-            # Ensure timestamp is current
-            response["timestamp"] = datetime.now(UTC).isoformat()
-            return response
-            
-        # If no predefined response, return a basic one
-        return {
-            "content": f"Mock response for {model_type} model",
-            "model": "mock-gpt-4",
-            "model_type": model_type,
-            "timestamp": datetime.now(UTC).isoformat()
-        }
+        else:
+            # Fallback to general model if specific type not found in mock responses
+            response = self._mock_responses["general"].copy()
+            response["model_type"] = model_type
+        
+        # Update timestamp to current
+        response["timestamp"] = datetime.now(UTC).isoformat()
+        
+        # Add request options to response metadata
+        if "metadata" not in response:
+            response["metadata"] = {}
+        response["metadata"]["options"] = options
+        
+        return response
     
     def _validate_service_and_input(self, text: str) -> None:
         """
@@ -487,8 +521,8 @@ Remember that this is a preliminary analysis based solely on the language patter
     
     def generate_digital_twin(
         self,
-        text_data: list[str] | None = None,
         patient_id: str | None = None,
+        text_data: list[str] | None = None,
         patient_data: dict[str, Any] | None = None,
         demographic_data: dict[str, Any] | None = None,
         medical_history: dict[str, Any] | None = None,
@@ -496,62 +530,78 @@ Remember that this is a preliminary analysis based solely on the language patter
         options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
-        Generate a digital twin from patient data.
+        Generate a digital twin for a patient.
         
         Args:
-            text_data: List of text inputs from patient
-            patient_id: Patient identifier (optional)
-            patient_data: Patient profile data (optional)
-            demographic_data: Patient demographic information (optional)
-            medical_history: Patient medical history (optional) 
-            treatment_history: Patient treatment history (optional)
-            options: Additional options for generation (optional)
+            patient_id: ID of the patient
+            text_data: List of text samples for analysis
+            patient_data: General patient data
+            demographic_data: Patient demographic information
+            medical_history: Patient medical history
+            treatment_history: Patient treatment history
+            options: Additional options
             
         Returns:
-            Dictionary containing digital twin data
+            Digital twin details
             
         Raises:
-            ServiceUnavailableError: If service is not available
-            InvalidRequestError: If input is invalid
+            ServiceUnavailableError: If service is not initialized
+            InvalidRequestError: If required data is missing
         """
-        # Validate service is available
-        if not self.is_healthy():
-            raise ServiceUnavailableError("MentaLLaMA service is not available")
+        if not self._initialized:
+            raise ServiceUnavailableError("MentaLLaMA service is not initialized")
         
-        # Create a digital twin ID
-        twin_id = f"dt-{random.randint(10000000, 99999999)}"
+        # Validate input data
+        if not patient_id and not text_data and not patient_data:
+            raise InvalidRequestError("At least one of patient_id, text_data, or patient_data must be provided")
         
-        # For test compatibility, process patient_id from either direct parameter or options
-        if options and "patient_id" in options and not patient_id:
-            patient_id = options["patient_id"]
+        # Generate a default patient ID if not provided
+        if not patient_id:
+            patient_id = f"patient-{uuid.uuid4()}"
         
-        # Combine all input data for twin creation
-        twin_data = {
+        # Generate a twin ID
+        twin_id = f"twin-{uuid.uuid4()}"
+        
+        # Normalize input data
+        text_data = text_data or []
+        patient_data = patient_data or {}
+        demographic_data = demographic_data or {}
+        medical_history = medical_history or {}
+        treatment_history = treatment_history or {}
+        options = options or {}
+        
+        # Create digital twin
+        twin = {
             "id": twin_id,
-            "patient_id": patient_id or f"p-{random.randint(10000, 99999)}",
+            "patient_id": patient_id,
             "created_at": datetime.now(UTC).isoformat(),
-            "text_data": text_data or [],
-            "demographic_data": demographic_data or {},
-            "medical_history": medical_history or {},
-            "treatment_history": treatment_history or {}
+            "updated_at": datetime.now(UTC).isoformat(),
+            "status": "active",
+            "model_version": "1.0",
+            "input_data": {
+                "text_samples_count": len(text_data),
+                "demographic_data": demographic_data,
+                "medical_history": medical_history,
+                "treatment_history": treatment_history
+            },
+            "parameters": options,
+            "metadata": {
+                "provider": "mock",
+                "creation_time": datetime.now(UTC).isoformat()
+            }
         }
         
-        if patient_data:
-            twin_data.update({"patient_data": patient_data})
-            
-        # Store the twin
-        self._digital_twins[twin_id] = twin_data
+        # Store twin
+        self._digital_twins[twin_id] = twin
         
-        # Return the twin creation result
-        result = {
+        # Return twin details
+        return {
             "digital_twin_id": twin_id,
-            "creation_timestamp": twin_data["created_at"],
+            "patient_id": patient_id,
             "status": "created",
-            "summary": "Digital twin created successfully with provided data",
-            "model_type": "digital_twin"
+            "creation_time": twin["created_at"],
+            "model_version": twin["model_version"]
         }
-        
-        return result
     
     def create_digital_twin_session(
         self,
@@ -562,80 +612,84 @@ Remember that this is a preliminary analysis based solely on the language patter
         session_params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
-        Create a new Digital Twin session.
+        Create a new digital twin session.
         
         Args:
             twin_id: ID of the digital twin
-            session_type: Type of session (therapy, assessment, coaching)
-            therapist_id: ID of the therapist (optional)
-            patient_id: ID of the patient (optional for anonymous sessions)
+            session_type: Type of session (therapy, assessment, etc.)
+            therapist_id: ID of therapist
+            patient_id: ID of patient
             session_params: Additional session parameters
             
         Returns:
-            Dict containing session information
+            Session details
             
         Raises:
             ServiceUnavailableError: If service is not initialized
-            InvalidRequestError: If request is invalid
+            InvalidRequestError: If twin ID is invalid
         """
-        if not self.is_healthy():
-            raise ServiceUnavailableError("MentaLLaMA service is not available")
+        if not self._initialized:
+            raise ServiceUnavailableError("MentaLLaMA service is not initialized")
         
+        # Validate twin ID
         if not twin_id or not isinstance(twin_id, str):
-            raise InvalidRequestError("Twin ID must be a non-empty string")
+            raise InvalidRequestError("Invalid twin ID")
         
         # Check if twin exists
         if twin_id not in self._digital_twins:
-            raise InvalidRequestError(f"Digital twin not found: {twin_id}")
+            # Auto-create a twin for testing purposes
+            patient_id = patient_id or f"auto-patient-{random.randint(1000, 9999)}"
+            self._digital_twins[twin_id] = {
+                "id": twin_id,
+                "patient_id": patient_id,
+                "created_at": datetime.now(UTC).isoformat(),
+                "status": "active",
+                "metadata": {}
+            }
         
-        # Generate session ID
-        session_id = f"session-{random.randint(10000, 99999)}-{datetime.now(UTC).strftime('%Y%m%d')}"
+        # Use default session type if not provided
+        session_type = session_type or "therapy"
         
-        # Set default session type
-        if not session_type:
-            session_type = "therapy"
+        # Create unique session ID
+        session_id = f"session-{uuid.uuid4()}"
         
-        # Use patient_id from twin if not provided
-        if not patient_id and twin_id in self._digital_twins:
-            patient_id = self._digital_twins[twin_id].get("patient_id")
-        
-        # Default therapist_id if not provided
-        therapist_id = therapist_id or f"therapist-{random.randint(1000, 9999)}"
+        # Set up session parameters
+        session_params = session_params or {}
         
         # Create session
         session = {
-            "session_id": session_id,
+            "id": session_id,
             "twin_id": twin_id,
-            "therapist_id": therapist_id,
-            "patient_id": patient_id,
             "session_type": session_type,
+            "therapist_id": therapist_id,
+            "patient_id": patient_id or self._digital_twins[twin_id].get("patient_id"),
+            "start_time": datetime.now(UTC).isoformat(),
+            "end_time": None,
             "status": "active",
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat(),
             "messages": [],
-            "params": session_params or {}
+            "params": session_params,
+            "metadata": {
+                "creator": "mock_service",
+                "created_at": datetime.now(UTC).isoformat()
+            }
         }
         
         # Store session
         self._sessions[session_id] = session
         
-        # Return session info (excluding messages)
-        result = {
+        # Return session details
+        return {
             "session_id": session_id,
             "twin_id": twin_id,
-            "therapist_id": therapist_id,
-            "patient_id": patient_id,
             "session_type": session_type,
             "status": "active",
-            "created_at": session["created_at"],
-            "params": session_params or {}
+            "start_time": session["start_time"],
+            "message_count": 0
         }
-        
-        return result
     
     def get_digital_twin_session(self, session_id: str) -> dict[str, Any]:
         """
-        Get information about a Digital Twin session.
+        Get information about a digital twin session.
         
         Args:
             session_id: ID of the session
@@ -648,31 +702,33 @@ Remember that this is a preliminary analysis based solely on the language patter
             InvalidRequestError: If session ID is invalid
             ModelNotFoundError: If session not found
         """
-        if not self.is_healthy():
-            raise ServiceUnavailableError("MentaLLaMA service is not available")
+        if not self._initialized:
+            raise ServiceUnavailableError("MentaLLaMA service is not initialized")
         
+        # Validate session ID
         if not session_id or not isinstance(session_id, str):
-            raise InvalidRequestError("Session ID must be a non-empty string")
+            raise InvalidRequestError("Invalid session ID")
+        
+        # Check if session exists
+        if session_id not in self._sessions:
+            raise InvalidRequestError(f"Session not found: {session_id}")
         
         # Get session
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ModelNotFoundError(f"Session not found: {session_id}")
+        session = self._sessions[session_id]
         
         # Return session info (including messages)
         result = {
-            "session_id": session["session_id"],
+            "session_id": session_id,
             "twin_id": session["twin_id"],
-            "therapist_id": session["therapist_id"],
-            "patient_id": session["patient_id"],
+            "therapist_id": session.get("therapist_id"),
+            "patient_id": session.get("patient_id"),
             "session_type": session["session_type"],
             "status": session["status"],
-            "created_at": session["created_at"],
-            "updated_at": session["updated_at"],
+            "start_time": session["start_time"],
+            "end_time": session.get("end_time"),
             "message_count": len(session["messages"]),
-            "insights_count": len(session.get("insights", [])),
             "messages": session["messages"],
-            "params": session["params"]
+            "params": session.get("params", {})
         }
         
         return result
@@ -686,7 +742,7 @@ Remember that this is a preliminary analysis based solely on the language patter
         message_params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
-        Send a message to a Digital Twin session.
+        Send a message to a digital twin session.
         
         Args:
             session_id: ID of the session
@@ -696,39 +752,39 @@ Remember that this is a preliminary analysis based solely on the language patter
             message_params: Additional message parameters
             
         Returns:
-            Dict containing message information and Digital Twin's response
+            Dict containing message information and digital twin's response
             
         Raises:
             ServiceUnavailableError: If service is not initialized
             InvalidRequestError: If request is invalid
-            ModelNotFoundError: If session not found
         """
-        if not self.is_healthy():
-            raise ServiceUnavailableError("MentaLLaMA service is not available")
+        if not self._initialized:
+            raise ServiceUnavailableError("MentaLLaMA service is not initialized")
         
+        # Validate session ID and message
         if not session_id or not isinstance(session_id, str):
-            raise InvalidRequestError("Session ID must be a non-empty string")
-        
+            raise InvalidRequestError("Invalid session ID")
         if not message or not isinstance(message, str):
             raise InvalidRequestError("Message must be a non-empty string")
         
         # Set default sender type
-        if not sender_type:
-            sender_type = "user"
+        sender_type = sender_type or "user"
+        
+        # Check if session exists
+        if session_id not in self._sessions:
+            raise InvalidRequestError(f"Session not found: {session_id}")
         
         # Get session
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ModelNotFoundError(f"Session not found: {session_id}")
+        session = self._sessions[session_id]
         
         # Check if session is active
         if session["status"] != "active":
             raise InvalidRequestError(f"Session is not active: {session_id}")
         
         # Create message
-        message_id = f"msg-{random.randint(10000, 99999)}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
+        message_id = f"msg-{uuid.uuid4()}"
         message_obj = {
-            "message_id": message_id,
+            "id": message_id,
             "session_id": session_id,
             "content": message,
             "sender_type": sender_type,
@@ -739,13 +795,12 @@ Remember that this is a preliminary analysis based solely on the language patter
         
         # Add message to session
         session["messages"].append(message_obj)
-        session["updated_at"] = datetime.now(UTC).isoformat()
         
-        # Generate Digital Twin response
-        dt_message_id = f"msg-{random.randint(10000, 99999)}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
+        # Generate digital twin response
+        dt_message_id = f"msg-{uuid.uuid4()}"
         dt_response = self._generate_dt_response(message, session["session_type"])
         dt_message = {
-            "message_id": dt_message_id,
+            "id": dt_message_id,
             "session_id": session_id,
             "content": dt_response,
             "sender_type": "digital_twin",
@@ -754,9 +809,8 @@ Remember that this is a preliminary analysis based solely on the language patter
             "params": {}
         }
         
-        # Add Digital Twin response to session
+        # Add digital twin response to session
         session["messages"].append(dt_message)
-        session["updated_at"] = datetime.now(UTC).isoformat()
         
         # Return response
         result = {
@@ -822,62 +876,64 @@ Remember that this is a preliminary analysis based solely on the language patter
         end_reason: str | None = None
     ) -> dict[str, Any]:
         """
-        End a Digital Twin session.
+        End a digital twin session.
         
         Args:
             session_id: ID of the session
             end_reason: Reason for ending the session
             
         Returns:
-            Dict containing session summary
+            Session summary
             
         Raises:
             ServiceUnavailableError: If service is not initialized
             InvalidRequestError: If session ID is invalid
-            ModelNotFoundError: If session not found
         """
-        if not self.is_healthy():
-            raise ServiceUnavailableError("MentaLLaMA service is not available")
+        if not self._initialized:
+            raise ServiceUnavailableError("MentaLLaMA service is not initialized")
         
+        # Validate session ID
         if not session_id or not isinstance(session_id, str):
-            raise InvalidRequestError("Session ID must be a non-empty string")
+            raise InvalidRequestError("Invalid session ID")
+        
+        # Check if session exists
+        if session_id not in self._sessions:
+            raise InvalidRequestError(f"Session not found: {session_id}")
         
         # Get session
-        session = self._sessions.get(session_id)
-        if not session:
-            raise ModelNotFoundError(f"Session not found: {session_id}")
+        session = self._sessions[session_id]
         
         # Check if session is already ended
-        if session["status"] == "completed":
-            raise InvalidRequestError(f"Session is already completed: {session_id}")
+        if session["status"] != "active":
+            return {
+                "session_id": session_id,
+                "status": session["status"],
+                "message": f"Session already in {session['status']} state",
+                "summary": self._generate_session_summary(session)
+            }
         
-        # Set session as ended
+        # Set session end time and status
+        session["end_time"] = datetime.now(UTC).isoformat()
         session["status"] = "completed"
-        session["end_reason"] = end_reason or "normal_completion"
-        session["ended_at"] = datetime.now(UTC).isoformat()
-        session["updated_at"] = datetime.now(UTC).isoformat()
+        session["end_reason"] = end_reason or "completed_normally"
         
         # Generate session summary
         summary = self._generate_session_summary(session)
-        session["summary"] = summary
+        
+        # Update session in store
+        self._sessions[session_id] = session
         
         # Return session summary
-        result = {
+        return {
             "session_id": session_id,
             "twin_id": session["twin_id"],
             "status": "completed",
-            "ended_at": session["ended_at"],
-            "end_reason": session["end_reason"],
-            "summary": summary,
-            "metadata": {
-                "message_count": len(session["messages"]),
-                "duration_minutes": random.randint(30, 90),
-                "session_type": session["session_type"],
-                "status": "completed"
-            }
+            "message_count": len(session["messages"]),
+            "start_time": session["start_time"],
+            "end_time": session["end_time"],
+            "duration_seconds": random.randint(300, 3600),  # Mock duration between 5-60 minutes
+            "summary": summary
         }
-        
-        return result
     
     def _generate_session_summary(self, session: dict[str, Any]) -> dict[str, Any]:
         """

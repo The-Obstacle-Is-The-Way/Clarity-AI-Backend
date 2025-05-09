@@ -199,9 +199,6 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         # Make a copy of the original text
         redacted_text = text
         
-        # Track character offset changes due to redactions
-        offset = 0
-        
         # Sort entities by start position (descending) to avoid position shifts
         sorted_entities = sorted(phi_instances, key=lambda x: x["start"], reverse=True)
         
@@ -209,9 +206,14 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         for entity in sorted_entities:
             start = entity["start"]
             end = entity["end"]
+            phi_type = entity["type"].upper()  # Use uppercase type for redaction marker
+            
+            # Create type-specific redaction if requested in config
+            type_specific = self._config.get("type_specific_redaction", False)
+            marker = f"[{phi_type}]" if type_specific else replacement
             
             # Replace the entity with the redaction text
-            redacted_text = redacted_text[:start] + replacement + redacted_text[end:]
+            redacted_text = redacted_text[:start] + marker + redacted_text[end:]
         
         # Create result
         result = {
@@ -248,19 +250,22 @@ class MockPHIDetection(PHIDetectionInterface): # Corrected class name and inheri
         # Check each pattern type
         for phi_type, pattern_list in patterns.items():
             for pattern in pattern_list:
+                # Find all matches
                 for match in pattern.finditer(text):
-                    start, end = match.span()
-                    value = match.group()
+                    # Get the matched text and position
+                    start_pos = match.start()
+                    end_pos = match.end()
+                    matched_text = match.group(0)
                     
                     # Create entity
                     entity = {
-                        "id": f"entity-{entity_id}",
+                        "id": f"phi-{entity_id}",
                         "type": phi_type,
-                        "text": value,
-                        "start": start,
-                        "end": end,
-                        "position": {"start": start, "end": end},
-                        "confidence": round(random.uniform(0.85, 0.99), 2)
+                        "text": matched_text,
+                        "start": start_pos,
+                        "end": end_pos,
+                        "confidence": round(random.uniform(0.85, 0.99), 2),
+                        "position": {"start": start_pos, "end": end_pos}
                     }
                     
                     entities.append(entity)
