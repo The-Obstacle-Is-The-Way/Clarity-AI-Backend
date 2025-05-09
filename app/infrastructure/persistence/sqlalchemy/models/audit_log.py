@@ -16,7 +16,7 @@ from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict
 # If not, adjust the import path accordingly.
 # from app.infrastructure.persistence.sqlalchemy.database import Base 
 # Trying relative import first, might need adjustment
-from ..database import Base
+from .base import Base
 
 
 class AuditLog(Base):

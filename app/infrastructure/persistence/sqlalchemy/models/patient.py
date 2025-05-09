@@ -67,9 +67,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
     
     # --- Primary Key and Foreign Keys ---
     # Note: id column MUST be defined precisely to avoid SQLAlchemy mapping issues
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4) 
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4, nullable=False, index=True) 
     external_id = Column(String(64), unique=True, index=True, nullable=True)
-    user_id = Column(GUID(), ForeignKey('users.id'), nullable=False, index=True)
+    user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=True)
 
     created_at = Column(DateTime, default=now_utc, nullable=False)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc, nullable=False)
@@ -215,164 +215,119 @@ class Patient(Base, TimestampMixin, AuditMixin):
     @classmethod
     async def from_domain(cls, patient: DomainPatient) -> "Patient":
         """
-        Create a Patient model instance from a domain Patient entity,
-        encrypting PHI fields using the provided encryption service.
+        Create a Patient model instance from a domain Patient entity.
         """
         logger.debug(f"[from_domain] Starting conversion for domain patient ID: {getattr(patient, 'id', 'NO_ID_YET')}")
         model = cls()
 
-        # Core metadata
-        ext_id = getattr(patient, "external_id", None)
-        if isinstance(ext_id, uuid.UUID):
-            model.external_id = str(ext_id) # External ID can remain string as it's Column(String(...))
-            logger.debug(f"[from_domain] Converted external_id UUID {ext_id} to string for storage.")
-        else:
-            model.external_id = ext_id
-            
-        created_by_id_obj = getattr(patient, 'created_by', None)
-        if isinstance(created_by_id_obj, uuid.UUID):
-             model.user_id = created_by_id_obj  # Assign uuid.UUID directly
-        elif isinstance(created_by_id_obj, str):
+        # Core metadata - Fields guaranteed by DomainPatient
+        model.id = getattr(patient, 'id', uuid.uuid4()) # Ensure UUID
+        if not isinstance(model.id, uuid.UUID):
             try:
-                model.user_id = uuid.UUID(created_by_id_obj) # Convert str to uuid.UUID
+                model.id = uuid.UUID(str(model.id))
             except ValueError:
-                logger.warning(f"[from_domain] Invalid format for created_by UUID string '{created_by_id_obj}'. Setting user_id to a new UUID or handle as error.")
-                # Decide on fallback: model.user_id = None (if nullable and appropriate) or raise error, or a default UUID
-                # For now, let's assume created_by (user_id) is critical and might require a valid one or error.
-                # This part needs careful consideration based on application logic for user_id FK.
-                # If user_id is NOT NULL, this will fail later. For tests, we often provide it.
-                # For now, if it's an invalid string, we can't proceed well if it's a non-nullable FK.
-                # Let's log and it will likely fail DB constraint if not set or None for a non-nullable field.
-                model.user_id = None # Or raise an error
+                logger.error(f"Invalid ID format for patient: {model.id}. Generating new UUID.")
+                model.id = uuid.uuid4()
+                
+        model.external_id = str(getattr(patient, 'external_id', None)) if getattr(patient, 'external_id', None) is not None else None
+        # user_id should be set based on who is creating/owning this record.
+        # DomainPatient doesn't have user_id, but PatientModel requires it (FK).
+        # This needs to be passed or set contextually. For now, assume it might come via created_by.
+        created_by_uuid = getattr(patient, 'created_by', None) # DomainPatient might not have this
+        if isinstance(created_by_uuid, uuid.UUID):
+            model.user_id = created_by_uuid
+        elif isinstance(created_by_uuid, str):
+            try:
+                model.user_id = uuid.UUID(created_by_uuid)
+            except ValueError:
+                logger.warning(f"Invalid created_by UUID string: {created_by_uuid}. user_id will be None.")
+                model.user_id = None # Or handle as error if user_id is non-nullable and no default
         else:
-             # This case implies created_by_id_obj is None or some other type.
-             # If user_id is non-nullable, this will be an issue unless set by a default or test fixture.
-             model.user_id = None 
+            model.user_id = None # Fallback if not provided or invalid type
+            
+        # model.created_at = getattr(patient, 'created_at', now_utc()) # Let DB handle default
+        # model.updated_at = getattr(patient, 'updated_at', now_utc()) # Let DB handle default/onupdate
+        model.is_active = getattr(patient, 'active', getattr(patient, 'is_active', True)) # 'active' or 'is_active'
 
-        model.is_active = getattr(patient, 'active', True)
-        logger.debug(f"[from_domain] Mapped core metadata for {getattr(patient, 'id', 'NO_ID_YET')}")
-
-        # Assign values to prefixed fields directly. TypeDecorators will handle encryption.
+        # Basic PII - fields in DomainPatient
         model._first_name = getattr(patient, 'first_name', None)
         model._last_name = getattr(patient, 'last_name', None)
-        model._middle_name = getattr(patient, 'middle_name', None)
-        model._gender = getattr(patient, 'gender', None)
-        
-        # Handle date_of_birth (convert date/datetime to isoformat string first)
-        dob_value = getattr(patient, 'date_of_birth', None)
-        dob_iso_str = None
-        if isinstance(dob_value, (date, datetime)):
-             dob_iso_str = dob_value.isoformat()
-        elif isinstance(dob_value, str):
-             # Attempt to parse string to validate and normalize format, fallback to original string
-             try:
-                 dob_iso_str = parser.parse(dob_value).date().isoformat()
-             except (ValueError, TypeError):
-                 logger.warning(f"Could not parse date_of_birth string '{dob_value}' for patient {getattr(patient, 'id', 'N/A')}. Storing as is.")
-                 dob_iso_str = dob_value # Keep original string if parsing fails
-        model._date_of_birth = dob_iso_str # Assign string, EncryptedString will handle it
-        
         model._email = getattr(patient, 'email', None)
         model._phone_number = getattr(patient, 'phone_number', None)
-        model._ssn = getattr(patient, 'ssn', None)
-        model._mrn = getattr(patient, 'medical_record_number', None)
-        logger.debug(f"[from_domain] Assigned direct PII/PHI strings for {getattr(patient, 'id', 'N/A')}")
-
-        # --- Handle Address (Domain likely has Address object, Model stores string) ---
-        address_obj = getattr(patient, 'address', None) # Renamed for clarity
-        if isinstance(address_obj, str): # Handle legacy string case if necessary
-             logger.warning(f"Received raw string for address: '{address_obj[:50]}...'. Using directly.")
-             full_address_string = address_obj
-             model._address_line1 = full_address_string # Assign string, EncryptedString will handle it
-        elif address_obj and hasattr(address_obj, 'street'): # Check if it's likely an Address object
-            # Construct the full address string from components - adapt attributes as needed
-            # Ensure components exist before concatenating
-            street = getattr(address_obj, 'street', '')
-            city = getattr(address_obj, 'city', '')
-            state = getattr(address_obj, 'state', '')
-            zip_code = getattr(address_obj, 'zip_code', '')
-            country = getattr(address_obj, 'country', '') # Assuming country might exist
-            
-            # Basic concatenation, improve formatting as needed
-            parts = [street, city, state, zip_code, country]
-            full_address_string = ", ".join(filter(None, parts)) # Join non-empty parts
-            
-            if full_address_string:
-                 logger.debug(f"[from_domain] Assigning constructed address string '{full_address_string[:50]}...' to _address_line1 for {getattr(patient, 'id', 'N/A')}")
-                 model._address_line1 = full_address_string # Assign string, EncryptedString will handle it
-            else:
-                 logger.debug(f"[from_domain] Address object provided but resulted in empty string for {getattr(patient, 'id', 'N/A')}")
-                 model._address_line1 = None
-        else:
-            # logger.debug(f"[from_domain] No address object or string provided for {getattr(patient, 'id', 'N/A')}")
-            model._address_line1 = None
         
-        # For structured address fields, if domain_patient.address is an Address VO:
-        if isinstance(address_obj, Address):
-            model._address_line1 = getattr(address_obj, 'line1', None)
-            model._address_line2 = getattr(address_obj, 'line2', None)
-            model._city = getattr(address_obj, 'city', None)
-            model._state = getattr(address_obj, 'state', None)
-            model._zip_code = getattr(address_obj, 'zip_code', None)
-            model._country = getattr(address_obj, 'country', None)
-        else: # If not Address VO or string, clear other fields or handle as per logic
-            model._address_line2 = None 
+        dob_value = getattr(patient, 'date_of_birth', None)
+        if isinstance(dob_value, (date, datetime)):
+            model._date_of_birth = dob_value.isoformat()
+        elif isinstance(dob_value, str):
+            try: model._date_of_birth = parser.parse(dob_value).date().isoformat()
+            except: model._date_of_birth = dob_value # Store as is if unparseable
+        else:
+            model._date_of_birth = None
+
+        # Extended PII - fields NOT in core DomainPatient, use getattr with None default
+        model._middle_name = getattr(patient, 'middle_name', None)
+        model._gender = getattr(patient, 'gender', None) # DomainPatient doesn't have gender
+        model._ssn = getattr(patient, 'ssn', None)
+        model._mrn = getattr(patient, 'medical_record_number', getattr(patient, 'mrn', None))
+
+        # Insurance Info - NOT in core DomainPatient
+        model._insurance_provider = getattr(patient, 'insurance_provider', None)
+        model._insurance_policy_number = getattr(patient, 'insurance_policy_number', None)
+        model._insurance_group_number = getattr(patient, 'insurance_group_number', None)
+
+        # Address components - NOT directly in core DomainPatient (it has Address VO in contact_info or as separate field)
+        # For PatientModel's direct address string fields, attempt to get from patient.address VO if it exists.
+        address_vo = getattr(patient, 'address', None)
+        if isinstance(address_vo, Address):
+            model._address_line1 = getattr(address_vo, 'line1', None)
+            model._address_line2 = getattr(address_vo, 'line2', None)
+            model._city = getattr(address_vo, 'city', None)
+            model._state = getattr(address_vo, 'state', None)
+            model._zip_code = getattr(address_vo, 'zip_code', None) # or postal_code
+            model._country = getattr(address_vo, 'country', None)
+        else: # Clear them if no proper Address VO
+            model._address_line1 = None
+            model._address_line2 = None
             model._city = None
             model._state = None
             model._zip_code = None
             model._country = None
-        # --- End Address Handling ---
-        
-        # For EncryptedText fields, ensure we are passing strings if the domain object
-        # is complex, as the TypeDecorator expects to stringify its input.
-        # Explicitly stringify Pydantic models here to avoid any dialect/type confusion.
-        model._medical_history = str(patient.medical_history) if patient.medical_history is not None else None
-        model._medications = str(patient.medications) if patient.medications is not None else None
-        model._allergies = str(patient.allergies) if patient.allergies is not None else None
-        
-        model._notes = patient.notes
-        # Handle JSON fields, ensuring they are passed as serializable structures
-        # or let EncryptedJSON handle them. EncryptedJSON is robust.
-        model._contact_info = patient.contact_info
-        model._address_details = patient.address_details
-        model._emergency_contact_details = patient.emergency_contact_details
-        model._preferences = patient.preferences
-        model._custom_fields = patient.custom_fields
-        model._extra_data = patient.extra_data # Assuming this is simple dict/list or None
-        
-        # Assign remaining non-encrypted fields, converting UUIDs to string
-        # biometric_twin_id_obj = getattr(patient, 'biometric_twin_id', None)
-        # if isinstance(biometric_twin_id_obj, uuid.UUID):
-        #     model.biometric_twin_id = str(biometric_twin_id_obj) # Store as string
-        # else:
-        #     model.biometric_twin_id = biometric_twin_id_obj # Assume None or already string
 
-        # Set id only if it exists on the domain object (for updates)
-        patient_id_obj = getattr(patient, 'id', None)
-        if patient_id_obj:
-            if isinstance(patient_id_obj, uuid.UUID):
-                model.id = patient_id_obj  # Assign uuid.UUID directly
-                logger.debug(f"[from_domain] Assigned existing ID {model.id} as UUID object")
-            elif isinstance(patient_id_obj, str):
-                try:
-                    model.id = uuid.UUID(patient_id_obj) # Convert str to uuid.UUID
-                    logger.debug(f"[from_domain] Assigned existing ID {model.id} (converted from string)")
-                except ValueError:
-                    logger.error(f"[from_domain] Invalid existing patient ID string: {patient_id_obj}. Generating new UUID.")
-                    model.id = uuid.uuid4() # Fallback to new UUID if string is invalid
-            else: # Some other type, or invalid
-                logger.warning(f"[from_domain] Unexpected type for patient.id: {type(patient_id_obj)}. Generating new UUID.")
-                model.id = uuid.uuid4()
+        # Emergency Contact components - NOT in core DomainPatient (it has EmergencyContact VO)
+        emergency_contact_vo = getattr(patient, 'emergency_contact', None)
+        if isinstance(emergency_contact_vo, EmergencyContact):
+            model._emergency_contact_name = getattr(emergency_contact_vo, 'name', None)
+            model._emergency_contact_phone = getattr(emergency_contact_vo, 'phone', None)
+            model._emergency_contact_relationship = getattr(emergency_contact_vo, 'relationship', None)
         else:
-            # If no ID on domain object, generate a new UUID object
-            model.id = uuid.uuid4() # Assign uuid.UUID directly
-            logger.debug(f"[from_domain] New patient, generated UUID object for ID: {model.id}")
+            model._emergency_contact_name = None
+            model._emergency_contact_phone = None
+            model._emergency_contact_relationship = None
 
-        # Assign timestamps - let DB handle defaults/onupdate if possible
-        # model.created_at = patient.created_at or now_utc()
-        # model.updated_at = now_utc()
+        # Complex / JSON / Text fields - use getattr and then str() for EncryptedText
+        # EncryptedJSON fields can take the direct object if it's serializable or None.
+        model._contact_info = getattr(patient, 'contact_info', None) # DomainPatient has this (ContactInfo VO)
+        model._address_details = getattr(patient, 'address_details', None) # Not in DomainPatient, potentially Address VO or dict
+        model._emergency_contact_details = getattr(patient, 'emergency_contact_details', None) # Not in DomainPatient, potentially EC VO or dict
+        model._preferences = getattr(patient, 'preferences', None) # Not in DomainPatient
+        
+        # For EncryptedText fields that might take complex objects from an extended DomainPatient or test data:
+        med_hist_val = getattr(patient, 'medical_history', None)
+        model._medical_history = str(med_hist_val) if med_hist_val is not None else None
+        
+        meds_val = getattr(patient, 'medications', None)
+        model._medications = str(meds_val) if meds_val is not None else None
+        
+        allerg_val = getattr(patient, 'allergies', None)
+        model._allergies = str(allerg_val) if allerg_val is not None else None
+        
+        notes_val = getattr(patient, 'notes', None)
+        model._notes = str(notes_val) if notes_val is not None else None # notes could be complex or simple string
 
-        logger.debug(f"[from_domain] Completed conversion for patient ID: {getattr(model, 'id', 'NO_ID_YET')}")
+        model._custom_fields = getattr(patient, 'custom_fields', None) # Not in DomainPatient
+        model._extra_data = getattr(patient, 'extra_data', None) # Not in DomainPatient
+
+        logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
         return model
 
     async def to_domain(self) -> DomainPatient:

@@ -554,34 +554,57 @@ decryption methods for strings and dictionaries.
             logger.error(f"INTERNAL ENCRYPTION ERROR in encrypt_string: {type(e).__name__} - {str(e)}", exc_info=True)
             raise ValueError(f"Encryption process failed internally: {type(e).__name__} - {str(e)}") from e
 
-    def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str:
+    def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str | None:
+        if not encrypted_value: # Handles None or empty string early
+            # logger.debug(f"decrypt_string received empty or None value: '{encrypted_value}', returning None.")
+            return None 
         if not isinstance(encrypted_value, str):
-            logger.error(f"decrypt_string received non-string type: {type(encrypted_value)}")
-            raise TypeError("decrypt_string expects a string value.")
-        if not encrypted_value:
-            # logger.debug("decrypt_string received empty or None value, returning as is.")
-            return encrypted_value
-
-        self._ensure_fernet_initialized()
-        fernet = self.active_fernet
-        # active_key_version should also be set by _ensure_fernet_initialized
-        # logger.debug(f"decrypt_string: Using key version {self.active_key_version}")
+            logger.warning(f"decrypt_string received non-string type: {type(encrypted_value)}. Value: '{encrypted_value}'")
+            return None
 
         try:
-            # Extract key version and encrypted data
-            key_version, encrypted_data = encrypted_value.split(':', 1)
-            # logger.debug(f"decrypt_string: Extracted key version: {key_version}")
-            # logger.debug(f"decrypt_string: Extracted encrypted data length: {len(encrypted_data)}")
+            # Attempt to split into key_version and data
+            try:
+                key_version, encrypted_data_str = encrypted_value.split(':', 1)
+            except ValueError as sve:
+                logger.warning(f"Could not split encrypted_value '{encrypted_value[:50]}...' into key_version and data. Error: {sve}. Returning None.")
+                return None # Explicitly return None if split fails
 
-            # Decrypt the data
-            decrypted_bytes = fernet.decrypt(encrypted_data.encode())
-            # logger.debug(f"decrypt_string: Decryption successful, decrypted_bytes length: {len(decrypted_bytes)}")
-            decrypted_value = decrypted_bytes.decode('utf-8')
-            # logger.debug(f"decrypt_string: Decrypted value: {decrypted_value}")
-            return decrypted_value
+            self._ensure_fernet_initialized() # Ensure keys are loaded
+
+            fernet_instance = None
+            if key_version == self.active_key_version and self.active_fernet:
+                fernet_instance = self.active_fernet
+            elif key_version in self.previous_fernets:
+                fernet_instance = self.previous_fernets[key_version]
+            else:
+                logger.error(f"Unknown key version '{key_version}' found in encrypted data. Cannot decrypt.")
+                return None
+
+            if not fernet_instance:
+                logger.error(f"Fernet instance for key version '{key_version}' is not available. Cannot decrypt.")
+                return None
+
+            token = encrypted_data_str.encode('utf-8')
+            # logger.debug(f"decrypt_string: Attempting to decrypt with key version {key_version}")
+            decrypted_bytes = fernet_instance.decrypt(token)
+            # logger.debug(f"decrypt_string: Successfully decrypted with key version {key_version}")
+            return decrypted_bytes.decode('utf-8')
+        
+        except InvalidToken:
+            logger.warning(f"Invalid Fernet token for key version '{key_version if 'key_version' in locals() else "unknown"}'. Decryption failed (InvalidToken).")
+            return None
         except Exception as e:
-            logger.error(f"INTERNAL DECRYPTION ERROR in decrypt_string: {type(e).__name__} - {str(e)}", exc_info=True)
-            raise ValueError(f"Decryption process failed internally: {type(e).__name__} - {str(e)}") from e
+            internal_err_type = type(e).__name__
+            internal_err_msg = str(e)
+            kv_info = key_version if 'key_version' in locals() else "(version not determined due to split error or other issue)"
+            logger.error(
+                f"INTERNAL DECRYPTION ERROR in decrypt_string (key version: {kv_info}): "
+                f"{internal_err_type} - {internal_err_msg}"
+            )
+            # Log the specific exception that occurred during the decryption process itself.
+            # traceback.print_exc() # For more detailed debugging if needed, but avoid in prod logs.
+            return None # Consistent: return None on any decryption error
 
 # --- Factory Function --- #
 
