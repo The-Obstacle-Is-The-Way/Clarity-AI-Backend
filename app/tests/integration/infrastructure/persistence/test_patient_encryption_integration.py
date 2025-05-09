@@ -251,22 +251,24 @@ class TestPatientEncryptionIntegration:
         
         patient_model = await PatientModel.from_domain(domain_patient)
         patient_model.id = TEST_PATIENT_ID
+        patient_model.user_id = TEST_USER_ID # Ensure user_id is set for FK
 
-        async with session.begin_nested(): 
-            session.add(patient_model)
-            # await session.flush() # Not strictly needed before commit with begin_nested, but helps catch issues earlier
-        # The outer session.begin() from the fixture will handle the main commit if this is not nested.
-        # If fixture uses session.begin(), this test block should use session.begin_nested() or just session.add() + session.commit().
-        # For simplicity with the current fixture:
+        session.add(patient_model)
+        await session.flush([patient_model]) # Flush to persist and get ID assignments
         await session.commit() # Commit the patient addition.
         
-        logger.info(f"[Test] Added and committed PatientModel to session: ID {patient_model.id}")
+        logger.info(f"[Test] Added, flushed, and committed PatientModel to session: ID {patient_model.id}, DB ID: {TEST_PATIENT_ID}")
+
+        # Attempt to retrieve via ORM first to check visibility
+        retrieved_orm_patient = await session.get(PatientModel, TEST_PATIENT_ID)
+        assert retrieved_orm_patient is not None, f"Patient ID {TEST_PATIENT_ID} not found via session.get() after commit."
+        logger.info(f"[Test] Successfully retrieved patient via session.get(): {retrieved_orm_patient.id}")
         
         # CORRECTED: Use actual database column names based on PatientModel definition
         stmt = text("SELECT first_name, email, mrn, contact_info FROM patients WHERE id = :patient_id")
-        result = await session.execute(stmt, {"patient_id": TEST_PATIENT_ID.hex})
+        result = await session.execute(stmt, {"patient_id": str(TEST_PATIENT_ID)})
         raw_db_row = result.fetchone()
-        assert raw_db_row is not None, "Patient not found in DB after commit."
+        assert raw_db_row is not None, f"Patient ID {str(TEST_PATIENT_ID)} not found via raw SQL after commit."
         
         logger.info(f"[Test] Raw DB row: {raw_db_row}")
 
