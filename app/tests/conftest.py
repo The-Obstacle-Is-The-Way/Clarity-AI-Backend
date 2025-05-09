@@ -398,6 +398,12 @@ async def client_app_tuple(
         # The client must use manager.app which is the app processed by LifespanManager
         # This ensures startup/shutdown events are handled correctly for the client.
         logger.info(f"CONTEST: LifespanManager active. Type of manager.app: {type(manager.app)}, id: {id(manager.app)}")
+        # ADDED: Log the state of manager.app immediately after lifespan startup completes and before client creation
+        if hasattr(manager.app, 'state'):
+            logger.info(f"CONTEST: manager.app.state AFTER lifespan startup: {vars(manager.app.state) if hasattr(manager.app.state, '__dict__') else manager.app.state}")
+        else:
+            logger.warning("CONTEST: manager.app has NO state attribute AFTER lifespan startup.")
+            
         async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://testserver") as client:
             # Yield the client and the ORIGINAL app_instance (for direct state/override manipulation in tests if needed)
             logger.info(f"CONTEST: Yielding client and ORIGINAL app_instance (id: {id(app_instance)}) to test.")

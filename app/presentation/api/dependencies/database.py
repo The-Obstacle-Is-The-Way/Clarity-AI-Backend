@@ -11,6 +11,7 @@ from typing import Annotated, TypeVar
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.infrastructure.database.session import get_async_session
@@ -28,6 +29,52 @@ T = TypeVar('T', bound=BaseRepositoryInterface)
 
 # Type alias for session dependency
 DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session)]
+
+# INLINED VERSION FOR TESTING:
+async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    """ FastAPI dependency to get an async database session. (INLINED TEST)
+        Uses the session factory stored in the application state.
+    """
+    logger.info(f"GET_DB_SESSION (INLINED): Entered. id(request.app) is {id(request.app)}")
+    
+    session_factory = None
+    if hasattr(request.app, 'state'):
+        logger.info(f"GET_DB_SESSION (INLINED): request.app.state exists. id(request.app.state) is {id(request.app.state)}")
+        logger.info(f"GET_DB_SESSION (INLINED): request.app.state contents: {vars(request.app.state) if hasattr(request.app.state, '__dict__') else request.app.state}")
+        session_factory = getattr(request.app.state, "db_session_factory", None)
+        logger.info(f"GET_DB_SESSION (INLINED): session_factory from getattr: {session_factory} (type: {type(session_factory)})")
+    else:
+        logger.error("GET_DB_SESSION (INLINED): request.app has NO 'state' attribute.")
+
+
+    if session_factory is None or not callable(session_factory):
+        error_msg = "GET_DB_SESSION (INLINED): Database session factory not found or invalid in application state."
+        logger.critical(
+            f"{error_msg} Check application lifespan initialization."
+        )
+        raise RuntimeError(error_msg)
+
+    session: AsyncSession | None = None
+    try:
+        # Directly use the session_factory obtained in *this* function's scope
+        async with session_factory() as session: # Ensure session_factory here is the one we just got
+            logger.debug("GET_DB_SESSION (INLINED): Database session opened.")
+            yield session
+            logger.debug("GET_DB_SESSION (INLINED): Database session yielded.")
+    except SQLAlchemyError as e:
+        logger.exception(f"GET_DB_SESSION (INLINED): Database session error: {e}")
+        if session:
+            await session.rollback()
+            logger.warning("GET_DB_SESSION (INLINED): Session rolled back due to SQLAlchemyError.")
+        raise
+    except Exception as e:
+        logger.exception(f"GET_DB_SESSION (INLINED): Unexpected error during database session: {e}")
+        if session:
+            await session.rollback()
+            logger.error("GET_DB_SESSION (INLINED): Session rolled back due to unexpected error.")
+        raise
+    finally:
+        logger.debug("GET_DB_SESSION (INLINED): Database session context exited.")
 
 async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """
