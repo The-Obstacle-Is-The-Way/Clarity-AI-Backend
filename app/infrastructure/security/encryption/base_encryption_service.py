@@ -530,6 +530,59 @@ decryption methods for strings and dictionaries.
         """
         return self.verify_hash(data, hmac_to_verify)
 
+    def encrypt_string(self, value: str, is_phi: bool = True) -> str:
+        if not isinstance(value, str):
+            logger.error(f"encrypt_string received non-string type: {type(value)}")
+            raise TypeError("encrypt_string expects a string value.")
+        if not value:
+            # logger.debug("encrypt_string received empty or None value, returning as is.")
+            return value
+
+        self._ensure_fernet_initialized()
+        fernet = self.active_fernet
+        # active_key_version should also be set by _ensure_fernet_initialized
+        # logger.debug(f"encrypt_string: Using key version {self.active_key_version}")
+
+        try:
+            value_bytes = value.encode('utf-8')
+            # logger.debug(f"encrypt_string: Value encoded to bytes, length: {len(value_bytes)}")
+            encrypted_bytes = fernet.encrypt(value_bytes)
+            # logger.debug(f"encrypt_string: Encryption successful, encrypted_bytes length: {len(encrypted_bytes)}")
+            # Prepend key version and return as string (utf-8 is typical for Fernet token)
+            return f"{self.active_key_version}:{encrypted_bytes.decode('utf-8')}"
+        except Exception as e:
+            logger.error(f"INTERNAL ENCRYPTION ERROR in encrypt_string: {type(e).__name__} - {str(e)}", exc_info=True)
+            raise ValueError(f"Encryption process failed internally: {type(e).__name__} - {str(e)}") from e
+
+    def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str:
+        if not isinstance(encrypted_value, str):
+            logger.error(f"decrypt_string received non-string type: {type(encrypted_value)}")
+            raise TypeError("decrypt_string expects a string value.")
+        if not encrypted_value:
+            # logger.debug("decrypt_string received empty or None value, returning as is.")
+            return encrypted_value
+
+        self._ensure_fernet_initialized()
+        fernet = self.active_fernet
+        # active_key_version should also be set by _ensure_fernet_initialized
+        # logger.debug(f"decrypt_string: Using key version {self.active_key_version}")
+
+        try:
+            # Extract key version and encrypted data
+            key_version, encrypted_data = encrypted_value.split(':', 1)
+            # logger.debug(f"decrypt_string: Extracted key version: {key_version}")
+            # logger.debug(f"decrypt_string: Extracted encrypted data length: {len(encrypted_data)}")
+
+            # Decrypt the data
+            decrypted_bytes = fernet.decrypt(encrypted_data.encode())
+            # logger.debug(f"decrypt_string: Decryption successful, decrypted_bytes length: {len(decrypted_bytes)}")
+            decrypted_value = decrypted_bytes.decode('utf-8')
+            # logger.debug(f"decrypt_string: Decrypted value: {decrypted_value}")
+            return decrypted_value
+        except Exception as e:
+            logger.error(f"INTERNAL DECRYPTION ERROR in decrypt_string: {type(e).__name__} - {str(e)}", exc_info=True)
+            raise ValueError(f"Decryption process failed internally: {type(e).__name__} - {str(e)}") from e
+
 # --- Factory Function --- #
 
 def get_encryption_service() -> BaseEncryptionService:

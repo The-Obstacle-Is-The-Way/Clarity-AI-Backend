@@ -10,9 +10,10 @@ import json
 import logging
 import uuid
 from typing import Any
+from datetime import date, datetime
 
 from dateutil import parser
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date, JSON
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date as SQLDate, JSON
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column
@@ -43,7 +44,10 @@ import dataclasses  # Add this import
 from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict 
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
 
-# encryption_service_instance = EncryptionService() # No key passed. TODO: Review if this instance is needed here at all. -> REMOVED
+# Instantiate the global encryption service instance for TypeDecorators
+# BaseEncryptionService (parent of EncryptionService) handles its own key loading
+# (e.g., from ENCRYPTION_MASTER_KEY env var or auto-generates).
+encryption_service_instance = EncryptionService()
 
 @register_model
 class Patient(Base, TimestampMixin, AuditMixin):
@@ -218,31 +222,34 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model = cls()
 
         # Core metadata
-        # Convert external_id to string if it's a UUID object
         ext_id = getattr(patient, "external_id", None)
         if isinstance(ext_id, uuid.UUID):
-            model.external_id = str(ext_id)
+            model.external_id = str(ext_id) # External ID can remain string as it's Column(String(...))
             logger.debug(f"[from_domain] Converted external_id UUID {ext_id} to string for storage.")
         else:
-            model.external_id = ext_id # Assume it's already a string or None
+            model.external_id = ext_id
             
-        # Ensure created_by is UUID or None, store as string
         created_by_id_obj = getattr(patient, 'created_by', None)
         if isinstance(created_by_id_obj, uuid.UUID):
-             model.user_id = str(created_by_id_obj) # Store as string
-        elif created_by_id_obj: # Assume it's a string representation
-             # Validate if it's a valid UUID string before storing
-             try:
-                 uuid.UUID(str(created_by_id_obj)) # Validate format
-                 model.user_id = str(created_by_id_obj) # Store as string
-             except (ValueError, TypeError):
-                 logger.warning(f"[from_domain] Invalid format for created_by UUID string '{created_by_id_obj}'. Setting user_id to None.")
-                 model.user_id = None
+             model.user_id = created_by_id_obj  # Assign uuid.UUID directly
+        elif isinstance(created_by_id_obj, str):
+            try:
+                model.user_id = uuid.UUID(created_by_id_obj) # Convert str to uuid.UUID
+            except ValueError:
+                logger.warning(f"[from_domain] Invalid format for created_by UUID string '{created_by_id_obj}'. Setting user_id to a new UUID or handle as error.")
+                # Decide on fallback: model.user_id = None (if nullable and appropriate) or raise error, or a default UUID
+                # For now, let's assume created_by (user_id) is critical and might require a valid one or error.
+                # This part needs careful consideration based on application logic for user_id FK.
+                # If user_id is NOT NULL, this will fail later. For tests, we often provide it.
+                # For now, if it's an invalid string, we can't proceed well if it's a non-nullable FK.
+                # Let's log and it will likely fail DB constraint if not set or None for a non-nullable field.
+                model.user_id = None # Or raise an error
         else:
-             model.user_id = None
-        # END FIX
+             # This case implies created_by_id_obj is None or some other type.
+             # If user_id is non-nullable, this will be an issue unless set by a default or test fixture.
+             model.user_id = None 
 
-        model.is_active = getattr(patient, 'active', True) # Use getattr for safety
+        model.is_active = getattr(patient, 'active', True)
         logger.debug(f"[from_domain] Mapped core metadata for {getattr(patient, 'id', 'NO_ID_YET')}")
 
         # Assign values to prefixed fields directly. TypeDecorators will handle encryption.
@@ -339,26 +346,26 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # else:
         #     model.biometric_twin_id = biometric_twin_id_obj # Assume None or already string
 
-        # Set id only if it exists on the domain object (for updates), store as string
+        # Set id only if it exists on the domain object (for updates)
         patient_id_obj = getattr(patient, 'id', None)
         if patient_id_obj:
             if isinstance(patient_id_obj, uuid.UUID):
-                model.id = str(patient_id_obj) # Store as string
-                logger.debug(f"[from_domain] Assigned existing ID {model.id} as string")
-            else: # Assume string
+                model.id = patient_id_obj  # Assign uuid.UUID directly
+                logger.debug(f"[from_domain] Assigned existing ID {model.id} as UUID object")
+            elif isinstance(patient_id_obj, str):
                 try:
-                    uuid.UUID(str(patient_id_obj)) # Validate format
-                    model.id = str(patient_id_obj)
-                    logger.debug(f"[from_domain] Assigned existing ID {model.id} (validated string)")
-                except (ValueError, TypeError):
-                    logger.error(f"[from_domain] Invalid existing patient ID format: {patient_id_obj}. Cannot set ID.")
-                    # Potentially raise an error here, as an invalid existing ID is problematic
-                    # For now, let it proceed, default might apply if column allows null/default
-                    pass # Or model.id = None if nullable
+                    model.id = uuid.UUID(patient_id_obj) # Convert str to uuid.UUID
+                    logger.debug(f"[from_domain] Assigned existing ID {model.id} (converted from string)")
+                except ValueError:
+                    logger.error(f"[from_domain] Invalid existing patient ID string: {patient_id_obj}. Generating new UUID.")
+                    model.id = uuid.uuid4() # Fallback to new UUID if string is invalid
+            else: # Some other type, or invalid
+                logger.warning(f"[from_domain] Unexpected type for patient.id: {type(patient_id_obj)}. Generating new UUID.")
+                model.id = uuid.uuid4()
         else:
-            # If no ID, generate a new UUID string using the default lambda
-            model.id = str(uuid.uuid4()) # Explicitly generate and assign string UUID
-            logger.debug(f"[from_domain] New patient, generated string ID: {model.id}")
+            # If no ID on domain object, generate a new UUID object
+            model.id = uuid.uuid4() # Assign uuid.UUID directly
+            logger.debug(f"[from_domain] New patient, generated UUID object for ID: {model.id}")
 
         # Assign timestamps - let DB handle defaults/onupdate if possible
         # model.created_at = patient.created_at or now_utc()
