@@ -427,20 +427,34 @@ async def client_session(managed_app: FastAPI) -> AsyncGenerator[AsyncClient, No
 async def client_app_tuple_func_scoped(test_settings: Settings) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     logger.info("CONFTEST_PY: Creating client_app_tuple_func_scoped (function-scoped).")
     
-    # Create a fresh app instance for each test function
-    app_for_function = create_application()
-    app_for_function.state.settings = test_settings # Ensure test settings are applied
+    # This is the actual FastAPI instance, created fresh for each function-scoped test.
+    original_fastapi_app = create_application(settings_override=test_settings)
+    # Ensure settings are directly on the original app's state for its own lifecycle awareness if needed pre-LifespanManager
+    original_fastapi_app.state.settings = test_settings 
 
-    async with LifespanManager(app_for_function, startup_timeout=30, shutdown_timeout=30) as manager:
-        logger.info(f"CONFTEST_PY (func): LifespanManager started. App instance: {manager.app}")
-        if hasattr(manager, "_state") and manager._state:
-            logger.info(f"CONFTEST_PY (func): LifespanManager yielded state keys: {list(manager._state.keys())}")
+    # LifespanManager will run startup/shutdown events on original_fastapi_app.
+    # manager.app will be the ASGI application processed by the lifespan events.
+    async with LifespanManager(original_fastapi_app, startup_timeout=30, shutdown_timeout=30) as manager:
+        # manager.app is the app that has gone through lifespan startup.
+        # This is what the AsyncClient should use.
+        app_for_client = manager.app 
+        logger.info(f"CONFTEST_PY (func): LifespanManager started. manager.app type: {type(app_for_client)}, instance: {app_for_client}")
         
-        functional_app_instance = manager.app # This is the app with lifespan handled
+        # Log the yielded state from the lifespan function for clarity
+        if hasattr(manager, "_state") and manager._state and isinstance(manager._state, dict):
+            logger.info(f"CONFTEST_PY (func): LifespanManager yielded state keys from manager._state: {list(manager._state.keys())}")
+        # Also log what's on original_fastapi_app.state after lifespan startup, which should be populated by the lifespan function
+        if hasattr(original_fastapi_app.state, "_state") and isinstance(original_fastapi_app.state._state, dict):
+             logger.info(f"CONFTEST_PY (func): original_fastapi_app.state after lifespan startup: {list(original_fastapi_app.state._state.keys())}")
+        else:
+            logger.warning(f"CONFTEST_PY (func): original_fastapi_app.state._state not found or not a dict after lifespan.")
 
-        async with AsyncClient(app=functional_app_instance, base_url="http://test") as ac:
-            logger.info(f"CONFTEST_PY (func): AsyncClient for function scope created. Client: {ac}")
-            yield ac, functional_app_instance # Yield client and the app instance handled by LifespanManager
+        async with AsyncClient(app=app_for_client, base_url="http://testserver") as ac: 
+            logger.info(f"CONFTEST_PY (func): AsyncClient created with app type: {type(app_for_client)}")
+            # Yield the client AND THE ORIGINAL FastAPI instance.
+            # The original_fastapi_app is used for dependency_overrides.
+            # The client (ac) uses app_for_client (manager.app) which has run through lifespan events.
+            yield ac, original_fastapi_app 
             
     logger.info("CONFTEST_PY (func): AsyncClient closed, LifespanManager shut down for function scope.")
 

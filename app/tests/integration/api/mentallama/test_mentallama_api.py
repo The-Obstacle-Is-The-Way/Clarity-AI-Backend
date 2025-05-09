@@ -131,32 +131,64 @@ def mock_jwt_service() -> MagicMock:
 # --- New Fixture for MentaLLaMA Test Client --- #
 @pytest_asyncio.fixture(scope="function")
 async def mentallama_test_client(
-    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], # Use conftest fixture
-    mock_mentallama_service_instance: AsyncMock, 
-    mock_auth_service: MagicMock,
-    mock_jwt_service: MagicMock,
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
+    mock_mentallama_service_instance: MagicMock,
+    # mock_mentallama_user_repo: AsyncMock, # Step 2, not yet implemented
+    # mock_jwt_service_instance: MagicMock, # Placeholder if needed for auth override
 ) -> AsyncGenerator[AsyncClient, None]:
-    """Creates a FastAPI test client specific to MentaLLaMA API tests.
-
-    Uses a LifespanManager-managed app from conftest and applies MentaLLaMA, 
-    Auth, and JWT mock overrides to that managed app.
     """
-    logger.info("Setting up MentaLLaMA test client fixture using LifespanManager-enabled app.")
-    
-    http_client, managed_app = client_app_tuple_func_scoped # Unpack
+    Provides an AsyncClient configured for MentaLLaMA tests with necessary
+    dependencies mocked.
+    The FastAPI app instance used for overrides is derived from client_app_tuple_func_scoped.
+    """
+    client, app_from_fixture = client_app_tuple_func_scoped
+    logger.info(f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app_from_fixture)}")
 
-    # Apply dependency overrides TO THE MANAGED APP
-    managed_app.dependency_overrides[MentaLLaMAInterface] = lambda: mock_mentallama_service_instance
-    managed_app.dependency_overrides[IAuthenticationService] = lambda: mock_auth_service
-    managed_app.dependency_overrides[IJwtService] = lambda: mock_jwt_service
-    
-    # The client from client_app_tuple_func_scoped is already configured with managed_app
-    logger.info("Yielding MentaLLaMA test client (from conftest, with overrides applied).")
-    yield http_client # Yield the client that's already correctly set up
-    
-    logger.info("MentaLLaMA test client fixture teardown.")
-    # Clear overrides after test to prevent interference if app instance is somehow reused (though function scope should isolate)
-    managed_app.dependency_overrides.clear()
+    actual_app_for_overrides = app_from_fixture
+    if not isinstance(app_from_fixture, FastAPI):
+        logger.warning(
+            f"MENTALLAMA_TEST_CLIENT: app_from_fixture is type {type(app_from_fixture)}, not FastAPI. "
+            f"Checking for an inner '.app' attribute."
+        )
+        if hasattr(app_from_fixture, "app") and isinstance(app_from_fixture.app, FastAPI):
+            actual_app_for_overrides = app_from_fixture.app
+            logger.info(
+                f"MENTALLAMA_TEST_CLIENT: Using inner app {type(actual_app_for_overrides)} for overrides."
+            )
+        else:
+            logger.error(
+                f"MENTALLAMA_TEST_CLIENT: app_from_fixture is {type(app_from_fixture)} and no suitable "
+                f"inner '.app' attribute found. Dependency overrides will likely fail."
+            )
+            # If it's not FastAPI and has no .app, this fixture will likely raise the AttributeError
+            # on the next line, which is what we're trying to fix.
+    else:
+        logger.info(
+            f"MENTALLAMA_TEST_CLIENT: app_from_fixture is already FastAPI type: {type(app_from_fixture)}. "
+            f"Using it directly for overrides."
+        )
+
+    # Override MentaLLaMA service
+    # This is the line that was causing: AttributeError: 'function' object has no attribute 'dependency_overrides'
+    actual_app_for_overrides.dependency_overrides[MentaLLaMAInterface] = lambda: mock_mentallama_service_instance
+    logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(actual_app_for_overrides)}")
+
+    # Placeholder for future user repo override (from detailed plan)
+    # from app.presentation.api.dependencies.auth import get_user_repository_dependency
+    # actual_app_for_overrides.dependency_overrides[get_user_repository_dependency] = lambda: mock_mentallama_user_repo
+    # logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode get_user_repository_dependency on app {id(actual_app_for_overrides)}")
+
+    yield client  # Yield the client for the test to use
+
+    # Teardown: Clear dependency overrides to prevent interference between tests
+    try:
+        actual_app_for_overrides.dependency_overrides.clear()
+        logger.info(f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(actual_app_for_overrides)}")
+    except AttributeError:
+        logger.error(
+            f"MENTALLAMA_TEST_CLIENT: Failed to clear dependency_overrides. "
+            f"actual_app_for_overrides type: {type(actual_app_for_overrides)} did not have them."
+        )
 
 
 # --- Test Functions (Updated to use mentallama_test_client) --- #
