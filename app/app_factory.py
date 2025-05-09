@@ -176,7 +176,20 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         _initialize_sentry(current_settings)
 
         logger.info("Application startup complete.")
-        yield # Application runs here
+        logger.info(f"--- LIFESPAN STARTUP (app_factory): Initializing database with session factory: {session_factory}")
+        fastapi_app.state.db_session_factory = session_factory  # For direct app.state access if needed
+        fastapi_app.state.settings = current_settings  # For direct app.state access
+
+        # Prepare state to be yielded
+        lifespan_state_to_yield = {
+            "db_session_factory": session_factory,
+            "settings": current_settings,
+        }
+        logger.info(f"--- LIFESPAN STARTUP (app_factory): app.state id before yield: {id(fastapi_app.state)}")
+        logger.info(f"--- LIFESPAN STARTUP (app_factory): app.state content before yield: {fastapi_app.state.__dict__ if hasattr(fastapi_app.state, '__dict__') else 'N/A'}")
+        logger.info(f"--- LIFESPAN STARTUP (app_factory): Yielding state keys: {list(lifespan_state_to_yield.keys())}")
+
+        yield lifespan_state_to_yield  # Explicitly yield the state dictionary
 
     except Exception as startup_exc:
          logger.critical(f"LIFESPAN_CRITICAL_STARTUP_FAILURE: Application startup failed critically. ErrorType: {type(startup_exc).__name__}, Error: {startup_exc}", exc_info=True)
