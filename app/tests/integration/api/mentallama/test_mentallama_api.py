@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from fastapi import FastAPI
 
 # Application imports (Sorted)
 from app.app_factory import create_application
@@ -130,34 +131,32 @@ def mock_jwt_service() -> MagicMock:
 # --- New Fixture for MentaLLaMA Test Client --- #
 @pytest_asyncio.fixture(scope="function")
 async def mentallama_test_client(
-    test_settings: Settings, 
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], # Use conftest fixture
     mock_mentallama_service_instance: AsyncMock, 
     mock_auth_service: MagicMock,
     mock_jwt_service: MagicMock,
 ) -> AsyncGenerator[AsyncClient, None]:
     """Creates a FastAPI test client specific to MentaLLaMA API tests.
 
-    Uses test_settings and applies MentaLLaMA, Auth, and JWT mock overrides.
-    Handles application lifespan.
+    Uses a LifespanManager-managed app from conftest and applies MentaLLaMA, 
+    Auth, and JWT mock overrides to that managed app.
     """
-    logger.info("Setting up MentaLLaMA test client fixture.")
-    app = create_application(settings_override=test_settings)
-
-    # Apply dependency overrides
-    app.dependency_overrides[MentaLLaMAInterface] = lambda: mock_mentallama_service_instance
-    app.dependency_overrides[IAuthenticationService] = lambda: mock_auth_service
-    app.dependency_overrides[IJwtService] = lambda: mock_jwt_service
+    logger.info("Setting up MentaLLaMA test client fixture using LifespanManager-enabled app.")
     
-    # Apply Redis mock override if necessary (though test_settings should handle this)
-    # You might need to mock specific Redis functions or the Redis client dependency
-    # Example: from app.core.dependencies.redis import get_redis_client
-    # mock_redis = AsyncMock()
-    # app.dependency_overrides[get_redis_client] = lambda: mock_redis
+    http_client, managed_app = client_app_tuple_func_scoped # Unpack
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        logger.info("Yielding MentaLLaMA test client.")
-        yield client
+    # Apply dependency overrides TO THE MANAGED APP
+    managed_app.dependency_overrides[MentaLLaMAInterface] = lambda: mock_mentallama_service_instance
+    managed_app.dependency_overrides[IAuthenticationService] = lambda: mock_auth_service
+    managed_app.dependency_overrides[IJwtService] = lambda: mock_jwt_service
+    
+    # The client from client_app_tuple_func_scoped is already configured with managed_app
+    logger.info("Yielding MentaLLaMA test client (from conftest, with overrides applied).")
+    yield http_client # Yield the client that's already correctly set up
+    
     logger.info("MentaLLaMA test client fixture teardown.")
+    # Clear overrides after test to prevent interference if app instance is somehow reused (though function scope should isolate)
+    managed_app.dependency_overrides.clear()
 
 
 # --- Test Functions (Updated to use mentallama_test_client) --- #

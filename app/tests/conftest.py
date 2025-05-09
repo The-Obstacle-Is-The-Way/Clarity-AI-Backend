@@ -80,10 +80,15 @@ def test_settings() -> Settings:
         logger.warning(
             f"Test environment not explicitly 'test' ({settings.ENVIRONMENT}), forcing DATABASE_URL to in-memory for safety."
         )
-        # Ensure we use the async version for ASYNC_DATABASE_URL
-        settings.DATABASE_URL = "sqlite+aiosqlite:///:memory:" # For sync parts or general DB URL
-        settings.ASYNC_DATABASE_URL = "sqlite+aiosqlite:///:memory:" # For async engine
+        settings.DATABASE_URL = "sqlite+aiosqlite:///:memory:?cache=shared" 
+        settings.ASYNC_DATABASE_URL = "sqlite+aiosqlite:///:memory:?cache=shared"
     
+    # Ensure Redis is disabled for tests by default unless explicitly configured otherwise
+    # by a specific test setup or a .env.test that wants a real Redis.
+    if settings.ENVIRONMENT == "test":
+        logger.info("CONFTEST_PY(test_settings): Forcing REDIS_URL to None for test environment to disable Redis connection.")
+        settings.REDIS_URL = None # Disable Redis for tests
+
     # Ensure DB URL implies asynchronicity for the engine
     if not settings.ASYNC_DATABASE_URL.startswith("sqlite+aiosqlite://") and \
        not settings.ASYNC_DATABASE_URL.startswith("postgresql+asyncpg://"):
