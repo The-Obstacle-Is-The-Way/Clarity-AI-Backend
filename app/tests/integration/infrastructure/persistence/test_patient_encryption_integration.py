@@ -96,6 +96,8 @@ async def integration_db_session() -> AsyncGenerator[tuple[AsyncSession, uuid.UU
                 insert_user_sql = text("""INSERT INTO users (id, username, email, password_hash, role, roles, is_active, is_verified, email_verified, created_at, updated_at, failed_login_attempts, password_changed_at, first_name, last_name, audit_id, created_by, updated_by) VALUES (:id, :username, :email, :password_hash, :role, :roles, :is_active, :is_verified, :email_verified, :created_at, :updated_at, :failed_login_attempts, :password_changed_at, :first_name, :last_name, :audit_id, :created_by, :updated_by)""")
                 roles_json = json.dumps([UserRole.PATIENT.value])
                 current_time = datetime.now(timezone.utc).isoformat()
+                # Explicitly convert UUID to hex string for the audit_id parameter
+                audit_id_hex = user_audit_log_id.hex
                 await session.execute(insert_user_sql, {
                     "id": TEST_USER_ID.hex,
                     "username": "integration_testuser",
@@ -112,26 +114,30 @@ async def integration_db_session() -> AsyncGenerator[tuple[AsyncSession, uuid.UU
                     "password_changed_at": current_time,
                     "first_name": "Test",
                     "last_name": "User",
-                    "audit_id": user_audit_log_id.hex, # Ensure .hex is used
+                    "audit_id": audit_id_hex, # Use the pre-converted hex string
                     "created_by": None,
                     "updated_by": None
                 })
-                logger.info(f"[Integration Fixture] Added test user: {TEST_USER_ID.hex} linked to audit_id {user_audit_log_id}")
+                logger.info(f"[Integration Fixture] Added test user: {TEST_USER_ID.hex} linked to audit_id {audit_id_hex}") # Log the hex string
             else:
                 logger.info(f"[Integration Fixture] Test user {TEST_USER_ID.hex} already exists.")
             
+            # Commit the user and its audit log to ensure FKs are met for subsequent operations
+            await session.commit()
+            logger.info(f"[Integration Fixture] Committed User (audit_id: {user_audit_log_id.hex}) and its AuditLog.")
+
             # Create dummy AuditLog for Patient records
             patient_audit_log = AuditLog(
                 event_type="test_setup", action="fixture_patient_create", 
-                resource_type="patient_test", user_id=TEST_USER_ID
+                resource_type="patient_test", user_id=TEST_USER_ID # TEST_USER_ID is uuid.UUID
             )
             session.add(patient_audit_log)
-            await session.flush()
+            await session.flush() # This flush is for patient_audit_log to get its ID
             patient_audit_log_id_for_yield = patient_audit_log.id
             logger.info(f"[Integration Fixture] Added dummy AuditLog for patients: ID {patient_audit_log_id_for_yield}")
 
-            await session.commit()
-            logger.info(f"[Integration Fixture] Committed User (audit_id: {user_audit_log_id}) and Patient AuditLog (id: {patient_audit_log_id_for_yield}).")
+            await session.commit() # Commit the patient_audit_log
+            logger.info(f"[Integration Fixture] Committed Patient AuditLog (id: {patient_audit_log_id_for_yield}).")
             
             yield session, patient_audit_log_id_for_yield
 
