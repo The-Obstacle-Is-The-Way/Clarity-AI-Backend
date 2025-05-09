@@ -134,7 +134,7 @@ def get_settings() -> Settings:
         
         if use_in_memory:
             # In-memory SQLite for isolated, fast tests
-            test_db_url = "sqlite+aiosqlite:///:memory:"
+            test_db_url = "sqlite+aiosqlite:///:memory:?cache=shared"
         else:
             # File-based SQLite in proper architecture location for persistent test data
             test_db_url = "sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"

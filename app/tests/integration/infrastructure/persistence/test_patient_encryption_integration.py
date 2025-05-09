@@ -13,6 +13,7 @@ from datetime import date, datetime, timezone
 
 import pytest
 import pytest_asyncio
+import sqlalchemy
 # from cryptography.fernet import Fernet # Fernet from fixture is BaseEncryptionService
 from sqlalchemy import text #, event # Event listener removed for now, direct PRAGMA in fixture
 # from sqlalchemy.engine import Engine # Not used directly
@@ -31,6 +32,7 @@ from app.infrastructure.persistence.sqlalchemy.config.database import get_db_ins
 from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
 from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
 from app.infrastructure.persistence.sqlalchemy.models.user import User
+from app.infrastructure.security.password.hashing import pwd_context # Added import
 
 from app.infrastructure.security.encryption.encryption_service import EncryptionService
 # from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
@@ -56,85 +58,112 @@ async def encryption_service_fixture() -> EncryptionService:
     return EncryptionService()
 
 @pytest_asyncio.fixture(scope="function")
-async def integration_db_session(encryption_service_fixture: EncryptionService): # Changed from AsyncGenerator
+async def integration_db_session(encryption_service_fixture: EncryptionService):
     original_esi = getattr(patient_module_for_esi, 'encryption_service_instance', None)
     patient_module_for_esi.encryption_service_instance = encryption_service_fixture
     
     logger.info(f"[Integration Fixture] Setting up test database: {settings.DATABASE_URL}")
     
-    # Get the database instance which holds the engine and session factory
     db_instance = get_db_instance()
     engine = db_instance.engine
-    async_session_factory = db_instance.session_factory
+    # async_session_factory = db_instance.session_factory # Not using factory directly
 
-    async with engine.connect() as conn:
+    patient_audit_log_id_for_yield: uuid.UUID | None = None
+    user_for_patient_audit_id: uuid.UUID | None = None # Keep for logging clarity if needed
+
+    async with engine.connect() as conn: # Single connection for DDL and test session
+        logger.info("[Integration Fixture] Performing DDL operations on shared connection.")
+        await conn.run_sync(Base.metadata.drop_all)
+        logger.info("[Integration Fixture] Dropped all tables.")
+        await conn.run_sync(Base.metadata.create_all)
+        logger.info("[Integration Fixture] Created all tables.")
         await conn.execute(text("PRAGMA foreign_keys=ON;"))
-        logger.info("[Integration Fixture] PRAGMA foreign_keys=ON executed on new connection.")
-        await conn.commit() 
+        logger.info("[Integration Fixture] PRAGMA foreign_keys=ON executed.")
+        await conn.commit() # Commit DDL operations
+        logger.info("[Integration Fixture] DDL operations committed.")
 
-    async with async_session_factory() as session:
+        # Create an AsyncSession bound to this specific connection
+        async_session = AsyncSession(bind=conn, expire_on_commit=False)
+        
         try:
-            async with engine.begin() as conn: 
-                await conn.run_sync(Base.metadata.drop_all)
-                await conn.run_sync(Base.metadata.create_all)
-            logger.info("[Integration Fixture] Dropped and Created all tables.")
+            # Data setup begins
+            # Single transaction for all initial setup to ensure atomicity for this block
+            async with async_session.begin():
+                logger.info(f"[Integration Fixture] Setting up initial User {TEST_USER_ID} and its AuditLog.")
 
-            patient_audit_log_id_for_yield: uuid.UUID | None = None
-
-            async with session.begin():
-                existing_user = await session.get(User, TEST_USER_ID)
-                if not existing_user:
-                    logger.info(f"[Integration Fixture] Test user {TEST_USER_ID} not found, creating via ORM.")
-                    user_audit_log = AuditLog(
-                        event_type="test_fixture_setup", action="create_test_user", resource_type="user", success=True,
-                        user_id=None, details=json.dumps({"description": "Audit log for test user creation in fixture"})
-                    )
-                    session.add(user_audit_log)
-                    await session.flush()
-                    logger.info(f"[Integration Fixture] Added AuditLog for User: ID {user_audit_log.id}")
-
-                    roles_json_str = json.dumps([UserRole.PATIENT.value])
-                    current_time_dt = datetime.now(timezone.utc)
-                    test_user = User(
-                        id=TEST_USER_ID, username="integration_testuser", email="integration.test@example.com",
-                        password_hash="hashed_password_for_test", role=UserRole.PATIENT, roles=roles_json_str,
-                        is_active=True, is_verified=True, email_verified=True, created_at=current_time_dt,
-                        updated_at=current_time_dt, failed_login_attempts=0, password_changed_at=current_time_dt,
-                        first_name="Test", last_name="User", audit_id=user_audit_log.id,
-                        created_by=None, updated_by=None
-                    )
-                    session.add(test_user)
-                    await session.flush()
-                    logger.info(f"[Integration Fixture] Added test user via ORM: {test_user.id}")
-                else:
-                    logger.info(f"[Integration Fixture] Test user {TEST_USER_ID} already exists.")
-            logger.info(f"[Integration Fixture] Transaction for User and its AuditLog committed.")
-
-            async with session.begin():
-                patient_audit_log = AuditLog(
-                    event_type="test_fixture_setup", action="create_test_patient_audit", resource_type="patient",
-                    user_id=TEST_USER_ID, success=True,
-                    details=json.dumps({"description": "Audit log for test patient setup in fixture"})
+                # 1. Create AuditLog for user creation, user_id is initially None
+                user_creation_audit_log = AuditLog(
+                    id=uuid.uuid4(), 
+                    user_id=None, # Will be updated after User is created
+                    action="CREATE_USER_PENDING_UID", 
+                    details=f"Audit log for User {TEST_USER_ID} creation, pending actual user_id.",
+                    event_type="USER_LIFECYCLE",
+                    resource_type="User",
+                    resource_id=str(TEST_USER_ID) # The ID of the user to be created
                 )
-                session.add(patient_audit_log)
-                await session.flush()
-                patient_audit_log_id_for_yield = patient_audit_log.id
-                logger.info(f"[Integration Fixture] Added AuditLog for Patient: ID {patient_audit_log_id_for_yield}, UserID: {patient_audit_log.user_id}")
+                async_session.add(user_creation_audit_log)
+                await async_session.flush() # Get ID for user_creation_audit_log.id
+                logger.info(f"[Integration Fixture] Added initial AuditLog {user_creation_audit_log.id} for User {TEST_USER_ID}.")
+
+                # 2. Create User, linking to the audit_log created above.
+                # User's own created_by/updated_by can point to itself as it's being created.
+                test_user = User(
+                    id=TEST_USER_ID, 
+                    username="testuser_integration", 
+                    email="testuser_integration@example.com",
+                    password_hash=pwd_context.hash("testpassword"),
+                    role=UserRole.ADMIN,
+                    audit_id=user_creation_audit_log.id, # Link to its creation audit log
+                    created_by=TEST_USER_ID, # User created themselves
+                    updated_by=TEST_USER_ID  # User updated themselves initially
+                )
+                async_session.add(test_user)
+                await async_session.flush() # User object is now in the session, has an ID.
+                logger.info(f"[Integration Fixture] Added User {test_user.id} linked to AuditLog {user_creation_audit_log.id}.")
+
+                # 3. Update the user_creation_audit_log with the actual user_id from the created user.
+                user_creation_audit_log.user_id = test_user.id
+                user_creation_audit_log.action = "CREATE" # Update action to final state
+                user_creation_audit_log.details = f"User {test_user.id} created successfully."
+                async_session.add(user_creation_audit_log) # Mark as dirty for update
+                logger.info(f"[Integration Fixture] Updated AuditLog {user_creation_audit_log.id} with User ID {test_user.id}.")
+
+                # 4. Create AuditLog for subsequent Patient operations (done by the test)
+                # This log entry is for the *action of creating a patient*, performed by TEST_USER_ID
+                patient_action_audit_log = AuditLog(
+                    id=uuid.uuid4(), 
+                    user_id=test_user.id, # Action performed by the now-created TEST_USER_ID
+                    action="PATIENT_OP_SETUP", 
+                    details="AuditLog created in fixture for subsequent patient operations in test.",
+                    event_type="PATIENT_LIFECYCLE_PREP",
+                    resource_type="System", # Or "TestSetup"
+                    resource_id=None # Not tied to a specific patient yet
+                )
+                async_session.add(patient_action_audit_log)
+                await async_session.flush() # Get its ID
+                patient_audit_log_id_for_yield = patient_action_audit_log.id
+                user_for_patient_audit_id = patient_action_audit_log.user_id # For logging
+                logger.info(f"[Integration Fixture] Added Patient Action AuditLog {patient_action_audit_log.id} (user: {user_for_patient_audit_id}).")
             
-            logger.info(f"[Integration Fixture] Transaction for Patient's AuditLog committed. Yielding session and patient_audit_log_id: {patient_audit_log_id_for_yield}")
-            yield session, patient_audit_log_id_for_yield
+            # End of the single transaction for setup. All above is committed together.
+
+            logger.info(f"[Integration Fixture] Yielding session and Patient Action AuditLog ID: {patient_audit_log_id_for_yield}")
+            
+            yield async_session, patient_audit_log_id_for_yield
 
         except Exception as e:
-            logger.error(f"[Integration Fixture] Exception during setup: {e}", exc_info=True)
-            await session.rollback()
+            logger.error(f"[Integration Fixture] Exception during setup/yield: {e}", exc_info=True)
+            # Rollback is implicitly handled by 'async with async_session.begin()' on exception
             raise
         finally:
-            logger.info("[Integration Fixture] Tearing down test database session.")
-            if hasattr(patient_module_for_esi, 'encryption_service_instance'):
-                 patient_module_for_esi.encryption_service_instance = original_esi
-            await session.close()
+            logger.info("[Integration Fixture] Tearing down test database session (fixture end).")
+            await async_session.close() # Close the session
+            # Connection 'conn' is automatically closed by 'async with engine.connect()'
+            patient_module_for_esi.encryption_service_instance = original_esi
+            logger.info("[Integration Fixture] Restored original ESI.")
+            # Engine dispose is not managed here; get_db_instance handles engine lifecycle.
 
-# pytest.mark.db_required() # Apply if needed, or manage via pytest.ini markers
+# pytest.mark.db_required()
 class TestPatientEncryptionIntegration:
     """Integration test suite for Patient model encryption with database."""
     
@@ -215,11 +244,13 @@ class TestPatientEncryptionIntegration:
 
     @pytest.mark.asyncio
     async def test_phi_encrypted_in_database(self, integration_db_session: tuple[AsyncSession, uuid.UUID], encryption_service_fixture: EncryptionService):
-        session, patient_audit_log_id = integration_db_session
+        session, patient_audit_log_id = integration_db_session # Correctly unpacks the tuple
         
+        assert patient_audit_log_id is not None, "Patient AuditLog ID from fixture is None"
+
         domain_patient = await self._create_sample_domain_patient(patient_id=TEST_PATIENT_ID, user_id=TEST_USER_ID)
         
-        patient_model = PatientModel.from_domain(domain_patient) # from_domain will need to handle the comprehensive DomainPatient
+        patient_model = PatientModel.from_domain(domain_patient)
         patient_model.id = TEST_PATIENT_ID 
         patient_model.user_id = TEST_USER_ID 
         patient_model.audit_id = patient_audit_log_id
@@ -271,7 +302,9 @@ class TestPatientEncryptionIntegration:
 
     @pytest.mark.asyncio
     async def test_phi_decrypted_in_repository(self, integration_db_session: tuple[AsyncSession, uuid.UUID]):
-        session, patient_audit_log_id = integration_db_session
+        session, patient_audit_log_id = integration_db_session # Correctly unpacks the tuple
+
+        assert patient_audit_log_id is not None, "Patient AuditLog ID from fixture is None"
         
         original_domain_patient = await self._create_sample_domain_patient(patient_id=TEST_PATIENT_ID, user_id=TEST_USER_ID)
 
@@ -326,3 +359,21 @@ class TestPatientEncryptionIntegration:
         else:
             decrypted_by_main_service = encryption_service_fixture.decrypt_string(encrypted_by_other)
             assert decrypted_by_main_service is None
+
+        # To make this test more robust against a passthrough service, check if encryption actually changes the value
+        original_data = "secret data"
+        encrypted_by_other = random_key_service.encrypt_string(original_data)
+        
+        # If encryption service is a dummy/passthrough, encrypted_by_other will be same as original_data
+        if encrypted_by_other == original_data and original_data != "": # Added check for non-empty string
+             logger.warning("Encryption service (random_key_service) seems to be a passthrough; cannot test cross-key decryption meaningfully.")
+        else:
+            # This part of the test assumes PHI_ENCRYPTION_KEY is set and consistent for encryption_service_fixture
+            # If random_key_service generates a truly different key, decryption should fail.
+            decrypted_by_main_service = encryption_service_fixture.decrypt_string(encrypted_by_other)
+            # If the main service key is the SAME as random_key_service (e.g. both defaulted to same env var)
+            # then decryption would succeed. This test is for when they are DIFFERENT.
+            # To ensure they are different, random_key_service would need to be initialized with a known different key
+            # or settings.PHI_ENCRYPTION_KEY needs to be temporarily changed for one of them.
+            # For now, assume they might be different if random_key_service generates a new key.
+            assert decrypted_by_main_service is None, f"Cross-key decryption succeeded unexpectedly. Main service might be using same key as random_key_service or decryption logic is flawed. Decrypted: {decrypted_by_main_service}"

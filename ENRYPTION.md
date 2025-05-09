@@ -2,7 +2,7 @@
 
 ## 1. Overview and Goals
 
-*   **Primary Goal:** Implement robust, field-level encryption for all Personally Identifiable Information (PII) and Protected Health Information (PHI) within the `Patient` SQLAlchemy model to ensure data confidentiality at rest.
+*   **Primary Goal:** Implement robust, field-level encryption for all Personally Identifiable Information (PII) and Protected Health Information (PHI) within the `Patient` SQLAlchemy model to ensure data confidentiality at rests.
 *   **Compliance Objective:** Align with HIPAA security rule requirements for protecting sensitive patient data.
 *   **Technical Approach:** Leverage SQLAlchemy's `TypeDecorator` pattern in conjunction with the existing `EncryptionService` to achieve transparent encryption and decryption of specified model fields.
 
@@ -76,7 +76,7 @@
             *   [X] `_state_province_region` (String -> EncryptedString)
             *   [X] `_zip_postal_code` (String -> EncryptedString)
             *   [X] `_country` (String -> EncryptedString)
-            *   [X] `_pronouns` (String -> EncryptedString)
+                *   [X] `_pronouns` (String -> EncryptedString)
             *   [X] `_ethnicity` (String -> EncryptedString)
             *   [X] `_race` (String -> EncryptedString)
             *   [X] `_preferred_language` (String -> EncryptedString)
