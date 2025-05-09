@@ -30,31 +30,55 @@ T = TypeVar('T', bound=BaseRepositoryInterface)
 # Type alias for session dependency
 DatabaseSessionDep = Annotated[AsyncSession, Depends(get_async_session_utility)]
 
-async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """Injects a database session into the request.
-    This is the actual FastAPI dependency.
-    It retrieves session_factory from app.state and calls the utility function.
-    """
-    logger.debug(f"GET_DB_SESSION (FastAPI Dependency): Entered. ID of request.app: {id(request.app)}")
-    session_factory_from_state: Callable[[], AsyncSession] | None = None
-    
-    if hasattr(request.app, 'state'):
+async def get_db_session(
+    request: Request,  # FastAPI Request object
+    # session_factory_from_request_state: Annotated[
+    #     async_scoped_session | None,
+    #     Depends(lambda req: getattr(req.app.state, "db_session_factory", None))
+    # ]
+):
+    logger.debug("GET_DB_SESSION (FastAPI Dependency): Entered get_db_session")
+    logger.debug(f"GET_DB_SESSION (FastAPI Dependency): id(request) is {id(request)}")
+    logger.debug(f"GET_DB_SESSION (FastAPI Dependency): id(request.app) is {id(request.app)}")
+
+    session_factory_from_state = None
+    if hasattr(request, 'state'):
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): id(request.state) is {id(request.state)}")
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): request.state content: {request.state.__dict__ if hasattr(request.state, '__dict__') else 'N/A or not a full dict'}")
+        # Try to log keys if it's dict-like, or dir() otherwise
+        if hasattr(request.state, 'keys') and callable(request.state.keys):
+            logger.debug(f"GET_DB_SESSION (FastAPI Dependency): request.state keys: {list(request.state.keys())}")
+        else:
+            logger.debug(f"GET_DB_SESSION (FastAPI Dependency): dir(request.state): {dir(request.state)}")
+
+        session_factory_from_state = getattr(request.state, "db_session_factory", None)
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): Retrieved session_factory from request.state: {session_factory_from_state}")
+    else:
+        logger.error("GET_DB_SESSION (FastAPI Dependency): request has no 'state' attribute!")
+
+    # Fallback to request.app.state for safety during transition, though request.state is preferred
+    if session_factory_from_state is None and hasattr(request.app, 'state'):
+        logger.warning("GET_DB_SESSION (FastAPI Dependency): db_session_factory not found in request.state, attempting fallback to request.app.state")
         logger.debug(f"GET_DB_SESSION (FastAPI Dependency): id(request.app.state) is {id(request.app.state)}")
-        # Ensure we log the actual content of the state if it exists
         logger.debug(f"GET_DB_SESSION (FastAPI Dependency): request.app.state content: {request.app.state.__dict__ if hasattr(request.app.state, '__dict__') else 'N/A'}")
         session_factory_from_state = getattr(request.app.state, "db_session_factory", None)
-        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): Retrieved session_factory: {session_factory_from_state}")
-    else:
-        logger.warning("GET_DB_SESSION (FastAPI Dependency): request.app has NO state attribute.")
+        logger.debug(f"GET_DB_SESSION (FastAPI Dependency): Retrieved session_factory from request.app.state (fallback): {session_factory_from_state}")
 
     if session_factory_from_state is None:
-        logger.error("GET_DB_SESSION (FastAPI Dependency): db_session_factory not found. Raising RuntimeError.")
+        logger.error("GET_DB_SESSION (FastAPI Dependency): db_session_factory not found in request.state or request.app.state. Raising RuntimeError.")
+        # Log details about request.state and request.app.state before raising
+        if hasattr(request, 'state'):
+            logger.error(f"GET_DB_SESSION (FastAPI Dependency): Keys in request.state: {list(request.state.keys()) if hasattr(request.state, 'keys') and callable(request.state.keys) else 'N/A or not dict-like'}")
+            logger.error(f"GET_DB_SESSION (FastAPI Dependency): Attributes in request.state: {dir(request.state)}")
+        else:
+            logger.error("GET_DB_SESSION (FastAPI Dependency): request has no state attribute at point of error.")
+        
         if hasattr(request.app, 'state'):
-            logger.error(f"GET_DB_SESSION (FastAPI Dependency): Keys in request.app.state: {list(request.app.state.keys()) if isinstance(request.app.state, dict) else 'N/A (not a dict)'}")
+            logger.error(f"GET_DB_SESSION (FastAPI Dependency): Keys in request.app.state: {list(request.app.state.keys()) if hasattr(request.app.state, 'keys') and callable(request.app.state.keys) else 'N/A or not dict-like'}")
             logger.error(f"GET_DB_SESSION (FastAPI Dependency): Attributes in request.app.state: {dir(request.app.state)}")
         else:
             logger.error("GET_DB_SESSION (FastAPI Dependency): request.app has no state attribute at point of error.")
-        raise RuntimeError("db_session_factory not found in request.app.state for get_db_session")
+        raise RuntimeError("db_session_factory not found in request.state or request.app.state for get_db_session")
 
     # Call the utility function, passing the factory
     async for session in get_async_session_utility(session_factory_from_state):
