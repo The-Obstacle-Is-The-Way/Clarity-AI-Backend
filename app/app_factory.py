@@ -125,15 +125,16 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                 class_=AsyncSession
             )
             
-            # Set factory on application state
-            fastapi_app.state.db_session_factory = session_factory
+            # Set factory and engine on application state
+            fastapi_app.state.actual_session_factory = session_factory # Renamed for clarity
             fastapi_app.state.db_engine = db_engine
             
-            logger.info("Database engine and session factory initialized successfully")
+            logger.info(f"Database engine and actual_session_factory initialized and set on app.state (id: {id(fastapi_app.state)})")
+            logger.info(f"app.state.actual_session_factory type: {type(fastapi_app.state.actual_session_factory)}")
             
         except Exception as e:
             logger.critical(f"LIFESPAN_DB_INIT_FAILURE: Failed to initialize database connection. ErrorType: {type(e).__name__}, Error: {e}", exc_info=True)
-            fastapi_app.state.db_session_factory = None
+            fastapi_app.state.actual_session_factory = None # Ensure it's None on failure
             fastapi_app.state.db_engine = None
             raise # Re-raise the exception to ensure startup fails clearly
             
@@ -175,18 +176,22 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         # --- Common Setup (Sentry) ---
         _initialize_sentry(current_settings)
 
-        logger.info("Application startup complete.")
-        logger.info(f"--- LIFESPAN STARTUP (app_factory): Initializing database with session factory: {session_factory}")
-        fastapi_app.state.db_session_factory = session_factory  # For direct app.state access if needed
-        fastapi_app.state.settings = current_settings  # For direct app.state access
+        logger.info("Application startup phase in lifespan complete.")
+        # logger.info(f"--- LIFESPAN STARTUP (app_factory): Initializing database with session factory: {session_factory}") # Already logged
 
-        # Prepare state to be yielded
+        # Prepare state to be yielded - include all necessary items
         lifespan_state_to_yield = {
-            "db_session_factory": session_factory,
             "settings": current_settings,
+            "actual_session_factory": session_factory, # ADDED TO YIELDED STATE
+            "db_engine": db_engine,                   # ADDED TO YIELDED STATE
         }
+        logger.info(f"--- LIFESPAN STARTUP (app_factory): app instance id: {id(fastapi_app)}")
         logger.info(f"--- LIFESPAN STARTUP (app_factory): app.state id before yield: {id(fastapi_app.state)}")
-        logger.info(f"--- LIFESPAN STARTUP (app_factory): app.state content before yield: {fastapi_app.state.__dict__ if hasattr(fastapi_app.state, '__dict__') else 'N/A'}")
+        # Log current app.state contents more reliably
+        current_app_state_dict = {}
+        if hasattr(fastapi_app.state, '_state') and isinstance(fastapi_app.state._state, dict): # Starlette State wraps a dict in _state
+            current_app_state_dict = {k: type(v) for k, v in fastapi_app.state._state.items()}
+        logger.info(f"--- LIFESPAN STARTUP (app_factory): Content of app.state._state before yield: {current_app_state_dict}")
         logger.info(f"--- LIFESPAN STARTUP (app_factory): Yielding state keys: {list(lifespan_state_to_yield.keys())}")
 
         yield lifespan_state_to_yield  # Explicitly yield the state dictionary
@@ -211,12 +216,26 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception as e:
                 logger.error(f"Error disconnecting Redis pool: {e}", exc_info=True)
 
-        if db_engine: # Use the engine created within the try block
+        # Safely get db_engine for shutdown from app.state
+        # db_engine_for_shutdown = getattr(fastapi_app.state, "db_engine", None) # This was already good
+        # The rest of the shutdown logic for db_engine seems okay
+
+        if db_engine: # Use the engine created within the try block if it's still in local scope and valid
+            logger.info(f"--- LIFESPAN SHUTDOWN (app_factory): Attempting to dispose of database engine (id: {id(db_engine)} from local lifespan scope)...")
             try:
                 await db_engine.dispose()
-                logger.info("Database engine disposed successfully.")
+                logger.info("--- LIFESPAN SHUTDOWN (app_factory): Database engine (from local scope) disposed.")
             except Exception as e:
-                logger.error(f"Error disposing database engine: {e}", exc_info=True)
+                logger.error(f"Error disposing database engine (from local scope): {e}", exc_info=True)
+        elif hasattr(fastapi_app.state, 'db_engine') and fastapi_app.state.db_engine:
+            logger.info(f"--- LIFESPAN SHUTDOWN (app_factory): Attempting to dispose of database engine (id: {id(fastapi_app.state.db_engine)} from app.state)...")
+            try:
+                await fastapi_app.state.db_engine.dispose()
+                logger.info("--- LIFESPAN SHUTDOWN (app_factory): Database engine (from app.state) disposed.")
+            except Exception as e:
+                logger.error(f"Error disposing database engine (from app.state): {e}", exc_info=True)
+        else:
+            logger.warning("--- LIFESPAN SHUTDOWN (app_factory): db_engine not found in local scope or on app.state; cannot dispose.")
 
         logger.info("Application shutdown complete.")
 
@@ -294,8 +313,8 @@ def create_application(
         
         # Check if db_session_factory is available in app_instance.state
         # This could be None during tests or when running without lifespan management
-        if hasattr(app_instance.state, 'db_session_factory') and app_instance.state.db_session_factory is not None:
-            user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.db_session_factory)
+        if hasattr(app_instance.state, 'actual_session_factory') and app_instance.state.actual_session_factory is not None:
+            user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.actual_session_factory)
             
             # Define public paths - keep in sync with middleware defaults or settings
             public_paths = {
@@ -314,7 +333,7 @@ def create_application(
             )
             logger.info("Authentication middleware added successfully.")
         else:
-            logger.warning("db_session_factory not found in app.state - skipping AuthenticationMiddleware")
+            logger.warning("actual_session_factory not found in app.state - skipping AuthenticationMiddleware")
             logger.warning("Authentication will not be enforced!")
     except Exception as e:
         logger.error(f"Failed to initialize AuthenticationMiddleware: {e}", exc_info=True)

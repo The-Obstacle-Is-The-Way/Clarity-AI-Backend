@@ -24,7 +24,7 @@ import sys
 # Application-specific Imports
 from app.app_factory import create_application
 from app.application.security.jwt_service import JWTService
-from app.core.config import settings, Settings
+from app.core.config.settings import Settings, get_settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
@@ -43,6 +43,9 @@ from app.domain.exceptions.auth_exceptions import (
     UserAlreadyExistsException
 )
 from app.infrastructure.security.password.password_handler import PasswordHandler
+
+# Import LifespanManager
+from asgi_lifespan import LifespanManager
 
 logger = logging.getLogger(__name__)
 
@@ -68,39 +71,27 @@ def event_loop_policy() -> asyncio.DefaultEventLoopPolicy:
 def test_settings() -> Settings:
     """Load test settings, ensuring ENVIRONMENT is set to 'test'."""
     logger.info("Loading test settings for session scope.")
-    # Load from .env.test if it exists, otherwise .env
-    env_file = ".env.test" if Path(".env.test").exists() else None # Prefer .env.test, fallback to default load
+    # Load settings, potentially overriding with a .env.test if it exists
+    # Forcing in-memory DB for tests if not already set by .env.test
+    # This ensures tests are isolated and don't affect a real DB.
+    # Important: The get_settings() call itself handles .env loading.
+    settings = get_settings()
+    if not settings.ENVIRONMENT == "test":
+        logger.warning(
+            f"Test environment not explicitly 'test' ({settings.ENVIRONMENT}), forcing DATABASE_URL to in-memory for safety."
+        )
+        # Ensure we use the async version for ASYNC_DATABASE_URL
+        settings.DATABASE_URL = "sqlite+aiosqlite:///:memory:" # For sync parts or general DB URL
+        settings.ASYNC_DATABASE_URL = "sqlite+aiosqlite:///:memory:" # For async engine
     
-    # Initialize settings, allowing .env file loading
-    # We will explicitly override critical test settings afterwards
-    if env_file:
-        current_settings = Settings(_env_file=env_file, _env_file_encoding='utf-8')
-        logger.info(f"Loaded settings from {env_file}")
-    else:
-        # If no .env.test, load with default .env behaviour (which might be .env or defaults)
-        current_settings = Settings() 
-        logger.info("Loaded settings with default .env behavior (no .env.test found).")
+    # Ensure DB URL implies asynchronicity for the engine
+    if not settings.ASYNC_DATABASE_URL.startswith("sqlite+aiosqlite://") and \
+       not settings.ASYNC_DATABASE_URL.startswith("postgresql+asyncpg://"):
+        logger.warning(f"ASYNC_DATABASE_URL '{settings.ASYNC_DATABASE_URL}' might not be suitable for an async engine. Ensure it's an async dialect.")
 
-    # Explicitly override/ensure settings for the test environment
-    current_settings.ENVIRONMENT = "test"
-    current_settings.TESTING = True
-    current_settings.SENTRY_DSN = None # Disable Sentry for tests
-
-    # Logic for database URL (copied from original fixture)
-    test_db_path = Path("app/infrastructure/persistence/data/test_db.sqlite3")
-    if os.environ.get("TEST_PERSISTENT_DB"):
-        db_url = f"sqlite+aiosqlite:///./app/infrastructure/persistence/data/test_db.sqlite3"
-        test_db_path.parent.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Using persistent test database: {db_url}")
-    else:
-        db_url = "sqlite+aiosqlite:///:memory:"
-        logger.info(f"Using in-memory test database: {db_url}")
-    
-    current_settings.DATABASE_URL = db_url
-    current_settings.ASYNC_DATABASE_URL = db_url # Ensure async URL is also set
-
-    logger.info(f"Final test settings: ENVIRONMENT={current_settings.ENVIRONMENT}, DATABASE_URL={current_settings.DATABASE_URL}, ASYNC_DATABASE_URL={current_settings.ASYNC_DATABASE_URL}")
-    return current_settings
+    logger.info(f"Using in-memory test database: {settings.ASYNC_DATABASE_URL}")
+    logger.info(f"Final test settings: ENVIRONMENT={settings.ENVIRONMENT}, DATABASE_URL={settings.DATABASE_URL}, ASYNC_DATABASE_URL={settings.ASYNC_DATABASE_URL}")
+    return settings
 
 
 # --- Database Fixtures ---
@@ -364,63 +355,119 @@ async def mock_override_user() -> User:
         # The dataclass has defaults for created_at, mfa_enabled, attempts etc.
     )
 
-@pytest_asyncio.fixture(scope="function")
-async def client_app_tuple(
-    test_settings: Settings,
-    mock_jwt_service: MagicMock, 
-    mock_auth_service: MagicMock,
-    mock_encryption_service: MagicMock, 
-    mock_mentallama_service: MagicMock,
-    mock_patient_service: MagicMock,
-    mock_user_service: MagicMock,
-    mock_audit_service: MagicMock,
-    # mock_background_tasks_fixture: BackgroundTasks, # Not needed if not explicitly used
-) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
-    logger.info("CONTEST: Creating client_app_tuple. Overriding services with mocks.")
-    
-    app_instance = create_application(settings_override=test_settings, include_test_routers=True)
+@pytest.fixture(scope="session")
+def anyio_backend():
+    return "asyncio"
 
-    # Apply mock services via dependency overrides
-    app_instance.dependency_overrides[get_jwt_service] = lambda: mock_jwt_service
-    app_instance.dependency_overrides[get_auth_service] = lambda: mock_auth_service
-    app_instance.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
-    app_instance.dependency_overrides[get_mentallama_service] = lambda: mock_mentallama_service
-    app_instance.dependency_overrides[get_patient_service] = lambda: mock_patient_service
-    app_instance.dependency_overrides[get_user_service] = lambda: mock_user_service
-    app_instance.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-    # app_instance.dependency_overrides[BackgroundTasks] = lambda: mock_background_tasks_fixture
+# This fixture will provide the FastAPI app instance configured for tests.
+@pytest.fixture(scope="session")
+async def app_instance_for_session(test_settings: Settings) -> FastAPI:
+    logger.info("CONTEST_PY: Creating app_instance_for_session (session-scoped).")
+    # Override settings for the app_factory.
+    # This is a bit tricky since create_application internally calls get_settings().
+    # One way is to ensure test_settings are active when create_application is called.
+    # This is generally handled by how get_settings() caches or if we could pass settings.
+    # For now, assuming get_settings() picks up .env.test or the forced values from test_settings fixture.
+    app = create_application()
+    # Store settings on the app state if not already correctly set by create_application for some reason
+    # (create_application should already do this)
+    app.state.settings = test_settings
+    logger.info(f"CONTEST_PY: app_instance_for_session created. App state settings env: {app.state.settings.ENVIRONMENT}")
+    return app
 
-    # REMOVED LifespanManager - httpx.AsyncClient will handle lifespan
-    # from asgi_lifespan import LifespanManager 
-    from httpx import ASGITransport # ASGITransport still needed
-
-    # logger.info(f"CONTEST: app_instance created. ID: {id(app_instance)}")
-    # if hasattr(app_instance, 'state'):
-    #     logger.info(f"CONTEST: app_instance.state BEFORE AsyncClient: {vars(app_instance.state) if hasattr(app_instance.state, '__dict__') else app_instance.state}")
-
-    # httpx.AsyncClient will manage the lifespan of app_instance
-    async with AsyncClient(transport=ASGITransport(app=app_instance), base_url="http://testserver") as client:
-        # Log state after client is up, which means lifespan startup should have run
-        if hasattr(app_instance, 'state'):
-             logger.info(f"CONTEST: app_instance.state AFTER AsyncClient init (id: {id(app_instance.state)}): {vars(app_instance.state) if hasattr(app_instance.state, '__dict__') else app_instance.state}")
+# Session-scoped fixture to manage the application lifespan
+@pytest.fixture(scope="session")
+async def managed_app(app_instance_for_session: FastAPI) -> AsyncGenerator[FastAPI, None]:
+    logger.info("CONFTEST_PY: Entering managed_app fixture (session-scoped with LifespanManager).")
+    async with LifespanManager(app_instance_for_session, startup_timeout=30, shutdown_timeout=30) as manager:
+        logger.info(f"CONFTEST_PY: LifespanManager started. App instance: {manager.app}")
+        # Log the state set by the lifespan manager
+        # manager._state should hold what the lifespan function yielded.
+        if hasattr(manager, "_state") and manager._state:
+            lifespan_yielded_state_keys = list(manager._state.keys())
+            logger.info(f"CONFTEST_PY: LifespanManager yielded state keys: {lifespan_yielded_state_keys}")
+            if "actual_session_factory" in manager._state:
+                logger.info(f"CONFTEST_PY: 'actual_session_factory' FOUND in LifespanManager._state. Type: {type(manager._state['actual_session_factory'])}")
+            else:
+                logger.warning("CONFTEST_PY: 'actual_session_factory' NOT FOUND in LifespanManager._state.")
         else:
-            logger.warning("CONTEST: app_instance has NO state attribute AFTER AsyncClient init.")
-        yield client, app_instance
+            logger.warning("CONFTEST_PY: LifespanManager has no '_state' or it's empty after startup.")
+        
+        # The application instance to be used by the client is manager.app
+        yield manager.app 
+    logger.info("CONFTEST_PY: LifespanManager shut down and managed_app fixture exited.")
 
-@pytest_asyncio.fixture(scope="function")
-async def unauth_async_client(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Provides an AsyncClient configured with a FastAPI app instance
-    created using test settings, managing app lifespan, WITHOUT auth overrides.
-    """
-    app = create_application(settings_override=test_settings)
+
+# This is the primary fixture tests will use to get an AsyncClient.
+@pytest.fixture(scope="session")
+async def client_session(managed_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+    logger.info("CONFTEST_PY: Entering client_session fixture (session-scoped). Using managed_app.")
+    # The AsyncClient now uses the app instance that has been processed by LifespanManager
+    async with AsyncClient(app=managed_app, base_url="http://test") as ac:
+        logger.info(f"CONFTEST_PY: AsyncClient created with managed_app. Client: {ac}")
+        # You can inspect ac.app.state here if needed, but request.state is what matters for dependencies.
+        # logger.info(f"CONFTEST_PY: client_session: ac.app.state.settings.ENVIRONMENT: {ac.app.state.settings.ENVIRONMENT if hasattr(ac.app.state, 'settings') else 'N/A'}")
+        # logger.info(f"CONFTEST_PY: client_session: ac.app.state keys: {list(ac.app.state.__dict__.keys()) if hasattr(ac.app.state, '__dict__') else 'N/A'}")
+        yield ac
+    logger.info("CONFTEST_PY: AsyncClient closed and client_session fixture exited.")
+
+
+# --- client_app_tuple fixture (original, now adapted or to be deprecated) ---
+# This fixture might need to be re-evaluated.
+# For tests requiring function scope (e.g. if they modify app state or DB per test),
+# they might need a function-scoped client and app setup.
+# The current setup is session-scoped for performance, assuming tests are isolated.
+
+@pytest.fixture(scope="function")
+async def client_app_tuple_func_scoped(test_settings: Settings) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
+    logger.info("CONFTEST_PY: Creating client_app_tuple_func_scoped (function-scoped).")
     
-    from asgi_lifespan import LifespanManager
-    async with LifespanManager(app):
-        async with AsyncClient(app=app, base_url="http://testserver") as client:
-            logger.info("Yielding UNAUTHENTICATED AsyncClient with managed lifespan.")
-            yield client
-    logger.info("UNAUTHENTICATED AsyncClient lifespan exited.")
+    # Create a fresh app instance for each test function
+    app_for_function = create_application()
+    app_for_function.state.settings = test_settings # Ensure test settings are applied
+
+    async with LifespanManager(app_for_function, startup_timeout=30, shutdown_timeout=30) as manager:
+        logger.info(f"CONFTEST_PY (func): LifespanManager started. App instance: {manager.app}")
+        if hasattr(manager, "_state") and manager._state:
+            logger.info(f"CONFTEST_PY (func): LifespanManager yielded state keys: {list(manager._state.keys())}")
+        
+        functional_app_instance = manager.app # This is the app with lifespan handled
+
+        async with AsyncClient(app=functional_app_instance, base_url="http://test") as ac:
+            logger.info(f"CONFTEST_PY (func): AsyncClient for function scope created. Client: {ac}")
+            yield ac, functional_app_instance # Yield client and the app instance handled by LifespanManager
+            
+    logger.info("CONFTEST_PY (func): AsyncClient closed, LifespanManager shut down for function scope.")
+
+
+# Old client_app_tuple (session-scoped) - can be replaced by client_session or adapted
+# For now, let's make it use the new session-scoped managed_app and client_session
+@pytest.fixture(scope="session")
+async def client_app_tuple(client_session: AsyncClient, managed_app: FastAPI) -> tuple[AsyncClient, FastAPI]:
+    logger.info("CONFTEST_PY: client_app_tuple (session-scoped) is using client_session and managed_app.")
+    return client_session, managed_app
+
+
+# Example of a function-scoped client if some tests absolutely need it
+# and cannot use the session-scoped one.
+@pytest.fixture(scope="function")
+async def client_function_scope(test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
+    logger.info("CONFTEST_PY: Creating client_function_scope (function-scoped).")
+    app_func = create_application()
+    # It's crucial that this app instance also uses test_settings
+    app_func.state.settings = test_settings 
+
+    async with LifespanManager(app_func, startup_timeout=30, shutdown_timeout=30) as manager:
+        the_app = manager.app
+        if hasattr(manager, "_state") and manager._state:
+            logger.info(f"CONFTEST_PY (client_function_scope): LifespanManager yielded state keys: {list(manager._state.keys())}")
+            if "actual_session_factory" in manager._state:
+                logger.info(f"CONFTEST_PY (client_function_scope): 'actual_session_factory' found in LifespanManager._state. Type: {type(manager._state['actual_session_factory'])}")
+
+        async with AsyncClient(app=the_app, base_url="http://test") as ac:
+            logger.info(f"CONFTEST_PY (client_function_scope): AsyncClient created. App settings env: {ac.app.state.settings.ENVIRONMENT if hasattr(ac.app.state, 'settings') else 'N/A'}")
+            yield ac
+    logger.info("CONFTEST_PY (client_function_scope): AsyncClient closed, LifespanManager shut down.")
 
 
 # --- User and Authentication Fixtures ---
