@@ -169,12 +169,12 @@ def mock_jwt_service() -> MagicMock:
     import uuid
     from unittest.mock import MagicMock
     from app.core.domain.entities.user import UserRole
-    from app.infrastructure.security.jwt.jwt_service import JWTService # Using updated path
+    # from app.infrastructure.security.jwt.jwt_service import JWTService # No longer using spec
     from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 
-    logger.info("--- mock_jwt_service FIXTURE CREATED (Stateful, Correct Decode, WITH Spec) ---")
+    logger.info("--- mock_jwt_service FIXTURE CREATED (Stateful, Correct Decode, WITHOUT Spec) ---")
 
-    mock = MagicMock(spec=JWTService) # RESTORED spec
+    mock = MagicMock() # REMOVED spec=JWTService
     
     issued_tokens_store = {} # token_string: {"payload": dict, "exp_timestamp": float}
 
@@ -224,13 +224,12 @@ def mock_jwt_service() -> MagicMock:
         logger.info(f"Mock JWTService: Decoded token {token} to payload: {stored_data['payload']}")
         return stored_data["payload"]
 
-    def clear_issued_tokens():
-        logger.info("Mock JWTService: Token store cleared.")
-        issued_tokens_store.clear()
-
     mock.create_access_token.side_effect = mock_create_access_token
     mock.decode_token.side_effect = mock_decode_token
-    mock.clear_issued_tokens = MagicMock(side_effect=clear_issued_tokens)
+    
+    # Assign clear_issued_tokens as a lambda
+    mock.clear_issued_tokens = lambda: issued_tokens_store.clear()
+    # Store the token store directly on the mock for potential inspection if needed
     mock._issued_tokens_store = issued_tokens_store
 
     logger.info(f"--- mock_jwt_service FIXTURE ID: {id(mock)} ---")
@@ -597,18 +596,23 @@ async def authenticated_user(
 @pytest.fixture
 def auth_headers(mock_jwt_service: MagicMock, authenticated_user: User) -> dict[str, str]:
     """Generate authentication headers for a mock authenticated user."""
-    
+    # Ensure the mock's internal token store is clean before creating a new token for this test
+    # This prevents interference if multiple tests use auth_headers sequentially
+    mock_jwt_service.clear_issued_tokens() 
+
+    user_id_str = str(authenticated_user.id)
+    user_role_str = authenticated_user.role.value # Assuming role is an Enum
+
     # Configure the mock_jwt_service instance used by this test/fixture
     # to return a payload corresponding to the authenticated_user.
     specific_payload = {
-        "sub": str(authenticated_user.id), # Use the ID from the Pydantic domain User
-        "roles": authenticated_user.roles if isinstance(authenticated_user.roles, list) else list(authenticated_user.roles), # Ensure list
+        "sub": user_id_str, # Use the ID from the Pydantic domain User
+        "roles": [user_role_str], # Ensure list
         "username": authenticated_user.username,
         "email": authenticated_user.email,
         # exp and iat will be set by mock_create_access_token
     }
     
-    mock_jwt_service.clear_issued_tokens() # Clear if previous calls created other tokens
     access_token_str = mock_jwt_service.create_access_token(data=specific_payload)
 
     # The get_user_from_token attribute on jwt_service is not standard.

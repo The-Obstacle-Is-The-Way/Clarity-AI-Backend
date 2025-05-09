@@ -202,12 +202,11 @@ async def test_health_check(mentallama_test_client: AsyncClient) -> None:
     assert response.json() == {"status": "healthy", "service_status": True} 
 
 @pytest.mark.asyncio
-async def test_process_endpoint(mentallama_test_client: AsyncClient) -> None:
+async def test_process_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the process endpoint with valid input."""
     payload = {"prompt": TEST_PROMPT, "user_id": TEST_USER_ID, "model": TEST_MODEL}
-    headers = {"Authorization": "Bearer mock_token"} # Assuming JWT auth
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/process", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/process", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     # Check against the mocked service return value
@@ -219,63 +218,58 @@ async def test_process_endpoint(mentallama_test_client: AsyncClient) -> None:
     }
 
 @pytest.mark.asyncio
-async def test_analyze_text_endpoint(mentallama_test_client: AsyncClient) -> None:
+async def test_analyze_text_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the analyze text endpoint."""
     payload = {"text": "Some text to analyze", "user_id": TEST_USER_ID}
-    headers = {"Authorization": "Bearer mock_token"}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/analyze", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/analyze", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     # Assuming analyze uses the same mock process method for now
     assert "response" in response.json() 
 
 @pytest.mark.asyncio
-async def test_detect_conditions_endpoint(mentallama_test_client: AsyncClient) -> None:
+async def test_detect_conditions_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the detect conditions endpoint."""
     payload = {"text": "Feeling very down.", "user_id": TEST_USER_ID}
-    headers = {"Authorization": "Bearer mock_token"}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/detect-conditions", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/detect-conditions", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     # Assuming analyze uses the same mock process method for now
     assert "response" in response.json() 
 
 @pytest.mark.asyncio
-async def test_therapeutic_response_endpoint(mentallama_test_client: AsyncClient) -> None:
+async def test_therapeutic_response_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the therapeutic response endpoint."""
     payload = {
         "conversation_history": [{"role": "user", "content": "I feel sad."}],
         "user_id": TEST_USER_ID
     }
-    headers = {"Authorization": "Bearer mock_token"}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/therapeutic-response", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/therapeutic-response", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     # Assuming it uses the mock process method for now
     assert "response" in response.json()
 
 @pytest.mark.asyncio
-async def test_suicide_risk_endpoint(mentallama_test_client: AsyncClient) -> None:
+async def test_suicide_risk_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the suicide risk assessment endpoint."""
     payload = {"text": "I want to end it all.", "user_id": TEST_USER_ID}
-    headers = {"Authorization": "Bearer mock_token"}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/assess-suicide-risk", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/assess-suicide-risk", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     # Add assertion based on expected mocked behavior
     assert "risk_level" in response.json() # Example assertion
 
 @pytest.mark.asyncio
-async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient) -> None:
+async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the wellness dimensions assessment endpoint."""
     payload = {"text": "Feeling balanced.", "user_id": TEST_USER_ID}
-    headers = {"Authorization": "Bearer mock_token"}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/assess-wellness", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/assess-wellness", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
     # Add assertion based on expected mocked behavior
@@ -285,7 +279,8 @@ async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient)
 async def test_service_unavailable(
     # Renamed parameter to match the new fixture
     mentallama_test_client: AsyncClient, 
-    mock_mentallama_service_instance: AsyncMock # Need the mock instance to modify it
+    mock_mentallama_service_instance: AsyncMock, # Need the mock instance to modify it
+    auth_headers: dict[str, str] # Added auth_headers
 ) -> None:
     """Tests error handling when the MentaLLaMA service is unavailable."""
     # Configure the mock to raise an exception for this specific test
@@ -294,9 +289,8 @@ async def test_service_unavailable(
     # Add side effects for other methods called by endpoints if necessary
 
     payload = {"prompt": TEST_PROMPT, "user_id": TEST_USER_ID, "model": TEST_MODEL}
-    headers = {"Authorization": "Bearer mock_token"}
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/process", json=payload, headers=headers
+        f"{MENTALLAMA_API_PREFIX}/process", json=payload, headers=auth_headers
     )
 
     # Expecting an internal server error or specific service unavailable error
