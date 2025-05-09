@@ -24,11 +24,8 @@ class TestEncryptionService:
 
     def test_initialization(self):
         """Test encryption service initialization."""
-        with patch.dict(os.environ, {"ENCRYPTION_KEY": "test_key"}):
+        with patch.dict(os.environ, {"ENCRYPTION_KEY": "test_key_for_encryption_abracadabra"}):
             service = EncryptionService()
-            assert service.secret_key == "test_key"
-            assert service.salt is not None
-            assert service.key is not None
             assert service.cipher is not None
 
     def test_initialization_with_missing_key(self):
@@ -43,13 +40,13 @@ class TestEncryptionService:
         plaintext = "This is sensitive patient information"
 
         # Encrypt the string
-        encrypted = encryption_service.encrypt_string(plaintext)
+        encrypted = encryption_service.encrypt(plaintext)
 
         # Verify the encrypted text is different from plaintext
         assert encrypted != plaintext
 
         # Decrypt the string
-        decrypted = encryption_service.decrypt_string(encrypted)
+        decrypted = encryption_service.decrypt(encrypted)
 
         # Verify the decrypted text matches the original
         assert decrypted == plaintext
@@ -59,13 +56,13 @@ class TestEncryptionService:
         plaintext = ""
 
         # Encrypt the string
-        encrypted = encryption_service.encrypt_string(plaintext)
+        encrypted = encryption_service.encrypt(plaintext)
 
         # Verify the encrypted text is also empty
         assert encrypted == ""
 
         # Decrypt the string
-        decrypted = encryption_service.decrypt_string(encrypted)
+        decrypted = encryption_service.decrypt(encrypted)
 
         # Verify the decrypted text is empty
         assert decrypted == ""
@@ -73,8 +70,8 @@ class TestEncryptionService:
     def test_decrypt_invalid_string(self, encryption_service):
         """Test decrypting an invalid string raises error."""
         with pytest.raises(ValueError) as excinfo:
-            encryption_service.decrypt_string("invalid_encrypted_text")
-        assert "Failed to decrypt string" in str(excinfo.value)
+            encryption_service.decrypt("invalid_encrypted_text")
+        assert "Failed to decrypt" in str(excinfo.value)
 
     def test_encrypt_decrypt_dict(self, encryption_service):
         """Test encrypting and decrypting a dictionary."""

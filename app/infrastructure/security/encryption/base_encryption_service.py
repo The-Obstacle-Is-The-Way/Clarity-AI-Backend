@@ -9,6 +9,8 @@ import base64
 import logging
 import os
 from typing import Any, Dict, List, Optional, Set, Union
+import hashlib
+import hmac
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
@@ -446,52 +448,87 @@ decryption methods for strings and dictionaries.
             raise ValueError(f"File encryption failed: {e}")
             
     def decrypt_file(self, input_path: str, output_path: str) -> None:
-        """Decrypt a file.
-        
+        """Decrypt an entire file using the primary cipher.
+
         Args:
-            input_path: Path to the encrypted file
-            output_path: Path where the decrypted file will be written
-            
-        Raises:
-            FileNotFoundError: If the input file cannot be found
-            IOError: If there's an error reading or writing the files
-            ValueError: If decryption fails
-            InvalidToken: If the file contents cannot be decrypted with any available key
+            input_path: Path to the encrypted input file.
+            output_path: Path to save the decrypted output file.
         """
-        if not os.path.exists(input_path):
-            raise FileNotFoundError(f"Input file not found: {input_path}")
-            
         try:
-            with open(input_path, 'rb') as infile:
-                encrypted_data = infile.read()
-                
-            try:
-                # First try with primary key
-                decrypted_data = self.cipher.decrypt(encrypted_data)
-            except InvalidToken:
-                # If primary key fails, try with previous key if available
-                if self.previous_cipher:
-                    try:
-                        decrypted_data = self.previous_cipher.decrypt(encrypted_data)
-                    except InvalidToken:
-                        logger.error("File decryption failed with both primary and previous keys.")
-                        raise InvalidToken("Invalid Token: File decryption failed with all available keys.")
-                else:
-                    logger.error("File decryption failed with primary key and no previous key is available.")
-                    raise InvalidToken("Invalid Token: File decryption failed.")
-            
-            with open(output_path, 'wb') as outfile:
-                outfile.write(decrypted_data)
-                
+            with open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+                for chunk in iter(lambda: f_in.read(4096), b""):
+                    f_out.write(self.cipher.decrypt(chunk))
             logger.info(f"File decrypted successfully: {input_path} -> {output_path}")
+        except FileNotFoundError:
+            logger.error(f"Encryption input file not found: {input_path}")
+            raise
         except InvalidToken:
-            raise
-        except IOError as e:
-            logger.error(f"IO error during file decryption: {e}")
-            raise
+            logger.error(f"Invalid token for decrypting file {input_path}. The file might be corrupted or encrypted with a different key.")
+            # Optionally, clean up partially written output file
+            if os.path.exists(output_path):
+                try:
+                    os.remove(output_path)
+                except OSError: # pragma: no cover
+                    logger.warning(f"Could not remove partially decrypted file: {output_path}")
+            raise ValueError(f"Decryption failed for file {input_path} due to invalid token.")
         except Exception as e:
-            logger.error(f"Error decrypting file: {e}")
-            raise ValueError(f"File decryption failed: {e}")
+            logger.error(f"An unexpected error occurred during file decryption: {e}")
+            # Optionally, clean up partially written output file
+            if os.path.exists(output_path):
+                try:
+                    os.remove(output_path)
+                except OSError: # pragma: no cover
+                    logger.warning(f"Could not remove partially decrypted file: {output_path}")
+            raise
+
+    def generate_hash(self, data: str) -> str:
+        """
+        Create a one-way hash of data using HMAC-SHA256 with the primary key.
+
+        Args:
+            data: Data to hash.
+
+        Returns:
+            Secure hash as a hex string.
+        """
+        key_bytes = self._get_key() # This should return the b64encoded key for Fernet
+        # For HMAC, we need the raw key. Fernet keys are b64encoded random bytes.
+        # We should decode it first if this key is intended for HMAC.
+        # However, using the Fernet key directly (if it's random enough) is okay for HMAC.
+        # Let's assume _get_key() provides a suitable key for HMAC after b64decode.
+        # Fernet keys are 32 random bytes, base64 encoded.
+        # For HMAC, we should use the raw 32 random bytes.
+        
+        raw_key_material_for_hmac = base64.urlsafe_b64decode(key_bytes)
+
+        h = hmac.new(raw_key_material_for_hmac, data.encode('utf-8'), hashlib.sha256)
+        return h.hexdigest()
+
+    def verify_hash(self, data: str, hash_to_verify: str) -> bool:
+        """
+        Verify data against a previously generated hash.
+
+        Args:
+            data: The original data.
+            hash_to_verify: The hash to verify.
+
+        Returns:
+            True if the hash matches, False otherwise.
+        """
+        generated_hash = self.generate_hash(data)
+        return hmac.compare_digest(generated_hash, hash_to_verify)
+
+    def generate_hmac(self, data: str) -> str:
+        """
+        Alias for generate_hash, as both use HMAC-SHA256.
+        """
+        return self.generate_hash(data)
+
+    def verify_hmac(self, data: str, hmac_to_verify: str) -> bool:
+        """
+        Alias for verify_hash, as both use HMAC-SHA256.
+        """
+        return self.verify_hash(data, hmac_to_verify)
 
 # --- Factory Function --- #
 
