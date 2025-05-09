@@ -20,8 +20,25 @@ class TestXGBoostSymptomModel:
     @pytest.fixture
     def model(self):
         """Create a XGBoostSymptomModel with mocked internals."""
-        # Mock the xgboost library
-        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb') as mock_xgb:
+        # Mock the xgboost library and os.path.exists to prevent FileNotFoundError
+        with patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.xgb') as mock_xgb, \
+             patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.os.path.exists', return_value=True), \
+             patch('app.infrastructure.ml.symptom_forecasting.xgboost_model.joblib') as mock_joblib:
+            
+            # Mock the joblib.load return value to simulate loading a model
+            mock_model = MagicMock()
+            mock_joblib.load.return_value = {
+                "models": {"depression_score": mock_model},
+                "feature_names": [
+                    "symptom_history_1",
+                    "symptom_history_2",
+                    "medication_adherence",
+                    "sleep_quality"
+                ],
+                "target_names": ["depression_score"],
+                "params": {"n_estimators": 100}
+            }
+            
             # Correct instantiation
             model = XGBoostSymptomModel(
                 model_path="test_model_path",
@@ -34,8 +51,10 @@ class TestXGBoostSymptomModel:
                 ],
                 target_names=["depression_score"]
             )
-            # Mock the internal models dictionary (assuming it's loaded/created)
+            
+            # Mock the internal models dictionary
             model.models = {"depression_score": MagicMock()}
+            
             # Return the mocked model instance
             return model
 

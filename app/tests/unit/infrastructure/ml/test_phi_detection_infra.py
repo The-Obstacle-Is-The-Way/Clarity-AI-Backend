@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions.ml_exceptions import PHISecurityError
+from app.core.exceptions.ml_exceptions import PHISecurityError, PHIDetectionError
 from app.infrastructure.ml.phi_detection.service import PHIDetectionService, PHIPattern
 
 # Mock external dependencies
@@ -359,7 +359,7 @@ class TestPHIDetectionService:
         assert stats["risk_levels"]["high"] == 2 # Both mock patterns are high risk
 
     def test_error_handling(self):
-        """Test that PHISecurityError is properly handled."""
+        """Test that PHIDetectionError is properly handled."""
         # Create a new service instance
         service = PHIDetectionService()
         
@@ -373,8 +373,8 @@ class TestPHIDetectionService:
         service.patterns = [mock_pattern]
         service._initialized = True
         
-        # The method should catch the exception and raise PHISecurityError
-        with pytest.raises(PHISecurityError) as exc_info:
+        # The method should catch the exception and raise PHIDetectionError
+        with pytest.raises(PHIDetectionError) as exc_info:
             service.contains_phi("test text")
             
         assert "Failed to detect PHI" in str(exc_info.value)
@@ -382,7 +382,7 @@ class TestPHIDetectionService:
         # Also test detect_phi error handling
         mock_pattern.regex.finditer = MagicMock(side_effect=Exception("Test error in detect"))
         
-        with pytest.raises(PHISecurityError) as exc_info:
+        with pytest.raises(PHIDetectionError) as exc_info:
             service.detect_phi("test text")
             
         assert "Failed to detect PHI details" in str(exc_info.value)
