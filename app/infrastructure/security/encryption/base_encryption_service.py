@@ -534,8 +534,10 @@ decryption methods for strings and dictionaries.
         if not isinstance(value, str):
             logger.error(f"encrypt_string received non-string type: {type(value)}")
             raise TypeError("encrypt_string expects a string value.")
-        if not value:
-            # logger.debug("encrypt_string received empty or None value, returning as is.")
+        # None/empty values explicitly at the application layer before encryption.
+        # if not value: # This covers value is None OR value == ""
+        if value is None: # MODIFIED: Only return None as is. Empty strings will be encrypted.
+            logger.debug(f"[encrypt_string] Input value is None. Returning as is: '{value}'")
             return value
 
         self._ensure_fernet_initialized()

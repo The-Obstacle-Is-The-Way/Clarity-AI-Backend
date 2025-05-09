@@ -268,8 +268,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Extended PII - fields NOT in core DomainPatient, use getattr with None default
         model._middle_name = getattr(patient, 'middle_name', None)
         model._gender = getattr(patient, 'gender', None) # DomainPatient doesn't have gender
-        model._ssn = getattr(patient, 'ssn', None)
-        model._mrn = getattr(patient, 'medical_record_number', getattr(patient, 'mrn', None))
+        model._ssn = getattr(patient, 'social_security_number_lve', None) # Corrected to use _lve from DomainPatient
+        model._mrn = getattr(patient, 'medical_record_number_lve', None) # Corrected to use _lve from DomainPatient
 
         # Insurance Info - NOT in core DomainPatient
         model._insurance_provider = getattr(patient, 'insurance_provider', None)

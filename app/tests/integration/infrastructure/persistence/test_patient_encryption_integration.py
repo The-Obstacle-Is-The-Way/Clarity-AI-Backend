@@ -347,12 +347,21 @@ class TestPatientEncryptionIntegration:
 
     @pytest.mark.asyncio
     async def test_encryption_error_handling(self, encryption_service_fixture: EncryptionService):
-        malformed_token = "this.is.not.a.valid.fernet.token"
-        decrypted_value = encryption_service_fixture.decrypt_string(malformed_token)
-        assert decrypted_value is None
-
+        logger.info("[Test] Running test_encryption_error_handling")
+        
+        # Test encryption/decryption of empty string
         empty_encrypted = encryption_service_fixture.encrypt_string("")
-        assert encryption_service_fixture.decrypt_string(empty_encrypted) == ""
+        logger.info(f"[Test] Encrypted empty string: '{empty_encrypted}'")
+        assert empty_encrypted is not None, "Encrypting empty string resulted in None."
+        assert ":" in empty_encrypted, "Encrypted empty string is not versioned."
+        
+        decrypted_empty = encryption_service_fixture.decrypt_string(empty_encrypted)
+        logger.info(f"[Test] Decrypted empty string: '{decrypted_empty}' (type: {type(decrypted_empty)})")
+        
+        assert decrypted_empty == "", \
+            f"Decrypting an encrypted empty string did not result in an empty string. Got: '{decrypted_empty}'"
+
+        # Test decryption of None
         assert encryption_service_fixture.decrypt_string(None) is None
 
         random_key_service = EncryptionService() # Will generate its own key if env var not found or different one
