@@ -9,11 +9,11 @@ import inspect
 import json
 import logging
 import uuid
-from typing import Any
+from typing import Any, Dict
 from datetime import date, datetime
 
 from dateutil import parser
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date as SQLDate, JSON
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date as SQLDate, JSON, inspect
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column
@@ -363,6 +363,39 @@ class Patient(Base, TimestampMixin, AuditMixin):
         """
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
         
+        # Add SQLAlchemy inspect debug prints here
+        print(f"DEBUG [PatientModel.to_domain] - Inspecting attributes for instance ID: {self.id}")
+        instance_state = inspect(self)
+        
+        # Attributes to inspect (adjust as needed, especially for JSON fields)
+        attrs_to_inspect = [
+            '_first_name', '_last_name', '_middle_name', '_suffix', '_date_of_birth',
+            '_gender', '_ssn_lve', '_phone_number_lve',
+            '_contact_info', '_address_details', '_emergency_contact_details'
+        ]
+
+        for attr_name in attrs_to_inspect:
+            if hasattr(self, attr_name):
+                try:
+                    # Use a generic approach for getattr to avoid issues if attr is complex
+                    actual_value_via_getattr = getattr(self, attr_name)
+                    print(f"  DEBUG Attr [{attr_name}]:")
+                    print(f"    - Value via getattr(): {repr(actual_value_via_getattr)}")
+                    print(f"    - Type  via getattr(): {type(actual_value_via_getattr)}")
+                    
+                    if instance_state.attrs.has_key(attr_name):
+                        attr_state = instance_state.attrs.get(attr_name)
+                        print(f"    - SA State Value   : {repr(attr_state.value)}")
+                        print(f"    - SA State Type    : {type(attr_state.value)}")
+                        # History can be verbose, print only if necessary or summarized
+                        # print(f"    - SA State History : {attr_state.history}")
+                    else:
+                        print(f"    - SA State         : Attribute '{attr_name}' not found in instance_state.attrs")
+                except Exception as e:
+                    print(f"  DEBUG Attr [{attr_name}]: Error during inspection: {e}")
+            else:
+                print(f"  DEBUG Attr [{attr_name}]: Not present on self.")
+
         def _decode_if_bytes(value: Any) -> str | None:
             if value is None:
                 return None
@@ -415,12 +448,59 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
         # Access complex fields directly. EncryptedJSON handles decryption & deserialization.
         logger.debug(f"[to_domain] Accessing complex fields for {self.id}")
-        contact_info_dict = self._contact_info
-        address_details_dict = self._address_details
-        # emergency_contact_details_dict will be automatically deserialized by EncryptedJSON if it was stored as JSON
-        # The DomainPatient model expects a field named 'emergency_contact' that can take a dict.
-        raw_emergency_contact_details = self._emergency_contact_details
-        preferences_dict = self._preferences
+        
+        # Prepare ContactInfo domain object
+        contact_info_raw = self._contact_info # Should be dict or None after EncryptedJSON
+        contact_info_domain_obj = None
+        if isinstance(contact_info_raw, dict):
+            try:
+                # Assuming DomainPatient's __init__ or a validator handles ContactInfo creation from dict
+                # Or, if ContactInfo is a Pydantic model itself in DomainPatient:
+                # from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
+                # contact_info_domain_obj = DomainContactInfo(**contact_info_raw)
+                contact_info_domain_obj = contact_info_raw # Pass dict if DomainPatient expects it
+            except Exception as e:
+                logger.error(f"Failed to process contact_info for patient {self.id}: {e}")
+        elif contact_info_raw is not None:
+             logger.warning(f"contact_info for patient {self.id} is not a dict: {type(contact_info_raw)}")
+
+        # Prepare Address domain object
+        address_raw = self._address_details # Should be dict or None after EncryptedJSON
+        address_domain_obj = None
+        if isinstance(address_raw, dict):
+            try:
+                address_domain_obj = Address(**address_raw)
+            except Exception as e:
+                logger.error(f"Failed to create Address VO for patient {self.id} from _address_details: {e}")
+        elif address_raw is not None:
+            # If _address_details is None, try constructing from individual fields
+            # This is a fallback if _address_details wasn't populated from a full VO during from_domain
+            address_components = {
+                "line1": _decode_if_bytes(self._address_line1),
+                "line2": _decode_if_bytes(self._address_line2),
+                "city": _decode_if_bytes(self._city),
+                "state": _decode_if_bytes(self._state),
+                "zip_code": _decode_if_bytes(self._zip_code),
+                "country": _decode_if_bytes(self._country)
+            }
+            if any(v is not None for v in address_components.values()):
+                try:
+                    address_domain_obj = Address(**{k: v if v is not None else '' for k, v in address_components.items()})
+                except Exception as e:
+                    logger.error(f"Failed to create Address VO from components for patient {self.id}: {e}")
+        
+        # Prepare EmergencyContact domain object
+        emergency_contact_raw = self._emergency_contact_details # Should be dict or None from EncryptedJSON
+        emergency_contact_domain_obj = None
+        if isinstance(emergency_contact_raw, dict):
+            try:
+                emergency_contact_domain_obj = EmergencyContact(**emergency_contact_raw)
+            except Exception as e:
+                logger.error(f"Failed to create EmergencyContact VO for patient {self.id} from _emergency_contact_details: {e}")
+        elif emergency_contact_raw is not None:
+            logger.warning(f"emergency_contact_details for patient {self.id} is not a dict: {type(emergency_contact_raw)}")
+        
+        preferences_dict = self._preferences # Assumed to be dict or None
         
         # Parse list-like fields from their string representation after decryption
         medical_history_list_str = _decode_if_bytes(self._medical_history)
@@ -453,87 +533,66 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 return None
 
         patient_args = {
-            'id': self.id if isinstance(self.id, uuid.UUID) else uuid.UUID(str(self.id)) if self.id else uuid.uuid4(),
-            'created_at': self.created_at.replace(tzinfo=UTC) if self.created_at else datetime.now(),
-            'updated_at': self.updated_at.replace(tzinfo=UTC) if self.updated_at else datetime.now(),
-            'first_name': first_name,
-            'last_name': last_name,
-            'date_of_birth': date_of_birth, # Use the parsed date object
-            'email': email,
-            'phone_number': phone,  # Note: using phone_number to match domain entity
-            'ssn_lve': ssn, # Match DomainPatient field
-            'medical_record_number_lve': medical_record_number, # Match DomainPatient field
-            'gender': gender, # Match DomainPatient field
-        }
-        
-        # Only include fields that have values to avoid None issues
-        if self.is_active is not None:
-            patient_args['active'] = self.is_active
+            # IDs and Timestamps
+            "id": self.id,
+            "external_id": _decode_if_bytes(self._external_id),
+            "user_id": self.user_id, 
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "is_active": self.is_active,
+
+            # Directly mapped & potentially encrypted simple string fields
+            "first_name": _decode_if_bytes(self._first_name),
+            "last_name": _decode_if_bytes(self._last_name),
+            "middle_name": _decode_if_bytes(self._middle_name),
+            "gender": _decode_if_bytes(self._gender),
+            "date_of_birth": _decode_if_bytes(self._date_of_birth),
+            "ssn_lve": _decode_if_bytes(self._ssn), # Changed from ssn
+            "medical_record_number_lve": _decode_if_bytes(self._mrn), # Changed from mrn
+            "phone_number": _decode_if_bytes(self._phone_number),
+            "email": _decode_if_bytes(self._email),
             
-        if contact_info_dict is not None:
-            patient_args['contact_info'] = contact_info_dict
+            # Insurance Info (simple strings)
+            "insurance_provider": _decode_if_bytes(self._insurance_provider),
+            "insurance_policy_number": _decode_if_bytes(self._insurance_policy_number),
+            "insurance_group_number": _decode_if_bytes(self._insurance_group_number),
+            
+            # Complex objects (JSON serialized in DB, should be dict/Pydantic model here)
+            "contact_info": contact_info_domain_obj, 
+            "address": address_domain_obj, 
+            "emergency_contact": emergency_contact_domain_obj, 
+            "preferences": preferences_dict,
+            "custom_fields": _decode_if_bytes(self._custom_fields),
+            "extra_data": extra_data_dict, 
 
-        if address_details_dict is not None:
-            patient_args['address_details'] = address_details_dict
-
-        # Pass the deserialized dict from _emergency_contact_details to 'emergency_contact' field for DomainPatient
-        if raw_emergency_contact_details is not None:
-            patient_args['emergency_contact'] = raw_emergency_contact_details 
-
-        if preferences_dict is not None:
-            if isinstance(preferences_dict, (bytes, str)):
-                patient_args['preferences'] = _parse_json_string(preferences_dict, "preferences")
-            else:
-                patient_args['preferences'] = preferences_dict
-
-        parsed_medical_history = _parse_json_string(medical_history_list_str, "medical_history")
-        if parsed_medical_history is not None:
-            patient_args['medical_history'] = parsed_medical_history
-
-        parsed_medications = _parse_json_string(medications_list_str, "medications")
-        if parsed_medications is not None:
-            patient_args['medications'] = parsed_medications
-
-        parsed_allergies = _parse_json_string(allergies_list_str, "allergies")
-        if parsed_allergies is not None:
-            patient_args['allergies'] = parsed_allergies
-
-        if notes_str is not None: # notes_str from self._notes (EncryptedText)
-            patient_args['notes'] = notes_str # DomainPatient.notes is Optional[str]
-
-        if extra_data_dict is not None: # extra_data_dict from self._extra_data (EncryptedJSON)
-            if isinstance(extra_data_dict, (bytes, str)):
-                 patient_args['extra_data'] = _parse_json_string(extra_data_dict, "extra_data")
-            else:
-                patient_args['extra_data'] = extra_data_dict
-
-        if insurance_provider is not None:
-            patient_args['insurance_provider'] = insurance_provider
-
-        # Construct Address value object if components are present
-        address_components = {
-            'line1': address_line1,
-            'line2': address_line2,
-            'city': city,
-            'state': state,
-            'zip_code': zip_code,
-            'country': country
+            # Other text fields (might be large)
+            "medical_history": _decode_if_bytes(self._medical_history),
+            "medications": _decode_if_bytes(self._medications),
+            "allergies": _decode_if_bytes(self._allergies),
+            "notes": _decode_if_bytes(self._notes),
+            
+            # Audit info (UUIDs)
+            "audit_id": self.audit_id,
+            "created_by": self.created_by,
+            "updated_by": self.updated_by
         }
-        # Only create Address object if at least one component is not None
-        if any(v is not None for v in address_components.values()):
-            # Replace None with empty string for Address VO constructor if it expects strings
-            for key, value in address_components.items():
-                if value is None:
-                    address_components[key] = '' # Or handle as Address VO expects
-            try:
-                patient_args['address'] = Address(**address_components)
-            except TypeError as e:
-                logger.error(f"Failed to create Address VO for patient {self.id}: {e}. Components: {address_components}")     
-        
-        # Create the patient entity with only the fields it supports
-        patient = DomainPatient(**patient_args)
-        logger.debug(f"[to_domain] Completed conversion for patient ID: {patient.id}")
-        return patient
+
+        # Critical Debug Print
+        logger.debug(f"[PatientModel.to_domain] patient_args BEFORE DomainPatient instantiation:")
+        for key, val in patient_args.items():
+            logger.debug(f"  {key}: TYPE={type(val)}, VALUE (first 50)={str(val)[:50]}")
+
+        try:
+            domain_patient = DomainPatient(**patient_args)
+            logger.debug(f"[to_domain] Successfully created DomainPatient: {domain_patient.id}")
+            return domain_patient
+        except ValidationError as e:
+            logger.error(f"[to_domain] Pydantic ValidationError during DomainPatient creation for model ID {self.id}: {e.errors(include_url=False)}", exc_info=True)
+            # Optionally, re-raise a more specific domain conversion error
+            raise PersistenceError(f"Failed to convert PatientModel to DomainPatient due to validation issues: {e.errors(include_url=False)}", original_exception=e) from e
+        except Exception as e:
+            logger.error(f"[to_domain] Unexpected error during DomainPatient creation for model ID {self.id}: {e}", exc_info=True)
+            raise PersistenceError(f"Unexpected error converting PatientModel to DomainPatient: {e}", original_exception=e) from e
 
     # AuditMixin fields (handled by the mixin)
     # audit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("audit_logs.id"), nullable=True, default_factory=uuid.uuid4)

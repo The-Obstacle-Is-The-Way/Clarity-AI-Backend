@@ -286,22 +286,15 @@ decryption methods for strings and dictionaries.
             logger.exception(f"Encryption failed: {e}")
             raise ValueError("Encryption operation failed.") from e
 
-    def decrypt(self, data: Union[str, bytes]) -> str:
-        """Decrypt data encrypted with the current or previous encryption key.
-        
-        Args:
-            data: Encrypted data as base64-encoded string/bytes with version prefix
-            
-        Returns:
-            str: Decrypted data
-            
-        Raises:
-            ValueError: If decryption fails
-            
-        Note:
-            This method handles keys gracefully, showing no PHI in error messages.
+    def decrypt(self, data: Union[str, bytes], context: Optional[Dict[str, Any]] = None) -> str:
+        """Decrypts data that was encrypted by this service.
+        Handles both string (version-prefixed, base64-encoded) and raw bytes input.
+        Always returns a UTF-8 decoded string.
         """
+        logger.debug(f"[BaseEncryptionService.decrypt] CALLED. Input data TYPE: {type(data)}, VALUE (first 50): {str(data)[:50]}") # DEBUG
+
         if not data:
+            logger.warning("Decrypt called with empty or None data.")
             return data
             
         try:
