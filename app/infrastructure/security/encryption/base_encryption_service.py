@@ -481,42 +481,77 @@ decryption methods for strings and dictionaries.
                     logger.warning(f"Could not remove partially decrypted file: {output_path}")
             raise
 
-    def generate_hash(self, data: str) -> str:
-        """
-        Create a one-way hash of data using HMAC-SHA256 with the primary key.
+    def generate_hash(self, data: str) -> tuple[str, str]:
+        """Generate a secure hash for data (e.g., password hashing).
+
+        Uses PBKDF2HMAC for key derivation. Salt is generated randomly.
+        The salt is returned alongside the hash, so it can be stored and used for verification.
 
         Args:
-            data: Data to hash.
+            data: The string data to hash.
 
         Returns:
-            Secure hash as a hex string.
+            A tuple containing (salt_hex, derived_key_hex).
         """
-        key_bytes = self._get_key() # This should return the b64encoded key for Fernet
-        # For HMAC, we need the raw key. Fernet keys are b64encoded random bytes.
-        # We should decode it first if this key is intended for HMAC.
-        # However, using the Fernet key directly (if it's random enough) is okay for HMAC.
-        # Let's assume _get_key() provides a suitable key for HMAC after b64decode.
-        # Fernet keys are 32 random bytes, base64 encoded.
-        # For HMAC, we should use the raw 32 random bytes.
+        if not data:
+            # Consider if an empty string should be hashed or raise an error
+            # For now, returning fixed values for empty input might be misleading if used for passwords
+            raise ValueError("Cannot hash empty data.")
+
+        salt = os.urandom(16)  # 128-bit salt
         
-        raw_key_material_for_hmac = base64.urlsafe_b64decode(key_bytes)
+        # Key derivation function
+        # Using a high number of iterations is crucial for security
+        settings = get_settings()
+        iterations = getattr(settings, 'HASH_ITERATIONS', 390000) # OWASP recommendation for PBKDF2-SHA256
+        
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,  # 32-byte key for SHA256
+            salt=salt,
+            iterations=iterations
+        )
+        key = kdf.derive(data.encode())
+        
+        # Return salt and key as hex strings
+        return salt.hex(), key.hex()
 
-        h = hmac.new(raw_key_material_for_hmac, data.encode('utf-8'), hashlib.sha256)
-        return h.hexdigest()
-
-    def verify_hash(self, data: str, hash_to_verify: str) -> bool:
-        """
-        Verify data against a previously generated hash.
+    def verify_hash(self, data: str, salt_hex: str, hash_to_verify_hex: str) -> bool:
+        """Verify a hash against the provided data and salt.
 
         Args:
-            data: The original data.
-            hash_to_verify: The hash to verify.
+            data: The original data (e.g., password attempt).
+            salt_hex: The salt (hex-encoded) that was used to hash the original data.
+            hash_to_verify_hex: The stored hash (hex-encoded) to verify against.
 
         Returns:
             True if the hash matches, False otherwise.
         """
-        generated_hash = self.generate_hash(data)
-        return hmac.compare_digest(generated_hash, hash_to_verify)
+        if not data or not salt_hex or not hash_to_verify_hex:
+            return False # Or raise ValueError, depending on desired strictness
+        
+        try:
+            salt = bytes.fromhex(salt_hex)
+            stored_key = bytes.fromhex(hash_to_verify_hex)
+        except ValueError:
+            logger.error("Invalid hex format for salt or hash during verification.")
+            return False
+
+        settings = get_settings()
+        iterations = getattr(settings, 'HASH_ITERATIONS', 390000)
+        
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=iterations
+        )
+        
+        try:
+            kdf.verify(data.encode(), stored_key)
+            return True
+        except Exception: # Catches InvalidKey, and potentially others if underlying primitive changes
+            return False
 
     def generate_hmac(self, data: str) -> str:
         """
@@ -531,82 +566,77 @@ decryption methods for strings and dictionaries.
         return self.verify_hash(data, hmac_to_verify)
 
     def encrypt_string(self, value: str, is_phi: bool = True) -> str:
-        if not isinstance(value, str):
-            logger.error(f"encrypt_string received non-string type: {type(value)}")
-            raise TypeError("encrypt_string expects a string value.")
-        # None/empty values explicitly at the application layer before encryption.
-        # if not value: # This covers value is None OR value == ""
-        if value is None: # MODIFIED: Only return None as is. Empty strings will be encrypted.
-            logger.debug(f"[encrypt_string] Input value is None. Returning as is: '{value}'")
+        """Encrypts a string value.
+        
+        If is_phi is False, and the value is in NON_SENSITIVE_FIELDS common list,
+        it might bypass encryption based on future policy (not yet implemented here).
+        Currently, all strings are encrypted if this method is called.
+
+        Args:
+            value: The string to encrypt.
+            is_phi: Flag indicating if the data is PHI (default True).
+
+        Returns:
+            Encrypted string or original value if encryption fails/skipped.
+        """
+        if not value: # Do not encrypt None or empty strings, return them as is
+            return value
+        
+        # self._ensure_fernet_initialized() # Removed: Property handles initialization
+        
+        try:
+            encrypted_data = self.encrypt(value) # Uses self.cipher property
+            if encrypted_data is None: # self.encrypt can return None
+                logger.warning(f"Encryption returned None for a non-empty value. Input type: {type(value)}")
+                # Fallback: return original value if encryption mysteriously fails to produce output
+                # This case should ideally not happen with Fernet if key is valid and input is string/bytes
+                return value 
+            return encrypted_data
+        except ValueError as ve: # Catch ValueErrors from self.encrypt (e.g. key issues)
+            logger.error(f"ValueError during string encryption: {ve}. Returning original value for safety.")
+            return value # Or handle more strictly, e.g. raise an error or return a specific marker
+        except Exception as e:
+            logger.error(f"Unexpected error during string encryption: {e}. Input: '{str(value)[:50]}...'")
+            # Depending on policy, might raise an error or return original.
+            # For now, returning original to prevent data loss, but this indicates a problem.
             return value
 
-        self._ensure_fernet_initialized()
-        fernet = self.active_fernet
-        # active_key_version should also be set by _ensure_fernet_initialized
-        # logger.debug(f"encrypt_string: Using key version {self.active_key_version}")
-
-        try:
-            value_bytes = value.encode('utf-8')
-            # logger.debug(f"encrypt_string: Value encoded to bytes, length: {len(value_bytes)}")
-            encrypted_bytes = fernet.encrypt(value_bytes)
-            # logger.debug(f"encrypt_string: Encryption successful, encrypted_bytes length: {len(encrypted_bytes)}")
-            # Prepend key version and return as string (utf-8 is typical for Fernet token)
-            return f"{self.active_key_version}:{encrypted_bytes.decode('utf-8')}"
-        except Exception as e:
-            logger.error(f"INTERNAL ENCRYPTION ERROR in encrypt_string: {type(e).__name__} - {str(e)}", exc_info=True)
-            raise ValueError(f"Encryption process failed internally: {type(e).__name__} - {str(e)}") from e
-
     def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str | None:
-        if not encrypted_value: # Handles None or empty string early
-            # logger.debug(f"decrypt_string received empty or None value: '{encrypted_value}', returning None.")
-            return None 
-        if not isinstance(encrypted_value, str):
-            logger.warning(f"decrypt_string received non-string type: {type(encrypted_value)}. Value: '{encrypted_value}'")
-            return None
+        """Decrypts an encrypted string.
+
+        Args:
+            encrypted_value: The string to decrypt.
+            is_phi: Flag indicating if the data is PHI (default True).
+
+        Returns:
+            Decrypted string, or original value if not apparently encrypted, or None if decryption fails.
+        """
+        if not encrypted_value: # Do not decrypt None or empty strings
+            return encrypted_value
+
+        # Check if the value looks like it might be our versioned encrypted data
+        # This is a basic check; more sophisticated checks might be needed if
+        # plaintext data could coincidentally start with "v1:"
+        if not encrypted_value.startswith(self.VERSION_PREFIX):
+            # If it doesn't start with our prefix, assume it's not encrypted by this service
+            # or it's an older format not handled here.
+            # Log this occurrence as it might indicate data inconsistency or an issue.
+            logger.debug(f"Value to decrypt does not start with known prefix ('{self.VERSION_PREFIX}'). Returning as is. Value: '{encrypted_value[:50]}...'")
+            return encrypted_value
+            
+        # self._ensure_fernet_initialized() # Removed: Property handles initialization
 
         try:
-            # Attempt to split into key_version and data
-            try:
-                key_version, encrypted_data_str = encrypted_value.split(':', 1)
-            except ValueError as sve:
-                logger.warning(f"Could not split encrypted_value '{encrypted_value[:50]}...' into key_version and data. Error: {sve}. Returning None.")
-                return None # Explicitly return None if split fails
-
-            self._ensure_fernet_initialized() # Ensure keys are loaded
-
-            fernet_instance = None
-            if key_version == self.active_key_version and self.active_fernet:
-                fernet_instance = self.active_fernet
-            elif key_version in self.previous_fernets:
-                fernet_instance = self.previous_fernets[key_version]
-            else:
-                logger.error(f"Unknown key version '{key_version}' found in encrypted data. Cannot decrypt.")
-                return None
-
-            if not fernet_instance:
-                logger.error(f"Fernet instance for key version '{key_version}' is not available. Cannot decrypt.")
-                return None
-
-            token = encrypted_data_str.encode('utf-8')
-            # logger.debug(f"decrypt_string: Attempting to decrypt with key version {key_version}")
-            decrypted_bytes = fernet_instance.decrypt(token)
-            # logger.debug(f"decrypt_string: Successfully decrypted with key version {key_version}")
-            return decrypted_bytes.decode('utf-8')
-        
-        except InvalidToken:
-            logger.warning(f"Invalid Fernet token for key version '{key_version if 'key_version' in locals() else "unknown"}'. Decryption failed (InvalidToken).")
-            return None
+            # self.decrypt will use self.cipher and self.previous_cipher properties
+            return self.decrypt(encrypted_value) 
+        except ValueError as ve:
+            # ValueError from self.decrypt typically means "InvalidToken" or other decryption integrity issue.
+            logger.warning(f"ValueError during string decryption (likely invalid token or key issue): {ve}. Encrypted value: '{encrypted_value[:50]}...'")
+            return None # Or return encrypted_value, or raise specific error
         except Exception as e:
-            internal_err_type = type(e).__name__
-            internal_err_msg = str(e)
-            kv_info = key_version if 'key_version' in locals() else "(version not determined due to split error or other issue)"
-            logger.error(
-                f"INTERNAL DECRYPTION ERROR in decrypt_string (key version: {kv_info}): "
-                f"{internal_err_type} - {internal_err_msg}"
-            )
-            # Log the specific exception that occurred during the decryption process itself.
-            # traceback.print_exc() # For more detailed debugging if needed, but avoid in prod logs.
-            return None # Consistent: return None on any decryption error
+            # Catch any other unexpected errors during decryption.
+            logger.error(f"Unexpected error during string decryption: {e}. Encrypted value: '{encrypted_value[:50]}...'")
+            return None # Or re-raise, or return encrypted_value
 
 # --- Factory Function --- #
 

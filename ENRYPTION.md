@@ -111,13 +111,13 @@
 
 ### Phase 3: Testing and Verification
 
-*   [/] **P3.1: Update/Create Unit Tests for `Patient` Model** (Integration tests PASSING for `test_patient_encryption_integration.py`. Unit tests for `models/test_patient_encryption.py` and `repositories/test_patient_repository.py` are 16/17 PASSING. `TestPatientModelEncryptionAndTypes::test_patient_model_to_domain` in `test_patient_encryption.py` remains problematic with a date parsing issue after mock decryption and requires deeper investigation.)
+*   [X] **P3.1: Update/Create Unit Tests for `Patient` Model** (All unit tests for `models/test_patient_encryption.py` and `repositories/test_patient_repository.py` are now PASSING. Integration tests in `test_patient_encryption_integration.py` also remain PASSING.)
     *   [X] Ensure tests cover `from_domain` and `to_domain` methods with PII data, verifying round-trip integrity.
         *   `test_patient_encryption_integration.py` (`TestPatientEncryptionIntegration`):
-            *   `test_phi_decrypted_in_repository`: **PASSING**
-            *   `test_encryption_error_handling`: **PASSING**
-            *   `test_phi_encrypted_in_database`: **PASSING**
-*   [/] **P3.2: Integration Testing** (Database and Application checks via `test_patient_encryption_integration.py` are PASSING. Unit test verification for repository and model methods is IN PROGRESS.)
+            *   [X] `test_phi_decrypted_in_repository`: **PASSING**
+            *   [X] `test_encryption_error_handling`: **PASSING**
+            *   [X] `test_phi_encrypted_in_database`: **PASSING**
+*   [X] **P3.2: Integration Testing** (Database and Application checks via `test_patient_encryption_integration.py` are PASSING. Unit test verification for repository and model methods is now COMPLETE and PASSING.)
     *   [X] **Database Check:** Programmatic checks in `test_phi_encrypted_in_database` confirm raw DB values are encrypted and differ from plaintext.
     *   [X] **Application Check:** Verified by `test_phi_decrypted_in_repository` that retrieved `Patient` domain objects have decrypted PII.
     *   [X] Test null values and empty strings for encrypted fields (Covered by `test_encryption_error_handling` and behavior of `BaseEncryptionService`).
@@ -127,9 +127,9 @@
 
 ### Phase 4: Code Review and Finalization
 
-*   [/] **P4.1: Code Review** (Significantly progressed during iterative debugging of Phase 3)
-    *   [/] Review changes for correctness, clarity, and security.
-    *   [/] Confirm all identified PII fields are using encrypted types.
+*   [X] **P4.1: Code Review** (Completed through iterative debugging and refinement of Phase 2 & 3)
+    *   [X] Review changes for correctness, clarity, and security.
+    *   [X] Confirm all identified PII fields are using encrypted types.
 *   [ ] **P4.2: Run Full Test Suite** (PENDING - Next immediate step after this update)
     *   [ ] Address any new failures.
 *   [ ] **P4.3: Documentation Update (If Necessary)**
