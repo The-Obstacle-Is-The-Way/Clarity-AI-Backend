@@ -4,9 +4,10 @@ Test suite for database PHI protection mechanisms.
 This validates that database interactions properly protect PHI per HIPAA requirements.
 """
 
-import datetime
+# import datetime # Ensure this line is removed
 from unittest.mock import MagicMock, patch, AsyncMock
 import uuid
+from datetime import datetime, timezone # This line should correctly define 'datetime' as the class
 
 import pytest
 from pydantic import ValidationError
@@ -51,6 +52,8 @@ try:
     # AsyncSQLAlchemyUnitOfWork is now imported globally
     # from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import AsyncSQLAlchemyUnitOfWork as UnitOfWork # Keep alias for try block if needed
     from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
+    from app.domain.value_objects.address import Address as DomainAddress
+    from app.domain.value_objects.emergency_contact import EmergencyContact as DomainEmergencyContact
 
 except ImportError:
     # This block is for environments where full app components might not be available.
@@ -169,21 +172,48 @@ class TestDBPHIProtection:
         uow = unit_of_work # Corrected: fixture is already awaited by pytest
         
         patient_id = uuid.uuid4()
+
+        # Create a valid emergency contact
+        emergency_contact_address = DomainAddress(
+            street="123 Emergency St",
+            city="Crisis City",
+            state="FL",
+            zip_code="33333"
+        )
+        emergency_contact = DomainEmergencyContact(
+            name="Jane Emergency",
+            relationship="Spouse",
+            phone="555-019-9123",
+            email="jane.emergency@example.com",
+            address=emergency_contact_address
+        )
+
+        # Create patient with all expected fields
         original_patient = DomainPatient(
             id=patient_id,
             first_name="SensitiveName",
             last_name="SensitiveLastName",
             email="sensitive.email@example.com",
-            phone_number="555-0101",
+            phone="555-010-0123",
             date_of_birth="1990-05-15",
-            medical_record_number_lve="MRN123_SENSITIVE",
-            social_security_number_lve="999-00-1111"
-            # Ensure all other required fields for DomainPatient are present if any
+            medical_record_number="MRN123_SENSITIVE",
+            ssn="999-00-1111",
+            address={
+                "street": "123 Main St",
+                "city": "Anytown",
+                "state": "CA",
+                "zip_code": "90210",
+                "country": "USA"
+            },
+            emergency_contact=emergency_contact,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            is_active=True
         )
 
         try:
             async with uow: # Wrap operations in UoW context
-                await uow.patients.create(original_patient, context=admin_context)
+                await uow.patients.create(original_patient)
                 await uow.commit()
         except PersistenceError as e:
             print(f"Caught PersistenceError: {e}")
@@ -215,8 +245,8 @@ class TestDBPHIProtection:
         assert retrieved_patient_domain.email == "sensitive.email@example.com"
         # Date of birth is converted to date object by Pydantic
         assert retrieved_patient_domain.date_of_birth == datetime.date(1990, 5, 15)
-        assert retrieved_patient_domain.medical_record_number_lve == "MRN123_SENSITIVE"
-        assert retrieved_patient_domain.social_security_number_lve == "999-00-1111"
+        assert retrieved_patient_domain.medical_record_number == "MRN123_SENSITIVE"
+        assert retrieved_patient_domain.ssn == "999-00-1111"
 
         # Further checks could involve directly querying the DB (if possible with test setup)
         # to see the encrypted form, but that's harder with TypeDecorators.
@@ -232,10 +262,10 @@ class TestDBPHIProtection:
             first_name="RBACTest",
             last_name="RBACTestLastName",
             email="rbac.test@example.com",
-            phone_number="555-0102",
+            phone="555-0102",
             date_of_birth="2000-01-01",
-            medical_record_number_lve="MRN123_RBACTest",
-            social_security_number_lve="123-45-6789"
+            medical_record_number="MRN123_RBACTest",
+            ssn="123-45-6789"
         )
 
         async with uow:
@@ -251,8 +281,8 @@ class TestDBPHIProtection:
         assert retrieved_by_admin.last_name == "RBACTestLastName"
         assert retrieved_by_admin.email == "rbac.test@example.com"
         assert retrieved_by_admin.date_of_birth == datetime.date(2000, 1, 1)
-        assert retrieved_by_admin.medical_record_number_lve == "MRN123_RBACTest"
-        assert retrieved_by_admin.social_security_number_lve == "123-45-6789"
+        assert retrieved_by_admin.medical_record_number == "MRN123_RBACTest"
+        assert retrieved_by_admin.ssn == "123-45-6789"
 
         # Simulate patient access (potentially limited if repo had role-awareness)
         # For now, ConcretePatientRepository doesn't have role-based field filtering internally
@@ -264,8 +294,8 @@ class TestDBPHIProtection:
         assert retrieved_by_patient.last_name == "RBACTestLastName"
         assert retrieved_by_patient.email == "rbac.test@example.com"
         assert retrieved_by_patient.date_of_birth == datetime.date(2000, 1, 1)
-        assert retrieved_by_patient.medical_record_number_lve == "MRN123_RBACTest"
-        assert retrieved_by_patient.social_security_number_lve == "123-45-6789"
+        assert retrieved_by_patient.medical_record_number == "MRN123_RBACTest"
+        assert retrieved_by_patient.ssn == "123-45-6789"
         
         # Simulate limited role access (e.g., researcher)
         # This would typically involve a different repository or service layer
@@ -284,20 +314,20 @@ class TestDBPHIProtection:
             first_name="PatientOne",
             last_name="PatientOneLastName",
             email="patient1@example.com",
-            phone_number="555-0103",
+            phone="555-0103",
             date_of_birth="1990-01-01",
-            medical_record_number_lve="MRN123_PatientOne",
-            social_security_number_lve="123-45-6789"
+            medical_record_number="MRN123_PatientOne",
+            ssn="123-45-6789"
         )
         patient2 = DomainPatient(
             id=patient2_id,
             first_name="PatientTwo",
             last_name="PatientTwoLastName",
             email="patient2@example.com",
-            phone_number="555-0104",
+            phone="555-0104",
             date_of_birth="1990-01-01",
-            medical_record_number_lve="MRN123_PatientTwo",
-            social_security_number_lve="123-45-6789"
+            medical_record_number="MRN123_PatientTwo",
+            ssn="123-45-6789"
         )
 
         async with uow:
@@ -312,8 +342,8 @@ class TestDBPHIProtection:
         assert retrieved_patient1.last_name == "PatientOneLastName"
         assert retrieved_patient1.email == "patient1@example.com"
         assert retrieved_patient1.date_of_birth == datetime.date(1990, 1, 1)
-        assert retrieved_patient1.medical_record_number_lve == "MRN123_PatientOne"
-        assert retrieved_patient1.social_security_number_lve == "123-45-6789"
+        assert retrieved_patient1.medical_record_number == "MRN123_PatientOne"
+        assert retrieved_patient1.ssn == "123-45-6789"
 
         # Data isolation is usually enforced by service layer based on authenticated user.
         # The repository itself might not know "who" is asking.
@@ -330,10 +360,10 @@ class TestDBPHIProtection:
             first_name="Audit",
             last_name="Logged",
             email="audit.logged@example.com",
-            phone_number="555-0105",
+            phone="555-0105",
             date_of_birth="2000-01-01",
-            medical_record_number_lve="MRN123_AuditLogged",
-            social_security_number_lve="999-00-1111"
+            medical_record_number="MRN123_AuditLogged",
+            ssn="999-00-1111"
         )
         
         async with uow:
@@ -372,8 +402,8 @@ class TestDBPHIProtection:
             last_name="Doe",
             email="john.doe@example.com",
             date_of_birth="1988-08-08",
-            phone_number="555-0106",
-            social_security_number_lve="123-45-6789" # Example PHI
+            phone="555-0106",
+            ssn="123-45-6789" # Example PHI
         )
         async with uow:
             await uow.patients.create(test_patient)
@@ -384,14 +414,14 @@ class TestDBPHIProtection:
         admin_patient_view = await admin_repo.get_by_id(patient_id)
         assert admin_patient_view is not None
         assert admin_patient_view.first_name == "John"
-        assert admin_patient_view.social_security_number_lve == "123-45-6789"
+        assert admin_patient_view.ssn == "123-45-6789"
 
         # Patient access (should see their own data, potentially filtered if repo was role-aware)
         patient_repo = uow.patients
         patient_self_view = await patient_repo.get_by_id(patient_id)
         assert patient_self_view is not None
         assert patient_self_view.first_name == "John"
-        assert patient_self_view.social_security_number_lve == "123-45-6789"
+        assert patient_self_view.ssn == "123-45-6789"
         
         # A "researcher" role might see de-identified or limited data.
         # This would require a different repository or service method.
@@ -413,7 +443,7 @@ class TestDBPHIProtection:
                         first_name="Error", 
                         last_name="Test", 
                         date_of_birth="2000-01-01",
-                        phone_number="555-0107"
+                        phone="555-0107"
                     )
                 )
                 # The commit should not be reached if create raises an error.
