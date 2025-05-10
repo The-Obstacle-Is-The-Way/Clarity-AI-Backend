@@ -333,9 +333,9 @@ class TestPatientRepository:
         assert entity is None
 
     @pytest.mark.asyncio
-    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient', new_callable=MagicMock) # Mock Patient class
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient.from_domain', new_callable=AsyncMock) # Corrected patch target
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
-    async def test_create_patient(self, mock_patient_module_esi: MagicMock, MockPatientClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict, mock_encryption_service: MagicMock):
+    async def test_create_patient(self, mock_patient_module_esi: MagicMock, mock_patient_from_domain: AsyncMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict, mock_encryption_service: MagicMock):
         """Test creating a new patient, ensuring data is encrypted and returned correctly."""
         # The primary interaction should be with mock_esi for TypeDecorator behavior.
         mock_patient_module_esi.encrypt = mock_encryption_service.encrypt
@@ -345,7 +345,8 @@ class TestPatientRepository:
         async def mock_to_domain_on_created():
             return PatientEntity(**sample_patient_data)
         mock_created_model_instance.to_domain = AsyncMock(side_effect=mock_to_domain_on_created)
-        MockPatientClass.from_domain = AsyncMock(return_value=mock_created_model_instance)
+        # mock_patient_from_domain is now the AsyncMock for PatientModel.from_domain
+        mock_patient_from_domain.return_value = mock_created_model_instance 
         
         async def mock_refresh(target_model): pass 
         mock_db_session.refresh = AsyncMock(side_effect=mock_refresh)
@@ -353,7 +354,7 @@ class TestPatientRepository:
         patient_to_create = PatientEntity(**sample_patient_data)
         created_patient_entity = await patient_repository.create(patient_to_create)
 
-        MockPatientClass.from_domain.assert_awaited_once_with(patient_to_create)
+        mock_patient_from_domain.assert_awaited_once_with(patient_to_create)
         mock_db_session.add.assert_called_once_with(mock_created_model_instance)
         mock_db_session.flush.assert_awaited_once()
         mock_db_session.refresh.assert_awaited_once_with(mock_created_model_instance)
