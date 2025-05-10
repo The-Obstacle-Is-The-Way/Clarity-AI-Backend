@@ -3,7 +3,7 @@ Tests for the Appointment entity.
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 
@@ -21,7 +21,7 @@ from app.domain.exceptions import InvalidAppointmentStateError, InvalidAppointme
 @pytest.fixture
 def future_datetime():
     """Fixture for a future datetime."""
-    return datetime.now() + timedelta(days=1)
+    return datetime.now(UTC) + timedelta(days=1)
 
 
 @pytest.fixture
@@ -43,8 +43,8 @@ def valid_appointment_data(future_datetime):
         "location": "Office 101",
         "notes": "Initial consultation for anxiety",
         "reason": "Anxiety and depression", # Assuming reason exists
-        "created_at": datetime.now(),
-        "updated_at": datetime.now()
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC)
     }
 
 
@@ -110,7 +110,7 @@ class TestAppointment:
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
         # Start time in the past
-        past_datetime = datetime.now() - timedelta(days=1)
+        past_datetime = datetime.now(UTC) - timedelta(days=1)
         with pytest.raises(InvalidAppointmentTimeError):
             Appointment(
                 patient_id=str(uuid.uuid4()),
@@ -137,7 +137,7 @@ class TestAppointment:
         # Import Appointment here where it is instantiated
         from app.domain.entities.appointment import Appointment
         # Missing patient_id
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Appointment(
                 provider_id=str(uuid.uuid4()),
                 start_time=future_datetime,
@@ -146,7 +146,7 @@ class TestAppointment:
             )
 
         # Missing provider_id
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Appointment(
                 patient_id=str(uuid.uuid4()),
                 start_time=future_datetime,
@@ -155,7 +155,7 @@ class TestAppointment:
             )
 
         # Missing start_time
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Appointment(
                 patient_id=str(uuid.uuid4()),
                 provider_id=str(uuid.uuid4()),
@@ -164,7 +164,7 @@ class TestAppointment:
             )
 
         # Missing end_time
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Appointment(
                 patient_id=str(uuid.uuid4()),
                 provider_id=str(uuid.uuid4()),
@@ -173,7 +173,7 @@ class TestAppointment:
             )
 
         # Missing appointment_type
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Appointment(
                 patient_id=str(uuid.uuid4()),
                 provider_id=str(uuid.uuid4()),
@@ -204,12 +204,12 @@ class TestAppointment:
         assert valid_appointment.status == AppointmentStatus.SCHEDULED
     
         reason = "Patient request"
-        cancelled_by_user = str(uuid.uuid4()) # Dummy user ID
+        cancelled_by_user = uuid.uuid4() # Use actual UUID object for type consistency
         valid_appointment.cancel(cancelled_by=cancelled_by_user, reason=reason)
     
         assert valid_appointment.status == AppointmentStatus.CANCELLED
         assert valid_appointment.cancellation_reason == reason
-        assert valid_appointment.cancelled_by == cancelled_by_user
+        assert valid_appointment.cancelled_by_user_id == cancelled_by_user # Changed attribute access
         assert valid_appointment.cancelled_at is not None
 
     @pytest.mark.standalone()

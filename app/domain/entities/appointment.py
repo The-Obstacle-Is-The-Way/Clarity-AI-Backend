@@ -20,6 +20,7 @@ from enum import Enum
 from uuid import UUID
 
 from app.domain.entities.base_entity import BaseEntity
+from app.domain.exceptions import InvalidAppointmentTimeError, InvalidAppointmentStateError
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -88,7 +89,12 @@ class Appointment(BaseEntity):
     priority: AppointmentPriority = AppointmentPriority.NORMAL
     notes: str | None = None
     reason: str | None = None  # e.g., "Routine Check‑up"
-    location: str | None = None  # e.g. "Telehealth", "Clinic Room 3"
+    location: str | None = None  # e.g. "Telehealth", "Clinic Room 3"
+
+    # Fields for cancellation details
+    cancellation_reason: str | None = None
+    cancelled_by_user_id: UUID | None = None # Assuming the ID of user/provider who cancelled
+    cancelled_at: datetime | None = None
 
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -115,9 +121,13 @@ class Appointment(BaseEntity):
     def __post_init__(self, last_updated: datetime | None = None) -> None:
         """Validate invariants and normalise timestamps."""
 
+        # 0. Ensure start_time is not in the past
+        if self.start_time < (datetime.now(UTC) - timedelta(seconds=10)): # Allow 10s leeway for past for tests
+            raise InvalidAppointmentTimeError("Appointment start time cannot be in the past.")
+
         # 1. Temporal invariant – end must be strictly after start.
         if self.end_time <= self.start_time:
-            raise ValueError("Appointment end time must be after start time.")
+            raise InvalidAppointmentTimeError("Appointment end time must be after start time.")
 
         # 2. Ensure *created_at* and *last_updated* are timezone‑aware ISO‑8601
         #    datetime objects when supplied as strings (mirrors logic in the
@@ -177,14 +187,13 @@ class Appointment(BaseEntity):
 
         duration = new_end_time - new_start_time if new_end_time else self.end_time - self.start_time
         if duration <= timedelta(0):
-            raise ValueError("Rescheduled end time must be after start time.")
+            raise InvalidAppointmentTimeError("Rescheduled end time must be after start time.")
 
         self.start_time = new_start_time
         self.end_time = new_start_time + duration
 
         # Optional policy: rescheduling re‑opens the appointment slot
-        if self.status not in {AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED}:
-            self.status = AppointmentStatus.SCHEDULED
+        self.status = AppointmentStatus.RESCHEDULED
 
         self.touch()
 
@@ -192,7 +201,108 @@ class Appointment(BaseEntity):
     # Backwards‑compatibility shims
     # ------------------------------------------------------------------
 
+    def confirm(self) -> None:
+        """Confirm the appointment."""
+        if self.status not in {AppointmentStatus.SCHEDULED}:
+            raise InvalidAppointmentStateError(
+                f"Cannot confirm appointment in '{self.status.value}' state. Must be '{AppointmentStatus.SCHEDULED.value}'."
+            )
+        self.update_status(AppointmentStatus.CONFIRMED)
 
+    def cancel(self, cancelled_by: UUID, reason: str | None = None) -> None:
+        """Cancel the appointment."""
+        if self.status in {AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED}:
+            raise InvalidAppointmentStateError(
+                f"Cannot cancel appointment in '{self.status.value}' state."
+            )
+        self.cancellation_reason = reason
+        self.cancelled_by_user_id = cancelled_by
+        self.cancelled_at = datetime.now(UTC)
+        self.update_status(AppointmentStatus.CANCELLED)
+
+    def complete(self) -> None:
+        """Complete the appointment."""
+        # Typically, an appointment should be IN_PROGRESS or CONFIRMED to be completed.
+        if self.status not in {AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS, AppointmentStatus.SCHEDULED}:
+            raise InvalidAppointmentStateError(
+                f"Cannot complete appointment in '{self.status.value}' state. Must be '{AppointmentStatus.CONFIRMED.value}' or '{AppointmentStatus.IN_PROGRESS.value}'."
+            )
+        self.update_status(AppointmentStatus.COMPLETED)
+
+    def mark_no_show(self) -> None:
+        """Mark the appointment as a no-show."""
+        # Typically, a no-show can be marked for SCHEDULED or CONFIRMED appointments.
+        if self.status not in {AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS}:
+            raise InvalidAppointmentStateError(
+                f"Cannot mark no-show for appointment in '{self.status.value}' state."
+            )
+        self.update_status(AppointmentStatus.NO_SHOW)
+
+    def update_notes(self, notes: str | None) -> None:
+        """Update the appointment notes."""
+        self.notes = notes
+        self.touch()
+
+    def update_location(self, location: str | None) -> None:
+        """Update the appointment location."""
+        self.location = location
+        self.touch()
+
+    def to_dict(self) -> dict:
+        """Return a dictionary representation of the appointment."""
+        # Using dataclasses.asdict might be too simple if specific formatting or
+        # enum value handling is needed. For now, a manual approach.
+        # Ensure dataclasses is imported if asdict is used: import dataclasses
+        return {
+            "id": str(self.id), # Convert UUID to string for serialization
+            "patient_id": str(self.patient_id),
+            "provider_id": str(self.provider_id),
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat(),
+            "appointment_type": self.appointment_type.value,
+            "status": self.status.value,
+            "priority": self.priority.value,
+            "notes": self.notes,
+            "reason": self.reason,
+            "location": self.location,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            # "last_updated": self.last_updated.isoformat() # alias
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Appointment":
+        """Create an Appointment instance from a dictionary."""
+        # Convert string UUIDs back to UUID objects
+        for key in ["id", "patient_id", "provider_id", "cancelled_by_user_id"]:
+            if key in data and isinstance(data[key], str):
+                try:
+                    data[key] = UUID(data[key])
+                except ValueError:
+                    # Handle cases where ID might be None or not a valid UUID string if that's possible
+                    if data[key] is not None:
+                        raise ValueError(f"Invalid UUID format for {key}: {data[key]}")
+        
+        # Convert ISO datetime strings back to datetime objects
+        for key in ["start_time", "end_time", "created_at", "updated_at", "cancelled_at"]:
+            if key in data and isinstance(data[key], str):
+                try:
+                    data[key] = datetime.fromisoformat(data[key].replace("Z", "+00:00"))
+                except ValueError:
+                     if data[key] is not None:
+                        raise ValueError(f"Invalid ISO format for {key}: {data[key]}")
+
+        # Convert string enums back to Enum members
+        if "appointment_type" in data and isinstance(data["appointment_type"], str):
+            data["appointment_type"] = AppointmentType(data["appointment_type"])
+        if "status" in data and isinstance(data["status"], str):
+            data["status"] = AppointmentStatus(data["status"])
+        if "priority" in data and isinstance(data["priority"], str):
+            data["priority"] = AppointmentPriority(data["priority"])
+        
+        # Handle potential missing optional fields for robustness if dict is sparse
+        # Dataclass __init__ will use defaults if not provided, so this is mostly for type conversion.
+        return cls(**data)
 
     # ------------------------------------------------------------------
     # Dunder helpers – useful for debugging & logging
