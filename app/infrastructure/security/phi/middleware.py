@@ -239,9 +239,20 @@ class PHIMiddleware(BaseHTTPMiddleware):
             return response
             
         except json.JSONDecodeError:
-            # Not a valid JSON response, return as is
-            self._add_security_headers(response)
-            return response
+            # Not a valid JSON response.
+            # Return a new Response with the original (non-JSON) body, status, and headers.
+            logger.debug(
+                "Response from %s %s was not valid JSON. Returning as is.",
+                request.method,
+                current_path
+            )
+            new_response = Response( # Create a new Response object
+                content=response_body, # Use the original body bytes
+                status_code=response.status_code,
+                headers=dict(response.headers)
+            )
+            self._add_security_headers(new_response) # Add headers to the new response
+            return new_response # Return the new response
         except Exception as e:
             # Log the error and return the original response
             logger.error(

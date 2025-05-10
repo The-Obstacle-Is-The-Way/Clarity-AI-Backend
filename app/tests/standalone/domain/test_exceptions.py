@@ -60,7 +60,7 @@ class TestMentalLLaMAExceptions:
         assert exception.message == message
         assert exception.endpoint == endpoint
         assert exception.details == details
-        assert str(exception) == message
+        assert str(exception) == f"{message} (endpoint: {endpoint})"
 
     @pytest.mark.standalone()
     def test_connection_error_without_details(self):
@@ -74,7 +74,7 @@ class TestMentalLLaMAExceptions:
         assert exception.message == message
         assert exception.endpoint == endpoint
         assert exception.details == {}
-        assert str(exception) == message
+        assert str(exception) == f"{message} (endpoint: {endpoint})"
 
     @pytest.mark.standalone()
     def test_authentication_error(self):
