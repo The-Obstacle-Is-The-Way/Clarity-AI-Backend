@@ -320,14 +320,13 @@ class PatientRepository:
     async def get_by_email(self, email: str) -> PatientEntity | None:
         """Retrieve a patient by their email address."""
         try:
-            stmt = select(PatientModel).where(PatientModel._email == email)
+            stmt = select(PatientModel).where(PatientModel.contact_info["email"].astext == email)
             result = await self.db_session.execute(stmt)
-            model = result.scalars().first()
-            if not model:
+            patient_model = result.scalars().first()
+            if not patient_model:
                 return None
             # Convert to domain
-            import inspect
-            entity = self._convert_to_domain(model)
+            entity = self._convert_to_domain(patient_model)
             if inspect.isawaitable(entity):
                 return await entity
             return entity

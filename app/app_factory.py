@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 import sentry_sdk
 from fastapi import FastAPI, Request, HTTPException, status as http_status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from redis.asyncio import ConnectionPool, Redis
 from redis.exceptions import RedisError
 from sqlalchemy.exc import SQLAlchemyError
@@ -405,4 +406,37 @@ def create_application(
         )
         
     logger.info("FastAPI application creation complete.")
+
+    # Dependency overrides (primarily for testing)
+    if app_settings.ENVIRONMENT == "test":
+        # Example: app_instance.dependency_overrides[some_dependency] = mock_dependency
+        logger.info("TEST_ENV_OVERRIDES: Test environment detected, dependency overrides can be applied here if needed globally.")
+
+    # Middleware to copy app_state essentials to request_state
+    # THIS IS THE CRUCIAL MIDDLEWARE TO ENSURE DB SESSIONS ARE AVAILABLE TO REQUESTS
+    async def set_essential_app_state_on_request_middleware(request: Request, call_next):
+        # Directly access and set specific, known attributes from app_instance.state
+        # This avoids issues with how Starlette's State object might be structured internally (e.g. via ._state)
+        if hasattr(app_instance.state, 'actual_session_factory'):
+            request.state.actual_session_factory = app_instance.state.actual_session_factory
+            # logger.debug(f"MIDDLEWARE (set_essential): Copied 'actual_session_factory' to request.state for {request.url.path}")
+        else:
+            logger.error(f"MIDDLEWARE (set_essential): 'actual_session_factory' NOT FOUND on app.state for {request.url.path}. DB sessions will fail.")
+           
+        if hasattr(app_instance.state, 'db_engine'):
+            request.state.db_engine = app_instance.state.db_engine
+            # logger.debug(f"MIDDLEWARE (set_essential): Copied 'db_engine' to request.state for {request.url.path}")
+        else:
+            logger.error(f"MIDDLEWARE (set_essential): 'db_engine' NOT FOUND on app.state for {request.url.path}.")
+       
+        if hasattr(app_instance.state, 'settings'): # Also copy settings for convenience
+            request.state.settings = app_instance.state.settings
+        else:
+            logger.warning(f"MIDDLEWARE (set_essential): 'settings' NOT FOUND on app.state for {request.url.path}.")
+
+        response = await call_next(request)
+        return response
+    app_instance.add_middleware(BaseHTTPMiddleware, dispatch=set_essential_app_state_on_request_middleware)
+    logger.info("Essential app state to request state middleware added.")
+
     return app_instance
