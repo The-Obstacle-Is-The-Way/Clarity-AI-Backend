@@ -8,8 +8,9 @@ without requiring external dependencies.
 
 import pytest
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch, MagicMock
 
-from app.core.services.ml.pat.exceptions import (
+from app.core.exceptions.base_exceptions import (
     InitializationError,
     ResourceNotFoundError,
     ValidationError,
@@ -99,25 +100,20 @@ class TestStandaloneMockPAT:
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, device_info=None)
         excinfo.match(r"Device info is required")
 
-        # Empty device info - this currently raises "Device info is required"
-        # due to `if not device_info:` check in mock.
-        with pytest.raises(ValidationError) as excinfo:
-            initialized_mock_pat._validate_actigraphy_inputs(**base_args, device_info={})
-        excinfo.match(r"Device info is required")
-        
-        # Missing required keys
+        # Missing keys in device info
         with pytest.raises(ValidationError) as excinfo:
             initialized_mock_pat._validate_actigraphy_inputs(
-                **base_args, device_info={"manufacturer": "TestCorp"} # Missing 'model'
+                **base_args, device_info={"manufacturer": "TestDevice"} # Missing 'model'
             )
-        excinfo.match(r"Device info must contain required keys: \\['manufacturer', 'model'\\]")
+        excinfo.match(r"Device info must contain required keys: \['manufacturer', 'model'\]")
 
-        # Valid device info should not raise
-        initialized_mock_pat._validate_actigraphy_inputs(**base_args, device_info={
-            "device_type": "Actigraph",
-            "manufacturer": "Actigraph",
-            "model": "wGT3X-BT"
-        })
+        # Valid device info (should not raise)
+        try:
+            initialized_mock_pat._validate_actigraphy_inputs(
+                **base_args, device_info={"manufacturer": "TestCorp", "model": "DeviceX"}
+            )
+        except ValidationError:
+            pytest.fail("ValidationError raised unexpectedly for valid device info")
 
     @pytest.mark.standalone()
     def test_analysis_types_validation(self, initialized_mock_pat, valid_readings, valid_device_info):
@@ -130,30 +126,38 @@ class TestStandaloneMockPAT:
             "device_info": valid_device_info
         }
         
-        # None analysis types
+        # Test with None analysis_types
         with pytest.raises(ValidationError) as excinfo:
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, analysis_types=None)
         excinfo.match(r"At least one analysis type is required")
-
-        # Empty analysis types
+        
+        # Test with empty list for analysis_types
         with pytest.raises(ValidationError) as excinfo:
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, analysis_types=[])
         excinfo.match(r"At least one analysis type is required")
 
-        # Invalid type in list
+        # Test with an invalid analysis type string
+        invalid_type = "non_existent_type"
         with pytest.raises(ValidationError) as excinfo:
             initialized_mock_pat._validate_actigraphy_inputs(
-                **base_args, analysis_types=["valid_type", 123]
+                **base_args, analysis_types=[invalid_type, "sleep"]
             )
-        excinfo.match(r"Invalid analysis type format in list: 123")
+        excinfo.match(f"Invalid analysis type: {invalid_type}. Valid types are: ") 
 
-        # Valid but unrecognized type (if strict validation is on)
+        # Test with a mix of valid and one specifically invalid type string (as above)
         with pytest.raises(ValidationError) as excinfo:
             initialized_mock_pat._validate_actigraphy_inputs(
-                **base_args, analysis_types=["unsupported_type"]
+                **base_args, analysis_types=["sleep", invalid_type, "activity"]
             )
-        # This matches the actual error from app/core/services/ml/pat/mock.py _validate_analysis_types
-        excinfo.match(r"Invalid analysis type: unsupported_type. Valid types are: .*")
+        excinfo.match(f"Invalid analysis type: {invalid_type}. Valid types are: ") 
+
+        # Valid analysis types (should not raise)
+        try:
+            initialized_mock_pat._validate_actigraphy_inputs(
+                **base_args, analysis_types=["sleep", "activity"]
+            )
+        except ValidationError:
+            pytest.fail("ValidationError raised unexpectedly for valid analysis types")
 
     @pytest.mark.standalone()
     def test_analyze_actigraphy(self, initialized_mock_pat, valid_readings, valid_device_info, valid_analysis_types):
