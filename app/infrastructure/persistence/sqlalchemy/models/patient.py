@@ -363,9 +363,21 @@ class Patient(Base, TimestampMixin, AuditMixin):
         """
         logger.debug(f"[to_domain] Starting conversion for model patient ID: {self.id}")
         
+        def _decode_if_bytes(value: Any) -> str | None:
+            if value is None:
+                return None
+            if isinstance(value, bytes): # EncodableBytes is a subclass of bytes
+                try:
+                    return value.decode('utf-8')
+                except UnicodeDecodeError:
+                    logger.warning(f"Failed to decode bytes to UTF-8 string for patient {self.id}. Value: {value[:50]}...")
+                    return str(value) # Fallback, might be lossy or noisy
+            # If not None and not bytes, ensure it's a string for Pydantic
+            return str(value)
+
         # Access fields directly. TypeDecorators will handle decryption and deserialization.
-        first_name = self._first_name
-        last_name = self._last_name
+        first_name = _decode_if_bytes(self._first_name)
+        last_name = _decode_if_bytes(self._last_name)
         from datetime import datetime
         # Parse date_of_birth after decryption by TypeDecorator
         if self._date_of_birth: # _date_of_birth is now the decrypted string from EncryptedString
@@ -382,22 +394,23 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 date_of_birth = None
         else:
             date_of_birth = None
-        email = self._email
-        phone = self._phone_number
-        ssn = self._ssn
-        medical_record_number = self._mrn
-        gender = self._gender
-        insurance_provider = self._insurance_provider
+        email = _decode_if_bytes(self._email)
+        phone = _decode_if_bytes(self._phone_number)
+        ssn = _decode_if_bytes(self._ssn)
+        medical_record_number = _decode_if_bytes(self._mrn)
+        gender_value = self._gender # This might be an Enum instance or string
+        gender = str(gender_value) if gender_value is not None else None # Ensure string for Pydantic model
+        insurance_provider = _decode_if_bytes(self._insurance_provider)
 
         logger.debug(f"[to_domain] Accessed simple PII for {self.id}")
 
         # Access address components directly
-        address_line1 = self._address_line1
-        address_line2 = self._address_line2
-        city = self._city
-        state = self._state
-        zip_code = self._zip_code
-        country = self._country
+        address_line1 = _decode_if_bytes(self._address_line1)
+        address_line2 = _decode_if_bytes(self._address_line2)
+        city = _decode_if_bytes(self._city)
+        state = _decode_if_bytes(self._state)
+        zip_code = _decode_if_bytes(self._zip_code)
+        country = _decode_if_bytes(self._country)
         logger.debug(f"[to_domain] Accessed address components for {self.id}")
 
         # Access complex fields directly. EncryptedJSON handles decryption & deserialization.
@@ -410,21 +423,34 @@ class Patient(Base, TimestampMixin, AuditMixin):
         preferences_dict = self._preferences
         
         # Parse list-like fields from their string representation after decryption
-        medical_history_list_str = self._medical_history
-        medications_list_str = self._medications
-        allergies_list_str = self._allergies
+        medical_history_list_str = _decode_if_bytes(self._medical_history)
+        medications_list_str = _decode_if_bytes(self._medications)
+        allergies_list_str = _decode_if_bytes(self._allergies)
         
-        notes_list = self._notes # Assuming notes is intended to be a simple string or handled as such by EncryptedText
-        extra_data_dict = self._extra_data
+        notes_str = _decode_if_bytes(self._notes) # Assuming notes is intended to be a simple string
+        extra_data_dict = self._extra_data # This should be a dict after EncryptedJSON processing
         
-        def _parse_json_string_to_list(json_str: str | None, field_name: str) -> list | None:
+        def _parse_json_string(json_str: str | bytes | None, field_name: str) -> Any | None:
             if json_str is None:
                 return None
+            
+            str_to_parse = json_str
+            if isinstance(json_str, bytes): # Handles EncodableBytes
+                try:
+                    str_to_parse = json_str.decode('utf-8')
+                except UnicodeDecodeError:
+                    logger.warning(f"Failed to decode bytes for {field_name} for patient {self.id} from JSON string: '{json_str[:50]}...'")
+                    return None
+            
+            if not isinstance(str_to_parse, str): # Should be a string now
+                 logger.warning(f"{field_name} for patient {self.id} is not a string after potential decode: type {type(str_to_parse)}. Value: {str(str_to_parse)[:100]}")
+                 return None
+
             try:
-                return json.loads(json_str)
+                return json.loads(str_to_parse)
             except json.JSONDecodeError:
-                logger.warning(f"Failed to parse {field_name} for patient {self.id} from JSON string: '{json_str}'")
-                return None # Or an empty list: [] ? Or raise error?
+                logger.warning(f"Failed to parse {field_name} for patient {self.id} from JSON string: '{str_to_parse[:100]}'")
+                return None
 
         patient_args = {
             'id': self.id if isinstance(self.id, uuid.UUID) else uuid.UUID(str(self.id)) if self.id else uuid.uuid4(),
@@ -435,6 +461,9 @@ class Patient(Base, TimestampMixin, AuditMixin):
             'date_of_birth': date_of_birth, # Use the parsed date object
             'email': email,
             'phone_number': phone,  # Note: using phone_number to match domain entity
+            'ssn_lve': ssn, # Match DomainPatient field
+            'medical_record_number_lve': medical_record_number, # Match DomainPatient field
+            'gender': gender, # Match DomainPatient field
         }
         
         # Only include fields that have values to avoid None issues
@@ -452,25 +481,31 @@ class Patient(Base, TimestampMixin, AuditMixin):
             patient_args['emergency_contact'] = raw_emergency_contact_details 
 
         if preferences_dict is not None:
-            patient_args['preferences'] = preferences_dict
+            if isinstance(preferences_dict, (bytes, str)):
+                patient_args['preferences'] = _parse_json_string(preferences_dict, "preferences")
+            else:
+                patient_args['preferences'] = preferences_dict
 
-        parsed_medical_history = _parse_json_string_to_list(medical_history_list_str, "medical_history")
+        parsed_medical_history = _parse_json_string(medical_history_list_str, "medical_history")
         if parsed_medical_history is not None:
             patient_args['medical_history'] = parsed_medical_history
 
-        parsed_medications = _parse_json_string_to_list(medications_list_str, "medications")
+        parsed_medications = _parse_json_string(medications_list_str, "medications")
         if parsed_medications is not None:
             patient_args['medications'] = parsed_medications
 
-        parsed_allergies = _parse_json_string_to_list(allergies_list_str, "allergies")
+        parsed_allergies = _parse_json_string(allergies_list_str, "allergies")
         if parsed_allergies is not None:
             patient_args['allergies'] = parsed_allergies
 
-        if notes_list is not None:
-            patient_args['notes'] = notes_list
+        if notes_str is not None: # notes_str from self._notes (EncryptedText)
+            patient_args['notes'] = notes_str # DomainPatient.notes is Optional[str]
 
-        if extra_data_dict is not None:
-            patient_args['extra_data'] = extra_data_dict
+        if extra_data_dict is not None: # extra_data_dict from self._extra_data (EncryptedJSON)
+            if isinstance(extra_data_dict, (bytes, str)):
+                 patient_args['extra_data'] = _parse_json_string(extra_data_dict, "extra_data")
+            else:
+                patient_args['extra_data'] = extra_data_dict
 
         if insurance_provider is not None:
             patient_args['insurance_provider'] = insurance_provider

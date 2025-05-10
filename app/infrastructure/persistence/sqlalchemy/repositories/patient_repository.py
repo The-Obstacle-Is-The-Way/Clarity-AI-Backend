@@ -123,27 +123,28 @@ class PatientRepository:
         """Creates a new patient record in the database from a PatientEntity."""
         self.logger.debug(f"Attempting to create patient with entity ID: {patient_entity.id}")
 
-        # Pydantic environment diagnostics
-        import pydantic
-        import sys
-        print(f"[DEBUG PatientRepository.create] Imported pydantic.VERSION: {pydantic.VERSION}")
-        print(f"[DEBUG PatientRepository.create] 'pydantic.v1' in sys.modules (before): {'pydantic.v1' in sys.modules}")
+        # Pydantic environment diagnostics (REMOVED)
+        # import pydantic
+        # import sys 
+        # print(f\"[DEBUG PatientRepository.create] Imported pydantic.VERSION: {pydantic.VERSION}\")
+        # print(f\"[DEBUG PatientRepository.create] 'pydantic.v1' in sys.modules (before): {'pydantic.v1' in sys.modules}\")
         
-        # Attempt to remove pydantic.v1 from sys.modules (DIAGNOSTIC HACK)
-        if 'pydantic.v1' in sys.modules:
-            del sys.modules['pydantic.v1']
-            print(f"[DEBUG PatientRepository.create] Attempted to remove 'pydantic.v1' from sys.modules.")
-        print(f"[DEBUG PatientRepository.create] 'pydantic.v1' in sys.modules (after removal attempt): {'pydantic.v1' in sys.modules}")
+        # # Attempt to remove pydantic.v1 from sys.modules (DIAGNOSTIC HACK REMOVED)
+        # if 'pydantic.v1' in sys.modules:
+        #     del sys.modules['pydantic.v1']
+        #     print(f\"[DEBUG PatientRepository.create] Attempted to remove 'pydantic.v1' from sys.modules.\")
+        # print(f\"[DEBUG PatientRepository.create] 'pydantic.v1' in sys.modules (after removal attempt): {'pydantic.v1' in sys.modules}\")
+        
+        # from pydantic import ValidationError as PydanticV2ValidationError # Keep for main except block
+        # print(f\"[DEBUG PatientRepository.create] Type of ValidationError in except block: {PydanticV2ValidationError}\")
+        # try:
+        #     from pydantic.v1.error_wrappers import ValidationError as PydanticV1ValidationError
+        #     print(f\"[DEBUG PatientRepository.create] Successfully imported pydantic.v1.error_wrappers.ValidationError as PydanticV1ValidationError\")
+        # except ImportError:
+        #     PydanticV1ValidationError = None # type: ignore
+        #     print(f\"[DEBUG PatientRepository.create] Failed to import pydantic.v1.error_wrappers.ValidationError\")
 
-        from pydantic import ValidationError as PydanticV2ValidationError # V2
-        try:
-            from pydantic.v1.error_wrappers import ValidationError as PydanticV1ValidationError
-            print(f"[DEBUG PatientRepository.create] Successfully imported pydantic.v1.error_wrappers.ValidationError as PydanticV1ValidationError")
-        except ImportError:
-            PydanticV1ValidationError = None # type: ignore
-            print(f"[DEBUG PatientRepository.create] FAILED to import pydantic.v1.error_wrappers.ValidationError")
-
-        async def _create_operation(session: AsyncSession) -> PatientEntity | None: # Ensure session type hint
+        async def _create_operation(session: AsyncSession) -> PatientEntity | None: 
             try:
                 # Convert domain entity to SQLAlchemy model instance
                 # This now relies on TypeDecorators in PatientModel for encryption
@@ -169,21 +170,12 @@ class PatientRepository:
                 # This now relies on TypeDecorators in PatientModel for decryption
                 created_entity = await patient_model.to_domain() # REMOVED encryption_service
                 return created_entity
-            except PydanticV2ValidationError as e: # Explicitly catch V2 first
+            except ValidationError as e: # This is pydantic.ValidationError (should be PydanticV2ValidationError)
                 await session.rollback()
-                self.logger.error(f"Pydantic V2 validation error during patient creation: {e.errors()}", exc_info=True)
-                # Potentially extract more details if needed, e.g., e.json()
-                raise PersistenceError(f"Pydantic V2 Validation Error: {e.errors()}", original_exception=e) from e
-            except PydanticV1ValidationError as e: # type: ignore # Explicitly catch V1 if V1 was importable
-                await session.rollback()
-                self.logger.error(
-                    f"Pydantic V1 validation error for 'PatientInputSchema' (or similar) during patient creation: {e.errors()}", 
-                    exc_info=True
-                )
-                raise PersistenceError(
-                    f"Invalid patient data: {len(e.errors())} validation errors for PatientInputSchema (V1 Error). {e.errors()}", 
-                    original_exception=e
-                ) from e
+                # self.logger.error(f"Pydantic V2 Validation Error during patient creation: {e.errors()}", exc_info=True)
+                # Re-raise as PersistenceError, including Pydantic V2 error details for clarity
+                # The detail here will be a list of dicts from e.errors()
+                raise PersistenceError(f"Pydantic V2 Validation Error: {e.errors()}", original_exception=e)
             except IntegrityError as e:
                 await session.rollback()
                 self.logger.error(f"Integrity error creating patient: {e}", exc_info=True)
