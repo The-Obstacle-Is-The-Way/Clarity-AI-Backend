@@ -23,6 +23,7 @@ from app.core.exceptions import PersistenceError  # ADD THIS IMPORT
 
 # Import the custom logger function
 from app.core.utils.logging import get_logger
+from app.infrastructure.security.audit.audit import AuditLogger
 from app.domain.entities.patient import Patient as PatientEntity
 from app.domain.value_objects.address import Address
 

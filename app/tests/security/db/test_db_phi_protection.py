@@ -9,6 +9,9 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import uuid
 
 import pytest
+from pydantic import ValidationError
+from app.core.exceptions import PersistenceError
+# from app.core.exceptions.phi_protection_exception import PHIProtectionError # Removed this unused import
 
 # Core SQLAlchemy async components
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -175,14 +178,31 @@ class TestDBPHIProtection:
             date_of_birth="1990-05-15",
             medical_record_number_lve="MRN123_SENSITIVE",
             social_security_number_lve="999-00-1111"
+            # Ensure all other required fields for DomainPatient are present if any
         )
 
-        async with uow:
-            created_patient_model = await uow.patients.create(original_patient) # create returns the SQLAlchemy model
-            await uow.commit()
-            # uow.patients.create should return the domain model after conversion
-            # So, created_patient_domain = await uow.patients.create(original_patient)
-            # await uow.commit()
+        try:
+            async with uow: # Wrap operations in UoW context
+                await uow.patients.create(original_patient, context=admin_context)
+                await uow.commit()
+        except PersistenceError as e:
+            print(f"Caught PersistenceError: {e}")
+            print(f"PersistenceError detail: {e.detail}")
+            if hasattr(e, 'original_exception') and e.original_exception:
+                print(f"Original exception: {type(e.original_exception)}")
+                # If Pydantic's ValidationError is the original_exception, print its errors
+                if isinstance(e.original_exception, ValidationError):
+                    print(f"Pydantic validation errors: {e.original_exception.errors()}")
+                else:
+                    print(f"Original exception details: {e.original_exception}")
+
+            # Re-raise the error if it's not the one we're testing for,
+            # or if we want the test to fail to see the full traceback.
+            # For now, we let it fail to get the Pydantic errors.
+            raise  # Re-raise to ensure the test fails and we see output
+        except Exception as e:
+            print(f"Caught other unexpected exception: {type(e)} - {e}")
+            raise
 
         # Retrieve and verify (this will go through to_domain which decrypts)
         async with uow: # New session for retrieval
