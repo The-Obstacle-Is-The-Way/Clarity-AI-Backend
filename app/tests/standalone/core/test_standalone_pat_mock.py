@@ -107,7 +107,7 @@ class TestStandaloneMockPAT:
             )
         excinfo.match(r"Device info must contain required keys: \['manufacturer', 'model'\]")
 
-        # Valid device info (should not raise)
+        # Valid device_info (should not raise)
         try:
             initialized_mock_pat._validate_actigraphy_inputs(
                 **base_args, device_info={"manufacturer": "TestCorp", "model": "DeviceX"}
@@ -142,14 +142,14 @@ class TestStandaloneMockPAT:
             initialized_mock_pat._validate_actigraphy_inputs(
                 **base_args, analysis_types=[invalid_type, "sleep"]
             )
-        excinfo.match(f"Invalid analysis type: {invalid_type}. Valid types are: ") 
+        excinfo.match(rf"Invalid analysis type: {invalid_type}\. Valid types are: {{.*}}") 
 
         # Test with a mix of valid and one specifically invalid type string (as above)
         with pytest.raises(ValidationError) as excinfo:
             initialized_mock_pat._validate_actigraphy_inputs(
                 **base_args, analysis_types=["sleep", invalid_type, "activity"]
             )
-        excinfo.match(f"Invalid analysis type: {invalid_type}. Valid types are: ") 
+        excinfo.match(rf"Invalid analysis type: {invalid_type}\. Valid types are: {{.*}}") 
 
         # Valid analysis types (should not raise)
         try:

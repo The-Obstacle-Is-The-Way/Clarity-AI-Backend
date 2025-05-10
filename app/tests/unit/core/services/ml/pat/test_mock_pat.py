@@ -180,7 +180,6 @@ class TestMockPAT:
         
         excinfo.match(r"^At least 10 readings are required")
 
-    @pytest.mark.skip(reason="MockPATService does not implement per-reading format validation currently.")
     def test_analyze_actigraphy_invalid_reading_format(self, mock_pat, sample_device_info):
         """Test analysis with invalid reading format. Ensure enough readings are provided first."""
         # Create 10 readings, with the first one malformed (missing timestamp)
@@ -203,7 +202,7 @@ class TestMockPAT:
             )
         # The mock service's _validate_actigraphy_inputs checks for missing keys dynamically.
         # For the first reading {"x": 0.1, "y": 0.2, "z": 0.9}, 'timestamp' is missing.
-        excinfo.match(r"Invalid reading format at index 0: missing required keys \(timestamp\).")
+        excinfo.match(r"Invalid reading format at index 0: missing required keys \('timestamp',\)\.")
 
     def test_analyze_actigraphy_unsupported_analysis_type(self, mock_pat, sample_readings, sample_device_info):
         """Test actigraphy analysis with unsupported analysis type."""

@@ -863,6 +863,12 @@ class MockPATService(PATInterface):
         for analysis_type in analysis_types:
             result = self._add_analysis_type_results(result, analysis_type, sleep_metrics, activity_levels)
         
+        # Add general metrics to the 'results' field as expected by some tests
+        if "general" in result.get("metrics", {}):
+            result["results"]["general"] = result["metrics"]["general"]
+        
+        self.analyses[analysis_id] = result
+        
         # Store the analysis in all required locations to ensure consistency
         # This is critical for test_get_patient_analyses which expects these analyses to be returned
         
@@ -926,6 +932,21 @@ class MockPATService(PATInterface):
         
         # Validate analysis types using the dedicated method
         self._validate_analysis_types(analysis_types)
+
+        # Validate individual reading format (after all other checks)
+        required_reading_keys = ['timestamp', 'x', 'y', 'z']
+        for i, reading in enumerate(readings):
+            if not isinstance(reading, dict):
+                raise ValidationError(f"Reading at index {i} is not a dictionary.")
+
+            missing_keys = [key for key in required_reading_keys if key not in reading]
+            if missing_keys:
+                # Format missing keys to match test expectation, e.g., "('timestamp',)" or "('x', 'y')"
+                if len(missing_keys) == 1:
+                    missing_keys_str = f"('{missing_keys[0]}',)"
+                else:
+                    missing_keys_str = f"({', '.join(repr(k) for k in sorted(missing_keys))})" # Sort for consistent error messages
+                raise ValidationError(f"Invalid reading format at index {i}: missing required keys {missing_keys_str}.")
 
     def _validate_analysis_types(self, analysis_types: list[str]) -> None:
         if not analysis_types:
