@@ -16,7 +16,7 @@ from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as 
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.core.domain.entities.patient import Patient as DomainPatient # For from_domain/to_domain tests
-from app.core.domain.entities.gender import Gender # Added import for Gender
+from app.core.domain.enums import Gender # Corrected import for Gender
 
 logger = logging.getLogger(__name__)
 
