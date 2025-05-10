@@ -20,7 +20,12 @@ from app.core.services.ml.interface import (
 
 # from app.core.services.ml.mentalllama import MentaLLaMA # REMOVE: No such module in core.services.ml
 # from app.core.services.ml.mock import MockMentaLLaMA # REMOVE: Use infrastructure layer for real/mock services
-from app.core.services.ml.pat import MockPATService, PATInterface, PATService
+from app.core.services.ml.pat import (
+    BedrockPAT,  # Added
+    MockPATService,
+    PATInterface,
+    # PATService, # Removed
+)
 
 __all__ = [
     # Interfaces
@@ -32,7 +37,8 @@ __all__ = [
     
     # Base implementations
     # "MentaLLaMA", # REMOVE: Not in this layer
-    "PATService",
+    # "PATService", # Removed
+    "BedrockPAT",  # Added
     
     # Mock implementations
     # "MockMentaLLaMA", # REMOVE: Not in this layer

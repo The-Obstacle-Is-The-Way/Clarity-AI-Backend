@@ -4,6 +4,7 @@ Patient Assessment Tool (PAT) Package.
 This package provides a service for patient assessments and clinical evaluations.
 """
 
+from app.core.services.ml.pat.bedrock import BedrockPAT
 from app.core.services.ml.pat.exceptions import (
     AnalysisError,
     AnalysisNotFoundError,
@@ -21,14 +22,13 @@ from app.core.services.ml.pat.exceptions import (
 from app.core.services.ml.pat.factory import PATServiceFactory
 from app.core.services.ml.pat.mock import MockPATService
 from app.core.services.ml.pat.pat_interface import PATInterface
-from app.core.services.ml.pat.pat_service import PATService
 
 __all__ = [
     # Interfaces
     "PATInterface",
     
     # Implementations
-    "PATService",
+    "BedrockPAT",
     
     # Mock implementations for testing
     "MockPATService",

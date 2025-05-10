@@ -1935,6 +1935,9 @@ class MockPATService(PATInterface):
         # Guard against integration_types being None
         if integration_types is None:
             integration_types = []
+        
+        # Ensure this specific DEBUG PRINT 2 is removed
+        # print(f"DEBUG mock.py _generate_domain_integration_results: integration_types after guard = {integration_types}, type = {type(integration_types)}")
             
         # Example: Generate sleep results if requested and data is available
         if "sleep" in integration_types:

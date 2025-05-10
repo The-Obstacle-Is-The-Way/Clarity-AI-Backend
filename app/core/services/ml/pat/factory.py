@@ -21,13 +21,6 @@ from app.core.services.ml.pat.exceptions import InitializationError
 from app.core.services.ml.pat.mock import MockPATService
 from app.core.services.ml.pat.pat_interface import PATInterface
 
-# Conditionally import the AWS implementation
-try:
-    from app.core.services.ml.pat.aws import AWSPATService
-    AWS_AVAILABLE = True
-except ImportError:
-    AWS_AVAILABLE = False
-
 # Import the Bedrock implementation
 try:
     from app.core.services.ml.pat.bedrock import BedrockPAT
@@ -60,9 +53,6 @@ class PATServiceFactory:
     _instance_cache: dict[str, PATInterface] = {}
     
     # Register available implementations
-    if AWS_AVAILABLE:
-        _SERVICE_REGISTRY["aws"] = AWSPATService
-    
     if BEDROCK_AVAILABLE:
         _SERVICE_REGISTRY["bedrock"] = BedrockPAT
     
