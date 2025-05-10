@@ -87,7 +87,7 @@ class TestMockPAT:
             end_time="2025-03-28T08:00:00Z",
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
-            analysis_types=["sleep_quality", "activity_levels"]
+            analysis_types=["sleep", "activity"]
         )
 
         # Verify response structure
@@ -95,28 +95,28 @@ class TestMockPAT:
         assert result["patient_id"] == "test-patient"
         assert "timestamp" in result
         assert result["device_info"] == sample_device_info
-        assert "sleep_quality" in result
-        assert "activity_levels" in result
+        assert "sleep" in result
+        assert "activity" in result
 
         # Verify that the analysis was stored
         analysis_id = result["analysis_id"]
         assert analysis_id in mock_pat.analyses
 
         # Verify sleep quality fields
-        sleep_quality = result["sleep_quality"]
-        assert "duration_hours" in sleep_quality
-        assert "efficiency" in sleep_quality
-        assert "deep_sleep_percentage" in sleep_quality
-        assert "rem_sleep_percentage" in sleep_quality
-        assert "light_sleep_percentage" in sleep_quality
+        sleep = result["sleep"]
+        assert "duration_hours" in sleep
+        assert "efficiency" in sleep
+        assert "deep_sleep_percentage" in sleep
+        assert "rem_sleep_percentage" in sleep
+        assert "light_sleep_percentage" in sleep
 
         # Verify activity levels fields
-        activity_levels = result["activity_levels"]
-        assert "total_steps" in activity_levels
-        assert "light_activity_minutes" in activity_levels
-        assert "moderate_activity_minutes" in activity_levels
-        assert "vigorous_activity_minutes" in activity_levels
-        assert "sedentary_minutes" in activity_levels
+        activity = result["activity"]
+        assert "total_steps" in activity
+        assert "light_activity_minutes" in activity
+        assert "moderate_activity_minutes" in activity
+        assert "vigorous_activity_minutes" in activity
+        assert "sedentary_minutes" in activity
 
     def test_analyze_actigraphy_with_all_types(self, mock_pat, sample_readings, sample_device_info):
         """Test actigraphy analysis with all analysis types."""
@@ -128,14 +128,14 @@ class TestMockPAT:
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
             analysis_types=[
-                "sleep_quality", "activity_levels", "circadian_rhythm",
+                "sleep", "activity", "circadian_rhythm",
                 "behavioral_patterns", "mood_indicators"
             ]
         )
 
         # Verify all analysis types are present
-        assert "sleep_quality" in result
-        assert "activity_levels" in result
+        assert "sleep" in result
+        assert "activity" in result
         assert "circadian_rhythm" in result
         assert "behavioral_patterns" in result
         assert "mood_indicators" in result
@@ -150,7 +150,7 @@ class TestMockPAT:
                 end_time="2025-03-28T08:00:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["sleep_quality"]
+                analysis_types=["sleep"]
             )
         
         assert "Patient ID is required" in str(excinfo.value)
@@ -165,7 +165,7 @@ class TestMockPAT:
                 end_time="2025-03-28T08:00:00Z",
                 sampling_rate_hz=-1.0,  # Negative sampling rate
                 device_info=sample_device_info,
-                analysis_types=["sleep_quality"]
+                analysis_types=["sleep"]
             )
         
         assert "Sampling rate must be positive" in str(excinfo.value)
@@ -192,7 +192,7 @@ class TestMockPAT:
                 end_time="2025-03-28T08:00:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["sleep_quality"]
+                analysis_types=["sleep"]
             )
         
         assert "At least 10 readings are required" in str(excinfo.value)
@@ -219,10 +219,10 @@ class TestMockPAT:
                 end_time="2025-03-28T08:00:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["sleep_quality"]
+                analysis_types=["sleep"]
             )
         
-        assert "missing required fields" in str(excinfo.value)
+        assert "Invalid reading format at index 0: missing required keys (timestamp, x, y, z)." in str(excinfo.value)
 
     def test_analyze_actigraphy_unsupported_analysis_type(self, mock_pat, sample_readings, sample_device_info):
         """Test actigraphy analysis with unsupported analysis type."""
@@ -277,7 +277,7 @@ class TestMockPAT:
             end_time="2025-03-28T08:00:00Z",
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
-            analysis_types=["sleep_quality"]
+            analysis_types=["sleep"]
         )
 
         analysis_id = result["analysis_id"]
@@ -289,7 +289,7 @@ class TestMockPAT:
         assert retrieved["analysis_id"] == analysis_id
         assert retrieved["patient_id"] == "test-patient"
         assert retrieved["device_info"] == sample_device_info
-        assert "sleep_quality" in retrieved
+        assert "sleep" in retrieved
 
     def test_get_analysis_by_id_not_found(self, mock_pat):
         """Test retrieval of analysis by ID when not found."""
@@ -309,7 +309,7 @@ class TestMockPAT:
                 end_time=f"2025-03-{28 - i}T08:00:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["sleep_quality"]
+                analysis_types=["sleep"]
             )
 
         # Retrieve analyses for the patient
@@ -340,7 +340,7 @@ class TestMockPAT:
                 end_time=f"2025-03-{28 - i}T08:00:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["sleep_quality"]
+                analysis_types=["sleep"]
             )
 
         # Retrieve analyses with pagination
@@ -381,7 +381,7 @@ class TestMockPAT:
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
             analysis_types=[
-                "sleep_quality", "activity_levels", "circadian_rhythm",
+                "sleep", "activity", "circadian_rhythm",
                 "behavioral_patterns", "mood_indicators"
             ]
         )
@@ -440,7 +440,7 @@ class TestMockPAT:
             end_time="2025-03-28T08:00:00Z",
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
-            analysis_types=["sleep_quality"]
+            analysis_types=["sleep"]
         )
 
         analysis_id = result["analysis_id"]

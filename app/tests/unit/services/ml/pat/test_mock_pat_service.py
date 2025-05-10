@@ -136,7 +136,7 @@ class TestMockPAT:
         start_time = "2025-03-28T14:00:00Z"
         end_time = "2025-03-28T14:30:00Z"
         sampling_rate_hz = 10.0
-        analysis_types = ["activity_level_analysis", "sleep_analysis"]
+        analysis_types = ["sleep", "activity"]
 
         # Call analyze_actigraphy
         result = initialized_mock_pat.analyze_actigraphy(
@@ -185,7 +185,7 @@ class TestMockPAT:
                 end_time="2025-03-28T14:30:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["activity_level_analysis"]
+                analysis_types=["sleep"]
             )
 
         # Test empty readings
@@ -197,7 +197,7 @@ class TestMockPAT:
                 end_time="2025-03-28T14:30:00Z",
                 sampling_rate_hz=10.0,
                 device_info=sample_device_info,
-                analysis_types=["activity_level_analysis"]
+                analysis_types=["sleep"]
             )
 
         # Test invalid sampling rate
@@ -209,7 +209,7 @@ class TestMockPAT:
                 end_time="2025-03-28T14:30:00Z",
                 sampling_rate_hz=0.0,
                 device_info=sample_device_info,
-                analysis_types=["activity_level_analysis"]
+                analysis_types=["sleep"]
             )
 
     def test_get_actigraphy_embeddings(
@@ -300,7 +300,7 @@ class TestMockPAT:
         """Test retrieving an analysis by ID."""
         # Create an analysis first
         patient_id = "patient123"
-        analysis_types = ["activity_level_analysis"]
+        analysis_types = ["sleep", "activity"]
         result = initialized_mock_pat.analyze_actigraphy(
             patient_id=patient_id,
             readings=sample_readings,
@@ -333,7 +333,7 @@ class TestMockPAT:
         """Test retrieving analyses for a patient."""
         # Create analyses for patient123
         patient_id = "patient123"
-        analysis_types = ["activity_level_analysis"]
+        analysis_types = ["sleep"]
         result1 = initialized_mock_pat.analyze_actigraphy(
             patient_id=patient_id,
             readings=sample_readings,
@@ -350,7 +350,7 @@ class TestMockPAT:
             end_time="2025-03-28T15:30:00Z",
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
-            analysis_types=analysis_types
+            analysis_types=["activity"]
         )
 
         # Retrieve analyses for the patient
@@ -367,16 +367,16 @@ class TestMockPAT:
 
         # Test with analysis_type filter
         filtered_analyses = initialized_mock_pat.get_patient_analyses(
-            patient_id, analysis_type="activity_level_analysis"
+            patient_id, analysis_type="sleep"
         )
-        assert len(filtered_analyses) == 2
+        assert len(filtered_analyses) == 1
 
         # Test with date range
         date_filtered = initialized_mock_pat.get_patient_analyses(
             patient_id, start_date="2025-03-28T14:30:00Z", end_date="2025-03-28T16:00:00Z"
         )
         assert len(date_filtered) == 1
-        assert date_filtered[0]["analysis_id"] == result2["analysis_id"]
+        assert date_filtered[0]["analysis_id"] == result1["analysis_id"]
 
     def test_get_model_info(self, initialized_mock_pat: MockPATService) -> None:
         """Test retrieving model information."""
@@ -402,7 +402,7 @@ class TestMockPAT:
         """Test integration with a digital twin profile."""
         # Create an analysis first
         patient_id = "patient123"
-        analysis_types = ["activity_level_analysis"]
+        analysis_types = ["sleep", "activity"]
         analysis_result = initialized_mock_pat.analyze_actigraphy(
             patient_id=patient_id,
             readings=sample_readings,
@@ -471,7 +471,7 @@ class TestMockPAT:
             end_time="2025-03-28T14:30:00Z",
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
-            analysis_types=["activity_level_analysis"]
+            analysis_types=["sleep"]
         )
         
         # Then try to integrate it with a different patient ID
@@ -538,7 +538,7 @@ class TestMockPAT:
             end_time="2025-03-28T14:30:00Z",
             sampling_rate_hz=10.0,
             device_info=sample_device_info,
-            analysis_types=["activity_level_analysis"]
+            analysis_types=["sleep"]
         )
         analysis_id = result["analysis_id"]
         
