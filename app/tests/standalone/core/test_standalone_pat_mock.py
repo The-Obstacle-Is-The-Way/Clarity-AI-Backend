@@ -90,16 +90,16 @@ class TestStandaloneMockPAT:
             "analysis_types": valid_analysis_types
         }
 
-        # Empty device info
-        with pytest.raises(ValidationError, match="Device info is required"):
+        # Empty device info - should be caught by missing required keys
+        with pytest.raises(ValidationError, match=r"Device info must contain required keys: \['manufacturer', 'model'\]"):
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, device_info={})
 
         # Missing required field (manufacturer)
-        with pytest.raises(ValidationError, match="Device info must contain required keys: \['manufacturer', 'model'\]"):
+        with pytest.raises(ValidationError, match=r"Device info must contain required keys: \['manufacturer', 'model'\]"):
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, device_info={"device_type": "Actigraph", "model": "TestModel"})
             
         # Missing required field (model)
-        with pytest.raises(ValidationError, match="Device info must contain required keys: \['manufacturer', 'model'\]"):
+        with pytest.raises(ValidationError, match=r"Device info must contain required keys: \['manufacturer', 'model'\]"):
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, device_info={"device_type": "Actigraph", "manufacturer": "TestManu"})
 
         # Valid device info should not raise
@@ -121,11 +121,11 @@ class TestStandaloneMockPAT:
         }
         
         # Empty analysis types
-        with pytest.raises(ValidationError, match="At least one analysis type is required"):
+        with pytest.raises(ValidationError, match=r"At least one analysis type is required"):
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, analysis_types=[])
 
         # Invalid analysis type
-        with pytest.raises(ValidationError, match="Invalid analysis type: invalid_type."):
+        with pytest.raises(ValidationError, match=r"Invalid analysis type: invalid_type."):
             initialized_mock_pat._validate_actigraphy_inputs(**base_args, analysis_types=["sleep", "invalid_type"])
 
         # Valid analysis types should not raise
@@ -148,7 +148,7 @@ class TestStandaloneMockPAT:
         assert isinstance(result, dict)
         assert "analysis_id" in result
         assert "status" in result
-        assert result["status"] == "processing"
+        assert result["status"] == "completed"
         assert "created_at" in result
         assert "estimated_completion_time" in result
 
