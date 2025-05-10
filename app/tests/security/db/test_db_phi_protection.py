@@ -16,13 +16,21 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.config.database import Database # For spec in MagicMock
 
+# Import repository interfaces
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
+from app.core.interfaces.repositories.digital_twin_repository import IDigitalTwinRepository
+from app.core.interfaces.repositories.biometric_rule_repository import IBiometricRuleRepository
+from app.core.interfaces.repositories.biometric_alert_repository import IBiometricAlertRepository
+from app.core.interfaces.repositories.biometric_twin_repository import IBiometricTwinRepository
+
 # Import database components or mock them if not available
 # Ensure try block has a corresponding except block at the correct level
 try:
     from app.domain.entities.patient import Patient
     # from app.infrastructure.persistence.sqlalchemy.config.database import Database # Moved up
     from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
-        PatientRepository,
+        PatientRepository as ConcretePatientRepository,
     )
     from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import AsyncSQLAlchemyUnitOfWork as UnitOfWork
     from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
@@ -34,14 +42,14 @@ except ImportError:
     # (This is less ideal for security tests which should test real components)
     Patient = MagicMock()
     Database = MagicMock() # Already defined for spec
-    PatientRepository = MagicMock()
+    ConcretePatientRepository = MagicMock()
     AsyncSQLAlchemyUnitOfWork_Mock = MagicMock() # If we mock the UoW itself
     encrypt_phi = MagicMock(side_effect=lambda x: f"encrypted_{x}")
     decrypt_phi = MagicMock(side_effect=lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x)
 
     # Mock repository interfaces for UoW instantiation if real ones are complex to get here
     IUserRepository = MagicMock()
-    IPatientRepository = PatientRepository # Use our existing mock PatientRepository
+    IPatientRepository = ConcretePatientRepository # Use our existing mock PatientRepository
     IDigitalTwinRepository = MagicMock()
     IBiometricRuleRepository = MagicMock()
     IBiometricAlertRepository = MagicMock()
@@ -59,7 +67,7 @@ def doctor_context():
 
 @pytest.fixture
 def mock_logger_factory():
-    with patch("app.infrastructure.logging.logger.LoggerFactory.get_logger") as mock_get_logger:
+    with patch("app.infrastructure.logging.logger.get_logger") as mock_get_logger:
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         yield mock_logger # Yield the logger instance itself for assertions
@@ -70,9 +78,13 @@ class TestDBPHIProtection:
     @pytest.fixture
     async def db(self):
         """Create a mock database instance suitable for async operations with tables created."""
+        # Use a real async engine for in-memory SQLite
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-        
-        # Create tables
+
+        # Create tables - This needs to happen before the session factory is created
+        # and used by the UoW or repositories.
+        # Base is now imported from the canonical location above.
+
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
@@ -80,23 +92,17 @@ class TestDBPHIProtection:
 
         mock_db_object = MagicMock(spec=Database)
         mock_db_object.session_factory = async_session_factory
-        
-        async def get_mock_session():
-            # This should return an actual session instance from the factory
-            s = async_session_factory()
-            # If we need to mock methods on the session itself for specific tests,
-            # it's better to do it within those tests using patch.object or similar.
-            return s
-        
-        mock_db_object.get_session = get_mock_session
-        
-        yield mock_db_object # Yield the configured mock_db_object
 
-        # Clean up the engine after tests
-        await engine.dispose()
+        async def get_session_for_mock():
+            return async_session_factory()
+        mock_db_object.get_session = MagicMock(side_effect=get_session_for_mock) # Ensure it returns a coroutine
+
+        yield mock_db_object
+
+        await engine.dispose() # Clean up the engine
 
     @pytest.fixture
-    async def unit_of_work(self, db): # db fixture is now async
+    async def unit_of_work(self, db: Database): # Ensure db is typed if it helps resolution
         """Create an AsyncSQLAlchemyUnitOfWork instance with mock repositories."""
         if not hasattr(db, 'session_factory'):
             raise AttributeError("Mock 'db' fixture is missing 'session_factory' attribute, which is required by AsyncSQLAlchemyUnitOfWork.")
@@ -104,12 +110,12 @@ class TestDBPHIProtection:
         # Provide mock repository classes to AsyncSQLAlchemyUnitOfWork constructor
         return UnitOfWork(
             session_factory=db.session_factory,
-            user_repository_cls=IUserRepository,
-            patient_repository_cls=IPatientRepository, # Using the mock from ImportError block
-            digital_twin_repository_cls=IDigitalTwinRepository,
-            biometric_rule_repository_cls=IBiometricRuleRepository,
-            biometric_alert_repository_cls=IBiometricAlertRepository,
-            biometric_twin_repository_cls=IBiometricTwinRepository
+            user_repository_cls=MagicMock(spec=IUserRepository),
+            patient_repository_cls=MagicMock(spec=IPatientRepository),
+            digital_twin_repository_cls=MagicMock(spec=IDigitalTwinRepository),
+            biometric_rule_repository_cls=MagicMock(spec=IBiometricRuleRepository),
+            biometric_alert_repository_cls=MagicMock(spec=IBiometricAlertRepository),
+            biometric_twin_repository_cls=MagicMock(spec=IBiometricTwinRepository)
         )
 
     @pytest.fixture
@@ -140,7 +146,7 @@ class TestDBPHIProtection:
     @pytest.mark.asyncio
     async def test_data_encryption_at_rest(self, db, admin_context):
         """Test that PHI is encrypted when stored in the database."""
-        repo = PatientRepository(db_session=await db.get_session(), user_context=admin_context)
+        repo = ConcretePatientRepository(db_session=await db.get_session(), user_context=admin_context)
 
         # Create a patient with PHI
         patient = Patient(
@@ -175,19 +181,19 @@ class TestDBPHIProtection:
     @pytest.mark.asyncio
     async def test_role_based_access_control(self, db):
         """Test that access to PHI is properly controlled by role."""
-        admin_repo = PatientRepository(
+        admin_repo = ConcretePatientRepository(
             db_session=await db.get_session(), user_context={"role": "admin", "user_id": "A12345"}
         )
-        doctor_repo = PatientRepository(
+        doctor_repo = ConcretePatientRepository(
             db_session=await db.get_session(), user_context={"role": "doctor", "user_id": "D12345"}
         )
-        nurse_repo = PatientRepository(
+        nurse_repo = ConcretePatientRepository(
             db_session=await db.get_session(), user_context={"role": "nurse", "user_id": "N12345"}
         )
-        patient_repo = PatientRepository(
+        patient_repo = ConcretePatientRepository(
             db_session=await db.get_session(), user_context={"role": "patient", "user_id": "P12345"}
         )
-        guest_repo = PatientRepository(
+        guest_repo = ConcretePatientRepository(
             db_session=await db.get_session(), user_context={"role": "guest", "user_id": None}
         )
 
@@ -228,11 +234,11 @@ class TestDBPHIProtection:
     @pytest.mark.asyncio
     async def test_patient_data_isolation(self, db):
         """Test that patients can only access their own data."""
-        patient1_repo = PatientRepository(
+        patient1_repo = ConcretePatientRepository(
             db_session=await db.get_session(),
             user_context={"role": "patient", "user_id": "P12345"}
         )
-        patient2_repo = PatientRepository(
+        patient2_repo = ConcretePatientRepository(
             db_session=await db.get_session(),
             user_context={"role": "patient", "user_id": "P67890"}
         )
@@ -251,7 +257,7 @@ class TestDBPHIProtection:
     @pytest.mark.asyncio
     async def test_audit_logging(self, db, admin_context):
         """Test that all PHI access is properly logged for auditing."""
-        repo = PatientRepository(db_session=await db.get_session(), user_context=admin_context)
+        repo = ConcretePatientRepository(db_session=await db.get_session(), user_context=admin_context)
 
         # Perform various operations
         await repo.get_by_id("P12345")
@@ -292,19 +298,19 @@ class TestDBPHIProtection:
         session = await db.get_session()
         
         # Test with various roles
-        admin_repo = PatientRepository(db_session=session, user_context={"role": "admin", "user_id": "A123"})
+        admin_repo = ConcretePatientRepository(db_session=session, user_context={"role": "admin", "user_id": "A123"})
         admin_patient = await admin_repo.get_by_id("P12345")
 
-        doctor_repo = PatientRepository(db_session=session, user_context={"role": "doctor", "user_id": "D456"})
+        doctor_repo = ConcretePatientRepository(db_session=session, user_context={"role": "doctor", "user_id": "D456"})
         doctor_patient = await doctor_repo.get_by_id("P12345")
 
-        nurse_repo = PatientRepository(db_session=session, user_context={"role": "nurse", "user_id": "N789"})
+        nurse_repo = ConcretePatientRepository(db_session=session, user_context={"role": "nurse", "user_id": "N789"})
         nurse_patient = await nurse_repo.get_by_id("P12345")
 
-        patient_repo = PatientRepository(db_session=session, user_context={"role": "patient", "user_id": "P12345"})
+        patient_repo = ConcretePatientRepository(db_session=session, user_context={"role": "patient", "user_id": "P12345"})
         own_patient = await patient_repo.get_by_id("P12345")
 
-        guest_repo = PatientRepository(db_session=session, user_context={"role": "guest", "user_id": None})
+        guest_repo = ConcretePatientRepository(db_session=session, user_context={"role": "guest", "user_id": None})
         guest_patient = await guest_repo.get_by_id("P12345")
 
         # Helper function to decrypt and compare, assuming decrypt_phi is available
@@ -386,7 +392,7 @@ class TestDBPHIProtection:
         real_session = await db.get_session()
 
         # The repository will use this real_session
-        repo = PatientRepository(db_session=real_session, user_context=admin_context)
+        repo = ConcretePatientRepository(db_session=real_session, user_context=admin_context)
 
         # Define a side effect function for the mocked execute
         async def execute_query_side_effect(*args, **kwargs):
