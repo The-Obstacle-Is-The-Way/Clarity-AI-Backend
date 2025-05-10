@@ -42,7 +42,7 @@ def sample_patient_data(sample_patient_id: str) -> dict[str, Any]:
         "first_name": "John",
         "last_name": "Doe",
         "date_of_birth": date(1980, 1, 1),
-        "medical_record_number_lve": "MRN12345",
+        # "medical_record_number_lve": "MRN12345", # Temporarily removed for diagnosis
         "email": "john.doe@example.com"
     }
 

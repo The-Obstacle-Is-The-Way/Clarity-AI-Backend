@@ -49,12 +49,26 @@ def sample_domain_patient_data() -> dict:
         "last_name": "DoeDomain",
         "date_of_birth": date(1990, 1, 15),
         "email": "john.domain@example.com",
+        "phone_number": "555-0101",
         "medical_record_number_lve": "MRNDOMAIN123",
         "medical_history": [
             "Condition: Flu, Diagnosed Date: 2023-01-10",
             "Condition: Mockitis, Diagnosed Date: 2020-01-01"
         ],
         "gender": Gender.MALE,
+        "address": {
+            "line1": "123 Domain Lane",
+            "line2": "Apt 4B",
+            "city": "Domainville",
+            "state": "DS",
+            "zip_code": "12345",
+            "country": "DX"
+        },
+        "contact_info": {
+            "email": "john.domain.contact@example.com",
+            "phone": "555-0202",
+            "email_secondary": "john.domain.secondary@example.com"
+        }
     }
 
 class TestPatientModelEncryptionAndTypes:
@@ -148,48 +162,61 @@ class TestPatientModelEncryptionAndTypes:
         model_instance = PatientModel()
         model_instance.id = sample_domain_patient_data["id"]
         
-        # Plaintext values that are expected after decryption
+        # This map helps the decrypt side_effect return the correct original plaintext
         expected_plaintext_map = {
             "_first_name": sample_domain_patient_data['first_name'],
             "_last_name": sample_domain_patient_data['last_name'],
             "_email": sample_domain_patient_data['email'],
-            "_mrn": sample_domain_patient_data['medical_record_number_lve'], # PatientModel uses _mrn
-            "_date_of_birth": sample_domain_patient_data["date_of_birth"].isoformat(),
-            "_medical_history": json.dumps(sample_domain_patient_data["medical_history"]),
-            "_gender": sample_domain_patient_data['gender'].value if sample_domain_patient_data.get("gender") else None
+            "_mrn": sample_domain_patient_data['medical_record_number_lve'], 
+            "_date_of_birth": sample_domain_patient_data["date_of_birth"].isoformat(), # Plain string '1990-01-15'
+            "_address_line1": sample_domain_patient_data['address']['line1'],
+            "_city": sample_domain_patient_data['address']['city'],
+            "_state": sample_domain_patient_data['address']['state'],
+            "_zip_code": sample_domain_patient_data['address']['zip_code'],
+            "_country": sample_domain_patient_data['address']['country'],
+            "_medical_history": json.dumps(sample_domain_patient_data['medical_history']),
+            "_gender": sample_domain_patient_data['gender'].value if sample_domain_patient_data.get('gender') else None,
+            # Add other encrypted fields from PatientModel that are set from sample_domain_patient_data
         }
-        
-        # Values that will be set on the model instance (simulating encrypted DB state)
-        encrypted_model_values = {key: f"encrypted_{value}" if value is not None else None 
-                                  for key, value in expected_plaintext_map.items()}
 
+        # Define a more precise side_effect for decryption
         def precise_decrypt_side_effect(encrypted_input_val):
             # logger.debug(f"[decrypt_side_effect] Received: {encrypted_input_val}")
-            # Direct mappings for expected_plaintext_map items
+            
+            # Explicit handling for date_of_birth to ensure it's correctly processed
+            # sample_domain_patient_data["date_of_birth"] is date(1990, 1, 15)
+            expected_plain_dob_str = sample_domain_patient_data["date_of_birth"].isoformat() # "1990-01-15"
+            expected_encrypted_dob_str = f"encrypted_{expected_plain_dob_str}" # "encrypted_1990-01-15"
+
+            if encrypted_input_val == expected_encrypted_dob_str:
+                # logger.debug(f"[decrypt_side_effect] Matched DOB: {encrypted_input_val} -> {expected_plain_dob_str}")
+                return expected_plain_dob_str
+
+            # Direct mappings for other expected_plaintext_map items
             for plain_key, plain_value in expected_plaintext_map.items():
+                if plain_key == "_date_of_birth": # Already handled above
+                    continue
+
                 if plain_value is None:
                     if encrypted_input_val is None:
-                        # logger.debug(f"[decrypt_side_effect] Matched None -> None")
+                        # logger.debug(f"[decrypt_side_effect] Matched None -> None for key {plain_key}")
                         return None
                     continue
                 
                 expected_encrypted_form = f"encrypted_{plain_value}"
                 if encrypted_input_val == expected_encrypted_form:
-                    # logger.debug(f"[decrypt_side_effect] Matched '{encrypted_input_val}' -> '{plain_value}' for key '{plain_key}'")
+                    # logger.debug(f"[decrypt_side_effect] Matched '{encrypted_input_val}' -> '{plain_value}' for key {plain_key}")
                     return plain_value
-
-            # Fallback: if it wasn't in the map, and it's a string starting with "encrypted_", strip prefix.
-            # This is crucial for fields that might be processed by TypeDecorators but aren't explicitly detailed in expected_plaintext_map,
-            # or if the test setup for model_instance uses a generic "encrypted_" value.
-            if isinstance(encrypted_input_val, str) and encrypted_input_val.startswith("encrypted_"):
-                stripped_value = encrypted_input_val[len("encrypted_"):]
-                # logger.warning(f"[decrypt_side_effect] Fallback: Stripped prefix from '{encrypted_input_val}' -> '{stripped_value}'")
-                return stripped_value
             
-            # logger.warning(f"[decrypt_side_effect] No match or stripping rule for: '{encrypted_input_val}'. Returning as is.")
-            return encrypted_input_val # Return as-is if no rule matched (e.g., already plain, or unhandled None)
-        
-        mock_encryption_service_for_model_tests.decrypt.side_effect = precise_decrypt_side_effect
+            # Fallback if no specific match - this indicates an issue in test setup or an unmapped field
+            # logger.warning(f"[decrypt_side_effect] No precise match for '{encrypted_input_val}', returning as is. This might cause test failures.")
+            return encrypted_input_val
+
+        mock_esi_in_types.decrypt = precise_decrypt_side_effect 
+
+        # Values that will be set on the model instance (simulating encrypted DB state)
+        encrypted_model_values = {key: f"encrypted_{value}" if value is not None else None 
+                                  for key, value in expected_plaintext_map.items()}
 
         # Set model attributes to their "encrypted" form
         model_instance._first_name = encrypted_model_values['_first_name']
