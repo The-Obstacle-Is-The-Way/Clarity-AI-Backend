@@ -615,17 +615,41 @@ class PHISanitizer:
         """
         return self.sanitize_string(text)
     
-    def detect_phi(self, data: Any) -> list:
+    def contains_phi(self, data: Any, path: Optional[str] = None) -> bool:
+        """
+        Check if data contains any PHI, considering whitelists internally.
+        This is the primary method for PHI detection.
+        """
+        # If data is string, check for PHI patterns directly
+        if isinstance(data, str):
+            # Pass path to sanitize_string
+            return self.sanitize_string(data, path=path) != data 
+
+        # If data is dict or list, iterate and check recursively
+        elif isinstance(data, dict):
+            for key, value in data.items():
+                # Pass path recursively
+                if self.contains_phi(key, path=path) or self.contains_phi(value, path=path):
+                    return True
+        elif isinstance(data, list):
+            for item in data:
+                # Pass path recursively
+                if self.contains_phi(item, path=path):
+                    return True
+        return False
+
+    def detect_phi(self, data: Any, path: Optional[str] = None) -> list:
         """
         Compatibility method for PHIService's detect_phi method.
         
         Args:
             data: Data to check for PHI
+            path: Optional API path for path-specific whitelists
             
         Returns:
             List containing a single True if PHI is detected, empty list otherwise
         """
-        if self.contains_phi(data):
+        if self.contains_phi(data, path=path):
             return [True]
         return []
 

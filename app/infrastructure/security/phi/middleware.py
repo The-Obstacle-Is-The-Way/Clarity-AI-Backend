@@ -52,24 +52,32 @@ class PHIMiddleware(BaseHTTPMiddleware):
             whitelist_patterns: Optional dict of paths to patterns or list of global patterns to exclude from sanitization
         """
         super().__init__(app)
-        self.phi_sanitizer = phi_sanitizer or PHISanitizer()
         self.audit_mode = audit_mode
         self.exclude_paths = exclude_paths or []
-        
-        # Process whitelist patterns appropriately based on type
+
+        # Process whitelist_patterns argument for the middleware itself and for PHISanitizer init
+        _middleware_path_whitelist: Dict[str, List[str]] = {}
+        _middleware_global_whitelist_list: List[str] = [] # Store as list first
+
         if whitelist_patterns is None:
-            self.whitelist_patterns: Dict[str, List[str]] = {}
-            self.global_whitelist_patterns: List[str] = []
+            pass # Keep them empty
         elif isinstance(whitelist_patterns, dict):
-            self.whitelist_patterns = whitelist_patterns
-            self.global_whitelist_patterns = []
+            _middleware_path_whitelist = whitelist_patterns
         elif isinstance(whitelist_patterns, list):
-            self.whitelist_patterns = {}
-            self.global_whitelist_patterns = whitelist_patterns
+            _middleware_global_whitelist_list = whitelist_patterns
         else:
-            self.whitelist_patterns = {}
-            self.global_whitelist_patterns = []
             logger.warning(f"Invalid whitelist_patterns format: {type(whitelist_patterns)}")
+
+        # Store for potential direct use by middleware (though delegation is preferred)
+        self.path_whitelist_patterns_for_middleware = _middleware_path_whitelist
+        self.global_whitelist_patterns_for_middleware = _middleware_global_whitelist_list
+        
+        # Configure the PHISanitizer instance
+        # PHISanitizer expects a Set[str] for global and Dict[str, List[str]] for path-specific
+        self.phi_sanitizer = phi_sanitizer or PHISanitizer(
+            whitelist_patterns=set(_middleware_global_whitelist_list), # Pass the processed global list as a set
+            path_whitelist_patterns=_middleware_path_whitelist    # Pass the processed path-specific dict
+        )
         
         # Default paths to exclude (common API docs and health check paths)
         self.default_exclude_paths = [
