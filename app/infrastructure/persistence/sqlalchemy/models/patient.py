@@ -343,6 +343,16 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model._custom_fields = getattr(patient, 'custom_fields', None) # EncryptedJSON handles dict serialization
         model._extra_data = getattr(patient, 'extra_data', None) # EncryptedJSON handles dict serialization
 
+        # DEBUG PRINTS START
+        print(f"[DEBUG PatientModel.from_domain] Final model attributes before return:")
+        print(f"  _contact_info TYPE: {type(model._contact_info)}")
+        print(f"  _contact_info VALUE: {model._contact_info}")
+        print(f"  _address_details TYPE: {type(model._address_details)}")
+        print(f"  _address_details VALUE: {model._address_details}")
+        print(f"  _emergency_contact_details TYPE: {type(model._emergency_contact_details)}")
+        print(f"  _emergency_contact_details VALUE: {model._emergency_contact_details}")
+        # DEBUG PRINTS END
+
         logger.debug(f"[from_domain] Completed conversion for patient model ID: {model.id}")
         return model
 
@@ -489,6 +499,27 @@ class Patient(Base, TimestampMixin, AuditMixin):
         patient = DomainPatient(**patient_args)
         logger.debug(f"[to_domain] Completed conversion for patient ID: {patient.id}")
         return patient
+
+    # AuditMixin fields (handled by the mixin)
+    # audit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("audit_logs.id"), nullable=True, default_factory=uuid.uuid4)
+
+    # Relationships (examples, adjust as needed)
+    # user: Mapped["UserModel"] = relationship(back_populates="patients", lazy="joined")
+    # created_by_user: Mapped["UserModel"] = relationship(foreign_keys="PatientModel.created_by", lazy="joined")
+    # updated_by_user: Mapped["UserModel"] = relationship(foreign_keys="PatientModel.updated_by", lazy="joined")
+
+    # Diagnostic properties for Pydantic V1 compatibility test
+    @property
+    def contact_info(self):
+        return self._contact_info
+
+    @property
+    def address_details(self):
+        return self._address_details
+
+    @property
+    def emergency_contact_details(self):
+        return self._emergency_contact_details
 
 # Example comment outside class
 # Add columns like _ethnicity, _preferred_language, etc. following the pattern above.
