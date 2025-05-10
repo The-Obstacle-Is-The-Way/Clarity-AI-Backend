@@ -17,7 +17,7 @@ try:
     from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
         PatientRepository,
     )
-    from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work import UnitOfWork
+    from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work import SQLAlchemyUnitOfWork as UnitOfWork # Use specific name
     # Assuming these are defined elsewhere or should be mocked too
     # from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
 
@@ -28,8 +28,7 @@ try:
 except ImportError:
     # Mock classes for testing database PHI protection
     # Correct indentation and structure for mock classes
-    # Mock classes for testing database PHI protection
-    # Correct indentation and structure for mock classes
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker # Ensure this is here
 
     # No decorator needed here as it's a mock definition
     class Database:
@@ -330,12 +329,41 @@ class TestDBPHIProtection:
     """Test database PHI protection mechanisms for HIPAA compliance."""
 
     @pytest.fixture
-    def db(self):
-        """Create test database."""
-        return Database()
+    async def db(self):
+        """Create a mock database instance suitable for async operations."""
+        # Use an in-memory SQLite async database for testing
+        # Ensure create_async_engine and async_sessionmaker are available in this scope
+        # This might require moving the import from the except ImportError block or ensuring it's globally available
+        # For now, assuming they are available due to the top-level try-except structure or previous edits.
+        # If NameError persists, the import location needs to be re-evaluated.
+        
+        # These should be available from sqlalchemy.ext.asyncio
+        # If not, it means the ImportError fallback logic for the Database class itself is active,
+        # and those imports need to be at the top of *that* block or globally.
+        # Given the previous edit, they *should* be in the ImportError block for the *classes*
+        
+        # Explicitly import here if still causing issues, though it's unusual inside a fixture like this
+        # from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        # In a real scenario, you'd create tables here if not using Alembic for tests
+        # async with engine.begin() as conn:
+        #     await conn.run_sync(Base.metadata.create_all) # Assuming Base from your models
+
+        async_session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+        mock_db_object = MagicMock(spec=Database) # If Database class is still relevant for other things
+        mock_db_object.async_session_factory = async_session_factory
+        
+        # Provide a way to get a session, similar to what UoW would use
+        async def get_mock_session():
+            return async_session_factory()
+        mock_db_object.get_session = get_mock_session # Primarily for repo instantiation if done outside UoW
+        
+        return mock_db_object
 
     @pytest.fixture
-    def unit_of_work(self, db):
+    async def unit_of_work(self, db):
         """Create a SQLAlchemyUnitOfWork instance with mocked session factory."""
         try:
             # Prefer the concrete SQLAlchemy implementation for these tests
@@ -613,7 +641,7 @@ class TestDBPHIProtection:
             # Use the UoW context manager
             with pytest.raises(Exception, match="Database error"):
                 with uow:
-                    patient_repo.create(Patient(first_name="Error", last_name="Test"))
+                    patient_repo.create(Patient(first_name="Error", last_name="Test", date_of_birth="2000-01-01"))
 
         # Assert that rollback was called via __exit__
         assert uow.rolled_back is True
