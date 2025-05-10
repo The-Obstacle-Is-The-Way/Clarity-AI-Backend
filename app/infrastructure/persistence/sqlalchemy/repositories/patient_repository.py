@@ -334,7 +334,7 @@ class PatientRepository:
                 # For TypeDecorator on a simple PatientModel._email:
                 # stmt = select(PatientModel).where(PatientModel._email == email)
                 # For JSONB 'contact_info' -> 'email':
-                stmt = select(PatientModel).where(PatientModel._contact_info["email"].astext == email)
+                stmt = select(PatientModel).where(PatientModel._email == email)
                 
                 result = await session.execute(stmt)
                 patient_model = result.scalars().one_or_none()

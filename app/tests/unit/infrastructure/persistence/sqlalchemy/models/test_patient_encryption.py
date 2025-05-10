@@ -57,7 +57,7 @@ def sample_domain_patient_data() -> dict:
         ],
         "gender": Gender.MALE,
         "address": {
-            "line1": "123 Domain Lane",
+            "street": "123 Domain Lane",
             "line2": "Apt 4B",
             "city": "Domainville",
             "state": "DS",
@@ -169,7 +169,7 @@ class TestPatientModelEncryptionAndTypes:
             "_email": sample_domain_patient_data['email'],
             "_mrn": sample_domain_patient_data['medical_record_number_lve'], 
             "_date_of_birth": sample_domain_patient_data["date_of_birth"].isoformat(), # Plain string '1990-01-15'
-            "_address_line1": sample_domain_patient_data['address']['line1'],
+            "_address_line1": sample_domain_patient_data['address']['street'],
             "_city": sample_domain_patient_data['address']['city'],
             "_state": sample_domain_patient_data['address']['state'],
             "_zip_code": sample_domain_patient_data['address']['zip_code'],
@@ -212,7 +212,7 @@ class TestPatientModelEncryptionAndTypes:
             # logger.warning(f"[decrypt_side_effect] No precise match for '{encrypted_input_val}', returning as is. This might cause test failures.")
             return encrypted_input_val
 
-        mock_esi_in_types.decrypt = precise_decrypt_side_effect 
+        mock_esi.decrypt = precise_decrypt_side_effect 
 
         # Values that will be set on the model instance (simulating encrypted DB state)
         encrypted_model_values = {key: f"encrypted_{value}" if value is not None else None 
