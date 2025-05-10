@@ -89,7 +89,7 @@ class MockMentaLLaMA(MentaLLaMAInterface):
         if not self._initialized:
             raise ServiceUnavailableError("MockMentaLLaMA service not initialized.")
 
-    def process( # Removed async
+    async def process( # Removed async
         self,
         text: str,
         model_type: str | None = None, # model_type might map to analysis_type
@@ -110,9 +110,9 @@ class MockMentaLLaMA(MentaLLaMAInterface):
             anonymize_phi=options.get("anonymize_phi", True) if options else True
         )
         # Return a dictionary representation as per interface
-        return result_obj.dict() # Assuming MentaLLaMAResult has a dict() method
+        return result_obj.to_dict() # Assuming MentaLLaMAResult has a dict() method
 
-    def detect_depression( # Removed async
+    async def detect_depression( # Removed async
         self,
         text: str,
         options: dict[str, Any] | None = None
