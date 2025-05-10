@@ -324,22 +324,38 @@ class PatientRepository:
 
     async def get_by_email(self, email: str) -> PatientEntity | None:
         """Retrieve a patient by their email address."""
-        try:
-            stmt = select(PatientModel).where(PatientModel.contact_info["email"].astext == email)
-            result = await self.db_session.execute(stmt)
-            patient_model = result.scalars().first()
-            if not patient_model:
-                return None
-            # Convert to domain
-            entity = self._convert_to_domain(patient_model)
-            if inspect.isawaitable(entity):
-                return await entity
-            return entity
-        except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving patient by email {email}: {e}", exc_info=True)
-            return None
-        except Exception:
-            return None
+        self.logger.debug(f"Attempting to retrieve patient by email: {email}")
+
+        async def _get_by_email_operation(session: AsyncSession) -> PatientEntity | None:
+            try:
+                # Assuming email is stored in a JSONB field, adjust query as needed.
+                # This query is an example and might need to match your exact model structure.
+                # If email is a top-level encrypted field, the query would be different.
+                # For TypeDecorator on a simple PatientModel._email:
+                # stmt = select(PatientModel).where(PatientModel._email == email)
+                # For JSONB 'contact_info' -> 'email':
+                stmt = select(PatientModel).where(PatientModel.contact_info["email"].astext == email) # Keep original query logic
+                
+                result = await session.execute(stmt)
+                patient_model = result.scalars().one_or_none() # Changed from .first() to .one_or_none() for consistency
+
+                if patient_model:
+                    self.logger.debug(f"Patient model found for email {email}. Converting to domain entity.")
+                    # Convert model to domain entity using the model's to_domain method
+                    patient_entity = await patient_model.to_domain() # REMOVED encryption_service
+                    return patient_entity
+                else:
+                    self.logger.debug(f"No patient model found for email {email}.")
+                    return None
+            except SQLAlchemyError as e:
+                self.logger.error(f"Database error retrieving patient by email {email}: {e}", exc_info=True)
+                # Consider raising PersistenceError or returning None based on desired contract
+                raise PersistenceError(f"Database error retrieving patient by email {email}.") from e
+            except Exception as e: # Catch broader exceptions after specific ones
+                self.logger.error(f"Unexpected error retrieving patient by email {email}: {e}", exc_info=True)
+                raise PersistenceError(f"Unexpected error retrieving patient by email {email}.") from e
+        
+        return await self._with_session(_get_by_email_operation)
 
 
 class PatientRepositoryFactory:

@@ -484,31 +484,15 @@ class TestPatientRepository:
         patient_uuid = uuid.UUID(sample_patient_id)
         mock_patient_to_delete = MagicMock(spec=PatientModel) # Use alias
         
-        # Configure the sequence of returns for execute related calls
-        # 1. For the initial select to find the patient
-        mock_select_result = MagicMock()
-        mock_select_scalars = MagicMock()
-        mock_select_scalars.one_or_none = MagicMock(return_value=mock_patient_to_delete)
-        mock_select_result.scalars = MagicMock(return_value=mock_select_scalars)
-        
-        # 2. For the delete operation (if it uses session.execute for delete statement)
-        # SQLAlchemy ORM delete (session.delete(model)) doesn't directly use session.execute in the same way for simple cases.
-        # It flags the object for deletion, and flush handles it.
-        # If a custom delete statement is used with session.execute, that would need mocking.
-        # For session.delete(model), we check session.delete was called and session.flush.
-
-        mock_db_session.execute.return_value = mock_select_result # For the initial select
-        # If your delete operation uses session.get(), mock it:
-        # mock_db_session.get = AsyncMock(return_value=mock_patient_to_delete)
+        # Configure session.get to return the mock model
+        mock_db_session.get = AsyncMock(return_value=mock_patient_to_delete)
 
         # Action
         result = await patient_repository.delete(sample_patient_id)
 
         # Assertions
-        # If using session.get before delete:
-        # mock_db_session.get.assert_awaited_once_with(PatientModel, patient_uuid)
-        # If using select then delete:
-        mock_db_session.execute.assert_awaited_once() 
+        mock_db_session.get.assert_awaited_once_with(PatientModel, patient_uuid)
+        # mock_db_session.execute.assert_awaited_once() # No longer asserting execute for delete
         mock_db_session.delete.assert_called_once_with(mock_patient_to_delete)
         mock_db_session.flush.assert_awaited_once()
         assert result is True
@@ -516,11 +500,14 @@ class TestPatientRepository:
     @pytest.mark.asyncio
     async def test_delete_patient_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str):
         """Test deleting a patient that does not exist."""
-        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
+        patient_uuid = uuid.UUID(sample_patient_id)
+        # Configure session.get to return None, simulating patient not found
+        mock_db_session.get = AsyncMock(return_value=None)
 
         result = await patient_repository.delete(sample_patient_id)
 
-        mock_db_session.execute.assert_awaited_once() 
+        mock_db_session.get.assert_awaited_once_with(PatientModel, patient_uuid)
+        # mock_db_session.execute.assert_awaited_once() # No longer asserting execute for delete
         mock_db_session.delete.assert_not_called()
         mock_db_session.flush.assert_not_awaited() 
         assert result is False
