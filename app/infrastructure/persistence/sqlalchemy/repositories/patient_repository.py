@@ -241,7 +241,7 @@ class PatientRepository:
             # However, the PII fields are handled by TypeDecorators upon assignment.
             
             # Get all fields from the domain entity
-            domain_data = patient_entity.model_dump(exclude_unset=True)
+            domain_data = patient_entity.model_dump() # Temporarily remove exclude_unset to bypass TypeError
             logger.debug(f"Updating patient model ID {patient_model.id} with data: {domain_data}")
 
             updatable_fields = [
