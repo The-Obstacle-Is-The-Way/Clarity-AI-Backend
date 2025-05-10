@@ -28,6 +28,10 @@ from app.infrastructure.security.encryption.field_encryptor import FieldEncrypto
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# GLOBAL ENCRYPTION SERVICE INSTANCE
+# This instance can be used by other modules like SQLAlchemy TypeDecorators
+encryption_service_instance = EncryptionService()
+
 # PHI specific encryption functions
 def encrypt_phi(data: dict[str, Any] | str) -> dict[str, Any] | str:
     """Encrypt PHI data with HIPAA-compliant encryption.
@@ -98,6 +102,7 @@ def generate_phi_key() -> str:
 __all__ = [
     'BaseEncryptionService',
     'EncryptionService',
+    'encryption_service_instance',
     'FieldEncryptor',
     'decrypt_field',
     'decrypt_phi',

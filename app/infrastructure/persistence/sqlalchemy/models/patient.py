@@ -18,6 +18,8 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.ext.hybrid import hybrid_property
+from pydantic import ValidationError
 
 # Use the core domain model, which has phone_number attribute
 from app.core.domain.entities.patient import Patient as DomainPatient
@@ -44,11 +46,6 @@ import dataclasses  # Add this import
 # Correct import: Use absolute path to types.py file
 from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict 
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
-
-# Instantiate the global encryption service instance for TypeDecorators
-# BaseEncryptionService (parent of EncryptionService) handles its own key loading
-# (e.g., from ENCRYPTION_MASTER_KEY env var or auto-generates).
-encryption_service_instance = EncryptionService()
 
 @register_model
 class Patient(Base, TimestampMixin, AuditMixin):
@@ -408,6 +405,17 @@ class Patient(Base, TimestampMixin, AuditMixin):
             # If not None and not bytes, ensure it's a string for Pydantic
             return str(value)
 
+        def _ensure_parsed_json(value: Any) -> Any:
+            if isinstance(value, str):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    # If it's a string but not valid JSON, return as is or handle error
+                    # For now, let Pydantic catch it if it's problematic for the domain model
+                    logger.warning(f"[PatientModel.to_domain._ensure_parsed_json] Value is string but not valid JSON: {value[:100]}")
+                    return value 
+            return value
+
         # Access fields directly. TypeDecorators will handle decryption and deserialization.
         first_name = _decode_if_bytes(self._first_name)
         last_name = _decode_if_bytes(self._last_name)
@@ -533,66 +541,56 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 return None
 
         patient_args = {
-            # IDs and Timestamps
             "id": self.id,
-            "external_id": _decode_if_bytes(self._external_id),
-            "user_id": self.user_id, 
+            "external_id": _decode_if_bytes(self.external_id),
+            "user_id": self.user_id,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "is_active": self.is_active,
-
-            # Directly mapped & potentially encrypted simple string fields
             "first_name": _decode_if_bytes(self._first_name),
             "last_name": _decode_if_bytes(self._last_name),
             "middle_name": _decode_if_bytes(self._middle_name),
             "gender": _decode_if_bytes(self._gender),
             "date_of_birth": _decode_if_bytes(self._date_of_birth),
-            "ssn_lve": _decode_if_bytes(self._ssn), # Changed from ssn
-            "medical_record_number_lve": _decode_if_bytes(self._mrn), # Changed from mrn
-            "phone_number": _decode_if_bytes(self._phone_number),
+            "ssn_lve": _decode_if_bytes(self._ssn),
+            "phone_number_lve": _decode_if_bytes(self._phone_number),
             "email": _decode_if_bytes(self._email),
-            
-            # Insurance Info (simple strings)
+            "mrn": _decode_if_bytes(self._mrn),
             "insurance_provider": _decode_if_bytes(self._insurance_provider),
             "insurance_policy_number": _decode_if_bytes(self._insurance_policy_number),
             "insurance_group_number": _decode_if_bytes(self._insurance_group_number),
-            
-            # Complex objects (JSON serialized in DB, should be dict/Pydantic model here)
-            "contact_info": contact_info_domain_obj, 
-            "address": address_domain_obj, 
-            "emergency_contact": emergency_contact_domain_obj, 
-            "preferences": preferences_dict,
-            "custom_fields": _decode_if_bytes(self._custom_fields),
-            "extra_data": extra_data_dict, 
 
-            # Other text fields (might be large)
-            "medical_history": _decode_if_bytes(self._medical_history),
-            "medications": _decode_if_bytes(self._medications),
-            "allergies": _decode_if_bytes(self._allergies),
+            "contact_info": contact_info_domain_obj,
+            "address": address_domain_obj,
+            "emergency_contact": emergency_contact_domain_obj,
+
+            "preferences": _ensure_parsed_json(preferences_dict),
+            "medical_history": _ensure_parsed_json(self._medical_history),
+            "medications": _ensure_parsed_json(self._medications),
+            "allergies": _ensure_parsed_json(self._allergies),
+            "custom_fields": _ensure_parsed_json(self._custom_fields),
+            "extra_data": _ensure_parsed_json(self._extra_data),
             "notes": _decode_if_bytes(self._notes),
-            
-            # Audit info (UUIDs)
+
             "audit_id": self.audit_id,
             "created_by": self.created_by,
-            "updated_by": self.updated_by
+            "updated_by": self.updated_by,
         }
 
-        # Critical Debug Print
-        logger.debug(f"[PatientModel.to_domain] patient_args BEFORE DomainPatient instantiation:")
-        for key, val in patient_args.items():
-            logger.debug(f"  {key}: TYPE={type(val)}, VALUE (first 50)={str(val)[:50]}")
+        patient_args = {k: v for k, v in patient_args.items() if v is not None}
 
         try:
+            logger.debug(f"[PatientModel.to_domain] Attempting to create DomainPatient with args: {{k: (type(v), str(v)[:100]) for k, v in patient_args.items()}}")
             domain_patient = DomainPatient(**patient_args)
-            logger.debug(f"[to_domain] Successfully created DomainPatient: {domain_patient.id}")
             return domain_patient
         except ValidationError as e:
-            logger.error(f"[to_domain] Pydantic ValidationError during DomainPatient creation for model ID {self.id}: {e.errors(include_url=False)}", exc_info=True)
-            # Optionally, re-raise a more specific domain conversion error
-            raise PersistenceError(f"Failed to convert PatientModel to DomainPatient due to validation issues: {e.errors(include_url=False)}", original_exception=e) from e
+            logger.error(f"Pydantic V2 Validation error in to_domain. Errors: {{e.errors()}}", exc_info=True)
+            logger.error(f"Problematic patient_args for DomainPatient: {{patient_args}}")
+            raise PersistenceError(f"Data integrity issue converting DB model to domain model: {{e.errors()}}") from e
         except Exception as e:
-            logger.error(f"[to_domain] Unexpected error during DomainPatient creation for model ID {self.id}: {e}", exc_info=True)
-            raise PersistenceError(f"Unexpected error converting PatientModel to DomainPatient: {e}", original_exception=e) from e
+            logger.error(f"Unexpected error creating DomainPatient in to_domain: {{e}}", exc_info=True)
+            logger.error(f"Problematic patient_args for DomainPatient: {{patient_args}}")
+            raise PersistenceError(f"Unexpected error converting DB model to domain model: {{e}}") from e
 
     # AuditMixin fields (handled by the mixin)
     # audit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("audit_logs.id"), nullable=True, default_factory=uuid.uuid4)

@@ -13,9 +13,8 @@ import base64
 from sqlalchemy.engine import Dialect
 from typing import Any
 
-# Import the core encryption/decryption functions
-# from the encryption module which re-exports them properly
-from app.infrastructure.security.encryption import encrypt_value, decrypt_value
+# Import the shared instance from the encryption module
+from app.infrastructure.security.encryption import encryption_service_instance
 
 logger = logging.getLogger(__name__)
 
@@ -27,81 +26,88 @@ class EncryptedTypeBase(types.TypeDecorator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._constructor_args = args
+        self._constructor_kwargs = kwargs
+        self.encryption_service = encryption_service_instance
 
     def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
-        """Encrypt the value before sending it to the database."""
         if value is None:
-            # logger.debug("process_bind_param: value is None, returning None.")
             return None
         try:
-            # Convert potential non-string simple types before encryption
             value_str = str(value) 
-            # logger.debug(f"process_bind_param: Encrypting value: '{value_str[:50]}...'")
-            from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
-            encrypted_bytes = esi.encrypt(value_str) # esi is EncryptionService, esi.encrypt returns bytes
+            # self.encryption_service is EncryptionService, its .encrypt() returns bytes.
+            encrypted_bytes = self.encryption_service.encrypt(value_str) 
             
             if encrypted_bytes is None:
-                # This should ideally not happen if value_str was not None and encryption didn't fail silently
-                logger.warning("Encryption returned None for a non-None value.")
-                return None
+                logger.warning("EncryptionService.encrypt returned None for a non-None value.")
+                return None # Or handle as an error
 
-            # Format the encrypted_bytes into the string representation used by BaseEncryptionService
-            # (VERSION_PREFIX + base64_encoded_bytes)
-            # esi (EncryptionService instance) should have access to VERSION_PREFIX from BaseEncryptionService
-            return f"{esi.VERSION_PREFIX}{base64.urlsafe_b64encode(encrypted_bytes).decode('utf-8')}"
+            # Create the version-prefixed, base64 encoded string for DB storage
+            # VERSION_PREFIX should be accessible from self.encryption_service (inherited from BaseEncryptionService)
+            prefixed_encrypted_string = f"{self.encryption_service.VERSION_PREFIX}{base64.urlsafe_b64encode(encrypted_bytes).decode('utf-8')}"
+            return prefixed_encrypted_string
 
         except Exception as e:
             logger.error(f"Encryption failed during bind processing: {e}", exc_info=True)
-            # Depending on policy, either raise, return None, or return original value
             raise ValueError("Encryption failed during bind parameter processing.") from e
 
     def process_result_value(self, value: str | None, dialect: Dialect) -> str | None:
-        # Enhanced logging and type handling
-        print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Input type: {type(value)}, value (repr): {repr(value)}")
         if value is None:
-            print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Returning None (input was None)")
             return None
 
-        str_value_for_decrypt = None
-        if isinstance(value, bytes):
+        str_value_from_db = None
+        if isinstance(value, bytes): 
             try:
-                str_value_for_decrypt = value.decode('utf-8')
-                print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Decoded bytes to string for decrypt: {repr(str_value_for_decrypt)}")
+                str_value_from_db = value.decode('utf-8')
             except UnicodeDecodeError as e:
-                print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: UnicodeDecodeError for bytes: {repr(value)}. Error: {e}")
                 raise ValueError(f"Invalid UTF-8 bytes in encrypted column: {e}") from e
         elif isinstance(value, str):
-            str_value_for_decrypt = value
-            print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Value is already string for decrypt: {repr(str_value_for_decrypt)}")
+            str_value_from_db = value
         else:
-            print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: UNEXPECTED TYPE for value: {type(value)}. Trying str(). Input: {repr(value)}")
             try:
-                str_value_for_decrypt = str(value)
+                str_value_from_db = str(value)
             except Exception as e:
-                print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Failed to convert unexpected type to string. Error: {e}")
-                raise TypeError(f"Cannot process unexpected type {type(value)} in encrypted column: {e}") from e
+                raise TypeError(f"Cannot process unexpected input type {type(value)} in encrypted column: {e}") from e
 
-        if str_value_for_decrypt is None: # Should not happen if logic above is correct
-             print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: str_value_for_decrypt is None unexpectedly. Original value: {repr(value)}")
-             # Fallback or raise error, for now let's raise to highlight this.
-             raise ValueError("str_value_for_decrypt became None unexpectedly during processing.")
+        if str_value_from_db is None: 
+             raise ValueError("Value from DB became None unexpectedly during processing.")
 
         try:
-            decrypted_value_str = self.encryption_service.decrypt(str_value_for_decrypt)
-            print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Decrypted value type: {type(decrypted_value_str)}, value (repr): {repr(decrypted_value_str)}")
+            # self.encryption_service is an EncryptionService instance.
+            # Its .decrypt() method expects raw encrypted bytes (no prefix, no base64).
 
-            if not isinstance(decrypted_value_str, str):
-                print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: WARNING - decrypt did not return str. Type: {type(decrypted_value_str)}. Coercing to str.")
-                decrypted_value_str = str(decrypted_value_str) # Should be a plain string
+            if not str_value_from_db.startswith(self.encryption_service.VERSION_PREFIX):
+                logger.error(f"Encrypted data from DB is missing version prefix '{self.encryption_service.VERSION_PREFIX}'. Value: {repr(str_value_from_db)}")
+                raise ValueError("Encrypted data from DB is missing version prefix.")
 
-            print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Final return type: {type(decrypted_value_str)}, value (repr): {repr(decrypted_value_str)}")
-            return decrypted_value_str
+            payload_b64 = str_value_from_db[len(self.encryption_service.VERSION_PREFIX):]
+            
+            try:
+                raw_encrypted_bytes_payload = base64.urlsafe_b64decode(payload_b64.encode('utf-8'))
+            except base64.binascii.Error as b64e:
+                logger.error(f"Base64 decode error for payload: {payload_b64}. Error: {b64e}")
+                raise ValueError("Invalid Base64 payload in encrypted data.") from b64e
+
+            # Now pass the raw encrypted bytes to EncryptionService.decrypt
+            decrypted_bytes = self.encryption_service.decrypt(raw_encrypted_bytes_payload)
+
+            if decrypted_bytes is None:
+                logger.warning(f"EncryptionService.decrypt returned None. Original encrypted value from DB: {repr(str_value_from_db)}")
+                return None
+
+            try:
+                decrypted_final_str = decrypted_bytes.decode('utf-8')
+            except UnicodeDecodeError as ude:
+                logger.error(f"UnicodeDecodeError after decryption. Bytes: {repr(decrypted_bytes)}. Error: {ude}")
+                raise ValueError("Failed to decode decrypted bytes to UTF-8 string.") from ude
+            
+            return decrypted_final_str
+        except ValueError as ve: 
+            logger.error(f"ValueError during decryption process in EncryptedTypeBase: {ve}", exc_info=True)
+            raise
         except Exception as e:
-            print(f"[{self.__class__.__name__}] PROCESS_RESULT_VALUE: Error during decryption or final processing: {e}, value fed to decrypt: {repr(str_value_for_decrypt)}")
-            # Consider specific error handling or re-raising policies
-            import traceback
-            traceback.print_exc()
-            raise # Re-raise to make failure visible
+            logger.error(f"Unexpected error during decryption process in EncryptedTypeBase: {e}, value from DB: {repr(str_value_from_db)}", exc_info=True)
+            raise ValueError(f"Decryption process failed: {e}") from e
 
     @property
     def python_type(self):
@@ -109,10 +115,8 @@ class EncryptedTypeBase(types.TypeDecorator):
         # This should be overridden by subclasses
         raise NotImplementedError
 
-    def copy(self, **kwargs):
-        # Implement the copy method to ensure compatibility with SQLAlchemy's TypeDecorator
-        # This is a placeholder and should be implemented based on the actual requirements
-        raise NotImplementedError
+    def copy(self, **kw):
+        return self.__class__(*self._constructor_args, **self._constructor_kwargs)
 
 
 class EncryptedString(EncryptedTypeBase):
@@ -139,21 +143,26 @@ class EncryptedJSON(EncryptedTypeBase):
 
     @property
     def python_type(self):
-        # Could be dict, list, etc., but often loaded as dict
         return dict # Or object, if various types are expected
 
     def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
         if value is None:
-            # Consistently return None if the input value is None.
-            # The encryption service should handle encrypting None if necessary,
-            # or this None will be stored as NULL if the column is nullable.
-            return None
+            return None # Let superclass handle None if it has specific logic, though it also returns None.
         
         json_string = None
         try:
-            # Priority 1: Pydantic BaseModel
+            # Priority 1: Pydantic BaseModel V2+
             if hasattr(value, 'model_dump_json') and callable(value.model_dump_json):
                 json_string = value.model_dump_json()
+            # Priority for Pydantic BaseModel V1 (or similar .dict() method)
+            elif hasattr(value, 'dict') and callable(value.dict):
+                # Ensure it's not a standard dict's .dict method if that even exists
+                # This check is a bit heuristic; ideally, rely on specific types.
+                if not isinstance(value, dict) or 'model_dump' in dir(value): # Check if it might be Pydantic like
+                    dict_val = value.dict() 
+                    json_string = json.dumps(dict_val)
+                else:
+                    json_string = json.dumps(value) # Standard dict
             # Priority 2: Objects with to_dict() method (e.g., custom dataclasses)
             elif hasattr(value, 'to_dict') and callable(value.to_dict):
                 dict_val = value.to_dict()
@@ -162,43 +171,36 @@ class EncryptedJSON(EncryptedTypeBase):
             else:
                 json_string = json.dumps(value)
         except TypeError as e:
-            logger.error(f"EncryptedJSON: Failed to serialize value of type {type(value)}: {e}. Value: {str(value)[:200]}")
-            # Re-raise as a ValueError to be caught by SQLAlchemy's error handling or higher up
+            logger.error(f"EncryptedJSON: Failed to serialize value of type {type(value)}: {e}. Value (repr): {repr(value)[:200]}")
             raise ValueError(f"JSON serialization failed for EncryptedJSON input type {type(value)}: {e}") from e
             
-        # Ensure that json_string is not None before encryption if value was not None
-        if json_string is None and value is not None:
-            # This case should ideally not be reached if serialization succeeded or raised an error.
-            # It implies a logic flaw above or an unexpected non-serializable type that didn't raise TypeError.
+        if json_string is None and value is not None: # Should not happen if serialization worked or raised
             logger.error(f"EncryptedJSON: json_string is None after serialization attempt for non-None value of type {type(value)}.")
-            # Decide handling: encrypt a placeholder, raise, or return None (leading to NULL in DB)
-            # Raising an error is safer to highlight the serialization issue.
-            raise ValueError("EncryptedJSON: Serialization resulted in None for a non-None value.")
+            raise ValueError("EncryptedJSON: Serialization resulted in None for a non-None value that should have been serialized.")
 
-        # Access encryption service directly from patient model module
-        from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
-        encrypted_data = esi.encrypt(json_string)
-        return encrypted_data
+        # Delegate the encryption of the JSON string to the parent class's method
+        return super().process_bind_param(json_string, dialect)
 
     def process_result_value(self, value: str | None, dialect: Dialect) -> Any | None:
-        if value is None:
+        # `value` is the raw (potentially prefixed and base64 encoded) string from the DB.
+        # Let the parent class handle decryption of this raw string to a plain JSON string.
+        decrypted_json_string = super().process_result_value(value, dialect)
+
+        if decrypted_json_string is None:
             return None
-        # Access encryption service directly from patient model module
-        from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
+        
         try:
-            decrypted_json_string = esi.decrypt(value)
-            if decrypted_json_string is None: # Should not happen if encryption stores non-None for non-None
-                return None
+            # Now, parse the decrypted plain JSON string into a Python object (dict, list, etc.)
             return json.loads(decrypted_json_string)
         except json.JSONDecodeError as e:
-            logger.error(f"EncryptedJSON: Failed to decode JSON after decryption: {e}. Value: {value[:100]}", exc_info=True)
-            # Depending on requirements, either raise or return as is, or return None
-            # Raising helps identify issues.
-            raise ValueError("Failed to decode JSON from encrypted data.") from e
-        except Exception as e:
-            logger.error(f"EncryptedJSON: Decryption or JSON processing failed: {e}", exc_info=True)
-            # Catch-all for other decryption/processing errors
-            raise ValueError("Failed to process encrypted JSON data.") from e
+            logger.error(f"EncryptedJSON: Failed to decode JSON from decrypted string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
+            # It's important to know if the decrypted string was empty or malformed
+            if not decrypted_json_string.strip():
+                logger.error("EncryptedJSON: Decrypted string was empty or whitespace.")
+            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{decrypted_json_string[:100]}'") from e
+        except Exception as e: # Catch any other error during json.loads
+            logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
+            raise ValueError("Failed to process decrypted JSON data after decryption.") from e
 
 __all__ = [
     "EncryptedString",

@@ -288,39 +288,45 @@ class TestDBPHIProtection:
             ssn="123-45-6789"
         )
 
-        async with uow:
-            await uow.patients.create(test_patient)
+        # Admin creates patient - this should be within a UoW block
+        async with uow: # Correctly using UoW
+            await uow.patients.create(test_patient, context=admin_context)
             await uow.commit()
 
-        # Simulate admin access
-        # Assuming admin_repo has full access via UoW's patient repository
-        admin_repo = uow.patients 
-        retrieved_by_admin = await admin_repo.get_by_id(patient_id)
-        assert retrieved_by_admin is not None
-        assert retrieved_by_admin.first_name == "RBACTest"
-        assert retrieved_by_admin.last_name == "RBACTestLastName"
-        assert retrieved_by_admin.email == "rbac.test@example.com"
-        assert retrieved_by_admin.date_of_birth == datetime.date(2000, 1, 1)
-        assert retrieved_by_admin.medical_record_number == "MRN123_RBACTest"
-        assert retrieved_by_admin.ssn == "123-45-6789"
+        # Attempt to access PHI with different roles
+        # These operations are NOT wrapped in a UoW context, causing the error.
 
-        # Simulate patient access (potentially limited if repo had role-awareness)
-        # For now, ConcretePatientRepository doesn't have role-based field filtering internally
-        # That would be an application service layer concern or a specialized repo.
-        patient_repo = uow.patients 
-        retrieved_by_patient = await patient_repo.get_by_id(patient_id)
-        assert retrieved_by_patient is not None
-        assert retrieved_by_patient.first_name == "RBACTest"
-        assert retrieved_by_patient.last_name == "RBACTestLastName"
-        assert retrieved_by_patient.email == "rbac.test@example.com"
-        assert retrieved_by_patient.date_of_birth == datetime.date(2000, 1, 1)
-        assert retrieved_by_patient.medical_record_number == "MRN123_RBACTest"
-        assert retrieved_by_patient.ssn == "123-45-6789"
+        # Admin can read PHI
+        async with uow:
+            retrieved_patient_admin = await uow.patients.get_by_id(patient_id, context=admin_context)
+        assert retrieved_patient_admin is not None
+        assert retrieved_patient_admin.first_name == "RBACTest"
+        assert retrieved_patient_admin.last_name == "RBACTestLastName"
+        assert retrieved_patient_admin.email == "rbac.test@example.com"
+        assert retrieved_patient_admin.date_of_birth == datetime.date(2000, 1, 1)
+        assert retrieved_patient_admin.medical_record_number == "MRN123_RBACTest"
+        assert retrieved_patient_admin.ssn == "123-45-6789"
+
+        # Patient can read their own PHI (assuming repository method checks ownership)
+        # This would also fail if get_by_id doesn't implicitly start a new session or is called outside a UoW.
+        async with uow:
+            retrieved_patient_self = await uow.patients.get_by_id(patient_id, context=patient_context)
+        assert retrieved_patient_self is not None
+        assert retrieved_patient_self.first_name == "RBACTest"
+        assert retrieved_patient_self.last_name == "RBACTestLastName"
+        assert retrieved_patient_self.email == "rbac.test@example.com"
+        assert retrieved_patient_self.date_of_birth == datetime.date(2000, 1, 1)
+        assert retrieved_patient_self.medical_record_number == "MRN123_RBACTest"
+        assert retrieved_patient_self.ssn == "123-45-6789"
         
-        # Simulate limited role access (e.g., researcher)
-        # This would typically involve a different repository or service layer
-        # For this test, we assume uow.patients is the full-access one.
-        # If we had a ResearcherPatientRepository, we would test that.
+        # Example: A doctor (different user) might not be able to access without linkage
+        # This depends on how your access control is implemented.
+        # For simplicity, let's assume a generic doctor_context
+        doctor_context_local = {"role": "doctor", "user_id": "doctor_user_123"}
+        with pytest.raises(Exception): # Or a specific AuthorizationError
+             # This call is outside a UoW and would fail.
+            async with uow:
+                await uow.patients.get_by_id(patient_id, context=doctor_context_local)
 
     @pytest.mark.asyncio
     async def test_patient_data_isolation(self, unit_of_work):
