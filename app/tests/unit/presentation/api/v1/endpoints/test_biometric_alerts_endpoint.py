@@ -8,7 +8,7 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI, status
 from httpx import AsyncClient, ASGITransport
-from httpx import AsyncClient
+# from httpx import AsyncClient # Duplicate import
 from faker import Faker
 
 from app.core.domain.entities.user import User, UserRole, UserStatus
@@ -19,7 +19,7 @@ from app.domain.repositories.biometric_alert_template_repository import (
 )
 from app.domain.services.biometric_event_processor import (
     BiometricEventProcessor,
-    ClinicalRuleEngine,
+    # ClinicalRuleEngine, # Already imported below
 )
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine # type: ignore
 from app.presentation.api.dependencies.biometric_alert import (
@@ -59,7 +59,7 @@ except ImportError:
 # Add import for create_application and Settings
 from app.app_factory import create_application
 from app.core.config.settings import Settings as CoreSettings
-from app.core.domain.entities.user import User # Keep this User import, it is used for mock_current_user
+# from app.core.domain.entities.user import User # Keep this User import, it is used for mock_current_user # Duplicate, already imported
 
 # ADDED: Import enums for filter values
 from app.core.domain.entities.alert import AlertStatus, AlertPriority 
@@ -218,16 +218,12 @@ async def test_app(
 
 @pytest.fixture
 async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
-    app, client = test_app
-    return client
+    app, client_instance = test_app # Renamed to avoid conflict with client module
+    return client_instance
 
 @pytest.fixture
 def sample_patient_id() -> uuid.UUID:
     return uuid.UUID("abcdef12-e89b-12d3-a456-426614174abc")
-
-@pytest.fixture
-def get_valid_provider_auth_headers() -> dict[str, str]:
-    return {"Authorization": "Bearer fake-provider-token"}
 
 @pytest.mark.asyncio
 class TestBiometricAlertsEndpoints:
@@ -236,7 +232,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers
         response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
         pytest.skip("Skipping test until AlertRuleService is implemented")
 
@@ -246,7 +242,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
             "patient_id": str(sample_patient_id),
@@ -268,7 +264,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         payload = {
             "name": "Custom Low Oxygen Rule",
             "description": "Alert when SpO2 drops below 92%",
@@ -306,7 +302,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str], 
         sample_patient_id: uuid.UUID,
     ) -> None:
-        headers = get_valid_provider_auth_headers 
+        headers = await get_valid_provider_auth_headers # CORRECTED (removed trailing space too)
         rule_id_str = str(sample_patient_id)
         response = await client.get(
             f"/api/v1/biometric-alerts/rules/{rule_id_str}",
@@ -319,7 +315,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         non_existent_rule_id = str(uuid.uuid4())
         response = await client.get(
             f"/api/v1/biometric-alerts/rules/{non_existent_rule_id}",
@@ -333,7 +329,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         rule_id_str = str(sample_patient_id)
         update_payload = {
             "name": "Updated Sample Rule",
@@ -363,7 +359,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         rule_id_str = str(sample_patient_id)
         response = await client.delete(
             f"/api/v1/biometric-alerts/rules/{rule_id_str}",
@@ -376,7 +372,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         response = await client.get(
             "/api/v1/biometric-alerts/rules/templates",
             headers=headers
@@ -388,11 +384,11 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         response = await client.get(
             "/api/v1/biometric-alerts", 
             headers=headers,
-            params={"kwargs": "dummy"}
+            params={"kwargs": "dummy"} # Added dummy kwargs to match service expectation
         )
         assert response.status_code == status.HTTP_200_OK
 
@@ -403,7 +399,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
         mock_alert_service: MagicMock,
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         status_filter = AlertStatus.OPEN.value
         priority_filter = AlertPriority.HIGH.value
         start_time = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
@@ -416,7 +412,7 @@ class TestBiometricAlertsEndpoints:
             "end_date": end_time,
             "offset": 1,
             "limit": 5,
-            "kwargs": "dummy"
+            "kwargs": "dummy" # Added dummy kwargs to match service expectation
         }
         
         mock_alert_service.validate_access = AsyncMock()
@@ -453,7 +449,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         non_existent_alert_id = str(uuid.uuid4())
         update_payload = {"status": "acknowledged"}
         response = await client.patch(
@@ -476,10 +472,10 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
-        non_existent_patient_id = str(uuid.uuid4())
+        headers = await get_valid_provider_auth_headers # CORRECTED
+        non_existent_patient_id = str(uuid.uuid4()) # Corrected variable name from previous thought
         response = await client.get(
-            f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary",
+            f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary", 
             headers=headers
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -489,7 +485,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         payload = {
             "template_id": "high_heart_rate",
             "name": "High Heart Rate Template",
@@ -540,7 +536,7 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        headers = get_valid_provider_auth_headers
+        headers = await get_valid_provider_auth_headers # CORRECTED
         alert_id_str = str(uuid.uuid4())
         update_payload = {"status": "resolved"}
         response = await client.patch(
