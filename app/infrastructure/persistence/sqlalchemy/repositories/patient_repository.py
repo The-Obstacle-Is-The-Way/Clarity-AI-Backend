@@ -334,10 +334,10 @@ class PatientRepository:
                 # For TypeDecorator on a simple PatientModel._email:
                 # stmt = select(PatientModel).where(PatientModel._email == email)
                 # For JSONB 'contact_info' -> 'email':
-                stmt = select(PatientModel).where(PatientModel.contact_info["email"].astext == email) # Keep original query logic
+                stmt = select(PatientModel).where(PatientModel._contact_info["email"].astext == email)
                 
                 result = await session.execute(stmt)
-                patient_model = result.scalars().one_or_none() # Changed from .first() to .one_or_none() for consistency
+                patient_model = result.scalars().one_or_none()
 
                 if patient_model:
                     self.logger.debug(f"Patient model found for email {email}. Converting to domain entity.")
