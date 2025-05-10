@@ -100,6 +100,21 @@ decryption methods for strings and dictionaries.
         self._cipher = None
         self._previous_cipher = None
         self._version_prefix_bytes = self.VERSION_PREFIX.encode()
+        
+        # Proactively access cipher to ensure key availability and format is checked at init
+        # This aligns with tests expecting ValueError from constructor if key is bad/missing
+        try:
+            _ = self.cipher
+        except ValueError as e:
+            # Re-raise with a message more specific to initialization if desired,
+            # or let the original ValueError from self.cipher propagate.
+            if (
+                "Primary encryption key is unavailable" in str(e)
+                or "Invalid format for direct_key" in str(e)
+                or "Encryption key is missing in configuration" in str(e) 
+            ):
+                raise ValueError(f"Encryption service initialization failed: {e}") from e
+            raise # Re-raise other unexpected ValueErrors
     
     @property
     def cipher(self) -> Fernet:
@@ -610,19 +625,17 @@ decryption methods for strings and dictionaries.
 
         Returns:
             Decrypted string, or original value if not apparently encrypted, or None if decryption fails.
+        
+        Raises:
+            ValueError: If the encrypted_value is not in the expected format (e.g., missing prefix).
         """
         if not encrypted_value: # Do not decrypt None or empty strings
             return encrypted_value
 
-        # Check if the value looks like it might be our versioned encrypted data
-        # This is a basic check; more sophisticated checks might be needed if
-        # plaintext data could coincidentally start with "v1:"
         if not encrypted_value.startswith(self.VERSION_PREFIX):
-            # If it doesn't start with our prefix, assume it's not encrypted by this service
-            # or it's an older format not handled here.
-            # Log this occurrence as it might indicate data inconsistency or an issue.
-            logger.debug(f"Value to decrypt does not start with known prefix ('{self.VERSION_PREFIX}'). Returning as is. Value: '{encrypted_value[:50]}...'")
-            return encrypted_value
+            logger.warning(f"Value to decrypt does not start with known prefix ('{self.VERSION_PREFIX}'). Value: '{encrypted_value[:50]}...' Potentially not an encrypted string or wrong format.")
+            # Making this stricter to align with test_decrypt_invalid_string expectations
+            raise ValueError(f"Failed to decrypt: Value does not have expected prefix '{self.VERSION_PREFIX}'.")
             
         # self._ensure_fernet_initialized() # Removed: Property handles initialization
 

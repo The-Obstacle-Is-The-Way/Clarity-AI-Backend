@@ -84,17 +84,18 @@ class TestEncryptionService:
         # Generate hash
         hash_value, salt = encryption_service.generate_hash(data)
 
-        # Verify hash is a string and salt is bytes
+        # Verify hash is a string and salt is string (hex-encoded)
         assert isinstance(hash_value, str)
-        assert isinstance(salt, bytes)
+        assert isinstance(salt, str) # Changed from bytes to str
 
         # Verify the hash
-        is_valid = encryption_service.verify_hash(data, hash_value, salt)
+        # The verify_hash method in BaseEncryptionService now expects salt_hex (str)
+        is_valid = encryption_service.verify_hash(data, salt, hash_value) # salt is already salt_hex
         assert is_valid is True
 
         # Verify with incorrect data
         is_valid = encryption_service.verify_hash(
-            "wrong_data", hash_value, salt
+            "wrong_data", salt, hash_value # salt is already salt_hex
         )
         assert is_valid is False
 
