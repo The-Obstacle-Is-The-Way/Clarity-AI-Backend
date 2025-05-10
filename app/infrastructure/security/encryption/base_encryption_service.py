@@ -568,17 +568,17 @@ decryption methods for strings and dictionaries.
         except Exception: # Catches InvalidKey, and potentially others if underlying primitive changes
             return False
 
-    def generate_hmac(self, data: str) -> str:
+    def generate_hmac(self, data: str) -> tuple[str, str]:
         """
-        Alias for generate_hash, as both use HMAC-SHA256.
+        Alias for generate_hash. Returns a tuple (salt_hex, key_hex).
         """
         return self.generate_hash(data)
 
-    def verify_hmac(self, data: str, hmac_to_verify: str) -> bool:
+    def verify_hmac(self, data: str, salt_hex: str, key_hex_to_verify: str) -> bool:
         """
-        Alias for verify_hash, as both use HMAC-SHA256.
+        Alias for verify_hash. Expects salt_hex and key_hex_to_verify.
         """
-        return self.verify_hash(data, hmac_to_verify)
+        return self.verify_hash(data, salt_hex, key_hex_to_verify)
 
     def encrypt_string(self, value: str, is_phi: bool = True) -> str:
         """Encrypts a string value.
@@ -594,26 +594,27 @@ decryption methods for strings and dictionaries.
         Returns:
             Encrypted string or original value if encryption fails/skipped.
         """
-        if not value: # Do not encrypt None or empty strings, return them as is
+        if value is None: # Only return None as is. Empty strings will be encrypted.
             return value
         
-        # self._ensure_fernet_initialized() # Removed: Property handles initialization
+        # Removed: self._ensure_fernet_initialized() # Property handles initialization
         
         try:
             encrypted_data = self.encrypt(value) # Uses self.cipher property
-            if encrypted_data is None: # self.encrypt can return None
-                logger.warning(f"Encryption returned None for a non-empty value. Input type: {type(value)}")
-                # Fallback: return original value if encryption mysteriously fails to produce output
-                # This case should ideally not happen with Fernet if key is valid and input is string/bytes
-                return value 
+            if encrypted_data is None: 
+                logger.warning(f"Encryption returned None for a value. Input type: {type(value)}")
+                # This case should ideally not happen with self.encrypt if input is not None
+                # and key is valid. If self.encrypt itself failed and returned None (e.g. future change)
+                # then returning original value might be a fallback.
+                # Given current self.encrypt, it raises ValueError on failure rather than returning None.
+                # However, if value was an empty string, self.encrypt will encrypt it.
+                return value # Fallback if encrypt somehow returns None for a non-None value
             return encrypted_data
-        except ValueError as ve: # Catch ValueErrors from self.encrypt (e.g. key issues)
+        except ValueError as ve: 
             logger.error(f"ValueError during string encryption: {ve}. Returning original value for safety.")
-            return value # Or handle more strictly, e.g. raise an error or return a specific marker
+            return value 
         except Exception as e:
             logger.error(f"Unexpected error during string encryption: {e}. Input: '{str(value)[:50]}...'")
-            # Depending on policy, might raise an error or return original.
-            # For now, returning original to prevent data loss, but this indicates a problem.
             return value
 
     def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str | None:
