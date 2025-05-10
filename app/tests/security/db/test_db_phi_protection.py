@@ -77,10 +77,11 @@ def doctor_context():
 
 @pytest.fixture
 def mock_logger_factory():
-    with patch("app.infrastructure.logging.logger.get_logger") as mock_get_logger:
-        mock_logger = MagicMock()
-        mock_get_logger.return_value = mock_logger
-        yield mock_logger # Yield the logger instance itself for assertions
+    # Patching at the location where LoggerFactory is *used* by BaseRepository
+    with patch('app.infrastructure.persistence.sqlalchemy.repositories.base_repository.LoggerFactory', new_callable=MagicMock) as mock_factory:
+        mock_logger = MagicMock() # This is the mock logger instance
+        mock_factory.get_logger.return_value = mock_logger # Configure the factory to return the mock logger
+        yield mock_factory # Yield the mock factory itself
 
 class TestDBPHIProtection:
     """Test suite for database PHI protection mechanisms."""
@@ -114,19 +115,17 @@ class TestDBPHIProtection:
     @pytest.fixture
     async def unit_of_work(self, db, mock_logger_factory):
         """Provide an instance of AsyncSQLAlchemyUnitOfWork."""
-        logger_factory_instance, _ = mock_logger_factory
+        # logger_factory_instance = mock_logger_factory # This is no longer passed to UoW
         
         uow = AsyncSQLAlchemyUnitOfWork(
             session_factory=db.session_factory,
-            logger_factory=logger_factory_instance, 
-            patient_repository_cls=ConcretePatientRepository, 
-            user_repository_cls=MagicMock(spec=IUserRepository), 
+            # logger_factory=logger_factory_instance, # REMOVED: UoW doesn't take this
+            user_repository_cls=MagicMock(spec=IUserRepository),
+            patient_repository_cls=ConcretePatientRepository, # Use the concrete class for testing its methods
             digital_twin_repository_cls=MagicMock(spec=IDigitalTwinRepository),
-            alert_repository_cls=MagicMock(spec=IAlertRepository)
-            # Removed other _cls arguments as their interfaces are not imported/used:
-            # actigraphy_repository_cls, conversation_repository_cls, feedback_repository_cls,
-            # integration_repository_cls, notification_repository_cls, settings_repository_cls,
-            # subscription_repository_cls, task_repository_cls
+            biometric_rule_repository_cls=MagicMock(spec=IBiometricRuleRepository),
+            biometric_alert_repository_cls=MagicMock(spec=IBiometricAlertRepository),
+            biometric_twin_repository_cls=MagicMock(spec=IBiometricTwinRepository)
         )
         return uow
 
@@ -293,9 +292,11 @@ class TestDBPHIProtection:
 
     @pytest.mark.asyncio
     async def test_audit_logging(self, unit_of_work, admin_context, mock_logger_factory):
-        """Test that all PHI access is properly logged for auditing."""
+        """Test that PHI access and modifications are audited."""
         uow = unit_of_work
-        _, mock_logger = mock_logger_factory # Get the logger instance
+        # mock_logger_factory here is the MagicMock instance of LoggerFactory
+        # To get the mock_logger, we access its configured get_logger().return_value
+        mock_logger = mock_logger_factory.get_logger.return_value
 
         patient_data = Patient(
             first_name="Audit",
@@ -329,10 +330,9 @@ class TestDBPHIProtection:
             await uow.commit()
         # mock_logger.info.assert_any_call(f"PHI updated for patient ID: {created_domain_patient.id}")
         
-        # For now, let's just check the logger was obtained by the repo (via UoW)
-        # The UoW passes the logger_factory to the repository.
-        # A more detailed test would require specific log messages from the repository.
-        assert mock_logger_factory.get_logger.called
+        assert mock_logger_factory.get_logger.called # Check that the factory's get_logger was called
+        # To check if the logger itself was used (e.g. mock_logger.info called):
+        # mock_logger.info.assert_any_call(...) # or .debug, .error etc.
 
     @pytest.mark.asyncio
     async def test_phi_filtering_by_role(self, unit_of_work, admin_context, patient_context):
