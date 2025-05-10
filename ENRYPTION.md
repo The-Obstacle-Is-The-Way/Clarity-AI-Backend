@@ -111,13 +111,13 @@
 
 ### Phase 3: Testing and Verification
 
-*   [X] **P3.1: Update/Create Unit Tests for `Patient` Model** (Effectively COMPLETE - Integration tests `test_patient_encryption_integration.py` now fully PASS, covering `from_domain`, `to_domain`, and round-trip integrity for PII/PHI.)
+*   [/] **P3.1: Update/Create Unit Tests for `Patient` Model** (Integration tests PASSING for `test_patient_encryption_integration.py` covering `from_domain`, `to_domain`, and round-trip integrity. Unit tests for `models/test_patient_encryption.py` and `repositories/test_patient_repository.py` are IN PROGRESS.)
     *   [X] Ensure tests cover `from_domain` and `to_domain` methods with PII data, verifying round-trip integrity.
         *   `test_patient_encryption_integration.py` (`TestPatientEncryptionIntegration`):
             *   `test_phi_decrypted_in_repository`: **PASSING**
             *   `test_encryption_error_handling`: **PASSING**
             *   `test_phi_encrypted_in_database`: **PASSING**
-*   [X] **P3.2: Integration Testing** (Effectively COMPLETE - see P3.1)
+*   [/] **P3.2: Integration Testing** (Database and Application checks via `test_patient_encryption_integration.py` are PASSING. Unit test verification for repository and model methods is IN PROGRESS.)
     *   [X] **Database Check:** Programmatic checks in `test_phi_encrypted_in_database` confirm raw DB values are encrypted and differ from plaintext.
     *   [X] **Application Check:** Verified by `test_phi_decrypted_in_repository` that retrieved `Patient` domain objects have decrypted PII.
     *   [X] Test null values and empty strings for encrypted fields (Covered by `test_encryption_error_handling` and behavior of `BaseEncryptionService`).
