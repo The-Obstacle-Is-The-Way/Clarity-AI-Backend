@@ -15,10 +15,10 @@ from app.domain.entities.appointment import (
 )
 
 # Import exceptions if needed for specific tests
-# from app.domain.exceptions import (
-#     InvalidAppointmentStateError, # May not be used anymore
-#     InvalidAppointmentTimeError # May not be used anymore
-# )
+from app.domain.exceptions import (
+    # InvalidAppointmentStateError, # May not be used anymore
+    InvalidAppointmentTimeError # May not be used anymore
+)
 
 
 @pytest.fixture
@@ -26,9 +26,9 @@ def future_datetime():
     """Fixture for a future datetime."""
     # Ensure timezone-aware datetime if needed, otherwise naive
     # Using timezone.utc for consistency if BaseEntity uses it
-    # from datetime import timezone
-    # return datetime.now(timezone.utc) + timedelta(days=1)
-    return datetime.now() + timedelta(days=1)
+    from datetime import timezone # Import timezone
+    return datetime.now(timezone.utc) + timedelta(days=1) # Make timezone-aware
+    # return datetime.now() + timedelta(days=1)
 
 @pytest.fixture
 def valid_appointment_data(future_datetime):
@@ -109,12 +109,12 @@ class TestAppointment:
         data = valid_appointment_data.copy()
         # End time before start time
         data["end_time"] = data["start_time"] - timedelta(minutes=1)
-        with pytest.raises(ValueError, match="Appointment end time must be after start time."):
+        with pytest.raises(InvalidAppointmentTimeError, match="Appointment end time must be after start time."):
             Appointment(**data)
 
         # End time equal to start time
         data["end_time"] = data["start_time"]
-        with pytest.raises(ValueError, match="Appointment end time must be after start time."):
+        with pytest.raises(InvalidAppointmentTimeError, match="Appointment end time must be after start time."):
             Appointment(**data)
 
     def test_update_status(self, valid_appointment_data):
@@ -147,7 +147,7 @@ class TestAppointment:
         assert appointment.start_time == new_start_time
         assert appointment.end_time == new_end_time
         # Check if status resets (depends on implementation logic in reschedule)
-        assert appointment.status == AppointmentStatus.SCHEDULED # Assuming it resets
+        assert appointment.status == AppointmentStatus.RESCHEDULED # Assuming it resets to RESCHEDULED
         assert appointment.last_updated > original_updated_at
 
     def test_reschedule_appointment_calculates_end_time(self, valid_appointment_data, future_datetime):
@@ -162,7 +162,7 @@ class TestAppointment:
 
         assert appointment.start_time == new_start_time
         assert appointment.end_time == new_start_time + original_duration
-        assert appointment.status == AppointmentStatus.SCHEDULED
+        assert appointment.status == AppointmentStatus.RESCHEDULED # Changed from SCHEDULED
         assert appointment.last_updated > original_updated_at
 
     def test_reschedule_invalid_times(self, valid_appointment_data, future_datetime):
@@ -171,11 +171,11 @@ class TestAppointment:
         new_start_time = future_datetime + timedelta(days=2)
 
         # End time before start time
-        with pytest.raises(ValueError, match="Rescheduled end time must be after start time."):
+        with pytest.raises(InvalidAppointmentTimeError, match="Rescheduled end time must be after start time."):
             appointment.reschedule(new_start_time, new_start_time - timedelta(minutes=1))
 
         # End time equal to start time
-        with pytest.raises(ValueError, match="Rescheduled end time must be after start time."):
+        with pytest.raises(InvalidAppointmentTimeError, match="Rescheduled end time must be after start time."):
             appointment.reschedule(new_start_time, new_start_time)
 
     def test_touch_updates_timestamp(self, valid_appointment_data):
