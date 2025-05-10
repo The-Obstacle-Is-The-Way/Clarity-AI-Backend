@@ -20,6 +20,8 @@ from sqlalchemy.pool import StaticPool, Pool
 from sqlalchemy import event
 from sqlalchemy.dialects import sqlite
 import sys
+import json
+import base64
 
 # Application-specific Imports
 from app.app_factory import create_application
@@ -162,77 +164,98 @@ def mock_get_current_user() -> User:
     )
 
 
-@pytest.fixture
-def mock_jwt_service() -> MagicMock:
-    """Provides a MagicMock for JWTService with stateful token handling."""
-    import datetime
-    import uuid
-    from unittest.mock import MagicMock
-    from app.core.domain.entities.user import UserRole
-    # from app.infrastructure.security.jwt.jwt_service import JWTService # No longer using spec
-    from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+@pytest.fixture(scope="function")
+def global_mock_jwt_service(test_settings: Settings) -> MagicMock:
+    """Provides a GLOBAL MagicMock for JWTServiceInterface with specific method behaviors."""
+    issued_tokens_store: dict[str, dict] = {}
+    DEFAULT_EXP_DELTA_MINUTES = test_settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
-    logger.info("--- mock_jwt_service FIXTURE CREATED (Stateful, Correct Decode, WITHOUT Spec) ---")
+    # MODIFIED: Manually create MagicMock and attach AsyncMock/MagicMock for methods
+    mock = MagicMock(spec=JWTServiceInterface, instance=True)
+    # We are essentially defining the mock from scratch now, so ensure all interface methods exist.
+    # The spec argument to MagicMock helps, but for attributes that are methods,
+    # we need to assign callables (like AsyncMock or MagicMock instances) to them.
 
-    mock = MagicMock() # REMOVED spec=JWTService
-    
-    issued_tokens_store = {} # token_string: {"payload": dict, "exp_timestamp": float}
-
-    TEST_USER_ID_STR = "00000000-0000-0000-0000-000000000001" # Default test user UUID
-    DEFAULT_EXP_DELTA_MINUTES = 30
-
-    def mock_create_access_token(data: dict, expires_delta: datetime.timedelta | None = None) -> str:
+    async def mock_create_access_token_async(data: dict, expires_delta: datetime.timedelta | None = None) -> str:
         payload = data.copy()
-        user_id = payload.get("sub", TEST_USER_ID_STR)
-        roles = payload.get("roles", [UserRole.PATIENT.value])
-        
+        current_time = datetime.datetime.now(datetime.timezone.utc)
         if expires_delta is None:
             expires_delta = datetime.timedelta(minutes=DEFAULT_EXP_DELTA_MINUTES)
-            
-        expire_timestamp = (datetime.datetime.now(datetime.timezone.utc) + expires_delta).timestamp()
         
-        # Ensure required claims are present
-        payload["exp"] = expire_timestamp
+        expire_at = current_time + expires_delta
+        payload["exp"] = int(expire_at.timestamp())
+        payload.setdefault("iat", int(current_time.timestamp()))
         payload.setdefault("type", "access")
-        payload.setdefault("jti", str(uuid.uuid4())) # Add unique token ID
-
-        # Simple mock token string (doesn't need to be real JWT for mock)
-        token_string = f"mock_token_{payload['jti']}"
         
-        # Store the token and its data
-        issued_tokens_store[token_string] = {
-            "payload": payload,
-            "exp_timestamp": expire_timestamp
-        }
-        logger.info(f"Mock JWTService: Created token {token_string} with payload: {payload}")
+        jti = str(uuid.uuid4())
+        payload.setdefault("jti", jti)
+        
+        # Using a more JWT-like structure for the mock token string
+        header = {"alg": "HS256", "typ": "JWT"}
+        encoded_header = base64.urlsafe_b64encode(json.dumps(header).encode()).rstrip(b'=').decode()
+        encoded_payload = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b'=').decode()
+        # The signature doesn't have to be real for the mock, but make it look like one part of a JWT.
+        mock_signature = base64.urlsafe_b64encode(uuid.uuid4().bytes).rstrip(b'=').decode()[:10] # dummy signature part
+        token_string = f"{encoded_header}.{encoded_payload}.{mock_signature}"
+
+        issued_tokens_store[token_string] = {"payload": payload, "expire_at": expire_at}
+        logger.info(f"Mock JWTService (ID: {id(mock)}, type: {type(mock).__name__}): mock_create_access_token_async executed. Created token string: '{token_string}' for sub {payload.get('sub')}")
         return token_string
 
-    def mock_decode_token(token: str) -> dict:
-        logger.info(f"Mock JWTService: Attempting to decode token: {token}")
-        stored_data = issued_tokens_store.get(token)
-        
-        if not stored_data:
-            logger.warning(f"Mock JWTService: Token {token} not found in store.")
-            raise InvalidTokenException("Token not found in mock store")
-            
-        # Check expiry
-        now_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
-        if now_timestamp > stored_data["exp_timestamp"]:
-            logger.warning(f"Mock JWTService: Token {token} expired at {stored_data['exp_timestamp']} (current: {now_timestamp}).")
-            raise TokenExpiredException("Mock token expired")
-            
-        logger.info(f"Mock JWTService: Decoded token {token} to payload: {stored_data['payload']}")
-        return stored_data["payload"]
+    # Explicitly make create_access_token an AsyncMock with the side_effect
+    mock.create_access_token = AsyncMock(side_effect=mock_create_access_token_async)
 
-    mock.create_access_token.side_effect = mock_create_access_token
-    mock.decode_token.side_effect = mock_decode_token
+    def mock_decode_token_simplified(token: str) -> dict:
+        logger.info(f"mock_decode_token_simplified CALLED with token: {token}")
+        stored_info = issued_tokens_store.get(token)
+        if stored_info:
+            # Check expiry (optional, but good practice for a mock)
+            # current_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
+            # if current_timestamp > stored_info["expire_at"].timestamp():
+            #     logger.error(f"mock_decode_token_simplified: Token '{token}' is expired.")
+            #     raise TokenExpiredException("Mock token expired")
+            logger.info(f"mock_decode_token_simplified: Found token in store. Payload: {stored_info['payload']}")
+            return stored_info["payload"]
+        else:
+            logger.error(f"mock_decode_token_simplified: Token '{token}' not found in issued_tokens_store. Keys: {list(issued_tokens_store.keys())}")
+            # Attempt to decode if it's a 3-part JWT-like string, for debugging
+            parts = token.split('.')
+            if len(parts) == 3:
+                try:
+                    decoded_payload_bytes = base64.urlsafe_b64decode(parts[1] + '==') # Add padding for b64decode
+                    payload_dict = json.loads(decoded_payload_bytes.decode())
+                    logger.warning(f"mock_decode_token_simplified: Decoded unrecognized token for debugging. Payload: {payload_dict}")
+                    # Still raise, as it wasn't in our store.
+                except Exception as e:
+                    logger.error(f"mock_decode_token_simplified: Failed to decode unrecognized 3-part token '{token}' for debugging: {e}")
+            raise InvalidTokenException(f"Simplified mock: Token {token} not in store")
+
+    # decode_token is synchronous in the interface
+    mock.decode_token = MagicMock(side_effect=mock_decode_token_simplified)
+
+    async def _clear_store_action_simplified() -> None:
+        # issued_tokens_store.clear() # Keep if stateful reset is desired
+        logger.info(f"Mock JWTService (ID: {id(mock)}): _clear_store_action_simplified (async no-op) called.")
+        pass
     
-    # Assign clear_issued_tokens as a lambda
-    mock.clear_issued_tokens = lambda: issued_tokens_store.clear()
-    # Store the token store directly on the mock for potential inspection if needed
-    mock._issued_tokens_store = issued_tokens_store
+    # clear_issued_tokens is async in the interface (IJwtService)
+    mock.clear_issued_tokens = AsyncMock(side_effect=_clear_store_action_simplified)
+    
+    # Ensure other methods from JWTServiceInterface (if any are used by tests) are at least MagicMocks
+    # For example, if JWTServiceInterface had other_sync_method and other_async_method:
+    # mock.other_sync_method = MagicMock(return_value="default_sync_return")
+    # mock.other_async_method = AsyncMock(return_value="default_async_return")
+    # If they are not called, they don't strictly need to be defined if spec is used,
+    # but explicit is often better.
 
-    logger.info(f"--- mock_jwt_service FIXTURE ID: {id(mock)} ---")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: Mock object ID: {id(mock)}, Type: {type(mock).__name__}")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: create_access_token type: {type(mock.create_access_token).__name__}")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: create_access_token.side_effect: {getattr(mock.create_access_token, 'side_effect', 'NOT SET')}")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: decode_token type: {type(mock.decode_token).__name__}")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: decode_token.side_effect: {getattr(mock.decode_token, 'side_effect', 'NOT SET')}")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: clear_issued_tokens type: {type(mock.clear_issued_tokens).__name__}")
+    logger.info(f"MOCK_JWT_SERVICE (Manual) PRE-RETURN: clear_issued_tokens.side_effect: {getattr(mock.clear_issued_tokens, 'side_effect', 'NOT SET')}")
+
     return mock
 
 
@@ -593,70 +616,90 @@ async def authenticated_user(
 #     return user
 
 
-@pytest.fixture
-def auth_headers(mock_jwt_service: MagicMock, authenticated_user: User) -> dict[str, str]:
+@pytest_asyncio.fixture 
+async def auth_headers( 
+    global_mock_jwt_service: MagicMock, # UPDATED: Depends on global_mock_jwt_service
+    authenticated_user: User, 
+) -> dict[str, str]:
     """Generate authentication headers for a mock authenticated user."""
-    # Ensure the mock's internal token store is clean before creating a new token for this test
-    # This prevents interference if multiple tests use auth_headers sequentially
-    mock_jwt_service.clear_issued_tokens() 
+    logger.info(f"AUTH_HEADERS FIXTURE: Using global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
 
     user_id_str = str(authenticated_user.id)
-    user_role_str = authenticated_user.role.value # Assuming role is an Enum
-
-    # Configure the mock_jwt_service instance used by this test/fixture
-    # to return a payload corresponding to the authenticated_user.
-    specific_payload = {
-        "sub": user_id_str, # Use the ID from the Pydantic domain User
-        "roles": [user_role_str], # Ensure list
-        "username": authenticated_user.username,
-        "email": authenticated_user.email,
-        # exp and iat will be set by mock_create_access_token
-    }
     
-    access_token_str = mock_jwt_service.create_access_token(data=specific_payload)
+    # Determine scopes based on user roles
+    user_scopes = set()
+    role_to_scopes_map = {
+        UserRole.ADMIN: ["admin:all", "user:read", "user:write"],
+        UserRole.CLINICIAN: ["patient:read", "patient:write", "clinical_notes:read", "clinical_notes:write"],
+        UserRole.RESEARCHER: ["patient_data:read_anonymized", "analytics:run"],
+        UserRole.PATIENT: ["self_data:read", "self_data:write", "appointments:read"],
+        UserRole.TECHNICIAN: ["system:monitor", "device:manage"]
+    }
 
-    # The get_user_from_token attribute on jwt_service is not standard.
-    # get_current_user relies on user_repo.get_user_by_id(payload["sub"]).
-    # So, ensure authenticated_user is in the db_session for user_repo to find.
-    # The authenticated_user fixture already persists the user.
+    primary_role_str = "unknown" # Default if no roles or single role not found
+    # authenticated_user.roles is a list of role strings from the UserModel, e.g., ["clinician"]
+    if authenticated_user.roles and isinstance(authenticated_user.roles, list):
+        first_role_str = authenticated_user.roles[0]
+        primary_role_str = first_role_str # This is already a string, e.g., "clinician"
 
+        for role_str_from_list in authenticated_user.roles:
+            try:
+                # Convert string back to UserRole enum member for map lookup
+                role_enum = UserRole(role_str_from_list) 
+                user_scopes.update(role_to_scopes_map.get(role_enum, []))
+            except ValueError:
+                logger.warning(f"AUTH_HEADERS FIXTURE: Unknown role string '{role_str_from_list}' found. Skipping for scope mapping.")
+    
+    logger.info(f"AUTH_HEADERS FIXTURE: User ID: {user_id_str}, Roles (strings): {list(authenticated_user.roles) if authenticated_user.roles else []}, Derived Scopes: {list(user_scopes)}")
+
+    token_data = {
+        "sub": user_id_str,
+        "role": primary_role_str, # Using the first role as the primary for the 'role' claim
+        "scopes": list(user_scopes) # Use the derived scopes
+    }
+    #expires_delta = datetime.timedelta(minutes=test_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expires_delta = datetime.timedelta(minutes=30) # Defaulting for now
+
+    # This call might reconfigure create_access_token if it wasn't set by configure_mock
+    access_token_str = await global_mock_jwt_service.create_access_token(data=token_data, expires_delta=expires_delta)
+    logger.info(f"AUTH_HEADERS FIXTURE: Token created: {access_token_str} with payload: {token_data}")
     return {"Authorization": f"Bearer {access_token_str}"}
 
 
 @pytest.fixture
-def get_valid_auth_headers(mock_jwt_service: MagicMock) -> dict[str, str]:
+def get_valid_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
     """Generate patient authentication headers using the mock JWT service."""
-    mock_jwt_service.clear_issued_tokens() # Ensure clean state for this specific header generation
+    global_mock_jwt_service.clear_issued_tokens() # Ensure clean state for this specific header generation
     user_data = {
         "sub": str(uuid.uuid4()), # Use a valid UUID string
         "roles": [UserRole.PATIENT.value],
         "username": "testpatient",
         "email": "patient@example.com"
     }
-    access_token = mock_jwt_service.create_access_token(data=user_data)
+    access_token = global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
 @pytest.fixture
-def get_valid_provider_auth_headers(mock_jwt_service: MagicMock) -> dict[str, str]:
+def get_valid_provider_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
     """Generate provider/clinician authentication headers using the mock JWT service."""
-    mock_jwt_service.clear_issued_tokens() # Ensure clean state
+    global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
     user_data = {
         "sub": str(uuid.uuid4()), # Use a valid UUID string
         "roles": [UserRole.CLINICIAN.value],
         "username": "testprovider",
         "email": "provider@example.com"
     }
-    access_token = mock_jwt_service.create_access_token(data=user_data)
+    access_token = global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
 
 @pytest.fixture
-def admin_auth_headers(mock_jwt_service: MagicMock) -> dict[str, str]:
+def admin_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
     """Generates authorization headers for an admin user."""
-    mock_jwt_service.clear_issued_tokens() # Ensure clean state
+    global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
     # Assuming admin role needs specific identification, adjust payload as needed
     admin_id = str(uuid.uuid4())
-    access_token = mock_jwt_service.create_access_token(data={"sub": admin_id, "roles": [UserRole.ADMIN.value]})
+    access_token = global_mock_jwt_service.create_access_token(data={"sub": admin_id, "roles": [UserRole.ADMIN.value]})
     return {"Authorization": f"Bearer {access_token}"}
 
 

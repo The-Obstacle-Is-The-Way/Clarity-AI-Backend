@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 from .base import BaseModelConfig
 
@@ -133,8 +133,7 @@ class RiskPredictionResponse(BaseModelConfig):
     visualization_data: dict[str, Any] | None = None
     model_version: str = "1.0"
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces=())
 
 
 class ModelInfoRequest(BaseModelConfig):

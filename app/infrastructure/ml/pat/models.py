@@ -71,6 +71,8 @@ class PATModelSizeEnum(str, Enum):
 class AccelerometerDataRequest(BaseModel):
     """Request model for actigraphy data analysis."""
     
+    model_config = ConfigDict(protected_namespaces=())
+
     readings: list[AccelerometerReading] = Field(..., description="List of accelerometer readings")
     device_info: DeviceInfo = Field(..., description="Information about the wearable device")
     patient_metadata: PatientMetadata | None = Field(None, description="Patient metadata")
@@ -157,6 +159,8 @@ class MedicationResponseMetrics(AnalysisMetrics):
 class AnalysisResult(BaseModel):
     """Result of actigraphy data analysis."""
     
+    model_config = ConfigDict(protected_namespaces=())
+
     analysis_id: str = Field(..., description="Unique identifier for the analysis")
     patient_id: str | None = Field(None, description="Patient identifier")
     analysis_type: AnalysisTypeEnum = Field(..., description="Type of analysis performed")

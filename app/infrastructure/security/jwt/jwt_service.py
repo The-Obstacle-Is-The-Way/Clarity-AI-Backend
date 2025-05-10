@@ -13,7 +13,7 @@ from uuid import UUID
 import traceback
 
 from jose import ExpiredSignatureError, JWTError, jwt
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, ConfigDict
 
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.domain.entities.user import User
@@ -49,8 +49,7 @@ class TokenPayload(BaseModel):
     # Add other custom claims as needed
     # permissions: List[str] | None = []
 
-    class Config:
-        extra = 'allow' # Allow extra fields not explicitly defined
+    model_config = ConfigDict(extra='allow') # Allow extra fields not explicitly defined
 
 class JWTService(IJwtService):
     """
@@ -425,6 +424,15 @@ class JWTService(IJwtService):
             else:
                 serializable[key] = value
         return serializable
+
+    def clear_issued_tokens(self) -> None:
+        """
+        Clears any internally tracked issued tokens (e.g., blacklist).
+        For the real JWTService, this primarily means clearing the token blacklist.
+        """
+        logger.info("JWTService: clear_issued_tokens called. Clearing token blacklist.")
+        self._token_blacklist.clear()
+        logger.info("JWTService: Token blacklist cleared.")
 
 def get_jwt_service() -> IJwtService:
     """

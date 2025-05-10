@@ -4,7 +4,7 @@ Pydantic schemas for authentication-related requests and responses.
 import uuid
 from typing import List, Optional # Corrected from list
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 class TokenDataSchema(BaseModel):
     """Schema for data embedded within a token."""
@@ -21,8 +21,7 @@ class TokenResponseSchema(BaseModel):
     user_id: Optional[uuid.UUID] = Field(None, description="User ID of the authenticated user") # Added Optional
     roles: Optional[List[str]] = Field(None, description="Roles of the authenticated user")
 
-    class Config:
-        from_attributes = True #  Updated from orm_mode = True for Pydantic v2
+    model_config = ConfigDict(from_attributes=True)
 
 class LoginRequestSchema(BaseModel):
     """Request schema for user login."""
@@ -44,8 +43,7 @@ class SessionInfoResponseSchema(BaseModel):
     exp: Optional[int] = Field(None, description="Access token expiry timestamp (seconds since epoch)")
     # Add other relevant session details like CSRF token if used
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserRegistrationRequestSchema(BaseModel):
     """Request schema for new user registration."""
@@ -61,8 +59,7 @@ class UserRegistrationResponseSchema(BaseModel):
     is_active: bool = Field(..., description="Whether the user account is active (usually True after registration)")
     is_verified: bool = Field(False, description="Whether the user's email has been verified (usually False initially)")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LogoutResponseSchema(BaseModel):
     """Response schema for logout (though often logout is 204 No Content)."""

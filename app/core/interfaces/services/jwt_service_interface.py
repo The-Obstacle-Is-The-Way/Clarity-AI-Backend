@@ -129,3 +129,15 @@ class JWTServiceInterface(ABC):
             The expiration datetime, or None if the token is invalid
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def clear_issued_tokens(self) -> None:
+        """
+        Clear any internally tracked issued tokens.
+        
+        NOTE: This method is primarily intended for testing environments,
+        particularly for mock implementations of this service, to allow resetting
+        the state of issued tokens between test cases.
+        Real implementations might make this a no-op or log a warning.
+        """
+        raise NotImplementedError

@@ -147,7 +147,3 @@ class AlertRuleResponse(AlertRuleBase):
     created_at: datetime
     last_updated: datetime
     version: int
-
-    class Config(BaseModelConfig.Config):
-        # Ensure enums are serialized correctly if needed, although Pydantic 2 usually handles this.
-        pass

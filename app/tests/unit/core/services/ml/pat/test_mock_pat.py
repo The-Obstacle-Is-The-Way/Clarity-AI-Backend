@@ -59,7 +59,6 @@ def sample_device_info():
         "sensors": ["accelerometer", "gyroscope", "heart_rate"]
     }
 
-@pytest.mark.xfail(run=False, reason="Tests need to be fixed to properly handle validation errors")
 class TestMockPAT:
     """Tests for the MockPAT implementation."""
 

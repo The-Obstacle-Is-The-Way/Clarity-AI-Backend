@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PredictionMetadata(BaseModel):
@@ -21,5 +21,4 @@ class PredictionMetadata(BaseModel):
     )
     # Add other relevant metadata fields as needed
 
-    class Config:
-        orm_mode = True  # Allow compatibility with ORM models if needed later
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())  # Allow compatibility with ORM models if needed later

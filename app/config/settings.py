@@ -23,7 +23,7 @@ from pydantic_settings import BaseSettings
 # --- ML Settings Sub-Models ---
 
 class MentalLlamaSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix='MENTALLAMA_') # Prefix for env vars
+    model_config = ConfigDict(env_prefix='MENTALLAMA_', protected_namespaces=('settings_',)) # Prefix for env vars
 
     provider: str = Field(default="openai", json_schema_extra={"env": "PROVIDER"}) # openai, azure, local, custom
     openai_api_key: SecretStr | None = Field(default=None, json_schema_extra={"env": "OPENAI_API_KEY"})
@@ -50,7 +50,7 @@ class MentalLlamaSettings(BaseSettings):
         return v
 
 class PATSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix='PAT_')
+    model_config = ConfigDict(env_prefix='PAT_', protected_namespaces=('settings_',))
 
     model_path: str = Field(default="/models/pat/pat-medium", json_schema_extra={"env": "MODEL_PATH"})
     cache_dir: str = Field(default="/cache/pat", json_schema_extra={"env": "CACHE_DIR"})
@@ -58,7 +58,7 @@ class PATSettings(BaseSettings):
     results_storage_path: str = Field(default="/storage/pat_results", json_schema_extra={"env": "RESULTS_STORAGE_PATH"})
 
 class XGBoostSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix='XGBOOST_')
+    model_config = ConfigDict(env_prefix='XGBOOST_', protected_namespaces=('settings_',))
 
     # Example: Define paths for different XGBoost models
     treatment_response_model_path: str = Field(default="/models/xgboost/treatment_response.xgb", json_schema_extra={"env": "TREATMENT_RESPONSE_MODEL_PATH"})
@@ -66,12 +66,12 @@ class XGBoostSettings(BaseSettings):
     risk_prediction_model_path: str = Field(default="/models/xgboost/risk_prediction.xgb", json_schema_extra={"env": "RISK_PREDICTION_MODEL_PATH"})
 
 class LSTMSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix='LSTM_')
+    model_config = ConfigDict(env_prefix='LSTM_', protected_namespaces=('settings_',))
 
     biometric_correlation_model_path: str = Field(default="/models/lstm/biometric_correlation.pkl", json_schema_extra={"env": "BIOMETRIC_CORRELATION_MODEL_PATH"})
 
 class PHIDetectionSettings(BaseSettings):
-    model_config = ConfigDict(env_prefix='PHI_DETECTION_') # Changed prefix to avoid clash
+    model_config = ConfigDict(env_prefix='PHI_DETECTION_', protected_namespaces=('settings_',)) # Changed prefix to avoid clash
 
     patterns_file: str = Field(default="app/infrastructure/security/phi/phi_patterns.yaml", json_schema_extra={"env": "PATTERNS_FILE"})
     default_redaction_format: str = Field(default="[{category}]", json_schema_extra={"env": "DEFAULT_REDACTION_FORMAT"})
@@ -365,7 +365,8 @@ class Settings(BaseSettings):
     model_config = ConfigDict(
         case_sensitive=True,
         env_file_encoding="utf-8",
-        env_nested_delimiter='__'
+        env_nested_delimiter='__',
+        protected_namespaces=('settings_',)
     )
 
 

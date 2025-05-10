@@ -97,44 +97,12 @@ def mock_auth_service() -> MagicMock:
     return mock
 
 
-@pytest.fixture(scope="function")
-def mock_jwt_service() -> MagicMock:
-    """Provides a mock JWTService dependency override,
-    simplifying token verification for tests.
-    """
-    mock = MagicMock(spec=IJwtService)
-
-    # --- Mock ASYNC methods --- #
-    # Ensure decode_token itself is an awaitable mock that returns the payload
-    mock.decode_token = AsyncMock(return_value={
-        "sub": TEST_USER_ID, # Use consistent user ID
-        "role": "admin",
-        # Add other claims if necessary for tests
-    })
-    mock.create_access_token = AsyncMock(return_value="mock_access_token")
-    mock.create_refresh_token = AsyncMock(return_value="mock_refresh_token")
-    # Return a mock user object if needed by downstream code, else None is fine
-    mock_user_payload = MagicMock() 
-    mock_user_payload.id = TEST_USER_ID
-    mock_user_payload.username = "testuser"
-    mock.get_user_from_token = AsyncMock(return_value=mock_user_payload) 
-    # Mock payload
-    mock.verify_refresh_token = AsyncMock(return_value={"sub": TEST_USER_ID})
-
-    # --- Mock SYNC methods --- #
-    # Mock the synchronous method
-    mock.get_token_payload_subject.return_value = TEST_USER_ID 
-
-    return mock
-
-
 # --- New Fixture for MentaLLaMA Test Client --- #
 @pytest_asyncio.fixture(scope="function")
 async def mentallama_test_client(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
     mock_mentallama_service_instance: MagicMock,
-    # mock_mentallama_user_repo: AsyncMock, # Step 2, not yet implemented
-    # mock_jwt_service_instance: MagicMock, # Placeholder if needed for auth override
+    global_mock_jwt_service: MagicMock,
 ) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an AsyncClient configured for MentaLLaMA tests with necessary
@@ -160,8 +128,6 @@ async def mentallama_test_client(
                 f"MENTALLAMA_TEST_CLIENT: app_from_fixture is {type(app_from_fixture)} and no suitable "
                 f"inner '.app' attribute found. Dependency overrides will likely fail."
             )
-            # If it's not FastAPI and has no .app, this fixture will likely raise the AttributeError
-            # on the next line, which is what we're trying to fix.
     else:
         logger.info(
             f"MENTALLAMA_TEST_CLIENT: app_from_fixture is already FastAPI type: {type(app_from_fixture)}. "
@@ -169,18 +135,16 @@ async def mentallama_test_client(
         )
 
     # Override MentaLLaMA service
-    # This is the line that was causing: AttributeError: 'function' object has no attribute 'dependency_overrides'
     actual_app_for_overrides.dependency_overrides[MentaLLaMAInterface] = lambda: mock_mentallama_service_instance
     logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(actual_app_for_overrides)}")
 
-    # Placeholder for future user repo override (from detailed plan)
-    # from app.presentation.api.dependencies.auth import get_user_repository_dependency
-    # actual_app_for_overrides.dependency_overrides[get_user_repository_dependency] = lambda: mock_mentallama_user_repo
-    # logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode get_user_repository_dependency on app {id(actual_app_for_overrides)}")
+    # ADDED: Override IJwtService with the global mock
+    actual_app_for_overrides.dependency_overrides[IJwtService] = lambda: global_mock_jwt_service
+    logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(actual_app_for_overrides)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
 
-    yield client  # Yield the client for the test to use
+    yield client
 
-    # Teardown: Clear dependency overrides to prevent interference between tests
+    # Teardown: Clear dependency overrides
     try:
         actual_app_for_overrides.dependency_overrides.clear()
         logger.info(f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(actual_app_for_overrides)}")
@@ -277,10 +241,9 @@ async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient,
 
 @pytest.mark.asyncio
 async def test_service_unavailable(
-    # Renamed parameter to match the new fixture
     mentallama_test_client: AsyncClient, 
-    mock_mentallama_service_instance: AsyncMock, # Need the mock instance to modify it
-    auth_headers: dict[str, str] # Added auth_headers
+    mock_mentallama_service_instance: AsyncMock,
+    auth_headers: dict[str, str]
 ) -> None:
     """Tests error handling when the MentaLLaMA service is unavailable."""
     # Configure the mock to raise an exception for this specific test

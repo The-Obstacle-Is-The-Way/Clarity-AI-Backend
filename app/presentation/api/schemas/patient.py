@@ -1,6 +1,6 @@
 import uuid # Add import for uuid
 from datetime import date, datetime # Add import for date and datetime
-from pydantic import BaseModel, Field, EmailStr, computed_field # Add EmailStr and computed_field
+from pydantic import BaseModel, Field, EmailStr, computed_field, ConfigDict # Add EmailStr and computed_field
 
 
 class PatientBase(BaseModel):
@@ -30,8 +30,7 @@ class PatientRead(PatientBase):
     def name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
-    class Config:
-        from_attributes = True # orm_mode = True for Pydantic v1
+    model_config = ConfigDict(from_attributes=True) # orm_mode = True for Pydantic v1
 
 # Create a specific response for patient creation
 class PatientCreateResponse(PatientRead):

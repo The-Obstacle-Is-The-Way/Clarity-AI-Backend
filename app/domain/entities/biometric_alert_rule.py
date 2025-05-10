@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # Value Objects and Enums
 
@@ -124,10 +124,10 @@ class RuleCondition(BaseModel):
         """Evaluate if the condition is met for a given metric value."""
         return self.operator.evaluate(metric_value, self.threshold_value)
     
-    class Config:
-        """Pydantic configuration."""
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )
 
 
 class BiometricAlertRule(BaseModel):
@@ -179,7 +179,7 @@ class BiometricAlertRule(BaseModel):
         else:  # OR
             return any(results)
     
-    class Config:
-        """Pydantic configuration."""
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )
