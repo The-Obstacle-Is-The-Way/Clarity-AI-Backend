@@ -5,7 +5,7 @@ Tests for the Appointment Service.
 # Defer service import if necessary, though typically fine in tests
 # from app.domain.services.appointment_service import AppointmentService 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,11 +23,10 @@ from app.domain.exceptions import ValidationError  # Moved from below
 # Removed duplicate import of InvalidAppointmentTimeError
 # Removed AppointmentNotFoundException, PatientNotFoundException, ProviderNotFoundException
 
-
 @pytest.fixture
 def future_datetime():
     """Fixture for a future datetime."""
-    return datetime.now() + timedelta(days=1)
+    return datetime.now(UTC) + timedelta(days=1)
 
 @pytest.fixture
 def appointment_repository():

@@ -254,12 +254,9 @@ class TestMentalLLaMAExceptions:
         with pytest.raises(MentalLLaMAValidationError) as exc_info:
             raise MentalLLaMAValidationError("Test validation error", {"field": "error"}, {})
 
-        try:
-            # This should not execute if the exception is raised
-            assert False
-        except MentalLLaMAValidationError:
-            # This should execute
-            assert True
-
         # Verify that the exception caught is the one we raised
         assert exc_info.value.message == "Test validation error"
+        assert exc_info.value.validation_errors == {"field": "error"}
+        # Check that details now contains validation_errors as per the fix
+        assert "validation_errors" in exc_info.value.details
+        assert exc_info.value.details["validation_errors"] == {"field": "error"}

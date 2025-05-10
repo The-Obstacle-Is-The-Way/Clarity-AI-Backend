@@ -78,19 +78,32 @@ class MentalLLaMAInferenceError(MentalLLaMABaseException):
     def __init__(
         self,
         message: str,
-        model: str | None = None,
+        model_name: str | None = None,
+        inference_parameters: dict[str, Any] | None = None,
         details: dict[str, Any] | None = None
     ):
-        # Store model identifier
-        self.model = model
-        # Use provided details or default to empty
-        combined_details = details if details is not None else {}
+        # Store model identifier and parameters
+        self.model_name = model_name
+        self.inference_parameters = inference_parameters or {}
+
+        # Use provided details or default to empty, then merge
+        current_details = details or {}
+        combined_details = {
+            # model_name and inference_parameters will be added from current_details if present,
+            # or from self if not.
+            **current_details 
+        }
+        if "model_name" not in combined_details and self.model_name is not None:
+            combined_details["model_name"] = self.model_name
+        if "inference_parameters" not in combined_details: # self.inference_parameters is already a dict
+             combined_details["inference_parameters"] = self.inference_parameters
+        
         super().__init__(message, combined_details)
 
     def __str__(self) -> str:
         """Human-readable string including model information."""
-        if self.model:
-            return f"{self.message} (model: {self.model})"
+        if self.model_name:
+            return f"{self.message} (model: {self.model_name})"
         return super().__str__()
 
 
@@ -109,8 +122,9 @@ class MentalLLaMAValidationError(MentalLLaMABaseException):
     ):
         self.validation_errors = validation_errors or {}
         
-        # Only use explicit details; do not inject validation_errors into details
-        combined_details = details if details is not None else {}
+        # Merge validation_errors into details
+        combined_details = details or {}
+        combined_details["validation_errors"] = self.validation_errors
             
         super().__init__(message, combined_details)
     
