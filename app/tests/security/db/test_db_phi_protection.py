@@ -336,8 +336,31 @@ class TestDBPHIProtection:
 
     @pytest.fixture
     def unit_of_work(self, db):
-        """Create test unit of work."""
-        return UnitOfWork(db)
+        """Create a SQLAlchemyUnitOfWork instance with mocked session factory."""
+        try:
+            # Prefer the concrete SQLAlchemy implementation for these tests
+            from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work import SQLAlchemyUnitOfWork
+            
+            if not hasattr(db, 'session_factory'):
+                raise AttributeError("Mock 'db' fixture is missing 'session_factory' attribute, which is required by SQLAlchemyUnitOfWork.")
+            
+            return SQLAlchemyUnitOfWork(session_factory=db.session_factory)
+        except ImportError:
+            # Fallback to the locally defined mock if the real one can't be imported.
+            # This assumes the top-level try-except in this file has defined a mock 'UnitOfWork'.
+            # To make this clear, we could explicitly reference a differently named local mock here,
+            # but for now, we'll rely on the existing structure where 'UnitOfWork' becomes the local mock.
+            
+            # Log a warning if we fall back to the mock, as it might indicate an environment issue.
+            import logging
+            logging.getLogger(__name__).warning(
+                "SQLAlchemyUnitOfWork could not be imported. Falling back to local mock UnitOfWork for test_db_phi_protection.py. "
+                "This may lead to incomplete tests if the mock behavior diverges significantly."
+            )
+            
+            # The name 'UnitOfWork' in this scope should be the mock from the file's top-level except block.
+            # If that mock is also unavailable, this will fail.
+            return UnitOfWork(database=db) # Pass 'database=db' as per the mock's __init__
 
     @pytest.fixture
     def admin_context(self):
@@ -581,18 +604,19 @@ class TestDBPHIProtection:
             assert guest_patient.ssn == "REDACTED", "Guest should not see SSN"
             assert guest_patient.email == "REDACTED", "Guest should not see email"
 
-    def test_transaction_rollback_on_error(self, db, admin_context):
-        """Test that database transactions are rolled back on error."""
-        uow = UnitOfWork(db)
-        # Pass session from UoW's database to repo
-        repo = PatientRepository(uow.database.get_session(), user_context=admin_context)
+    def test_transaction_rollback_on_error(self, unit_of_work, db, admin_context):
+        """Test that transactions are rolled back on error."""
+        # Use the unit_of_work fixture which handles correct UoW instantiation
+        uow = unit_of_work 
+
+        patient_repo = PatientRepository(db_session=db.get_session(), user_context=admin_context)
 
         # Mock the create method to raise an exception
-        with patch.object(repo, 'create', side_effect=Exception("Database error")):
+        with patch.object(patient_repo, 'create', side_effect=Exception("Database error")):
             # Use the UoW context manager
             with pytest.raises(Exception, match="Database error"):
                 with uow:
-                    repo.create(Patient(first_name="Error", last_name="Test"))
+                    patient_repo.create(Patient(first_name="Error", last_name="Test"))
 
         # Assert that rollback was called via __exit__
         assert uow.rolled_back is True

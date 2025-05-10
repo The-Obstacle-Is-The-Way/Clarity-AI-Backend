@@ -2018,6 +2018,13 @@ class MockPATService(PATInterface):
                 "recommendations_count": 2
             }
         
+        if "physiological" in integration_types: # Added this block
+            results["physiological"] = {
+                "status": "success",
+                "insights": ["Physiological markers within normal range"],
+                "recommendations_count": 0
+            }
+
         return results
     
     def _generate_mock_interpretation(self, analysis_types: list[str]) -> dict[str, Any]:

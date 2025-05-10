@@ -441,13 +441,12 @@ class TestMockPATIntegrateWithDigitalTwin:
 
         # Now integrate with Digital Twin
         analysis_id = analysis["analysis_id"]
-        profile_id = "profile-xyz"
+        profile_id = "profile456"   # Corrected: Initialized in mock for patient123
 
         result = initialized_mock_pat.integrate_with_digital_twin(
             patient_id=patient_id,
             profile_id=profile_id,
-            actigraphy_analysis=analysis, # Pass the full analysis dict
-            # analysis_id=analysis_id, # Removed old argument
+            actigraphy_analysis=analysis,
         )
 
         # Verify the result structure
@@ -506,6 +505,6 @@ class TestMockPATIntegrateWithDigitalTwin:
         with pytest.raises(AuthorizationError):
             initialized_mock_pat.integrate_with_digital_twin(
                 patient_id="patient-456",  # Different patient
-                profile_id="profile-xyz",
+                profile_id="profile456",   # Corrected: Use an existing profile to trigger patient mismatch logic
                 analysis_id=analysis_id,
             )

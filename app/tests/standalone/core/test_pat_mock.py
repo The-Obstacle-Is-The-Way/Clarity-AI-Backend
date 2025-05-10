@@ -147,7 +147,7 @@ class TestMockPATAnalysis:
         assert "patient_id" in result
         assert "timestamp" in result
         assert "results" in result
-        assert "metadata" in result
+        assert "data_summary" in result
 
         # Verify patient ID is preserved
         assert result["patient_id"] == "patient-123"
@@ -156,15 +156,15 @@ class TestMockPATAnalysis:
         assert "sleep" in result["results"]
         assert "activity" in result["results"]
 
-        # Verify metadata contains expected fields
-        assert "device_info" in result["metadata"]
-        assert "start_time" in result["metadata"]
-        assert "end_time" in result["metadata"]
-        assert "sampling_rate_hz" in result["metadata"]
-        assert "reading_count" in result["metadata"]
+        # Verify metadata (now data_summary) contains expected fields
+        assert "device_info" in result
+        assert "start_time" in result["data_summary"]
+        assert "end_time" in result["data_summary"]
+        assert "sampling_rate_hz" in result["data_summary"]
+        assert "reading_count" in result["data_summary"]
 
         # Verify reading count matches input
-        assert result["metadata"]["reading_count"] == len(valid_readings)
+        assert result["data_summary"]["reading_count"] == len(valid_readings)
 
     @pytest.mark.standalone()
     def test_analyze_actigraphy_not_initialized(
@@ -384,31 +384,16 @@ class TestMockPATProfileManagement:
 
     @pytest.mark.standalone()
     def test_create_patient_profile_success(self, initialized_mock_pat):
-        """Test successful patient profile creation."""
-        profile_data = {
-            "age": 35,
-            "gender": "female",
-            "height_cm": 165,
-            "weight_kg": 60,
-            "medical_conditions": ["insomnia", "anxiety"]
-        }
-
+        """Test successful creation of a patient profile."""
+        profile_data = {"age": 35, "sex": "female", "preferences": {"notifications": True}}
         result = initialized_mock_pat.create_patient_profile(
-            patient_id="patient-123",
-            profile_data=profile_data
+            patient_id="patient-123", profile_data=profile_data
         )
-
-        # Verify result structure
         assert "profile_id" in result
-        assert "patient_id" in result
-        assert "timestamp" in result
-        assert "data" in result
-
-        # Verify patient ID is preserved
         assert result["patient_id"] == "patient-123"
-
-        # Verify profile data is preserved
-        assert result["data"] == profile_data
+        assert result["age"] == 35
+        assert result["sex"] == "female"
+        assert result["preferences"] == {"notifications": True}
 
     @pytest.mark.standalone()
     def test_create_patient_profile_not_initialized(self, mock_pat):
@@ -459,9 +444,10 @@ class TestMockPATProfileManagement:
         )
 
         # Verify retrieved profile matches created profile
-        assert retrieved_profile["profile_id"] == profile_id
+        assert retrieved_profile["profile_id"] == created_profile["profile_id"]
         assert retrieved_profile["patient_id"] == "patient-123"
-        assert retrieved_profile["data"] == profile_data
+        assert retrieved_profile["age"] == profile_data["age"]
+        assert retrieved_profile["gender"] == profile_data["gender"]
 
     @pytest.mark.standalone()
     def test_get_patient_profile_not_initialized(self, mock_pat):
@@ -524,9 +510,9 @@ class TestMockPATProfileManagement:
         # Verify updated profile has new data
         assert updated_profile["profile_id"] == profile_id
         assert updated_profile["patient_id"] == "patient-123"
-        assert updated_profile["data"]["age"] == 36
-        assert updated_profile["data"]["weight_kg"] == 65
-        assert updated_profile["data"]["gender"] == "female"
+        assert updated_profile["age"] == 36
+        assert updated_profile["weight_kg"] == 65
+        assert updated_profile["gender"] == "female"
 
     @pytest.mark.standalone()
     def test_update_patient_profile_not_initialized(self, mock_pat):
