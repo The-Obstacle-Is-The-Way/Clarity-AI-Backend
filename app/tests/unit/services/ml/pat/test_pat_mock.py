@@ -7,6 +7,7 @@ verifying both success paths and error handling.
 
 
 import pytest
+from datetime import datetime, timedelta, timezone
 
 from app.core.exceptions import (
     AuthorizationError,
@@ -32,19 +33,10 @@ def initialized_mock_pat():
 @pytest.fixture
 def valid_readings():
     """Create a list of valid accelerometer readings for testing (at least 10 as required)."""
+    now = datetime.now(timezone.utc)
     return [
-        {"x": 0.1, "y": 0.2, "z": 0.9},
-        {"x": 0.2, "y": 0.3, "z": 0.8},
-        {"x": 0.3, "y": 0.4, "z": 0.7},
-        {"x": 0.2, "y": 0.1, "z": 0.6},
-        {"x": 0.3, "y": 0.2, "z": 0.5}, 
-        {"x": 0.4, "y": 0.3, "z": 0.4},
-        {"x": 0.5, "y": 0.4, "z": 0.3},
-        {"x": 0.6, "y": 0.5, "z": 0.2},
-        {"x": 0.7, "y": 0.6, "z": 0.1},
-        {"x": 0.8, "y": 0.7, "z": 0.0},
-        {"x": 0.9, "y": 0.8, "z": 0.1},
-        {"x": 1.0, "y": 0.9, "z": 0.2}
+        {"timestamp": (now + timedelta(seconds=i)).isoformat(), "x": 0.1 + i*0.01, "y": 0.2 + i*0.01, "z": 0.9 - i*0.01}
+        for i in range(12)
     ]
 
 @pytest.fixture

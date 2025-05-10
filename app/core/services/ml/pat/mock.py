@@ -1681,10 +1681,12 @@ class MockPATService(PATInterface):
     def integrate_with_digital_twin(
         self,
         patient_id: str,
-        analysis_id: str,
-        profile_id: str,
+        profile_id: str, # Corrected order
+        analysis_id: str | None = None, # Made optional
+        actigraphy_analysis: dict[str, Any] | None = None, # Added
         integration_types: list[str] | None = None,
         metadata: dict | None = None,
+        **kwargs # Added for interface compliance
     ) -> dict:
         self._check_initialized()
 
@@ -1692,28 +1694,33 @@ class MockPATService(PATInterface):
         if integration_types is None:
             integration_types = ["activity", "sleep", "behavioral"] # A sensible default
 
-        analysis_data = self._validate_integration_params(
-            patient_id=patient_id, 
-            analysis_id=analysis_id, 
-            profile_id=profile_id, 
+        # Validate profile existence first
+        if profile_id not in self._profiles:
+            raise ResourceNotFoundError(f"Profile {profile_id} not found for integration.")
+
+        analysis_data_to_integrate = self._validate_integration_params(
+            patient_id=patient_id,
+            profile_id=profile_id, # Pass profile_id for context
+            analysis_id=analysis_id,
+            actigraphy_analysis=actigraphy_analysis,
             integration_types=integration_types
         )
 
         # Create a unique ID for this integration event
         integration_id = str(uuid.uuid4())
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        timestamp = self._get_current_time() # Use helper for consistent timestamping
         
         # Generate sub-components of the response
         categories = self._generate_integration_categories()
         recommendations = self._generate_integration_recommendations(integration_types)
-        insights = self._generate_integration_insights(analysis_data)
+        insights = self._generate_integration_insights(analysis_data_to_integrate)
         
         # Create updated profile object
         updated_profile = {
             "profile_id": profile_id,
             "patient_id": patient_id,
             "last_updated": timestamp,
-            "health_score": self._calculate_health_score(analysis_data),
+            "health_score": self._calculate_health_score(analysis_data_to_integrate),
             "categories": categories,
             "recommendations": recommendations,
             "insights": insights
@@ -1734,30 +1741,38 @@ class MockPATService(PATInterface):
         })
         
         # Generate domain-specific integration results
-        integration_results = self._generate_domain_integration_results(integration_types, analysis_data)
+        integration_results = self._generate_domain_integration_results(integration_types, analysis_data_to_integrate)
         
         # Store the integration result for later retrieval
         self._integrations[integration_id] = {
             "integration_id": integration_id,
-            "analysis_id": analysis_data.get("analysis_id"),
+            "analysis_id": analysis_data_to_integrate.get("analysis_id"),
             "patient_id": patient_id,
             "profile_id": profile_id,
             "timestamp": timestamp,
             "status": "completed",
-            "integration_status": "success"
+            "integration_status": "success",
+            "digital_twin_updated": True, # Ensure this key exists
+            "digital_twin_updates": True, # Adding this for test_standalone_pat_mock.py if needed
+            "categories": categories,
+            "recommendations": recommendations,
+            "metadata": metadata,
+            "updated_profile": updated_profile,
+            "integration_results": integration_results
         }
         
         # Create complete result object with all fields needed by tests
         result = {
             "integration_id": integration_id,
-            "analysis_id": analysis_data.get("analysis_id"),
-            "actigraphy_analysis_id": analysis_data.get("analysis_id"),  # Add this field for test compatibility
+            "analysis_id": analysis_data_to_integrate.get("analysis_id"),
+            "actigraphy_analysis_id": analysis_data_to_integrate.get("analysis_id"),  # Add this field for test compatibility
             "patient_id": patient_id,
             "profile_id": profile_id,
             "timestamp": timestamp,
             "created_at": timestamp,
             "integration_types": integration_types,
             "digital_twin_updated": True,
+            "digital_twin_updates": True,
             "categories": categories,
             "recommendations": recommendations,
             "metadata": metadata,
@@ -1769,7 +1784,7 @@ class MockPATService(PATInterface):
                 "id": profile_id,
                 "patient_id": patient_id,
                 "updated_at": timestamp,
-                "actigraphy_analysis_id": analysis_data.get("analysis_id"),  # Required by test
+                "actigraphy_analysis_id": analysis_data_to_integrate.get("analysis_id"),  # Required by test
                 "activity_level": "moderate",
                 "sleep_quality": "good",
                 "activity_summary": {  # These fields are required by the test
@@ -1835,36 +1850,55 @@ class MockPATService(PATInterface):
     def _validate_integration_params(
         self,
         patient_id: str,
-        analysis_id: str,
-        profile_id: str,
+        profile_id: str, # Added profile_id for context
+        analysis_id: str | None = None, # Made optional
+        actigraphy_analysis: dict[str, Any] | None = None, # Added
         integration_types: list[str] | None = None,
     ) -> dict:
         """Validate parameters for digital twin integration."""
         if not patient_id:
             raise ValidationError("Patient ID is required for integration")
-        if not analysis_id:
-            raise ValidationError("Analysis ID is required for integration")
-        if not profile_id:
-            raise ValidationError("Profile ID is required for integration")
+        # profile_id is validated before calling this method in the current flow.
+        # if not profile_id:
+        #     raise ValidationError("Profile ID is required for integration")
 
-        # DEBUG PRINT - REMOVING THESE
-        # print(f"DEBUG: Looking for analysis_id: {analysis_id}")
-        # print(f"DEBUG: Available keys in self._analyses: {list(self._analyses.keys())}")
-        
-        analysis_data = self._analyses.get(analysis_id)
-        if not analysis_data:
-            raise ResourceNotFoundError("Analysis not found") 
+        # Logic to determine the source of analysis data
+        source_analysis_data: dict[str, Any] | None = None
 
-        if analysis_data.get("patient_id") != patient_id:
-            # Use the aliased exception for consistency, if it were BaseAuthorizationError
-            raise BaseAuthorizationError("Analysis does not belong to patient") 
+        if analysis_id:
+            fetched_analysis = self._analyses.get(analysis_id)
+            if not fetched_analysis:
+                raise ResourceNotFoundError(f"Analysis {analysis_id} not found")
+            if fetched_analysis.get("patient_id") != patient_id:
+                raise BaseAuthorizationError(f"Analysis {analysis_id} does not belong to patient {patient_id}")
+            source_analysis_data = fetched_analysis
+        elif actigraphy_analysis:
+            # Use provided actigraphy_analysis.
+            # For mock purposes, we assume it has a compatible structure or adapt it.
+            # A simple mock adaptation: ensure it has an 'analysis_id' if other parts of the code expect it.
+            source_analysis_data = actigraphy_analysis.copy() # Use a copy
+            if "analysis_id" not in source_analysis_data:
+                 # Provide a mock analysis_id if direct analysis data is given
+                source_analysis_data["analysis_id"] = f"direct_analysis_{uuid.uuid4()}"
+            if "patient_id" not in source_analysis_data:
+                source_analysis_data["patient_id"] = patient_id
+
+            # Ensure other fields expected by downstream mock helpers are present
+            if "results" not in source_analysis_data:
+                source_analysis_data["results"] = {} # Mock basic structure
+            if "metrics" not in source_analysis_data:
+                 source_analysis_data["metrics"] = {"general": {"mock_metric": 1}}
+
+
+        else:
+            raise ValidationError("Either analysis_id or actigraphy_analysis must be provided for integration")
 
         # Validate integration_types if provided
         if integration_types:
             # Add any additional validation logic you want to execute for integration_types
             pass
 
-        return analysis_data
+        return source_analysis_data
         
     def _generate_integration_categories(self) -> dict[str, dict[str, float]]:
         """Generate integration categories with scores.
