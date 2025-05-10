@@ -67,57 +67,58 @@ class PatientRepository:
     and database models, and for performing database operations.
     """
 
-    def __init__(self, db_session: AsyncSession | None = None, db_session_factory = None, user_context: dict[str, Any] | None = None, **_):
+    def __init__(self, 
+                 db_session: AsyncSession | None = None, 
+                 db_session_factory = None, 
+                 uow_session: AsyncSession | None = None,
+                 user_context: dict[str, Any] | None = None, 
+                 **_):
         """
-        Initialize the repository with a database session or a session factory.
+        Initialize the repository with a database session, a session factory, or a UoW-managed session.
         
         Args:
-            db_session: An async SQLAlchemy session.
-            db_session_factory: A callable that returns an AsyncSession.
+            db_session: An async SQLAlchemy session (for standalone use).
+            db_session_factory: A callable that returns an AsyncSession (for standalone use).
+            uow_session: An async SQLAlchemy session provided by a Unit of Work.
             user_context: Dictionary holding user context (e.g., user_id).
         """
         self.db_session = db_session
         self.db_session_factory = db_session_factory
-        if not db_session and not db_session_factory:
-            raise ValueError("Either db_session or db_session_factory must be provided")
+        self.uow_session = uow_session
+        
+        # Ensure at least one session providing mechanism is available
+        if not self.db_session and not self.db_session_factory and not self.uow_session:
+            raise ValueError("Either db_session, db_session_factory, or uow_session must be provided")
+            
         self.user_context = user_context or {}
         self.logger = logger
 
-    async def _get_session(self):
-        """Get a database session using either the provided session or the factory.
-        
-        Returns:
-            AsyncSession: An async SQLAlchemy session.
-            bool: Whether the session was created from factory (should be released).
-        """
-        if self.db_session is not None:
-            return self.db_session, False
-        elif self.db_session_factory is not None:
-            return self.db_session_factory(), True
-        else:
-            raise RuntimeError("No database session or factory available")
-            
     async def _with_session(self, operation):
-        """Execute an operation with session management.
-        
-        Args:
-            operation: Async callable that takes a session and returns a result.
-            
-        Returns:
-            The result of the operation.
-        """
-        if self.db_session is not None:
-            # Use the existing session directly
+        """Execute an operation with session management, prioritizing UoW session."""
+        if self.uow_session is not None:
+            # UoW manages the session lifecycle (commit/rollback)
+            return await operation(self.uow_session)
+        elif self.db_session is not None:
+            # Standalone session, assume lifecycle managed externally or simple ops
+            # This path might need review if used for complex transactions standalone.
+            # For UoW, this branch should ideally not be hit if uow_session is always provided.
             return await operation(self.db_session)
         elif self.db_session_factory is not None:
-            # Create a new session from the factory and manage its lifecycle
+            # Create a new session from the factory and manage its lifecycle for this operation
             session = self.db_session_factory()
             try:
-                return await operation(session)
+                # For standalone factory use, we must commit/rollback here.
+                result = await operation(session)
+                await session.commit() # Commit on success
+                return result
+            except Exception:
+                await session.rollback() # Rollback on error
+                raise
             finally:
                 await session.close()
         else:
-            raise RuntimeError("No database session or factory available")
+            self.logger.error("No database session, factory, or UoW session available for PatientRepository.")
+            raise RuntimeError("No database session or factory available") # Changed from RepositoryException for clarity
 
     async def create(self, patient_entity: PatientEntity, context: dict | None = None) -> PatientEntity | None:
         """Creates a new patient record in the database from a PatientEntity."""

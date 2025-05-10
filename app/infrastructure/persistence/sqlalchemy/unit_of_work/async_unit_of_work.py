@@ -19,6 +19,7 @@ from app.core.interfaces.repositories.digital_twin_repository import IDigitalTwi
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.domain.exceptions import RepositoryError
+from app.core.utils.logging import get_logger
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -51,6 +52,8 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             biometric_alert_repository_cls: Biometric alert repository class
             biometric_twin_repository_cls: Biometric twin repository class
         """
+        self.logger = get_logger(__name__)
+        self.logger.debug(f"UoW {id(self)}: __init__ called. Session factory: {session_factory}")
         self.session_factory = session_factory
         self._session: AsyncSession | None = None
         
@@ -75,10 +78,11 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
         Returns:
             The UnitOfWork instance for method chaining
         """
+        self.logger.debug(f"UoW {id(self)}: __aenter__ called. Current self._session: {id(self._session) if self._session else 'None'}")
         self._session = self.session_factory()
         await self._session.begin()
         self._transaction_started = True
-        logger.debug("Started async UoW context: Session created, transaction begun.")
+        self.logger.debug("Started async UoW context: Session created, transaction begun.")
         return self
 
     async def __aexit__(
@@ -95,29 +99,31 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
             exc_val: The exception value if an exception was raised
             exc_tb: The traceback if an exception was raised
         """
+        self.logger.debug(f"UoW {id(self)}: __aexit__ called. Session before exit: {id(self._session) if self._session else 'None'}. exc_type: {exc_type}")
         if self._session is None:
-            logger.warning("Exiting UoW context with no active session.")
+            self.logger.warning(f"UoW {id(self)}: __aexit__ called but self._session is None. No rollback/commit/close action taken.")
             return
 
         try:
             if exc_type:
                 # Exception occurred, rollback the transaction
-                logger.info(f"Rolling back transaction due to exception: {exc_val}")
+                self.logger.info(f"Rolling back transaction due to exception: {exc_val}")
                 await self._session.rollback()
             else:
                 # No exception, commit the transaction
-                logger.debug("Committing transaction")
+                self.logger.debug("Committing transaction")
                 await self._session.commit()
         except SQLAlchemyError as e:
-            logger.error(f"Error during transaction cleanup: {e}")
+            self.logger.error(f"Error during transaction cleanup: {e}")
             if self._session and self._transaction_started:
                 await self._session.rollback()
             raise RepositoryError(f"Database error during transaction: {e!s}") from e
         finally:
             if self._session:
                 await self._session.close()
-                self._session = None
-                self._transaction_started = False
+                self.logger.debug(f"UoW {id(self)}: Session {id(self._session)} closed.")
+            self._session = None
+            self.logger.debug(f"UoW {id(self)}: self._session reset to None after __aexit__.")
             # Clear cached repository instances
             self._repositories = {}
 
@@ -167,65 +173,71 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
     @property
     def users(self) -> IUserRepository:
         """Access to the user repository within this transaction."""
+        self.logger.debug(f"UoW {id(self)} users property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
         if self._session is None:
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "users" not in self._repositories:
-            self._repositories["users"] = self._user_repository_cls(self._session)
+            self._repositories["users"] = self._user_repository_cls(uow_session=self._session)
         
         return self._repositories["users"]
 
     @property
     def patients(self) -> IPatientRepository:
         """Access to the patient repository within this transaction."""
+        self.logger.debug(f"UoW {id(self)} patients property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
         if self._session is None:
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "patients" not in self._repositories:
-            self._repositories["patients"] = self._patient_repository_cls(self._session)
+            self._repositories["patients"] = self._patient_repository_cls(uow_session=self._session)
         
         return self._repositories["patients"]
 
     @property
     def digital_twins(self) -> IDigitalTwinRepository:
         """Access to the digital twin repository within this transaction."""
+        self.logger.debug(f"UoW {id(self)} digital_twins property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
         if self._session is None:
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "digital_twins" not in self._repositories:
-            self._repositories["digital_twins"] = self._digital_twin_repository_cls(self._session)
+            self._repositories["digital_twins"] = self._digital_twin_repository_cls(uow_session=self._session)
         
         return self._repositories["digital_twins"]
 
     @property
     def biometric_rules(self) -> IBiometricRuleRepository:
         """Access to the biometric rule repository within this transaction."""
+        self.logger.debug(f"UoW {id(self)} biometric_rules property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
         if self._session is None:
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "biometric_rules" not in self._repositories:
-            self._repositories["biometric_rules"] = self._biometric_rule_repository_cls(self._session)
+            self._repositories["biometric_rules"] = self._biometric_rule_repository_cls(uow_session=self._session)
         
         return self._repositories["biometric_rules"]
 
     @property
     def biometric_alerts(self) -> IBiometricAlertRepository:
         """Access to the biometric alert repository within this transaction."""
+        self.logger.debug(f"UoW {id(self)} biometric_alerts property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
         if self._session is None:
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "biometric_alerts" not in self._repositories:
-            self._repositories["biometric_alerts"] = self._biometric_alert_repository_cls(self._session)
+            self._repositories["biometric_alerts"] = self._biometric_alert_repository_cls(uow_session=self._session)
         
         return self._repositories["biometric_alerts"]
 
     @property
     def biometric_twins(self) -> IBiometricTwinRepository:
         """Access to the biometric twin repository within this transaction."""
+        self.logger.debug(f"UoW {id(self)} biometric_twins property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
         if self._session is None:
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "biometric_twins" not in self._repositories:
-            self._repositories["biometric_twins"] = self._biometric_twin_repository_cls(self._session)
+            self._repositories["biometric_twins"] = self._biometric_twin_repository_cls(uow_session=self._session)
         
         return self._repositories["biometric_twins"] 
