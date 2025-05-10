@@ -297,27 +297,28 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # Emergency Contact components - NOT in core DomainPatient (it has EmergencyContact VO)
         emergency_contact_vo = getattr(patient, 'emergency_contact', None)
         if isinstance(emergency_contact_vo, EmergencyContact):
-            # Store individual fields if direct columns are ever used (legacy or specific queries)
             model._emergency_contact_name = getattr(emergency_contact_vo, 'name', None)
             model._emergency_contact_phone = getattr(emergency_contact_vo, 'phone', None)
             model._emergency_contact_relationship = getattr(emergency_contact_vo, 'relationship', None)
-            # Serialize the VO to the EncryptedJSON field
-            model._emergency_contact_details = emergency_contact_vo.to_dict() # Assuming EmergencyContact has to_dict()
+            # Assign the VO instance directly; EncryptedJSON will serialize it
+            model._emergency_contact_details = emergency_contact_vo
         else:
             model._emergency_contact_name = None
             model._emergency_contact_phone = None
             model._emergency_contact_relationship = None
-            model._emergency_contact_details = None # Ensure it's None if no VO
+            model._emergency_contact_details = None
 
         # Complex / JSON / Text fields - use getattr and then str() for EncryptedText
         # EncryptedJSON fields can take the direct object if it's serializable or None.
         # For EncryptedText/EncryptedJSON that store serialized complex types, use json.dumps.
 
         contact_info_vo = getattr(patient, 'contact_info', None)
-        model._contact_info = contact_info_vo # EncryptedJSON handles Pydantic model serialization directly
+        # Assign the Pydantic model instance directly; EncryptedJSON will serialize it
+        model._contact_info = contact_info_vo
 
-        address_details_vo = getattr(patient, 'address_details', None) # Not in current DomainPatient, but if it were a VO/dict
-        model._address_details = address_details_vo # EncryptedJSON handles Pydantic model/dict serialization
+        address_vo_from_domain = getattr(patient, 'address', None)
+        # Assign the VO instance directly; EncryptedJSON will serialize it
+        model._address_details = address_vo_from_domain
 
         preferences_val = getattr(patient, 'preferences', None)
         model._preferences = preferences_val # EncryptedJSON handles dict serialization
@@ -395,7 +396,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         address_details_dict = self._address_details
         # emergency_contact_details_dict will be automatically deserialized by EncryptedJSON if it was stored as JSON
         # The DomainPatient model expects a field named 'emergency_contact' that can take a dict.
-        raw_emergency_contact_details = self._emergency_contact_details 
+        raw_emergency_contact_details = self._emergency_contact_details
         preferences_dict = self._preferences
         
         # Parse list-like fields from their string representation after decryption

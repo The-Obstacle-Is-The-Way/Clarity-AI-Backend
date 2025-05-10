@@ -54,6 +54,7 @@ try:
     from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
     from app.domain.value_objects.address import Address as DomainAddress
     from app.domain.value_objects.emergency_contact import EmergencyContact as DomainEmergencyContact
+    from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
 
 except ImportError:
     # This block is for environments where full app components might not be available.
@@ -173,12 +174,13 @@ class TestDBPHIProtection:
         
         patient_id = uuid.uuid4()
 
-        # Create a valid emergency contact
+        # Create a valid emergency contact address
         emergency_contact_address = DomainAddress(
             street="123 Emergency St",
             city="Crisis City",
             state="FL",
-            zip_code="33333"
+            zip_code="33333",
+            country="USA"
         )
         emergency_contact = DomainEmergencyContact(
             name="Jane Emergency",
@@ -188,28 +190,46 @@ class TestDBPHIProtection:
             address=emergency_contact_address
         )
 
+        # Create patient's primary address
+        patient_primary_address = DomainAddress(
+            street="123 Main St",
+            city="Anytown",
+            state="CA",
+            zip_code="90210",
+            country="USA"
+        )
+
         # Create patient with all expected fields
         original_patient = DomainPatient(
             id=patient_id,
             first_name="SensitiveName",
             last_name="SensitiveLastName",
             email="sensitive.email@example.com",
-            phone="555-010-0123",
+            phone_number="555-010-0123",
             date_of_birth="1990-05-15",
-            medical_record_number="MRN123_SENSITIVE",
-            ssn="999-00-1111",
-            address={
-                "street": "123 Main St",
-                "city": "Anytown",
-                "state": "CA",
-                "zip_code": "90210",
-                "country": "USA"
-            },
+            medical_record_number_lve="MRN123_SENSITIVE",
+            social_security_number_lve="999-00-1111",
+            address=patient_primary_address,
             emergency_contact=emergency_contact,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             is_active=True
         )
+
+        # For debugging, let's check what contact_info looks like after instantiation
+        print(f"DEBUG: original_patient.contact_info: {original_patient.contact_info}")
+        if original_patient.contact_info:
+            print(f"DEBUG: original_patient.contact_info dict: {original_patient.contact_info.model_dump(exclude_none=True)}")
+        print(f"DEBUG: original_patient.address: {original_patient.address}")
+        if original_patient.address and hasattr(original_patient.address, 'to_dict'):
+             print(f"DEBUG: original_patient.address dict: {original_patient.address.to_dict()}")
+        elif original_patient.address:
+             print(f"DEBUG: original_patient.address (no to_dict): {original_patient.address}")
+        print(f"DEBUG: original_patient.emergency_contact: {original_patient.emergency_contact}")
+        if original_patient.emergency_contact and hasattr(original_patient.emergency_contact, 'to_dict'):
+             print(f"DEBUG: original_patient.emergency_contact dict: {original_patient.emergency_contact.to_dict()}")
+        elif original_patient.emergency_contact:
+             print(f"DEBUG: original_patient.emergency_contact (no to_dict): {original_patient.emergency_contact}")
 
         try:
             async with uow: # Wrap operations in UoW context
