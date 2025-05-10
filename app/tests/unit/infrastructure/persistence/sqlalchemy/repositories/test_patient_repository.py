@@ -38,33 +38,13 @@ def sample_patient_id() -> str:
 def sample_patient_data(sample_patient_id: str) -> dict[str, Any]:
     """Create sample patient data for testing."""
     return {
-        "id": sample_patient_id,
+        "id": uuid.UUID(sample_patient_id),
         "first_name": "John",
         "last_name": "Doe",
-        "date_of_birth": "1980-01-01",
-        "medical_record_number": "MRN12345",
+        "date_of_birth": date(1980, 1, 1),
+        "medical_record_number_lve": "MRN12345",
         "email": "john.doe@example.com"
     }
-
-
-@pytest_asyncio.fixture
-async def async_mock_patch():
-    """Handle non-awaited coroutines in tests by patching AsyncMock."""
-    # Create a helper for safely awaiting coroutines
-    async def safe_await(coro_or_value):
-        if asyncio.iscoroutine(coro_or_value):
-            return await coro_or_value
-        return coro_or_value
-    
-    # Patch AsyncMock.__call__ to handle both awaited and non-awaited calls
-    original_call = AsyncMock.__call__
-    
-    async def patched_call(self, *args, **kwargs):
-        result = original_call(self, *args, **kwargs)
-        return await safe_await(result)
-    
-    with patch.object(AsyncMock, '__call__', patched_call):
-        yield
 
 
 @pytest.fixture
@@ -319,7 +299,7 @@ class TestPatientRepository:
         assert retrieved_entity.address.zip_code == "90210"
 
     @pytest.mark.asyncio
-    async def test_get_by_id_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, async_mock_patch: Any):
+    async def test_get_by_id_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str):
         """Test get_by_id when patient is not found."""
         patient_uuid = uuid.UUID(sample_patient_id)
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
@@ -499,7 +479,7 @@ class TestPatientRepository:
         assert retrieved_entity.address.zip_code == "75001"
 
     @pytest.mark.asyncio
-    async def test_delete_patient_success(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, async_mock_patch: Any):
+    async def test_delete_patient_success(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str):
         """Test deleting a patient successfully."""
         patient_uuid = uuid.UUID(sample_patient_id)
         mock_patient_to_delete = MagicMock(spec=PatientModel) # Use alias
@@ -534,7 +514,7 @@ class TestPatientRepository:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_delete_patient_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, async_mock_patch: Any):
+    async def test_delete_patient_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str):
         """Test deleting a patient that does not exist."""
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = None
 
