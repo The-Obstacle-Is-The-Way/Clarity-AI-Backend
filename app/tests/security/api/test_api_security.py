@@ -56,7 +56,7 @@ class TestAuthentication:
         """Test that expired tokens are rejected."""
         client, _ = client_app_tuple_func_scoped
         user_data = {"sub": "test-user-expired", "roles": [UserRole.PATIENT.value]}
-        expired_token = mock_jwt_service.create_access_token(
+        expired_token = await mock_jwt_service.create_access_token(
             data=user_data, expires_delta=timedelta(minutes=-5)
         )
         headers = {"Authorization": f"Bearer {expired_token}"}
@@ -69,7 +69,7 @@ class TestAuthentication:
         """Test that tokens with invalid signatures are rejected."""
         client, _ = client_app_tuple_func_scoped
         user_data = {"sub": "test-user-tampered", "roles": [UserRole.PATIENT.value]}
-        valid_token = mock_jwt_service.create_access_token(data=user_data)
+        valid_token = await mock_jwt_service.create_access_token(data=user_data)
         tampered_token = valid_token + "tamper"
         headers = {"Authorization": f"Bearer {tampered_token}"}
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
@@ -203,7 +203,7 @@ class TestAuthorization:
         client, current_fastapi_app = client_app_tuple_func_scoped
         user1_id = uuid.uuid4()
         user1_token_data = {"sub": str(user1_id), "roles": [UserRole.PATIENT.value], "username": "patient1"}
-        user1_token = mock_jwt_service.create_access_token(data=user1_token_data)
+        user1_token = await mock_jwt_service.create_access_token(data=user1_token_data)
         headers_user1 = {"Authorization": f"Bearer {user1_token}"}
         user2_patient_id = uuid.uuid4()
 
@@ -293,7 +293,7 @@ class TestAuthorization:
         client, current_fastapi_app = client_app_tuple_func_scoped
         user_id_param = uuid.uuid4() # Renamed from user_id to avoid conflict with mock_get_user_by_id's parameter
         token_data = {"sub": str(user_id_param), "roles": [user_role.value], "username": f"{user_role.value}_user"}
-        token = mock_jwt_service.create_access_token(data=token_data)
+        token = await mock_jwt_service.create_access_token(data=token_data)
         headers = {"Authorization": f"Bearer {token}"}
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
@@ -528,7 +528,7 @@ async def test_access_patient_phi_data_unauthorized_patient(
     client, current_fastapi_app = client_app_tuple_func_scoped
     patient_a_id = uuid.uuid4()
     patient_a_token_data = {"sub": str(patient_a_id), "roles": [UserRole.PATIENT.value], "username": "patientA"}
-    patient_a_token = mock_jwt_service.create_access_token(data=patient_a_token_data)
+    patient_a_token = await mock_jwt_service.create_access_token(data=patient_a_token_data)
     headers_patient_a = {"Authorization": f"Bearer {patient_a_token}"}
     patient_b_id = uuid.uuid4()
 
@@ -607,7 +607,7 @@ async def test_authenticated_but_unknown_role(
         "username": "unknownroleuser",
         "email":"unknown_role_user@example.com"
     }
-    unknown_role_token = mock_jwt_service.create_access_token(data=unknown_role_user_data)
+    unknown_role_token = await mock_jwt_service.create_access_token(data=unknown_role_user_data)
     headers = {"Authorization": f"Bearer {unknown_role_token}"}
 
     mock_user_repo_for_unknown_role = AsyncMock(spec=IUserRepository)
