@@ -898,78 +898,39 @@ class MockPATService(PATInterface):
         sampling_rate_hz: float, device_info: dict[str, Any], 
         analysis_types: list[str]
     ) -> None:
-        """Validate inputs for actigraphy analysis.
-        
-        Args:
-            patient_id: Unique identifier for the patient
-            readings: List of accelerometer readings
-            sampling_rate_hz: Sampling rate in Hz
-            device_info: Information about the device
-            analysis_types: List of analysis types to perform
-            
-        Raises:
-            ValidationError: If any validation check fails
-        """
-        # Patient validation - critical for HIPAA compliance
-        if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
+        """Validate inputs for actigraphy analysis."""
+        if not patient_id:
             raise ValidationError("Patient ID is required")
         
-        # Validation for sampling_rate
-        if sampling_rate_hz <= 0:
-            raise ValidationError("Sampling rate must be positive")
-        
-        # Validation for device_info    
-        if not device_info or not isinstance(device_info, dict):
-            raise ValidationError("Device info must be a non-empty dictionary")
-            
-        # Check for required keys within device_info
-        required_device_keys = ['manufacturer', 'model']
-        if not all(key in device_info for key in required_device_keys):
-            raise ValidationError(f"Device info must contain required keys: {required_device_keys}")
-            
-        # Validation for analysis_types
-        if not analysis_types or not isinstance(analysis_types, list) or len(analysis_types) == 0:
-            raise ValidationError("At least one analysis type must be specified")
-            
-        # Validate analysis types against supported types
-        self._validate_analysis_types(analysis_types)
-            
-        # Validate readings list is not empty for analysis
         if not readings:
-            raise ValidationError("Readings list cannot be empty for analysis")
+            raise ValidationError("Readings are required")
             
-        # Validate there are sufficient readings for analysis (minimum of 10 readings required for analysis)
-        if len(readings) < 10:
+        # Add check for minimum number of readings - crucial for many algorithms
+        if len(readings) < 10: # MIN_READINGS
             raise ValidationError("At least 10 readings are required")
 
-        # Validate reading format (only if list is not empty)
-        for reading in readings:
-            # Ensure reading is a dictionary before checking keys
-            if not isinstance(reading, dict) or not all(key in reading for key in ['x', 'y', 'z']):
-                raise ValidationError("Reading format invalid: missing required fields")
-                
-    def _validate_analysis_types(self, analysis_types: list[str]) -> None:
-        """Validate that analysis types are supported.
-        
-        Args:
-            analysis_types: List of analysis types to validate
+        if sampling_rate_hz <= 0:
+            raise ValidationError("Sampling rate must be positive")
             
-        Raises:
-            ValidationError: If any analysis type is not supported
-        """
-        # Get list of supported analysis types
-        valid_types = self.get_analysis_types()
+        if not device_info:
+            raise ValidationError("Device info is required")
         
-        # Check each type against supported types
-        for analysis_type in analysis_types:
-            # Special case for test_analyze_actigraphy_unsupported_analysis_type
-            if analysis_type == "unsupported_type":
-                raise ValidationError(f"Unsupported analysis type: {analysis_type}")
-            elif analysis_type not in valid_types:
-                supported_types_str = ", ".join(valid_types)
-                raise ValidationError(
-                    f"Invalid analysis type: {analysis_type}. Must be one of: {supported_types_str}"
-                )
+        required_keys = ["manufacturer", "model"] # Ensure these keys are present
+        for key in required_keys:
+            if key not in device_info:
+                raise ValidationError(f"Device info must contain required keys: {required_keys}")
+        
+        # Validate analysis types using the dedicated method
+        self._validate_analysis_types(analysis_types)
+
+    def _validate_analysis_types(self, analysis_types: list[str]) -> None:
+        if not analysis_types:
+            raise ValidationError("At least one analysis type is required")
+        
+        VALID_ANALYSIS_TYPES = {"sleep", "activity", "circadian_rhythm", "behavioral_patterns", "mood_indicators", "anomaly_detection", "energy_expenditure"} # Define valid types
+        for at_type in analysis_types:
+            if at_type not in VALID_ANALYSIS_TYPES:
+                raise ValidationError(f"Invalid analysis type: {at_type}. Valid types are: {VALID_ANALYSIS_TYPES}")
     
     def _generate_sleep_metrics(self) -> dict[str, Any]:
         """Generate sleep metrics that exactly match test expectations."""
