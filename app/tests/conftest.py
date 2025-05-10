@@ -447,16 +447,19 @@ async def client_session(managed_app: FastAPI) -> AsyncGenerator[AsyncClient, No
 # The current setup is session-scoped for performance, assuming tests are isolated.
 
 @pytest.fixture(scope="function")
-async def client_app_tuple_func_scoped(test_settings: Settings) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
+async def client_app_tuple_func_scoped(
+    test_settings: Settings, mock_auth_service: MagicMock # ADDED mock_auth_service fixture
+) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     logger.info("CONFTEST_PY: Creating client_app_tuple_func_scoped (function-scoped).")
     
-    # This is the actual FastAPI instance, created fresh for each function-scoped test.
     original_fastapi_app = create_application(settings_override=test_settings)
-    # Ensure settings are directly on the original app's state for its own lifecycle awareness if needed pre-LifespanManager
-    original_fastapi_app.state.settings = test_settings 
+    original_fastapi_app.state.settings = test_settings
 
-    # LifespanManager will run startup/shutdown events on original_fastapi_app.
-    # manager.app will be the ASGI application processed by the lifespan events.
+    # Apply dependency overrides on the app instance that will be used by the client
+    # actual_get_auth_service_dependency is imported from1 app.presentation.api.dependencies.auth_service
+    original_fastapi_app.dependency_overrides[actual_get_auth_service_dependency] = lambda: mock_auth_service
+    logger.info(f"CONFTEST_PY (func): AuthService OVERRIDDEN with mock ID: {id(mock_auth_service)}")
+
     async with LifespanManager(original_fastapi_app, startup_timeout=30, shutdown_timeout=30) as manager:
         # manager.app is the app that has gone through lifespan startup.
         # This is what the AsyncClient should use.
@@ -475,9 +478,9 @@ async def client_app_tuple_func_scoped(test_settings: Settings) -> AsyncGenerato
         async with AsyncClient(app=app_for_client, base_url="http://testserver") as ac: 
             logger.info(f"CONFTEST_PY (func): AsyncClient created with app type: {type(app_for_client)}")
             # Yield the client AND THE ORIGINAL FastAPI instance.
-            # The original_fastapi_app is used for dependency_overrides.
+            # The original_fastapi_app is used for dependency_overrides AND is the one used by LifespanManager.
             # The client (ac) uses app_for_client (manager.app) which has run through lifespan events.
-            yield ac, original_fastapi_app 
+            yield ac, original_fastapi_app # Yielding original_fastapi_app which now has the override
             
     logger.info("CONFTEST_PY (func): AsyncClient closed, LifespanManager shut down for function scope.")
 
@@ -667,40 +670,40 @@ async def auth_headers(
     return {"Authorization": f"Bearer {access_token_str}"}
 
 
-@pytest.fixture
-def get_valid_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
+@pytest_asyncio.fixture
+async def get_valid_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
     """Generate patient authentication headers using the mock JWT service."""
-    global_mock_jwt_service.clear_issued_tokens() # Ensure clean state for this specific header generation
+    await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state for this specific header generation
     user_data = {
         "sub": str(uuid.uuid4()), # Use a valid UUID string
         "roles": [UserRole.PATIENT.value],
         "username": "testpatient",
         "email": "patient@example.com"
     }
-    access_token = global_mock_jwt_service.create_access_token(data=user_data)
+    access_token = await global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
-@pytest.fixture
-def get_valid_provider_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
+@pytest_asyncio.fixture
+async def get_valid_provider_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
     """Generate provider/clinician authentication headers using the mock JWT service."""
-    global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
+    await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
     user_data = {
         "sub": str(uuid.uuid4()), # Use a valid UUID string
         "roles": [UserRole.CLINICIAN.value],
         "username": "testprovider",
         "email": "provider@example.com"
     }
-    access_token = global_mock_jwt_service.create_access_token(data=user_data)
+    access_token = await global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
 
-@pytest.fixture
-def admin_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
+@pytest_asyncio.fixture
+async def admin_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
     """Generates authorization headers for an admin user."""
-    global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
+    await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
     # Assuming admin role needs specific identification, adjust payload as needed
     admin_id = str(uuid.uuid4())
-    access_token = global_mock_jwt_service.create_access_token(data={"sub": admin_id, "roles": [UserRole.ADMIN.value]})
+    access_token = await global_mock_jwt_service.create_access_token(data={"sub": admin_id, "roles": [UserRole.ADMIN.value]})
     return {"Authorization": f"Bearer {access_token}"}
 
 

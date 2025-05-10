@@ -19,10 +19,10 @@ from app.domain.exceptions.auth_exceptions import InvalidCredentialsException, A
 
 @pytest.mark.asyncio
 async def test_login_success(
-    client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
     """Test successful login using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     # Ensure mock is in default success state for this test
     mock_auth_service.login.side_effect = None 
     mock_auth_service.login.return_value = TokenResponseSchema(
@@ -64,10 +64,10 @@ async def test_login_success(
 
 @pytest.mark.asyncio
 async def test_login_invalid_credentials(
-    client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
     """Test login with invalid credentials using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     # Arrange
     login_data = {
         "username": "wrong_user@example.com",
@@ -98,10 +98,10 @@ async def test_login_invalid_credentials(
 
 @pytest.mark.asyncio
 async def test_login_inactive_account(
-    client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
     """Test login with inactive account using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     # Arrange
     login_data = {
         "username": "inactive@example.com",
@@ -132,10 +132,10 @@ async def test_login_inactive_account(
 
 @pytest.mark.asyncio
 async def test_refresh_token_success(
-    client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
     """Test successful token refresh using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     mock_auth_service.refresh_access_token.side_effect = None # Use refresh_access_token
     mock_auth_service.refresh_access_token.return_value = TokenResponseSchema(
         access_token="mock_new_access_token_789",
@@ -173,10 +173,10 @@ async def test_refresh_token_success(
 
 @pytest.mark.asyncio
 async def test_refresh_token_invalid(
-    client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
     """Test refresh with invalid token using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     # Arrange
     refresh_data = {
         "refresh_token": "invalid_token"
@@ -202,9 +202,9 @@ async def test_refresh_token_invalid(
     assert "refresh_token" not in response.cookies
 
 @pytest.mark.asyncio
-async def test_refresh_token_missing(client_app_tuple: tuple[AsyncClient, FastAPI]) -> None:
+async def test_refresh_token_missing(client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]) -> None:
     """Test refresh with missing token using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     # Arrange
     refresh_data = {}
     
@@ -216,10 +216,10 @@ async def test_refresh_token_missing(client_app_tuple: tuple[AsyncClient, FastAP
 
 @pytest.mark.asyncio
 async def test_logout(
-    client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
     """Test logout using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
 
     # Ensure login mock is in success state for the setup part of this test
     mock_auth_service.login.side_effect = None
@@ -255,9 +255,9 @@ async def test_logout(
     mock_auth_service.logout.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_session_info_authenticated(client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock) -> None:
+async def test_session_info_authenticated(client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock) -> None:
     """Test session info with authentication using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
 
     # Ensure login mock is in success state for the setup part of this test
     mock_auth_service.login.side_effect = None
@@ -308,9 +308,9 @@ async def test_session_info_authenticated(client_app_tuple: tuple[AsyncClient, F
     assert data["exp"] == 1619900000
 
 @pytest.mark.asyncio
-async def test_session_info_not_authenticated(client_app_tuple: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock) -> None:
+async def test_session_info_not_authenticated(client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock) -> None:
     """Test session info without authentication using async client."""
-    client, _ = client_app_tuple
+    client, _ = client_app_tuple_func_scoped
     # Configure mock for unauthenticated session
     mock_auth_service.get_current_session_info.return_value = SessionInfoResponseSchema(
         authenticated=False,
