@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, TypeVar, Tuple, AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 import logging
 
 import pytest
@@ -175,7 +175,7 @@ def mock_current_user() -> User:
 
 @pytest.fixture(scope="function")
 def mock_alert_service() -> MagicMock:
-    return MagicMock(spec=AlertServiceInterface)
+    return create_autospec(AlertServiceInterface, instance=True)
 
 @pytest_asyncio.fixture(scope="function")
 async def test_app(
@@ -433,8 +433,8 @@ class TestBiometricAlertsEndpoints:
             "kwargs": "dummy" 
         }
         
-        mock_alert_service.validate_access = AsyncMock()
-        mock_alert_service.get_alerts = AsyncMock(return_value=[])
+        mock_alert_service.validate_access.return_value = None
+        mock_alert_service.get_alerts.return_value = []
         
         response = await client.get(
             "/api/v1/biometric-alerts",
