@@ -241,16 +241,21 @@ class PatientRepository:
             # However, the PII fields are handled by TypeDecorators upon assignment.
             
             # Get all fields from the domain entity
-            domain_data = patient_entity.dict(exclude_unset=True) # Use .dict() for Pydantic models
+            domain_data = patient_entity.model_dump(exclude_unset=True)
+            logger.debug(f"Updating patient model ID {patient_model.id} with data: {domain_data}")
 
-            for key, value in domain_data.items():
+            updatable_fields = [
+                key for key, value in domain_data.items() if hasattr(patient_model, key)
+            ]
+
+            for key in updatable_fields:
                 if key == 'id': # Don't try to set PK
                     continue
                 if hasattr(patient_model, key):
                     # Direct assignment will trigger TypeDecorator for encrypted fields
-                    setattr(patient_model, key, value)
+                    setattr(patient_model, key, domain_data[key])
                 elif hasattr(patient_model, f'_{key}'): # Handle cases like _first_name mapped to first_name
-                    setattr(patient_model, f'_{key}', value)
+                    setattr(patient_model, f'_{key}', domain_data[key])
                 # Add specific handling for complex types if direct mapping isn't enough,
                 # e.g., address, emergency_contact, if they need special reconstruction.
                 # For now, assuming simple fields or fields handled by TypeDecorators.
