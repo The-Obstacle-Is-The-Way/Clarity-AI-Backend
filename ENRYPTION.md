@@ -111,7 +111,7 @@
 
 ### Phase 3: Testing and Verification
 
-*   [/] **P3.1: Update/Create Unit Tests for `Patient` Model** (Integration tests PASSING for `test_patient_encryption_integration.py` covering `from_domain`, `to_domain`, and round-trip integrity. Unit tests for `models/test_patient_encryption.py` and `repositories/test_patient_repository.py` are IN PROGRESS.)
+*   [/] **P3.1: Update/Create Unit Tests for `Patient` Model** (Integration tests PASSING for `test_patient_encryption_integration.py`. Unit tests for `models/test_patient_encryption.py` and `repositories/test_patient_repository.py` are 16/17 PASSING. `TestPatientModelEncryptionAndTypes::test_patient_model_to_domain` in `test_patient_encryption.py` remains problematic with a date parsing issue after mock decryption and requires deeper investigation.)
     *   [X] Ensure tests cover `from_domain` and `to_domain` methods with PII data, verifying round-trip integrity.
         *   `test_patient_encryption_integration.py` (`TestPatientEncryptionIntegration`):
             *   `test_phi_decrypted_in_repository`: **PASSING**

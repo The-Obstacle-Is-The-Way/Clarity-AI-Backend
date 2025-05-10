@@ -181,35 +181,37 @@ class TestPatientModelEncryptionAndTypes:
 
         # Define a more precise side_effect for decryption
         def precise_decrypt_side_effect(encrypted_input_val):
-            # logger.debug(f"[decrypt_side_effect] Received: {encrypted_input_val}")
-            
-            # Explicit handling for date_of_birth to ensure it's correctly processed
-            # sample_domain_patient_data["date_of_birth"] is date(1990, 1, 15)
-            expected_plain_dob_str = sample_domain_patient_data["date_of_birth"].isoformat() # "1990-01-15"
-            expected_encrypted_dob_str = f"encrypted_{expected_plain_dob_str}" # "encrypted_1990-01-15"
+            # logger.debug(f"[decrypt_side_effect] Received: {encrypted_input_val}, type: {type(encrypted_input_val)}")
 
-            if encrypted_input_val == expected_encrypted_dob_str:
-                # logger.debug(f"[decrypt_side_effect] Matched DOB: {encrypted_input_val} -> {expected_plain_dob_str}")
-                return expected_plain_dob_str
+            # Hyper-specific check for date_of_birth to isolate the issue
+            # expected_plaintext_map["_date_of_birth"] is '1990-01-15'
+            plain_dob_from_map = expected_plaintext_map["_date_of_birth"]
+            encrypted_dob_form_to_check = f"encrypted_{plain_dob_from_map}"
 
-            # Direct mappings for other expected_plaintext_map items
-            for plain_key, plain_value in expected_plaintext_map.items():
-                if plain_key == "_date_of_birth": # Already handled above
+            if encrypted_input_val == encrypted_dob_form_to_check:
+                # logger.debug(f"[decrypt_side_effect] DOB Matched: '{encrypted_input_val}' -> '{plain_dob_from_map}'")
+                return plain_dob_from_map
+
+            # Iterate over the map of original plaintext values for other fields.
+            for _model_attr_name, plain_value in expected_plaintext_map.items():
+                if _model_attr_name == "_date_of_birth": # Already handled by the specific check above
                     continue
 
                 if plain_value is None:
                     if encrypted_input_val is None:
-                        # logger.debug(f"[decrypt_side_effect] Matched None -> None for key {plain_key}")
+                        # logger.debug(f"[decrypt_side_effect] Matched None -> None for key {_model_attr_name}")
                         return None
-                    continue
-                
+                    continue 
+
                 expected_encrypted_form = f"encrypted_{plain_value}"
+                # logger.debug(f"[decrypt_side_effect] Checking other: {expected_encrypted_form} (for plain: {plain_value})")
+
                 if encrypted_input_val == expected_encrypted_form:
-                    # logger.debug(f"[decrypt_side_effect] Matched '{encrypted_input_val}' -> '{plain_value}' for key {plain_key}")
+                    # logger.debug(f"[decrypt_side_effect] Matched other '{encrypted_input_val}' -> '{plain_value}' for key {_model_attr_name}")
                     return plain_value
             
-            # Fallback if no specific match - this indicates an issue in test setup or an unmapped field
-            # logger.warning(f"[decrypt_side_effect] No precise match for '{encrypted_input_val}', returning as is. This might cause test failures.")
+            # Fallback if no specific match
+            # logger.warning(f"[decrypt_side_effect] No precise match for '{encrypted_input_val}', returning as is.")
             return encrypted_input_val
 
         mock_esi.decrypt = precise_decrypt_side_effect 
