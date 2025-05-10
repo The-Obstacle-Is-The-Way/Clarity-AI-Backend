@@ -22,6 +22,10 @@ from app.core.exceptions.base_exceptions import (
     InitializationError,
     ResourceNotFoundError,
     ValidationError,
+    AuthenticationException,
+    AuthorizationError as BaseAuthorizationError,
+    ConfigurationError,
+    DatabaseException,
 )
 from app.core.services.ml.pat.pat_interface import PATInterface
 
@@ -1656,54 +1660,25 @@ class MockPATService(PATInterface):
     def integrate_with_digital_twin(
         self,
         patient_id: str,
+        analysis_id: str,
         profile_id: str,
-        analysis_id: str | None = None,
-        actigraphy_analysis: dict[str, Any] | None = None,
         integration_types: list[str] | None = None,
-        metadata: dict[str, Any] | None = None,
-        **kwargs
-    ) -> dict[str, Any]:
-        """Integrate actigraphy analysis with a digital twin profile.
-        
-        This method connects actigraphy analysis results with a digital twin profile,
-        enabling holistic patient health representation. It follows clean architecture
-        by separating validation, domain logic, and response construction.
-        
-        Args:
-            patient_id: Unique identifier for the patient
-            profile_id: Digital twin profile identifier
-            analysis_id: Optional ID of an existing analysis to integrate
-            actigraphy_analysis: Optional analysis data to integrate directly
-            integration_types: Types of integration to perform
-            metadata: Additional metadata for the integration
-            **kwargs: Additional parameters for future extensibility
-            
-        Returns:
-            Dict containing the integration results with updated profile data
-            
-        Raises:
-            InitializationError: If service is not initialized
-            ResourceNotFoundError: If analysis_id is provided but not found
-            ValidationError: If required inputs are missing or invalid
-            AuthorizationError: If analysis does not belong to patient
-            IntegrationError: If integration fails
-        """
-        # Check service initialization status
+        metadata: dict | None = None,
+    ) -> dict:
         self._check_initialized()
-        
-        # Default parameters
+
+        # Defensive default if not provided, or if it somehow becomes None
         if integration_types is None:
-            integration_types = ["activity", "sleep", "behavioral"]
-            
-        if metadata is None:
-            metadata = {}
-            
-        # Validate parameters and get analysis data
+            integration_types = ["activity", "sleep", "behavioral"] # A sensible default
+
         analysis_data = self._validate_integration_params(
-            patient_id, profile_id, analysis_id, actigraphy_analysis
+            patient_id=patient_id, 
+            analysis_id=analysis_id, 
+            profile_id=profile_id, 
+            integration_types=integration_types
         )
-        
-        # Generate a unique ID for this integration
+
+        # Create a unique ID for this integration event
         integration_id = str(uuid.uuid4())
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
@@ -1738,7 +1713,7 @@ class MockPATService(PATInterface):
         })
         
         # Generate domain-specific integration results
-        integration_results = self._generate_domain_integration_results(integration_types)
+        integration_results = self._generate_domain_integration_results(integration_types, analysis_data)
         
         # Store the integration result for later retrieval
         self._integrations[integration_id] = {
@@ -1839,98 +1814,36 @@ class MockPATService(PATInterface):
     def _validate_integration_params(
         self,
         patient_id: str,
+        analysis_id: str,
         profile_id: str,
-        analysis_id: str | None = None,
-        actigraphy_analysis: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        """Validate parameters for integration and return the analysis data.
+        integration_types: list[str] | None = None,
+    ) -> dict:
+        """Validate parameters for digital twin integration."""
+        if not patient_id:
+            raise ValidationError("Patient ID is required for integration")
+        if not analysis_id:
+            raise ValidationError("Analysis ID is required for integration")
+        if not profile_id:
+            raise ValidationError("Profile ID is required for integration")
+
+        # DEBUG PRINT - REMOVING THESE
+        # print(f"DEBUG: Looking for analysis_id: {analysis_id}")
+        # print(f"DEBUG: Available keys in self._analyses: {list(self._analyses.keys())}")
         
-        Args:
-            patient_id: Patient identifier
-            profile_id: Digital twin profile identifier
-            analysis_id: Optional analysis identifier
-            actigraphy_analysis: Optional analysis data
-            
-        Returns:
-            Validated analysis data dictionary
-            
-        Raises:
-            ValidationError: If inputs are invalid
-            ResourceNotFoundError: If analysis not found
-            AuthorizationError: If analysis doesn't belong to patient
-        """
-        # Basic validation - use consistent error message matching test expectations
-        if not patient_id or (isinstance(patient_id, str) and patient_id.strip() == ""):
-            raise ValidationError("Patient ID is required")
-            
-        if not profile_id or (isinstance(profile_id, str) and profile_id.strip() == ""):
-            raise ValidationError("Profile ID is required")
-        
-        # Special case for test_integrate_with_digital_twin_wrong_patient
-        if patient_id == "patient2" and profile_id == "test-profile":
-            # Import here to avoid circular imports
-            from app.core.services.ml.pat.exceptions import AuthorizationError
-            # Test expects this specific error message format
-            raise AuthorizationError("Analysis does not belong to patient")
-        
-        # Auto-create profile if it doesn't exist (required for tests)
-        if profile_id not in self._profiles:
-            # Create a minimal profile structure that matches test expectations
-            self._profiles[profile_id] = {
-                "profile_id": profile_id,
-                "patient_id": patient_id,
-                "last_updated": self._get_current_time(),
-                "insights": [],
-                "status": "active"
-            }
-        
-        # Special case for test_integrate_with_digital_twin_analysis_not_found
-        if analysis_id == "non-existent-id":
-            raise ResourceNotFoundError("Analysis not found")
-        
-        # Either analysis_id or actigraphy_analysis must be provided
-        if not analysis_id and not actigraphy_analysis:
-            raise ValidationError("Either analysis_id or actigraphy_analysis must be provided")
-            
-        # If analysis_id provided, verify it exists and belongs to patient
-        if analysis_id:
-            # Check both private and public attributes for analysis
-            if analysis_id not in self._analyses and analysis_id not in self.analyses:
-                raise ResourceNotFoundError(f"Analysis {analysis_id} not found")
-                
-            # Get the analysis from the appropriate storage
-            if analysis_id in self._analyses:
-                analysis_data = self._analyses[analysis_id]
-            else:
-                analysis_data = self.analyses[analysis_id]
-            
-            # Check if the analysis belongs to the specified patient
-            # This check is required for test_integrate_with_digital_twin_authorization_error
-            if analysis_data["patient_id"] != patient_id:
-                # Import the same AuthorizationError class expected by the test
-                from app.core.exceptions.base_exceptions import AuthorizationError
-                # Raise with the exact error message expected by the test
-                raise AuthorizationError("Analysis does not belong to patient")
-                
-            return analysis_data
-        
-        # If analysis data provided directly, validate it
-        if not isinstance(actigraphy_analysis, dict):
-            raise ValidationError("Actigraphy analysis must be a dictionary")
-            
-        required_fields = ["patient_id", "sleep_quality", "activity_levels"]
-        for field in required_fields:
-            if field not in actigraphy_analysis:
-                raise ValidationError(f"Required field missing in analysis data: {field}")
-        
-        # Check if the analysis belongs to the specified patient
-        # This check is required for test_integrate_with_digital_twin_authorization_error
-        if actigraphy_analysis["patient_id"] != patient_id:
-            # Import here to avoid circular imports
-            from app.core.services.ml.pat.exceptions import AuthorizationError
-            raise AuthorizationError("Analysis does not belong to this patient")
-            
-        return actigraphy_analysis
+        analysis_data = self._analyses.get(analysis_id)
+        if not analysis_data:
+            raise ResourceNotFoundError("Analysis not found") 
+
+        if analysis_data.get("patient_id") != patient_id:
+            # Use the aliased exception for consistency, if it were BaseAuthorizationError
+            raise BaseAuthorizationError("Analysis does not belong to patient") 
+
+        # Validate integration_types if provided
+        if integration_types:
+            # Add any additional validation logic you want to execute for integration_types
+            pass
+
+        return analysis_data
         
     def _generate_integration_categories(self) -> dict[str, dict[str, float]]:
         """Generate integration categories with scores.
@@ -1947,36 +1860,31 @@ class MockPATService(PATInterface):
         }
         
     def _generate_integration_recommendations(
-        self,
-        integration_types: list[str]
-    ) -> list[dict[str, Any]]:
-        """Generate recommendations based on integration types.
+        self, integration_types: list[str] | None
+    ) -> dict:
+        """Generate mock recommendations based on integration types."""
+        recommendations = {}
         
-        Args:
-            integration_types: Types of integration being performed
+        # Guard against integration_types being None
+        if integration_types is None:
+            integration_types = []
             
-        Returns:
-            List of recommendation objects
-        """
-        recommendations = []
-        
-        # Add behavioral recommendations if requested
         if "behavioral" in integration_types:
-            recommendations.append({
+            recommendations["behavioral"] = {
                 "type": "behavioral",
                 "priority": "high",
                 "description": "Increase daily steps by 1000",
                 "rationale": "Current activity levels are below recommended guidelines"
-            })
+            }
             
         # Add physiological recommendations if requested
         if "physiological" in integration_types:
-            recommendations.append({
+            recommendations["physiological"] = {
                 "type": "physiological",
                 "priority": "medium",
                 "description": "Improve sleep hygiene",
                 "rationale": "Sleep quality metrics indicate potential for improvement"
-            })
+            }
             
         return recommendations
         
@@ -2019,36 +1927,40 @@ class MockPATService(PATInterface):
         return 78
         
     def _generate_domain_integration_results(
-        self,
-        integration_types: list[str]
-    ) -> dict[str, dict[str, Any]]:
-        """Generate domain-specific integration results.
+        self, integration_types: list[str] | None, analysis_data: dict
+    ) -> dict:
+        """Generate mock domain integration results."""
+        results = {}
         
-        Args:
-            integration_types: Types of integration being performed
+        # Guard against integration_types being None
+        if integration_types is None:
+            integration_types = []
             
-        Returns:
-            Dictionary of domain integration results
-        """
-        integration_results = {}
+        # Example: Generate sleep results if requested and data is available
+        if "sleep" in integration_types:
+            results["sleep"] = {
+                "status": "success",
+                "insights": ["Sleep disruption detected"],
+                "recommendations_count": 1
+            }
         
-        # Add behavioral integration results if requested
+        # Add any other domain-specific integration results you want to include
+        # For example, you can add "activity" and "behavioral" results here
+        if "activity" in integration_types:
+            results["activity"] = {
+                "status": "success",
+                "insights": ["Activity levels below target range"],
+                "recommendations_count": 1
+            }
+        
         if "behavioral" in integration_types:
-            integration_results["behavioral"] = {
+            results["behavioral"] = {
                 "status": "success",
                 "insights": ["Activity patterns suggest sedentary lifestyle"],
                 "recommendations_count": 2
             }
-            
-        # Add physiological integration results if requested
-        if "physiological" in integration_types:
-            integration_results["physiological"] = {
-                "status": "success", 
-                "insights": ["Sleep disruption detected"],
-                "recommendations_count": 1
-            }
-            
-        return integration_results
+        
+        return results
     
     def _generate_mock_interpretation(self, analysis_types: list[str]) -> dict[str, Any]:
         """Generate mock interpretation for actigraphy analysis."""
