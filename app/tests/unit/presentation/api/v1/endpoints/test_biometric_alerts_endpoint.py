@@ -8,6 +8,7 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI, status
 from httpx import AsyncClient, ASGITransport
+from asgi_lifespan import LifespanManager
 # from httpx import AsyncClient # Duplicate import
 from faker import Faker
 
@@ -191,11 +192,9 @@ async def test_app(
     mock_biometric_event_processor: AsyncMock,
     mock_current_user: User,
 ) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
-    logger.info("Creating test_app for BiometricAlertsEndpoints.")
+    logger.info("Creating test_app for BiometricAlertsEndpoints with LifespanManager.")
     
     reset_container()
-    # include_test_routers=False was for a specific setup, let's assume it should be True for these unit tests
-    # unless there's a strong reason for False. For now, keeping it as is from previous state.
     app = create_application(settings_override=test_settings, include_test_routers=False)
 
     app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
@@ -209,18 +208,19 @@ async def test_app(
     logger.info(f"Applied FastAPI dependency_overrides. Keys: {list(app.dependency_overrides.keys())}")
 
     container = get_container()
-    # Explicitly register mocks used by this test_app in DI container
-    # This test_app uses its own `mock_jwt_service` param, not necessarily the global one from conftest.
     container.register(JWTServiceInterface, global_mock_jwt_service)
     container.register(AuthServiceInterface, mock_auth_service)
     container.register(AlertServiceInterface, mock_alert_service)
     logger.info("Explicitly registered MOCK services in DI container for BiometricAlerts test_app.")
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-        yield app, client
+    # Use LifespanManager to handle startup/shutdown
+    async with LifespanManager(app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+            yield app, client
     
-    app.dependency_overrides.clear()
-    reset_container()
+    # Cleanup outside the LifespanManager context if needed, though overrides are typically cleared before next test.
+    app.dependency_overrides.clear() # This might be redundant if LifespanManager handles full app cycle
+    reset_container() # Ensure container is reset
 
 @pytest.fixture
 async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
@@ -239,7 +239,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers
+        headers = get_valid_provider_auth_headers
         response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
@@ -250,7 +250,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers
+        headers = get_valid_provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
             "patient_id": str(sample_patient_id),
@@ -273,7 +273,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         payload = {
             "name": "Custom Low Oxygen Rule",
             "description": "Alert when SpO2 drops below 92%",
@@ -304,7 +304,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID
     ) -> None:
         pytest.skip("Skipping test as validation path doesn't exist and relies on AlertRuleService") # MOVED TO TOP
-        # headers = await get_valid_provider_auth_headers # Original code was just a skip
+        # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any, assumed it was only a skip)
 
     async def test_get_alert_rule(
@@ -314,7 +314,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_patient_id) # Using sample_patient_id as rule_id for test purposes
         response = await client.get(
             f"/api/v1/biometric-alerts/rules/{rule_id_str}",
@@ -328,7 +328,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # This test asserts a 404 and does not skip, so no change needed for skip positioning.
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         non_existent_rule_id = str(uuid.uuid4())
         response = await client.get(
             f"/api/v1/biometric-alerts/rules/{non_existent_rule_id}",
@@ -343,7 +343,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID
     ) -> None:
         pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_patient_id) # Using sample_patient_id as rule_id for test purposes
         update_payload = {
             "name": "Updated Sample Rule",
@@ -374,7 +374,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID
     ) -> None:
         pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         rule_id_str = str(sample_patient_id) # Using sample_patient_id as rule_id for test purposes
         response = await client.delete(
             f"/api/v1/biometric-alerts/rules/{rule_id_str}",
@@ -388,7 +388,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         response = await client.get(
             "/api/v1/biometric-alerts/rules/templates",
             headers=headers
@@ -401,7 +401,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # This test asserts a 200 and does not skip.
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         response = await client.get(
             "/api/v1/biometric-alerts", 
             headers=headers,
@@ -417,7 +417,7 @@ class TestBiometricAlertsEndpoints:
         mock_alert_service: MagicMock, # This specific mock is for this test
     ) -> None:
         # This test asserts behavior and does not skip.
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         status_filter = AlertStatus.OPEN.value
         priority_filter = AlertPriority.HIGH.value
         start_time = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
@@ -453,7 +453,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # headers = await get_valid_provider_auth_headers # Original code was just a skip
+        # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
     async def test_update_alert_status_resolve(
@@ -463,7 +463,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # headers = await get_valid_provider_auth_headers # Original code was just a skip
+        # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
     async def test_update_alert_status_not_found(
@@ -472,7 +472,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # This test asserts a 404 and does not skip.
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
         update_payload = {"status": "acknowledged"}
         response = await client.patch(
@@ -489,7 +489,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID
     ) -> None:
         pytest.skip("Skipping test as GET /patients/{id}/summary route not implemented") # MOVED TO TOP
-        # headers = await get_valid_provider_auth_headers # Original code was just a skip
+        # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
     async def test_get_patient_alert_summary_not_found(
@@ -498,7 +498,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # This test asserts a 404 and does not skip.
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         non_existent_patient_id = str(uuid.uuid4()) 
         response = await client.get(
             f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary", 
@@ -512,7 +512,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
             "name": "High Heart Rate Template",
@@ -550,7 +550,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID
     ) -> None:
         pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # headers = await get_valid_provider_auth_headers # Original code was just a skip
+        # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
     async def test_trigger_alert_manually_success(
@@ -560,7 +560,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         pytest.skip("Skipping test as POST /patients/{id}/trigger route not implemented") # MOVED TO TOP
-        # headers = await get_valid_provider_auth_headers # Original code was just a skip
+        # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
     async def test_hipaa_compliance_no_phi_in_url_or_errors(
@@ -569,7 +569,7 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
         # This test asserts behavior and does not skip.
-        headers = await get_valid_provider_auth_headers 
+        headers = get_valid_provider_auth_headers
         alert_id_str = str(uuid.uuid4())
         update_payload = {"status": "resolved"}
         response = await client.patch(
