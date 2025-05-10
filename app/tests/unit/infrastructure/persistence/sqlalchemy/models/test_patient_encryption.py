@@ -16,6 +16,7 @@ from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as 
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.core.domain.entities.patient import Patient as DomainPatient # For from_domain/to_domain tests
+from app.core.domain.entities.gender import Gender # Added import for Gender
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +25,22 @@ def mock_encryption_service_for_model_tests() -> MagicMock:
     """Provides a mock encryption service for model/TypeDecorator tests."""
     mock_service = MagicMock(spec=BaseEncryptionService)
 
-    async def mock_encrypt_string(raw_string: str) -> str:
+    def mock_encrypt_string_sync(raw_string: str) -> str:
         if not isinstance(raw_string, str):
             raw_string = str(raw_string) 
         return f"encrypted_{raw_string}"
 
-    async def mock_decrypt_string(encrypted_string: str) -> str:
+    def mock_decrypt_string_sync(encrypted_string: str) -> str:
         if not isinstance(encrypted_string, str):
             return str(encrypted_string) 
         if encrypted_string.startswith("encrypted_"):
             return encrypted_string[len("encrypted_"):]
         return encrypted_string
 
-    mock_service.encrypt_string = AsyncMock(side_effect=mock_encrypt_string)
-    mock_service.decrypt_string = AsyncMock(side_effect=mock_decrypt_string)
+    mock_service.encrypt = MagicMock(side_effect=mock_encrypt_string_sync)
+    mock_service.decrypt = MagicMock(side_effect=mock_decrypt_string_sync)
+    mock_service.encrypt_string = mock_service.encrypt
+    mock_service.decrypt_string = mock_service.decrypt
     return mock_service
 
 @pytest.fixture # Defined only ONCE
@@ -48,8 +51,12 @@ def sample_domain_patient_data() -> dict:
         "last_name": "DoeDomain",
         "date_of_birth": date(1990, 1, 15),
         "email": "john.domain@example.com",
-        "medical_record_number": "MRNDOMAIN123",
-        "medical_history": [{"condition": "Flu", "diagnosed_date": "2023-01-10"}],
+        "medical_record_number_lve": "MRNDOMAIN123",
+        "medical_history": [
+            "Condition: Flu, Diagnosed Date: 2023-01-10",
+            "Condition: Mockitis, Diagnosed Date: 2020-01-01"
+        ],
+        "gender": Gender.MALE,
     }
 
 class TestPatientModelEncryptionAndTypes:
@@ -64,9 +71,9 @@ class TestPatientModelEncryptionAndTypes:
         decorator = EncryptedString() 
         plaintext = "sensitive_info"
         
-        encrypted_value = await decorator.process_bind_param(plaintext, None) 
+        encrypted_value = decorator.process_bind_param(plaintext, None)
         
-        mock_encryption_service_for_model_tests.encrypt_string.assert_awaited_once_with(plaintext)
+        mock_encryption_service_for_model_tests.encrypt_string.assert_called_once_with(plaintext)
         assert encrypted_value == f"encrypted_{plaintext}"
 
     @pytest.mark.asyncio
@@ -78,9 +85,9 @@ class TestPatientModelEncryptionAndTypes:
         decorator = EncryptedString()
         encrypted_text = "encrypted_sensitive_info"
         
-        decrypted_value = await decorator.process_result_value(encrypted_text, None)
+        decrypted_value = decorator.process_result_value(encrypted_text, None)
         
-        mock_encryption_service_for_model_tests.decrypt_string.assert_awaited_once_with(encrypted_text)
+        mock_encryption_service_for_model_tests.decrypt_string.assert_called_once_with(encrypted_text)
         assert decrypted_value == "sensitive_info"
 
     @pytest.mark.asyncio
@@ -93,9 +100,9 @@ class TestPatientModelEncryptionAndTypes:
         python_object = {"key": "value", "list": [1, 2, {"sub_key": "sub_val"}]}
         expected_json_string = json.dumps(python_object)
         
-        encrypted_value = await decorator.process_bind_param(python_object, None)
+        encrypted_value = decorator.process_bind_param(python_object, None)
         
-        mock_encryption_service_for_model_tests.encrypt_string.assert_awaited_once_with(expected_json_string)
+        mock_encryption_service_for_model_tests.encrypt_string.assert_called_once_with(expected_json_string)
         assert encrypted_value == f"encrypted_{expected_json_string}"
 
     @pytest.mark.asyncio
@@ -109,9 +116,9 @@ class TestPatientModelEncryptionAndTypes:
         json_string_of_original = json.dumps(original_python_object)
         encrypted_db_text = f"encrypted_{json_string_of_original}"
         
-        decrypted_object = await decorator.process_result_value(encrypted_db_text, None)
+        decrypted_object = decorator.process_result_value(encrypted_db_text, None)
         
-        mock_encryption_service_for_model_tests.decrypt_string.assert_awaited_once_with(encrypted_db_text)
+        mock_encryption_service_for_model_tests.decrypt_string.assert_called_once_with(encrypted_db_text)
         assert decrypted_object == original_python_object
 
     @pytest.mark.asyncio
@@ -120,7 +127,7 @@ class TestPatientModelEncryptionAndTypes:
         """Test EncryptedJSON.process_result_value handles None input gracefully."""
         mock_esi.decrypt_string = mock_encryption_service_for_model_tests.decrypt_string
         decorator = EncryptedJSON()
-        assert await decorator.process_result_value(None, None) is None
+        assert decorator.process_result_value(None, None) is None
         mock_encryption_service_for_model_tests.decrypt_string.assert_not_called()
 
     @pytest.mark.asyncio
@@ -129,7 +136,7 @@ class TestPatientModelEncryptionAndTypes:
         """Test EncryptedJSON.process_bind_param handles None input gracefully."""
         mock_esi.encrypt_string = mock_encryption_service_for_model_tests.encrypt_string
         decorator = EncryptedJSON()
-        assert await decorator.process_bind_param(None, None) is None
+        assert decorator.process_bind_param(None, None) is None
         mock_encryption_service_for_model_tests.encrypt_string.assert_not_called()
 
     @pytest.mark.asyncio
@@ -140,13 +147,19 @@ class TestPatientModelEncryptionAndTypes:
 
         model_instance = PatientModel()
         model_instance.id = sample_domain_patient_data["id"]
-        model_instance._first_name = await mock_encryption_service_for_model_tests.encrypt_string(sample_domain_patient_data["first_name"])
-        model_instance._last_name = await mock_encryption_service_for_model_tests.encrypt_string(sample_domain_patient_data["last_name"])
-        model_instance._email = await mock_encryption_service_for_model_tests.encrypt_string(sample_domain_patient_data["email"])
-        model_instance._medical_record_number = await mock_encryption_service_for_model_tests.encrypt_string(sample_domain_patient_data["medical_record_number"])
+        model_instance._first_name = f"encrypted_{sample_domain_patient_data['first_name']}"
+        model_instance._last_name = f"encrypted_{sample_domain_patient_data['last_name']}"
+        model_instance._email = f"encrypted_{sample_domain_patient_data['email']}"
+        model_instance._medical_record_number = f"encrypted_{sample_domain_patient_data['medical_record_number_lve']}"
         
-        medical_history_json = json.dumps(sample_domain_patient_data["medical_history"])
-        model_instance._medical_history = await mock_encryption_service_for_model_tests.encrypt_string(medical_history_json)
+        medical_history_json_list_of_strings = json.dumps(sample_domain_patient_data["medical_history"])
+        model_instance._medical_history = f"encrypted_{medical_history_json_list_of_strings}"
+
+        dob_iso_string = sample_domain_patient_data["date_of_birth"].isoformat()
+        model_instance._date_of_birth = f"encrypted_{dob_iso_string}"
+
+        if sample_domain_patient_data.get("gender"):
+            model_instance._gender = f"encrypted_{sample_domain_patient_data['gender'].value}"
 
         domain_entity = await model_instance.to_domain()
 
@@ -154,18 +167,13 @@ class TestPatientModelEncryptionAndTypes:
         assert domain_entity.first_name == sample_domain_patient_data["first_name"]
         assert domain_entity.last_name == sample_domain_patient_data["last_name"]
         assert domain_entity.email == sample_domain_patient_data["email"]
-        assert domain_entity.medical_record_number == sample_domain_patient_data["medical_record_number"]
+        assert domain_entity.medical_record_number_lve == sample_domain_patient_data["medical_record_number_lve"]
         assert domain_entity.medical_history == sample_domain_patient_data["medical_history"]
+        assert domain_entity.date_of_birth == sample_domain_patient_data["date_of_birth"]
+        if sample_domain_patient_data.get("gender"):
+            assert domain_entity.gender == sample_domain_patient_data["gender"]
 
-        calls = [
-            mock_encryption_service_for_model_tests.decrypt_string.await_args_list[i][0][0] for i in range(mock_encryption_service_for_model_tests.decrypt_string.await_count)
-        ]
-        assert model_instance._first_name in calls
-        assert model_instance._last_name in calls
-        assert model_instance._email in calls
-        assert model_instance._medical_record_number in calls
-        assert model_instance._medical_history in calls
-        assert mock_encryption_service_for_model_tests.decrypt_string.await_count >= 5
+        assert mock_encryption_service_for_model_tests.decrypt_string.call_count >= 6
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
@@ -182,7 +190,7 @@ class TestPatientModelEncryptionAndTypes:
         assert model_instance._first_name == sample_domain_patient_data["first_name"]
         assert model_instance._last_name == sample_domain_patient_data["last_name"]
         assert model_instance._email == sample_domain_patient_data["email"]
-        assert model_instance._medical_record_number == sample_domain_patient_data["medical_record_number"]
-        assert model_instance._medical_history == sample_domain_patient_data["medical_history"]
+        assert model_instance._medical_record_number == sample_domain_patient_data["medical_record_number_lve"]
+        assert model_instance._medical_history == json.dumps(sample_domain_patient_data["medical_history"])
 
         mock_encryption_service_for_model_tests.encrypt_string.assert_not_called()

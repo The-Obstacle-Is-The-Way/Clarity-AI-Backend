@@ -37,7 +37,7 @@ class EncryptedTypeBase(types.TypeDecorator):
             value_str = str(value) 
             # logger.debug(f"process_bind_param: Encrypting value: '{value_str[:50]}...'")
             from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
-            encrypted = esi.encrypt_string(value_str)
+            encrypted = esi.encrypt(value_str)
             # logger.debug(f"process_bind_param: Encryption result: '{encrypted[:50] if encrypted else 'None'}...'")
             return encrypted
         except Exception as e:
@@ -56,7 +56,7 @@ class EncryptedTypeBase(types.TypeDecorator):
         try:
             # logger.debug(f"process_result_value: Decrypting value: '{value[:50]}...'")
             from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
-            decrypted = esi.decrypt_string(value)
+            decrypted = esi.decrypt(value)
             # logger.debug(f"process_result_value: Decryption result: '{decrypted[:50] if decrypted else 'None'}...'")
             return decrypted
         except Exception as e:
@@ -134,7 +134,7 @@ class EncryptedJSON(EncryptedTypeBase):
 
         # Access encryption service directly from patient model module
         from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
-        encrypted_data = esi.encrypt_string(json_string)
+        encrypted_data = esi.encrypt(json_string)
         return encrypted_data
 
     def process_result_value(self, value: str | None, dialect: Dialect) -> Any | None:
@@ -143,7 +143,7 @@ class EncryptedJSON(EncryptedTypeBase):
         # Access encryption service directly from patient model module
         from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
         try:
-            decrypted_json_string = esi.decrypt_string(value)
+            decrypted_json_string = esi.decrypt(value)
             if decrypted_json_string is None: # Should not happen if encryption stores non-None for non-None
                 return None
             return json.loads(decrypted_json_string)
