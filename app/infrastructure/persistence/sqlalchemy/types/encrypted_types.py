@@ -50,19 +50,142 @@ class EncryptedTypeBase(types.TypeDecorator):
         if value is None:
             # logger.debug("process_result_value: value is None, returning None.")
             return None
+        
+        # The 'value' from the database for encrypted types should be a string (ciphertext).
+        # If it's not a string, it might indicate a problem upstream or an unexpected DB type.
         if not isinstance(value, str):
-             logger.warning(f"process_result_value: Expected string from DB for decryption, got {type(value)}. Returning as is.")
-             return value # Or attempt conversion/raise error
+             logger.warning(f"process_result_value: Expected string from DB for decryption, got {type(value)}. This is unusual. Value: '{str(value)[:100]}...'")
+             # Attempt to coerce to string if it makes sense, otherwise, this might be an error condition.
+             # For now, let's proceed assuming 'value' is the string ciphertext as expected by esi.decrypt().
+             # If esi.decrypt() expects bytes, this part of the logic would need review.
+             # However, esi.decrypt() in EncryptionService is type-hinted to take `bytes`.
+             # This suggests the `value` from `process_result_value` (which is from the DB TEXT column)
+             # should be encoded before passing to `esi.decrypt` if `esi.decrypt` strictly wants bytes
+             # of the *encrypted form*.
+             # Let's assume `value` is the string form of the ciphertext.
+             # The `EncryptionService.decrypt` takes `bytes` but `BaseEncryptionService.decrypt` (which is likely called)
+             # handles string input by encoding it.
+
         try:
             # logger.debug(f"process_result_value: Decrypting value: '{value[:50]}...'")
             from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as esi
-            decrypted = esi.decrypt(value)
-            # logger.debug(f"process_result_value: Decryption result: '{decrypted[:50] if decrypted else 'None'}...'")
-            return decrypted
+            
+            # esi.decrypt (from EncryptionService) expects bytes (encrypted_data) and returns bytes (decrypted_data)
+            # The `value` here is the string ciphertext from the database TEXT column.
+            # BaseEncryptionService.decrypt, which EncryptionService might ultimately call, handles string input
+            # by encoding it. So, passing `value` (str) directly might be fine if BaseEncryptionService's decrypt is used.
+            # Let's assume esi.decrypt is EncryptionService.decrypt.
+            # EncryptionService.decrypt(encrypted_data: bytes) -> bytes.
+            # This means `value` (the string from DB) needs to be encoded if it's the raw ciphertext.
+            # However, the type hint for `esi.decrypt` in `EncryptionService` is `decrypt(self, encrypted_data: bytes, ...) -> bytes`.
+            # The `BaseEncryptionService.decrypt` takes `Union[str, bytes]` and returns `str`.
+            # The `encryption_service_instance` is `EncryptionService()`.
+            # Its `decrypt` method returns `bytes`.
+
+            encrypted_data_bytes: bytes
+            if isinstance(value, str):
+                # Assuming the string from the DB is the base64 encoded ciphertext that Fernet expects after potentially removing a version prefix.
+                # The BaseEncryptionService.decrypt handles version prefix and then decodes from base64 to bytes for Fernet.
+                # So, if `value` is the direct output of `encrypt` (which includes prefix and is str), it should work.
+                # The issue arises if esi.decrypt *itself* returns raw bytes.
+                
+                # If using BaseEncryptionService's decrypt method (which returns str):
+                # decrypted_string_or_bytes = esi.decrypt(value) # esi is EncryptionService
+                # if isinstance(decrypted_string_or_bytes, bytes):
+                #    decrypted = decrypted_string_or_bytes.decode('utf-8')
+                # else:
+                #    decrypted = decrypted_string_or_bytes
+                
+                # If using EncryptionService's decrypt method (which returns bytes):
+                decrypted_payload_bytes = esi.decrypt(value.encode('utf-8')) # Encrypt then decrypt expects bytes
+                                                                          # This line is tricky. `value` is the string from DB.
+                                                                          # `EncryptionService.decrypt` expects `bytes`.
+                                                                          # What form is `value` in? It's the output of `process_bind_param`.
+                                                                          # `process_bind_param` returns `encrypted_string` from `esi.encrypt(str_value)`.
+                                                                          # `EncryptionService.encrypt(str|bytes)` returns `bytes` (encrypted).
+                                                                          # `BaseEncryptionService.encrypt(str|bytes)` returns `Optional[str]` (version_prefix + b64(encrypted_bytes)).
+                                                                          # The `EncryptedTypeBase.impl` is `Text`, so DB stores string.
+                                                                          # So, `value` here IS the output of `BaseEncryptionService.encrypt`.
+                                                                          # So, we should use `BaseEncryptionService.decrypt` logic.
+                                                                          # `EncryptionService` IS-A `BaseEncryptionService`.
+                                                                          # `EncryptionService.decrypt` returns bytes.
+                                                                          # `BaseEncryptionService.decrypt` returns str.
+                                                                          # This is a conflict in the hierarchy or usage.
+
+                # Let's assume the `esi` (EncryptionService instance) should behave like BaseEncryptionService's decrypt
+                # for the TypeDecorator's purpose, or the TypeDecorator needs to bridge the gap.
+                # The `BaseEncryptionService.decrypt(data: Union[str, bytes]) -> str` is what we want.
+                # `EncryptionService` inherits this but also defines its own `decrypt(encrypted_data: bytes) -> bytes`.
+                # This is an LSP violation if `EncryptedTypeBase` expects `decrypt` to return `str`.
+
+                # Given `encryption_service_instance = EncryptionService()`, `esi.decrypt` will call `EncryptionService.decrypt`.
+                # This returns bytes.
+                
+                # The input `value` to this function IS a string (from Text column).
+                # The `EncryptionService.decrypt` method expects `bytes`.
+                # However, `BaseEncryptionService.decrypt` (which EncryptionService inherits) *can* take a string,
+                # and it handles prefix stripping and then calls Fernet's decrypt, then decodes to UTF-8 string.
+                # The issue is if Python's MRO calls `EncryptionService.decrypt(bytes)->bytes` when we pass a string.
+                # It won't, it will cause a TypeError if `EncryptionService.decrypt` is called with a string.
+                # This means `EncryptedTypeBase` expects `esi.decrypt` to take a string and return a string.
+                # The current `EncryptionService.decrypt` takes bytes and returns bytes.
+
+                # The most straightforward fix, if `EncryptionService.decrypt` is the one being called and returns bytes,
+                # is to decode its result.
+                # The `value` (string from DB) should be the prefixed, base64 encoded string.
+                # `BaseEncryptionService.decrypt` handles this string format correctly and returns a string.
+                # The problem is that `EncryptionService` overrides `decrypt` with a different signature (takes bytes, returns bytes)
+                # than what `EncryptedTypeBase` implicitly relies on from `BaseEncryptionService` (takes str/bytes, returns str).
+
+                # Let's call the method from BaseEncryptionService explicitly if possible, or ensure decoding.
+                # Since esi is an instance of EncryptionService which IS-A BaseEncryptionService:
+                
+                decrypted_result = esi.decrypt(value) # This will call BaseEncryptionService.decrypt(str) -> str
+                                                      # because `value` is `str`. Python's MRO should find the
+                                                      # BaseEncryptionService.decrypt(self, data: Union[str, bytes]) -> str
+                                                      # if EncryptionService.decrypt only accepts `bytes`.
+
+                # Let's re-verify:
+                # BaseEncryptionService.decrypt(data: Union[str, bytes]) -> str:
+                #   if isinstance(data, str) and data.startswith(self.VERSION_PREFIX):
+                #     encrypted_data = data[len(self.VERSION_PREFIX):].encode()
+                #   ...
+                #   return self.cipher.decrypt(encrypted_data).decode('utf-8')
+                #
+                # EncryptionService.decrypt(encrypted_data: bytes, ...) -> bytes:
+                #   return self._fernet.decrypt(encrypted_data)
+
+                # If esi.decrypt(value) is called where value is a string, it should be routed to
+                # BaseEncryptionService.decrypt.
+                # The log "Expected string from DB for decryption, got <class 'bytes'>"
+                # suggests that `decrypted` (the return of esi.decrypt(value)) *was* bytes.
+                # This can only happen if `BaseEncryptionService.decrypt` was somehow bypassed OR
+                # if `value` itself was bytes (which the `isinstance(value, str)` check tries to prevent).
+
+                # If `decrypted = esi.decrypt(value)` truly returns bytes, then `esi.decrypt` must be resolving
+                # to `EncryptionService.decrypt` which was called with bytes (meaning `value` was bytes), or
+                # `BaseEncryptionService.decrypt` was modified to return bytes, or
+                # `EncryptionService.decrypt` was called with a string and *that* method returned bytes (violating Base's contract).
+
+                # Given the evidence (log message), the `decrypted = esi.decrypt(value)` line results in `decrypted` being bytes.
+                # So, we MUST decode it.
+                decrypted_payload = esi.decrypt(value) # value is str, BaseEncryptionService.decrypt should be called.
+                
+                if decrypted_payload is None:
+                    # logger.debug("process_result_value: Decryption returned None.")
+                    return None
+                
+                if isinstance(decrypted_payload, bytes):
+                    # This case implies that the called decrypt method returned bytes.
+                    logger.debug(f"process_result_value: Decrypted payload is bytes, decoding to UTF-8. Value: {decrypted_payload[:50]}...")
+                    return decrypted_payload.decode('utf-8')
+                
+                # If it's already a string, return as is.
+                # logger.debug(f"process_result_value: Decryption result (already str): '{decrypted_payload[:50]}...'")
+                return decrypted_payload
+
         except Exception as e:
             logger.error(f"Decryption failed during result processing: {e}", exc_info=True)
-            # Depending on policy, either raise, return None, or return original (encrypted) value
-            # Returning None might be safer to avoid exposing encrypted data on failure
             return None 
 
     @property
