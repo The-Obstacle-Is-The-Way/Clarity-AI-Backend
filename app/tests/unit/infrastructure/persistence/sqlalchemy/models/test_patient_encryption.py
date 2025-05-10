@@ -148,50 +148,61 @@ class TestPatientModelEncryptionAndTypes:
         model_instance = PatientModel()
         model_instance.id = sample_domain_patient_data["id"]
         
-        fields_to_encrypt_map = {
+        # Plaintext values that are expected after decryption
+        expected_plaintext_map = {
             "_first_name": sample_domain_patient_data['first_name'],
             "_last_name": sample_domain_patient_data['last_name'],
             "_email": sample_domain_patient_data['email'],
-            "_medical_record_number": sample_domain_patient_data['medical_record_number_lve'],
+            "_mrn": sample_domain_patient_data['medical_record_number_lve'], # PatientModel uses _mrn
             "_date_of_birth": sample_domain_patient_data["date_of_birth"].isoformat(),
             "_medical_history": json.dumps(sample_domain_patient_data["medical_history"]),
             "_gender": sample_domain_patient_data['gender'].value if sample_domain_patient_data.get("gender") else None
         }
         
-        def decrypt_side_effect(encrypted_val):
-            if encrypted_val == f"encrypted_{fields_to_encrypt_map['_first_name']}": return fields_to_encrypt_map['_first_name']
-            if encrypted_val == f"encrypted_{fields_to_encrypt_map['_last_name']}": return fields_to_encrypt_map['_last_name']
-            if encrypted_val == f"encrypted_{fields_to_encrypt_map['_email']}": return fields_to_encrypt_map['_email']
-            if encrypted_val == f"encrypted_{fields_to_encrypt_map['_medical_record_number']}": return fields_to_encrypt_map['_medical_record_number']
-            if encrypted_val == f"encrypted_{fields_to_encrypt_map['_date_of_birth']}": return fields_to_encrypt_map['_date_of_birth']
-            if encrypted_val == f"encrypted_{fields_to_encrypt_map['_medical_history']}": return fields_to_encrypt_map['_medical_history']
-            if fields_to_encrypt_map['_gender'] and encrypted_val == f"encrypted_{fields_to_encrypt_map['_gender']}": return fields_to_encrypt_map['_gender']
-            return encrypted_val
-        
-        mock_encryption_service_for_model_tests.decrypt.side_effect = decrypt_side_effect
+        # Values that will be set on the model instance (simulating encrypted DB state)
+        encrypted_model_values = {key: f"encrypted_{value}" if value is not None else None 
+                                  for key, value in expected_plaintext_map.items()}
 
-        model_instance._first_name = f"encrypted_{fields_to_encrypt_map['_first_name']}"
-        model_instance._last_name = f"encrypted_{fields_to_encrypt_map['_last_name']}"
-        model_instance._email = f"encrypted_{fields_to_encrypt_map['_email']}"
-        model_instance._mrn = f"encrypted_{fields_to_encrypt_map['_medical_record_number']}"
-        model_instance._date_of_birth = f"encrypted_{fields_to_encrypt_map['_date_of_birth']}"
-        model_instance._medical_history = f"encrypted_{fields_to_encrypt_map['_medical_history']}"
-        if fields_to_encrypt_map['_gender']:
-            model_instance._gender = f"encrypted_{fields_to_encrypt_map['_gender']}"
+        def precise_decrypt_side_effect(encrypted_input_val):
+            # Find which original plaintext value corresponds to this encrypted_input_val
+            for plain_key, plain_value in expected_plaintext_map.items():
+                if plain_value is None: continue # Cannot match None to an encrypted form this way
+                # Check if the encrypted input matches the expected encrypted form of a plaintext value
+                if encrypted_input_val == f"encrypted_{plain_value}":
+                    # logger.debug(f"[decrypt_side_effect] Matched: {encrypted_input_val} -> {plain_value}")
+                    return plain_value # Return the original plaintext
+            # logger.warning(f"[decrypt_side_effect] No match for: {encrypted_input_val}, returning as is.")
+            return encrypted_input_val # Fallback: return as is if no specific rule matched
+        
+        mock_encryption_service_for_model_tests.decrypt.side_effect = precise_decrypt_side_effect
+
+        # Set model attributes to their "encrypted" form
+        model_instance._first_name = encrypted_model_values['_first_name']
+        model_instance._last_name = encrypted_model_values['_last_name']
+        model_instance._email = encrypted_model_values['_email']
+        model_instance._mrn = encrypted_model_values['_mrn'] 
+        model_instance._date_of_birth = encrypted_model_values['_date_of_birth']
+        model_instance._medical_history = encrypted_model_values['_medical_history']
+        if expected_plaintext_map['_gender']:
+            model_instance._gender = encrypted_model_values['_gender']
 
         domain_entity = await model_instance.to_domain()
 
         assert domain_entity.id == sample_domain_patient_data["id"]
-        assert domain_entity.first_name == sample_domain_patient_data["first_name"]
-        assert domain_entity.last_name == sample_domain_patient_data["last_name"]
-        assert domain_entity.email == sample_domain_patient_data["email"]
-        assert domain_entity.medical_record_number_lve == sample_domain_patient_data["medical_record_number_lve"]
-        assert domain_entity.medical_history == sample_domain_patient_data["medical_history"]
+        assert domain_entity.first_name == expected_plaintext_map["_first_name"]
+        assert domain_entity.last_name == expected_plaintext_map["_last_name"]
+        assert domain_entity.email == expected_plaintext_map["_email"]
+        assert domain_entity.medical_record_number_lve == expected_plaintext_map["_mrn"]
+        assert domain_entity.medical_history == sample_domain_patient_data["medical_history"] # medical_history is already list[str]
         assert domain_entity.date_of_birth == sample_domain_patient_data["date_of_birth"]
         if sample_domain_patient_data.get("gender"):
              assert domain_entity.gender == sample_domain_patient_data["gender"]
 
-        assert mock_encryption_service_for_model_tests.decrypt.call_count >= 6
+        # Check that decrypt was called for accessed fields. 
+        # Expected calls: _first_name, _last_name, _email, _mrn, _date_of_birth, _medical_history
+        # Plus _gender if it was set.
+        expected_decrypt_calls = 6 + (1 if expected_plaintext_map['_gender'] else 0)
+        assert mock_encryption_service_for_model_tests.decrypt.call_count >= expected_decrypt_calls
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')

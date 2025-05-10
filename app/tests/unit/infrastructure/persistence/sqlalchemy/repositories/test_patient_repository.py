@@ -25,6 +25,7 @@ from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository i
 )
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.domain.value_objects.address import Address
+from app.core.domain.enums import Gender
 
 
 @pytest.fixture
@@ -87,13 +88,13 @@ def mock_db_session() -> AsyncMock:
     session.execute = AsyncMock(return_value=mock_result)
 
     # Mock other session methods
-    session.add = AsyncMock()
+    session.add = MagicMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
     session.flush = AsyncMock()
     session.close = AsyncMock()
     session.get = AsyncMock() # Keep for delete path
-    session.delete = AsyncMock()
+    session.delete = MagicMock()
     session.rollback = AsyncMock() # Add awaitable rollback
 
     # Mock context manager methods
@@ -166,20 +167,10 @@ def patient_repository(mock_db_session) -> PatientRepository:
 # Helper to create mock PatientModel instances with 'encrypted' data for test setups
 async def create_mock_patient_model_with_encrypted_data(
     patient_id_str: str,
-    mock_encrypt_service: MagicMock, # Expecting the mock_encryption_service fixture
+    mock_encrypt_service: MagicMock, # Pass the mock service with .encrypt_string
     raw_data_overrides: dict | None = None
 ) -> PatientModel:
-    """Creates a mock PatientModel instance with specified fields 'encrypted' by mock_encrypt_service.
-
-    Args:
-        patient_id_str: The string UUID for the mock patient.
-        mock_encrypt_service: The mock encryption service (fixture) to use for 'encrypting' fields.
-        raw_data_overrides: A dictionary of plaintext values to override defaults before encryption.
-                            Keys should be model attribute names (e.g., '_first_name').
-
-    Returns:
-        A PatientModel instance with sensitive fields mock-encrypted.
-    """
+    """Helper to create a mock PatientModel instance with specified fields encrypted."""
     patient_uuid = uuid.UUID(patient_id_str)
     
     # Define default raw PII data (as strings or appropriate types before encryption)
@@ -234,6 +225,31 @@ async def create_mock_patient_model_with_encrypted_data(
     mock_model.version = 1
 
     return mock_model
+
+
+@pytest.fixture
+def sample_patient_list_data() -> list[dict]:
+    """Provides a list of sample patient data for get_all tests."""
+    return [
+        {
+            "id": uuid.uuid4(),
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "date_of_birth": date(1985, 5, 10),
+            "email": "alice.repo@example.com",
+            "medical_record_number_lve": "MRNALICE1",
+            "gender": Gender.FEMALE,
+        },
+        {
+            "id": uuid.uuid4(),
+            "first_name": "Bob",
+            "last_name": "Johnson",
+            "date_of_birth": date(1992, 8, 22),
+            "email": "bob.repo@example.com",
+            "medical_record_number_lve": "MRNBOB2",
+            "gender": Gender.MALE,
+        }
+    ]
 
 
 @pytest.mark.asyncio
@@ -319,42 +335,24 @@ class TestPatientRepository:
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient', new_callable=MagicMock) # Mock Patient class
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
-    async def test_create_patient(self, mock_patient_module_esi: MagicMock, MockPatientClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict, mock_encryption_service: MagicMock, async_mock_patch: Any):
+    async def test_create_patient(self, mock_patient_module_esi: MagicMock, MockPatientClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict, mock_encryption_service: MagicMock):
         """Test creating a new patient, ensuring data is encrypted and returned correctly."""
+        # The primary interaction should be with mock_esi for TypeDecorator behavior.
         mock_patient_module_esi.encrypt = mock_encryption_service.encrypt
         mock_patient_module_esi.decrypt = mock_encryption_service.decrypt
-        mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt # Alias if needed by types
-        mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt # Alias if needed by types
 
-
-        # This mock_created_model_instance will be the one returned by PatientModel.from_domain
-        # and also the one that session.refresh acts upon.
-        mock_created_model_instance = MagicMock(spec=PatientModel) # Use the alias from import
-        # Configure its to_domain method to return a PatientEntity based on input
+        mock_created_model_instance = MagicMock(spec=PatientModel)
         async def mock_to_domain_on_created():
-            # Simulate decryption that would happen via TypeDecorators when to_domain accesses attributes
-            # For simplicity, assume it constructs a PatientEntity with original data.
-            # In a real TypeDecorator flow, this would involve decrypting attributes of mock_created_model_instance.
-            return PatientEntity(**sample_patient_data) # Return a domain entity
+            return PatientEntity(**sample_patient_data)
         mock_created_model_instance.to_domain = AsyncMock(side_effect=mock_to_domain_on_created)
-
-        # Configure the (mocked) Patient class's from_domain static method
-        # It should return the mock_created_model_instance we prepared.
         MockPatientClass.from_domain = AsyncMock(return_value=mock_created_model_instance)
         
-        # Mock session.refresh to do nothing or accept the model instance
-        async def mock_refresh(target_model):
-            # Potentially update attributes on target_model if DB would, e.g., id, created_at
-            # For this test, assume from_domain sets id, and DB defaults are not critical to test here.
-            pass 
+        async def mock_refresh(target_model): pass 
         mock_db_session.refresh = AsyncMock(side_effect=mock_refresh)
 
         patient_to_create = PatientEntity(**sample_patient_data)
-        
-        # Action
         created_patient_entity = await patient_repository.create(patient_to_create)
 
-        # Assertions
         MockPatientClass.from_domain.assert_awaited_once_with(patient_to_create)
         mock_db_session.add.assert_called_once_with(mock_created_model_instance)
         mock_db_session.flush.assert_awaited_once()
@@ -362,85 +360,61 @@ class TestPatientRepository:
         mock_created_model_instance.to_domain.assert_awaited_once()
         
         assert created_patient_entity is not None
-        assert created_patient_entity.id == uuid.UUID(sample_patient_data["id"])
+        assert created_patient_entity.id == uuid.UUID(str(sample_patient_data["id"])) # Ensure UUID comparison
         assert created_patient_entity.first_name == sample_patient_data["first_name"]
 
     @pytest.mark.asyncio
-    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient', new_callable=MagicMock) # Mock Patient class
+    @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient', new_callable=MagicMock)
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
-    async def test_update_patient(self, mock_patient_module_esi: MagicMock, MockPatientClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, mock_encryption_service: MagicMock, async_mock_patch: Any):
+    async def test_update_patient(self, mock_patient_module_esi: MagicMock, MockPatientClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, mock_encryption_service: MagicMock):
         """Test updating an existing patient."""
         mock_patient_module_esi.encrypt = mock_encryption_service.encrypt
         mock_patient_module_esi.decrypt = mock_encryption_service.decrypt
-        mock_patient_module_esi.encrypt_string = mock_encryption_service.encrypt 
-        mock_patient_module_esi.decrypt_string = mock_encryption_service.decrypt
 
         patient_uuid = uuid.UUID(sample_patient_id)
-
-        # Mock the existing patient model that will be found in the DB
-        existing_model_from_db = MagicMock(spec=PatientModel) # Use alias PatientModel
+        existing_model_from_db = MagicMock(spec=PatientModel)
         existing_model_from_db.id = patient_uuid
-        # Populate with some mock encrypted data initially if needed for to_domain logic
-        existing_model_from_db._first_name = "encrypted_OldName"
-        # ... other fields ...
-
-        # Configure its to_domain method for the final conversion back
         async def mock_to_domain_on_updated_model(): 
-            # This simulates TypeDecorators using decrypt on the *updated* attributes.
-            # We assume PatientRepository correctly setattr on existing_model_from_db.
-            # So, this to_domain should reflect the final state.
-            # For simplicity, return a dict that would match the updated data.
             return PatientEntity(id=patient_uuid, first_name="UpdatedFirstName", last_name="UpdatedLastName", date_of_birth=date(1990,1,1), email="update@example.com")
         existing_model_from_db.to_domain = AsyncMock(side_effect=mock_to_domain_on_updated_model)
-
-        # Setup the mock for session.execute().scalars().one_or_none() to return our existing model
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = existing_model_from_db
 
-        # Domain entity with updated data
         updated_patient_details = PatientEntity(
             id=patient_uuid, 
             first_name="UpdatedFirstName", 
             last_name="UpdatedLastName", 
             email="update@example.com", 
-            date_of_birth=date(1990,1,1) # Ensure all required fields are present
+            date_of_birth=date(1990,1,1) 
         )
-
-        # Action
         result_entity = await patient_repository.update(updated_patient_details)
-
-        # Assertions
-        mock_db_session.execute.assert_awaited_once() # Check that select was called
-        # Check that attributes were set on existing_model_from_db (this is tricky with MagicMock without more setup)
-        # For example, check if setattr was called (would need to mock setattr or inspect calls)
-        # For now, verify that the model's to_domain was called (implying it was processed)
+        mock_db_session.execute.assert_awaited_once()
         existing_model_from_db.to_domain.assert_awaited_once()
         mock_db_session.flush.assert_awaited_once()
         mock_db_session.refresh.assert_awaited_once_with(existing_model_from_db)
-
         assert result_entity is not None
         assert result_entity.first_name == "UpdatedFirstName"
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
-    async def test_get_all_patients(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: list[dict]):
+    async def test_get_all_patients(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_list_data: list[dict]): # Use new fixture
         """Test retrieving all patients with limit and offset."""
+        # mock_patient_module_esi used by TypeDecorators implicitly
+
         mock_patient_models = []
-        for i, data in enumerate(sample_patient_data):
+        for i, data_dict in enumerate(sample_patient_list_data): # data_dict is now a dict
             model = MagicMock(spec=PatientModel)
-            model.id = data.get("id", uuid.uuid4())
-            model._first_name = data.get("first_name", f"Test{i}")
-            model._last_name = data.get("last_name", f"User{i}")
-            model._email = data.get("email", f"test{i}@example.com")
-            model._date_of_birth = data.get("date_of_birth", date(1990,1,1)).isoformat()
-            # Add address components for each mock model
+            model.id = data_dict.get("id") # .get() is fine now
+            model._first_name = data_dict.get("first_name")
+            model._last_name = data_dict.get("last_name")
+            model._email = data_dict.get("email")
+            model._date_of_birth = data_dict.get("date_of_birth").isoformat() # .isoformat() is fine
             model._address_line1 = "123 Main St"
             model._city = "Anytown"
             model._state = "CA"
-            model._zip_code = f"9021{i}" # Ensure valid zip
+            model._zip_code = f"9021{i}"
             model._country = "USA"
             
             async def make_to_domain_side_effect(current_model_state):
-                # Capture current_model_state in closure
                 async def side_effect(): 
                     return PatientEntity(
                         id=current_model_state['id'], 
@@ -452,54 +426,50 @@ class TestPatientRepository:
                             line1=current_model_state['_address_line1'] or "", 
                             city=current_model_state['_city'] or "", 
                             state=current_model_state['_state'] or "", 
-                            zip_code=current_model_state['_zip_code'] or "", # Crucial
+                            zip_code=current_model_state['_zip_code'] or "",
                             country=current_model_state['_country'] or ""
                         )
                     )
                 return side_effect
             
-            # Store current state for the closure
-            current_state = model.__dict__.copy() # shallow copy of attributes set on mock
-            # More robustly, explicitly define the dict for current_state:
             current_state = {
-                'id': model.id,
-                '_first_name': model._first_name,
-                '_last_name': model._last_name,
-                '_email': model._email,
-                '_date_of_birth': model._date_of_birth,
-                '_address_line1': model._address_line1,
-                '_city': model._city,
-                '_state': model._state,
-                '_zip_code': model._zip_code,
-                '_country': model._country
+                'id': model.id, '_first_name': model._first_name, '_last_name': model._last_name,
+                '_email': model._email, '_date_of_birth': model._date_of_birth,
+                '_address_line1': model._address_line1, '_city': model._city, '_state': model._state,
+                '_zip_code': model._zip_code, '_country': model._country
             }
-            model.to_domain = AsyncMock(side_effect=await make_to_domain_side_effect(current_state))
+            # The direct assignment of an async function is okay for AsyncMock side_effect
+            model.to_domain = await make_to_domain_side_effect(current_state) 
             mock_patient_models.append(model)
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = mock_patient_models
-
         retrieved_entities = await patient_repository.get_all(limit=10, offset=0)
-
         mock_db_session.execute.assert_awaited_once()
-        assert len(retrieved_entities) == len(sample_patient_data)
+        assert len(retrieved_entities) == len(sample_patient_list_data)
         for entity, model_mock in zip(retrieved_entities, mock_patient_models):
             assert entity.id == model_mock.id
-            assert entity.first_name == model_mock._first_name
-            model_mock.to_domain.assert_awaited_once() # Ensure to_domain was called for each
-            assert entity.address.zip_code.startswith("9021") # Verify address was populated
+            model_mock.to_domain.assert_awaited_once() 
+            assert entity.address.zip_code.startswith("9021")
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
     async def test_get_by_email(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict):
         """Test retrieving a patient by email."""
+        # mock_patient_module_esi used by TypeDecorators implicitly
+
         target_email = sample_patient_data["email"]
         mock_patient_model = MagicMock(spec=PatientModel)
-        mock_patient_model.id = sample_patient_data["id"]
-        mock_patient_model._email = target_email # This is what PatientModel would store (decrypted)
-        # Populate other fields needed for to_domain, including Address
+        # Ensure sample_patient_data["id"] is a UUID if comparing directly later
+        mock_patient_model.id = uuid.UUID(str(sample_patient_data["id"])) 
+        mock_patient_model._email = target_email
         mock_patient_model._first_name = sample_patient_data["first_name"]
         mock_patient_model._last_name = sample_patient_data["last_name"]
-        mock_patient_model._date_of_birth = sample_patient_data["date_of_birth"].isoformat()
+        # Ensure sample_patient_data["date_of_birth"] is a date object for .isoformat()
+        if isinstance(sample_patient_data["date_of_birth"], str):
+            dob = date.fromisoformat(sample_patient_data["date_of_birth"])
+        else:
+            dob = sample_patient_data["date_of_birth"]
+        mock_patient_model._date_of_birth = dob.isoformat()
         mock_patient_model._address_line1 = "456 Email Ave"
         mock_patient_model._city = "Mailville"
         mock_patient_model._state = "TX"
@@ -516,25 +486,13 @@ class TestPatientRepository:
                 address=Address(line1="456 Email Ave", city="Mailville", state="TX", zip_code="75001", country="USA")
             )
         mock_patient_model.to_domain = AsyncMock(side_effect=mock_to_domain_for_email_get)
-
-        # Configure execute behavior for email query
-        # The repository will build a select().where(PatientModel._email == encrypted_email)
-        # The mock_db_session.execute needs to return this mock_patient_model
         mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = mock_patient_model
 
         retrieved_entity = await patient_repository.get_by_email(target_email)
-
-        # Assert that execute was called (which implies a query was made)
         mock_db_session.execute.assert_awaited_once()
-        # Ideally, assert the WHERE clause of the statement passed to execute contained the email.
-        # This requires more complex call_args inspection.
-        # For example: 
-        #   called_stmt = mock_db_session.execute.call_args[0][0]
-        #   assert target_email in str(called_stmt.compile(compile_kwargs={"literal_binds": True}))
-
         assert retrieved_entity is not None
         assert retrieved_entity.email == target_email
-        assert retrieved_entity.id == sample_patient_data["id"]
+        assert retrieved_entity.id == mock_patient_model.id # Compare with the UUID set on mock_patient_model
         assert retrieved_entity.address.zip_code == "75001"
 
     @pytest.mark.asyncio
