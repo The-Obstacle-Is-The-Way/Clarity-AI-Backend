@@ -10,7 +10,7 @@ import json
 import logging
 import uuid
 from typing import Any, Dict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from dateutil import parser
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, Date as SQLDate, JSON, inspect
@@ -243,8 +243,8 @@ class Patient(Base, TimestampMixin, AuditMixin):
         else:
             model.user_id = None # Fallback if not provided or invalid type
             
-        # model.created_at = getattr(patient, 'created_at', now_utc()) # Let DB handle default
-        # model.updated_at = getattr(patient, 'updated_at', now_utc()) # Let DB handle default/onupdate
+        model.created_at = getattr(patient, 'created_at', None)
+        model.updated_at = getattr(patient, 'updated_at', None)
         model.is_active = getattr(patient, 'active', getattr(patient, 'is_active', True)) # 'active' or 'is_active'
 
         # Basic PII - fields in DomainPatient
@@ -540,22 +540,31 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 logger.warning(f"Failed to parse {field_name} for patient {self.id} from JSON string: '{str_to_parse[:100]}'")
                 return None
 
+        # Ensure datetime fields are timezone-aware (UTC) if they are naive
+        created_at_val = self.created_at
+        if created_at_val and created_at_val.tzinfo is None:
+            created_at_val = created_at_val.replace(tzinfo=timezone.utc)
+
+        updated_at_val = self.updated_at
+        if updated_at_val and updated_at_val.tzinfo is None:
+            updated_at_val = updated_at_val.replace(tzinfo=timezone.utc)
+
         patient_args = {
             "id": self.id,
-            "external_id": _decode_if_bytes(self.external_id),
+            "external_id": self.external_id,
             "user_id": self.user_id,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
+            "created_at": created_at_val,
+            "updated_at": updated_at_val,
             "is_active": self.is_active,
             "first_name": _decode_if_bytes(self._first_name),
             "last_name": _decode_if_bytes(self._last_name),
             "middle_name": _decode_if_bytes(self._middle_name),
             "gender": _decode_if_bytes(self._gender),
-            "date_of_birth": _decode_if_bytes(self._date_of_birth),
-            "ssn_lve": _decode_if_bytes(self._ssn),
+            "date_of_birth": date_of_birth,
+            "social_security_number_lve": _decode_if_bytes(self._ssn),
             "phone_number_lve": _decode_if_bytes(self._phone_number),
             "email": _decode_if_bytes(self._email),
-            "mrn": _decode_if_bytes(self._mrn),
+            "medical_record_number_lve": _decode_if_bytes(self._mrn),
             "insurance_provider": _decode_if_bytes(self._insurance_provider),
             "insurance_policy_number": _decode_if_bytes(self._insurance_policy_number),
             "insurance_group_number": _decode_if_bytes(self._insurance_group_number),

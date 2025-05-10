@@ -119,7 +119,7 @@ class PatientRepository:
         else:
             raise RuntimeError("No database session or factory available")
 
-    async def create(self, patient_entity: PatientEntity) -> PatientEntity | None:
+    async def create(self, patient_entity: PatientEntity, context: dict | None = None) -> PatientEntity | None:
         """Creates a new patient record in the database from a PatientEntity."""
         self.logger.debug(f"Attempting to create patient with entity ID: {patient_entity.id}")
 
@@ -192,7 +192,7 @@ class PatientRepository:
 
         return await self._with_session(_create_operation)
 
-    async def get_by_id(self, patient_id: str | UUID) -> PatientEntity | None:
+    async def get_by_id(self, patient_id: str | UUID, context: dict | None = None) -> PatientEntity | None:
         """Retrieves a patient by their ID."""
         self.logger.debug(f"Attempting to retrieve patient with ID: {patient_id}")
         async def _get_by_id_operation(session):
@@ -222,7 +222,7 @@ class PatientRepository:
         
         return await self._with_session(_get_by_id_operation)
 
-    async def get_all(self, limit: int = 50, offset: int = 0) -> list[PatientEntity]:
+    async def get_all(self, limit: int = 50, offset: int = 0, context: dict | None = None) -> list[PatientEntity]:
         """Retrieves all patients with pagination."""
         self.logger.debug(f"Attempting to retrieve all patients with limit={limit}, offset={offset}")
         async def _get_all_operation(session):
@@ -241,7 +241,7 @@ class PatientRepository:
 
         return await self._with_session(_get_all_operation)
 
-    async def update(self, patient_entity: PatientEntity) -> PatientEntity | None:
+    async def update(self, patient_entity: PatientEntity, context: dict | None = None) -> PatientEntity | None:
         """Updates an existing patient record in the database."""
         if not patient_entity.id:
             self.logger.error("Patient entity must have an ID to be updated.")
@@ -311,21 +311,37 @@ class PatientRepository:
 
         return await self._with_session(_update_operation)
 
-    async def delete(self, patient_id: str) -> bool:
-        """Deletes a patient by their ID."""
-        try:
-            # Convert to UUID object - sample_patient_id is already a valid UUID string
-            uuid_obj = uuid.UUID(patient_id)
-        except (ValueError, AttributeError, TypeError):
-            logger.warning(f"Attempted delete with invalid UUID format: {patient_id}")
-            return False
-            
-        async def _delete_operation(session):
+    async def delete(self, patient_id: str | UUID, context: dict | None = None) -> bool:
+        """Deletes a patient by their ID.
+        
+        Args:
+            patient_id: The ID of the patient to delete (can be str or UUID).
+            context: Optional context dictionary.
+
+        Returns:
+            bool: True if deletion was successful, False otherwise.
+        """
+        self.logger.debug(f"Attempting to delete patient with ID: {patient_id}")
+        
+        # Ensure patient_id is a UUID object if it was passed as a string
+        if isinstance(patient_id, str):
             try:
-                # Use session.get() to retrieve the patient model as expected by the test
-                patient_model = await session.get(PatientModel, uuid_obj)
+                patient_uuid = UUID(patient_id)
+            except ValueError:
+                self.logger.warning(f"Invalid UUID string provided for deletion: {patient_id}")
+                return False # Or raise an error, depending on desired behavior for invalid ID format
+        elif isinstance(patient_id, UUID):
+            patient_uuid = patient_id
+        else:
+            self.logger.error(f"Invalid patient_id type for deletion: {type(patient_id)}")
+            return False # Or raise TypeError
+
+        async def _delete_operation(session: AsyncSession) -> bool:
+            try:
+                stmt = select(PatientModel).where(PatientModel.id == patient_uuid)
+                result = await session.execute(stmt)
+                patient_model = result.scalars().one_or_none()
                 
-                # If the patient exists, delete it
                 if patient_model:
                     await session.delete(patient_model)
                     await session.flush()
