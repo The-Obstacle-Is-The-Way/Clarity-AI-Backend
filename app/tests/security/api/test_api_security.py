@@ -728,7 +728,7 @@ async def test_authenticated_but_unknown_role(
     current_fastapi_app.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo
 
     # Attempt to access a generic authenticated endpoint
-    response = await client.get(f"/api/v1/users/me", headers=headers_unknown_role)
+    response = await client.get(f"/api/v1/auth/me", headers=headers_unknown_role)
 
     if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
         del current_fastapi_app.dependency_overrides[get_user_repository_dependency]

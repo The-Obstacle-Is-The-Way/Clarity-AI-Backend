@@ -307,38 +307,37 @@ def create_application(
     logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
     # 4. Authentication Middleware
-    # Initialize and register the authentication middleware
-    logger.info("Initializing and registering AuthenticationMiddleware...")
-    try:
-        jwt_service = get_jwt_service()
-        
-        # Check if db_session_factory is available in app_instance.state
-        # This could be None during tests or when running without lifespan management
-        if hasattr(app_instance.state, 'actual_session_factory') and app_instance.state.actual_session_factory is not None:
-            user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.actual_session_factory)
+    # Conditionally add AuthenticationMiddleware
+    # Requires actual_session_factory to be available for user_repo instantiation
+    if hasattr(app_instance.state, "actual_session_factory") and app_instance.state.actual_session_factory:
+        logger.info("Initializing and registering AuthenticationMiddleware...")
+        try:
+            current_settings = app_instance.state.settings
+            # Ensure settings is present
+            if not current_settings:
+                logger.error("CRITICAL_APP_FACTORY: settings not found on app_instance.state for AuthN Middleware.")
+                raise RuntimeError("Settings object not found on app.state for AuthenticationMiddleware setup.")
+
+            from app.infrastructure.security.jwt.jwt_service import JWTService # Direct import
+            jwt_service_instance = JWTService(settings=current_settings)
+
+            user_repo_instance = SQLAlchemyUserRepository(session_factory=app_instance.state.actual_session_factory)
             
-            # Define public paths - keep in sync with middleware defaults or settings
-            public_paths = {
-                "/docs", "/openapi.json", "/redoc",  # API docs
-                "/health", "/metrics", "/",  # Public monitoring endpoints
-                f"{app_settings.API_V1_STR}/auth/login",  # Auth endpoints
-                f"{app_settings.API_V1_STR}/auth/register",
-                f"{app_settings.API_V1_STR}/auth/refresh",
-            }
-            
-            app_instance.add_middleware(
-                AuthenticationMiddleware,
-                jwt_service=jwt_service,
-                user_repo=user_repository,
-                public_paths=public_paths
+            auth_middleware = AuthenticationMiddleware(
+                app=app_instance.router, 
+                jwt_service=jwt_service_instance,
+                user_repo=user_repo_instance,
+                public_paths=current_settings.PUBLIC_PATHS,
+                public_path_regex=current_settings.PUBLIC_PATH_REGEX
             )
-            logger.info("Authentication middleware added successfully.")
-        else:
-            logger.warning("actual_session_factory not found in app.state - skipping AuthenticationMiddleware")
-            logger.warning("Authentication will not be enforced!")
-    except Exception as e:
-        logger.error(f"Failed to initialize AuthenticationMiddleware: {e}", exc_info=True)
-        logger.warning("Authentication middleware NOT ADDED - application will not enforce authentication!")
+            app_instance.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware.dispatch)
+            logger.info("AuthenticationMiddleware registered successfully.")
+        except Exception as e:
+            logger.error(f"Failed to initialize or register AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
+            logger.warning("AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
+    else:
+        logger.warning("actual_session_factory not found in app.state - skipping AuthenticationMiddleware")
+        logger.warning("Authentication will not be enforced!")
 
     # 5. Rate Limiting Middleware
     # Temporarily disabled due to implementation issues
@@ -395,14 +394,22 @@ def create_application(
         # Log the full, unhandled exception for internal review
         # Be cautious about logging potentially sensitive parts of `exc` or `request`
         # if they could contain PHI in a real scenario.
+        request_id = getattr(request.state, "request_id", "N/A") # Get request_id safely
         logger.critical(
-            f"Unhandled exception: {exc.__class__.__name__}: {exc} for request: {request.method} {request.url}",
-            exc_info=True # Include traceback
+            f"Unhandled exception: {type(exc).__name__}: {exc} for request: {request.method} {request.url} (Request ID: {request_id})",
+            exc_info=True, # This will include the stack trace
         )
-        # Return a generic 500 error to the client, masking internal details.
+        
+        # HIPAA: Ensure no PHI is returned in error messages to the client.
+        # Provide a generic error message.
+        error_response_content = {
+            "detail": "An unexpected internal server error occurred.",
+            "error_id": request_id,
+        }
+        logger.info(f"Generic exception handler returning JSONResponse with status 500 and content: {error_response_content} (Request ID: {request_id})") # ADDED LOG
         return JSONResponse(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Internal server error"}, # MATCHES TEST EXPECTATION
+            content=error_response_content,
         )
         
     logger.info("FastAPI application creation complete.")
