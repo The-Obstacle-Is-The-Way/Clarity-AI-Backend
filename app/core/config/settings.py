@@ -44,6 +44,20 @@ class Settings(BaseSettings):
     JWT_ISSUER: str | None = None
     JWT_AUDIENCE: str | None = None
     
+    # Public paths for AuthenticationMiddleware
+    PUBLIC_PATHS: list[str] = Field(default_factory=lambda: [
+        "/openapi.json",
+        "/docs",
+        "/docs/oauth2-redirect",
+        "/redoc",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/register", # Assuming registration is public
+        "/api/v1/status/health", # Health checks are often public
+        # Add other known public paths here
+    ])
+    PUBLIC_PATH_REGEX: str = r"^(/api/v1/status/health|/openapi.json|/docs|/redoc|/api/v1/auth/(login|refresh|register)).*$"
+    
     # CORS Settings
     CORS_ORIGINS: list[str] = ["*"]
     CORS_ALLOW_CREDENTIALS: bool = True

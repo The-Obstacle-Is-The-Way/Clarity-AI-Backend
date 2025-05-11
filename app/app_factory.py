@@ -72,20 +72,39 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
     1. Connects to database and initializes session factory
     2. Sets up Redis connection (if configured)
     3. Initializes Sentry (if configured)
-    4. Cleans up resources on shutdown
+    4. Adds state-dependent middleware (Authentication, Rate Limiting)
+    5. Cleans up resources on shutdown
     """
     logger.info("LIFESPAN_START: Entered lifespan context manager.")
     # Local variables to store connections that need clean-up
     redis_client = None
     redis_pool = None
     db_engine = None
+    current_settings = None # Initialize current_settings
     
     try:
+        # --- Settings Configuration ---
+        # Ensure settings are loaded and available first
+        logger.info("LIFESPAN_SETTINGS_CONFIG_START: Attempting to access settings from app.state")
+        if not hasattr(fastapi_app.state, 'settings') or fastapi_app.state.settings is None:
+            logger.warning("LIFESPAN_SETTINGS_CONFIG_WARN: settings not found on fastapi_app.state. Attempting to load globally.")
+            # This is a fallback, create_application should have set this.
+            # If settings_override was used in create_application, this global_settings might not be the right one.
+            # However, create_application explicitly sets app_instance.state.settings.
+            current_settings = global_settings 
+            fastapi_app.state.settings = current_settings # Ensure it's on state for subsequent steps
+        else:
+            current_settings = fastapi_app.state.settings
+        
+        if not current_settings:
+            logger.critical("LIFESPAN_SETTINGS_CONFIG_FAILURE: Critical - settings could not be resolved. Aborting lifespan startup.")
+            raise RuntimeError("Settings could not be resolved in lifespan context manager.")
+        logger.info(f"LIFESPAN_SETTINGS_CONFIG_ACQUIRED: Environment from settings: {current_settings.ENVIRONMENT}")
+
         # --- Database Configuration ---
         try:
             # Get settings (dependency already configured)
             logger.info("LIFESPAN_DB_CONFIG_START: Attempting to access settings from app.state")
-            current_settings = fastapi_app.state.settings
             logger.info(f"LIFESPAN_DB_CONFIG_SETTINGS_ACQUIRED: Environment from settings: {current_settings.ENVIRONMENT}")
             logger.info(f"Lifespan: Creating AsyncEngine with URL: {current_settings.ASYNC_DATABASE_URL}")
             
@@ -176,6 +195,48 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 
         # --- Common Setup (Sentry) ---
         _initialize_sentry(current_settings)
+
+        # --- ADD STATE-DEPENDENT MIDDLEWARE ---
+        # This section is moved here from create_application
+        # Add AuthenticationMiddleware
+        if hasattr(fastapi_app.state, "actual_session_factory") and fastapi_app.state.actual_session_factory:
+            logger.info("LIFESPAN: Initializing and registering AuthenticationMiddleware...")
+            try:
+                # current_settings should already be resolved and on fastapi_app.state.settings
+                
+                from app.infrastructure.security.jwt.jwt_service import JWTService # Direct import
+                jwt_service_instance = JWTService(settings=current_settings)
+
+                user_repo_instance = SQLAlchemyUserRepository(session_factory=fastapi_app.state.actual_session_factory)
+                
+                auth_middleware = AuthenticationMiddleware(
+                    app=fastapi_app.router, 
+                    jwt_service=jwt_service_instance,
+                    user_repo=user_repo_instance,
+                    public_paths=current_settings.PUBLIC_PATHS,
+                    public_path_regex=current_settings.PUBLIC_PATH_REGEX
+                )
+                fastapi_app.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware.dispatch)
+                logger.info("LIFESPAN: AuthenticationMiddleware registered successfully.")
+            except Exception as e:
+                logger.error(f"LIFESPAN: Failed to initialize or register AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
+                logger.warning("LIFESPAN: AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
+        else:
+            logger.warning("LIFESPAN: actual_session_factory not found in app.state - skipping AuthenticationMiddleware setup in lifespan.")
+            logger.warning("LIFESPAN: Authentication will not be enforced!")
+
+        # Add Rate Limiting Middleware (remains commented as per original, but moved here)
+        # if current_settings.REDIS_URL and hasattr(fastapi_app.state, 'redis') and fastapi_app.state.redis:
+        #     logger.info("LIFESPAN: Initializing and registering RateLimitingMiddleware...")
+        #     try:
+        #         rate_limiter_service = get_rate_limiter_service(current_settings, fastapi_app.state.redis) # Pass redis client
+        #         fastapi_app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
+        #         logger.info("LIFESPAN: RateLimitingMiddleware registered successfully.")
+        #     except Exception as e:
+        #         logger.error(f"LIFESPAN: Failed to initialize or register RateLimitingMiddleware: {type(e).__name__} - {e}", exc_info=True)
+        #         logger.warning("LIFESPAN: RateLimitingMiddleware FAILED to load.")
+        # else:
+        #     logger.warning("LIFESPAN: Redis not available or Rate Limiting disabled - skipping RateLimitingMiddleware setup in lifespan.")
 
         logger.info("Application startup phase in lifespan complete.")
         # logger.info(f"--- LIFESPAN STARTUP (app_factory): Initializing database with session factory: {session_factory}") # Already logged
@@ -306,44 +367,19 @@ def create_application(
     # app_instance.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
     logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
-    # 4. Authentication Middleware
-    # Conditionally add AuthenticationMiddleware
-    # Requires actual_session_factory to be available for user_repo instantiation
-    if hasattr(app_instance.state, "actual_session_factory") and app_instance.state.actual_session_factory:
-        logger.info("Initializing and registering AuthenticationMiddleware...")
-        try:
-            current_settings = app_instance.state.settings
-            # Ensure settings is present
-            if not current_settings:
-                logger.error("CRITICAL_APP_FACTORY: settings not found on app_instance.state for AuthN Middleware.")
-                raise RuntimeError("Settings object not found on app.state for AuthenticationMiddleware setup.")
+    # 4. Authentication Middleware - MOVED TO LIFESPAN
+    # REMOVED Block for AuthenticationMiddleware setup from here:
+    # if hasattr(app_instance.state, "actual_session_factory") and app_instance.state.actual_session_factory:
+    #    ...
+    # else:
+    #    logger.warning("actual_session_factory not found in app.state - skipping AuthenticationMiddleware")
+    #    logger.warning("Authentication will not be enforced!")
 
-            from app.infrastructure.security.jwt.jwt_service import JWTService # Direct import
-            jwt_service_instance = JWTService(settings=current_settings)
-
-            user_repo_instance = SQLAlchemyUserRepository(session_factory=app_instance.state.actual_session_factory)
-            
-            auth_middleware = AuthenticationMiddleware(
-                app=app_instance.router, 
-                jwt_service=jwt_service_instance,
-                user_repo=user_repo_instance,
-                public_paths=current_settings.PUBLIC_PATHS,
-                public_path_regex=current_settings.PUBLIC_PATH_REGEX
-            )
-            app_instance.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware.dispatch)
-            logger.info("AuthenticationMiddleware registered successfully.")
-        except Exception as e:
-            logger.error(f"Failed to initialize or register AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
-            logger.warning("AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
-    else:
-        logger.warning("actual_session_factory not found in app.state - skipping AuthenticationMiddleware")
-        logger.warning("Authentication will not be enforced!")
-
-    # 5. Rate Limiting Middleware
-    # Temporarily disabled due to implementation issues
+    # 5. Rate Limiting Middleware - MOVED TO LIFESPAN (commented block)
+    # REMOVED Block for RateLimitingMiddleware setup from here:
     # rate_limiter_service = get_rate_limiter_service(app_settings)
     # app_instance.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
-    logger.warning("Rate limiting middleware TEMPORARILY DISABLED due to implementation issue.")
+    # logger.warning("Rate limiting middleware TEMPORARILY DISABLED due to implementation issue.")
 
     # 4. CORS
     if app_settings.BACKEND_CORS_ORIGINS:
