@@ -609,18 +609,12 @@ class Patient(Base, TimestampMixin, AuditMixin):
     # created_by_user: Mapped["UserModel"] = relationship(foreign_keys="PatientModel.created_by", lazy="joined")
     # updated_by_user: Mapped["UserModel"] = relationship(foreign_keys="PatientModel.updated_by", lazy="joined")
 
-    # Diagnostic properties for Pydantic V1 compatibility test
-    @property
-    def contact_info(self):
-        return self._contact_info
+    # Example custom validator if needed
+    # @validates("_email")
+    # def validate_email(self, key, email):
+    #     if "@" not in email:
+    #         raise ValueError("failed email validation")
+    #     return email
 
-    @property
-    def address_details(self):
-        return self._address_details
-
-    @property
-    def emergency_contact_details(self):
-        return self._emergency_contact_details
-
-# Example comment outside class
-# Add columns like _ethnicity, _preferred_language, etc. following the pattern above.
+# Optional: Add any event listeners or other model-specific setup below
+# For example, SQLAlchemy event listeners for attribute changes or lifecycle events.

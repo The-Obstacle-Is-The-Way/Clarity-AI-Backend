@@ -173,71 +173,95 @@ class AsyncSQLAlchemyUnitOfWork(IUnitOfWork):
     @property
     def users(self) -> IUserRepository:
         """Access to the user repository within this transaction."""
-        self.logger.debug(f"UoW {id(self)} users property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
+        self.logger.debug(f"UoW {id(self)} users property: Accessing. Current self._session ID: {id(self._session) if self._session else 'None'}. Transaction started: {self._transaction_started}")
         if self._session is None:
+            self.logger.error(f"UoW {id(self)} users property: self._session is None. Raising RepositoryError.")
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "users" not in self._repositories:
+            self.logger.debug(f"UoW {id(self)} users property: Creating new repository instance with session ID {id(self._session)}.")
             self._repositories["users"] = self._user_repository_cls(uow_session=self._session)
+        else:
+            self.logger.debug(f"UoW {id(self)} users property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['users'].uow_session) if hasattr(self._repositories['users'], 'uow_session') and self._repositories['users'].uow_session else 'N/A or None'}")
         
         return self._repositories["users"]
 
     @property
     def patients(self) -> IPatientRepository:
         """Access to the patient repository within this transaction."""
-        self.logger.debug(f"UoW {id(self)} patients property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
+        self.logger.debug(f"UoW {id(self)} patients property: Accessing. Current self._session ID: {id(self._session) if self._session else 'None'}. Transaction started: {self._transaction_started}")
         if self._session is None:
+            self.logger.error(f"UoW {id(self)} patients property: self._session is None. Raising RepositoryError.")
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "patients" not in self._repositories:
+            self.logger.debug(f"UoW {id(self)} patients property: Creating new repository instance with session ID {id(self._session)}.")
             self._repositories["patients"] = self._patient_repository_cls(uow_session=self._session)
+        else:
+            self.logger.debug(f"UoW {id(self)} patients property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['patients'].uow_session) if hasattr(self._repositories['patients'], 'uow_session') and self._repositories['patients'].uow_session else 'N/A or None'}")
         
         return self._repositories["patients"]
 
     @property
     def digital_twins(self) -> IDigitalTwinRepository:
         """Access to the digital twin repository within this transaction."""
-        self.logger.debug(f"UoW {id(self)} digital_twins property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
+        self.logger.debug(f"UoW {id(self)} digital_twins property: Accessing. Current self._session ID: {id(self._session) if self._session else 'None'}. Transaction started: {self._transaction_started}")
         if self._session is None:
+            self.logger.error(f"UoW {id(self)} digital_twins property: self._session is None. Raising RepositoryError.")
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "digital_twins" not in self._repositories:
+            self.logger.debug(f"UoW {id(self)} digital_twins property: Creating new repository instance with session ID {id(self._session)}.")
             self._repositories["digital_twins"] = self._digital_twin_repository_cls(uow_session=self._session)
+        else:
+            self.logger.debug(f"UoW {id(self)} digital_twins property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['digital_twins'].uow_session) if hasattr(self._repositories['digital_twins'], 'uow_session') and self._repositories['digital_twins'].uow_session else 'N/A or None'}")
         
         return self._repositories["digital_twins"]
 
     @property
     def biometric_rules(self) -> IBiometricRuleRepository:
         """Access to the biometric rule repository within this transaction."""
-        self.logger.debug(f"UoW {id(self)} biometric_rules property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
+        self.logger.debug(f"UoW {id(self)} biometric_rules property: Accessing. Current self._session ID: {id(self._session) if self._session else 'None'}. Transaction started: {self._transaction_started}")
         if self._session is None:
+            self.logger.error(f"UoW {id(self)} biometric_rules property: self._session is None. Raising RepositoryError.")
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "biometric_rules" not in self._repositories:
+            self.logger.debug(f"UoW {id(self)} biometric_rules property: Creating new repository instance with session ID {id(self._session)}.")
             self._repositories["biometric_rules"] = self._biometric_rule_repository_cls(uow_session=self._session)
+        else:
+            self.logger.debug(f"UoW {id(self)} biometric_rules property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['biometric_rules'].uow_session) if hasattr(self._repositories['biometric_rules'], 'uow_session') and self._repositories['biometric_rules'].uow_session else 'N/A or None'}")
         
         return self._repositories["biometric_rules"]
 
     @property
     def biometric_alerts(self) -> IBiometricAlertRepository:
         """Access to the biometric alert repository within this transaction."""
-        self.logger.debug(f"UoW {id(self)} biometric_alerts property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
+        self.logger.debug(f"UoW {id(self)} biometric_alerts property: Accessing. Current self._session ID: {id(self._session) if self._session else 'None'}. Transaction started: {self._transaction_started}")
         if self._session is None:
+            self.logger.error(f"UoW {id(self)} biometric_alerts property: self._session is None. Raising RepositoryError.")
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "biometric_alerts" not in self._repositories:
+            self.logger.debug(f"UoW {id(self)} biometric_alerts property: Creating new repository instance with session ID {id(self._session)}.")
             self._repositories["biometric_alerts"] = self._biometric_alert_repository_cls(uow_session=self._session)
+        else:
+            self.logger.debug(f"UoW {id(self)} biometric_alerts property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['biometric_alerts'].uow_session) if hasattr(self._repositories['biometric_alerts'], 'uow_session') and self._repositories['biometric_alerts'].uow_session else 'N/A or None'}")
         
         return self._repositories["biometric_alerts"]
 
     @property
     def biometric_twins(self) -> IBiometricTwinRepository:
         """Access to the biometric twin repository within this transaction."""
-        self.logger.debug(f"UoW {id(self)} biometric_twins property: Accessing. Current self._session: {id(self._session) if self._session else 'None'}")
+        self.logger.debug(f"UoW {id(self)} biometric_twins property: Accessing. Current self._session ID: {id(self._session) if self._session else 'None'}. Transaction started: {self._transaction_started}")
         if self._session is None:
+            self.logger.error(f"UoW {id(self)} biometric_twins property: self._session is None. Raising RepositoryError.")
             raise RepositoryError("No active session. Use 'async with unit_of_work:' context.")
         
         if "biometric_twins" not in self._repositories:
+            self.logger.debug(f"UoW {id(self)} biometric_twins property: Creating new repository instance with session ID {id(self._session)}.")
             self._repositories["biometric_twins"] = self._biometric_twin_repository_cls(uow_session=self._session)
+        else:
+            self.logger.debug(f"UoW {id(self)} biometric_twins property: Returning existing repository instance. Its uow_session ID: {id(self._repositories['biometric_twins'].uow_session) if hasattr(self._repositories['biometric_twins'], 'uow_session') and self._repositories['biometric_twins'].uow_session else 'N/A or None'}")
         
         return self._repositories["biometric_twins"] 

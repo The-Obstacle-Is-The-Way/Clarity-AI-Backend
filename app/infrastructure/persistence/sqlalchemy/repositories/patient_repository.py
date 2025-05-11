@@ -122,28 +122,7 @@ class PatientRepository:
 
     async def create(self, patient_entity: PatientEntity, context: dict | None = None) -> PatientEntity | None:
         """Creates a new patient record in the database from a PatientEntity."""
-        self.logger.debug(f"Attempting to create patient with entity ID: {patient_entity.id}")
-
-        # Pydantic environment diagnostics (REMOVED)
-        # import pydantic
-        # import sys 
-        # print(f\"[DEBUG PatientRepository.create] Imported pydantic.VERSION: {pydantic.VERSION}\")
-        # print(f\"[DEBUG PatientRepository.create] 'pydantic.v1' in sys.modules (before): {'pydantic.v1' in sys.modules}\")
-        
-        # # Attempt to remove pydantic.v1 from sys.modules (DIAGNOSTIC HACK REMOVED)
-        # if 'pydantic.v1' in sys.modules:
-        #     del sys.modules['pydantic.v1']
-        #     print(f\"[DEBUG PatientRepository.create] Attempted to remove 'pydantic.v1' from sys.modules.\")
-        # print(f\"[DEBUG PatientRepository.create] 'pydantic.v1' in sys.modules (after removal attempt): {'pydantic.v1' in sys.modules}\")
-        
-        # from pydantic import ValidationError as PydanticV2ValidationError # Keep for main except block
-        # print(f\"[DEBUG PatientRepository.create] Type of ValidationError in except block: {PydanticV2ValidationError}\")
-        # try:
-        #     from pydantic.v1.error_wrappers import ValidationError as PydanticV1ValidationError
-        #     print(f\"[DEBUG PatientRepository.create] Successfully imported pydantic.v1.error_wrappers.ValidationError as PydanticV1ValidationError\")
-        # except ImportError:
-        #     PydanticV1ValidationError = None # type: ignore
-        #     print(f\"[DEBUG PatientRepository.create] Failed to import pydantic.v1.error_wrappers.ValidationError\")
+        self.logger.debug(f"Attempting to create patient with entity ID: {patient_entity.id} with context: {context}")
 
         async def _create_operation(session: AsyncSession) -> PatientEntity | None: 
             try:
@@ -242,73 +221,110 @@ class PatientRepository:
 
         return await self._with_session(_get_all_operation)
 
-    async def update(self, patient_entity: PatientEntity, context: dict | None = None) -> PatientEntity | None:
-        """Updates an existing patient record in the database."""
-        if not patient_entity.id:
-            self.logger.error("Patient entity must have an ID to be updated.")
-            raise PersistenceError("Patient entity must have an ID to be updated.")
-        
-        self.logger.debug(f"Attempting to update patient with entity ID: {patient_entity.id}")
+    async def update(self, patient_id: uuid.UUID, patient_entity: PatientEntity, context: dict | None = None) -> PatientEntity | None:
+        """Updates an existing patient record from a PatientEntity."""
+        self.logger.debug(f"Attempting to update patient with ID: {patient_id} using entity ID: {patient_entity.id} with context: {context}")
 
-        async def _update_operation(session):
-            patient_id = patient_entity.id
-            # Fetch the existing model
+        # Prepare data for DB update, mapping domain fields to model fields
+        # This is a simplified example; a more robust solution might involve a dedicated mapper.
+        update_data_for_model = {}
+        domain_dict = patient_entity.model_dump(exclude_unset=True, exclude_none=True)
+
+        field_map = {
+            "first_name": "_first_name",
+            "last_name": "_last_name",
+            "middle_name": "_middle_name",
+            "email": "_email",
+            "phone_number": "_phone_number",
+            "date_of_birth": "_date_of_birth", # Ensure this is handled as string for EncryptedString
+            "gender": "_gender", # Ensure this is stored as per model's expectation (e.g., enum value)
+            "medical_record_number_lve": "_mrn",
+            "social_security_number_lve": "_ssn",
+            "insurance_provider_lve": "_insurance_provider",
+            "insurance_policy_number_lve": "_insurance_policy_number",
+            "insurance_group_number_lve": "_insurance_group_number",
+            "address_line1_lve": "_address_line1",
+            "address_line2_lve": "_address_line2",
+            "city_lve": "_city",
+            "state_lve": "_state",
+            "zip_code_lve": "_zip_code",
+            "country_lve": "_country",
+            "emergency_contact_name_lve": "_emergency_contact_name",
+            "emergency_contact_phone_lve": "_emergency_contact_phone",
+            "emergency_contact_relationship_lve": "_emergency_contact_relationship",
+            # Direct attributes (not LVE or specially mapped)
+            "is_active": "is_active", # This is directly on PatientModel
+            # Potentially other fields like preferences, notes, etc.
+        }
+
+        for domain_key, model_key in field_map.items():
+            if domain_key in domain_dict:
+                value = domain_dict[domain_key]
+                # Special handling for date/enum if necessary before encryption or storage
+                if domain_key == "date_of_birth" and isinstance(value, date):
+                    value = value.isoformat() # Convert date to string
+                elif domain_key == "gender" and hasattr(value, 'value'):
+                    value = value.value # Get enum value if it's an enum object
+                update_data_for_model[model_key] = value
+        
+        # Include any fields that are not in the map but directly match model attributes
+        for key, value in domain_dict.items():
+            if key not in field_map and not key.endswith('_lve'): # Avoid re-adding LVEs or mapped fields
+                 if not hasattr(PatientModel, key) and hasattr(PatientModel, f"_{key}"): # check if it's a private version
+                     if f"_{key}" not in update_data_for_model: # and not already mapped
+                         update_data_for_model[f"_{key}"] = value
+                 elif hasattr(PatientModel, key): # direct match
+                     if key not in update_data_for_model: # and not already mapped
+                         update_data_for_model[key] = value
+
+        if not update_data_for_model:
+            self.logger.warning(f"No updatable fields found for patient ID: {patient_id} from entity: {patient_entity}")
+            # Optionally, could return the patient as is, or raise an error/return None
+            # For now, let's try to retrieve and return the existing patient if no updates are made.
+            async with self._with_session(lambda session: session.get(PatientModel, patient_id)) as db_patient:
+                return await db_patient.to_domain() if db_patient else None
+
+        async def _update_operation(session: AsyncSession) -> PatientEntity | None:
+            self.logger.debug(f"Executing update for patient ID: {patient_id} with model data: {update_data_for_model}")
             stmt = select(PatientModel).where(PatientModel.id == patient_id)
             result = await session.execute(stmt)
-            patient_model = result.scalars().one_or_none()
+            db_patient = result.scalar_one_or_none()
 
-            if not patient_model:
-                self.logger.warning(f"Patient with ID {patient_id} not found for update.")
+            if db_patient:
+                updated_fields_for_log = []
+                for key, value in update_data_for_model.items(): # Use the mapped data
+                    if hasattr(db_patient, key):
+                        setattr(db_patient, key, value)
+                        updated_fields_for_log.append(key)
+                    else:
+                        self.logger.warning(f"Attribute {key} not found on PatientModel during update for patient ID: {patient_id}")
+                
+                if not updated_fields_for_log:
+                    self.logger.info(f"No fields were actually updated for patient ID: {patient_id} based on provided data.")
+                    # No actual DB changes, so no commit needed, just return current state
+                    return await db_patient.to_domain()
+
+                db_patient.updated_at = datetime.now(timezone.utc) # Ensure updated_at is set
+                # self.logger.info(f"Patient with ID: {db_patient.id} updated. Changed fields: {updated_fields_for_log}. Context: {context}")
+                # Log a more generic success message, actual fields can be in audit log if needed
+                self.logger.info(f"Successfully updated patient data for DB ID: {db_patient.id}. Context: {context}")
+                
+                try:
+                    await session.commit()
+                    await session.refresh(db_patient) # Refresh to get any DB-generated changes
+                    # self.logger.debug(f"Successfully committed update for patient ID: {db_patient.id}")
+                    return await db_patient.to_domain()
+                except IntegrityError as e:
+                    await session.rollback()
+                    self.logger.error(f"IntegrityError during update for patient ID: {patient_id}. Error: {e}")
+                    raise PersistenceError(f"Data integrity issue updating patient: {e}") from e
+                except Exception as e:
+                    await session.rollback()
+                    self.logger.error(f"Unexpected error during update for patient ID: {patient_id}. Error: {e}")
+                    raise PersistenceError(f"Unexpected issue updating patient: {e}") from e
+            else:
+                self.logger.warning(f"Patient with ID: {patient_id} not found for update.")
                 return None
-
-            # Update fields from the domain entity. PatientModel.from_domain can't be directly used
-            # as it creates a new instance. We need to update the existing one. 
-            # However, the PII fields are handled by TypeDecorators upon assignment.
-            
-            # Get all fields from the domain entity
-            domain_data = patient_entity.model_dump() # Temporarily remove exclude_unset to bypass TypeError
-            logger.debug(f"Updating patient model ID {patient_model.id} with data: {domain_data}")
-
-            updatable_fields = [
-                key for key, value in domain_data.items() if hasattr(patient_model, key)
-            ]
-
-            for key in updatable_fields:
-                if key == 'id': # Don't try to set PK
-                    continue
-                if hasattr(patient_model, key):
-                    # Direct assignment will trigger TypeDecorator for encrypted fields
-                    setattr(patient_model, key, domain_data[key])
-                elif hasattr(patient_model, f'_{key}'): # Handle cases like _first_name mapped to first_name
-                    setattr(patient_model, f'_{key}', domain_data[key])
-                # Add specific handling for complex types if direct mapping isn't enough,
-                # e.g., address, emergency_contact, if they need special reconstruction.
-                # For now, assuming simple fields or fields handled by TypeDecorators.
-
-            # Audit information (updated_at is often handled by TimestampMixin or DB)
-            # if self.user_context:
-            #     user_id_str = str(self.user_context.get("user_id"))
-            #     if hasattr(patient_model, "updated_by"):
-            #         patient_model.updated_by = user_id_str
-            
-            try:
-                await session.flush()
-                await session.refresh(patient_model)
-                self.logger.info(f"Successfully updated patient with DB ID: {patient_model.id}")
-                updated_domain_entity = await patient_model.to_domain() # REMOVED encryption_service
-                return updated_domain_entity
-            except IntegrityError as e:
-                await session.rollback()
-                self.logger.error(f"Integrity error updating patient {patient_id}: {e}", exc_info=True)
-                raise PersistenceError(f"Data integrity violation during patient update: {e}") from e
-            except SQLAlchemyError as e:
-                await session.rollback()
-                self.logger.error(f"Database error updating patient {patient_id}: {e}", exc_info=True)
-                raise PersistenceError("A database error occurred while updating the patient.") from e
-            except Exception as e:
-                await session.rollback()
-                self.logger.error(f"Unexpected error updating patient {patient_id}: {e}", exc_info=True)
-                raise PersistenceError("An unexpected error occurred while updating the patient.") from e
 
         return await self._with_session(_update_operation)
 
