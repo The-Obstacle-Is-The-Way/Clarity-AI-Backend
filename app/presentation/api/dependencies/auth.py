@@ -129,13 +129,13 @@ async def get_current_user(
         
     except InvalidTokenException as e: 
         logger.warning(f"get_current_user: Invalid token - {e}")
-        raise credentials_exception from e
+        raise credentials_exception
     except TokenExpiredException as e: 
         logger.warning(f"get_current_user: Expired token - {e}")
-        raise expired_token_exception from e
+        raise expired_token_exception
     except JWTError as e:
         logger.warning(f"get_current_user: JWTError - {e}")
-        raise credentials_exception from e
+        raise credentials_exception
 
     try:
         user_id_str_from_payload = str(payload["sub"])
@@ -144,7 +144,7 @@ async def get_current_user(
         
     except ValueError as e:
         logger.error(f"get_current_user: Invalid user ID format in token: {payload.get('sub')}. Error: {e}")
-        raise credentials_exception from e
+        raise credentials_exception
 
     if user is None:
         logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")

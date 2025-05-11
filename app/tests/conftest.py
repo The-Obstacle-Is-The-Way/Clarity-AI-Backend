@@ -25,7 +25,6 @@ import base64
 
 # Application-specific Imports
 from app.app_factory import create_application
-from app.application.security.jwt_service import JWTService
 from app.core.config.settings import Settings, get_settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
@@ -49,6 +48,10 @@ from app.infrastructure.security.password.password_handler import PasswordHandle
 
 # Import LifespanManager
 from asgi_lifespan import LifespanManager
+
+# Added imports
+from app.core.domain.entities.patient import Patient as DomainPatient
+from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_from_auth_dependencies
 
 logger = logging.getLogger(__name__)
 
@@ -210,11 +213,15 @@ def global_mock_jwt_service(test_settings: Settings) -> MagicMock:
         logger.info(f"mock_decode_token_simplified CALLED with token: {token}")
         stored_info = issued_tokens_store.get(token)
         if stored_info:
-            # Check expiry (optional, but good practice for a mock)
-            # current_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
-            # if current_timestamp > stored_info["expire_at"].timestamp():
-            #     logger.error(f"mock_decode_token_simplified: Token '{token}' is expired.")
-            #     raise TokenExpiredException("Mock token expired")
+            # ADDED: Check for token expiration
+            payload_to_check = stored_info["payload"]
+            expiration_timestamp = payload_to_check.get("exp")
+            if expiration_timestamp:
+                current_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                if current_timestamp > expiration_timestamp:
+                    logger.error(f"mock_decode_token_simplified: Token '{token}' with payload {payload_to_check} is expired.")
+                    raise TokenExpiredException("Mock token has expired") # Use imported TokenExpiredException
+            
             logger.info(f"mock_decode_token_simplified: Found token in store. Payload: {stored_info['payload']}")
             return stored_info["payload"]
         else:
@@ -448,17 +455,22 @@ async def client_session(managed_app: FastAPI) -> AsyncGenerator[AsyncClient, No
 
 @pytest.fixture(scope="function")
 async def client_app_tuple_func_scoped(
-    test_settings: Settings, mock_auth_service: MagicMock # ADDED mock_auth_service fixture
+    test_settings: Settings,
+    mock_auth_service: MagicMock,
+    global_mock_jwt_service: MagicMock
 ) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     logger.info("CONFTEST_PY: Creating client_app_tuple_func_scoped (function-scoped).")
     
     original_fastapi_app = create_application(settings_override=test_settings)
     original_fastapi_app.state.settings = test_settings
 
-    # Apply dependency overrides on the app instance that will be used by the client
-    # actual_get_auth_service_dependency is imported from1 app.presentation.api.dependencies.auth_service
     original_fastapi_app.dependency_overrides[actual_get_auth_service_dependency] = lambda: mock_auth_service
     logger.info(f"CONFTEST_PY (func): AuthService OVERRIDDEN with mock ID: {id(mock_auth_service)}")
+
+    # Ensure JWTService dependencies are overridden with the global mock
+    original_fastapi_app.dependency_overrides[JWTServiceInterface] = lambda: global_mock_jwt_service
+    original_fastapi_app.dependency_overrides[get_jwt_service_from_auth_dependencies] = lambda: global_mock_jwt_service
+    logger.info(f"CONFTEST_PY (func): JWTService (via Interface and specific getter) OVERRIDDEN with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
 
     async with LifespanManager(original_fastapi_app, startup_timeout=30, shutdown_timeout=30) as manager:
         # manager.app is the app that has gone through lifespan startup.
