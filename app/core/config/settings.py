@@ -56,7 +56,9 @@ class Settings(BaseSettings):
         "/api/v1/status/health", # Health checks are often public
         # Add other known public paths here
     ])
-    PUBLIC_PATH_REGEX: str = r"^(/api/v1/status/health|/openapi.json|/docs|/redoc|/api/v1/auth/(login|refresh|register)).*$"
+    PUBLIC_PATH_REGEXES: list[str] = Field(default_factory=lambda: [
+        r"^(/api/v1/status/health|/openapi.json|/docs|/redoc|/api/v1/auth/(login|refresh|register)).*$"
+    ])
     
     # CORS Settings
     CORS_ORIGINS: list[str] = ["*"]

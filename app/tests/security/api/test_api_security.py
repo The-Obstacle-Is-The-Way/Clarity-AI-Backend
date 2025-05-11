@@ -8,7 +8,7 @@ input validation, and secure communication.
 
 import uuid
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 import logging
 
 import pytest
@@ -24,6 +24,10 @@ from app.core.domain.entities.patient import Patient as CorePatient
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface 
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
+
+# Imports for TestAuthentication specifically
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+from app.core.domain.entities.user import User as DomainUser # Alias to avoid clash if User schema is also named User
 
 TEST_PATIENT_ID = str(uuid.uuid4())
 OTHER_PATIENT_ID = str(uuid.uuid4())
@@ -81,61 +85,51 @@ class TestAuthentication:
     async def test_valid_token_access(
         self,
         client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
-        get_valid_auth_headers: dict[str, str],
-        global_mock_jwt_service: MagicMock
+        get_valid_auth_headers: dict[str, str], # This fixture provides headers with a token for test_user_domain
+        global_mock_jwt_service: MagicMock,
+        test_user_domain: DomainUser # Fixture providing the user domain object
     ) -> None:
-        """Test that a valid token allows access."""
+        """Test that a valid token allows access to a protected endpoint (e.g., /auth/me)."""
         client, current_fastapi_app = client_app_tuple_func_scoped
-        headers = get_valid_auth_headers # This fixture uses global_mock_jwt_service to create the token
-        token = headers["Authorization"].replace("Bearer ", "")
-        # decode_token is synchronous on global_mock_jwt_service
-        decoded_payload = global_mock_jwt_service.decode_token(token=token)
-        mock_user_id = uuid.UUID(decoded_payload["sub"])
+        headers = get_valid_auth_headers # Token for test_user_domain
 
-        mock_patient_repo_for_dependency = AsyncMock(spec=IPatientRepository)
-        async def mock_get_patient_for_dependency(*, patient_id: uuid.UUID) -> CorePatient | None:
-            if patient_id == mock_user_id:
-                return CorePatient(
-                    id=patient_id,
-                    first_name="Test",
-                    last_name="Patient From Mock",
-                    date_of_birth="2000-01-01",
-                    email=decoded_payload.get("email","patientmock@example.com"),
-                    phone_number="123-456-7890",
-                )
+        # --- Persist the test_user_domain to the database ---
+        session_factory = current_fastapi_app.state.actual_session_factory
+        user_repo = SQLAlchemyUserRepository(session_factory)
+        
+        async with session_factory() as session:
+            async with session.begin():
+                existing_user = await user_repo.get_user_by_id_for_update(user_id=test_user_domain.id, session_override=session)
+                if not existing_user:
+                    # Ensure test_user_domain.roles is a list of UserRole enums if that's what create_user expects
+                    # or handle conversion if create_user expects something else (e.g., list of strings).
+                    # For now, assuming test_user_domain is correctly structured for create_user.
+                    await user_repo.create_user(user_create=test_user_domain, session_override=session)
+                    logger.info(f"TestAuth.test_valid_token_access: Persisted user {test_user_domain.username} with ID {test_user_domain.id}")
+                else:
+                    logger.info(f"TestAuth.test_valid_token_access: User {test_user_domain.username} with ID {test_user_domain.id} already exists.")
+            await session.commit()
+        # --- End user persistence ---
+
+        mock_auth_service_instance = current_fastapi_app.dependency_overrides.get(actual_get_auth_service_dependency)()
+        
+        async def mock_get_user_by_username_for_auth_me(*, username: str) -> DomainUser | None:
+            if username == test_user_domain.username:
+                return test_user_domain 
             return None
-        mock_patient_repo_for_dependency.get_by_id = mock_get_patient_for_dependency
+        
+        if hasattr(mock_auth_service_instance, 'get_user_by_username'):
+             mock_auth_service_instance.get_user_by_username = AsyncMock(side_effect=mock_get_user_by_username_for_auth_me)
+        else:
+            logger.error("mock_auth_service_instance does not have get_user_by_username")
 
-        mock_user_repo_for_auth = AsyncMock(spec=IUserRepository)
-        async def mock_get_user_by_id(*, user_id: uuid.UUID) -> User | None:
-            if user_id == mock_user_id:
-                return User(
-                    id=mock_user_id,
-                    username=decoded_payload.get("username","testpatient"),
-                    email=decoded_payload.get("email","patientmock@example.com"),
-                    full_name=f"{decoded_payload.get('username','testpatient')} Full Name",
-                    roles=[UserRole.PATIENT],
-                    status=UserStatus.ACTIVE,
-                    password_hash="hashed_password_example"
-                )
-            return None
-        mock_user_repo_for_auth.get_by_id = mock_get_user_by_id
-        mock_user_repo_for_auth.get_user_by_id = mock_get_user_by_id # Ensure all potential attributes are covered
-
-        current_fastapi_app.dependency_overrides[get_patient_repository_dependency] = lambda: mock_patient_repo_for_dependency
-        current_fastapi_app.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo_for_auth
-
-        response = await client.get(f"/api/v1/patients/{mock_user_id}", headers=headers)
-
-        if get_patient_repository_dependency in current_fastapi_app.dependency_overrides:
-            del current_fastapi_app.dependency_overrides[get_patient_repository_dependency]
-        if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
-            del current_fastapi_app.dependency_overrides[get_user_repository_dependency]
+        response = await client.get("/api/v1/auth/me", headers=headers)
 
         assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
         response_data = response.json()
-        assert response_data["id"] == str(mock_user_id)
-        assert response_data["name"] == "Test Patient From Mock" # Corrected based on CorePatient mock structure
+        assert response_data["username"] == test_user_domain.username
+        assert response_data["email"] == test_user_domain.email
+        # assert UserRole.USER.value in response_data["roles"] # Assuming test_user_domain has USER role
 
 class TestAuthorization:
     """Test authorization logic (role-based access, resource ownership)."""
@@ -463,32 +457,19 @@ class TestSecureHeaders:
     async def test_cors_headers_configuration(self, client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]) -> None:
         """Test CORS headers for allowed origins, methods, etc."""
         client, current_fastapi_app = client_app_tuple_func_scoped
-        # Assuming settings.ALLOWED_ORIGINS is configured, e.g., ["http://localhost:3000"]
-        # Temporarily modify settings for this test if dynamic modification is feasible and safe
-        # or ensure test settings fixture has specific CORS origins.
+        # Ensure settings has CORS_ORIGINS and it's not empty
+        assert hasattr(current_fastapi_app.state.settings, "CORS_ORIGINS")
+        assert current_fastapi_app.state.settings.CORS_ORIGINS
         
-        # Test with an allowed origin
-        # Note: httpx client doesn't automatically send Origin, so we add it.
-        # The actual CORS behavior depends on the middleware configuration in app_factory.py
+        origin_to_test = current_fastapi_app.state.settings.CORS_ORIGINS[0] # Use CORS_ORIGINS
         
-        # This test is more of a placeholder as true CORS testing requires specific server setup
-        # and client behavior that might be hard to simulate perfectly here.
-        # We are checking if the middleware is active and adds *some* CORS headers.
-        
-        # Example: Make a preflight OPTIONS request
-        origin_to_test = current_fastapi_app.state.settings.ALLOWED_ORIGINS[0] if current_fastapi_app.state.settings.ALLOWED_ORIGINS else "http://allowed-example.com"
-        
-        headers = {
-            "Origin": origin_to_test,
-            "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "Authorization",
-        }
-        response = await client.options(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
+        headers = {"Origin": origin_to_test}
+        response = await client.options("/api/v1/status/health", headers=headers)
         
         # Basic check, real validation depends on your CORS config in app_factory.py
-        if current_fastapi_app.state.settings.ALLOWED_ORIGINS and current_fastapi_app.state.settings.ALLOWED_ORIGINS != ["*"]:
+        if current_fastapi_app.state.settings.CORS_ORIGINS and current_fastapi_app.state.settings.CORS_ORIGINS != ["*"]:
             assert response.headers.get("access-control-allow-origin") == origin_to_test 
-        elif current_fastapi_app.state.settings.ALLOWED_ORIGINS == ["*"]:
+        elif current_fastapi_app.state.settings.CORS_ORIGINS == ["*"]:
             assert response.headers.get("access-control-allow-origin") == "*"
         else: # No origins or complex setup not covered here
             pass

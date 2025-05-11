@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 # Application-Specific Imports
 from app.core.config import Settings, settings as global_settings
 from app.core.config.settings import get_settings
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.core.logging_config import LOGGING_CONFIG
 from app.core.security.rate_limiting.service import get_rate_limiter_service
 from app.infrastructure.database.session import create_db_engine_and_session
@@ -30,7 +31,7 @@ from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 from app.presentation.middleware.authentication import AuthenticationMiddleware
-from app.infrastructure.security.jwt.jwt_service import get_jwt_service
+from app.infrastructure.security.jwt.jwt_service import get_jwt_service, JWTService
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 
 # Potentially import test routers conditionally or via a flag
@@ -149,6 +150,19 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             fastapi_app.state.actual_session_factory = session_factory # Renamed for clarity
             fastapi_app.state.db_engine = db_engine
             
+            # --- BEGIN CRITICAL: Create database tables ---
+            # This must happen after engine creation and before the app serves requests
+            # that might access the database.
+            if current_settings.ENVIRONMENT == "test": # Only for test, maybe dev
+                logger.info(f"LIFESPAN_DB_SCHEMA_CREATION_START: Attempting to create database tables for {current_settings.ASYNC_DATABASE_URL}...")
+                async with db_engine.begin() as conn:
+                    # Import Base from where your SQLAlchemy models are defined
+                    # This assumes Base is correctly collecting metadata from all your models.
+                    from app.infrastructure.persistence.sqlalchemy.models.base import Base # Ensure this is the correct Base
+                    await conn.run_sync(Base.metadata.create_all)
+                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SUCCESS: Database tables created (or verified to exist).")
+            # --- END CRITICAL: Create database tables ---
+            
             logger.info(f"Database engine and actual_session_factory initialized and set on app.state (id: {id(fastapi_app.state)})")
             logger.info(f"app.state.actual_session_factory type: {type(fastapi_app.state.actual_session_factory)}")
             
@@ -196,36 +210,36 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         # --- Common Setup (Sentry) ---
         _initialize_sentry(current_settings)
 
-        # --- ADD STATE-DEPENDENT MIDDLEWARE ---
-        # This section is moved here from create_application
-        # Add AuthenticationMiddleware
-        if hasattr(fastapi_app.state, "actual_session_factory") and fastapi_app.state.actual_session_factory:
-            logger.info("LIFESPAN: Initializing and registering AuthenticationMiddleware...")
-            try:
-                # current_settings should already be resolved and on fastapi_app.state.settings
-                
-                from app.infrastructure.security.jwt.jwt_service import JWTService # Direct import
-                jwt_service_instance = JWTService(settings=current_settings)
+        # --- ADD STATE-DEPENDENT MIDDLEWARE --- (REMOVING THIS SECTION FROM LIFESPAN)
+        # # This section is moved here from create_application
+        # # Add AuthenticationMiddleware
+        # if hasattr(fastapi_app.state, "actual_session_factory") and fastapi_app.state.actual_session_factory:
+        #     logger.info("LIFESPAN: Initializing and registering AuthenticationMiddleware...")
+        #     try:
+        #         # current_settings should already be resolved and on fastapi_app.state.settings
+        #         
+        #         from app.infrastructure.security.jwt.jwt_service import JWTService # Direct import
+        #         jwt_service_instance = JWTService(settings=current_settings)
+        #
+        #         user_repo_instance = SQLAlchemyUserRepository(session_factory=fastapi_app.state.actual_session_factory)
+        #         
+        #         auth_middleware = AuthenticationMiddleware(
+        #             app=fastapi_app.router, # This was likely an error, should be fastapi_app itself for app.add_middleware
+        #             jwt_service=jwt_service_instance,
+        #             user_repo=user_repo_instance,
+        #             public_paths=current_settings.PUBLIC_PATHS,
+        #             public_path_regexes=current_settings.PUBLIC_PATH_REGEXES # Corrected to plural
+        #         )
+        #         fastapi_app.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware.dispatch)
+        #         logger.info("LIFESPAN: AuthenticationMiddleware registered successfully.")
+        #     except Exception as e:
+        #         logger.error(f"LIFESPAN: Failed to initialize or register AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
+        #         logger.warning("LIFESPAN: AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
+        # else:
+        #     logger.warning("LIFESPAN: actual_session_factory not found in app.state - skipping AuthenticationMiddleware setup in lifespan.")
+        #     logger.warning("LIFESPAN: Authentication will not be enforced!")
 
-                user_repo_instance = SQLAlchemyUserRepository(session_factory=fastapi_app.state.actual_session_factory)
-                
-                auth_middleware = AuthenticationMiddleware(
-                    app=fastapi_app.router, 
-                    jwt_service=jwt_service_instance,
-                    user_repo=user_repo_instance,
-                    public_paths=current_settings.PUBLIC_PATHS,
-                    public_path_regex=current_settings.PUBLIC_PATH_REGEX
-                )
-                fastapi_app.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware.dispatch)
-                logger.info("LIFESPAN: AuthenticationMiddleware registered successfully.")
-            except Exception as e:
-                logger.error(f"LIFESPAN: Failed to initialize or register AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
-                logger.warning("LIFESPAN: AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
-        else:
-            logger.warning("LIFESPAN: actual_session_factory not found in app.state - skipping AuthenticationMiddleware setup in lifespan.")
-            logger.warning("LIFESPAN: Authentication will not be enforced!")
-
-        # Add Rate Limiting Middleware (remains commented as per original, but moved here)
+        # Add Rate Limiting Middleware (remains commented as per original, but moved here - THIS WILL ALSO BE MOVED BACK)
         # if current_settings.REDIS_URL and hasattr(fastapi_app.state, 'redis') and fastapi_app.state.redis:
         #     logger.info("LIFESPAN: Initializing and registering RateLimitingMiddleware...")
         #     try:
@@ -305,7 +319,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 # --- Application Factory ---
 def create_application(
     settings_override: Settings | None = None,
-    include_test_routers: bool = False
+    include_test_routers: bool = False,
+    jwt_service_override: JWTServiceInterface | None = None  # CORRECTED TYPE HINT
 ) -> FastAPI:
     """Factory function to create and configure the FastAPI application."""
     logger.info("CREATE_APPLICATION_START: Entered create_application factory.")
@@ -367,19 +382,43 @@ def create_application(
     # app_instance.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
     logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
-    # 4. Authentication Middleware - MOVED TO LIFESPAN
-    # REMOVED Block for AuthenticationMiddleware setup from here:
-    # if hasattr(app_instance.state, "actual_session_factory") and app_instance.state.actual_session_factory:
-    #    ...
-    # else:
-    #    logger.warning("actual_session_factory not found in app.state - skipping AuthenticationMiddleware")
-    #    logger.warning("Authentication will not be enforced!")
+    # 4. Authentication Middleware - MOVED TO LIFESPAN (NOW MOVING BACK)
+    # This is where AuthenticationMiddleware should be added.
+    # It now depends on jwt_service (from app_settings) and accesses user_repo via request.app.state.
+    logger.info("APP_FACTORY: Attempting to initialize and add AuthenticationMiddleware...")
+    try:
+        # Use override if provided, otherwise create a new JWTService instance
+        jwt_service_for_auth_middleware = jwt_service_override if jwt_service_override else JWTService(settings=app_settings)
+        if jwt_service_override:
+            logger.info("APP_FACTORY: Using provided jwt_service_override for AuthenticationMiddleware.")
+        else:
+            logger.info("APP_FACTORY: Creating new JWTService instance for AuthenticationMiddleware.")
+            
+        auth_middleware_instance = AuthenticationMiddleware(
+            app=app_instance, # Pass the app_instance itself
+            jwt_service=jwt_service_for_auth_middleware,
+            # user_repo is no longer passed here
+            public_paths=set(app_settings.PUBLIC_PATHS), # Ensure it's a set
+            public_path_regexes=app_settings.PUBLIC_PATH_REGEXES # Pass the list of regex strings
+        )
+        app_instance.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware_instance.dispatch)
+        logger.info("APP_FACTORY: AuthenticationMiddleware added successfully.")
+    except Exception as e:
+        logger.error(f"APP_FACTORY: Failed to initialize or add AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
+        logger.warning("APP_FACTORY: AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
 
-    # 5. Rate Limiting Middleware - MOVED TO LIFESPAN (commented block)
-    # REMOVED Block for RateLimitingMiddleware setup from here:
-    # rate_limiter_service = get_rate_limiter_service(app_settings)
-    # app_instance.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
-    # logger.warning("Rate limiting middleware TEMPORARILY DISABLED due to implementation issue.")
+    # 5. Rate Limiting Middleware - MOVED TO LIFESPAN (NOW MOVING BACK, still commented)
+    # if app_settings.RATE_LIMITING_ENABLED:
+    #     logger.info("LIFESPAN: Initializing and registering RateLimitingMiddleware...")
+    #     try:
+    #         rate_limiter_service = get_rate_limiter_service(app_settings)
+    #         fastapi_app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
+    #         logger.info("LIFESPAN: RateLimitingMiddleware registered successfully.")
+    #     except Exception as e:
+    #         logger.error(f"LIFESPAN: Failed to initialize or register RateLimitingMiddleware: {type(e).__name__} - {e}", exc_info=True)
+    #         logger.warning("LIFESPAN: RateLimitingMiddleware FAILED to load.")
+    # else:
+    #     logger.warning("LIFESPAN: Rate Limiting disabled - skipping RateLimitingMiddleware setup in lifespan.")
 
     # 4. CORS
     if app_settings.BACKEND_CORS_ORIGINS:

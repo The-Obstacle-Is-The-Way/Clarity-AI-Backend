@@ -1,7 +1,7 @@
 import asyncio
 import re
 from collections.abc import Callable
-from typing import Any, List # Added List for AuthenticatedUser.roles
+from typing import Any, AsyncGenerator, Coroutine, Literal, Set, cast
 from uuid import UUID
 
 from fastapi import Request, Response # Removed FastAPI from here, app type is Any in __init__
@@ -52,36 +52,33 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self,
         app: Any, # Standard for BaseHTTPMiddleware
         jwt_service: IJwtService,
-        user_repo: IUserRepository,
+        # user_repo: IUserRepository, # REMOVED
         public_paths: set[str] | None = None,
-        public_path_regex: list[str] | None = None, # Changed from List to list
+        public_path_regexes: list[str] | None = None, # RENAMED from public_path_regex
     ):
         super().__init__(app)
         self.jwt_service = jwt_service
-        self.user_repo = user_repo
+        # self.user_repo = user_repo # REMOVED
 
-        # Simplified default public paths. In a real app, these might come from settings injected or passed.
         default_public_paths = {
-            "/docs", "/openapi.json", "/redoc", # API docs
-            "/health", # Health check
-            "/", # Root/landing page if public
-            # Add more paths like /metrics, /auth/login, /auth/register if they are public
-            # Example: "/api/v1/auth/login", "/api/v1/auth/register"
+            "/docs", "/openapi.json", "/redoc", 
+            "/health", 
+            "/", 
         }
         self.public_paths = public_paths if public_paths is not None else default_public_paths
         
         self.public_path_patterns = []
-        if public_path_regex:
-            for pattern_str in public_path_regex: # Changed variable name for clarity
+        if public_path_regexes: # Use RENAMED variable
+            for pattern_str in public_path_regexes: 
                 try:
                     self.public_path_patterns.append(re.compile(pattern_str))
-                except re.error as e: # Added specific exception type
+                except re.error as e: 
                     logger.warning(f"Invalid public path regex pattern: '{pattern_str}', error: {e}")
         
         logger.info(
-            "AuthenticationMiddleware initialized in presentation layer. Public paths: %s, Regex patterns: %s",
+            "AuthenticationMiddleware initialized. Public paths: %s, Regex patterns: %s",
             list(self.public_paths),
-            [p.pattern for p in self.public_path_patterns] # Log compiled pattern strings
+            [p.pattern for p in self.public_path_patterns]
         )
 
     async def _is_public_path(self, path: str) -> bool:
@@ -102,19 +99,41 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return request.cookies.get("access_token") # Also check cookies
 
     async def _validate_and_prepare_user_context(
-        self, token: str
-    ) -> tuple[AuthenticatedUser, list[str]]: # Return Pydantic model and scopes
+        self, token: str, request: Request # ADDED request to access app.state
+    ) -> tuple[AuthenticatedUser, list[str]]: 
         
-        # self.jwt_service.decode_token is async as per IJwtService and recent JwtService change
-        # It's expected to return an object with .sub and .scopes (like TokenPayload)
-        token_payload = await self.jwt_service.decode_token(token) 
+        token_payload = self.jwt_service.decode_token(token) 
 
-        # self.user_repo.get_user_by_id is async as per IUserRepository
-        domain_user: DomainUser | None = await self.user_repo.get_user_by_id(token_payload.sub) # type: ignore
+        # --- Instantiate UserRepository on-the-fly ---
+        session_factory = request.app.state.actual_session_factory
+        if not session_factory:
+            logger.critical("actual_session_factory not found on request.app.state. Cannot create UserRepository.")
+            raise AuthenticationException("Internal server configuration error for authentication.")
+        
+        # Import SQLAlchemyUserRepository locally to avoid circular import at module level if not already handled
+        from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+        user_repo_instance = SQLAlchemyUserRepository(session_factory=session_factory)
+        # --- End UserRepository instantiation ---
+
+        user_id_from_token: str | None = token_payload.get("sub")
+        if not user_id_from_token:
+            logger.warning("AuthenticationMiddleware: 'sub' (user ID) not found in token payload.")
+            raise InvalidTokenException("'sub' claim missing from token")
+
+        try:
+            # Attempt to convert to UUID if your user IDs are UUIDs
+            user_id_as_uuid = UUID(user_id_from_token)
+        except ValueError:
+            logger.warning(f"AuthenticationMiddleware: 'sub' claim ('{user_id_from_token}') is not a valid UUID.")
+            raise InvalidTokenException("'sub' claim is not a valid UUID")
+
+        # Fetch user from repository
+        # Ensure user_repo_instance is correctly initialized and available
+        domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
 
         if not domain_user:
-            logger.warning(f"User not found for ID from token: {token_payload.sub}") # type: ignore
-            raise UserNotFoundException(f"User with ID {token_payload.sub} not found.") # type: ignore
+            logger.warning(f"User not found for ID from token: {user_id_as_uuid}")
+            raise UserNotFoundException(f"User with ID {user_id_as_uuid} not found.")
 
         if not domain_user.is_active: # Assuming DomainUser has is_active
             logger.warning(f"Attempt to authenticate inactive user: {domain_user.id}")
@@ -132,9 +151,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return authenticated_user_context, token_scopes
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        request.scope["user"] = UnauthenticatedUser() # Default for all requests
-        request.scope["auth"] = None # Default for all requests
+        request.scope["user"] = UnauthenticatedUser() 
+        request.scope["auth"] = None 
         
+        # Attach app state to request state if not already done by an earlier middleware
+        # This is a fallback/ensure mechanism. Ideally, an earlier middleware handles this.
+        if not hasattr(request.state, 'actual_session_factory') and hasattr(request.app.state, 'actual_session_factory'):
+            request.state.actual_session_factory = request.app.state.actual_session_factory
+        if not hasattr(request.state, 'settings') and hasattr(request.app.state, 'settings'):
+            request.state.settings = request.app.state.settings
+            
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path '{request.url.path}', skipping authentication.")
             return await call_next(request)
@@ -144,12 +170,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.info(f"Authentication token missing for protected path: {request.url.path}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Authentication token required."}, # Clearer message
+                content={"detail": "Authentication token required."}, 
             )
             
         try:
-            user_context, token_scopes = await self._validate_and_prepare_user_context(token)
-            request.scope["user"] = user_context # Set our Pydantic model
+            # Pass the request object to _validate_and_prepare_user_context
+            user_context, token_scopes = await self._validate_and_prepare_user_context(token, request)
+            request.scope["user"] = user_context 
             request.scope["auth"] = AuthCredentials(scopes=token_scopes)
             logger.debug(f"User {user_context.id} authenticated for path {request.url.path}. Scopes: {token_scopes}")
 

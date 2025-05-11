@@ -464,7 +464,11 @@ async def client_app_tuple_func_scoped(
 ) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     logger.info("CONFTEST_PY: Creating client_app_tuple_func_scoped (function-scoped).")
     
-    original_fastapi_app = create_application(settings_override=test_settings)
+    # Pass global_mock_jwt_service to the factory for AuthenticationMiddleware
+    original_fastapi_app = create_application(
+        settings_override=test_settings,
+        jwt_service_override=global_mock_jwt_service
+    )
     original_fastapi_app.state.settings = test_settings
 
     original_fastapi_app.dependency_overrides[actual_get_auth_service_dependency] = lambda: mock_auth_service
