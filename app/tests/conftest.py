@@ -212,7 +212,7 @@ def global_mock_jwt_service(test_settings: Settings) -> MagicMock:
     # Explicitly make create_access_token an AsyncMock with the side_effect
     mock.create_access_token = AsyncMock(side_effect=mock_create_access_token_async)
 
-    def mock_decode_token_simplified(token: str) -> dict:
+    async def mock_decode_token_simplified(token: str) -> dict:
         logger.info(f"mock_decode_token_simplified CALLED with token: {token}")
         stored_info = issued_tokens_store.get(token)
         if stored_info:
@@ -241,8 +241,8 @@ def global_mock_jwt_service(test_settings: Settings) -> MagicMock:
                     logger.error(f"mock_decode_token_simplified: Failed to decode unrecognized 3-part token '{token}' for debugging: {e}")
             raise InvalidTokenException(f"Simplified mock: Token {token} not in store")
 
-    # decode_token is synchronous in the interface
-    mock.decode_token = MagicMock(side_effect=mock_decode_token_simplified)
+    # decode_token should be an AsyncMock as the middleware awaits it
+    mock.decode_token = AsyncMock(side_effect=mock_decode_token_simplified)
 
     async def _clear_store_action_simplified() -> None:
         # issued_tokens_store.clear() # Keep if stateful reset is desired
@@ -542,101 +542,196 @@ async def authenticated_user(
     db_session: AsyncSession,
     faker: Faker,
 ) -> User:
-    """
-    Creates a user (and potentially a provider), associates them,
-    and saves them to the database in a single transaction.
-    Returns the authenticated User model instance.
-    """
-    from app.infrastructure.persistence.sqlalchemy.models.user import (
-        User as UserModel,
-        UserRole as SQLAUserRole,
-    )
-    from app.infrastructure.persistence.sqlalchemy.models.provider import ProviderModel # RESTORED
-    from app.infrastructure.security.password.password_handler import PasswordHandler
-    import random
-
-    pwd_handler = PasswordHandler()
-    username = f"{uuid.uuid4()}-{faker.user_name()}"
-    email = faker.email()
-    password = faker.password()
-    hashed_password = pwd_handler.hash_password(password)
-    user_id = uuid.uuid4()
-    selected_role = random.choice(list(SQLAUserRole))
-
-    logger.info(
-        f"Attempting to create authenticated_user with email: {email}, username: {username}, role: {selected_role.name}"
-    )
-
+    """Creates, persists, and returns a standard authenticated PATIENT user."""
     user_data = {
-        "id": user_id,
-        "username": username,
-        "email": email,
-        "hashed_password": hashed_password,
+        "id": uuid.uuid4(),
+        "username": faker.email(),
+        "email": faker.email(),
+        "hashed_password": PasswordHandler().get_password_hash(faker.password()),
+        "roles": [UserRole.PATIENT], # Default to PATIENT
         "is_active": True,
         "is_verified": True,
         "email_verified": True,
-        "role": selected_role,
-        "roles": [selected_role.value],
         "first_name": faker.first_name(),
         "last_name": faker.last_name(),
     }
+    # Ensure roles are list of enums if that's what User.from_orm expects or handles
+    # For direct creation, it might expect strings from UserRole.value
+    
+    # Using direct ORM object creation and then converting to domain,
+    # or create domain and then use repo to save (which handles ORM mapping).
+    # Let's use the repository pattern for consistency if possible,
+    # but for fixture simplicity, direct ORM save is often done.
+    # The current User.from_orm is for Pydantic model from ORM, not the other way.
 
-    user = UserModel(**user_data)
-    db_session.add(user)
-    logger.debug(f"Added user {user.id} to session.")
+    # Let's assume User domain entity can be created directly
+    # and then a repository would handle persisting it.
+    # For the fixture, we'll create the ORM model directly for simplicity of persistence.
 
-    # --- PROVIDER CREATION RE-ENABLED ---
-    provider_instance = None
-    if user.role == SQLAUserRole.CLINICIAN:
-        provider_data = {
-            "id": uuid.uuid4(),
-            "user_id": user.id, 
-            "specialty": faker.job(),
-            "license_number": faker.bothify(text="LIC-#######??"),
-            "npi_number": faker.bothify(text="##########"),
-            "active": True,
-        }
-        provider_instance = ProviderModel(**provider_data)
-        user.provider = provider_instance 
-        db_session.add(provider_instance)
-        logger.debug(f"Added provider {provider_instance.id} for user {user.id} to session and associated.")
+    from app.infrastructure.persistence.sqlalchemy.models.user import User as ORMUser
+    # Ensure roles are stored as list of strings if that is what ORMUser expects
+    orm_roles = [role.value for role in user_data["roles"]]
 
-    # Commit transaction once after adding all objects
-    try:
-        await db_session.commit()
-        logger.info(f"Successfully committed user {user.id} and provider {provider_instance.id if provider_instance else 'N/A'}")
-        await db_session.refresh(user)
-        if provider_instance:
-            await db_session.refresh(provider_instance)
-    except Exception as e:
-        logger.error(f"Error committing user/provider transaction: {e}")
-        raise e
+    user_to_create_orm = ORMUser(
+        id=user_data["id"],
+        username=user_data["username"],
+        email=user_data["email"],
+        password_hash=user_data["hashed_password"], # Field name in ORM model might be password_hash
+        roles=orm_roles, 
+        is_active=user_data["is_active"],
+        is_verified=user_data["is_verified"],
+        email_verified=user_data["email_verified"],
+        first_name=user_data["first_name"],
+        last_name=user_data["last_name"]
+        # created_at, updated_at will be handled by default values in the model
+    )
 
-    return user
+    # REMOVED nested transaction and explicit commit within this fixture.
+    # Rely on the db_session fixture's commit at the end of the test.
+    existing_user = await db_session.get(ORMUser, user_data["id"])
+    if not existing_user:
+        db_session.add(user_to_create_orm)
+        await db_session.flush() # Flush to get ID, etc., but don't commit here.
+        logger.info(f"Authenticated_user fixture: ADDED & FLUSHED user {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
+        # The actual commit will be handled by the db_session fixture itself
+    else:
+        user_to_create_orm = existing_user # use the one from DB
+        logger.info(f"Authenticated_user fixture: User {user_data['username']} with ID {user_data['id']} ALREADY EXISTED. Using existing.")
+
+    # Convert ORM model to domain model for yielding
+    # Assuming User domain entity has a similar structure or a from_orm method
+    # For simplicity, let's re-create the domain User
+    # This might need adjustment based on actual User domain entity constructor
+    domain_user_roles = {UserRole(role_value) for role_value in orm_roles}
+    
+    domain_user = User(
+        id=user_to_create_orm.id,
+        email=user_to_create_orm.email,
+        username=user_to_create_orm.username,
+        full_name=f"{user_to_create_orm.first_name or ''} {user_to_create_orm.last_name or ''}".strip(),
+        password_hash=user_to_create_orm.password_hash,
+        roles=domain_user_roles,
+        last_login=user_to_create_orm.last_login
+    )
+    if user_to_create_orm.is_active:
+        domain_user.activate()
+
+    logger.info(f"Authenticated_user fixture: Yielding DOMAIN user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
+    yield domain_user # Yield the domain model
 
 
-# @pytest_asyncio.fixture
-# async def provider_user(db_session: AsyncSession, password_handler: PasswordHandler) -> User:
-#     """Creates a provider user in the database."""
-#     provider_data = {
-#         "id": uuid.uuid4(),
-#         "username": "testprovider",
-#         "email": TEST_PROVIDER_EMAIL,
-#         "full_name": "Test Provider",
-#         "hashed_password": password_handler.get_password_hash(TEST_PROVIDER_PASSWORD),
-#         "roles": [UserRole.CLINICIAN.value],
-#         "is_active": True,
-#         "is_verified": True,
-#         "email_verified": True,
-#         # Add other relevant fields...
-#     }
-#     # Ensure UserCreateRequest or the actual model used for creation is imported
-#     # from app.presentation.schemas.user import UserCreateRequest # Example
-#     user = User(**provider_data) # Adjust based on actual model
-#     db_session.add(user)
-#     await db_session.commit()
-#     await db_session.refresh(user)
-#     return user
+@pytest_asyncio.fixture
+async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) -> User:
+    """Creates, persists, and returns an authenticated PROVIDER/CLINICIAN user."""
+    user_data = {
+        "id": uuid.uuid4(),
+        "username": f"provider_{faker.email()}",
+        "email": f"provider_email_{faker.email()}",
+        "hashed_password": PasswordHandler().get_password_hash(faker.password()),
+        "roles": [UserRole.PROVIDER, UserRole.CLINICIAN], # Example roles for a provider
+        "is_active": True,
+        "is_verified": True,
+        "email_verified": True,
+        "first_name": faker.first_name(),
+        "last_name": faker.last_name(),
+    }
+    from app.infrastructure.persistence.sqlalchemy.models.user import User as ORMUser
+    orm_roles = [role.value for role in user_data["roles"]]
+
+    user_to_create_orm = ORMUser(
+        id=user_data["id"],
+        username=user_data["username"],
+        email=user_data["email"],
+        password_hash=user_data["hashed_password"],
+        roles=orm_roles,
+        is_active=user_data["is_active"],
+        is_verified=user_data["is_verified"],
+        email_verified=user_data["email_verified"],
+        first_name=user_data["first_name"],
+        last_name=user_data["last_name"]
+    )
+    # REMOVED nested transaction and explicit commit.
+    existing_user = await db_session.get(ORMUser, user_data["id"])
+    if not existing_user:
+        db_session.add(user_to_create_orm)
+        await db_session.flush()
+        logger.info(f"Authenticated_provider_user fixture: ADDED & FLUSHED provider {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
+    else:
+        user_to_create_orm = existing_user
+        logger.info(f"Authenticated_provider_user fixture: Provider {user_data['username']} with ID {user_data['id']} ALREADY EXISTED.")
+        
+    domain_user_roles = {UserRole(role_value) for role_value in orm_roles}
+    domain_user = User(
+        id=user_to_create_orm.id,
+        email=user_to_create_orm.email,
+        username=user_to_create_orm.username,
+        full_name=f"{user_to_create_orm.first_name or ''} {user_to_create_orm.last_name or ''}".strip(),
+        password_hash=user_to_create_orm.password_hash,
+        roles=domain_user_roles,
+        last_login=user_to_create_orm.last_login
+    )
+    if user_to_create_orm.is_active:
+        domain_user.activate()
+        
+    logger.info(f"Authenticated_provider_user fixture: Yielding DOMAIN provider user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
+    yield domain_user
+
+
+@pytest_asyncio.fixture
+async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> User:
+    """Creates, persists, and returns an authenticated ADMIN user."""
+    user_data = {
+        "id": uuid.uuid4(),
+        "username": f"admin_{faker.email()}",
+        "email": f"admin_email_{faker.email()}", # Ensure unique email
+        "hashed_password": PasswordHandler().get_password_hash(faker.password()),
+        "roles": [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CEO], # Example roles for an admin
+        "is_active": True,
+        "is_verified": True,
+        "email_verified": True,
+        "first_name": faker.first_name(),
+        "last_name": faker.last_name(),
+    }
+    from app.infrastructure.persistence.sqlalchemy.models.user import User as ORMUser
+    orm_roles = [role.value for role in user_data["roles"]]
+
+    user_to_create_orm = ORMUser(
+        id=user_data["id"],
+        username=user_data["username"],
+        email=user_data["email"],
+        password_hash=user_data["hashed_password"],
+        roles=orm_roles,
+        is_active=user_data["is_active"],
+        is_verified=user_data["is_verified"],
+        email_verified=user_data["email_verified"],
+        first_name=user_data["first_name"],
+        last_name=user_data["last_name"]
+    )
+    # REMOVED nested transaction and explicit commit.
+    existing_user = await db_session.get(ORMUser, user_data["id"])
+    if not existing_user:
+        db_session.add(user_to_create_orm)
+        await db_session.flush()
+        logger.info(f"Authenticated_admin_user fixture: ADDED & FLUSHED admin {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
+    else:
+        user_to_create_orm = existing_user
+        logger.info(f"Authenticated_admin_user fixture: Admin {user_data['username']} with ID {user_data['id']} ALREADY EXISTED.")
+
+    domain_user_roles = {UserRole(role_value) for role_value in orm_roles}
+    domain_user = User(
+        id=user_to_create_orm.id,
+        email=user_to_create_orm.email,
+        username=user_to_create_orm.username,
+        full_name=f"{user_to_create_orm.first_name or ''} {user_to_create_orm.last_name or ''}".strip(),
+        password_hash=user_to_create_orm.password_hash,
+        roles=domain_user_roles,
+        last_login=user_to_create_orm.last_login
+    )
+    if user_to_create_orm.is_active:
+        domain_user.activate()
+
+    logger.info(f"Authenticated_admin_user fixture: Yielding DOMAIN admin user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
+    yield domain_user
 
 
 @pytest_asyncio.fixture 

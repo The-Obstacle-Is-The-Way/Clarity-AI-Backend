@@ -87,49 +87,38 @@ class TestAuthentication:
         client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
         get_valid_auth_headers: dict[str, str], # This fixture provides headers with a token for test_user_domain
         global_mock_jwt_service: MagicMock,
-        test_user_domain: DomainUser # Fixture providing the user domain object
+        authenticated_user: DomainUser # Fixture providing the user domain object, RENAMED from test_user_domain
     ) -> None:
         """Test that a valid token allows access to a protected endpoint (e.g., /auth/me)."""
         client, current_fastapi_app = client_app_tuple_func_scoped
-        headers = get_valid_auth_headers # Token for test_user_domain
+        headers = get_valid_auth_headers # Token for authenticated_user (implicitly, get_valid_auth_headers should be set up for this user)
 
-        # --- Persist the test_user_domain to the database ---
-        session_factory = current_fastapi_app.state.actual_session_factory
-        user_repo = SQLAlchemyUserRepository(session_factory)
-        
-        async with session_factory() as session:
-            async with session.begin():
-                existing_user = await user_repo.get_user_by_id_for_update(user_id=test_user_domain.id, session_override=session)
-                if not existing_user:
-                    # Ensure test_user_domain.roles is a list of UserRole enums if that's what create_user expects
-                    # or handle conversion if create_user expects something else (e.g., list of strings).
-                    # For now, assuming test_user_domain is correctly structured for create_user.
-                    await user_repo.create_user(user_create=test_user_domain, session_override=session)
-                    logger.info(f"TestAuth.test_valid_token_access: Persisted user {test_user_domain.username} with ID {test_user_domain.id}")
-                else:
-                    logger.info(f"TestAuth.test_valid_token_access: User {test_user_domain.username} with ID {test_user_domain.id} already exists.")
-            await session.commit()
-        # --- End user persistence ---
+        # --- Persist the authenticated_user to the database (ensure it is, or handle if fixture does it) ---
+        # The 'authenticated_user' fixture from conftest.py already saves the user to the DB.
+        # So, explicit persistence here might be redundant or could conflict if not handled carefully.
+        # For now, let's assume authenticated_user is already persisted by its fixture.
+        # If issues persist, we might need to ensure the user from get_valid_auth_headers token sub
+        # matches this authenticated_user and is findable.
 
-        mock_auth_service_instance = current_fastapi_app.dependency_overrides.get(actual_get_auth_service_dependency)()
-        
-        async def mock_get_user_by_username_for_auth_me(*, username: str) -> DomainUser | None:
-            if username == test_user_domain.username:
-                return test_user_domain 
-            return None
-        
-        if hasattr(mock_auth_service_instance, 'get_user_by_username'):
-             mock_auth_service_instance.get_user_by_username = AsyncMock(side_effect=mock_get_user_by_username_for_auth_me)
-        else:
-            logger.error("mock_auth_service_instance does not have get_user_by_username")
+        # The primary check here is that the middleware and endpoint can correctly use the token
+        # provided by get_valid_auth_headers to identify an existing user.
+
+        test_logger.info(f"TestAuth.test_valid_token_access: Using token for user ID: {authenticated_user.id}, username: {authenticated_user.username}")
+        test_logger.info(f"TestAuth.test_valid_token_access: Headers being used: {headers}")
+
+        # Ensure the mock auth service for /auth/me (if overridden) can find this user.
+        # The actual /auth/me endpoint uses get_current_user, which relies on AuthenticationMiddleware.
+        # No specific mock needed for mock_auth_service_instance here if we rely on middleware to populate user.
 
         response = await client.get("/api/v1/auth/me", headers=headers)
 
         assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
         response_data = response.json()
-        assert response_data["username"] == test_user_domain.username
-        assert response_data["email"] == test_user_domain.email
-        # assert UserRole.USER.value in response_data["roles"] # Assuming test_user_domain has USER role
+        assert response_data["username"] == authenticated_user.username
+        assert response_data["email"] == authenticated_user.email
+        # Ensure roles are checked appropriately based on what authenticated_user has
+        # For example, if authenticated_user.roles = [UserRole.PATIENT], then:
+        # assert UserRole.PATIENT.value in response_data["roles"]
 
 class TestAuthorization:
     """Test authorization logic (role-based access, resource ownership)."""
@@ -144,7 +133,7 @@ class TestAuthorization:
         """Test that a patient can access their own data."""
         client, current_fastapi_app = client_app_tuple_func_scoped
         headers = get_valid_auth_headers
-        token_data = global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
+        token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
         accessing_user_id = uuid.UUID(token_data["sub"])
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
@@ -245,7 +234,7 @@ class TestAuthorization:
         """Test that a provider (clinician) can access patient data."""
         client, current_fastapi_app = client_app_tuple_func_scoped
         headers = get_valid_provider_auth_headers
-        token_data = global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
+        token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
         provider_user_id = uuid.UUID(token_data["sub"])
         patient_to_access_id = uuid.UUID(TEST_PATIENT_ID)
 
@@ -506,7 +495,7 @@ class TestErrorHandling:
         """Test that 500 errors are generic and mask internal details."""
         client, current_fastapi_app = client_app_tuple_func_scoped
         headers = get_valid_auth_headers
-        token_data = global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
+        token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
         requesting_user_id = uuid.UUID(token_data["sub"])
 
         # Mock user repo to return a valid user for authentication
@@ -555,7 +544,7 @@ async def test_access_patient_phi_data_success_provider(
     """A provider can access PHI of a patient they are authorized for."""
     client, current_fastapi_app = client_app_tuple_func_scoped
     headers = get_valid_provider_auth_headers
-    token_data = global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
+    token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
     provider_user_id = uuid.UUID(token_data["sub"])
     target_patient_id = uuid.UUID(TEST_PATIENT_ID)
 
@@ -636,7 +625,7 @@ async def test_access_patient_phi_data_patient_not_found(
     """Accessing PHI for a non-existent patient returns 404."""
     client, current_fastapi_app = client_app_tuple_func_scoped
     headers = get_valid_provider_auth_headers
-    token_data = global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
+    token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
     provider_user_id = uuid.UUID(token_data["sub"])
     non_existent_patient_id = uuid.uuid4()
 

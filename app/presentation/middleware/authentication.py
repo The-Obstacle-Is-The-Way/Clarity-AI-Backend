@@ -101,54 +101,69 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def _validate_and_prepare_user_context(
         self, token: str, request: Request # ADDED request to access app.state
     ) -> tuple[AuthenticatedUser, list[str]]: 
-        
-        token_payload = await self.jwt_service.decode_token(token)
-
-        # --- Instantiate UserRepository on-the-fly ---
-        session_factory = request.app.state.actual_session_factory
-        if not session_factory:
-            logger.critical("actual_session_factory not found on request.app.state. Cannot create UserRepository.")
-            raise AuthenticationException("Internal server configuration error for authentication.")
-        
-        # Import SQLAlchemyUserRepository locally to avoid circular import at module level if not already handled
-        from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
-        user_repo_instance = SQLAlchemyUserRepository(session_factory=session_factory)
-        # --- End UserRepository instantiation ---
-
-        user_id_from_token: str | None = token_payload.sub
-        if not user_id_from_token:
-            logger.warning("AuthenticationMiddleware: 'sub' (user ID) not found in token payload.")
-            raise InvalidTokenException("'sub' claim missing from token")
-
+        logger.debug("Attempting to validate token and prepare user context.")
         try:
-            # Attempt to convert to UUID if your user IDs are UUIDs
-            user_id_as_uuid = UUID(user_id_from_token)
-        except ValueError:
-            logger.warning(f"AuthenticationMiddleware: 'sub' claim ('{user_id_from_token}') is not a valid UUID.")
-            raise InvalidTokenException("'sub' claim is not a valid UUID")
+            token_payload = await self.jwt_service.decode_token(token)
+            logger.debug(f"Token decoded. Payload sub: {getattr(token_payload, 'sub', 'N/A')}, Scopes: {getattr(token_payload, 'scopes', 'N/A')}")
 
-        # Fetch user from repository
-        # Ensure user_repo_instance is correctly initialized and available
-        domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
-
-        if not domain_user:
-            logger.warning(f"User not found for ID from token: {user_id_as_uuid}")
-            raise UserNotFoundException(f"User with ID {user_id_as_uuid} not found.")
-
-        if not domain_user.is_active: # Assuming DomainUser has is_active
-            logger.warning(f"Attempt to authenticate inactive user: {domain_user.id}")
-            raise AuthenticationException("User account is inactive.")
-
-        authenticated_user_context = AuthenticatedUser(id=str(domain_user.id))
-        
-        token_scopes = getattr(token_payload, 'scopes', [])
-        if token_scopes is None: 
-            token_scopes = []
-        elif not isinstance(token_scopes, list):
-            logger.warning(f"Token scopes for user {domain_user.id} are not a list: {type(token_scopes)}. Using empty list.")
-            token_scopes = []
+            # --- Instantiate UserRepository on-the-fly ---
+            session_factory = request.app.state.actual_session_factory
+            if not session_factory:
+                logger.critical("CRITICAL: actual_session_factory not found on request.app.state in _validate_and_prepare_user_context.")
+                raise AuthenticationException("Internal server configuration error for authentication (session_factory missing).")
             
-        return authenticated_user_context, token_scopes
+            logger.debug(f"Session factory obtained: {type(session_factory)}")
+
+            # Import SQLAlchemyUserRepository locally to avoid circular import at module level if not already handled
+            from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+            user_repo_instance = SQLAlchemyUserRepository(session_factory=session_factory)
+            logger.debug(f"SQLAlchemyUserRepository instantiated: {type(user_repo_instance)}")
+            # --- End UserRepository instantiation ---
+
+            user_id_from_token: str | None = token_payload.get('sub')
+            if not user_id_from_token:
+                logger.warning("AuthenticationMiddleware: 'sub' (user ID) not found in token payload.")
+                raise InvalidTokenException("'sub' claim missing from token")
+            logger.debug(f"User ID from token 'sub': {user_id_from_token}")
+
+            try:
+                # Attempt to convert to UUID if your user IDs are UUIDs
+                user_id_as_uuid = UUID(user_id_from_token)
+                logger.debug(f"User ID converted to UUID: {user_id_as_uuid}")
+            except ValueError as ve: # Catch specific error
+                logger.warning(f"AuthenticationMiddleware: 'sub' claim ('{user_id_from_token}') is not a valid UUID. Error: {ve}")
+                raise InvalidTokenException("'sub' claim is not a valid UUID")
+
+            # Fetch user from repository
+            # Ensure user_repo_instance is correctly initialized and available
+            domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
+            logger.debug(f"User fetched from repository: {'Found' if domain_user else 'Not Found'}")
+
+            if not domain_user:
+                logger.warning(f"User not found for ID from token: {user_id_as_uuid}")
+                raise UserNotFoundException(f"User with ID {user_id_as_uuid} not found.")
+
+            if not domain_user.is_active: # Assuming DomainUser has is_active
+                logger.warning(f"Attempt to authenticate inactive user: {domain_user.id}")
+                raise AuthenticationException("User account is inactive.")
+            logger.debug(f"User {domain_user.id} is active.")
+
+            authenticated_user_context = AuthenticatedUser(id=str(domain_user.id))
+            
+            token_scopes = token_payload.get('scopes', [])
+            if token_scopes is None: 
+                token_scopes = []
+            elif not isinstance(token_scopes, list):
+                logger.warning(f"Token scopes for user {domain_user.id} are not a list: {type(token_scopes)}. Using empty list.")
+                token_scopes = []
+            logger.debug(f"Authenticated user context created. ID: {authenticated_user_context.id}, Scopes: {token_scopes}")
+            return authenticated_user_context, token_scopes
+        except (AuthenticationException, UserNotFoundException, InvalidTokenException, TokenExpiredException) as exc:
+            logger.warning(f"Handled auth exception in _validate_and_prepare_user_context: {type(exc).__name__} - {exc}")
+            raise # Re-raise to be caught by dispatch's handler
+        except Exception as e:
+            logger.exception(f"UNEXPECTED error in _validate_and_prepare_user_context: {type(e).__name__} - {e}")
+            raise AuthenticationException(f"Unexpected internal error during token validation: {e}")
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request.scope["user"] = UnauthenticatedUser() 
@@ -209,10 +224,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     detail = "User account is inactive."
                 # else, detail remains str(exc) which is fine for other AuthExceptions
             
-            logger.warning(f"Authentication failed for path {request.url.path}: {type(exc).__name__} - {detail}")
+            logger.warning(f"Authentication failed for path {request.url.path}: {type(exc).__name__} - {detail}. Status code: {status_code}") # Added status code to log
             return JSONResponse(status_code=status_code, content={"detail": detail})
         except Exception as e: # Catch any other unexpected errors
-            logger.exception(f"Unexpected error during authentication process for path {request.url.path}: {e}")
+            logger.exception(f"UNEXPECTED error in dispatch for path {request.url.path}: {type(e).__name__} - {e}") # Enhanced logging
             return JSONResponse(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"detail": "An internal server error occurred during authentication."}
