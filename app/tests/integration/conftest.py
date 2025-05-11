@@ -556,33 +556,24 @@ async def test_app_with_db_session(
     # This is what the app will use for database access in API endpoints
     app.state.actual_session_factory = db_session_factory
     app.state.engine = test_db_engine
-    
-    # Add mock service overrides
-    mock_aws_factory = MagicMock(spec=AWSServiceFactory)
-    mock_aws_factory.get_s3_service.return_value = mock_s3_service
-    
-    app.dependency_overrides[get_aws_service_factory] = lambda: mock_aws_factory
-    app.dependency_overrides[get_encryption_service] = lambda: mock_encryption_service
-    app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
-    
-    # Verify session factory was set correctly
-    logger.info(f"Created db_session_factory in app.state: {app.state.actual_session_factory}")
-    
-    # Initialize the application's lifespan context to ensure proper setup
-    async with LifespanManager(app):
-        try:
-            # Verify session factory is available
-            if not hasattr(app.state, 'actual_session_factory') or app.state.actual_session_factory is None:
-                logger.error("actual_session_factory not available in app.state after lifespan initialization!")
-                raise RuntimeError("Failed to set actual_session_factory in app.state")
-                
+    app.state.db_schema_created = True
+
+    logger.info(f"App instance created in test_app_with_db_session. App ID: {id(app)}")
+    logger.info(f"app.state.engine ID: {id(app.state.engine if hasattr(app.state, 'engine') else None)}")
+    logger.info(f"app.state.actual_session_factory: {app.state.actual_session_factory if hasattr(app.state, 'actual_session_factory') else 'Not set'}")
+
+
+    # Use LifespanManager to correctly run startup/shutdown events
+    try:
+        async with LifespanManager(app) as manager:
             logger.info("Application lifespan startup completed, actual_session_factory is properly set")
-            yield app
-        finally:
-            # Clean up as needed
-            logger.info("Cleaning up test_app_with_db_session fixture")
-            if hasattr(app.state, 'actual_session_factory'):
-                app.state.actual_session_factory = None
+            # logger.info(f"MANAGER.APP.STATE in test_app_with_db_session: {manager.app.state._state if hasattr(manager.app.state, '_state') else 'No _state'}")
+            yield manager.app # Yield the managed app
+    finally:
+        logger.info("Cleaning up test_app_with_db_session fixture")
+        # Perform any specific cleanup related to this fixture if necessary
+        # For example, clearing dependency overrides if they were not scoped properly
+        # app.dependency_overrides.clear() # Usually handled by FastAPI TestClient or LifespanManager
 
 @pytest_asyncio.fixture
 async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> AsyncGenerator[AsyncClient, None]:  

@@ -14,7 +14,7 @@ import pytest_asyncio
 from faker import Faker
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool, Pool
 from sqlalchemy import event
@@ -22,6 +22,7 @@ from sqlalchemy.dialects import sqlite
 import sys
 import json
 import base64
+from sqlalchemy.sql import text
 
 # Application-specific Imports
 from app.app_factory import create_application
@@ -69,6 +70,8 @@ from app.core.interfaces.services.jwt_service_interface import JWTServiceInterfa
 
 # IMPORT TokenPayload for the mock JWT service
 from app.infrastructure.security.jwt.jwt_service import TokenPayload, TokenType
+
+from app.tests.integration.utils.test_db_initializer import create_test_users # ADDED create_test_users
 
 logger = logging.getLogger(__name__)
 
@@ -961,23 +964,58 @@ def set_sqlite_pragma(dbapi_connection, connection_record, **kwargs):
 # Ensure this is the only test_db_engine fixture
 @pytest_asyncio.fixture(scope="session")
 async def test_db_engine(test_settings: Settings) -> AsyncEngine: # Removed event_loop dependency
-    """Provides a SQLAlchemy engine for the entire test session."""
-    logger.info(f"SESSION SCOPE: Creating test DB engine for URL: {test_settings.ASYNC_DATABASE_URL}")
-    
+    """
+    Creates a new in-memory SQLite database engine for the test session.
+    Tables are created once per session. Test users are also created once per session.
+    Uses StaticPool to ensure connection sharing for in-memory DB.
+    """
+    DATABASE_URL = test_settings.ASYNC_DATABASE_URL  # Should be sqlite+aiosqlite:///:memory:?cache=shared
+    logger.info(f"SESSION SCOPE: Creating test DB engine: {DATABASE_URL} with StaticPool")
     engine = create_async_engine(
-        test_settings.ASYNC_DATABASE_URL,
-        echo=False,
-        connect_args={"check_same_thread": False},
+        DATABASE_URL, 
+        echo=False, 
         poolclass=StaticPool,
+        connect_args={"check_same_thread": False} # Necessary for SQLite with StaticPool in some contexts
     )
 
-    async with engine.begin() as conn:
-        logger.info("SESSION SCOPE: Dropping all tables.")
-        await conn.run_sync(main_metadata.drop_all) # Use main_metadata from registry
-        logger.info("SESSION SCOPE: Creating all tables.")
-        await conn.run_sync(main_metadata.create_all) # Use main_metadata from registry
+    async with engine.connect() as conn:  # Use engine.connect() for setup with StaticPool
+        await conn.execute(text("PRAGMA foreign_keys=ON;"))
+        await conn.run_sync(Base.metadata.create_all)
+        logger.info("SESSION SCOPE: All tables created in test DB using engine.connect().")
+        await conn.commit() # Commit table creation
 
-    yield engine
+    # Create test users after tables are created
+    TestSessionLocal = async_sessionmaker(
+        autocommit=False, 
+        autoflush=False, 
+        bind=engine, 
+        class_=AsyncSession,
+        expire_on_commit=False # Good practice for test sessions
+    )
+    async with TestSessionLocal() as session:
+        try:
+            logger.info("SESSION SCOPE: Attempting to create test users in test_db_engine fixture.")
+            await create_test_users(session) # CALL create_test_users
+            # await session.commit() # create_test_users already commits. Avoid nested transaction issues if create_test_users manages its own.
+            logger.info("SESSION SCOPE: Test users creation process completed in test_db_engine fixture.")
+        except Exception as e:
+            logger.error(f"SESSION SCOPE: Error creating test users in test_db_engine: {e}")
+            # await session.rollback() # create_test_users should handle its own rollback on error
+            raise # Re-raise the exception to fail the test setup if users can't be created
+
+    # VERIFICATION STEP: Try to read back a user
+    async with TestSessionLocal() as verify_session:
+        from app.infrastructure.persistence.sqlalchemy.models.user import User as OrmUser
+        from app.tests.integration.utils.test_db_initializer import TEST_USER_ID as VERIFY_TEST_USER_ID
+
+        retrieved_user = await verify_session.get(OrmUser, VERIFY_TEST_USER_ID)
+        if retrieved_user:
+            logger.info(f"SESSION SCOPE (VERIFY): Successfully retrieved user {VERIFY_TEST_USER_ID} after creation. Username: {retrieved_user.username}")
+        else:
+            logger.error(f"SESSION SCOPE (VERIFY): FAILED to retrieve user {VERIFY_TEST_USER_ID} immediately after creation.")
+            # raise RuntimeError(f"Failed to verify user creation for {VERIFY_TEST_USER_ID}") # Optionally fail hard
+
+    yield engine # Yield the engine
 
     logger.info("SESSION SCOPE: Disposing test DB engine.")
     await engine.dispose()

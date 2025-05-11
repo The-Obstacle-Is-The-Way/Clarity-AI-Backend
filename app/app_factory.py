@@ -154,14 +154,22 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             # --- BEGIN CRITICAL: Create database tables ---
             # This must happen after engine creation and before the app serves requests
             # that might access the database.
-            if current_settings.ENVIRONMENT == "test": # Only for test, maybe dev
-                logger.info(f"LIFESPAN_DB_SCHEMA_CREATION_START: Attempting to create database tables for {current_settings.ASYNC_DATABASE_URL}...")
+            if current_settings.ENVIRONMENT == "test" and not getattr(fastapi_app.state, 'db_schema_created', False):
+                logger.info(f"LIFESPAN_DB_SCHEMA_CREATION_START (App Lifespan): Attempting to create database tables for {current_settings.ASYNC_DATABASE_URL}...")
                 async with db_engine.begin() as conn:
                     # Import Base from where your SQLAlchemy models are defined
                     # This assumes Base is correctly collecting metadata from all your models.
                     from app.infrastructure.persistence.sqlalchemy.models.base import Base # Ensure this is the correct Base
                     await conn.run_sync(Base.metadata.create_all)
-                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SUCCESS: Database tables created (or verified to exist).")
+                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SUCCESS (App Lifespan): Database tables created (or verified to exist).")
+            elif current_settings.ENVIRONMENT == "test" and getattr(fastapi_app.state, 'db_schema_created', False):
+                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SKIPPED (App Lifespan): db_schema_created flag is True. Assuming tables created by test fixture.")
+            elif current_settings.ENVIRONMENT != "test": # For non-test environments, always try to create/verify
+                logger.info(f"LIFESPAN_DB_SCHEMA_CREATION_START (App Lifespan, Non-Test Env): Attempting to create database tables for {current_settings.ASYNC_DATABASE_URL}...")
+                async with db_engine.begin() as conn:
+                    from app.infrastructure.persistence.sqlalchemy.models.base import Base
+                    await conn.run_sync(Base.metadata.create_all)
+                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SUCCESS (App Lifespan, Non-Test Env): Database tables created (or verified to exist).")
             # --- END CRITICAL: Create database tables ---
             
             logger.info(f"Database engine and actual_session_factory initialized and set on app.state (id: {id(fastapi_app.state)})")

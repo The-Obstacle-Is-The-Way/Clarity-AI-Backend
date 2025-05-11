@@ -62,6 +62,7 @@ async def create_test_users(session: AsyncSession) -> None:
     This approach avoids SQLAlchemy ORM mapping issues by using core SQL expressions
     which bypass the ORM layer entirely, making it more robust against mapping errors.
     """
+    logger.info(f"CREATE_TEST_USERS: Called with session ID: {id(session)}. Will create users with TEST_USER_ID: {TEST_USER_ID}, TEST_CLINICIAN_ID: {TEST_CLINICIAN_ID}") # DEBUG LOG
     try:
         # Check if test users exist using direct SQL query
         query = f"SELECT id FROM users WHERE id IN ('{TEST_USER_ID}', '{TEST_CLINICIAN_ID}')"
@@ -156,9 +157,9 @@ async def create_test_users(session: AsyncSession) -> None:
         # Commit changes if we inserted any users
         if inserted_users:
             await session.commit()
-            logger.info(f"Committed test users using direct SQL: {inserted_users}")
+            logger.info(f"Committed test users using direct SQL: {inserted_users}. Session ID: {id(session)}") # DEBUG LOG
         else:
-            logger.info("Test users already exist in database.")
+            logger.info(f"Test users already exist in database. Session ID: {id(session)}") # DEBUG LOG
             
     except Exception as e:
         logger.error(f"Error creating test users: {e}")
