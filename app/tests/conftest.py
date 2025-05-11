@@ -40,9 +40,12 @@ from app.presentation.api.schemas.auth import TokenResponseSchema, SessionInfoRe
 from app.domain.exceptions.auth_exceptions import (
     InvalidCredentialsException,
     AccountDisabledException,
-    InvalidTokenException,
-    TokenExpiredException,
     UserAlreadyExistsException
+)
+# ADDED: Import token-specific exceptions for the mock JWT service
+from app.domain.exceptions.token_exceptions import (
+    InvalidTokenException,
+    TokenExpiredException
 )
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
