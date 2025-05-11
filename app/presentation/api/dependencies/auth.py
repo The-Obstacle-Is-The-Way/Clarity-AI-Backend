@@ -120,7 +120,15 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt_service.decode_token(token=token)
+        # Ensure the JWT service is correctly injected and used
+        logger.debug(f"GET_CURRENT_USER: Using JWT service: {type(jwt_service).__name__}, ID: {id(jwt_service)}")
+        payload = await jwt_service.decode_token(token)
+        logger.debug(f"GET_CURRENT_USER: Token decoded successfully by JWT service. Payload type: {type(payload)}")
+        
+        # Validate payload structure (basic check)
+        if not isinstance(payload, dict):
+            logger.warning("get_current_user: Decoded payload is not a dictionary.")
+            raise credentials_exception
         
         username_from_sub: str | None = payload.get("sub")
         if username_from_sub is None:
@@ -150,6 +158,12 @@ async def get_current_user(
         logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")
         raise credentials_exception
     
+    # --- DETAILED LOGGING BEFORE STATUS CHECK ---
+    logger.info(f"GET_CURRENT_USER: Inspecting user object before status check. User: {user}")
+    logger.info(f"GET_CURRENT_USER: Type of user: {type(user)}")
+    logger.info(f"GET_CURRENT_USER: Attributes of user (dir(user)): {dir(user)}")
+    # --- END DETAILED LOGGING ---
+
     if user.status != UserStatus.ACTIVE:
         logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")

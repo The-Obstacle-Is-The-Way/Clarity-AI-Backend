@@ -115,24 +115,36 @@ def test_settings() -> Settings:
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session(
-    test_db_engine: AsyncEngine, # This will now use the session-scoped engine
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
 ) -> AsyncGenerator[AsyncSession, None]:
-    """Provides a clean SQLAlchemy session with automatic rollback for each test."""
-    session_factory = sessionmaker(
-        bind=test_db_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    """Provides a SQLAlchemy session using the app's actual_session_factory."""
+    
+    _client, app_instance = client_app_tuple_func_scoped
+    
+    session_factory = app_instance.state.actual_session_factory
+    if not session_factory:
+        logger.critical("DB_SESSION_FIXTURE: actual_session_factory not found on app_instance.state!")
+        raise RuntimeError("actual_session_factory not found on app_instance.state in db_session fixture.")
+    
+    logger.debug(f"DB_SESSION_FIXTURE: Using session_factory {id(session_factory)} from app.state type: {type(session_factory)}")
+
     async with session_factory() as session:
-        logger.debug(f"DB Session created: {id(session)}")
+        logger.debug(f"DB Session created: {id(session)} using app's factory")
+        transaction = None
         try:
+            transaction = await session.begin()
+            logger.debug(f"DB_SESSION (func): BEGUN transaction (ID: {id(transaction)}) for session {id(session)}")
             yield session
-            await session.commit()  # Commit if test passes
-            logger.debug(f"DB Session committed: {id(session)}")
-        except Exception:
-            logger.warning(f"DB Session rolling back due to exception: {id(session)}")
-            await session.rollback()  # Rollback on any exception
+            if transaction.is_active:
+                await transaction.commit()
+                logger.debug(f"DB_SESSION (func): COMMITTED transaction (ID: {id(transaction)}) for session {id(session)}")
+        except Exception as e_test_exception:
+            logger.warning(f"DB_SESSION (func): Rolling back transaction (ID: {id(transaction) if transaction else 'N/A'}) due to EXCEPTION IN TEST: {type(e_test_exception).__name__} - {e_test_exception}", exc_info=True)
+            if transaction and transaction.is_active:
+                await transaction.rollback()
             raise
         finally:
-            logger.debug(f"DB Session closing: {id(session)}")
+            logger.debug(f"DB_SESSION (func): Closing session {id(session)}")
             await session.close()
 
 
@@ -591,9 +603,9 @@ async def authenticated_user(
     existing_user = await db_session.get(ORMUser, user_data["id"])
     if not existing_user:
         db_session.add(user_to_create_orm)
-        await db_session.flush() # Flush to get ID, etc., but don't commit here.
-        logger.info(f"Authenticated_user fixture: ADDED & FLUSHED user {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
-        # The actual commit will be handled by the db_session fixture itself
+        await db_session.flush() # Flush to get ID, etc.
+        await db_session.commit()
+        logger.info(f"Authenticated_user fixture: ADDED, FLUSHED & COMMITTED user {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
     else:
         user_to_create_orm = existing_user # use the one from DB
         logger.info(f"Authenticated_user fixture: User {user_data['username']} with ID {user_data['id']} ALREADY EXISTED. Using existing.")
@@ -612,9 +624,15 @@ async def authenticated_user(
         password_hash=user_to_create_orm.password_hash,
         roles=domain_user_roles,
         last_login=user_to_create_orm.last_login
+        # status defaults to PENDING_VERIFICATION
+        # created_at defaults
+        # other fields like mfa_enabled, attempts default
     )
+
     if user_to_create_orm.is_active:
         domain_user.activate()
+    # Note: email_verified on ORMUser doesn't have a direct User.verify_email() method.
+    # Activation implies verification for test purposes. Default status is PENDING_VERIFICATION.
 
     logger.info(f"Authenticated_user fixture: Yielding DOMAIN user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
     yield domain_user # Yield the domain model
@@ -628,7 +646,7 @@ async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) ->
         "username": f"provider_{faker.email()}",
         "email": f"provider_email_{faker.email()}",
         "hashed_password": PasswordHandler().get_password_hash(faker.password()),
-        "roles": [UserRole.PROVIDER, UserRole.CLINICIAN], # Example roles for a provider
+        "roles": [UserRole.CLINICIAN], # CORRECTED: Was UserRole.PROVIDER, UserRole.CLINICIAN
         "is_active": True,
         "is_verified": True,
         "email_verified": True,
@@ -655,7 +673,8 @@ async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) ->
     if not existing_user:
         db_session.add(user_to_create_orm)
         await db_session.flush()
-        logger.info(f"Authenticated_provider_user fixture: ADDED & FLUSHED provider {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
+        await db_session.commit()
+        logger.info(f"Authenticated_provider_user fixture: ADDED, FLUSHED & COMMITTED provider {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
     else:
         user_to_create_orm = existing_user
         logger.info(f"Authenticated_provider_user fixture: Provider {user_data['username']} with ID {user_data['id']} ALREADY EXISTED.")
@@ -669,7 +688,11 @@ async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) ->
         password_hash=user_to_create_orm.password_hash,
         roles=domain_user_roles,
         last_login=user_to_create_orm.last_login
+        # status defaults to PENDING_VERIFICATION
+        # created_at defaults
+        # other fields like mfa_enabled, attempts default
     )
+
     if user_to_create_orm.is_active:
         domain_user.activate()
         
@@ -712,7 +735,8 @@ async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> Us
     if not existing_user:
         db_session.add(user_to_create_orm)
         await db_session.flush()
-        logger.info(f"Authenticated_admin_user fixture: ADDED & FLUSHED admin {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
+        await db_session.commit()
+        logger.info(f"Authenticated_admin_user fixture: ADDED, FLUSHED & COMMITTED admin {user_data['username']} with ID {user_data['id']} via db_session {id(db_session)}")
     else:
         user_to_create_orm = existing_user
         logger.info(f"Authenticated_admin_user fixture: Admin {user_data['username']} with ID {user_data['id']} ALREADY EXISTED.")
@@ -726,7 +750,11 @@ async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> Us
         password_hash=user_to_create_orm.password_hash,
         roles=domain_user_roles,
         last_login=user_to_create_orm.last_login
+        # status defaults to PENDING_VERIFICATION
+        # created_at defaults
+        # other fields like mfa_enabled, attempts default
     )
+
     if user_to_create_orm.is_active:
         domain_user.activate()
 
@@ -785,39 +813,52 @@ async def auth_headers(
 
 
 @pytest_asyncio.fixture
-async def get_valid_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
-    """Generate patient authentication headers using the mock JWT service."""
+async def get_valid_auth_headers(
+    global_mock_jwt_service: MagicMock,
+    authenticated_user: User # ADDED dependency
+) -> dict[str, str]:
+    """Generate patient authentication headers using the mock JWT service for the given authenticated_user."""
     await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state for this specific header generation
     user_data = {
-        "sub": str(uuid.uuid4()), # Use a valid UUID string
-        "roles": [UserRole.PATIENT.value],
-        "username": "testpatient",
-        "email": "patient@example.com"
+        "sub": str(authenticated_user.id), # USE ID from authenticated_user
+        "roles": [role.value for role in authenticated_user.roles], # Use actual roles
+        "username": authenticated_user.username,
+        "email": authenticated_user.email
     }
     access_token = await global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
 @pytest_asyncio.fixture
-async def get_valid_provider_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
-    """Generate provider/clinician authentication headers using the mock JWT service."""
+async def get_valid_provider_auth_headers(
+    global_mock_jwt_service: MagicMock,
+    authenticated_provider_user: User # ADDED dependency
+) -> dict[str, str]:
+    """Generate provider/clinician authentication headers for the given authenticated_provider_user."""
     await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
     user_data = {
-        "sub": str(uuid.uuid4()), # Use a valid UUID string
-        "roles": [UserRole.CLINICIAN.value],
-        "username": "testprovider",
-        "email": "provider@example.com"
+        "sub": str(authenticated_provider_user.id), # USE ID from authenticated_provider_user
+        "roles": [role.value for role in authenticated_provider_user.roles], # Use actual roles
+        "username": authenticated_provider_user.username,
+        "email": authenticated_provider_user.email
     }
     access_token = await global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
 
 @pytest_asyncio.fixture
-async def admin_auth_headers(global_mock_jwt_service: MagicMock) -> dict[str, str]:
-    """Generates authorization headers for an admin user."""
+async def get_valid_admin_auth_headers( # RENAMED from admin_auth_headers
+    global_mock_jwt_service: MagicMock,
+    authenticated_admin_user: User # ADDED dependency
+) -> dict[str, str]:
+    """Generates authorization headers for the given authenticated_admin_user."""
     await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
-    # Assuming admin role needs specific identification, adjust payload as needed
-    admin_id = str(uuid.uuid4())
-    access_token = await global_mock_jwt_service.create_access_token(data={"sub": admin_id, "roles": [UserRole.ADMIN.value]})
+    user_data = {
+        "sub": str(authenticated_admin_user.id), # USE ID from authenticated_admin_user
+        "roles": [role.value for role in authenticated_admin_user.roles], # Use actual roles
+        "username": authenticated_admin_user.username,
+        "email": authenticated_admin_user.email
+    }
+    access_token = await global_mock_jwt_service.create_access_token(data=user_data)
     return {"Authorization": f"Bearer {access_token}"}
 
 

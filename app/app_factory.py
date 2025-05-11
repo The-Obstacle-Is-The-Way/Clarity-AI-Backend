@@ -147,8 +147,9 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             )
             
             # Set factory and engine on application state
-            fastapi_app.state.actual_session_factory = session_factory # Renamed for clarity
+            fastapi_app.state.actual_session_factory = session_factory
             fastapi_app.state.db_engine = db_engine
+            logger.info(f"LIFESPAN_APP_FACTORY: actual_session_factory ID set on app.state: {id(fastapi_app.state.actual_session_factory)}")
             
             # --- BEGIN CRITICAL: Create database tables ---
             # This must happen after engine creation and before the app serves requests
