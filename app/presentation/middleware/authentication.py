@@ -1,25 +1,28 @@
 import asyncio
 import re
 from collections.abc import Callable
-from typing import Any, AsyncGenerator, Coroutine, Literal, Set, cast
+from typing import Any, AsyncGenerator, Coroutine, Literal, Set, cast, Awaitable
 from uuid import UUID
 
-from fastapi import Request, Response # Removed FastAPI from here, app type is Any in __init__
+from fastapi import Request, Response, FastAPI, status, HTTPException # Added HTTPException
 from pydantic import BaseModel
 from starlette.authentication import AuthCredentials, UnauthenticatedUser
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware # Keep BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+from starlette.types import ASGIApp # Keep ASGIApp
+import logging
 
 # Core interfaces
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service import IJwtService
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 # Domain entities for type hinting what user_repo returns
-from app.core.domain.entities.user import User as DomainUser 
+from app.core.domain.entities.user import User as DomainUser, UserRole # Corrected, AuthenticatedUser is local
 # Exceptions
 from app.domain.exceptions.auth_exceptions import (
     AuthenticationException,
@@ -31,13 +34,14 @@ from app.domain.exceptions.token_exceptions import (
 )
 # Logging
 from app.infrastructure.logging.logger import get_logger # Assuming this path for logger
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository # ADDED IMPORT
 
 # Assuming TokenPayload has 'sub' and 'scopes' attributes as currently used.
 # If IJwtService.decode_token returns a dict, this model might be used for parsing it.
 # For now, we trust IJwtService.decode_token returns an object with .sub and .scopes
 # from app.infrastructure.security.jwt_service import TokenPayload 
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Pydantic model for authenticated user context
 class AuthenticatedUser(BaseModel):
@@ -50,8 +54,8 @@ class AuthenticatedUser(BaseModel):
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
-        app: Any, # Standard for BaseHTTPMiddleware
-        jwt_service: IJwtService,
+        app: ASGIApp, # Standard for BaseHTTPMiddleware
+        jwt_service: JWTServiceInterface,
         # user_repo: IUserRepository, # REMOVED
         public_paths: set[str] | None = None,
         public_path_regexes: list[str] | None = None, # RENAMED from public_path_regex
@@ -103,39 +107,34 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     ) -> tuple[AuthenticatedUser, list[str]]: 
         logger.debug("Attempting to validate token and prepare user context.")
         try:
-            token_payload = await self.jwt_service.decode_token(token)
-            logger.debug(f"Token decoded. Payload sub: {getattr(token_payload, 'sub', 'N/A')}, Scopes: {getattr(token_payload, 'scopes', 'N/A')}")
+            token_payload: TokenPayload = await self.jwt_service.decode_token(token) # Added type hint for clarity
+            logger.debug(f"Token decoded. Payload sub: {token_payload.sub if hasattr(token_payload, 'sub') else 'N/A'}, Scopes: {token_payload.roles if hasattr(token_payload, 'roles') else 'N/A'}")
 
             # --- Instantiate UserRepository on-the-fly ---
             session_factory = request.app.state.actual_session_factory
             if not session_factory:
                 logger.critical("CRITICAL: actual_session_factory not found on request.app.state in _validate_and_prepare_user_context.")
-                raise AuthenticationException("Internal server configuration error for authentication (session_factory missing).")
+                raise AuthenticationException("Internal server configuration error: Session factory not available.", status_code=HTTP_500_INTERNAL_SERVER_ERROR)
             
-            logger.debug(f"Session factory obtained: {type(session_factory)}")
+            async with session_factory() as db_session_for_repo:
+                user_repo_instance = SQLAlchemyUserRepository(session_factory=lambda: db_session_for_repo)
 
-            # Import SQLAlchemyUserRepository locally to avoid circular import at module level if not already handled
-            from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
-            user_repo_instance = SQLAlchemyUserRepository(session_factory=session_factory)
-            logger.debug(f"SQLAlchemyUserRepository instantiated: {type(user_repo_instance)}")
-            # --- End UserRepository instantiation ---
-
-            user_id_from_token: str | None = token_payload.get('sub')
+            user_id_from_token: str | UUID | None = token_payload.sub # USE attribute access
             if not user_id_from_token:
                 logger.warning("AuthenticationMiddleware: 'sub' (user ID) not found in token payload.")
                 raise InvalidTokenException("'sub' claim missing from token")
             logger.debug(f"User ID from token 'sub': {user_id_from_token}")
 
+            user_id_as_uuid: UUID
             try:
                 # Attempt to convert to UUID if your user IDs are UUIDs
-                user_id_as_uuid = UUID(user_id_from_token)
+                user_id_as_uuid = UUID(str(user_id_from_token)) # Ensure it's a string before UUID conversion
                 logger.debug(f"User ID converted to UUID: {user_id_as_uuid}")
             except ValueError as ve: # Catch specific error
-                logger.warning(f"AuthenticationMiddleware: 'sub' claim ('{user_id_from_token}') is not a valid UUID. Error: {ve}")
+                logger.warning(f"AuthenticationMiddleware: 'sub' claim (\'{user_id_from_token}\') is not a valid UUID. Error: {ve}")
                 raise InvalidTokenException("'sub' claim is not a valid UUID")
 
             # Fetch user from repository
-            # Ensure user_repo_instance is correctly initialized and available
             domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
             logger.debug(f"User fetched from repository: {'Found' if domain_user else 'Not Found'}")
 
@@ -150,7 +149,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             authenticated_user_context = AuthenticatedUser(id=str(domain_user.id))
             
-            token_scopes = token_payload.get('scopes', [])
+            token_scopes = token_payload.roles if hasattr(token_payload, 'roles') else [] # USE attribute access
             if token_scopes is None: 
                 token_scopes = []
             elif not isinstance(token_scopes, list):
@@ -165,7 +164,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.exception(f"UNEXPECTED error in _validate_and_prepare_user_context: {type(e).__name__} - {e}")
             raise AuthenticationException(f"Unexpected internal error during token validation: {e}")
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         request.scope["user"] = UnauthenticatedUser() 
         request.scope["auth"] = None 
         

@@ -56,6 +56,20 @@ from asgi_lifespan import LifespanManager
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.presentation.api.dependencies.auth import get_jwt_service as get_jwt_service_from_auth_dependencies
 
+# CORRECTED Domain Layer Imports for User and UserRole
+from app.core.domain.entities.user import User as DomainUser # Ensure this is the primary import for domain user
+from app.core.domain.entities.user import UserRole as DomainUserRole # This is DomainUserRole
+
+# CORRECTED Service and Interface imports
+from app.infrastructure.security.auth.auth_service import AuthenticationService # Renamed to avoid alias for clarity here
+from app.core.interfaces.services.auth_service_interface import AuthServiceInterface # Renamed to avoid alias for clarity here
+
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+# from app.infrastructure.security.jwt.jwt_handler import JWTHandler # REMOVED - Not needed for mocking JWTServiceInterface
+
+# IMPORT TokenPayload for the mock JWT service
+from app.infrastructure.security.jwt.jwt_service import TokenPayload, TokenType
+
 logger = logging.getLogger(__name__)
 
 # --- Constants for Test Data ---
@@ -224,37 +238,51 @@ def global_mock_jwt_service(test_settings: Settings) -> MagicMock:
     # Explicitly make create_access_token an AsyncMock with the side_effect
     mock.create_access_token = AsyncMock(side_effect=mock_create_access_token_async)
 
-    async def mock_decode_token_simplified(token: str) -> dict:
+    async def mock_decode_token_simplified(token: str) -> dict: # MODIFIED: Return type hint will be TokenPayload
         logger.info(f"mock_decode_token_simplified CALLED with token: {token}")
         stored_info = issued_tokens_store.get(token)
         if stored_info:
-            # ADDED: Check for token expiration
             payload_to_check = stored_info["payload"]
             expiration_timestamp = payload_to_check.get("exp")
             if expiration_timestamp:
                 current_timestamp = datetime.datetime.now(datetime.timezone.utc).timestamp()
                 if current_timestamp > expiration_timestamp:
                     logger.error(f"mock_decode_token_simplified: Token '{token}' with payload {payload_to_check} is expired.")
-                    raise TokenExpiredException("Mock token has expired") # Use imported TokenExpiredException
+                    raise TokenExpiredException("Mock token has expired")
             
-            logger.info(f"mock_decode_token_simplified: Found token in store. Payload: {stored_info['payload']}")
-            return stored_info["payload"]
+            logger.info(f"mock_decode_token_simplified: Found token in store. Payload: {payload_to_check}")
+            # Ensure all required fields for TokenPayload are present or have defaults
+            # 'type' is required by TokenPayload
+            payload_to_check.setdefault('type', TokenType.ACCESS) # Default to access if not present
+            payload_to_check.setdefault('roles', []) # Default to empty list if not present
+            # 'sub', 'exp', 'iat', 'jti' should ideally be set by create_access_token
+            # For robustness, ensure they exist before creating TokenPayload
+            if 'sub' not in payload_to_check: payload_to_check['sub'] = str(uuid.uuid4()) # Default sub
+            if 'exp' not in payload_to_check: payload_to_check['exp'] = int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)).timestamp()) # Default exp
+            if 'iat' not in payload_to_check: payload_to_check['iat'] = int(datetime.datetime.now(datetime.timezone.utc).timestamp()) # Default iat
+            if 'jti' not in payload_to_check: payload_to_check['jti'] = str(uuid.uuid4()) # Default jti
+
+            try:
+                return TokenPayload(**payload_to_check) # Construct and return TokenPayload instance
+            except Exception as e:
+                logger.error(f"mock_decode_token_simplified: Error constructing TokenPayload from {payload_to_check}: {e}")
+                raise InvalidTokenException(f"Error creating TokenPayload from stored data: {e}")
+
         else:
             logger.error(f"mock_decode_token_simplified: Token '{token}' not found in issued_tokens_store. Keys: {list(issued_tokens_store.keys())}")
-            # Attempt to decode if it's a 3-part JWT-like string, for debugging
             parts = token.split('.')
             if len(parts) == 3:
                 try:
-                    decoded_payload_bytes = base64.urlsafe_b64decode(parts[1] + '==') # Add padding for b64decode
+                    decoded_payload_bytes = base64.urlsafe_b64decode(parts[1] + '==')
                     payload_dict = json.loads(decoded_payload_bytes.decode())
                     logger.warning(f"mock_decode_token_simplified: Decoded unrecognized token for debugging. Payload: {payload_dict}")
-                    # Still raise, as it wasn't in our store.
                 except Exception as e:
                     logger.error(f"mock_decode_token_simplified: Failed to decode unrecognized 3-part token '{token}' for debugging: {e}")
             raise InvalidTokenException(f"Simplified mock: Token {token} not in store")
 
     # decode_token should be an AsyncMock as the middleware awaits it
-    mock.decode_token = AsyncMock(side_effect=mock_decode_token_simplified)
+    # Change the type hint for the side_effect's return type to TokenPayload
+    mock.decode_token = AsyncMock(side_effect=mock_decode_token_simplified) # type: ignore
 
     async def _clear_store_action_simplified() -> None:
         # issued_tokens_store.clear() # Keep if stateful reset is desired
@@ -400,7 +428,7 @@ async def mock_override_user() -> User:
         full_name="Override User FullName", # Added full_name as it's required by the dataclass
         password_hash="override_hashed_password", # Added password_hash as it's required
         roles={UserRole.PATIENT}, # Use a set of Enum members
-        status=UserStatus.ACTIVE, # Set status correctly
+        account_status=UserStatus.ACTIVE, # CHANGED to account_status
         # Removed is_active, is_verified, email_verified as they are not __init__ params for the dataclass
         # The dataclass has defaults for created_at, mfa_enabled, attempts etc.
     )
@@ -553,7 +581,7 @@ async def client_function_scope(test_settings: Settings) -> AsyncGenerator[Async
 async def authenticated_user(
     db_session: AsyncSession,
     faker: Faker,
-) -> User:
+) -> DomainUser:
     """Creates, persists, and returns a standard authenticated PATIENT user."""
     user_data = {
         "id": uuid.uuid4(),
@@ -610,36 +638,41 @@ async def authenticated_user(
         user_to_create_orm = existing_user # use the one from DB
         logger.info(f"Authenticated_user fixture: User {user_data['username']} with ID {user_data['id']} ALREADY EXISTED. Using existing.")
 
-    # Convert ORM model to domain model for yielding
-    # Assuming User domain entity has a similar structure or a from_orm method
-    # For simplicity, let's re-create the domain User
-    # This might need adjustment based on actual User domain entity constructor
-    domain_user_roles = {UserRole(role_value) for role_value in orm_roles}
+    # Convert ORM roles to a set of domain UserRole enums
+    orm_roles = user_to_create_orm.roles or []
+    # Assuming orm_roles are string values like ["patient", "admin"]
+    # or enum members from a different UserRole enum specific to ORM model
+    domain_user_roles = {UserRole(role_value.value if hasattr(role_value, 'value') else str(role_value)) 
+                         for role_value in orm_roles}
+
+    full_name = f"{user_to_create_orm.first_name or ''} {user_to_create_orm.last_name or ''}".strip()
+    if not full_name:
+        full_name = user_to_create_orm.username # Fallback
     
-    domain_user = User(
+    # Construct domain_user based on User entity's __init__
+    domain_user = DomainUser(
         id=user_to_create_orm.id,
         email=user_to_create_orm.email,
         username=user_to_create_orm.username,
-        full_name=f"{user_to_create_orm.first_name or ''} {user_to_create_orm.last_name or ''}".strip(),
+        full_name=full_name,
         password_hash=user_to_create_orm.password_hash,
         roles=domain_user_roles,
         last_login=user_to_create_orm.last_login
-        # status defaults to PENDING_VERIFICATION
-        # created_at defaults
-        # other fields like mfa_enabled, attempts default
     )
 
     if user_to_create_orm.is_active:
-        domain_user.activate()
-    # Note: email_verified on ORMUser doesn't have a direct User.verify_email() method.
-    # Activation implies verification for test purposes. Default status is PENDING_VERIFICATION.
+        domain_user.activate() # Sets account_status to ACTIVE
+    else:
+        # If not explicitly active, ensure it reflects in domain model if needed (e.g. deactivate or rely on default PENDING_VERIFICATION)
+        # For now, if not active, it will have its default account_status or what activate/deactivate sets
+        pass 
 
-    logger.info(f"Authenticated_user fixture: Yielding DOMAIN user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
+    logger.info(f"Authenticated_user fixture: Yielding DOMAIN user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, account_status {domain_user.account_status}")
     yield domain_user # Yield the domain model
 
 
 @pytest_asyncio.fixture
-async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) -> User:
+async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) -> DomainUser:
     """Creates, persists, and returns an authenticated PROVIDER/CLINICIAN user."""
     user_data = {
         "id": uuid.uuid4(),
@@ -680,7 +713,7 @@ async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) ->
         logger.info(f"Authenticated_provider_user fixture: Provider {user_data['username']} with ID {user_data['id']} ALREADY EXISTED.")
         
     domain_user_roles = {UserRole(role_value) for role_value in orm_roles}
-    domain_user = User(
+    domain_user = DomainUser(
         id=user_to_create_orm.id,
         email=user_to_create_orm.email,
         username=user_to_create_orm.username,
@@ -696,12 +729,12 @@ async def authenticated_provider_user(db_session: AsyncSession, faker: Faker) ->
     if user_to_create_orm.is_active:
         domain_user.activate()
         
-    logger.info(f"Authenticated_provider_user fixture: Yielding DOMAIN provider user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
+    logger.info(f"Authenticated_provider_user fixture: Yielding DOMAIN provider user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, account_status {domain_user.account_status}")
     yield domain_user
 
 
 @pytest_asyncio.fixture
-async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> User:
+async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> DomainUser:
     """Creates, persists, and returns an authenticated ADMIN user."""
     user_data = {
         "id": uuid.uuid4(),
@@ -742,7 +775,7 @@ async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> Us
         logger.info(f"Authenticated_admin_user fixture: Admin {user_data['username']} with ID {user_data['id']} ALREADY EXISTED.")
 
     domain_user_roles = {UserRole(role_value) for role_value in orm_roles}
-    domain_user = User(
+    domain_user = DomainUser(
         id=user_to_create_orm.id,
         email=user_to_create_orm.email,
         username=user_to_create_orm.username,
@@ -758,14 +791,14 @@ async def authenticated_admin_user(db_session: AsyncSession, faker: Faker) -> Us
     if user_to_create_orm.is_active:
         domain_user.activate()
 
-    logger.info(f"Authenticated_admin_user fixture: Yielding DOMAIN admin user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, status {domain_user.status}")
+    logger.info(f"Authenticated_admin_user fixture: Yielding DOMAIN admin user {domain_user.username} with ID {domain_user.id}, roles {domain_user.roles}, account_status {domain_user.account_status}")
     yield domain_user
 
 
 @pytest_asyncio.fixture 
 async def auth_headers( 
     global_mock_jwt_service: MagicMock, # UPDATED: Depends on global_mock_jwt_service
-    authenticated_user: User, 
+    authenticated_user: DomainUser, # Type hint to DomainUser
 ) -> dict[str, str]:
     """Generate authentication headers for a mock authenticated user."""
     logger.info(f"AUTH_HEADERS FIXTURE: Using global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
@@ -815,7 +848,7 @@ async def auth_headers(
 @pytest_asyncio.fixture
 async def get_valid_auth_headers(
     global_mock_jwt_service: MagicMock,
-    authenticated_user: User # ADDED dependency
+    authenticated_user: DomainUser # ADDED dependency, type hint to DomainUser
 ) -> dict[str, str]:
     """Generate patient authentication headers using the mock JWT service for the given authenticated_user."""
     await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state for this specific header generation
@@ -831,7 +864,7 @@ async def get_valid_auth_headers(
 @pytest_asyncio.fixture
 async def get_valid_provider_auth_headers(
     global_mock_jwt_service: MagicMock,
-    authenticated_provider_user: User # ADDED dependency
+    authenticated_provider_user: DomainUser # ADDED dependency, type hint to DomainUser
 ) -> dict[str, str]:
     """Generate provider/clinician authentication headers for the given authenticated_provider_user."""
     await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
@@ -848,7 +881,7 @@ async def get_valid_provider_auth_headers(
 @pytest_asyncio.fixture
 async def get_valid_admin_auth_headers( # RENAMED from admin_auth_headers
     global_mock_jwt_service: MagicMock,
-    authenticated_admin_user: User # ADDED dependency
+    authenticated_admin_user: DomainUser # ADDED dependency, type hint to DomainUser
 ) -> dict[str, str]:
     """Generates authorization headers for the given authenticated_admin_user."""
     await global_mock_jwt_service.clear_issued_tokens() # Ensure clean state
@@ -966,11 +999,9 @@ def mock_auth_dependency():
         username="test_patient",
         email="test.patient@example.com",
         full_name="Test Patient",
-        hashed_password="not_a_real_hash",
-        roles=[UserRole.PATIENT.value],  # Use uppercase role values (PATIENT instead of patient)
-        is_active=True,
-        is_verified=True,
-        email_verified=True,
+        password_hash="not_a_real_hash", # CHANGED from hashed_password
+        roles={UserRole.PATIENT},  # CHANGED to set of enums
+        account_status=UserStatus.ACTIVE, # CHANGED to account_status
     )
     
     mock_provider = User(
@@ -978,11 +1009,9 @@ def mock_auth_dependency():
         username="test_provider",
         email="test.provider@example.com",
         full_name="Test Provider",
-        hashed_password="not_a_real_hash",
-        roles=[UserRole.CLINICIAN.value],  # Use uppercase role values (CLINICIAN instead of clinician)
-        is_active=True,
-        is_verified=True,
-        email_verified=True,
+        password_hash="not_a_real_hash", # CHANGED from hashed_password
+        roles={UserRole.CLINICIAN},  # CHANGED to set of enums
+        account_status=UserStatus.ACTIVE, # CHANGED to account_status
     )
     
     mock_admin = User(
@@ -990,11 +1019,9 @@ def mock_auth_dependency():
         username="test_admin",
         email="test.admin@example.com",
         full_name="Test Admin",
-        hashed_password="not_a_real_hash",
-        roles=[UserRole.ADMIN.value],  # Use uppercase role values (ADMIN instead of admin)
-        is_active=True,
-        is_verified=True,
-        email_verified=True,
+        password_hash="not_a_real_hash", # CHANGED from hashed_password
+        roles={UserRole.ADMIN},  # CHANGED to set of enums
+        account_status=UserStatus.ACTIVE, # CHANGED to account_status
     )
     
     # Store the mock users by role type
@@ -1073,3 +1100,21 @@ def configure_test_logging(request):
     # For autouse session fixtures, teardown is less common unless you're
     # modifying global state in a way that needs explicit reset.
     # Here, we're just adding handlers, which pytest usually manages fine.
+
+@pytest_asyncio.fixture(scope="function")
+async def global_mock_auth_service(
+    global_mock_user_repo: MagicMock, 
+    password_handler_fixture: PasswordHandler # Added dependency
+) -> MagicMock: # Return type is MagicMock
+    """Provides a MagicMock for IAuthService, pre-configured with a mock user repository and password handler."""
+    mock_service = MagicMock(spec=AuthServiceInterface) # Use the imported interface
+
+    # Example of mocking a method if needed directly, though often side_effects on repo are enough
+    # async def mock_authenticate(username_or_email, password):
+    #     user = await global_mock_user_repo.get_by_username(username_or_email) 
+    #     if user and password_handler_fixture.verify_password(password, user.password_hash):
+    #         return User.from_orm(user) # or direct User domain object
+    #     return None
+    # mock_service.authenticate_user = AsyncMock(side_effect=mock_authenticate)
+    
+    return mock_service

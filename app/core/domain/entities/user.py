@@ -44,7 +44,7 @@ class User:
         full_name: User's full name
         password_hash: Securely hashed password
         roles: Set of roles assigned to this user
-        status: Current account status
+        account_status: Current account status
         created_at: When the account was created
         last_login: When the user last logged in
         mfa_enabled: Whether multi-factor authentication is enabled
@@ -57,7 +57,7 @@ class User:
     password_hash: str
     id: UUID = field(default_factory=uuid4)
     roles: set[UserRole] = field(default_factory=lambda: {UserRole.PATIENT})
-    status: UserStatus = UserStatus.PENDING_VERIFICATION
+    account_status: UserStatus = UserStatus.PENDING_VERIFICATION
     created_at: datetime = field(default_factory=datetime.utcnow)
     last_login: datetime | None = None
     mfa_enabled: bool = False
@@ -119,15 +119,15 @@ class User:
             
     def activate(self) -> None:
         """Activate the user account."""
-        self.status = UserStatus.ACTIVE
+        self.account_status = UserStatus.ACTIVE
         
     def deactivate(self) -> None:
         """Deactivate the user account."""
-        self.status = UserStatus.INACTIVE
+        self.account_status = UserStatus.INACTIVE
         
     def suspend(self) -> None:
         """Suspend the user account."""
-        self.status = UserStatus.SUSPENDED
+        self.account_status = UserStatus.SUSPENDED
         
     def record_login(self) -> None:
         """Record a successful login."""
@@ -194,7 +194,7 @@ class User:
     @property
     def is_active(self) -> bool:
         """Whether the user account is active."""
-        return self.status == UserStatus.ACTIVE
+        return self.account_status == UserStatus.ACTIVE
         
     @property
     def lockout_triggered(self) -> bool:

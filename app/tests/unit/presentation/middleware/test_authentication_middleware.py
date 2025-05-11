@@ -19,7 +19,7 @@ from starlette.responses import JSONResponse
 from app.presentation.middleware.authentication import AuthenticationMiddleware, AuthenticatedUser
 
 # Domain entities & interfaces needed for mocks
-from app.core.domain.entities.user import User as DomainUser, UserStatus
+from app.core.domain.entities.user import User as DomainUser, UserStatus, UserRole
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 
@@ -101,15 +101,15 @@ def mock_user_repo_fixture(): # Renamed fixture
             return DomainUser(
                 id=UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"), 
                 username="doctor_user", email="doctor@example.com", 
-                full_name="Dr. Valid User", status=UserStatus.ACTIVE, 
-                roles=["psychiatrist"], password_hash="hashed_pass"
+                full_name="Dr. Valid User", account_status=UserStatus.ACTIVE,
+                roles={UserRole.CLINICIAN}, password_hash="hashed_pass"
             )
         elif user_id_str == "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12": # For user_inactive_user token
             return DomainUser(
                 id=UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12"), 
                 username="inactive_user", email="inactive@example.com",
-                full_name="Inactive User", status=UserStatus.INACTIVE,
-                roles=["patient"], password_hash="hashed_pass"
+                full_name="Inactive User", account_status=UserStatus.INACTIVE,
+                roles={UserRole.PATIENT}, password_hash="hashed_pass"
             )
         elif user_id_str == "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14": # For user_not_found_user token
             return None
@@ -180,9 +180,19 @@ class TestAuthenticationMiddleware:
         mock_repo_instance = MockSQLAlchemyUserRepository.return_value
         mock_repo_instance.get_user_by_id = mock_user_repo_fixture.get_user_by_id
 
-        # Now request.app.state exists, so we can directly set attributes on it
-        authenticated_request_fixture.app.state.actual_session_factory = MagicMock()
-        authenticated_request_fixture.app.state.settings = MagicMock() # also ensure settings is present if middleware checks it
+        # --- Mock session factory setup for middleware unit tests ---
+        mock_session_factory_on_state = MagicMock() # This is request.app.state.actual_session_factory
+        mock_db_session_from_factory = AsyncMock()  # This is what session_factory() returns
+
+        # Configure mock_db_session_from_factory to be an async context manager
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory # Yields itself
+        mock_db_session_from_factory.__aexit__.return_value = None # Must return something, can be None or an awaitable
+        
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        authenticated_request_fixture.app.state.actual_session_factory = mock_session_factory_on_state
+        # --- End mock session factory setup ---
+
+        authenticated_request_fixture.app.state.settings = MagicMock() # also ensure settings is present
 
         async def call_next_assertions(request: Request):
             assert isinstance(request.scope.get("user"), AuthenticatedUser)
@@ -201,9 +211,14 @@ class TestAuthenticationMiddleware:
         mock_repo_instance.get_user_by_id.assert_awaited_once_with(UUID('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')) # Mocked instance's method is called, check with UUID
 
     async def test_missing_token(self, auth_middleware_fixture, unauthenticated_request_fixture):
-        # Ensure app.state attributes are set for this request fixture too if dispatch might access them
-        # even for paths that result in early exit (like missing token)
-        unauthenticated_request_fixture.app.state.actual_session_factory = MagicMock()
+        # Ensure app.state attributes are set for this request fixture too
+        # For consistency, even if not strictly needed for this specific early exit path:
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        unauthenticated_request_fixture.app.state.actual_session_factory = mock_session_factory_on_state
         unauthenticated_request_fixture.app.state.settings = MagicMock()
 
         response = await auth_middleware_fixture.dispatch(unauthenticated_request_fixture, mock_call_next_base)
@@ -221,8 +236,13 @@ class TestAuthenticationMiddleware:
         scope["headers"] = [(b"authorization", f"Bearer {token_name}".encode())]
         request = StarletteRequest(scope)
 
-        # request.app is from base_scope, which now has .state mocked
-        request.app.state.actual_session_factory = MagicMock()
+        # Setup mocks on request.app.state for this test case
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        request.app.state.actual_session_factory = mock_session_factory_on_state
         request.app.state.settings = MagicMock()
         
         response = await auth_middleware_fixture.dispatch(request, mock_call_next_base)
@@ -236,8 +256,13 @@ class TestAuthenticationMiddleware:
         request = authenticated_request_fixture
         request.scope["path"] = "/health"
 
-        # request.app is from base_scope (via authenticated_request_fixture), .state is mocked
-        request.app.state.actual_session_factory = MagicMock()
+        # Setup mocks on request.app.state
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        request.app.state.actual_session_factory = mock_session_factory_on_state
         request.app.state.settings = MagicMock()
 
         async def call_next_public_assertions(req: Request):
@@ -255,13 +280,19 @@ class TestAuthenticationMiddleware:
     async def test_inactive_user(self, MockSQLAlchemyUserRepository, auth_middleware_fixture, base_scope, mock_user_repo_fixture):
         mock_repo_instance = MockSQLAlchemyUserRepository.return_value
         mock_repo_instance.get_user_by_id = mock_user_repo_fixture.get_user_by_id
-
+        
         token = "user_inactive_user"
         scope = base_scope.copy()
         scope["headers"] = [(b"authorization", f"Bearer {token}".encode())]
         request = StarletteRequest(scope)
 
-        request.app.state.actual_session_factory = MagicMock()
+        # Setup mocks on request.app.state
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        request.app.state.actual_session_factory = mock_session_factory_on_state
         request.app.state.settings = MagicMock()
 
         response = await auth_middleware_fixture.dispatch(request, mock_call_next_base)
@@ -280,7 +311,13 @@ class TestAuthenticationMiddleware:
         scope["headers"] = [(b"authorization", f"Bearer {token}".encode())]
         request = StarletteRequest(scope)
 
-        request.app.state.actual_session_factory = MagicMock()
+        # Setup mocks on request.app.state
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        request.app.state.actual_session_factory = mock_session_factory_on_state
         request.app.state.settings = MagicMock()
 
         response = await auth_middleware_fixture.dispatch(request, mock_call_next_base)
@@ -301,7 +338,13 @@ class TestAuthenticationMiddleware:
         scope["headers"] = [(b"authorization", f"Bearer {token}".encode())]
         request = StarletteRequest(scope)
 
-        request.app.state.actual_session_factory = MagicMock()
+        # Setup mocks on request.app.state
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        request.app.state.actual_session_factory = mock_session_factory_on_state
         request.app.state.settings = MagicMock()
 
         response = await auth_middleware_fixture.dispatch(request, mock_call_next_base)
@@ -313,8 +356,27 @@ class TestAuthenticationMiddleware:
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository')
     async def test_authentication_scopes_propagation(self, MockSQLAlchemyUserRepository, auth_middleware_fixture, base_scope, mock_jwt_service_fixture, mock_user_repo_fixture):
+        """Test that scopes from JWT are correctly propagated to request.scope["auth"]."""
         mock_repo_instance = MockSQLAlchemyUserRepository.return_value
-        # ... (custom_decode_side_effect and custom_user_repo_side_effect definitions remain the same)
+        mock_repo_instance.get_user_by_id = mock_user_repo_fixture.get_user_by_id # Use the general user repo mock
+
+        # Use a token that should be successfully decoded by the mock JWT service
+        # and map to a user that will be successfully found by the mock user repo.
+        token = "valid.jwt.token" 
+        scope = base_scope.copy()
+        scope["headers"] = [(b"authorization", f"Bearer {token}".encode())]
+        request = StarletteRequest(scope)
+
+        # Setup mocks on request.app.state
+        mock_session_factory_on_state = MagicMock()
+        mock_db_session_from_factory = AsyncMock()
+        mock_db_session_from_factory.__aenter__.return_value = mock_db_session_from_factory
+        mock_db_session_from_factory.__aexit__.return_value = None
+        mock_session_factory_on_state.return_value = mock_db_session_from_factory
+        request.app.state.actual_session_factory = mock_session_factory_on_state
+        request.app.state.settings = MagicMock()
+
+        # Custom call_next to assert scopes
         async def custom_decode_side_effect(token_str: str):
             if token_str == "scoped.token":
                 return TokenPayload(
@@ -347,7 +409,7 @@ class TestAuthenticationMiddleware:
         scope["headers"] = [(b"authorization", f"Bearer {token_str}".encode())]
         request = StarletteRequest(scope)
 
-        request.app.state.actual_session_factory = MagicMock()
+        request.app.state.actual_session_factory = mock_session_factory_on_state
         request.app.state.settings = MagicMock()
 
         async def call_next_scope_assertions(req: Request):

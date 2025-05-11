@@ -148,7 +148,7 @@ class TestAuthorization:
                     email=email,
                     full_name=f"{username} Full Name",
                     roles=[UserRole.PATIENT],
-                    status=UserStatus.ACTIVE,
+                    account_status=UserStatus.ACTIVE,
                     password_hash="hashed_password_example"
                 )
             return None
@@ -202,7 +202,7 @@ class TestAuthorization:
         mock_user_repo = AsyncMock(spec=IUserRepository)
         async def mock_get_user1_by_id(*, user_id: uuid.UUID):
             if user_id == user1_id:
-                return User(id=user1_id, username="patient1", email="patient1@example.com", full_name="Patient One Full Name", roles=[UserRole.PATIENT], status=UserStatus.ACTIVE, password_hash="hash")
+                return User(id=user1_id, username="patient1", email="patient1@example.com", full_name="Patient One Full Name", roles=[UserRole.PATIENT], account_status=UserStatus.ACTIVE, password_hash="hash")
             return None
         mock_user_repo.get_by_id = mock_get_user1_by_id
         mock_user_repo.get_user_by_id = mock_get_user1_by_id
@@ -248,10 +248,10 @@ class TestAuthorization:
                     id=provider_user_id, 
                     username=username, 
                     email=email, 
-                    full_name=f"{username} Full Name", 
+                    full_name=f"Dr. {username}",
                     roles=[UserRole.CLINICIAN], 
-                    status=UserStatus.ACTIVE, 
-                    password_hash="securehash"
+                    account_status=UserStatus.ACTIVE,
+                    password_hash="hashed_password_example"
                 )
             return None
         mock_user_repo.get_by_id = mock_get_provider_user_by_id
@@ -315,8 +315,8 @@ class TestAuthorization:
                     email=token_user_data["email"], 
                     full_name=f"{token_user_data['username']} Full Name", 
                     roles=[user_role], 
-                    status=UserStatus.ACTIVE, 
-                    password_hash="hash"
+                    account_status=UserStatus.ACTIVE,
+                    password_hash="hashed_password_example_generic"
                 )
             return None
         mock_user_repo.get_by_id = mock_get_user_by_id_inner
@@ -504,14 +504,14 @@ class TestErrorHandling:
             if user_id == requesting_user_id:
                 return User(
                     id=requesting_user_id,
-                    username=token_data.get("username", "testuser"), 
-                    email=token_data.get("email", "testuser@example.com"), 
-                    full_name="Test User Full Name", 
-                    roles=[UserRole.PATIENT], 
-                    status=UserStatus.ACTIVE, 
-                    password_hash="hash"
+                    username="requesting_user_for_error_test",
+                    email="requesting_error@example.com",
+                    full_name="Requesting Error User",
+                    roles=[UserRole.ADMIN], # Example role
+                    account_status=UserStatus.ACTIVE, # CHANGED
+                    password_hash="hashed_password_error_test"
                 )
-            return None
+            return None # Should not be called for other IDs in this specific test
         mock_user_repo.get_by_id = mock_get_requesting_user
         mock_user_repo.get_user_by_id = mock_get_requesting_user
         current_fastapi_app.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo
@@ -551,7 +551,15 @@ async def test_access_patient_phi_data_success_provider(
     mock_user_repo = AsyncMock(spec=IUserRepository)
     async def mock_get_provider_user(*, user_id: uuid.UUID):
         if user_id == provider_user_id:
-            return User(id=provider_user_id, username=token_data.get("username", "provider"), email=token_data.get("email", "provider@example.com"), full_name="Provider Full Name", roles=[UserRole.CLINICIAN], status=UserStatus.ACTIVE, password_hash="hash")
+            return User(
+                id=provider_user_id, 
+                username="phi_provider_user", 
+                email="phi_provider@example.com", 
+                full_name="Dr. PHI Accessor", 
+                roles=[UserRole.CLINICIAN], 
+                account_status=UserStatus.ACTIVE,
+                password_hash="hashed_password_phi_provider"
+            )
         return None
     mock_user_repo.get_by_id = mock_get_provider_user
     mock_user_repo.get_user_by_id = mock_get_provider_user
@@ -594,7 +602,15 @@ async def test_access_patient_phi_data_unauthorized_patient(
     mock_user_repo = AsyncMock(spec=IUserRepository)
     async def mock_get_patient_a_user(*, user_id: uuid.UUID):
         if user_id == patient_a_id:
-            return User(id=patient_a_id, username="patientA", email="patientA@example.com", full_name="Patient A Full Name", roles=[UserRole.PATIENT], status=UserStatus.ACTIVE, password_hash="hashA")
+            return User(
+                id=patient_a_id, 
+                username="phi_patient_a_user", 
+                email="phi_patient_a@example.com", 
+                full_name="Patient A PHI", 
+                roles=[UserRole.PATIENT],
+                account_status=UserStatus.ACTIVE,
+                password_hash="hashed_password_phi_patient_a"
+            )
         return None
     mock_user_repo.get_by_id = mock_get_patient_a_user
     mock_user_repo.get_user_by_id = mock_get_patient_a_user
@@ -632,7 +648,15 @@ async def test_access_patient_phi_data_patient_not_found(
     mock_user_repo = AsyncMock(spec=IUserRepository)
     async def mock_get_provider_user(*, user_id: uuid.UUID):
         if user_id == provider_user_id:
-            return User(id=provider_user_id, username=token_data.get("username","provider"), email=token_data.get("email","provider@example.com"), full_name="Provider Full Name", roles=[UserRole.CLINICIAN], status=UserStatus.ACTIVE, password_hash="hash")
+            return User(
+                id=provider_user_id, 
+                username="phi_provider_user_for_not_found_test", 
+                email="phi_provider_notfound@example.com", 
+                full_name="Dr. PHI Not Found Test", 
+                roles=[UserRole.CLINICIAN], 
+                account_status=UserStatus.ACTIVE,
+                password_hash="hashed_password_phi_provider_nf"
+            )
         return None
     mock_user_repo.get_by_id = mock_get_provider_user
     mock_user_repo.get_user_by_id = mock_get_provider_user
@@ -684,13 +708,12 @@ async def test_authenticated_but_unknown_role(
             # This part is tricky. For now, let's assume the User object can be formed.
             return User(
                 id=user_id_unknown_role, 
-                username="ceo_user", 
-                email="ceo@example.com", 
-                full_name="CEO User Full Name", 
-                # roles=["ceo"], # This would fail Pydantic validation if roles is Set[UserRole]
-                roles={UserRole.ADMIN}, # Fallback to a known role for User object creation
-                status=UserStatus.ACTIVE, 
-                password_hash="hash"
+                username="unknown_role_user", 
+                email="unknown_role@example.com", 
+                full_name="Unknown Role User",
+                roles=[UserRole.CEO], # Using a role that might not be explicitly handled by specific endpoint logic
+                account_status=UserStatus.ACTIVE,
+                password_hash="hashed_password_unknown_role"
             )
         return None
     mock_user_repo.get_by_id = mock_get_user_for_unknown_role

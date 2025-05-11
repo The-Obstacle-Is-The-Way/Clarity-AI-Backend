@@ -164,8 +164,24 @@ async def get_current_user(
     logger.info(f"GET_CURRENT_USER: Attributes of user (dir(user)): {dir(user)}")
     # --- END DETAILED LOGGING ---
 
-    if user.status != UserStatus.ACTIVE:
-        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
+    # --- CRITICAL PRE-CRASH CHECK ---
+    logger.critical(f"GET_CURRENT_USER: PRE-CRASH CHECK: id(user) = {id(user)}, type(user) = {type(user)}")
+    logger.critical(f"GET_CURRENT_USER: PRE-CRASH CHECK: id(user_repo) = {id(user_repo)}, type(user_repo) = {type(user_repo)}")
+    logger.critical(f"GET_CURRENT_USER: PRE-CRASH CHECK: Is user the same object as user_repo? {id(user) == id(user_repo)}")
+    # --- END CRITICAL PRE-CRASH CHECK ---
+
+    # --- ACCESS OTHER ATTRIBUTES BEFORE STATUS ---
+    try:
+        logger.info(f"GET_CURRENT_USER: Attempting to access user.id: {user.id}")
+        logger.info(f"GET_CURRENT_USER: Attempting to access user.email: {user.email}")
+        logger.info(f"GET_CURRENT_USER: Attempting to access user.username: {user.username}")
+        logger.info(f"GET_CURRENT_USER: Attempting to access user.roles: {user.roles}")
+    except Exception as e_access:
+        logger.error(f"GET_CURRENT_USER: Error accessing basic user attributes before status check: {e_access}", exc_info=True)
+    # --- END ACCESS OTHER ATTRIBUTES ---
+
+    if user.account_status != UserStatus.ACTIVE:
+        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.account_status}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
     logger.info(f"get_current_user: User {user.username} authenticated successfully.")
@@ -207,7 +223,7 @@ async def get_current_active_user(
     current_user: DomainUser = Depends(get_current_user)
 ) -> DomainUser:
     """Dependency to get the current active user."""
-    if current_user.status != UserStatus.ACTIVE:
+    if current_user.account_status != UserStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account is inactive"

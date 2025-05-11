@@ -10,6 +10,7 @@ import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timezone, timedelta
 
 import pytest
 import pytest_asyncio
@@ -326,69 +327,89 @@ def mock_encryption_service() -> IEncryptionService:
 @pytest.fixture
 def mock_jwt_service_with_placeholder_handling() -> JWTServiceInterface:
     """
-    Provides a mock JWTService that handles placeholder token strings
-    and returns corresponding TokenPayload objects.
+    Provides a mock JWT service that handles specific placeholder tokens.
+    
+    This allows tests to simulate different authentication states without
+    needing to generate full JWTs.
     """
-    # This mock JWT service fixture is designed to handle placeholder tokens
-    # used in some integration tests, returning predefined TokenPayload objects.
     mock_service = MagicMock(spec=JWTServiceInterface)
+    
+    # Define the side effect function for decode_token as an async function
+    async def decode_token_side_effect(token: str, audience: str | None = None) -> TokenPayload:
+        logger.info(f"INTEGRATION mock JWT decode_token CALLED with token: {token}")
+        
+        current_time = datetime.now(timezone.utc)
+        default_exp_time = current_time + timedelta(minutes=15)
+        default_iat_time = current_time
 
-    def decode_token_side_effect(token: str, audience: str | None = None) -> TokenPayload: # Added audience to match interface
-        logger.info(f"Mock JWT Service: Decoding token '{token}'")
+        # Handle predefined placeholder tokens
         if token == "VALID_PATIENT_TOKEN":
-            # Return a TokenPayload for a mock patient
-            # Ensure 'sub' is the predefined TEST_USER_ID
             return TokenPayload(
-                sub=str(TEST_USER_ID), # Use predefined patient UUID
-                username="mockpatient_placeholder", # Matches test_db_initializer
-                email="test.user@novamind.ai",    # Matches test_db_initializer
-                role=UserRole.PATIENT,
-                roles=[UserRole.PATIENT],
-                jti=str(uuid.uuid4()), # Placeholder JTI
-                exp=9999999999,  # Far future expiration
-                iat=0,  # Issued at epoch
+                sub=str(TEST_USER_ID), # Ensure this is a string representation of UUID
+                username="integration_test_patient", # This is an extra field not in TokenPayload, will be ignored by Pydantic if not in model
+                email="integration.patient@example.com", # Extra field
+                roles=[UserRole.PATIENT.value], # Use .value for string representation of enum
+                exp=int(default_exp_time.timestamp()), # Convert to int timestamp
+                iat=int(default_iat_time.timestamp()), # Add iat
+                jti=str(uuid.uuid4()), # Unique token ID
+                token_type="access", # This is an extra field, 'scope' or 'scopes' is used by TokenPayload
+                scope="access", # Use 'scope' or 'scopes'
+                # Add any other fields expected by TokenPayload or downstream consumers
+                first_name="Integration Test", # Extra field
+                last_name="Patient", # Extra field
+                is_active=True, # Extra field
+                is_verified=True # Extra field
             )
         elif token == "VALID_PROVIDER_TOKEN":
-            # Return a TokenPayload for a mock provider/clinician
-            # Ensure 'sub' is the predefined TEST_CLINICIAN_ID
             return TokenPayload(
-                sub=str(TEST_CLINICIAN_ID), # Use predefined clinician UUID
-                username="mockprovider_placeholder", # Username can be a placeholder
-                email="test.clinician@novamind.ai", # Matches test_db_initializer
-                role=UserRole.CLINICIAN,
-                roles=[UserRole.CLINICIAN],
-                jti=str(uuid.uuid4()), # Placeholder JTI
-                exp=9999999999,  # Far future expiration
-                iat=0,  # Issued at epoch
+                sub=str(TEST_CLINICIAN_ID), # Ensure this is a string representation of UUID
+                username="integration_test_provider", # Extra
+                email="integration.provider@example.com", # Extra
+                roles=[UserRole.CLINICIAN.value], # Use .value for string representation of enum
+                exp=int(default_exp_time.timestamp()), # Convert to int timestamp
+                iat=int(default_iat_time.timestamp()), # Add iat
+                jti=str(uuid.uuid4()),
+                token_type="access", # Extra, use scope
+                scope="access",
+                first_name="Integration Test", # Extra
+                last_name="Provider", # Extra
+                is_active=True, # Extra
+                is_verified=True # Extra
             )
         elif token == "VALID_ADMIN_TOKEN":
             return TokenPayload(
-                sub="mock_admin_id_placeholder",
-                username="mockadmin_placeholder",
-                email="admin_placeholder@example.com",
-                role=UserRole.ADMIN,
-                roles=[UserRole.ADMIN],
+                sub=str(uuid.UUID("00000000-0000-0000-0000-000000000003")), # Example Admin ID
+                username="integration_test_admin", # Extra
+                email="integration.admin@example.com", # Extra
+                roles=[UserRole.ADMIN.value], # Use .value for string representation of enum
+                exp=int(default_exp_time.timestamp()), # Convert to int timestamp
+                iat=int(default_iat_time.timestamp()), # Add iat
                 jti=str(uuid.uuid4()),
-                exp=9999999999,
-                iat=0,
-                active=True,
-                verified=True
+                token_type="access", # Extra, use scope
+                scope="access", 
+                first_name="Integration Test", # Extra
+                last_name="Admin", # Extra
+                is_active=True, # Extra
+                is_verified=True # Extra
             )
         elif token == "EXPIRED_TOKEN":
-            raise InvalidTokenException("Token has expired")
-        elif token == "INVALID_SIGNATURE_TOKEN":
-            raise InvalidTokenException("Invalid token signature (mocked)")
-        elif token == "MALFORMED_TOKEN":
-            raise InvalidTokenException("Malformed token (mocked)")
+            raise InvalidTokenException("Token has expired") # Simulate expired token
+        elif token == "INVALID_FORMAT_TOKEN":
+            raise InvalidTokenException("Invalid token format") # Simulate malformed token
         else:
-            # Attempt to decode as a real JWT if not a placeholder,
-            # or raise specific error for unhandled placeholders.
-            # For now, let's assume any other string is an unhandled placeholder.
-            raise InvalidTokenException(f"Token not recognized by mock_jwt_service_with_placeholder_handling: {token}")
+            # Default case for unhandled tokens
+            raise InvalidTokenException(f"Integration mock: Unhandled or invalid token format: {token}")
 
-    mock_service.decode_token.side_effect = decode_token_side_effect
-    # Mock create_access_token if it's called by the application during tests, though less likely for override scenario
-    # mock_service.create_access_token.return_value = "MOCK_JWT_TOKEN_FROM_CREATE"
+    # Assign the async side_effect to an AsyncMock instance
+    mock_service.decode_token = AsyncMock(side_effect=decode_token_side_effect)
+    
+    # Mock create_access_token and create_refresh_token to return placeholder strings if needed
+    # or actual JWTs if this mock service is also used for token generation in some tests.
+    # For now, assume they are not the primary focus for decoding tests.
+    mock_service.create_access_token = MagicMock(return_value="MOCK_ACCESS_JWT_STRING")
+    mock_service.create_refresh_token = MagicMock(return_value="MOCK_REFRESH_JWT_STRING")
+    mock_service.create_token_pair = MagicMock(return_value=("MOCK_ACCESS_JWT_STRING", "MOCK_REFRESH_JWT_STRING"))
+    
     return mock_service
 
 
@@ -518,7 +539,10 @@ async def test_app_with_db_session(
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     # Create the app instance
-    app = create_application(settings_override=test_settings)
+    app = create_application(
+        settings_override=test_settings,
+        jwt_service_override=mock_jwt_service_with_placeholder_handling
+    )
     
     # Create a properly configured session factory
     db_session_factory = async_sessionmaker(
@@ -530,7 +554,8 @@ async def test_app_with_db_session(
     
     # CRITICAL: Set the session factory directly in app.state
     # This is what the app will use for database access in API endpoints
-    app.state.db_session_factory = db_session_factory
+    app.state.actual_session_factory = db_session_factory
+    app.state.engine = test_db_engine
     
     # Add mock service overrides
     mock_aws_factory = MagicMock(spec=AWSServiceFactory)
@@ -541,23 +566,23 @@ async def test_app_with_db_session(
     app.dependency_overrides[get_jwt_service_provider] = lambda: mock_jwt_service_with_placeholder_handling
     
     # Verify session factory was set correctly
-    logger.info(f"Created db_session_factory in app.state: {app.state.db_session_factory}")
+    logger.info(f"Created db_session_factory in app.state: {app.state.actual_session_factory}")
     
     # Initialize the application's lifespan context to ensure proper setup
     async with LifespanManager(app):
         try:
             # Verify session factory is available
-            if not hasattr(app.state, 'db_session_factory') or app.state.db_session_factory is None:
-                logger.error("db_session_factory not available in app.state after lifespan initialization!")
-                raise RuntimeError("Failed to set db_session_factory in app.state")
+            if not hasattr(app.state, 'actual_session_factory') or app.state.actual_session_factory is None:
+                logger.error("actual_session_factory not available in app.state after lifespan initialization!")
+                raise RuntimeError("Failed to set actual_session_factory in app.state")
                 
-            logger.info("Application lifespan startup completed, db_session_factory is properly set")
+            logger.info("Application lifespan startup completed, actual_session_factory is properly set")
             yield app
         finally:
             # Clean up as needed
             logger.info("Cleaning up test_app_with_db_session fixture")
-            if hasattr(app.state, 'db_session_factory'):
-                app.state.db_session_factory = None
+            if hasattr(app.state, 'actual_session_factory'):
+                app.state.actual_session_factory = None
 
 @pytest_asyncio.fixture
 async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
@@ -630,44 +655,41 @@ def mock_auth_dependency():
     This allows tests to run without requiring a valid JWT token,
     while still providing the expected user object to the endpoints.
     """
-    # Import here to avoid circular imports
-    from app.presentation.api.dependencies.auth import (
-        get_current_user, 
-        get_current_active_user,
-        require_admin_role,
-        require_clinician_role
-    )
-    from app.core.domain.entities.user import User, UserRole, UserStatus
+    # raise RuntimeError("DEBUG: app/tests/integration/conftest.py mock_auth_dependency was called!") # DEBUGGING LINE - REVERTED
     
+    # Import here to avoid circular imports
+    from app.core.domain.entities.user import User, UserRole, UserStatus # Added UserStatus
+
     # Create mock users for different roles
+    # Ensure these match the User dataclass in app.core.domain.entities.user
     mock_patient = User(
-        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),  # TEST_USER_ID
-        username="test_patient",
-        email="test.patient@example.com",
-        full_name="Test Patient",
-        password_hash="not_a_real_hash",
+        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),  # TEST_USER_ID from utils.test_db_initializer
+        username="integration_test_patient",
+        email="integration.patient@example.com",
+        full_name="Integration Test Patient",
+        password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC", # Example hash
         roles={UserRole.PATIENT},
-        status=UserStatus.ACTIVE
+        account_status=UserStatus.ACTIVE, # Corrected to account_status
     )
     
     mock_provider = User(
-        id=uuid.UUID("00000000-0000-0000-0000-000000000002"),  # TEST_CLINICIAN_ID 
-        username="test_provider",
-        email="test.provider@example.com",
-        full_name="Test Provider",
-        password_hash="not_a_real_hash",
+        id=uuid.UUID("00000000-0000-0000-0000-000000000002"),  # TEST_CLINICIAN_ID from utils.test_db_initializer
+        username="integration_test_provider",
+        email="integration.provider@example.com",
+        full_name="Integration Test Provider",
+        password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC", # Example hash
         roles={UserRole.CLINICIAN},
-        status=UserStatus.ACTIVE
+        account_status=UserStatus.ACTIVE, # Corrected to account_status
     )
     
     mock_admin = User(
-        id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
-        username="test_admin",
-        email="test.admin@example.com",
-        full_name="Test Admin",
-        password_hash="not_a_real_hash",
+        id=uuid.UUID("00000000-0000-0000-0000-000000000003"), # Example Admin ID
+        username="integration_test_admin",
+        email="integration.admin@example.com",
+        full_name="Integration Test Admin",
+        password_hash="$2b$12$EixZaYVK1fsbw1ZfbX3RU.II9.eGCwJoF1732K/i54e9QaJIX3fOC", # Example hash
         roles={UserRole.ADMIN},
-        status=UserStatus.ACTIVE
+        account_status=UserStatus.ACTIVE, # Corrected to account_status
     )
     
     # Store the mock users by role type
@@ -675,31 +697,18 @@ def mock_auth_dependency():
         "PATIENT": mock_patient,
         "CLINICIAN": mock_provider,
         "ADMIN": mock_admin,
-        "DEFAULT": mock_provider,  # Default to provider since many endpoints require a clinician
+        "DEFAULT": mock_provider,  # Default to provider for broader endpoint access
     }
     
-    # Create async dependency override functions
-    async def mock_get_current_user():
-        return mock_users["DEFAULT"]
-        
-    async def mock_get_current_active_user():
-        return mock_users["DEFAULT"]
-        
-    async def mock_require_admin_role():
-        return mock_users["ADMIN"]
-        
-    async def mock_require_clinician_role():
-        return mock_users["CLINICIAN"]
-    
+    logger = logging.getLogger(__name__) # Ensure logger is defined if used
+
     # Return a function that can be used to override dependencies
     def override_dependency(role: str = "DEFAULT"):
-        if role == "ADMIN":
-            return mock_require_admin_role
-        elif role == "CLINICIAN":
-            return mock_require_clinician_role
-        elif role == "PATIENT":
-            return mock_get_current_user
-        else:
-            return mock_get_current_active_user
+        # Create an async function to return the appropriate user
+        async def get_mock_user():
+            user_to_return = mock_users.get(role, mock_users["DEFAULT"])
+            logger.info(f"INTEGRATION mock_auth_dependency providing user: {user_to_return.username} with roles {user_to_return.roles} and ID {user_to_return.id} and account_status {user_to_return.account_status}") # Added account_status logging
+            return user_to_return
+        return get_mock_user
     
     return override_dependency
