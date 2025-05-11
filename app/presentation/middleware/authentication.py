@@ -102,7 +102,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self, token: str, request: Request # ADDED request to access app.state
     ) -> tuple[AuthenticatedUser, list[str]]: 
         
-        token_payload = self.jwt_service.decode_token(token) 
+        token_payload = await self.jwt_service.decode_token(token)
 
         # --- Instantiate UserRepository on-the-fly ---
         session_factory = request.app.state.actual_session_factory
@@ -115,7 +115,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         user_repo_instance = SQLAlchemyUserRepository(session_factory=session_factory)
         # --- End UserRepository instantiation ---
 
-        user_id_from_token: str | None = token_payload.get("sub")
+        user_id_from_token: str | None = token_payload.sub
         if not user_id_from_token:
             logger.warning("AuthenticationMiddleware: 'sub' (user ID) not found in token payload.")
             raise InvalidTokenException("'sub' claim missing from token")
@@ -154,12 +154,27 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         request.scope["user"] = UnauthenticatedUser() 
         request.scope["auth"] = None 
         
+        # Logging for debugging request.state
+        logger.info(f"DISPATCH: request.state type: {type(request.state)}")
+        if hasattr(request.state, "_state"):
+            logger.info(f"DISPATCH: request.state._state type: {type(request.state._state)}, value: {request.state._state}")
+        else:
+            logger.info("DISPATCH: request.state has no _state attribute.")
+        if hasattr(request.state, "__dict__"):
+             logger.info(f"DISPATCH: request.state.__dict__: {request.state.__dict__}")
+
         # Attach app state to request state if not already done by an earlier middleware
-        # This is a fallback/ensure mechanism. Ideally, an earlier middleware handles this.
-        if not hasattr(request.state, 'actual_session_factory') and hasattr(request.app.state, 'actual_session_factory'):
-            request.state.actual_session_factory = request.app.state.actual_session_factory
-        if not hasattr(request.state, 'settings') and hasattr(request.app.state, 'settings'):
-            request.state.settings = request.app.state.settings
+        try:
+            _ = request.state.actual_session_factory
+        except AttributeError:
+            if hasattr(request.app, 'state') and hasattr(request.app.state, 'actual_session_factory'):
+                setattr(request.state, 'actual_session_factory', request.app.state.actual_session_factory)
+
+        try:
+            _ = request.state.settings
+        except AttributeError:
+            if hasattr(request.app, 'state') and hasattr(request.app.state, 'settings'):
+                setattr(request.state, 'settings', request.app.state.settings)
             
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path '{request.url.path}', skipping authentication.")
