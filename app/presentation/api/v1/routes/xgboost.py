@@ -9,7 +9,7 @@ the new presentation layer endpoints following SOLID principles.
 from typing import Annotated
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 
 # Import from the new clean architecture
 from app.core.domain.entities.user import User
@@ -30,7 +30,7 @@ from app.presentation.api.schemas.xgboost import (
     TreatmentResponseResponse,
     FeatureImportanceResponse,
 )
-from app.core.services.ml.xgboost.exceptions import DataPrivacyError, ModelNotFoundError, ServiceUnavailableError
+from app.core.services.ml.xgboost.exceptions import DataPrivacyError, ModelNotFoundError, ServiceUnavailableError, UnauthorizedError
 
 # Create logger
 logger = logging.getLogger(__name__)
@@ -464,9 +464,9 @@ async def predict_treatment_response(
 @router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)
 async def get_feature_importance(
     prediction_id: str,
-    patient_id: str,
-    xgboost_service: XGBoostDep,
-    user: UserDep,
+    patient_id: str = Query(..., description="The patient ID associated with the prediction"),
+    xgboost_service: XGBoostDep = Depends(),
+    user: UserDep = Depends(),
 ) -> FeatureImportanceResponse:
     """
     Get feature importance for a risk prediction.
@@ -482,35 +482,36 @@ async def get_feature_importance(
         user: The authenticated user
         
     Returns:
-        FeatureImportanceResponse: The feature importance scores
+        FeatureImportanceResponse: Feature importance for the prediction
         
     Raises:
-        HTTPException: If the prediction is not found or user lacks permissions
+        HTTPException: If prediction not found or user lacks patient permission
     """
     try:
-        # Get feature importance from the service
+        # Verify user has access to this patient data
+        verify_provider_access(user, patient_id)
+        
         result = await xgboost_service.get_feature_importance(
+            prediction_id=prediction_id,
             patient_id=patient_id,
-            model_type="risk",
-            prediction_id=prediction_id
         )
         
         return FeatureImportanceResponse(
-            prediction_id=result["prediction_id"],
-            model_type=result["model_type"],
-            feature_importance=result["feature_importance"],
-            timestamp=result.get("timestamp", format_date_iso(utcnow()))
+            prediction_id=prediction_id,
+            patient_id=patient_id,
+            features=result.features,
+            timestamp=result.timestamp,
+            model_version=result.model_version,
+            explanation_method=result.explanation_method,
         )
-    except ModelNotFoundError as e:
-        # Model or prediction not found
-        logger.warning(f"Feature importance not found: {str(e)}")
+        
+    except ModelNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Feature importance not found: {str(e)}"
+            detail=f"Prediction with ID {prediction_id} not found for patient {patient_id}",
         )
-    except Exception as e:
-        logger.error(f"Error getting feature importance: {str(e)}")
+    except UnauthorizedError:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving feature importance: {str(e)}"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Not authorized to access patient data for {patient_id}",
         )
