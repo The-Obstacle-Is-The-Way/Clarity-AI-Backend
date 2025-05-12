@@ -8,6 +8,7 @@ the new presentation layer endpoints following SOLID principles.
 
 from typing import Annotated
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
@@ -215,6 +216,65 @@ async def get_model_info_by_type(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ML service temporarily unavailable. Please try again later.",
         )
+
+
+def _has_phi(request_data):
+    """
+    Check if the request contains PHI (Personal Health Information).
+    
+    This is a simple implementation that looks for common PHI patterns.
+    In a production environment, this should be replaced with a more robust
+    PHI detection service.
+    
+    Args:
+        request_data: The request data to check for PHI
+        
+    Returns:
+        bool: True if PHI is detected, False otherwise
+    """
+    # Check for common PHI field names
+    phi_field_patterns = [
+        "ssn", "social_security", "address", "phone", "email", "dob", "birth",
+        "mrn", "medical_record", "zip", "postal", "license", "passport"
+    ]
+    
+    # Recursively check for PHI in dictionaries and lists
+    def check_value(value, path=""):
+        if isinstance(value, dict):
+            for k, v in value.items():
+                if check_value(v, f"{path}.{k}" if path else k):
+                    return True
+                
+                # Check if key contains PHI pattern
+                if any(pattern in k.lower() for pattern in phi_field_patterns):
+                    logger.warning(f"Potential PHI detected in field name: {path}.{k}")
+                    return True
+        
+        elif isinstance(value, list):
+            for i, v in enumerate(value):
+                if check_value(v, f"{path}[{i}]"):
+                    return True
+        
+        # Check for values that look like SSNs, phone numbers, etc.
+        elif isinstance(value, str):
+            # Check for SSN pattern (123-45-6789)
+            if re.search(r"\d{3}-\d{2}-\d{4}", value):
+                logger.warning(f"SSN pattern detected in {path}")
+                return True
+            
+            # Check for phone number pattern
+            if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", value):
+                logger.warning(f"Phone number pattern detected in {path}")
+                return True
+            
+            # Check for email pattern
+            if re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", value):
+                logger.warning(f"Email pattern detected in {path}")
+                return True
+        
+        return False
+    
+    return check_value(request_data.__dict__ if hasattr(request_data, "__dict__") else dict(request_data))
 
 
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)

@@ -120,7 +120,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                 )
         else:
             # For paths that aren't public but don't have the header, set unauthenticated
-            if not await self._is_public_path(request.url.path):
+            if not self._is_public_path(request.url.path):
                 return JSONResponse(
                     {"detail": "Not authenticated"},
                     status_code=HTTP_401_UNAUTHORIZED
