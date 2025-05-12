@@ -31,6 +31,7 @@ class EncryptedTypeBase(types.TypeDecorator):
         self.encryption_service = encryption_service_instance
 
     def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
+        logger.debug(f"[EncryptedTypeBase] process_bind_param called for type {self.__class__.__name__}. Encryption service ID: {id(self.encryption_service)}")
         if value is None:
             return None
         try:
@@ -40,6 +41,7 @@ class EncryptedTypeBase(types.TypeDecorator):
             # Its .encrypt() method handles type conversion (if needed) and returns 
             # the correctly formatted, version-prefixed, base64-encoded string.
             encrypted_string_with_prefix = self.encryption_service.encrypt(value)
+            logger.debug(f"[EncryptedTypeBase] process_bind_param: Encrypted value (prefix included): {encrypted_string_with_prefix[:15]}...")
             
             # Simply return the string provided by the service.
             return encrypted_string_with_prefix
@@ -53,6 +55,7 @@ class EncryptedTypeBase(types.TypeDecorator):
             raise ValueError("Unexpected encryption error during bind parameter processing.") from e
 
     def process_result_value(self, value: str | None, dialect: Dialect) -> Any | None:
+        logger.debug(f"[EncryptedTypeBase] process_result_value called for type {self.__class__.__name__}. Encryption service ID: {id(self.encryption_service)}")
         # 'value' is the raw string from the DB (e.g., v1:base64...)
         if value is None:
             return None
@@ -66,6 +69,8 @@ class EncryptedTypeBase(types.TypeDecorator):
             except Exception:
                  raise TypeError(f"Cannot process non-string value {type(value)} from encrypted column.")
 
+        logger.debug(f"[EncryptedTypeBase] process_result_value: Received raw value from DB (prefix included?): {value[:15]}...")
+
         if not value.startswith(self.encryption_service.VERSION_PREFIX):
             # If it doesn't have the prefix, assume it wasn't encrypted by our service
             # and return it as is. Log a warning.
@@ -76,7 +81,9 @@ class EncryptedTypeBase(types.TypeDecorator):
 
         try:
             # Pass the full prefixed string to decrypt_string
+            logger.debug(f"[EncryptedTypeBase] process_result_value: Calling decrypt_string with value: {value[:15]}...")
             decrypted_plain_string = self.encryption_service.decrypt_string(value)
+            logger.debug(f"[EncryptedTypeBase] process_result_value: Decrypted plain string (type: {type(decrypted_plain_string)}): {repr(decrypted_plain_string)[:100]}...")
             
             # If decrypt_string returns None (e.g., due to error or original None), return None
             if decrypted_plain_string is None:
