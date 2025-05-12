@@ -29,6 +29,7 @@ from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.core.domain.enums import Gender # Corrected Gender import
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin, AuditMixin
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
+from app.domain.exceptions.persistence_exceptions import PersistenceError
 
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references
