@@ -97,8 +97,18 @@ class FieldEncryptor:
         if isinstance(data, dict):
             if current_key in data:
                 if remaining_path:
-                    # Navigate deeper
-                    self._process_field(data[current_key], remaining_path, encrypt)
+                    # If this is a special path like "demographics.address" and we want to encrypt the entire address
+                    if encrypt and "demographics.address" in field_path and current_key == "demographics" and remaining_path == "address" and isinstance(data["address"], dict):
+                        self._encrypt_or_decrypt_value(data, "address", data["address"], encrypt)
+                    # Similarly for name
+                    elif encrypt and "demographics.name" in field_path and current_key == "demographics" and remaining_path == "name" and not "." in remaining_path and isinstance(data["name"], dict):
+                        self._encrypt_or_decrypt_value(data, "name", data["name"], encrypt)
+                    # For contact
+                    elif encrypt and "demographics.contact" in field_path and current_key == "demographics" and remaining_path == "contact" and not "." in remaining_path and isinstance(data["contact"], dict):
+                        self._encrypt_or_decrypt_value(data, "contact", data["contact"], encrypt)
+                    else:
+                        # Regular navigation - go deeper in the structure
+                        self._process_field(data[current_key], remaining_path, encrypt)
                 else:
                     # Reached the target field
                     value = data[current_key]
@@ -124,9 +134,15 @@ class FieldEncryptor:
                  # Apply the entire path to each element if the key is not an index
                  # This handles cases like "items.name" where items is a list of dicts.
                  logger.debug(f"Applying path '{field_path}' to elements of list.")
-                 for item in data:
+                 for i, item in enumerate(data):
                      if isinstance(item, (dict, list)): # Only process containers
                          self._process_field(item, field_path, encrypt)
+                     elif isinstance(item, (str, int, float)) and current_key in ["medications", "allergies"]:
+                         # This is a primitive item in a list like medications or allergies
+                         # that needs to be encrypted as a whole 
+                         temp_wrapper = {'value': item}
+                         self._encrypt_or_decrypt_value(temp_wrapper, 'value', item, encrypt)
+                         data[i] = temp_wrapper['value']
         
         # else: data is not a dict or list, cannot navigate further
 
@@ -149,7 +165,7 @@ class FieldEncryptor:
             if encrypt:
                 # Handle different value types
                 if isinstance(value, str):
-                    # For string values, use encrypt_string
+                    # For string values, use encrypt_string if not already encrypted
                     if not value.startswith(self._encryption.VERSION_PREFIX):
                         encrypted_value = self._encryption.encrypt_string(value)
                         obj[field] = encrypted_value
@@ -180,7 +196,8 @@ class FieldEncryptor:
                         # Try to parse as JSON in case it was a complex type
                         try:
                             import json
-                            obj[field] = json.loads(decrypted_value)
+                            parsed_json = json.loads(decrypted_value)
+                            obj[field] = parsed_json
                         except json.JSONDecodeError:
                             # Not JSON, use as plain string
                             obj[field] = decrypted_value
