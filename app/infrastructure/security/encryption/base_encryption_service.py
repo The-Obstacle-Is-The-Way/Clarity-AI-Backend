@@ -326,10 +326,11 @@ decryption methods for strings and dictionaries.
                 if data.startswith(self.VERSION_PREFIX):
                     encrypted_data_b64 = data[len(self.VERSION_PREFIX):]
                     try:
-                        encrypted_data = base64.urlsafe_b64decode(encrypted_data_b64)
+                        # Encode the string slice to bytes before decoding base64
+                        encrypted_data = base64.urlsafe_b64decode(encrypted_data_b64.encode('utf-8'))
                         has_version_prefix = True
                     except (binascii.Error, ValueError) as e:
-                        logger.error(f"Base64 decoding failed for string input: {e}")
+                        logger.error(f"Base64 decoding failed for string input: {e}. Input slice: {encrypted_data_b64[:50]}...", exc_info=False)
                         raise ValueError("Decryption failed: Invalid base64 encoding") from e
                 else:
                     # String without prefix - treat as invalid format for decryption

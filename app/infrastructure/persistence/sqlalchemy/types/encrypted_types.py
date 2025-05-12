@@ -34,80 +34,72 @@ class EncryptedTypeBase(types.TypeDecorator):
         if value is None:
             return None
         try:
-            value_str = str(value) 
-            # self.encryption_service is EncryptionService, its .encrypt() returns bytes.
-            encrypted_bytes = self.encryption_service.encrypt(value_str) 
+            # value_str = str(value) # No need to force string conversion here if encrypt handles it
             
-            if encrypted_bytes is None:
-                logger.warning("EncryptionService.encrypt returned None for a non-None value.")
-                return None # Or handle as an error
+            # self.encryption_service is BaseEncryptionService.
+            # Its .encrypt() method handles type conversion (if needed) and returns 
+            # the correctly formatted, version-prefixed, base64-encoded string.
+            encrypted_string_with_prefix = self.encryption_service.encrypt(value)
+            
+            # Simply return the string provided by the service.
+            return encrypted_string_with_prefix
 
-            # Create the version-prefixed, base64 encoded string for DB storage
-            # VERSION_PREFIX should be accessible from self.encryption_service (inherited from BaseEncryptionService)
-            prefixed_encrypted_string = f"{self.encryption_service.VERSION_PREFIX}{base64.urlsafe_b64encode(encrypted_bytes).decode('utf-8')}"
-            return prefixed_encrypted_string
-
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.error(f"Encryption failed during bind processing: {e}", exc_info=True)
             raise ValueError("Encryption failed during bind parameter processing.") from e
+        except Exception as e:
+            # Catch unexpected errors from self.encryption_service.encrypt
+            logger.error(f"Unexpected encryption error during bind processing: {e}", exc_info=True)
+            raise ValueError("Unexpected encryption error during bind parameter processing.") from e
 
-    def process_result_value(self, value: str | None, dialect: Dialect) -> str | None:
+    def process_result_value(self, value: str | None, dialect: Dialect) -> Any | None:
+        # 'value' is the raw string from the DB (e.g., v1:base64...)
         if value is None:
             return None
 
-        str_value_from_db = None
-        if isinstance(value, bytes): 
+        if not isinstance(value, str):
+            # Log or raise if the DB returned something unexpected
+            logger.warning(f"EncryptedTypeBase.process_result_value expected str from DB, got {type(value)}")
+            # Attempt to convert to string as a fallback, but this indicates a potential issue
             try:
-                str_value_from_db = value.decode('utf-8')
-            except UnicodeDecodeError as e:
-                raise ValueError(f"Invalid UTF-8 bytes in encrypted column: {e}") from e
-        elif isinstance(value, str):
-            str_value_from_db = value
-        else:
-            try:
-                str_value_from_db = str(value)
-            except Exception as e:
-                raise TypeError(f"Cannot process unexpected input type {type(value)} in encrypted column: {e}") from e
+                value = str(value)
+            except Exception:
+                 raise TypeError(f"Cannot process non-string value {type(value)} from encrypted column.")
 
-        if str_value_from_db is None: 
-             raise ValueError("Value from DB became None unexpectedly during processing.")
+        if not value.startswith(self.encryption_service.VERSION_PREFIX):
+            # If it doesn't have the prefix, assume it wasn't encrypted by our service
+            # and return it as is. Log a warning.
+            logger.warning(f"Value from DB does not start with expected prefix '{self.encryption_service.VERSION_PREFIX}'. Returning raw value. Value: '{value[:100]}...'")
+            # This behavior might need adjustment based on policy (e.g., raise error, return None).
+            # For now, returning raw value allows handling unencrypted legacy data.
+            return self._convert_result_value(value) # Apply final conversion if needed
 
         try:
-            # self.encryption_service is an EncryptionService instance.
-            # Its .decrypt() method expects raw encrypted bytes (no prefix, no base64).
-
-            if not str_value_from_db.startswith(self.encryption_service.VERSION_PREFIX):
-                logger.error(f"Encrypted data from DB is missing version prefix '{self.encryption_service.VERSION_PREFIX}'. Value: {repr(str_value_from_db)}")
-                raise ValueError("Encrypted data from DB is missing version prefix.")
-
-            payload_b64 = str_value_from_db[len(self.encryption_service.VERSION_PREFIX):]
+            # Pass the full prefixed string to decrypt_string
+            decrypted_plain_string = self.encryption_service.decrypt_string(value)
             
-            try:
-                raw_encrypted_bytes_payload = base64.urlsafe_b64decode(payload_b64.encode('utf-8'))
-            except base64.binascii.Error as b64e:
-                logger.error(f"Base64 decode error for payload: {payload_b64}. Error: {b64e}")
-                raise ValueError("Invalid Base64 payload in encrypted data.") from b64e
-
-            # Now pass the raw encrypted bytes to EncryptionService.decrypt
-            decrypted_bytes = self.encryption_service.decrypt(raw_encrypted_bytes_payload)
-
-            if decrypted_bytes is None:
-                logger.warning(f"EncryptionService.decrypt returned None. Original encrypted value from DB: {repr(str_value_from_db)}")
+            # If decrypt_string returns None (e.g., due to error or original None), return None
+            if decrypted_plain_string is None:
                 return None
-
-            try:
-                decrypted_final_str = decrypted_bytes.decode('utf-8')
-            except UnicodeDecodeError as ude:
-                logger.error(f"UnicodeDecodeError after decryption. Bytes: {repr(decrypted_bytes)}. Error: {ude}")
-                raise ValueError("Failed to decode decrypted bytes to UTF-8 string.") from ude
+                
+            # Apply final conversion based on the specific type (implemented in subclass)
+            return self._convert_result_value(decrypted_plain_string)
             
-            return decrypted_final_str
-        except ValueError as ve: 
-            logger.error(f"ValueError during decryption process in EncryptedTypeBase: {ve}", exc_info=True)
-            raise
+        except ValueError as e:
+            logger.error(f"Decryption failed for value '{value[:100]}...': {e}", exc_info=False) # Keep log concise
+            # Decide how to handle decryption errors: raise, return None, return original?
+            # Raising ensures data integrity issues are surfaced.
+            raise ValueError(f"Failed to decrypt value: {e}") from e
         except Exception as e:
-            logger.error(f"Unexpected error during decryption process in EncryptedTypeBase: {e}, value from DB: {repr(str_value_from_db)}", exc_info=True)
-            raise ValueError(f"Decryption process failed: {e}") from e
+            logger.error(f"Unexpected error during decryption result processing: {e}", exc_info=True)
+            raise ValueError("Unexpected decryption error.") from e
+
+    def _convert_result_value(self, decrypted_plain_string: str) -> Any:
+        """Convert the decrypted plain string to the final Python type.
+           To be implemented by subclasses (e.g., EncryptedJSON will parse JSON).
+           The base implementation returns the string as is.
+        """
+        return decrypted_plain_string
 
     @property
     def python_type(self):
@@ -200,6 +192,22 @@ class EncryptedJSON(EncryptedTypeBase):
             raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{decrypted_json_string[:100]}'") from e
         except Exception as e: # Catch any other error during json.loads
             logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
+            raise ValueError("Failed to process decrypted JSON data after decryption.") from e
+
+    # Override _convert_result_value for JSON parsing
+    def _convert_result_value(self, decrypted_plain_string: str) -> Any:
+        if decrypted_plain_string is None:
+            return None
+        try:
+            # Parse the decrypted plain JSON string into a Python object
+            return json.loads(decrypted_plain_string)
+        except json.JSONDecodeError as e:
+            logger.error(f"EncryptedJSON: Failed to decode JSON from decrypted string: {e}. Decrypted string (repr): {repr(decrypted_plain_string)}", exc_info=True)
+            if not decrypted_plain_string.strip():
+                logger.error("EncryptedJSON: Decrypted string was empty or whitespace.")
+            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{decrypted_plain_string[:100]}'") from e
+        except Exception as e:
+            logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_plain_string)}", exc_info=True)
             raise ValueError("Failed to process decrypted JSON data after decryption.") from e
 
 __all__ = [
