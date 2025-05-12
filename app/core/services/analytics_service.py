@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.interfaces.services.analytics_service_interface import AnalyticsServiceInterface
+from app.core.utils.date_utils import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class AnalyticsService(AnalyticsServiceInterface):
         """
         # Set default timestamp if not provided
         if not timestamp:
-            timestamp = datetime.utcnow()
+            timestamp = utcnow()
             
         # Sanitize event data to remove PHI
         sanitized_data = self._sanitize_event_data(event_data)
@@ -123,7 +124,7 @@ class AnalyticsService(AnalyticsServiceInterface):
                 "reports": 12,
                 "settings": 3
             },
-            "last_activity": datetime.utcnow().isoformat()
+            "last_activity": utcnow().isoformat()
         }
     
     async def get_system_metrics(

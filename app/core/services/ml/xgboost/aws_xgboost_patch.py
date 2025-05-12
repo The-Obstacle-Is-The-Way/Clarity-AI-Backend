@@ -9,6 +9,7 @@ import json
 from datetime import datetime
 from typing import Any
 
+from app.core.utils.date_utils import utcnow
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
     DataPrivacyError,
@@ -113,7 +114,7 @@ async def predict_risk(self, patient_id: str, risk_type: str, clinical_data: dic
         "patient_id": patient_id,
         "risk_type": risk_type,
         "clinical_data": clinical_data,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": utcnow().isoformat()
     }
     
     # Invoke endpoint

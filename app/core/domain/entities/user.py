@@ -10,6 +10,8 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
+from app.core.utils.date_utils import utcnow
+
 
 class UserRole(str, Enum):
     """Enum for available user roles within the system."""
@@ -50,7 +52,6 @@ class User:
         mfa_enabled: Whether multi-factor authentication is enabled
         attempts: Number of consecutive failed login attempts
     """
-    # MODIFIED: Revert to original field definitions without custom __init__
     email: str
     username: str
     full_name: str
@@ -58,7 +59,7 @@ class User:
     id: UUID = field(default_factory=uuid4)
     roles: set[UserRole] = field(default_factory=lambda: {UserRole.PATIENT})
     account_status: UserStatus = UserStatus.PENDING_VERIFICATION
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=utcnow)
     last_login: datetime | None = None
     mfa_enabled: bool = False
     mfa_secret: str | None = None
@@ -131,7 +132,7 @@ class User:
         
     def record_login(self) -> None:
         """Record a successful login."""
-        self.last_login = datetime.utcnow()
+        self.last_login = utcnow()
         self.attempts = 0
         
     def record_login_attempt(self) -> None:
@@ -189,7 +190,7 @@ class User:
         if self.reset_token != token:
             return False
             
-        return datetime.utcnow() < self.reset_token_expires
+        return utcnow() < self.reset_token_expires
         
     @property
     def is_active(self) -> bool:
