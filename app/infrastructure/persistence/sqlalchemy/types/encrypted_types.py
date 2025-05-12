@@ -168,97 +168,66 @@ class EncryptedText(EncryptedTypeBase):
         return str
 
 class EncryptedJSON(EncryptedTypeBase):
-    """SQLAlchemy TypeDecorator for automatically encrypting/decrypting JSON serializable objects."""
-
-    @property
-    def python_type(self):
-        return dict # Or object, if various types are expected
-
-    def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
-        if value is None:
-            return None # Let superclass handle None if it has specific logic, though it also returns None.
+    """Encrypted JSON column type for SQLAlchemy.
+    
+    Serialize Python objects to JSON, encrypt the JSON string,
+    and store the encrypted string in the database.
+    """
+    
+    def _convert_bind_param(self, value: dict | list | Any) -> str:
+        """
+        Convert a Python object to a JSON string for encryption.
         
-        json_string = None
-        try:
-            # Priority 1: Pydantic BaseModel V2+
-            if hasattr(value, 'model_dump_json') and callable(value.model_dump_json):
-                json_string = value.model_dump_json()
-            # Priority for Pydantic BaseModel V1 (or similar .dict() method)
-            elif hasattr(value, 'dict') and callable(value.dict):
-                # Ensure it's not a standard dict's .dict method if that even exists
-                # This check is a bit heuristic; ideally, rely on specific types.
-                if not isinstance(value, dict) or 'model_dump' in dir(value): # Check if it might be Pydantic like
-                    dict_val = value.dict() 
-                    json_string = json.dumps(dict_val)
-                else:
-                    json_string = json.dumps(value) # Standard dict
-            # Priority 2: Objects with to_dict() method (e.g., custom dataclasses)
-            elif hasattr(value, 'to_dict') and callable(value.to_dict):
-                dict_val = value.to_dict()
-                json_string = json.dumps(dict_val) 
-            # Priority 3: Standard json.dumps for basic types (dict, list, str, int, float, bool, None)
-            else:
-                json_string = json.dumps(value)
-        except TypeError as e:
-            logger.error(f"EncryptedJSON: Failed to serialize value of type {type(value)}: {e}. Value (repr): {repr(value)[:200]}")
-            raise ValueError(f"JSON serialization failed for EncryptedJSON input type {type(value)}: {e}") from e
+        Args:
+            value: The Python object to convert to JSON (usually dict or list)
             
-        if json_string is None and value is not None: # Should not happen if serialization worked or raised
-            logger.error(f"EncryptedJSON: json_string is None after serialization attempt for non-None value of type {type(value)}.")
-            raise ValueError("EncryptedJSON: Serialization resulted in None for a non-None value that should have been serialized.")
-
-        # Delegate the encryption of the JSON string to the parent class's method
-        return super().process_bind_param(json_string, dialect)
-
-    def process_result_value(self, value: str | None, dialect: Dialect) -> Any | None:
-        # `value` is the raw (potentially prefixed and base64 encoded) string from the DB.
-        # Let the parent class handle decryption of this raw string to a plain JSON string.
-        decrypted_json_string = super().process_result_value(value, dialect)
-
-        if decrypted_json_string is None:
+        Returns:
+            JSON string
+            
+        Raises:
+            TypeError: If the value cannot be serialized to JSON
+        """
+        if value is None:
             return None
+            
+        try:
+            # If already a string, assume it's valid JSON
+            if isinstance(value, str):
+                # Validate by parsing and re-serializing to ensure consistency
+                return json.dumps(json.loads(value))
+                
+            # Otherwise serialize to JSON
+            return json.dumps(value)
+        except (TypeError, json.JSONDecodeError) as e:
+            logger.error(f"Failed to encode value as JSON: {e}")
+            raise TypeError(f"Cannot encode value as JSON: {e}") from e
+    
+    def _convert_result_value(self, decrypted_value: str | dict | list) -> dict | list | None:
+        """
+        Convert a decrypted string to a Python object by parsing JSON.
         
-        try:
-            # If the decrypted value is already a dict or similar object (which can happen in tests or with mocks),
-            # simply return it without attempting to parse as JSON
-            if isinstance(decrypted_json_string, (dict, list)):
-                return decrypted_json_string
-                
-            # Now, parse the decrypted plain JSON string into a Python object (dict, list, etc.)
-            return json.loads(decrypted_json_string)
-        except json.JSONDecodeError as e:
-            logger.error(f"EncryptedJSON: Failed to decode JSON from decrypted string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
-            # It's important to know if the decrypted string was empty or malformed
-            if not isinstance(decrypted_json_string, str):
-                logger.error(f"EncryptedJSON: Decrypted string was not a string but {type(decrypted_json_string)}")
-            elif not decrypted_json_string.strip():
-                logger.error("EncryptedJSON: Decrypted string was empty or whitespace.")
-            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{str(decrypted_json_string)[:100]}'") from e
-        except Exception as e: # Catch any other error during json.loads
-            logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
-            raise ValueError("Failed to process decrypted JSON data after decryption.") from e
-
-    # Override _convert_result_value for JSON parsing
-    def _convert_result_value(self, decrypted_plain_string: str) -> Any:
-        if decrypted_plain_string is None:
+        Args:
+            decrypted_value: The decrypted JSON string or possibly already a dict/list
+            
+        Returns:
+            Parsed Python object (usually dict or list)
+            
+        Raises:
+            ValueError: If the JSON parsing fails
+        """
+        if decrypted_value is None:
             return None
+            
+        # If already a dict or list, return as is (happens in tests)
+        if isinstance(decrypted_value, (dict, list)):
+            return decrypted_value
+            
+        # Parse the JSON string
         try:
-            # Check if the decrypted value is already a dict or similar object
-            if isinstance(decrypted_plain_string, (dict, list)):
-                return decrypted_plain_string
-                
-            # Parse the decrypted plain JSON string into a Python object
-            return json.loads(decrypted_plain_string)
-        except json.JSONDecodeError as e:
-            logger.error(f"EncryptedJSON: Failed to decode JSON from decrypted string: {e}. Decrypted string (repr): {repr(decrypted_plain_string)}", exc_info=True)
-            if not isinstance(decrypted_plain_string, str):
-                logger.error(f"EncryptedJSON: Decrypted string was not a string but {type(decrypted_plain_string)}")
-            elif not decrypted_plain_string.strip():
-                logger.error("EncryptedJSON: Decrypted string was empty or whitespace.")
-            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{str(decrypted_plain_string)[:100]}'") from e
-        except Exception as e:
-            logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_plain_string)}", exc_info=True)
-            raise ValueError("Failed to process decrypted JSON data after decryption.") from e
+            return json.loads(decrypted_value)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.error(f"Failed to parse JSON after decryption: {e}")
+            raise ValueError(f"Failed to parse JSON after decryption: {e}") from e
 
 __all__ = [
     "EncryptedString",
