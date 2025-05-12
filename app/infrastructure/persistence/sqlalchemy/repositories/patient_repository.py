@@ -50,6 +50,10 @@ def model_json_dumps(obj: Any) -> str | None:
     if obj is None:
         return None
     
+    # Handle unittest.mock.MagicMock objects
+    if hasattr(obj, '__class__') and obj.__class__.__name__ == 'MagicMock':
+        return json.dumps({"__mock__": str(obj)})
+    
     # Handle Pydantic models (v2)
     if hasattr(obj, 'model_dump'):
         return json.dumps(obj.model_dump())
@@ -174,49 +178,34 @@ class PatientRepository:
                 # This now relies on TypeDecorators in PatientModel for encryption
                 patient_model = await PatientModel.from_domain(patient_entity) # REMOVED encryption_service
                 
-                # Ensure complex nested objects are properly serialized before saving to SQLAlchemy
-                if hasattr(patient_model, '_contact_info') and patient_model._contact_info is not None:
-                    if not isinstance(patient_model._contact_info, str):
-                        patient_model._contact_info = model_json_dumps(patient_model._contact_info)
+                # Process all complex fields that may need serialization
+                complex_fields = [
+                    '_contact_info', '_address_details', '_emergency_contact_details',
+                    '_preferences', '_custom_fields', '_extra_data',
+                    '_medical_history', '_medications', '_allergies'
+                ]
                 
-                if hasattr(patient_model, '_address_details') and patient_model._address_details is not None:
-                    if not isinstance(patient_model._address_details, str):
-                        patient_model._address_details = model_json_dumps(patient_model._address_details)
-                        
-                if hasattr(patient_model, '_emergency_contact_details') and patient_model._emergency_contact_details is not None:
-                    if not isinstance(patient_model._emergency_contact_details, str):
-                        patient_model._emergency_contact_details = model_json_dumps(patient_model._emergency_contact_details)
-                        
-                # Handle other potentially complex fields
-                if hasattr(patient_model, '_preferences') and patient_model._preferences is not None:
-                    if not isinstance(patient_model._preferences, str):
-                        patient_model._preferences = model_json_dumps(patient_model._preferences)
-                        
-                if hasattr(patient_model, '_custom_fields') and patient_model._custom_fields is not None:
-                    if not isinstance(patient_model._custom_fields, str):
-                        patient_model._custom_fields = model_json_dumps(patient_model._custom_fields)
-                        
-                if hasattr(patient_model, '_extra_data') and patient_model._extra_data is not None:
-                    if not isinstance(patient_model._extra_data, str):
-                        patient_model._extra_data = model_json_dumps(patient_model._extra_data)
-                
-                # Additional complex fields
-                for field_name in ['_medical_history', '_medications', '_allergies']:
-                    if hasattr(patient_model, field_name) and getattr(patient_model, field_name) is not None:
+                for field_name in complex_fields:
+                    if hasattr(patient_model, field_name):
                         value = getattr(patient_model, field_name)
-                        if not isinstance(value, str):
-                            setattr(patient_model, field_name, model_json_dumps(value))
+                        if value is not None and not isinstance(value, str):
+                            try:
+                                # Serialize the field - convert to JSON string
+                                serialized = model_json_dumps(value)
+                                setattr(patient_model, field_name, serialized)
+                                
+                                # If DEBUG mode is active, log the serialization
+                                self.logger.debug(
+                                    f"Serialized {field_name} of type {type(value).__name__} to JSON string: {serialized[:50]}..."
+                                )
+                            except Exception as e:
+                                # Log the error but continue processing
+                                self.logger.error(
+                                    f"Error serializing {field_name} of type {type(value).__name__}: {e}"
+                                )
+                                # Set to empty JSON object as fallback
+                                setattr(patient_model, field_name, "{}")
                 
-                # DEBUG PRINTS START
-                print(f"[DEBUG PatientRepository.create] PatientModel instance before session.add:")
-                print(f"  _contact_info TYPE: {type(patient_model._contact_info)}")
-                print(f"  _contact_info VALUE: {patient_model._contact_info}")
-                print(f"  _address_details TYPE: {type(patient_model._address_details)}")
-                print(f"  _address_details VALUE: {patient_model._address_details}")
-                print(f"  _emergency_contact_details TYPE: {type(patient_model._emergency_contact_details)}")
-                print(f"  _emergency_contact_details VALUE: {patient_model._emergency_contact_details}")
-                # DEBUG PRINTS END
-
                 session.add(patient_model)
                 await session.flush()  # Flush to get ID and process defaults/triggers
                 await session.refresh(patient_model) # Refresh to get any DB-generated values

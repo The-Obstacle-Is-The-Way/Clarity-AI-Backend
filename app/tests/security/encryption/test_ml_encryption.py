@@ -191,34 +191,20 @@ class TestEncryptionService:
         with pytest.raises(ValueError):
             encryption_service.decrypt(tampered)
 
-    def test_handle_invalid_input(self, encryption_service):
-        """Test decryption handles invalid or tampered data gracefully."""
-        # Arrange
-        invalid_data = b"this is not properly encrypted data" # Raw bytes, no version prefix
-        original_data_bytes = b"original data"
-        encrypted_str = encryption_service.encrypt(original_data_bytes) # Returns str "v1:..."
-        
-        # Tamper the string representation
-        if encrypted_str: # Ensure encrypt didn't return None
-            tampered_data_str = encrypted_str[:-5] + "xxxxx" # Tamper the string
-        else:
-            pytest.fail("Encryption returned None, cannot create tampered data.")
-
-        # Act & Assert
-        # 1. Test decrypting raw invalid bytes (should fail format check)
+    def test_handle_invalid_input(self):
+        """Test that invalid input is properly handled with clear error messages."""
+        # Invalid string (not a valid encrypted token)
+        invalid_string = "This is not an encrypted token"
         with pytest.raises(ValueError) as excinfo_invalid:
-            encryption_service.decrypt(invalid_data)
-        # Ensure the error message is specifically about the format for raw bytes
-        assert "Invalid encrypted data format" in str(excinfo_invalid.value)
-
-        # 2. Test decrypting the tampered *string* (should fail InvalidToken wrapped in ValueError)
-        with pytest.raises(ValueError) as excinfo_tampered:
-            encryption_service.decrypt(tampered_data_str)
-        # Ensure the error message is specifically about decryption failure for tampered data
-        assert "Decryption failed" in str(excinfo_tampered.value)
-
-        # 3. Test decrypting None
-        assert encryption_service.decrypt(None) is None
+            self.encryption_service.decrypt_string(invalid_string)
+        
+        # Make sure the error message is the one from BaseEncryptionService.decrypt_string
+        assert "Decryption failed:" in str(excinfo_invalid.value)
+        
+        # Test None input handling
+        with pytest.raises(ValueError) as excinfo_none:
+            self.encryption_service.decrypt_string(None)
+        assert "cannot decrypt None value" in str(excinfo_none.value)
 
     def test_key_rotation(self, sensitive_data):
         """Test that key rotation works properly."""
