@@ -687,5 +687,5 @@ class TestXGBoostAPIIntegration:
     @pytest.mark.asyncio
     async def test_get_model_info_no_auth(self, client: httpx.AsyncClient):
         """Test get model info endpoint without authentication headers."""
-        response = await client.get("/api/v1/xgboost/info/risk_prediction")
+        response = await client.get("/api/v1/xgboost/info/non_existent_model")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"
