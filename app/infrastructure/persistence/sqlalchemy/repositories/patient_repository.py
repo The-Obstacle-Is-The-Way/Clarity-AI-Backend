@@ -37,6 +37,50 @@ from app.infrastructure.persistence.sqlalchemy.models.patient import (
 # Use the custom logger
 logger = get_logger(__name__)
 
+def model_json_dumps(obj: Any) -> str | None:
+    """
+    Convert a model object to a JSON string safely.
+    
+    Args:
+        obj: Model object to convert
+        
+    Returns:
+        JSON string, or None if obj is None
+    """
+    if obj is None:
+        return None
+    
+    # Handle Pydantic models (v2)
+    if hasattr(obj, 'model_dump'):
+        return json.dumps(obj.model_dump())
+    
+    # Handle Pydantic models (v1)
+    if hasattr(obj, 'dict'):
+        return json.dumps(obj.dict())
+        
+    # Handle dataclasses
+    if dataclasses.is_dataclass(obj):
+        return json.dumps(dataclasses.asdict(obj))
+    
+    # Handle objects with to_dict method
+    if hasattr(obj, 'to_dict') and callable(obj.to_dict):
+        return json.dumps(obj.to_dict())
+    
+    # Handle dictionaries directly
+    if isinstance(obj, dict):
+        return json.dumps(obj)
+    
+    # Handle lists and other JSON-serializable types
+    try:
+        return json.dumps(obj)
+    except (TypeError, ValueError):
+        # Last resort - use default=str for non-serializable objects
+        try:
+            return json.dumps(obj, default=str)
+        except:
+            # Absolute last resort
+            return json.dumps({"__str__": str(obj)})
+
 class PatientRepositoryFactory:
     def __call__(self, db_session=None, db_session_factory=None, **kwargs):
         """Factory method to create PatientRepository instances.
@@ -129,6 +173,39 @@ class PatientRepository:
                 # Convert domain entity to SQLAlchemy model instance
                 # This now relies on TypeDecorators in PatientModel for encryption
                 patient_model = await PatientModel.from_domain(patient_entity) # REMOVED encryption_service
+                
+                # Ensure complex nested objects are properly serialized before saving to SQLAlchemy
+                if hasattr(patient_model, '_contact_info') and patient_model._contact_info is not None:
+                    if not isinstance(patient_model._contact_info, str):
+                        patient_model._contact_info = model_json_dumps(patient_model._contact_info)
+                
+                if hasattr(patient_model, '_address_details') and patient_model._address_details is not None:
+                    if not isinstance(patient_model._address_details, str):
+                        patient_model._address_details = model_json_dumps(patient_model._address_details)
+                        
+                if hasattr(patient_model, '_emergency_contact_details') and patient_model._emergency_contact_details is not None:
+                    if not isinstance(patient_model._emergency_contact_details, str):
+                        patient_model._emergency_contact_details = model_json_dumps(patient_model._emergency_contact_details)
+                        
+                # Handle other potentially complex fields
+                if hasattr(patient_model, '_preferences') and patient_model._preferences is not None:
+                    if not isinstance(patient_model._preferences, str):
+                        patient_model._preferences = model_json_dumps(patient_model._preferences)
+                        
+                if hasattr(patient_model, '_custom_fields') and patient_model._custom_fields is not None:
+                    if not isinstance(patient_model._custom_fields, str):
+                        patient_model._custom_fields = model_json_dumps(patient_model._custom_fields)
+                        
+                if hasattr(patient_model, '_extra_data') and patient_model._extra_data is not None:
+                    if not isinstance(patient_model._extra_data, str):
+                        patient_model._extra_data = model_json_dumps(patient_model._extra_data)
+                
+                # Additional complex fields
+                for field_name in ['_medical_history', '_medications', '_allergies']:
+                    if hasattr(patient_model, field_name) and getattr(patient_model, field_name) is not None:
+                        value = getattr(patient_model, field_name)
+                        if not isinstance(value, str):
+                            setattr(patient_model, field_name, model_json_dumps(value))
                 
                 # DEBUG PRINTS START
                 print(f"[DEBUG PatientRepository.create] PatientModel instance before session.add:")

@@ -56,7 +56,7 @@ class TestGetLogger:
         # Setup mock logger to simulate no handlers
         mock_logger_instance = MagicMock()
         mock_logger_instance.handlers = [] # Ensure handlers list is empty
-        # Set propagate to True initially so it can be verified to be changed to False
+        # Set propagate to True initially so we can verify it changes to False
         mock_logger_instance.propagate = True
         mock_get_logger.return_value = mock_logger_instance
         
@@ -68,7 +68,7 @@ class TestGetLogger:
             with patch("app.core.utils.logging.logging.StreamHandler", return_value=mock_handler) as mock_stream_handler:
                 with patch("app.core.utils.logging.logging.Formatter", return_value=mock_formatter) as mock_formatter_class:
                     # Act: Call the function
-                    result_logger = get_logger(logger_name=TEST_LOGGER_NAME)
+                    result_logger = get_logger(name=TEST_LOGGER_NAME)
                     
                     # Assert: Verify the logger was configured correctly
                     mock_get_logger.assert_called_once_with(TEST_LOGGER_NAME)
@@ -80,7 +80,7 @@ class TestGetLogger:
                     mock_logger_instance.addHandler.assert_called_once_with(mock_handler)
                     
                     # Verify propagate was set to False
-                    self.assertFalse(mock_logger_instance.propagate)
+                    assert mock_logger_instance.propagate is False
                     
                     # Verify PHI filter was added to handler
                     mock_handler.addFilter.assert_called_once()
@@ -89,4 +89,4 @@ class TestGetLogger:
                     mock_handler.setFormatter.assert_called_once_with(mock_formatter)
                     
                     # Verify the result is the configured logger
-                    self.assertEqual(result_logger, mock_logger_instance)
+                    assert result_logger == mock_logger_instance

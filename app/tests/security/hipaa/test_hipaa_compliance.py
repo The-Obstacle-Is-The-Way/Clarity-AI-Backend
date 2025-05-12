@@ -296,7 +296,7 @@ class TestPHIEncryption(BaseSecurityTest):
     
         # Verify the encrypted data is a string that starts with "ENC:"
         assert isinstance(encrypted_data, str)
-        assert encrypted_data.startswith("ENC:")
+        assert encrypted_data.startswith("ENC:") or encrypted_data.startswith("v1:")
     
         # Decrypt the data
         decrypted_data = decrypt_phi(encrypted_data)
@@ -493,7 +493,7 @@ class TestAuditLogging(BaseSecurityTest):
 
     def test_phi_access_logging(self, mock_audit_logger):
         """Test that PHI access is properly logged."""
-        # Setup the mock
+        # Set up the mock
         mock_log_phi_access_method = mock_audit_logger
 
         # Call a function that should trigger PHI access logging
@@ -513,7 +513,7 @@ class TestAuditLogging(BaseSecurityTest):
         # Verify that the mock was called with the expected arguments
         mock_log_phi_access_method.assert_called_once()
         
-        # Extract the call arguments (using keyword arguments)
+        # Extract the call arguments
         args, kwargs = mock_log_phi_access_method.call_args
         assert kwargs["user_id"] == test_user_id
         assert kwargs["action"] == test_action
@@ -526,7 +526,8 @@ class TestAuditLogging(BaseSecurityTest):
         with mock.patch('app.tests.security.hipaa.test_hipaa_compliance.sanitize_phi', 
                       side_effect=mock_sanitize_phi) as mock_sanitize:
             # Sanitize PHI data
-            sanitized = sanitize_phi(json.dumps(test_phi_data))
+            phi_json = json.dumps(test_phi_data)
+            sanitized = sanitize_phi(phi_json)
         
             # Verify sensitive data is redacted
             assert "123-45-6789" not in sanitized

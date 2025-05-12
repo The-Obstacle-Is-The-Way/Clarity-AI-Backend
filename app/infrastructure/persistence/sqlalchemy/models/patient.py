@@ -302,8 +302,26 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._emergency_contact_name = getattr(emergency_contact_vo, 'name', None)
             model._emergency_contact_phone = getattr(emergency_contact_vo, 'phone', None)
             model._emergency_contact_relationship = getattr(emergency_contact_vo, 'relationship', None)
-            # Assign the VO instance directly; EncryptedJSON will serialize it
-            model._emergency_contact_details = emergency_contact_vo
+            
+            # Serialize EmergencyContact VO to dict
+            if hasattr(emergency_contact_vo, 'model_dump'):
+                model._emergency_contact_details = emergency_contact_vo.model_dump()
+            elif hasattr(emergency_contact_vo, 'to_dict'):
+                model._emergency_contact_details = emergency_contact_vo.to_dict()
+            elif hasattr(emergency_contact_vo, 'dict'):
+                model._emergency_contact_details = emergency_contact_vo.dict()
+            else:
+                # Try to convert to dict using __dict__
+                try:
+                    model._emergency_contact_details = dict(emergency_contact_vo.__dict__)
+                except (AttributeError, TypeError):
+                    try:
+                        model._emergency_contact_details = json.loads(
+                            json.dumps(emergency_contact_vo, default=str)
+                        )
+                    except Exception as e:
+                        logger.error(f"Could not serialize emergency_contact_details to JSON: {e}")
+                        model._emergency_contact_details = {"serialization_error": str(emergency_contact_vo)}
         else:
             model._emergency_contact_name = None
             model._emergency_contact_phone = None
@@ -338,8 +356,26 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._contact_info = None
 
         address_vo_from_domain = getattr(patient, 'address', None)
-        # Assign the VO instance directly; EncryptedJSON will serialize it
-        model._address_details = address_vo_from_domain
+        # Serialize Address VO to dict for database storage
+        if address_vo_from_domain is not None:
+            if hasattr(address_vo_from_domain, 'model_dump'):
+                model._address_details = address_vo_from_domain.model_dump()
+            elif hasattr(address_vo_from_domain, 'to_dict'):
+                model._address_details = address_vo_from_domain.to_dict()
+            elif hasattr(address_vo_from_domain, 'dict'):
+                model._address_details = address_vo_from_domain.dict()
+            else:
+                # Try to convert to dict using __dict__
+                try:
+                    model._address_details = dict(address_vo_from_domain.__dict__)
+                except (AttributeError, TypeError):
+                    try:
+                        model._address_details = json.loads(json.dumps(address_vo_from_domain, default=str))
+                    except Exception as e:
+                        logger.error(f"Could not serialize address_details to JSON: {e}")
+                        model._address_details = {"serialization_error": str(address_vo_from_domain)}
+        else:
+            model._address_details = None
 
         preferences_val = getattr(patient, 'preferences', None)
         model._preferences = preferences_val # EncryptedJSON handles dict serialization

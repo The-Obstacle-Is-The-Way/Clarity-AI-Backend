@@ -44,9 +44,12 @@ class EncryptedTypeBase(types.TypeDecorator):
             
         logger.debug(f"[EncryptedTypeBase] process_bind_parameter: Encrypting value of type {type(value)} for {self.__class__.__name__}")
         try:
-            # The base implementation handles string conversion via _convert_bind_param
-            # This creates a uniform interface for all encrypted types
-            value_to_encrypt = self._convert_bind_param(value)
+            # Convert value to JSON string for storage if it's a dict/list
+            if isinstance(value, (dict, list)):
+                value_to_encrypt = json.dumps(value)
+            else:
+                # The base implementation handles string conversion via _convert_bind_param
+                value_to_encrypt = self._convert_bind_param(value)
             
             # Use encrypt_string to get consistent prefixed encryption
             encrypted_value = self.encryption_service.encrypt_string(value_to_encrypt)
@@ -81,7 +84,21 @@ class EncryptedTypeBase(types.TypeDecorator):
         if not isinstance(value, str):
             logger.warning(f"Expected str from DB, got {type(value)}")
             try:
-                value = str(value)
+                # Handle bytes case that might come from binary column types
+                if isinstance(value, bytes):
+                    try:
+                        value = value.decode('utf-8')
+                    except UnicodeDecodeError:
+                        # If we can't decode as UTF-8, it might be raw encrypted bytes
+                        try:
+                            # Try direct decryption of raw bytes
+                            decrypted_value = self.encryption_service.decrypt(value)
+                            return self._convert_result_value(decrypted_value)
+                        except Exception as e:
+                            logger.error(f"Failed to decrypt raw bytes: {e}")
+                            raise ValueError(f"Cannot decrypt raw bytes from DB: {e}")
+                else:
+                    value = str(value)
             except Exception:
                 raise TypeError(f"Cannot process non-string value {type(value)} from encrypted column.")
         
@@ -191,6 +208,19 @@ class EncryptedJSON(EncryptedTypeBase):
             return None
             
         try:
+            # Handle Pydantic models (v2)
+            if hasattr(value, 'model_dump'):
+                return json.dumps(value.model_dump())
+                
+            # Handle Pydantic models (v1)
+            if hasattr(value, 'dict'):
+                return json.dumps(value.dict())
+                
+            # Handle dataclasses
+            if hasattr(value, '__dataclass_fields__'):
+                import dataclasses
+                return json.dumps(dataclasses.asdict(value))
+                
             # If already a string, assume it's valid JSON
             if isinstance(value, str):
                 # Validate by parsing and re-serializing to ensure consistency
@@ -228,6 +258,10 @@ class EncryptedJSON(EncryptedTypeBase):
         except (json.JSONDecodeError, TypeError) as e:
             logger.error(f"Failed to parse JSON after decryption: {e}")
             raise ValueError(f"Failed to parse JSON after decryption: {e}") from e
+    
+    @property
+    def python_type(self):
+        return dict
 
 __all__ = [
     "EncryptedString",

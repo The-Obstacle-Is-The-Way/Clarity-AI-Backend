@@ -300,32 +300,60 @@ decryption methods for strings and dictionaries.
         Raises:
             ValueError: If decryption fails.
         """
+        if encrypted_value is None:
+            return None
+            
         try:
-            # If it's bytes, use it as is; if it's string convert to bytes
-            encrypted_bytes = encrypted_value if isinstance(encrypted_value, bytes) else str(encrypted_value).encode()
+            # If it's bytes, convert to string if possible for consistent handling
+            if isinstance(encrypted_value, bytes):
+                try:
+                    encrypted_str = encrypted_value.decode('utf-8')
+                except UnicodeDecodeError:
+                    # If we can't decode to UTF-8, treat as raw bytes with no prefix
+                    encrypted_bytes = encrypted_value
+                    # Skip version prefix check since we're using raw bytes
+                    decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
+                    try:
+                        return decrypted_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        return decrypted_bytes
+            else:
+                encrypted_str = str(encrypted_value)
             
-            # Handle ENC: prefix if present
-            if encrypted_bytes.startswith(b"ENC:"):
-                encrypted_bytes = encrypted_bytes[4:]  # Remove prefix
-            elif isinstance(encrypted_value, str) and encrypted_value.startswith("ENC:"):
-                encrypted_bytes = encrypted_value[4:].encode()
-                
-            # Validate base64
-            try:
-                # Simple validation - will raise an exception if not valid base64
-                base64.b64decode(encrypted_bytes, validate=True)
-            except Exception as e:
-                logger.error(f"Invalid base64 encoding in decrypt: {e}")
-                raise ValueError("Decryption failed: Invalid base64 encoding") from e
-                
+            # Handle version prefix if present
+            if encrypted_str.startswith(self.VERSION_PREFIX):
+                # Remove version prefix to get the actual encrypted content
+                encrypted_content = encrypted_str[len(self.VERSION_PREFIX):]
+                encrypted_bytes = encrypted_content.encode()
+            # Handle ENC: prefix if present (legacy format)
+            elif encrypted_str.startswith("ENC:"):
+                encrypted_bytes = encrypted_str[4:].encode()  # Remove prefix
+            else:
+                # No prefix, use as is
+                encrypted_bytes = encrypted_str.encode()
+            
             # Decrypt using the cipher
-            decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
-            
-            # Return as string if possible, otherwise as bytes
             try:
-                return decrypted_bytes.decode('utf-8')
-            except UnicodeDecodeError:
-                return decrypted_bytes
+                decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
+                # Return as string if possible, otherwise as bytes
+                try:
+                    return decrypted_bytes.decode('utf-8')
+                except UnicodeDecodeError:
+                    return decrypted_bytes
+            except InvalidToken as e:
+                # Try with previous cipher if available
+                if self.previous_cipher:
+                    try:
+                        logger.debug("Primary key failed, trying with previous key.")
+                        decrypted_bytes = self.previous_cipher.decrypt(encrypted_bytes)
+                        try:
+                            return decrypted_bytes.decode('utf-8')
+                        except UnicodeDecodeError:
+                            return decrypted_bytes
+                    except InvalidToken:
+                        raise ValueError("Decryption failed: Invalid token")
+                else:
+                    raise ValueError("Decryption failed: Invalid token")
                 
         except InvalidToken as e:
             logger.warning(f"Invalid token during decryption: {e}")
@@ -334,7 +362,7 @@ decryption methods for strings and dictionaries.
             if isinstance(e, ValueError) and "Decryption failed" in str(e):
                 # Re-raise already formatted error
                 raise
-            logger.error(f"String decryption failed: {e}", exc_info=True)
+            logger.error(f"Decryption failed: {e}", exc_info=True)
             raise ValueError(f"Failed to decrypt: {e}")
 
     def encrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
