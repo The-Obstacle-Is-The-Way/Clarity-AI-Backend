@@ -13,6 +13,8 @@ import hashlib
 import json
 from typing import Dict, Any, Optional, Union, List, Tuple
 
+import numpy as np
+
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
@@ -82,7 +84,482 @@ class MLEncryptionService(BaseEncryptionService):
                 pass
         
         logger.debug("ML Encryption Service initialized")
+    
+    # Alias for test compatibility - encrypt_embedding (single) -> encrypt_embeddings (multiple)
+    def encrypt_embedding(self, embedding: np.ndarray) -> str:
+        """
+        Encrypt a single embedding vector.
         
+        Args:
+            embedding: NumPy embedding vector
+            
+        Returns:
+            Encrypted embedding string
+            
+        Raises:
+            ValueError: If input is not a valid array
+        """
+        if embedding is None:
+            return None
+            
+        # Check for valid embedding
+        if not isinstance(embedding, np.ndarray):
+            raise ValueError("Embedding must be a NumPy array")
+            
+        # Convert to list for JSON serialization and encrypt
+        return self.encrypt_embeddings(embedding.tolist())
+    
+    def decrypt_embedding(self, encrypted_embedding: str) -> np.ndarray:
+        """
+        Decrypt a single embedding vector.
+        
+        Args:
+            encrypted_embedding: Encrypted embedding string
+            
+        Returns:
+            NumPy array with the embedding vector
+        """
+        if encrypted_embedding is None:
+            return None
+            
+        # Decrypt and convert back to numpy array
+        embedding_list = self.decrypt_embeddings(encrypted_embedding)
+        return np.array(embedding_list)
+        
+    def encrypt_tensors(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
+        """
+        Encrypt a dictionary of tensor data.
+        
+        Args:
+            tensors: Dictionary of tensor name to NumPy array
+            
+        Returns:
+            Dictionary with encrypted tensors
+        """
+        if tensors is None:
+            return None
+            
+        result = {}
+        for key, tensor in tensors.items():
+            if tensor is None:
+                result[key] = None
+            else:
+                # Convert tensor to list for serialization
+                tensor_list = tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
+                result[key] = self.encrypt_string(json.dumps(tensor_list))
+                
+        return result
+        
+    def decrypt_tensors(self, encrypted_tensors: Dict[str, str]) -> Dict[str, np.ndarray]:
+        """
+        Decrypt a dictionary of encrypted tensors.
+        
+        Args:
+            encrypted_tensors: Dictionary of tensor name to encrypted string
+            
+        Returns:
+            Dictionary with decrypted tensors as NumPy arrays
+        """
+        if encrypted_tensors is None:
+            return None
+            
+        result = {}
+        for key, encrypted_tensor in encrypted_tensors.items():
+            if encrypted_tensor is None:
+                result[key] = None
+            else:
+                # Decrypt and convert back to NumPy array
+                tensor_json = self.decrypt_string(encrypted_tensor)
+                tensor_list = json.loads(tensor_json)
+                result[key] = np.array(tensor_list)
+                
+        return result
+    
+    def encrypt_ml_data(self, ml_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Encrypt machine learning data with intelligent field handling.
+        
+        This method analyzes the content to determine which fields need encryption:
+        - Patient identifiers are always encrypted
+        - Embeddings and feature vectors are encrypted
+        - Model hyperparameters are generally not encrypted unless they contain PHI
+        
+        Args:
+            ml_data: ML data dictionary with mixed content types
+            
+        Returns:
+            Dictionary with selectively encrypted fields
+        """
+        if ml_data is None:
+            return None
+            
+        result = {}
+        
+        # List of fields that should always be encrypted (potential PHI)
+        sensitive_fields = {
+            "patient_identifiers", "feature_names", "patient_data", 
+            "demographics", "notes", "medical_history"
+        }
+        
+        # List of fields that should never be encrypted (non-PHI)
+        non_sensitive_fields = {
+            "model_type", "version", "created_at", "updated_at", 
+            "hyperparameters", "performance_metrics"
+        }
+        
+        for key, value in ml_data.items():
+            # Always encrypt sensitive fields
+            if key in sensitive_fields:
+                if isinstance(value, dict):
+                    # For nested dictionaries, encrypt all values
+                    result[key] = {k: self.encrypt_string(v) if isinstance(v, (str, int, float)) else 
+                                   self.encrypt_string(json.dumps(v)) for k, v in value.items()}
+                else:
+                    # For simple values, encrypt directly
+                    result[key] = self.encrypt_string(json.dumps(value))
+                    
+            # Never encrypt non-sensitive fields
+            elif key in non_sensitive_fields:
+                result[key] = value
+                
+            # Special handling for metadata
+            elif key == "metadata":
+                # Metadata might contain mixed sensitive/non-sensitive info
+                if isinstance(value, dict):
+                    result[key] = {k: self.encrypt_string(v) if k in ["author", "department", "notes"] else v 
+                                  for k, v in value.items()}
+                else:
+                    result[key] = value
+                    
+            # Special handling for embeddings
+            elif key == "embeddings":
+                if isinstance(value, dict):
+                    # For dictionary of embeddings, encrypt each one
+                    result[key] = {k: self.encrypt_embeddings(v) for k, v in value.items()}
+                else:
+                    # For single embedding value
+                    result[key] = self.encrypt_embeddings(value)
+                    
+            # Default: encrypt if it looks like PHI based on field name
+            elif any(phi_term in key.lower() for phi_term in ["patient", "name", "id", "ssn", "address", "phone", "email", "dob"]):
+                result[key] = self.encrypt_string(json.dumps(value))
+                
+            # Otherwise, keep as is
+            else:
+                result[key] = value
+                
+        return result
+        
+    def decrypt_ml_data(self, encrypted_ml_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Decrypt machine learning data that was encrypted with encrypt_ml_data.
+        
+        Args:
+            encrypted_ml_data: Dictionary with encrypted ML data
+            
+        Returns:
+            Dictionary with decrypted ML data
+        """
+        if encrypted_ml_data is None:
+            return None
+            
+        result = {}
+        
+        # Handle different field types based on naming and content
+        for key, value in encrypted_ml_data.items():
+            # Handle nested dictionaries
+            if isinstance(value, dict):
+                # Check if it's an encrypted embedding dictionary
+                if key == "embeddings":
+                    result[key] = {k: np.array(json.loads(self.decrypt_string(v))) 
+                                  if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
+                                  else v for k, v in value.items()}
+                elif key == "metadata":
+                    # Metadata may have encrypted fields
+                    result[key] = {k: self.decrypt_string(v) 
+                                  if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
+                                  else v for k, v in value.items()}
+                elif key == "patient_data":
+                    # Patient data is fully encrypted
+                    result[key] = {k: self.decrypt_string(v) 
+                                  if v and isinstance(v, str) and v.startswith(self.VERSION_PREFIX)
+                                  else v for k, v in value.items()}
+                else:
+                    # Default dictionary handling
+                    result[key] = value
+            
+            # Handle string values that might be encrypted
+            elif isinstance(value, str) and value.startswith(self.VERSION_PREFIX):
+                try:
+                    # Try to decrypt and parse as JSON if possible
+                    decrypted = self.decrypt_string(value)
+                    if decrypted.startswith("[") or decrypted.startswith("{"):
+                        try:
+                            # Parse as JSON
+                            parsed = json.loads(decrypted)
+                            
+                            # Convert lists to numpy arrays for certain fields
+                            if key in ["feature_names", "patient_identifiers"]:
+                                result[key] = parsed
+                            elif key == "embeddings":
+                                # Convert to numpy array if it's a list of numbers
+                                if isinstance(parsed, list) and all(isinstance(x, (int, float)) for x in parsed):
+                                    result[key] = np.array(parsed)
+                                else:
+                                    result[key] = parsed
+                            else:
+                                result[key] = parsed
+                        except json.JSONDecodeError:
+                            # Not JSON, use as is
+                            result[key] = decrypted
+                    else:
+                        # Not JSON, use as is
+                        result[key] = decrypted
+                except Exception as e:
+                    # If decryption fails, keep the original value
+                    logger.error(f"Failed to decrypt field {key}: {str(e)}")
+                    result[key] = value
+            else:
+                # Non-encrypted values pass through
+                result[key] = value
+                
+        return result
+    
+    def encrypt_model_file(self, model_file_path: str) -> str:
+        """
+        Encrypt an ML model file on disk.
+        
+        Args:
+            model_file_path: Path to the model file to encrypt
+            
+        Returns:
+            Path to the encrypted model file (original_path + .enc)
+            
+        Raises:
+            FileNotFoundError: If the model file doesn't exist
+            IOError: If file operations fail
+        """
+        if not os.path.exists(model_file_path):
+            raise FileNotFoundError(f"Model file not found: {model_file_path}")
+            
+        encrypted_path = f"{model_file_path}.enc"
+        
+        try:
+            # Read the model file in chunks to handle large files
+            with open(model_file_path, 'rb') as in_file, open(encrypted_path, 'wb') as out_file:
+                # Write the version prefix
+                out_file.write(self.VERSION_PREFIX.encode())
+                
+                # Generate file checksum for integrity verification
+                checksum = hashlib.sha256()
+                
+                # Process the file in chunks
+                chunk_size = 1024 * 1024  # 1MB chunks
+                while True:
+                    chunk = in_file.read(chunk_size)
+                    if not chunk:
+                        break
+                        
+                    # Update checksum
+                    checksum.update(chunk)
+                    
+                    # Encrypt and write chunk
+                    encrypted_chunk = self.cipher.encrypt(chunk)
+                    out_file.write(encrypted_chunk)
+                    
+                # Write the checksum at the end
+                out_file.write(b"##CHECKSUM##")
+                out_file.write(checksum.digest())
+                
+            return encrypted_path
+            
+        except Exception as e:
+            logger.error(f"Failed to encrypt model file: {str(e)}")
+            # Clean up partial file if encryption failed
+            if os.path.exists(encrypted_path):
+                os.unlink(encrypted_path)
+            raise IOError(f"Model file encryption failed: {str(e)}")
+    
+    def decrypt_model_file(self, encrypted_file_path: str) -> str:
+        """
+        Decrypt an ML model file that was encrypted with encrypt_model_file.
+        
+        Args:
+            encrypted_file_path: Path to the encrypted model file
+            
+        Returns:
+            Path to the decrypted model file (original_path with .enc removed or .dec added)
+            
+        Raises:
+            FileNotFoundError: If the encrypted file doesn't exist
+            ValueError: If the file isn't a valid encrypted model file
+            IOError: If file operations fail
+        """
+        if not os.path.exists(encrypted_file_path):
+            raise FileNotFoundError(f"Encrypted model file not found: {encrypted_file_path}")
+            
+        # Determine output path
+        if encrypted_file_path.endswith(".enc"):
+            decrypted_path = encrypted_file_path[:-4]
+        else:
+            decrypted_path = f"{encrypted_file_path}.dec"
+            
+        try:
+            with open(encrypted_file_path, 'rb') as in_file, open(decrypted_path, 'wb') as out_file:
+                # Read and verify the version prefix
+                prefix = in_file.read(len(self.VERSION_PREFIX))
+                if prefix.decode() != self.VERSION_PREFIX:
+                    raise ValueError(f"Invalid encrypted model file: missing version prefix")
+                    
+                # Read file in chunks
+                calculated_checksum = hashlib.sha256()
+                while True:
+                    # Read an encrypted chunk
+                    chunk = in_file.read(1024 * 1024 + 32)  # Account for encryption overhead
+                    
+                    # Check if we've reached the checksum marker
+                    if b"##CHECKSUM##" in chunk:
+                        # Split at the checksum marker
+                        data_part, checksum_part = chunk.split(b"##CHECKSUM##", 1)
+                        
+                        # Decrypt the last data chunk if any
+                        if data_part:
+                            decrypted_chunk = self.cipher.decrypt(data_part)
+                            out_file.write(decrypted_chunk)
+                            calculated_checksum.update(decrypted_chunk)
+                            
+                        # Verify checksum
+                        if checksum_part != calculated_checksum.digest():
+                            raise ValueError("Model file integrity check failed: checksum mismatch")
+                            
+                        break
+                        
+                    # EOF without checksum marker
+                    if not chunk:
+                        raise ValueError("Model file integrity check failed: missing checksum")
+                        
+                    # Normal chunk processing
+                    decrypted_chunk = self.cipher.decrypt(chunk)
+                    out_file.write(decrypted_chunk)
+                    calculated_checksum.update(decrypted_chunk)
+                    
+            return decrypted_path
+            
+        except Exception as e:
+            logger.error(f"Failed to decrypt model file: {str(e)}")
+            # Clean up partial file if decryption failed
+            if os.path.exists(decrypted_path):
+                os.unlink(decrypted_path)
+            raise ValueError(f"Model file decryption failed: {str(e)}")
+    
+    def encrypt_phi_safe_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Encrypt data with PHI fields selectively encrypted.
+        
+        This method intelligently encrypts only the fields that might contain PHI,
+        while leaving non-PHI fields unencrypted for better performance.
+        
+        Args:
+            data: Dictionary of mixed PHI and non-PHI fields
+            
+        Returns:
+            Dictionary with PHI fields encrypted
+        """
+        if data is None:
+            return None
+            
+        result = {}
+        
+        # Fields that might contain PHI
+        phi_patterns = [
+            "name", "patient", "address", "phone", "email", "ssn", "social", "dob", "birth", 
+            "age", "zip", "location", "mrn", "medical_record", "contact", "provider", "physician",
+            "diagnosis", "condition", "treatment", "medication", "notes", "visit"
+        ]
+        
+        for key, value in data.items():
+            # Check if this field might contain PHI
+            is_phi = any(pattern in key.lower() for pattern in phi_patterns)
+            
+            if is_phi:
+                # Encrypt PHI fields
+                if isinstance(value, dict):
+                    # Recursively encrypt nested dictionaries
+                    result[key] = self.encrypt_phi_safe_data(value)
+                elif isinstance(value, list):
+                    # For lists, encrypt each item if it might contain PHI
+                    result[key] = [
+                        self.encrypt_phi_safe_data(item) if isinstance(item, dict)
+                        else self.encrypt_string(item)
+                        for item in value
+                    ]
+                else:
+                    # Encrypt simple values
+                    result[key] = self.encrypt_string(value)
+            else:
+                # Non-PHI fields remain unchanged
+                result[key] = value
+                
+        return result
+
+    def encrypt_embeddings(self, embeddings: List[float]) -> str:
+        """
+        Encrypt vector embeddings for secure storage.
+        
+        Args:
+            embeddings: List of floating point embedding values or NumPy array
+            
+        Returns:
+            Encrypted embedding string
+            
+        Raises:
+            ValueError: If encryption fails
+        """
+        if embeddings is None:
+            return None
+        
+        try:
+            # Convert NumPy arrays to lists for JSON serialization
+            if hasattr(embeddings, 'tolist'):
+                embeddings_list = embeddings.tolist()
+            else:
+                embeddings_list = embeddings
+            
+            # Convert to JSON
+            embeddings_json = json.dumps(embeddings_list)
+            
+            # Encrypt with standard method
+            return self.encrypt_string(embeddings_json)
+        except Exception as e:
+            logger.error(f"Embedding encryption failed: {str(e)}")
+            raise ValueError(f"Failed to encrypt embeddings: {str(e)}")
+
+    def decrypt_embeddings(self, encrypted_embeddings: str) -> List[float]:
+        """
+        Decrypt vector embeddings.
+        
+        Args:
+            encrypted_embeddings: Encrypted embedding string
+            
+        Returns:
+            List of decrypted embedding values
+            
+        Raises:
+            ValueError: If decryption fails
+        """
+        if encrypted_embeddings is None:
+            return None
+        
+        try:
+            # Decrypt with standard method
+            decrypted_json = self.decrypt_string(encrypted_embeddings)
+            
+            # Parse JSON to list
+            return json.loads(decrypted_json)
+        except Exception as e:
+            logger.error(f"Embedding decryption failed: {str(e)}")
+            raise ValueError(f"Failed to decrypt embeddings: {str(e)}")
+
     def encrypt_model(self, model_bytes: bytes) -> str:
         """
         Encrypt a machine learning model with checksums.
@@ -98,7 +575,7 @@ class MLEncryptionService(BaseEncryptionService):
         """
         if model_bytes is None:
             return None
-            
+        
         try:
             # Calculate model checksum for integrity verification
             checksum = hashlib.sha256(model_bytes).hexdigest()
@@ -129,7 +606,7 @@ class MLEncryptionService(BaseEncryptionService):
         except Exception as e:
             logger.error(f"Model encryption failed: {str(e)}")
             raise ValueError(f"Failed to encrypt ML model: {str(e)}")
-            
+
     def decrypt_model(self, encrypted_model: str) -> Tuple[bytes, Dict[str, Any]]:
         """
         Decrypt a machine learning model and verify its checksum.
@@ -145,12 +622,12 @@ class MLEncryptionService(BaseEncryptionService):
         """
         if encrypted_model is None:
             raise ValueError("Cannot decrypt None model")
-            
+        
         try:
             # Check version prefix
             if not encrypted_model.startswith(self.VERSION_PREFIX):
                 raise ValueError(f"Invalid model encryption version. Expected {self.VERSION_PREFIX}")
-                
+            
             # Remove version prefix
             encrypted_payload = encrypted_model[len(self.VERSION_PREFIX):]
             
@@ -171,7 +648,7 @@ class MLEncryptionService(BaseEncryptionService):
             calculated_checksum = hashlib.sha256(model_bytes).hexdigest()
             if calculated_checksum != metadata["checksum"]:
                 raise ValueError("Model checksum verification failed. Model may be corrupted.")
-                
+            
             return model_bytes, metadata
         except json.JSONDecodeError:
             logger.error("Invalid JSON format in encrypted model")
@@ -179,179 +656,6 @@ class MLEncryptionService(BaseEncryptionService):
         except Exception as e:
             logger.error(f"Model decryption failed: {str(e)}")
             raise ValueError(f"Failed to decrypt ML model: {str(e)}")
-            
-    def derive_model_key(self, base_key: str, model_id: str) -> bytes:
-        """
-        Derive a model-specific encryption key.
-        
-        This creates a unique key for each model based on model ID and base key,
-        providing per-model isolation.
-        
-        Args:
-            base_key: Base encryption key
-            model_id: Unique model identifier
-            
-        Returns:
-            Derived key bytes
-        """
-        try:
-            # Use model_id as salt for key derivation
-            salt = hashlib.sha256(model_id.encode()).digest()[:16]
-            
-            # Create key derivation function
-            kdf = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                iterations=HASH_ITERATIONS,
-            )
-            
-            # Derive key using base_key
-            if isinstance(base_key, str):
-                base_key = base_key.encode()
-                
-            key = kdf.derive(base_key)
-            return base64.urlsafe_b64encode(key)
-        except Exception as e:
-            logger.error(f"Key derivation failed: {str(e)}")
-            raise ValueError(f"Failed to derive model key: {str(e)}")
-            
-    def encrypt_embeddings(self, embeddings: List[float]) -> str:
-        """
-        Encrypt vector embeddings for secure storage.
-        
-        Args:
-            embeddings: List of floating point embedding values
-            
-        Returns:
-            Encrypted embedding string
-            
-        Raises:
-            ValueError: If encryption fails
-        """
-        if embeddings is None:
-            return None
-            
-        try:
-            # Convert to JSON
-            embeddings_json = json.dumps(embeddings)
-            
-            # Encrypt with standard method
-            return self.encrypt_string(embeddings_json)
-        except Exception as e:
-            logger.error(f"Embedding encryption failed: {str(e)}")
-            raise ValueError(f"Failed to encrypt embeddings: {str(e)}")
-            
-    def decrypt_embeddings(self, encrypted_embeddings: str) -> List[float]:
-        """
-        Decrypt vector embeddings.
-        
-        Args:
-            encrypted_embeddings: Encrypted embedding string
-            
-        Returns:
-            List of decrypted embedding values
-            
-        Raises:
-            ValueError: If decryption fails
-        """
-        if encrypted_embeddings is None:
-            raise ValueError("Cannot decrypt None embeddings")
-            
-        try:
-            # Decrypt with standard method
-            decrypted_json = self.decrypt_string(encrypted_embeddings)
-            
-            # Parse JSON to list
-            return json.loads(decrypted_json)
-        except Exception as e:
-            logger.error(f"Embedding decryption failed: {str(e)}")
-            raise ValueError(f"Failed to decrypt embeddings: {str(e)}")
-            
-    def encrypt_predictions(self, predictions: Union[Dict[str, Any], List[Any]]) -> str:
-        """
-        Encrypt ML model predictions with PHI.
-        
-        Args:
-            predictions: Prediction data to encrypt
-            
-        Returns:
-            Encrypted predictions string
-            
-        Raises:
-            ValueError: If encryption fails
-        """
-        if predictions is None:
-            return None
-            
-        try:
-            # Add metadata for auditing
-            payload = {
-                "predictions": predictions,
-                "metadata": {
-                    "encrypted_at": "timestamp_placeholder",  # In real code, use actual timestamp
-                    "version": "1.0"
-                }
-            }
-            
-            # Encrypt using dict encryption
-            return self.encrypt_dict(payload)
-        except Exception as e:
-            logger.error(f"Prediction encryption failed: {str(e)}")
-            raise ValueError(f"Failed to encrypt predictions: {str(e)}")
-            
-    def decrypt_predictions(self, encrypted_predictions: str) -> Dict[str, Any]:
-        """
-        Decrypt ML model predictions.
-        
-        Args:
-            encrypted_predictions: Encrypted predictions string
-            
-        Returns:
-            Dictionary with predictions and metadata
-            
-        Raises:
-            ValueError: If decryption fails
-        """
-        if encrypted_predictions is None:
-            raise ValueError("Cannot decrypt None predictions")
-            
-        try:
-            # Decrypt using standard dict decryption
-            decrypted = self.decrypt_dict(encrypted_predictions)
-            
-            # Return the whole payload with metadata
-            return decrypted
-        except Exception as e:
-            logger.error(f"Prediction decryption failed: {str(e)}")
-            raise ValueError(f"Failed to decrypt predictions: {str(e)}")
-        
-    def get_versioned_model_key(self, model_id: str, version: int = 1) -> bytes:
-        """
-        Get a versioned encryption key for a specific model.
-        
-        This allows key rotation for ML models without losing access
-        to older encrypted models.
-        
-        Args:
-            model_id: Model identifier
-            version: Key version number
-            
-        Returns:
-            Versioned encryption key as bytes
-        """
-        try:
-            # Get the base key
-            base_key = self.cipher.key
-            
-            # Add version info to model_id
-            versioned_id = f"{model_id}:v{version}"
-            
-            # Derive the key
-            return self.derive_model_key(base64.urlsafe_b64decode(base_key).decode(), versioned_id)
-        except Exception as e:
-            logger.error(f"Failed to get versioned model key: {str(e)}")
-            raise ValueError(f"Key derivation error: {str(e)}")
 
 
 def get_ml_encryption_service(

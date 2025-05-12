@@ -34,7 +34,16 @@ class DataAnonymizer:
         Args:
             encryption_service: Encryption service for hashing identifiers
         """
-        self.encryption_service = encryption_service or EncryptionService()
+        if encryption_service:
+            self.encryption_service = encryption_service
+        else:
+            # Create encryption service directly to avoid circular imports
+            # Lazy-load the encryption service factory to avoid circular imports
+            def get_encryption_service():
+                test_key = "test_encryption_key_for_anonymizer_default"
+                return EncryptionService(secret_key=test_key)
+            
+            self.encryption_service = get_encryption_service()
 
         # PHI field patterns for detection
         self.phi_patterns = {

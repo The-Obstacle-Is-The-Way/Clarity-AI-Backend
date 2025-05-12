@@ -70,4 +70,19 @@ def test_settings():
         PHI_ENCRYPTION_KEY="test_encryption_key_for_phi_data_testing_only"
     )
 
+@pytest.fixture(scope="session")
+def encryption_service():
+    """
+    Create a test encryption service.
+    
+    This fixture provides a consistent encryption service for tests.
+    """
+    from app.infrastructure.security.encryption import create_encryption_service
+    
+    # Use a fixed test key for consistent test results
+    test_key = "test_encryption_key_for_phi_data_testing_only"
+    test_salt = "test_salt_value_for_encryption_tests_only"
+    
+    return create_encryption_service(secret_key=test_key, salt=test_salt)
+
 # Setup other global fixtures if needed

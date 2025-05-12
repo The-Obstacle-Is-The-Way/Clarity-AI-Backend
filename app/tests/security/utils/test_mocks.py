@@ -9,6 +9,10 @@ import uuid
 from unittest.mock import MagicMock
 import os
 import re
+import base64
+
+# Required for proper crypto mocking
+from cryptography.fernet import Fernet
 
 # Mock Encryption Service
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
@@ -27,9 +31,30 @@ class MockEncryptionService(BaseEncryptionService):
         # Use a fixed test key if none provided - this is for testing only
         self._direct_key = direct_key or 'YDK6UZeOqpHeiU33a3HVt_FWdVh9Z2LtQZZU-C1LD1E='
         self._direct_previous_key = previous_key
-        self._cipher = None
-        self._previous_cipher = None
         
+        # Initialize the cipher using Fernet for actual encryption
+        try:
+            self._cipher = Fernet(self._direct_key.encode() if isinstance(self._direct_key, str) else self._direct_key)
+            if self._direct_previous_key:
+                self._previous_cipher = Fernet(self._direct_previous_key.encode() if isinstance(self._direct_previous_key, str) else self._direct_previous_key)
+            else:
+                self._previous_cipher = None
+        except Exception as e:
+            # For tests, fallback to something that works
+            test_key = Fernet.generate_key()
+            self._cipher = Fernet(test_key)
+            self._previous_cipher = None
+    
+    @property
+    def cipher(self):
+        """Get the Fernet cipher instance for encryption/decryption."""
+        return self._cipher
+    
+    @property 
+    def previous_cipher(self):
+        """Get the previous cipher for key rotation."""
+        return self._previous_cipher
+            
     def encrypt(self, value):
         """Encrypt a value using the cipher."""
         if value is None:
@@ -71,6 +96,14 @@ class MockEncryptionService(BaseEncryptionService):
         except Exception:
             # For tests, return a predictable value on error
             return "decrypted_data"
+    
+    def encrypt_string(self, value, is_phi=True):
+        """Encrypt a string value."""
+        return self.encrypt(value)
+    
+    def decrypt_string(self, value):
+        """Decrypt a string value."""
+        return self.decrypt(value)
             
     def encrypt_dict(self, data):
         """Encrypt string values in a dictionary."""

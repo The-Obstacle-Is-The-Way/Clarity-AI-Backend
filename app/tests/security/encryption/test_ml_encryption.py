@@ -7,12 +7,17 @@ ensuring proper protection of PHI data according to HIPAA requirements.
 
 import json
 from typing import Any
-
+import os
 import pytest
-from cryptography.fernet import InvalidToken
+from unittest.mock import MagicMock, patch
 
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
+from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
+    EncryptedString, 
+    EncryptedJSON,
+    serialize_for_encryption
+)
 
 
 @pytest.fixture
@@ -235,6 +240,105 @@ class TestEncryptionService:
         decrypted_new = service_new.decrypt(encrypted_new)
         assert json.loads(decrypted_new) == sensitive_data
 
+    def test_encrypt_decrypt_string(self, encryption_service):
+        """Test basic encryption and decryption of strings."""
+        # Test string encryption/decryption
+        original_string = "This is a test string with PHI!"
+        
+        # Encrypt the string
+        encrypted = encryption_service.encrypt_string(original_string)
+        
+        # Verify it's encrypted (starts with version prefix)
+        assert encrypted.startswith("v1:")
+        assert original_string not in encrypted
+        
+        # Decrypt and verify matches original
+        decrypted = encryption_service.decrypt_string(encrypted)
+        assert decrypted == original_string
+
+    def test_encrypt_decrypt_dict(self, encryption_service):
+        """Test dictionary encryption and decryption."""
+        # Test dictionary encryption/decryption
+        test_dict = {
+            "patient_id": "123456",
+            "name": "Test Patient",
+            "vitals": {
+                "heart_rate": 75,
+                "blood_pressure": "120/80"
+            }
+        }
+        
+        # Encrypt the dictionary
+        encrypted = encryption_service.encrypt_dict(test_dict)
+        
+        # Verify it's encrypted
+        assert encrypted.startswith("v1:")
+        assert "Test Patient" not in encrypted
+        
+        # Decrypt and verify matches original
+        decrypted = encryption_service.decrypt_dict(encrypted)
+        assert decrypted == test_dict
+        assert decrypted["name"] == "Test Patient"
+        assert decrypted["vitals"]["heart_rate"] == 75
+
+    def test_handle_none_values(self, encryption_service):
+        """Test that None values are handled properly."""
+        # None should pass through encrypt unchanged
+        assert encryption_service.encrypt(None) is None
+        assert encryption_service.encrypt_string(None) is None
+        assert encryption_service.encrypt_dict(None) is None
+        
+        # But decrypting None should raise an error
+        with pytest.raises(ValueError) as excinfo:
+            encryption_service.decrypt(None)
+        assert "cannot decrypt None value" in str(excinfo.value)
+        
+        # None values should not cause errors in SQLAlchemy TypeDecorators
+        encrypted_str_type = EncryptedString(encryption_service=encryption_service)
+        assert encrypted_str_type.process_bind_param(None, None) is None
+        assert encrypted_str_type.process_result_value(None, None) is None
+
+    def test_type_conversion(self, encryption_service):
+        """Test conversion of different types during encryption/decryption."""
+        # Test integer
+        assert encryption_service.decrypt_string(encryption_service.encrypt_string(123)) == "123"
+        
+        # Test complex nested structure
+        complex_data = {
+            "array": [1, 2, 3],
+            "nested": {"a": 1, "b": "test"},
+            "value": True
+        }
+        encrypted = encryption_service.encrypt_dict(complex_data)
+        decrypted = encryption_service.decrypt_dict(encrypted)
+        assert decrypted == complex_data
+        
+        # Test serialization of Pydantic-like objects
+        class MockPydanticV2:
+            def model_dump(self):
+                return {"id": 1, "name": "Test"}
+                
+        class MockPydanticV1:
+            def dict(self):
+                return {"id": 2, "name": "Test V1"}
+                
+        mock_v2 = MockPydanticV2()
+        mock_v1 = MockPydanticV1()
+        
+        # Both should be serializable
+        assert isinstance(serialize_for_encryption(mock_v2), str)
+        assert isinstance(serialize_for_encryption(mock_v1), str)
+        
+        # Check the encrypted values can be decrypted to dictionaries
+        encrypted_v2 = encryption_service.encrypt_string(mock_v2)
+        encrypted_v1 = encryption_service.encrypt_string(mock_v1)
+        
+        decrypted_v2 = json.loads(encryption_service.decrypt_string(encrypted_v2))
+        decrypted_v1 = json.loads(encryption_service.decrypt_string(encrypted_v1))
+        
+        assert decrypted_v2["id"] == 1
+        assert decrypted_v1["id"] == 2
+
 
 class TestFieldEncryption:
     """Test suite for field-level encryption of PHI data."""
@@ -296,3 +400,71 @@ class TestFieldEncryption:
         assert decrypted_record["demographics"]["address"]["city"] == patient_record["demographics"]["address"]["city"]
         assert decrypted_record["demographics"]["address"]["state"] == patient_record["demographics"]["address"]["state"]
         assert str(decrypted_record["demographics"]["address"]["zip"]) == str(patient_record["demographics"]["address"]["zip"])
+
+
+class TestEncryptedTypes:
+    """Test the SQLAlchemy encrypted type decorators."""
+    
+    def test_encrypted_string(self, encryption_service):
+        """Test the EncryptedString type decorator."""
+        encrypted_string = EncryptedString(encryption_service=encryption_service)
+        
+        # Test binding (python -> db)
+        value = "Test string with sensitive information"
+        bound = encrypted_string.process_bind_param(value, None)
+        
+        # Should be encrypted
+        assert bound.startswith("v1:")
+        assert value not in bound
+        
+        # Test result value (db -> python)
+        result = encrypted_string.process_result_value(bound, None)
+        assert result == value
+        
+        # Test with integer input
+        int_value = 12345
+        bound_int = encrypted_string.process_bind_param(int_value, None)
+        assert bound_int.startswith("v1:")
+        
+        # Should get string back
+        result_int = encrypted_string.process_result_value(bound_int, None)
+        assert result_int == str(int_value)
+
+    def test_encrypted_json(self, encryption_service):
+        """Test the EncryptedJSON type decorator."""
+        encrypted_json = EncryptedJSON(encryption_service=encryption_service)
+        
+        # Test with dictionary
+        test_dict = {"name": "Test User", "ssn": "123-45-6789"}
+        bound = encrypted_json.process_bind_param(test_dict, None)
+        
+        # Should be encrypted
+        assert bound.startswith("v1:")
+        
+        # Test result conversion
+        result = encrypted_json.process_result_value(bound, None)
+        assert result == test_dict
+        
+        # Test with Pydantic-like object
+        class MockPydantic:
+            def model_dump(self):
+                return {"id": 123, "sensitive": "PHI data"}
+        
+        mock_obj = MockPydantic()
+        bound_obj = encrypted_json.process_bind_param(mock_obj, None)
+        
+        # Should be encrypted
+        assert bound_obj.startswith("v1:")
+        
+        # Test result conversion - should be dict
+        result_obj = encrypted_json.process_result_value(bound_obj, None)
+        assert isinstance(result_obj, dict)
+        assert result_obj["id"] == 123
+        
+        # Test with MagicMock (for testing)
+        mock = MagicMock()
+        mock.__str__.return_value = "MockObject"
+        
+        # Should not raise exception
+        bound_mock = encrypted_json.process_bind_param(mock, None)
+        assert bound_mock.startswith("v1:")
