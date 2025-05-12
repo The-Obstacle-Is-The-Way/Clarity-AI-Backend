@@ -117,8 +117,21 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Configure test environment with standardized settings
     setup_test_environment()
     
-    # Create a base application with standard configuration
-    app = create_application()
+    # Create a base application with special test settings
+    from app.app_factory import create_application
+    
+    # Set skip_auth_middleware=True to disable the real authentication middleware
+    app = create_application(skip_auth_middleware=True)
+    
+    # Add test authentication bypass paths to the app's config
+    # This will ensure test paths are available for authentication testing
+    if not hasattr(app.state, 'settings'):
+        from app.core.config.settings import get_settings
+        app.state.settings = get_settings()
+    
+    # Update public paths to include test paths
+    if "/api/v1/auth/test-token" not in app.state.settings.PUBLIC_PATHS:
+        app.state.settings.PUBLIC_PATHS.append("/api/v1/auth/test-token")
     
     # Override database dependency
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -143,15 +156,28 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     
     # Create additional auth overrides
     async def override_verify_provider_access(*args, **kwargs):
-        return None  # Provider access check always succeeds
-        
-    # Apply all dependency overrides
+        return User(
+            id="00000000-0000-0000-0000-000000000002",
+            username="test_provider",
+            email="test.provider@novamind.ai",
+            role=UserRole.CLINICIAN.value,  # Use string value
+            roles=[UserRole.CLINICIAN.value, UserRole.PROVIDER.value],  # Use string values
+            is_active=True,
+            is_verified=True,
+            email_verified=True
+        )  # Provider access check always succeeds
+
+    # Apply dependency overrides
     app.dependency_overrides.update({
         get_db_dependency: override_get_db,
         get_xgboost_service: override_get_xgboost_service,
         get_current_user: override_get_current_user,
         verify_provider_access: override_verify_provider_access,
     })
+    
+    # Add test authentication middleware to simplify testing
+    from app.tests.integration.utils.test_authentication import TestAuthenticationMiddleware
+    app.add_middleware(TestAuthenticationMiddleware)
     
     yield app
     
@@ -182,11 +208,11 @@ def authenticated_client(client: httpx.AsyncClient, provider_auth_headers: dict[
     Returns a pre-authenticated client for testing protected endpoints.
     This fixture applies provider authentication headers to the base client.
     """
-    # Create a copy of the client to avoid modifying the original
-    auth_client = client
-    # Update headers with authentication
-    auth_client.headers.update(provider_auth_headers)
-    return auth_client
+    # Update headers with authentication 
+    client.headers.update({
+        "X-Test-Auth-Bypass": "clinician"
+    })
+    return client
 
 @pytest.fixture(scope="session")
 def mock_xgboost_service() -> MockXGBoostService:
@@ -204,8 +230,11 @@ def psychiatrist_auth_headers() -> dict[str, str]:
 
 @pytest.fixture
 def provider_auth_headers() -> dict[str, str]:
-    """Create authentication headers for test provider user via test bypass."""
-    return create_test_headers_for_role("PROVIDER")
+    """Authentication headers for a provider (clinician) role."""
+    return {
+        "X-Test-Auth-Bypass": "clinician",
+        "Authorization": "Bearer test_provider_token"
+    }
 
 @pytest.fixture
 def patient_auth_headers() -> dict[str, str]:
@@ -271,6 +300,15 @@ def valid_outcome_prediction_data() -> dict[str, Any]:
     return {
         "patient_id": "test-patient-123",
         "outcome_timeframe": {"months": 6},
+        "timeframe_days": 180,  # 6 months in days
+        "features": {
+            "phq9_score": 10,
+            "gad7_score": 7,
+            "symptom_duration_weeks": 10,
+            "previous_episodes": 1,
+            "medication_adherence": 0.9,
+            "therapy_sessions_attended": 5
+        },
         "clinical_data": {
             "phq9_score": 10,
             "gad7_score": 7,

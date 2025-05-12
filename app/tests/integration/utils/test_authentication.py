@@ -7,11 +7,16 @@ in test environments, including direct authentication bypasses for integration t
 
 import logging
 from collections.abc import Awaitable, Callable
+import time
 
 import pytest
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
+from starlette.responses import JSONResponse
+from fastapi.security import AuthCredentials
+
+from app.core.domain.entities.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +29,7 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
     and follows clean architecture principles.
     """
     
-    @pytest.fixture(autouse=True)
-    def setup(
+    def __init__(
         self,
         app: FastAPI,
         public_paths: list[str] | set[str] | None = None,
@@ -42,56 +46,65 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.public_paths = set(public_paths or [])
         self.auth_bypass_header = auth_bypass_header
+        logger.info(f"Test Authentication Middleware initialized with bypass header: {auth_bypass_header}")
         
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         """
-        Process each request through the middleware.
+        Process authentication for test routes.
+        
+        This middleware allows test requests to bypass normal security checks
+        when using test-specific headers.
         
         Args:
-            request: The incoming request
-            call_next: The next middleware or route handler
+            request: FastAPI request object
+            call_next: Next middleware/handler
             
         Returns:
-            Response object
+            Response after processing auth
         """
-        # Skip authentication for public paths
-        if self._is_public_path(request.url.path):
-            return await call_next(request)
-        
-        # Look for test auth bypass header
-        auth_info = request.headers.get(self.auth_bypass_header)
-        if auth_info:
+        # Check if request has test bypass header 
+        if self.auth_bypass_header in request.headers:
+            # Get and decode the test user data
             try:
-                # Parse role from header (format: "ROLE:USER_ID")
-                role, user_id = auth_info.split(":", 1)
-                
-                # Create a dictionary representation of user for compatibility with both User model and dict access
-                user_dict = {
-                    "id": user_id,
-                    "sub": user_id,  # Required for JWT compatibility
-                    "username": f"test_{role.lower()}",
-                    "email": f"test.{role.lower()}@novamind.ai",
-                    "role": role.upper(),
-                    "roles": [role.upper()],
-                    "is_active": True,
-                    "is_verified": True,
-                    "permissions": ["predict_risk", "predict_treatment", "predict_outcome"]
+                role_value = request.headers.get(self.auth_bypass_header, "clinician")
+                token_payload = {
+                    "id": "00000000-0000-0000-0000-000000000002",  # Test clinician ID
+                    "sub": "test.provider@novamind.ai",
+                    "roles": [role_value, "provider"],  # Always include provider role for these tests
+                    "iss": "https://test.auth.novamind.ai/",
+                    "exp": int(time.time()) + 3600  # Token valid for 1 hour
                 }
                 
-                # Attach to request state
-                request.state.user = user_dict
+                # Get user model directly from test data
+                user = User(
+                    id=token_payload["id"],
+                    username="test_provider",
+                    email=token_payload["sub"],
+                    role=role_value,
+                    roles=token_payload["roles"],
+                    is_active=True,
+                    is_verified=True,
+                    email_verified=True
+                )
+                
+                # Set authentication in request scope
+                request.scope["user"] = user
+                request.scope["auth"] = AuthCredentials(["authenticated"] + token_payload["roles"])
+                
+                # For debugging
+                logger.debug(f"TestAuthMiddleware: Added test auth for route {request.url.path}, user {user.id}")
                 return await call_next(request)
                 
-            except Exception as e:
-                logger.warning(f"Test auth bypass failed: {e}")
-                return self._create_error_response(
+            except (ValueError, KeyError) as e:
+                logger.error(f"TestAuthMiddleware: Invalid test token format: {str(e)}")
+                return JSONResponse(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    detail="Invalid test authentication bypass"
+                    content={"detail": f"Invalid test authentication: {str(e)}"}
                 )
-        
-        # Standard auth processing (will be handled by route dependencies)
+                
+        # Proceed normally if no test bypass header
         return await call_next(request)
     
     def _is_public_path(self, path: str) -> bool:

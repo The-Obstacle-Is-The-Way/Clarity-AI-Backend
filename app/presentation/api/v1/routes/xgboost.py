@@ -269,6 +269,7 @@ async def predict_outcome(
             patient_id=request.patient_id,
             features=request.features,
             timeframe_days=request.timeframe_days,
+            outcome_timeframe={"days": request.timeframe_days},  # Convert to dict format expected by service
             # Pass optional fields if they exist in the request
             prediction_domains=request.prediction_domains,
             prediction_types=request.prediction_types,

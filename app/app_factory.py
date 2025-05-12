@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # --- Helper Functions ---
 def _initialize_sentry(settings: Settings) -> None:
     """Initializes Sentry if DSN is provided."""
-    if settings.SENTRY_DSN:
+        if settings.SENTRY_DSN:
         logger.info("Sentry DSN found, initializing Sentry.")
         try:
             sentry_sdk.init(
@@ -403,7 +403,7 @@ def create_application(
                 jwt_service = jwt_service_override
                 logger.info("Using provided JWT service override for AuthenticationMiddleware.")
             else:
-                jwt_service = get_jwt_service(settings=app_settings)
+                jwt_service = get_jwt_service()
                 logger.info("JWT service initialized successfully.")
                 
             # Determine public paths for authentication bypass

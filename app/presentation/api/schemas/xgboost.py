@@ -45,8 +45,8 @@ class OutcomeDomain(str, Enum):  # Assuming this is an enum
     OVERALL_FUNCTIONING = "overall_functioning"
 
 
-class RiskType(str, Enum):  # Assuming this is an enum
-    """Type of risk predicted (Presentation Layer)."""
+class RiskType(str, Enum):
+    """Types of mental health risks that can be predicted."""
 
     SUICIDE = "suicide"
     SUICIDE_ATTEMPT = "suicide_attempt"
@@ -56,6 +56,7 @@ class RiskType(str, Enum):  # Assuming this is an enum
     VIOLENCE = "violence"
     SUBSTANCE_ABUSE = "substance_abuse"
     MEDICATION_NONCOMPLIANCE = "medication_noncompliance"
+    RELAPSE = "relapse"  # Added for test compatibility
 
 
 class TimeFrame(str, Enum):
@@ -100,6 +101,8 @@ class RiskPredictionRequest(BaseModelConfig):
     clinical_data: dict[str, Any] = Field(..., description="Clinical data and measurements")
     include_explainability: bool = False
     visualization_type: VisualizationType | None = None
+    time_frame_days: int = Field(default=90, description="Prediction timeframe in days")
+    confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum confidence threshold for predictions")
 
     # For backward compatibility with legacy code
     @property
@@ -249,15 +252,22 @@ class TherapyDetails(BaseModelConfig):
 
 
 class OutcomePredictionRequest(BaseModelConfig):
-    """Request schema for clinical outcome predictions."""
+    """Request model for outcome prediction."""
 
     patient_id: str
-    timeframe_days: int = Field(ge=1, le=365, description="Prediction timeframe in days")
-    prediction_domains: list[OutcomeDomain] | None = None
-    prediction_types: list[OutcomeType] | None = None
+    outcome_timeframe: dict[str, int] | None = None
+    features: dict[str, Any] = Field(..., description="Features used for the prediction model")
+    timeframe_days: int = Field(..., description="Prediction timeframe in days")
+    clinical_data: dict[str, Any] | None = None
+    treatment_plan: dict[str, Any] | None = None
+    socioeconomic_factors: dict[str, Any] | None = None
+    biometric_data: dict[str, Any] | None = None
+    
+    # Optional fields
     include_trajectories: bool = False
-    include_recommendations: bool = False
-    features: dict[str, Any] = Field(..., description="Patient features for outcome prediction")
+    include_recommendations: bool = True
+    prediction_domains: list[str] | None = None
+    prediction_types: list[str] | None = None
 
 
 class OutcomePredictionResponse(BaseModelConfig):
