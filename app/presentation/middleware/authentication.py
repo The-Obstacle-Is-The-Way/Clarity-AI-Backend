@@ -107,11 +107,39 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self, token: str, request: Request 
     ) -> tuple[AuthenticatedUser, list[str]]: # Return type is tuple
         logger.debug("Attempting to validate token and prepare user context.")
+        
+        # === MORE DETAILED DEBUGGING ===
+        the_app_on_request = request.app
+        logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request ID: {id(the_app_on_request)}, type: {type(the_app_on_request)}")
+        logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.__class__ is {the_app_on_request.__class__}")
+        try:
+            logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.__dict__ is {the_app_on_request.__dict__}")
+        except AttributeError:
+            logger.warning("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request has no __dict__ attribute.")
+
+        if hasattr(the_app_on_request, 'state'):
+            logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.state exists. State ID: {id(the_app_on_request.state)}")
+            if hasattr(the_app_on_request.state, 'actual_session_factory'):
+                logger.info("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.state.actual_session_factory exists.")
+            else:
+                logger.warning("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.state.actual_session_factory DOES NOT EXIST.")
+        else:
+            logger.warning("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request has NO state attribute.")
+        # === END MORE DETAILED DEBUGGING ===
+
         try:
             token_payload: TokenPayload = await self.jwt_service.decode_token(token)
             logger.debug(f"Token decoded. Payload sub: {token_payload.sub if hasattr(token_payload, 'sub') else 'N/A'}, Roles from token: {token_payload.roles if hasattr(token_payload, 'roles') else 'N/A'}")
 
-            session_factory = request.app.state.actual_session_factory
+            # === HAIL MARY GETATTR ===
+            logger.info(f"Attempting getattr(the_app_on_request, 'state')")
+            retrieved_state = getattr(the_app_on_request, 'state')
+            logger.info(f"getattr(the_app_on_request, 'state') returned: {type(retrieved_state)}")
+            logger.info(f"Attempting getattr(retrieved_state, 'actual_session_factory')")
+            session_factory = getattr(retrieved_state, 'actual_session_factory')
+            logger.info(f"Successfully retrieved session_factory via getattr: {type(session_factory)}")
+            # === END HAIL MARY GETATTR ===
+
             async with session_factory() as db_session:
                 user_repo_instance = SQLAlchemyUserRepository(db_session)
                 
@@ -167,14 +195,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             raise AuthenticationException(f"Unexpected internal error during token validation: {str(e)}")
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        # ... (public path check remains the same) ...
-        # if any(regex.match(request.url.path) for regex in self.public_path_regexes_compiled) or request.url.path in self.public_paths:
-        #    request.scope["user"] = UnauthenticatedUser()
-        #    request.scope["auth"] = AuthCredentials([])
-        #    return await call_next(request)
+        # Log the app instance ID from the request scope
+        logger.info(f"MIDDLEWARE_DISPATCH: request.app ID: {id(request.app)}, type: {type(request.app)}")
         
-        # --- Standard path checks from original code ---
-        # Check if the path is public (exact match or regex)
+        # Try to access state to see if it exists on this app instance
+        if hasattr(request.app, 'state') and request.app.state:
+            logger.info(f"MIDDLEWARE_DISPATCH: request.app.state exists. Factory ID: {id(getattr(request.app.state, 'actual_session_factory', None))}")
+        else:
+            logger.warning("MIDDLEWARE_DISPATCH: request.app has no state or state is empty.")
+
+        # Bypass authentication for public paths
         if request.url.path in self.public_paths:
             logger.debug(f"Dispatch: Path '{request.url.path}' is in public_paths. Skipping auth.")
             request.scope["user"] = UnauthenticatedUser()
@@ -187,8 +217,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 request.scope["user"] = UnauthenticatedUser()
                 request.scope["auth"] = AuthCredentials([])
                 return await call_next(request)
-        # --- End standard path checks ---
-
 
         token = self._extract_token(request)
         if not token:

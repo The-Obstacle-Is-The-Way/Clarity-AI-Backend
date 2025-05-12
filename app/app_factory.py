@@ -329,7 +329,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 def create_application(
     settings_override: Settings | None = None,
     include_test_routers: bool = False,
-    jwt_service_override: JWTServiceInterface | None = None  # CORRECTED TYPE HINT
+    jwt_service_override: JWTServiceInterface | None = None,
+    skip_auth_middleware: bool = False  # TEMPORARY DEBUG FLAG
 ) -> FastAPI:
     """Factory function to create and configure the FastAPI application."""
     logger.info("CREATE_APPLICATION_START: Entered create_application factory.")
@@ -394,27 +395,17 @@ def create_application(
     # 4. Authentication Middleware - MOVED TO LIFESPAN (NOW MOVING BACK)
     # This is where AuthenticationMiddleware should be added.
     # It now depends on jwt_service (from app_settings) and accesses user_repo via request.app.state.
-    logger.info("APP_FACTORY: Attempting to initialize and add AuthenticationMiddleware...")
-    try:
-        # Use override if provided, otherwise create a new JWTService instance
-        jwt_service_for_auth_middleware = jwt_service_override if jwt_service_override else JWTService(settings=app_settings)
-        if jwt_service_override:
-            logger.info("APP_FACTORY: Using provided jwt_service_override for AuthenticationMiddleware.")
-        else:
-            logger.info("APP_FACTORY: Creating new JWTService instance for AuthenticationMiddleware.")
-            
-        auth_middleware_instance = AuthenticationMiddleware(
-            app=app_instance, # Pass the app_instance itself
-            jwt_service=jwt_service_for_auth_middleware,
-            # user_repo is no longer passed here
-            public_paths=set(app_settings.PUBLIC_PATHS), # Ensure it's a set
-            public_path_regexes=app_settings.PUBLIC_PATH_REGEXES # Pass the list of regex strings
+    if not skip_auth_middleware: # CHECK THE FLAG
+        logger.info("Adding AuthenticationMiddleware to the application.")
+        effective_jwt_service = jwt_service_override if jwt_service_override is not None else JWTService(settings=app_settings)
+        fastapi_app.add_middleware(
+            AuthenticationMiddleware,
+            app=fastapi_app,
+            jwt_service=effective_jwt_service,
+            public_paths=set(app_settings.PUBLIC_PATHS),
+            public_path_regexes=app_settings.PUBLIC_PATH_REGEXES
         )
-        app_instance.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware_instance.dispatch)
         logger.info("APP_FACTORY: AuthenticationMiddleware added successfully.")
-    except Exception as e:
-        logger.error(f"APP_FACTORY: Failed to initialize or add AuthenticationMiddleware: {type(e).__name__} - {e}", exc_info=True)
-        logger.warning("APP_FACTORY: AuthenticationMiddleware FAILED to load. Authentication will likely not be enforced.")
 
     # 5. Rate Limiting Middleware - MOVED TO LIFESPAN (NOW MOVING BACK, still commented)
     # if app_settings.RATE_LIMITING_ENABLED:

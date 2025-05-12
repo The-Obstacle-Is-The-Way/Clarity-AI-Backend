@@ -541,8 +541,10 @@ async def test_app_with_db_session(
     # Create the app instance
     app = create_application(
         settings_override=test_settings,
-        jwt_service_override=mock_jwt_service_with_placeholder_handling
+        jwt_service_override=mock_jwt_service_with_placeholder_handling,
+        skip_auth_middleware=True
     )
+    logger.info(f"DEBUG_INTEGRATION_CONTEST_APP_TYPE: Immediately after create_application (Auth MW SKIPPED), app type is {type(app)}, id is {id(app)}.") # DEBUG LOGGING
     
     # Create a properly configured session factory
     db_session_factory = async_sessionmaker(
@@ -567,13 +569,16 @@ async def test_app_with_db_session(
     try:
         async with LifespanManager(app) as manager:
             logger.info("Application lifespan startup completed, actual_session_factory is properly set")
-            # logger.info(f"MANAGER.APP.STATE in test_app_with_db_session: {manager.app.state._state if hasattr(manager.app.state, '_state') else 'No _state'}")
-            yield manager.app # Yield the managed app
-    finally:
-        logger.info("Cleaning up test_app_with_db_session fixture")
-        # Perform any specific cleanup related to this fixture if necessary
-        # For example, clearing dependency overrides if they were not scoped properly
-        # app.dependency_overrides.clear() # Usually handled by FastAPI TestClient or LifespanManager
+            if hasattr(manager.app.state, 'actual_session_factory'):
+                logger.info("Manager app.state.actual_session_factory FOUND after lifespan startup.")
+            else:
+                logger.warning("Manager app.state.actual_session_factory NOT FOUND after lifespan startup.")
+            
+            logger.info(f"PRE_YIELD_MANAGER_LOG: Type of manager is {type(manager)}, id is {id(manager)}.") # UNIQUE LOG
+            yield manager.app # Yield the 'managed' app
+    except Exception as e:
+        logger.error(f"Error in test_app_with_db_session fixture: {e}")
+        raise
 
 @pytest_asyncio.fixture
 async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> AsyncGenerator[AsyncClient, None]:  

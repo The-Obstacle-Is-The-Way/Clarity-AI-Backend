@@ -6,7 +6,7 @@ including authentication, authorization, input validation, and HIPAA compliance.
 """
 
 import uuid
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Callable
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -102,49 +102,46 @@ Sample device information
 # Removed the local mock_auth_dependency fixture - now using the one from conftest.py
 
 @pytest_asyncio.fixture
-async def actigraphy_test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_auth_dependency):
+async def actigraphy_test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_auth_dependency: Callable):
     """
     FastAPI test application with authentication dependencies overridden for actigraphy tests.
     Uses the mock_auth_dependency from integration/conftest.py to provide mock users.
     """
     app_to_override = test_app_with_db_session
-    logger.info(f"DEBUG_ACTIGRAPHY_OVERRIDES_ Eingang: app_to_override type is {type(app_to_override)}, id is {id(app_to_override)}.") # Unique log message
-    logger.info(f"DEBUG_ACTIGRAPHY_OVERRIDES_Eingang: mock_auth_dependency type is {type(mock_auth_dependency)}.")
+    logger.info(f"ACTIGRAPHY_OVERRIDES_RESTORING: app_to_override type is {type(app_to_override)}, id is {id(app_to_override)}.")
+    logger.info(f"ACTIGRAPHY_OVERRIDES_RESTORING: mock_auth_dependency type is {type(mock_auth_dependency)}.")
 
     if not isinstance(app_to_override, FastAPI):
-        logger.error(f"CRITICAL_ACTIGRAPHY_ERROR: app_to_override expected FastAPI, got {type(app_to_override)}.")
-        raise TypeError(f"actigraphy_test_app_with_auth_override expects FastAPI app, received {type(app_to_override)}")
+        logger.error(f"CRITICAL_ACTIGRAPHY_ERROR_RESTORING: app_to_override expected FastAPI, got {type(app_to_override)}.")
+        raise TypeError(f"actigraphy_test_app_with_auth_override (restoring) expects FastAPI app, received {type(app_to_override)}")
 
+    # Import auth dependencies here to avoid potential circular imports with conftest
     from app.presentation.api.dependencies.auth import (
-        get_current_user, 
+        get_current_user,
         get_current_active_user,
-        require_admin_role,
-        require_clinician_role
+        # require_admin_role, # Not overriding these globally for this app fixture
+        # require_clinician_role
     )
     
-    # Store original overrides to restore later if needed, though usually cleared
-    original_overrides = test_app_with_db_session.dependency_overrides.copy()
+    original_overrides = app_to_override.dependency_overrides.copy()
 
-    # The mock_auth_dependency fixture from integration/conftest.py returns a factory function.
-    # This factory function, when called with a role (e.g., "PATIENT"), 
-    # returns the actual async dependency override function (e.g., get_mock_user for patient).
-    test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency("PATIENT") # Default for this app override
-    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency("PATIENT")
-    # Specific role overrides can be done per test if needed by further overriding on the app instance
-    # test_app_with_db_session.dependency_overrides[require_admin_role] = mock_auth_dependency("ADMIN")
-    # test_app_with_db_session.dependency_overrides[require_clinician_role] = mock_auth_dependency("CLINICIAN")
+    # mock_auth_dependency is a factory that returns the actual async override function
+    app_to_override.dependency_overrides[get_current_user] = mock_auth_dependency("PATIENT")
+    app_to_override.dependency_overrides[get_current_active_user] = mock_auth_dependency("PATIENT")
     
-    yield test_app_with_db_session
+    logger.info(f"ACTIGRAPHY_OVERRIDES_RESTORING: Overrides applied: {app_to_override.dependency_overrides.keys()}")
+
+    logger.info(f"ACTIGRAPHY_YIELDING_APP: ID: {id(app_to_override)}, Type: {type(app_to_override)}") # DEBUG LOG
+    yield app_to_override
     
-    # Clean up: restore original overrides or clear all
-    test_app_with_db_session.dependency_overrides = original_overrides
-    # Alternatively, to ensure a clean state if original_overrides might be stale:
-    # test_app_with_db_session.dependency_overrides.clear()
+    # Clean up by restoring original overrides or clearing all
+    app_to_override.dependency_overrides = original_overrides
+    logger.info("ACTIGRAPHY_OVERRIDES_RESTORING: Overrides restored/cleared.")
 
 
 @pytest_asyncio.fixture
 async def authenticated_client(
-    actigraphy_test_app_with_auth_override: FastAPI, # UPDATED to use renamed fixture
+    actigraphy_test_app_with_auth_override: FastAPI, 
     patient_token: str # Default to using patient_token
 ) -> AsyncGenerator[AsyncClient, None]:
     """
@@ -154,8 +151,9 @@ async def authenticated_client(
     Yields:
         AsyncClient: A test client with authentication overrides and default auth header.
     """
+    logger.info(f"DEBUG_AUTHENTICATED_CLIENT: Received app_to_override type: {type(actigraphy_test_app_with_auth_override)}, id: {id(actigraphy_test_app_with_auth_override)}") # DEBUG LOG
     async with AsyncClient(
-        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed
+        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed by test_app_with_db_session
         base_url="http://test", 
         headers={"Authorization": f"Bearer {patient_token}"} # Set default auth header
     ) as client:
