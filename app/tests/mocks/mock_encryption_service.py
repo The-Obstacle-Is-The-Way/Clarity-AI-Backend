@@ -29,6 +29,37 @@ class MockEncryptionService(BaseEncryptionService):
         self._previous_key = previous_key
         self._version = "v1"  # Match real versioning pattern
         self._initialized = True
+        
+        # Add a mock cipher object with decrypt/encrypt methods to match BaseEncryptionService
+        class MockCipher:
+            def __init__(self, key):
+                self.key = key
+                
+            def encrypt(self, data):
+                # Simple "encryption" - XOR with key and add padding
+                mock_key_bytes = self.key.encode('utf-8')
+                mock_key_len = len(mock_key_bytes)
+                
+                result = bytearray(len(data))
+                for i, b in enumerate(data):
+                    result[i] = b ^ mock_key_bytes[i % mock_key_len]
+                    
+                return result
+                
+            def decrypt(self, data):
+                # Simple "decryption" - same XOR operation as encryption
+                mock_key_bytes = self.key.encode('utf-8')
+                mock_key_len = len(mock_key_bytes)
+                
+                result = bytearray(len(data))
+                for i, b in enumerate(data):
+                    result[i] = b ^ mock_key_bytes[i % mock_key_len]
+                    
+                return result
+        
+        # Create and assign the mock cipher
+        self.cipher = MockCipher(key)
+        
         logger.debug(f"MockEncryptionService initialized with key: {key[:3]}***")
     
     def encrypt(self, data: Union[str, bytes]) -> str:
