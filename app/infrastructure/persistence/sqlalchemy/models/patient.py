@@ -39,6 +39,10 @@ from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import Encr
 # from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location # This line will be removed
 import base64 # Import base64 for decoding the key
 
+# Import the encryption service instance directly for use in TypeDecorators
+# This allows tests to patch it directly in this module
+from app.infrastructure.security.encryption import encryption_service_instance
+
 logger = logging.getLogger(__name__)
 
 import dataclasses  # Add this import
