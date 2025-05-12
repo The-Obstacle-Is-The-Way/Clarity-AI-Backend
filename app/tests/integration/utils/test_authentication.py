@@ -16,7 +16,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from starlette.responses import JSONResponse
 from starlette.authentication import AuthCredentials
 
-from app.core.domain.entities.user import User
+from app.core.domain.entities.user import User, UserStatus
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +82,11 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                     id=token_payload["id"],
                     username="test_provider",
                     email=token_payload["sub"],
-                    role=role_value,
-                    roles=token_payload["roles"],
+                    full_name="Test Provider",
+                    password_hash="$2b$12$FakePasswordHashForTestUse..",
+                    roles=set(token_payload["roles"]),
                     is_active=True,
-                    is_verified=True,
-                    email_verified=True
+                    account_status=UserStatus.ACTIVE,
                 )
                 
                 # Set authentication in request scope
