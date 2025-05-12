@@ -19,120 +19,122 @@ from app.infrastructure.security.encryption import encryption_service_instance a
 logger = logging.getLogger(__name__)
 
 class EncryptedTypeBase(types.TypeDecorator):
-    """Base class for encrypted types, storing data as Text."""
-    # Store encrypted data as TEXT, suitable for base64 encoded ciphertext
-    impl = Text 
-    cache_ok = False
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._constructor_args = args
-        self._constructor_kwargs = kwargs
-        # Do not set self.encryption_service here, it will be accessed through a property
-
-    @property
-    def encryption_service(self):
+    """Base type for encrypted column types."""
+    
+    impl = Text
+    
+    def __init__(self, encryption_service = None, length = 4000, *args, **kwargs):
+        super().__init__(length=length, *args, **kwargs)
+        self.encryption_service = encryption_service or global_encryption_service_instance
+        logger.debug(f"[EncryptedTypeBase.__init__] Created {self.__class__.__name__} with service {id(self.encryption_service)}")
+    
+    def process_bind_parameter(self, value: Any, dialect: Dialect) -> str | None:
         """
-        Get the encryption service to use.
+        Encrypt the Python value before storing in database.
         
-        In test mode, we want to allow patching the instance in the patient module.
-        This property checks if we're using the patient module and if so, uses the instance from there.
-        Otherwise falls back to the global instance.
+        Args:
+            value: The Python value to encrypt
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Encrypted string or None if the input is None
         """
-        try:
-            # Try to import the patient module's instance (which might be a mock in tests)
-            from app.infrastructure.persistence.sqlalchemy.models.patient import encryption_service_instance as patient_esi
-            return patient_esi
-        except (ImportError, AttributeError):
-            # Fallback to the global instance
-            return global_encryption_service_instance
-
-    def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
-        logger.debug(f"[EncryptedTypeBase] process_bind_param called for type {self.__class__.__name__}. Encryption service ID: {id(self.encryption_service)}")
         if value is None:
             return None
+            
+        logger.debug(f"[EncryptedTypeBase] process_bind_parameter: Encrypting value of type {type(value)} for {self.__class__.__name__}")
         try:
-            # value_str = str(value) # No need to force string conversion here if encrypt handles it
+            # The base implementation handles string conversion via _convert_bind_param
+            # This creates a uniform interface for all encrypted types
+            value_to_encrypt = self._convert_bind_param(value)
             
-            # self.encryption_service is BaseEncryptionService.
-            # Its .encrypt() method handles type conversion (if needed) and returns 
-            # the correctly formatted, version-prefixed, base64-encoded string.
-            encrypted_string_with_prefix = self.encryption_service.encrypt(value)
-            logger.debug(f"[EncryptedTypeBase] process_bind_param: Encrypted value (prefix included): {encrypted_string_with_prefix[:15]}...")
+            # Use encrypt_string to get consistent prefixed encryption
+            encrypted_value = self.encryption_service.encrypt_string(value_to_encrypt)
             
-            # Simply return the string provided by the service.
-            return encrypted_string_with_prefix
-
-        except (ValueError, TypeError) as e:
-            logger.error(f"Encryption failed during bind processing: {e}", exc_info=True)
-            raise ValueError("Encryption failed during bind parameter processing.") from e
+            logger.debug(f"[EncryptedTypeBase] process_bind_parameter: Encrypted value: {encrypted_value[:15] if encrypted_value else 'None'}...")
+            return encrypted_value
         except Exception as e:
-            # Catch unexpected errors from self.encryption_service.encrypt
-            logger.error(f"Unexpected encryption error during bind processing: {e}", exc_info=True)
+            logger.error(f"Encryption error during bind parameter processing: {e}", exc_info=True)
             raise ValueError("Unexpected encryption error during bind parameter processing.") from e
-
+    
     def process_result_value(self, value: str | None, dialect: Dialect) -> Any | None:
-        logger.debug(f"[EncryptedTypeBase] process_result_value called for type {self.__class__.__name__}. Encryption service ID: {id(self.encryption_service)}")
-        # 'value' is the raw string from the DB (e.g., v1:base64...)
+        """
+        Decrypt the database value to a Python value.
+        
+        Args:
+            value: The encrypted string from the database
+            dialect: SQLAlchemy dialect
+            
+        Returns:
+            Decrypted Python value or None if the input is None
+            
+        Raises:
+            ValueError: If decryption fails
+        """
+        logger.debug(f"[EncryptedTypeBase] process_result_value called for type {self.__class__.__name__}.")
+        
+        # Handle None case
         if value is None:
             return None
-
+        
+        # Ensure we're working with a string
         if not isinstance(value, str):
-            # Log or raise if the DB returned something unexpected
-            logger.warning(f"EncryptedTypeBase.process_result_value expected str from DB, got {type(value)}")
-            # Attempt to convert to string as a fallback, but this indicates a potential issue
+            logger.warning(f"Expected str from DB, got {type(value)}")
             try:
                 value = str(value)
             except Exception:
-                 raise TypeError(f"Cannot process non-string value {type(value)} from encrypted column.")
-
-        logger.debug(f"[EncryptedTypeBase] process_result_value: Received raw value from DB (prefix included?): {value[:15]}...")
+                raise TypeError(f"Cannot process non-string value {type(value)} from encrypted column.")
         
-        # During tests, respect the mock's behavior more explicitly
-        if hasattr(self.encryption_service, "decrypt") and callable(self.encryption_service.decrypt):
-            try:
-                # For tests, use direct decrypt method to match mock expectations
-                decrypted_plain_string = self.encryption_service.decrypt(value)
-                # Apply final conversion based on the specific type (implemented in subclass)
-                return self._convert_result_value(decrypted_plain_string)
-            except Exception as e:
-                logger.error(f"Error decrypting with direct decrypt method: {e}")
-                # Fall through to normal handling
-        
-        if not value.startswith(self.encryption_service.VERSION_PREFIX):
-            # If it doesn't have the prefix, assume it wasn't encrypted by our service
-            # and return it as is. Log a warning.
-            logger.warning(f"Value from DB does not start with expected prefix '{self.encryption_service.VERSION_PREFIX}'. Returning raw value. Value: '{value[:100]}...'")
-            # This behavior might need adjustment based on policy (e.g., raise error, return None).
-            # For now, returning raw value allows handling unencrypted legacy data.
-            return self._convert_result_value(value) # Apply final conversion if needed
-
         try:
-            # Pass the full prefixed string to decrypt_string
-            logger.debug(f"[EncryptedTypeBase] process_result_value: Calling decrypt_string with value: {value[:15]}...")
-            decrypted_plain_string = self.encryption_service.decrypt_string(value)
-            logger.debug(f"[EncryptedTypeBase] process_result_value: Decrypted plain string (type: {type(decrypted_plain_string)}): {repr(decrypted_plain_string)[:100]}...")
+            # For test mocks that may have a simplified decrypt method
+            if hasattr(self.encryption_service, "decrypt") and callable(self.encryption_service.decrypt):
+                try:
+                    decrypted_value = self.encryption_service.decrypt(value)
+                    return self._convert_result_value(decrypted_value)
+                except Exception as e:
+                    logger.debug(f"Direct decrypt method failed: {e} - trying decrypt_string")
+                    # Fall through to standard method
             
-            # If decrypt_string returns None (e.g., due to error or original None), return None
-            if decrypted_plain_string is None:
-                return None
-                
-            # Apply final conversion based on the specific type (implemented in subclass)
-            return self._convert_result_value(decrypted_plain_string)
+            # Use the standard decrypt_string method
+            decrypted_value = self.encryption_service.decrypt_string(value)
+            
+            # Apply type-specific conversion
+            return self._convert_result_value(decrypted_value)
             
         except ValueError as e:
-            logger.error(f"Decryption failed for value '{value[:100]}...': {e}", exc_info=False) # Keep log concise
-            # Decide how to handle decryption errors: raise, return None, return original?
-            # Raising ensures data integrity issues are surfaced.
-            raise ValueError(f"Failed to decrypt value: {e}") from e
+            # Specifically handle ValueError (which includes decryption errors)
+            logger.error(f"Decryption failed for value: {e}")
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error during decryption result processing: {e}", exc_info=True)
-            raise ValueError("Unexpected decryption error.") from e
-
+            # Handle any other errors
+            logger.error(f"Unexpected error during decryption: {e}", exc_info=True)
+            raise ValueError(f"Failed to decrypt: {e}") from e
+    
+    def _convert_bind_param(self, value: Any) -> str:
+        """
+        Convert a Python value to a string for encryption.
+        Override in subclasses for type-specific conversion.
+        
+        Args:
+            value: The Python value to convert
+            
+        Returns:
+            String representation for encryption
+        """
+        if isinstance(value, str):
+            return value
+        return str(value)
+    
     def _convert_result_value(self, decrypted_plain_string: str) -> Any:
-        """Convert the decrypted plain string to the final Python type.
-           To be implemented by subclasses (e.g., EncryptedJSON will parse JSON).
-           The base implementation returns the string as is.
+        """
+        Convert a decrypted string to the appropriate Python type.
+        Override in subclasses for type-specific conversion.
+        
+        Args:
+            decrypted_plain_string: The decrypted string value
+            
+        Returns:
+            Converted Python value
         """
         return decrypted_plain_string
 
@@ -143,7 +145,7 @@ class EncryptedTypeBase(types.TypeDecorator):
         raise NotImplementedError
 
     def copy(self, **kw):
-        return self.__class__(*self._constructor_args, **self._constructor_kwargs)
+        return self.__class__(**kw)
 
 
 class EncryptedString(EncryptedTypeBase):

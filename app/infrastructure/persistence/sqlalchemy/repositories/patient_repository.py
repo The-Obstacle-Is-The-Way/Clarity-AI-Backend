@@ -235,7 +235,9 @@ class PatientRepository:
         # Use patient_id from parameter if provided, otherwise from entity
         patient_id = patient_id or patient_entity.id
         
-        self.logger.debug(f"Attempting to update patient with ID: {patient_id} using entity ID: {patient_entity.id} with context: {context}")
+        # Handle the case where patient_id is a UUID object directly
+        entity_id_str = str(patient_entity.id) if hasattr(patient_entity, 'id') else 'None'
+        self.logger.debug(f"Attempting to update patient with ID: {patient_id} using entity ID: {entity_id_str} with context: {context}")
 
         # Prepare data for DB update, mapping domain fields to model fields
         # This is a simplified example; a more robust solution might involve a dedicated mapper.

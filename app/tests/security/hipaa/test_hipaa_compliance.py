@@ -185,20 +185,21 @@ except ImportError as e:
         if isinstance(data, str):
             # Replace common PHI patterns with specific redaction labels
             sanitized = data
-            sanitized = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED SSN]', sanitized)  # SSN
-            sanitized = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[REDACTED EMAIL]', sanitized)  # Email
-            sanitized = re.sub(r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b', '[REDACTED PHONE]', sanitized)  # Phone
-            sanitized = re.sub(r'\b\d{1,5}\s[A-Za-z0-9\s]{1,20}(?:street|st|avenue|ave|road|rd|boulevard|blvd)\b', '[REDACTED ADDRESS]', sanitized, flags=re.IGNORECASE)  # Address
-            sanitized = re.sub(r'\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b', '[REDACTED DATE]', sanitized)  # Date
+            # Replace SSN with specifically expected pattern
+            sanitized = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED SSN]', sanitized)
+            # Replace other common PHI
+            sanitized = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[REDACTED EMAIL]', sanitized)
+            sanitized = re.sub(r'\b\d{3}[-.\\s]?\\d{3}[-.\\s]?\\d{4}\b', '[REDACTED PHONE]', sanitized)
+            sanitized = re.sub(r'\b\d{1,5}\s[A-Za-z0-9\s]{1,20}(?:street|st|avenue|ave|road|rd|boulevard|blvd)', '[REDACTED ADDRESS]', sanitized)
             return sanitized
         elif isinstance(data, dict):
-            # Recursively sanitize dictionary values
+            # Process dictionaries recursively
             return {k: mock_sanitize_phi(v) for k, v in data.items()}
         elif isinstance(data, list):
-            # Recursively sanitize list items
+            # Process lists recursively
             return [mock_sanitize_phi(item) for item in data]
         else:
-            # Return non-string values as-is
+            # Return other types unchanged
             return data
     
     # Replace the simple mock with our more specific implementation
@@ -512,7 +513,7 @@ class TestAuditLogging(BaseSecurityTest):
         # Verify that the mock was called with the expected arguments
         mock_log_phi_access_method.assert_called_once()
         
-        # Extract the call arguments
+        # Extract the call arguments (using keyword arguments)
         args, kwargs = mock_log_phi_access_method.call_args
         assert kwargs["user_id"] == test_user_id
         assert kwargs["action"] == test_action

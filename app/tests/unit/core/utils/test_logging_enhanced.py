@@ -9,6 +9,8 @@ import pytest
 
 from app.core.utils.logging import get_logger
 
+# Constants for testing
+TEST_LOGGER_NAME = "test_logger_configuration"
 
 @pytest.fixture
 def mock_logger():

@@ -92,6 +92,16 @@ class Patient(BaseModel):
     treatment_history_notes: str | None = Field(None, description="Notes on treatment history")
     current_medications_lve: str | None = Field(None, description="Current medications text (LVE)") # if different from list
     
+    # Audit and metadata fields
+    audit_id: uuid.UUID | None = Field(None, description="ID linking to audit log entry for this record")
+    created_by: uuid.UUID | None = Field(None, description="ID of the user who created this record")
+    updated_by: uuid.UUID | None = Field(None, description="ID of the user who last updated this record")
+    
+    # Security and system fields
+    is_active: bool = Field(True, description="Whether the patient record is active")
+    external_id: str | None = Field(None, description="External system identifier")
+    notes: str | None = Field(None, description="General notes about the patient")
+    
     # Other / Preferences
     preferences_json: dict[str, Any] | None = Field(default_factory=dict, description="Patient preferences as JSON-like dict")
     contact_details_json: dict[str, Any] | None = Field(default_factory=dict, description="Additional contact details as JSON-like dict")
