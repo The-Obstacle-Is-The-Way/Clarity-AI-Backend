@@ -332,6 +332,8 @@ class FeatureImportanceResponse(BaseModelConfig):
     """Response schema for feature importance explanations."""
     
     prediction_id: str = Field(..., description="The ID of the prediction being explained")
-    model_type: str = Field(..., description="The type of model used for the prediction")
-    feature_importance: dict[str, float] = Field(..., description="Feature importance scores")
-    timestamp: str = Field(..., description="Timestamp of when the explanation was generated")
+    patient_id: str = Field(..., description="The ID of the patient")
+    features: dict[str, float] = Field(..., description="Feature importance scores")
+    timestamp: str | datetime = Field(..., description="Timestamp of when the explanation was generated")
+    model_version: str = Field(..., description="Version of the model used for the prediction")
+    explanation_method: str = Field(default="SHAP", description="Method used to calculate feature importance")

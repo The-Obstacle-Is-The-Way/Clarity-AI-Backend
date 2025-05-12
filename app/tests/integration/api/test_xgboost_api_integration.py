@@ -6,11 +6,12 @@ handle authentication, and pass data to and from the service layer.
 """
 
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 from unittest.mock import AsyncMock
 import uuid
 import httpx
+import logging
 
 import asyncio
 import pytest
@@ -19,18 +20,17 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.presentation.api.dependencies.auth import get_current_user
-from app.core.domain.entities.user import User
+from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.services.ml.xgboost.exceptions import (
     DataPrivacyError,
     ModelNotFoundError,
     ServiceUnavailableError,
 )
-from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.domain.enums.role import Role as UserRole
+from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from app.main import create_application
 from app.presentation.api.dependencies.auth import (
@@ -123,66 +123,66 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Set skip_auth_middleware=True to disable the real authentication middleware
     app = create_application(skip_auth_middleware=True)
     
-    # Add test authentication bypass paths to the app's config
-    # This will ensure test paths are available for authentication testing
-    if not hasattr(app.state, 'settings'):
-        from app.core.config.settings import get_settings
-        app.state.settings = get_settings()
+    # Add test authentication middleware for the integration tests
+    from app.tests.integration.utils.test_authentication import TestAuthenticationMiddleware
+    app.add_middleware(
+        TestAuthenticationMiddleware,
+        public_paths=["/api/v1/xgboost/info/risk_prediction"],
+        auth_bypass_header="X-Test-Auth-Bypass"
+    )
     
-    # Update public paths to include test paths
-    if "/api/v1/auth/test-token" not in app.state.settings.PUBLIC_PATHS:
-        app.state.settings.PUBLIC_PATHS.append("/api/v1/auth/test-token")
+    # Define test-specific dependency overrides
+    from app.infrastructure.persistence.sqlalchemy.session import get_db
     
-    # Override database dependency
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        yield db_session
+        """
+        Provide a clean database session for tests.
         
-    # Override XGBoost service dependency
+        This override ensures tests have consistent database state.
+        """
+        async with db_session() as session:
+            yield session
+    
     def override_get_xgboost_service() -> XGBoostInterface:
+        """
+        Provide a mock XGBoost service for testing.
+        
+        This override enables isolated testing of API endpoints.
+        """
         return mock_xgboost_service
     
-    # Create a mock auth override that directly returns a user without JWT validation
-    async def override_get_current_user(*args, **kwargs):
+    # Override authentication dependencies
+    async def override_get_current_user(*args, **kwargs) -> User:
+        """Mock the current user dependency to bypass authentication."""
         return User(
-            id="00000000-0000-0000-0000-000000000002",
+            id="00000000-0000-0000-0000-000000000002", 
             username="test_provider",
             email="test.provider@novamind.ai",
-            role=UserRole.CLINICIAN.value,  # Use string value
-            roles=[UserRole.CLINICIAN.value, UserRole.PROVIDER.value],  # Use string values
-            is_active=True,
-            is_verified=True,
-            email_verified=True
+            full_name="Test Provider",
+            password_hash="$2b$12$FakePasswordHashForTestUse..",
+            roles={UserRole.CLINICIAN, UserRole.ADMIN},
+            account_status=UserStatus.ACTIVE
         )
     
-    # Create additional auth overrides
-    async def override_verify_provider_access(*args, **kwargs):
+    async def override_verify_provider_access(*args, **kwargs) -> User:
+        """Mock provider access check to bypass authentication."""
         return User(
-            id="00000000-0000-0000-0000-000000000002",
+            id="00000000-0000-0000-0000-000000000002", 
             username="test_provider",
             email="test.provider@novamind.ai",
-            role=UserRole.CLINICIAN.value,  # Use string value
-            roles=[UserRole.CLINICIAN.value, UserRole.PROVIDER.value],  # Use string values
-            is_active=True,
-            is_verified=True,
-            email_verified=True
-        )  # Provider access check always succeeds
-
-    # Apply dependency overrides
-    app.dependency_overrides.update({
-        get_db_dependency: override_get_db,
-        get_xgboost_service: override_get_xgboost_service,
-        get_current_user: override_get_current_user,
-        verify_provider_access: override_verify_provider_access,
-    })
+            full_name="Test Provider",
+            password_hash="$2b$12$FakePasswordHashForTestUse..",
+            roles={UserRole.CLINICIAN, UserRole.ADMIN},
+            account_status=UserStatus.ACTIVE
+        )
     
-    # Add test authentication middleware to simplify testing
-    from app.tests.integration.utils.test_authentication import TestAuthenticationMiddleware
-    app.add_middleware(TestAuthenticationMiddleware)
+    # Register all dependency overrides
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[verify_provider_access] = override_verify_provider_access
     
-    yield app
-    
-    # Clear overrides after test
-    app.dependency_overrides.clear()
+    return app
 
 
 @pytest_asyncio.fixture
