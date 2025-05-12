@@ -185,11 +185,15 @@ class TestPatientModelEncryptionAndTypes:
         # Setup the mock for decrypt to strip the 'encrypted_' prefix
         def mock_decrypt(encrypted_value):
             if isinstance(encrypted_value, str) and encrypted_value.startswith('encrypted_'):
-                return encrypted_value[len('encrypted_'):]
+                # Get the value without the prefix
+                decrypted_value = encrypted_value[len('encrypted_'):]
+                # For date_of_birth, ensure it returns a properly formatted date string
+                return decrypted_value
             return encrypted_value
             
         mock_esi.decrypt.side_effect = mock_decrypt
-        mock_esi.VERSION_PREFIX = 'v1:' # Add this to prevent undesired prefix check behavior
+        mock_esi.VERSION_PREFIX = 'v1:'
+        mock_esi.decrypt_string.side_effect = mock_decrypt
 
         # Create a model instance and set encrypted fields directly
         # In a real scenario, these would come from the database already encrypted
@@ -212,7 +216,7 @@ class TestPatientModelEncryptionAndTypes:
         model_instance._mrn = f"encrypted_{sample_domain_patient_data['medical_record_number_lve']}"
         
         # Set complex fields by directly JSONifying them
-        model_instance._medical_history = json.dumps(sample_domain_patient_data["medical_history"])
+        model_instance._medical_history = f"encrypted_{json.dumps(sample_domain_patient_data['medical_history'])}"
         model_instance._contact_info = sample_domain_patient_data["contact_info"]
         
         # Call to_domain
@@ -225,6 +229,10 @@ class TestPatientModelEncryptionAndTypes:
         assert domain_entity.last_name == sample_domain_patient_data["last_name"]
         assert domain_entity.email == sample_domain_patient_data["email"]
         assert domain_entity.medical_record_number_lve == sample_domain_patient_data["medical_record_number_lve"]
+        
+        # Check date_of_birth specifically - it needs to parse correctly from the string format
+        assert domain_entity.date_of_birth is not None
+        assert isinstance(domain_entity.date_of_birth, date)
         assert domain_entity.date_of_birth == sample_domain_patient_data["date_of_birth"]
 
     @pytest.mark.asyncio
