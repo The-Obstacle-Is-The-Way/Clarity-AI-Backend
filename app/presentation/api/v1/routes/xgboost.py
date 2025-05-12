@@ -170,8 +170,8 @@ async def get_model_info_by_id(
 @router.get("/info/{model_type}", response_model=ModelInfoResponse)
 async def get_model_info(
     model_type: str,
-    xgboost_service: XGBoostDep,
-    user: UserDep,
+    xgboost_service: XGBoostDep = Depends(),
+    user: UserDep = Depends(),
 ) -> ModelInfoResponse:
     """
     Get information about an XGBoost model.
@@ -194,35 +194,34 @@ async def get_model_info(
         result = await xgboost_service.get_model_info(model_type=model_type)
         
         return ModelInfoResponse(
-            model_id=result["model_id"],
-            model_type=result["model_type"],
-            model_version=result["model_version"],
-            description=result["description"],
-            performance_metrics=result["performance_metrics"],
-            created_at=result["created_at"],
-            last_updated=result["last_updated"],
-            features=result.get("features", {}),
-            hyperparameters=result.get("hyperparameters", {})
+            model_id=result.model_id,
+            model_type=model_type,
+            version=result.version,
+            description=result.description,
+            created_date=result.created_date,
+            performance_metrics=result.performance_metrics,
+            features=result.features,
+            is_active=result.is_active,
         )
-    except ModelNotFoundError as e:
-        logger.warning(f"Model info not found: {str(e)}")
+    except ModelNotFoundError:
+        logger.warning(f"Model {model_type} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Model information not found: {str(e)}"
+            detail=f"Model of type {model_type} not found",
         )
-    except Exception as e:
-        logger.error(f"Error getting model info: {str(e)}")
+    except ServiceUnavailableError:
+        logger.error(f"XGBoost service unavailable when getting model info for {model_type}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving model information: {str(e)}"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ML service temporarily unavailable. Please try again later.",
         )
 
 
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
 async def predict_risk(
     request: RiskPredictionRequest,
-    xgboost_service: XGBoostDep,
-    user: ProviderAccessDep,
+    xgboost_service: XGBoostDep = Depends(),
+    user: ProviderAccessDep = Depends(),
 ) -> RiskPredictionResponse:
     """
     Generate a risk prediction for a patient.
@@ -240,62 +239,72 @@ async def predict_risk(
         RiskPredictionResponse: The risk prediction results
     
     Raises:
-        HTTPException: If prediction fails or access is denied
+        HTTPException: If prediction fails or PHI detected in data
     """
+    # Verify patient access authorization
+    verify_provider_access(user, request.patient_id)
+    
+    # Check for and sanitize PHI
     try:
-        # Call the actual service method
-        prediction_result = await xgboost_service.predict_risk(
-            patient_id=request.patient_id,
-            risk_type=request.risk_type,
-            clinical_data=request.clinical_data,
-        )
-
-        # Map fields from mock result and request to the response schema
-        # Ensure required fields without defaults are explicitly provided.
-        return RiskPredictionResponse(
-            prediction_id=prediction_result["prediction_id"], 
-            patient_id=request.patient_id,
-            risk_type=request.risk_type,
-            risk_probability=prediction_result["risk_score"],
-            risk_level=prediction_result["risk_level"],
-            risk_score=prediction_result["risk_score"],
-            confidence=prediction_result["confidence"],
-            timestamp=format_date_iso(utcnow()), # Use timezone-aware datetime
-            time_frame_days=90, # Explicitly provide required field
-            # Other fields rely on defaults or are optional
-        )
+        # This should use a proper PHI detection service
+        if _has_phi(request):
+            logger.warning(f"PHI detected in prediction request for patient {request.patient_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PHI detected in request. Please remove personal health identifiers.",
+            )
+    
+        # Call XGBoost service for prediction
+        try:
+            result = await xgboost_service.predict_risk(
+                patient_id=request.patient_id,
+                risk_type=request.risk_type,
+                patient_data=request.patient_data,
+                clinical_data=request.clinical_data,
+                time_frame_days=request.time_frame_days,
+                include_explainability=request.include_explainability,
+            )
+            
+            # Create response from result
+            return RiskPredictionResponse(
+                prediction_id=result.prediction_id,
+                patient_id=request.patient_id,
+                risk_type=request.risk_type,
+                risk_score=result.risk_score,
+                risk_level=result.risk_level,
+                confidence=result.confidence,
+                time_frame_days=request.time_frame_days,
+                timestamp=result.timestamp,
+                model_version=result.model_version,
+                explainability=result.explainability if request.include_explainability else None,
+                visualization_data=result.visualization_data if request.visualization_type else None,
+            )
+            
+        except ServiceUnavailableError:
+            logger.error(f"XGBoost service unavailable for risk prediction: {request.patient_id}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Machine learning service temporarily unavailable. Please try again later.",
+            )
+        except Exception as e:
+            logger.error(f"Error predicting risk: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error generating risk prediction: {str(e)}",
+            )
     except DataPrivacyError as e:
-        # Handle PHI/PII data privacy violations
-        error_detail = f"PHI data detected in request: {str(e)}"
-        logger.warning(error_detail)
+        logger.warning(f"Data privacy error in risk prediction: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_detail,
-        ) from e
-    except ServiceUnavailableError as e:
-        # Handle service unavailability
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"XGBoost service unavailable: {str(e)}",
-        ) from e
-    except Exception as e:
-        # Basic error handling for now
-        # Consider adding more specific exception handling and logging
-        # Ensure no PHI leaks in error messages as per HIPAA
-        error_detail = f"Error generating risk prediction: {type(e).__name__}"
-        # Log the full error internally for debugging
-        # logger.exception("Risk prediction failed for patient %s", request.patient_id)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error_detail,
-        ) from e
+            detail=f"Privacy error: {str(e)}",
+        )
 
 
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
 async def predict_outcome(
     request: OutcomePredictionRequest,
-    xgboost_service: XGBoostDep,
-    user: ProviderAccessDep,
+    xgboost_service: XGBoostDep = Depends(),
+    user: ProviderAccessDep = Depends(),
 ) -> OutcomePredictionResponse:
     """
     Generate an outcome prediction for a patient's treatment.
@@ -313,52 +322,48 @@ async def predict_outcome(
         OutcomePredictionResponse: The outcome prediction results
     
     Raises:
-        HTTPException: If prediction fails or access is denied
+        HTTPException: If prediction fails or user lacks permissions
     """
+    # Verify provider has access to this patient's data
+    verify_provider_access(user, request.patient_id)
+    
     try:
-        # Call the actual service method using fields from OutcomePredictionRequest
-        prediction_result = await xgboost_service.predict_outcome(
+        # Call XGBoost service for outcome prediction
+        result = await xgboost_service.predict_outcome(
             patient_id=request.patient_id,
             features=request.features,
             timeframe_days=request.timeframe_days,
-            outcome_timeframe={"days": request.timeframe_days},  # Convert to dict format expected by service
-            # Pass optional fields if they exist in the request
-            prediction_domains=request.prediction_domains,
-            prediction_types=request.prediction_types,
+            clinical_data=request.clinical_data,
+            treatment_plan=request.treatment_plan,
             include_trajectories=request.include_trajectories,
-            include_recommendations=request.include_recommendations
+            include_recommendations=request.include_recommendations,
         )
-
-        # Map fields from the mock's return value (defined in the test)
-        # to the OutcomePredictionResponse schema.
+        
+        # Map result to response model
         return OutcomePredictionResponse(
-            patient_id=request.patient_id, # Use ID from request
-            expected_outcomes=prediction_result["expected_outcomes"],
-            response_likelihood=prediction_result["response_likelihood"],
-            recommended_therapies=prediction_result["recommended_therapies"]
+            prediction_id=result.prediction_id,
+            patient_id=request.patient_id,
+            outcome_probabilities=result.outcome_probabilities,
+            expected_improvement=result.expected_improvement,
+            timeframe_days=request.timeframe_days,
+            timestamp=result.timestamp,
+            model_version=result.model_version,
+            trajectories=result.trajectories if request.include_trajectories else None,
+            recommendations=result.recommendations if request.include_recommendations else None,
         )
-    except DataPrivacyError as e:
-        # Handle PHI/PII data privacy violations
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"PHI data detected in request: {str(e)}",
-        ) from e
-    except ServiceUnavailableError as e:
-        # Handle service unavailability
+        
+    except ServiceUnavailableError:
+        logger.error(f"XGBoost service unavailable for outcome prediction: {request.patient_id}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"XGBoost service unavailable: {str(e)}",
-        ) from e
+            detail="Machine learning service temporarily unavailable. Please try again later.",
+        )
     except Exception as e:
-        # Basic error handling
-        # Ensure no PHI leaks in error messages
-        error_detail = f"Error generating outcome prediction: {type(e).__name__}"
-        # Log the full error internally for debugging
-        # logger.exception("Outcome prediction failed for patient %s", request.patient_id)
+        logger.error(f"Error predicting outcome: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error_detail,
-        ) from e
+            detail=f"Error generating outcome prediction: {str(e)}",
+        )
 
 
 @router.get("/explain/{model_type}/{prediction_id}", response_model=dict)
