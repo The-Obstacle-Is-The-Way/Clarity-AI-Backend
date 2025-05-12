@@ -191,19 +191,19 @@ class TestEncryptionService:
         with pytest.raises(ValueError):
             encryption_service.decrypt(tampered)
 
-    def test_handle_invalid_input(self):
+    def test_handle_invalid_input(self, encryption_service):
         """Test that invalid input is properly handled with clear error messages."""
         # Invalid string (not a valid encrypted token)
         invalid_string = "This is not an encrypted token"
         with pytest.raises(ValueError) as excinfo_invalid:
-            self.encryption_service.decrypt_string(invalid_string)
+            encryption_service.decrypt_string(invalid_string)
         
         # Make sure the error message is the one from BaseEncryptionService.decrypt_string
         assert "Decryption failed:" in str(excinfo_invalid.value)
         
         # Test None input handling
         with pytest.raises(ValueError) as excinfo_none:
-            self.encryption_service.decrypt_string(None)
+            encryption_service.decrypt_string(None)
         assert "cannot decrypt None value" in str(excinfo_none.value)
 
     def test_key_rotation(self, sensitive_data):
