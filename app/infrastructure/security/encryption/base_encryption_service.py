@@ -291,35 +291,37 @@ class BaseEncryptionService:
             logger.error(f"String encryption failed: {str(e)}")
             raise ValueError(f"String encryption failed: {str(e)}")
 
-    def decrypt_string(self, value: Optional[str]) -> str:
+    def decrypt_string(self, value: Union[str, bytes]) -> str:
         """
         Decrypt a string that was encrypted with encrypt_string.
         
         Args:
-            value: Encrypted string value
+            value: Encrypted string (or bytes) to decrypt
             
         Returns:
-            Decrypted string
+            Decrypted string (never bytes)
             
         Raises:
-            ValueError: If decryption fails or input is None
+            ValueError: If decryption fails
         """
         if value is None:
-            logger.error("Cannot decrypt None value")
-            raise ValueError("Cannot decrypt None value")
+            return None
             
         try:
+            # Decrypt the value to bytes
             decrypted_bytes = self.decrypt(value)
-            if decrypted_bytes is None:
-                return None
-                
-            # Try to decode as UTF-8
-            try:
+            
+            # Always return a string by decoding bytes if needed
+            if isinstance(decrypted_bytes, bytes):
                 return decrypted_bytes.decode('utf-8')
-            except UnicodeDecodeError:
-                logger.warning("Decryption returned non-UTF8 bytes, falling back to str conversion")
+            elif isinstance(decrypted_bytes, str):
+                return decrypted_bytes
+            else:
+                # Handle other types by converting to string
                 return str(decrypted_bytes)
+                
         except Exception as e:
+            # Log the error (without the sensitive data)
             logger.error(f"String decryption failed: {str(e)}")
             raise ValueError(f"String decryption failed: {str(e)}")
 

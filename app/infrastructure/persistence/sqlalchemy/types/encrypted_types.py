@@ -286,7 +286,7 @@ class EncryptedTypeBase(types.TypeDecorator):
                 logger.warning(f"Primary key decryption failed, attempting previous key: {error_msg}")
                 # The encryption service should handle key rotation internally
                 try:
-                    # Try again and let the service use its previous key
+                    # Try one more time - the service may handle key rotation
                     decrypted = self.encryption_service.decrypt_string(value)
                     
                     if isinstance(decrypted, bytes):
@@ -525,8 +525,14 @@ class EncryptedJSON(EncryptedTypeBase):
                 
             return parsed
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from decrypted value: {str(e)}")
-            raise ValueError(f"Invalid JSON in decrypted data: {str(e)}")
+            # Make an extra attempt to parse the JSON
+            try:
+                # Sometimes the JSON might be escaped or have extra quotes
+                cleaned_value = value.strip('"\'')
+                return json.loads(cleaned_value)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse JSON from decrypted value: {str(e)}")
+                raise ValueError(f"Invalid JSON in decrypted data: {str(e)}")
 
 
 class EncryptedPickle(EncryptedTypeBase):

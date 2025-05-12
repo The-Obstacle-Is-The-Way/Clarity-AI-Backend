@@ -111,9 +111,11 @@ class MLEncryptionService(BaseEncryptionService):
                     salt=self.salt,
                     iterations=KDF_ITERATIONS,
                 )
-                derived_key = base64.urlsafe_b64encode(kdf.derive(
-                    previous_key.encode() if isinstance(previous_key, str) else previous_key
-                ))
+                if isinstance(previous_key, str):
+                    previous_key_bytes = previous_key.encode()
+                else:
+                    previous_key_bytes = previous_key
+                derived_key = base64.urlsafe_b64encode(kdf.derive(previous_key_bytes))
                 self._previous_cipher = Fernet(derived_key)
             except Exception as e:
                 logger.warning(f"Failed to initialize previous cipher: {str(e)}")
@@ -154,7 +156,7 @@ class MLEncryptionService(BaseEncryptionService):
         logger.debug(f"Decrypting value of type {type(value).__name__}")
             
         try:
-            # Use standard decryption first
+            # Try standard decryption first with primary key
             return super().decrypt(value)
         except ValueError as e:
             # If decryption fails and we have a previous key, try that
@@ -167,6 +169,9 @@ class MLEncryptionService(BaseEncryptionService):
                     if value.startswith(self.VERSION_PREFIX):
                         # Strip version prefix
                         value = value[len(self.VERSION_PREFIX):]
+                    elif value.startswith("v1:"):
+                        # Support legacy prefix
+                        value = value[3:]
                     
                     # Decode base64 and decrypt with previous key
                     encrypted_bytes = base64.b64decode(value)
@@ -674,7 +679,7 @@ class MLEncryptionService(BaseEncryptionService):
                 
         return result
         
-    def encrypt_embeddings(self, embeddings: List[float]) -> str:
+    def encrypt_embeddings(self, embeddings: Union[List[float], np.ndarray]) -> str:
         """
         Encrypt vector embeddings for secure storage.
         
@@ -692,11 +697,15 @@ class MLEncryptionService(BaseEncryptionService):
         
         try:
             # Convert NumPy arrays to lists for JSON serialization
-            if hasattr(embeddings, 'tolist'):
+            if isinstance(embeddings, np.ndarray):
                 embeddings_list = embeddings.tolist()
             else:
                 embeddings_list = embeddings
             
+            # Validate the embeddings are valid data types for serialization
+            if not isinstance(embeddings_list, (list, tuple)):
+                raise ValueError(f"Cannot serialize embeddings of type {type(embeddings_list).__name__}")
+                
             # Convert to JSON
             embeddings_json = json.dumps(embeddings_list)
             
@@ -731,15 +740,14 @@ class MLEncryptionService(BaseEncryptionService):
                     if isinstance(encrypted_embeddings, bytes) else encrypted_embeddings)
                 
             # Try decryption with primary key first
-            decrypted_bytes = self.decrypt(encrypted_embeddings)
-            json_str = decrypted_bytes.decode('utf-8') if isinstance(decrypted_bytes, bytes) else decrypted_bytes
+            decrypted_json = self.decrypt_string(encrypted_embeddings)
             
             # Convert JSON to Python list
-            return json.loads(json_str)
+            return json.loads(decrypted_json)
             
         except ValueError as e:
             # If we have a previous key and the primary key failed, try with the previous key
-            if self.previous_key and "Primary key failed" not in str(e):
+            if self.previous_key:
                 try:
                     # Create a temporary service with the previous key as the primary key
                     temp_service = MLEncryptionService(
@@ -748,15 +756,14 @@ class MLEncryptionService(BaseEncryptionService):
                     )
                     
                     # Try to decrypt with the previous key
-                    decrypted_bytes = temp_service.decrypt(encrypted_embeddings)
-                    json_str = decrypted_bytes.decode('utf-8') if isinstance(decrypted_bytes, bytes) else decrypted_bytes
+                    decrypted_json = temp_service.decrypt_string(encrypted_embeddings)
                     
                     # Convert JSON to Python list
-                    return json.loads(json_str)
+                    return json.loads(decrypted_json)
                     
                 except Exception as inner_e:
                     # Both keys failed, propagate the original error
-                    pass
+                    logger.error(f"Failed to decrypt with previous key: {str(inner_e)}")
                     
             # Re-raise the original error with a more specific message
             raise ValueError(f"Failed to decrypt embeddings: {str(e)}")
@@ -864,7 +871,7 @@ class MLEncryptionService(BaseEncryptionService):
 
     def encrypt_tensor(self, tensor: np.ndarray) -> str:
         """
-        Encrypt a single tensor (alias for compatibility with tests)
+        Encrypt a single tensor.
         
         Args:
             tensor: NumPy tensor to encrypt
@@ -875,31 +882,68 @@ class MLEncryptionService(BaseEncryptionService):
         if tensor is None:
             return None
             
-        # Convert to list for serialization
-        tensor_list = tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
-        
-        # Encrypt the serialized tensor
-        return self.encrypt_string(json.dumps(tensor_list))
+        try:
+            # Convert to list for serialization
+            tensor_list = tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
+            
+            # Validate the tensor is a valid data type for serialization
+            if not isinstance(tensor_list, (list, tuple, dict)):
+                raise ValueError(f"Cannot serialize tensor of type {type(tensor_list).__name__}")
+                
+            # Encrypt the serialized tensor
+            return self.encrypt_string(json.dumps(tensor_list))
+        except Exception as e:
+            logger.error(f"Tensor encryption failed: {str(e)}")
+            raise ValueError(f"Failed to encrypt tensor: {str(e)}")
         
     def decrypt_tensor(self, encrypted_tensor: str) -> np.ndarray:
         """
-        Decrypt an encrypted tensor
+        Decrypt an encrypted tensor.
         
         Args:
             encrypted_tensor: Encrypted tensor string
             
         Returns:
             Decrypted NumPy tensor
+            
+        Raises:
+            ValueError: If decryption fails
         """
         if encrypted_tensor is None:
             return None
             
-        # Decrypt and parse the tensor data
-        decrypted_json = self.decrypt_string(encrypted_tensor)
-        tensor_list = json.loads(decrypted_json)
-        
-        # Convert back to NumPy array
-        return np.array(tensor_list)
+        try:
+            # Decrypt and parse the tensor data
+            decrypted_json = self.decrypt_string(encrypted_tensor)
+            tensor_list = json.loads(decrypted_json)
+            
+            # Convert back to NumPy array
+            return np.array(tensor_list)
+        except ValueError as e:
+            # If we have a previous key and the primary key failed, try with the previous key
+            if self.previous_key:
+                try:
+                    # Create a temporary service with the previous key as the primary key
+                    temp_service = MLEncryptionService(
+                        direct_key=self.previous_key, 
+                        use_legacy_prefix=self._use_legacy_prefix
+                    )
+                    
+                    # Try to decrypt with the previous key
+                    decrypted_json = temp_service.decrypt_string(encrypted_tensor)
+                    tensor_list = json.loads(decrypted_json)
+                    
+                    # Convert back to NumPy array
+                    return np.array(tensor_list)
+                except Exception as inner_e:
+                    # Both keys failed
+                    logger.error(f"Failed to decrypt tensor with previous key: {str(inner_e)}")
+            
+            # Re-raise with better error message
+            raise ValueError(f"Failed to decrypt tensor: {str(e)}")
+        except Exception as e:
+            # Handle other exceptions
+            raise ValueError(f"Error decrypting tensor: {str(e)}")
 
 
 def get_ml_encryption_service(
