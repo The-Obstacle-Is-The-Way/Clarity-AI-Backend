@@ -12,6 +12,8 @@ from uuid import UUID
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from app.core.utils.date_utils import utcnow
+
 router = APIRouter(
     prefix="/biometrics",
     tags=["biometrics"],
@@ -60,7 +62,7 @@ async def get_biometric(biometric_id: UUID) -> BiometricDataPoint:
         biometric_type="heart_rate",
         value=72.0,
         unit="bpm",
-        timestamp=datetime.utcnow(),
+        timestamp=utcnow(),
         source="app",
         metadata={}
     )
@@ -81,7 +83,7 @@ async def create_biometric() -> BiometricDataPoint:
         biometric_type="heart_rate",
         value=72.0,
         unit="bpm",
-        timestamp=datetime.utcnow(),
+        timestamp=utcnow(),
         source="app",
         metadata={}
     )
