@@ -41,9 +41,9 @@ def create_access_token(
     
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(datetime.UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(datetime.UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
     to_encode.update({"exp": expire})
     
@@ -77,11 +77,11 @@ def create_refresh_token(
     
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(datetime.UTC) + expires_delta
     else:
         # Default refresh token expiration (typically longer than access token)
         days = getattr(settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', 7)
-        expire = datetime.utcnow() + timedelta(days=days)
+        expire = datetime.now(datetime.UTC) + timedelta(days=days)
         
     to_encode.update({"exp": expire, "token_type": "refresh"})
     

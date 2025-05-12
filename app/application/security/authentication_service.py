@@ -138,8 +138,8 @@ class AuthenticationService:
                 email=user.email,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                created_at=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(minutes=self.session_timeout)
+                created_at=datetime.now(datetime.UTC),
+                expires_at=datetime.now(datetime.UTC) + timedelta(minutes=self.session_timeout)
             )
             
             # Store session
@@ -297,7 +297,7 @@ class AuthenticationService:
                     raise InvalidTokenError("Invalid session")
                     
                 # Check if session has expired
-                if session.expires_at < datetime.utcnow():
+                if session.expires_at < datetime.now(datetime.UTC):
                     # Remove expired session
                     del self._active_sessions[session_id]
                     
@@ -331,8 +331,8 @@ class AuthenticationService:
                     email=user.email,
                     ip_address=ip_address,
                     user_agent=user_agent,
-                    created_at=datetime.utcnow(),
-                    expires_at=datetime.utcnow() + timedelta(minutes=self.session_timeout)
+                    created_at=datetime.now(datetime.UTC),
+                    expires_at=datetime.now(datetime.UTC) + timedelta(minutes=self.session_timeout)
                 )
                 self._active_sessions[session_id] = session
             

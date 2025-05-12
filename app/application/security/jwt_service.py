@@ -99,7 +99,7 @@ class JWTService:
         """
         # Calculate expiration time
         expires_delta = timedelta(minutes=self.settings.access_token_expire_minutes)
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(datetime.UTC) + expires_delta
         expires_in = int(expires_delta.total_seconds())
         
         # Create token ID
@@ -109,7 +109,7 @@ class JWTService:
         payload = {
             "sub": user_id,
             "exp": int(expire.timestamp()),
-            "iat": int(datetime.utcnow().timestamp()),
+            "iat": int(datetime.now(datetime.UTC).timestamp()),
             "jti": token_id,
             "session_id": session_id,
             "user_id": user_id,
@@ -158,7 +158,7 @@ class JWTService:
         """
         # Calculate expiration time
         expires_delta = timedelta(days=self.settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(datetime.UTC) + expires_delta
         
         # Create token ID
         token_id = str(uuid.uuid4())
@@ -167,7 +167,7 @@ class JWTService:
         payload = {
             "sub": user_id,
             "exp": int(expire.timestamp()),
-            "iat": int(datetime.utcnow().timestamp()),
+            "iat": int(datetime.now(datetime.UTC).timestamp()),
             "jti": token_id,
             "session_id": session_id,
             "user_id": user_id,
