@@ -9,7 +9,9 @@ from datetime import datetime
 from unittest.mock import AsyncMock
 from uuid import UUID
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Correct interface import
 # Correct repository import
@@ -124,6 +126,7 @@ class TestBiometricAlertNotificationService:
             rule_id=sample_rule_id
         )
 
+    @pytest.mark.asyncio
     async def test_notify_alert_urgent_priority(self, notification_service, mock_notification_service, sample_urgent_alert):
         """Test that notify_alert sends notifications through all channels for urgent alerts."""
         # Execute
@@ -142,6 +145,7 @@ class TestBiometricAlertNotificationService:
         # Ensure no PHI is included
         assert sample_urgent_alert.patient_id.hex not in sms_message
 
+    @pytest.mark.asyncio
     async def test_notify_alert_warning_priority(self, notification_service, mock_notification_service, sample_warning_alert):
         """Test that notify_alert sends notifications through appropriate channels for warning alerts."""
         # Execute
@@ -153,6 +157,7 @@ class TestBiometricAlertNotificationService:
         assert mock_notification_service.send_in_app_notification.call_count == 1
         assert mock_notification_service.send_push_notification.call_count == 1
 
+    @pytest.mark.asyncio
     async def test_notify_alert_info_priority(self, notification_service, mock_notification_service, sample_info_alert):
         """Test that notify_alert sends notifications through in-app only for informational alerts."""
         # Execute
@@ -164,6 +169,7 @@ class TestBiometricAlertNotificationService:
         assert mock_notification_service.send_in_app_notification.call_count == 1
         assert mock_notification_service.send_push_notification.call_count == 0
 
+    @pytest.mark.asyncio
     async def test_hipaa_compliant_message_creation(self, notification_service, sample_urgent_alert):
         """Test that HIPAA-compliant messages are created correctly."""
         # Execute
@@ -191,6 +197,7 @@ class TestBiometricAlertNotificationService:
         assert patient_id_str not in sms_message
         assert patient_id_str not in email_message
 
+    @pytest.mark.asyncio
     async def test_get_channels_for_priority(self, notification_service):
         """Test that appropriate channels are selected based on alert priority."""
         # Execute
@@ -220,6 +227,7 @@ class TestBiometricAlertNotificationService:
         assert len(info_channels) == 1
         assert info_channels[0] == NotificationChannel.IN_APP
 
+    @pytest.mark.asyncio
     async def test_get_alert_recipients(self, notification_service, sample_urgent_alert):
         """Test that alert recipients are correctly determined."""
         # Execute
@@ -233,6 +241,7 @@ class TestBiometricAlertNotificationService:
         assert "phone" in recipients[0]
         assert "notification_preferences" in recipients[0]
 
+    @pytest.mark.asyncio
     async def test_send_notification_filters_recipients(self, notification_service, mock_notification_service, sample_urgent_alert):
         """Test that send_notification filters recipients based on their preferences."""
         # Setup

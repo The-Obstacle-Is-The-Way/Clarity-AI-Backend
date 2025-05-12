@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
 import time
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 import concurrent.futures
 import os
 import sqlite3
@@ -62,6 +64,7 @@ class TestDatabase:
         await self.engine.dispose()
 
 @pytest.fixture(scope="function")
+@pytest.mark.asyncio
 async def test_db():
     """Create an in-memory test database."""
     db = TestDatabase()

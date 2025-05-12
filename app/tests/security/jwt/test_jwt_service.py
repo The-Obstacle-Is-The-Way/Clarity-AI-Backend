@@ -4,6 +4,7 @@ import uuid
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from pydantic import SecretStr  # Import SecretStr
 
 from app.config.settings import Settings  # Import Settings

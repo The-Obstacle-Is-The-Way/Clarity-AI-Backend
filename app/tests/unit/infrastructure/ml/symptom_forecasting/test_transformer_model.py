@@ -5,7 +5,9 @@ These tests verify that the Transformer Model correctly processes
 time series data and generates accurate forecasts.
 """
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip("Skipping transformer model tests (torch unsupported in this environment)", allow_module_level=True)
 from datetime import datetime, timedelta
@@ -189,6 +191,7 @@ class TestTransformerTimeSeriesModel:
             np.testing.assert_array_equal(postprocessed_result["predictions"], raw_predictions)
             np.testing.assert_array_equal(postprocessed_result["std"], raw_std)
 
+    @pytest.mark.asyncio
     async def test_get_model_info(self, model):
         """Test that get_model_info returns information about the model."""
         # Execute

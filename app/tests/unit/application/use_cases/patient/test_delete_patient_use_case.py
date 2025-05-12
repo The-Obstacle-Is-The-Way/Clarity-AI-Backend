@@ -1,6 +1,8 @@
 from unittest.mock import AsyncMock
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.application.use_cases.patient.delete_patient import DeletePatientUseCase
 

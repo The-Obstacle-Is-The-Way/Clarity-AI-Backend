@@ -11,8 +11,12 @@ import uuid
 # from collections.abc import AsyncGenerator # Not used directly in this version
 from datetime import date, datetime, timezone
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 import sqlalchemy
 # from cryptography.fernet import Fernet # Fernet from fixture is BaseEncryptionService
 from sqlalchemy import text #, event # Event listener removed for now, direct PRAGMA in fixture

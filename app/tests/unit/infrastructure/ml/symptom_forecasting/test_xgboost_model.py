@@ -8,7 +8,9 @@ time series data and generates accurate forecasts with feature importance.
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.ml.symptom_forecasting.xgboost_model import XGBoostSymptomModel
 

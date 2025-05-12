@@ -10,7 +10,9 @@ from typing import Any
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.entities.biometric_twin_enhanced import BiometricTwin
 from app.domain.exceptions import DomainError

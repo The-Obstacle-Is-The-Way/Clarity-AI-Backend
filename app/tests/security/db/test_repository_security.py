@@ -12,8 +12,12 @@ import logging
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.patient import Patient

@@ -10,6 +10,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.services.redis_cache_service import RedisCacheService
 
@@ -63,6 +64,7 @@ def redis_cache_service(mock_redis_client):
 
 @pytest.mark.asyncio()
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_get_cache_hit(redis_cache_service, mock_redis_client):
     """Test retrieving a value from cache when the key exists."""
     # Arrange

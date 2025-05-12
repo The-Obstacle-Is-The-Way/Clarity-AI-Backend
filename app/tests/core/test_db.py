@@ -5,7 +5,9 @@ This module tests the database connection utilities for SQLAlchemy.
 """
 import os
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +25,7 @@ class TestModel(Base):
 
 @pytest.mark.asyncio
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_engine_creation():
     """Test that the database engine is created with correct settings."""
     engine = get_engine()
@@ -42,6 +45,7 @@ async def test_engine_creation():
 
 @pytest.mark.asyncio
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_init_db():
     """Test database initialization."""
     engine = get_engine()
@@ -62,6 +66,7 @@ async def test_init_db():
 
 @pytest.mark.asyncio
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_get_session():
     """Test that get_session returns valid sessions."""
     async with get_session() as session:
@@ -81,6 +86,7 @@ class TestDatabaseBase:
 
     @pytest.mark.asyncio
     @pytest.mark.db_required()
+    @pytest.mark.asyncio
     async def test_base_class_table_creation(self):
         """Test that Base can create tables."""
         engine = get_engine()

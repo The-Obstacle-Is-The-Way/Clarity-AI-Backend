@@ -9,7 +9,9 @@ import uuid
 from datetime import datetime
 from unittest.mock import patch
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 try:
     from datetime import UTC  # Python 3.11+

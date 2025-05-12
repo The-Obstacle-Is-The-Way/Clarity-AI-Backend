@@ -8,7 +8,9 @@ import uuid
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.application.services.temporal_neurotransmitter_service import (
     TemporalNeurotransmitterService,

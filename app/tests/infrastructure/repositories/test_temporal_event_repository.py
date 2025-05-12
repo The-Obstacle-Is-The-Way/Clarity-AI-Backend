@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.temporal_events import CorrelatedEvent, EventChain

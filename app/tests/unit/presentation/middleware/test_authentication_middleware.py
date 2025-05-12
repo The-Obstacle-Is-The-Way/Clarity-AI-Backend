@@ -5,7 +5,9 @@ access to protected resources and routes in our HIPAA-compliant system.
 """
 
 import json
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID # For direct UUID usage if needed
 
@@ -199,6 +201,7 @@ async def mock_call_next_base(request: Request) -> Response:
 class TestAuthenticationMiddleware:
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS
+    @pytest.mark.asyncio
     async def test_valid_authentication(self, mock_get_user_by_id_on_class, auth_middleware_fixture, authenticated_request_fixture, mock_get_user_by_id_side_effect_fixture): # Use new fixture
         """Test successful authentication with a valid token."""
         
@@ -234,6 +237,7 @@ class TestAuthenticationMiddleware:
         assert json.loads(response.body) == {"status": "success"}
         mock_get_user_by_id_on_class.assert_awaited_once_with(UUID('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'))
 
+    @pytest.mark.asyncio
     async def test_missing_token(self, auth_middleware_fixture, unauthenticated_request_fixture):
         # Ensure app.state attributes are set for this request fixture too
         # For consistency, even if not strictly needed for this specific early exit path:
@@ -255,6 +259,7 @@ class TestAuthenticationMiddleware:
         ("invalid.jwt.token", "invalid or malformed token"),
         ("expired.jwt.token", "token has expired"),
     ])
+    @pytest.mark.asyncio
     async def test_token_errors(self, mock_get_user_by_id_on_class, auth_middleware_fixture, base_scope, token_name, expected_message_part, mock_jwt_service_fixture, mock_get_user_by_id_side_effect_fixture): # Added side_effect fixture
         # This test primarily checks JWT decoding errors, which happen before user repo is called.
         # So, mock_get_user_by_id_on_class might not be called if token decoding fails first.
@@ -284,6 +289,7 @@ class TestAuthenticationMiddleware:
              mock_get_user_by_id_on_class.assert_not_awaited()
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS
+    @pytest.mark.asyncio
     async def test_public_path_access(self, mock_get_user_by_id_on_class, auth_middleware_fixture, authenticated_request_fixture, mock_jwt_service_fixture, mock_get_user_by_id_side_effect_fixture): # Added side_effect fixture
         # Public path access skips most auth logic, so user repo shouldn't be called.
         mock_get_user_by_id_on_class.side_effect = mock_get_user_by_id_side_effect_fixture # Set it anyway for consistency
@@ -315,6 +321,7 @@ class TestAuthenticationMiddleware:
         mock_get_user_by_id_on_class.assert_not_awaited() # User repo also shouldn't be called
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS
+    @pytest.mark.asyncio
     async def test_inactive_user(self, mock_get_user_by_id_on_class, auth_middleware_fixture, base_scope, mock_get_user_by_id_side_effect_fixture): # Use new fixture
         mock_get_user_by_id_on_class.side_effect = mock_get_user_by_id_side_effect_fixture
         
@@ -339,6 +346,7 @@ class TestAuthenticationMiddleware:
         mock_get_user_by_id_on_class.assert_awaited_once_with(UUID('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12'))
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS
+    @pytest.mark.asyncio
     async def test_user_not_found(self, mock_get_user_by_id_on_class, auth_middleware_fixture, base_scope, mock_get_user_by_id_side_effect_fixture): # Use new fixture
         mock_get_user_by_id_on_class.side_effect = mock_get_user_by_id_side_effect_fixture
 
@@ -363,6 +371,7 @@ class TestAuthenticationMiddleware:
         mock_get_user_by_id_on_class.assert_awaited_once_with(UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14"))
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS
+    @pytest.mark.asyncio
     async def test_unexpected_repository_error(self, mock_get_user_by_id_on_class, auth_middleware_fixture, base_scope, mock_get_user_by_id_side_effect_fixture): # Use new fixture
         """Test how middleware handles unexpected errors from the user repository."""
         mock_get_user_by_id_on_class.side_effect = mock_get_user_by_id_side_effect_fixture
@@ -390,6 +399,7 @@ class TestAuthenticationMiddleware:
         mock_get_user_by_id_on_class.assert_awaited_once_with(UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15"))
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS
+    @pytest.mark.asyncio
     async def test_authentication_scopes_propagation(self, mock_get_user_by_id_on_class, auth_middleware_fixture, base_scope, mock_jwt_service_fixture, mock_get_user_by_id_side_effect_fixture): # Use new fixture
         """Test that scopes from JWT are correctly propagated to request.scope["auth"]."""
         

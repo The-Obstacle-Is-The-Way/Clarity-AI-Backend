@@ -7,6 +7,7 @@ and process in a HIPAA-compliant manner.
 """
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Skip these tests temporarily while fixing relationship issues
 pytest.skip("Skipping analytics endpoints tests while fixing SQLAlchemy relationship issues", allow_module_level=True)
@@ -19,6 +20,7 @@ import asyncio
 import uuid
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import BackgroundTasks, status
 from httpx import AsyncClient
 

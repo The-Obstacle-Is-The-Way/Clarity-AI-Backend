@@ -12,7 +12,9 @@ from uuid import UUID, uuid4
 # Third-Party Imports
 from fastapi import FastAPI, status, HTTPException
 from httpx import AsyncClient
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # First-Party Imports (Organized)
 # Assuming base exceptions are in core.exceptions.base_exceptions

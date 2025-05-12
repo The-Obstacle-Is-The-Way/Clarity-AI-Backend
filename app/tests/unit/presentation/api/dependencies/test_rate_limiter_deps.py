@@ -3,6 +3,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
@@ -118,6 +119,7 @@ class TestRateLimitDependency:
         assert custom.block_seconds == 600
         assert custom.scope_key == "custom"
 
+    @pytest.mark.asyncio
     async def test_default_key_func(self):
         """Test the default key function for extracting client IPs."""
         dependency = RateLimitDependency()

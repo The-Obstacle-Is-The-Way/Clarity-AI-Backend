@@ -9,8 +9,12 @@ import logging
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from httpx import AsyncClient
 from fastapi import FastAPI
 

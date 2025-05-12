@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.utils.datetime_utils import UTC
 
@@ -20,6 +21,7 @@ from app.infrastructure.factories.mock_digital_twin_factory import MockDigitalTw
 
 @pytest.mark.asyncio()
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_digital_twin_complete_workflow():
     """
     Test a complete Digital Twin workflow from patient creation to treatment recommendations.

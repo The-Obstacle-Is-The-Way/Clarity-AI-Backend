@@ -5,7 +5,9 @@ These tests verify that the ProcessAnalyticsEvent use case properly validates,
 processes, and stores analytics events.
 """
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Skip these tests temporarily while fixing relationship issues
 pytest.skip("Skipping ProcessAnalyticsEvent tests while fixing SQLAlchemy relationship issues", allow_module_level=True)

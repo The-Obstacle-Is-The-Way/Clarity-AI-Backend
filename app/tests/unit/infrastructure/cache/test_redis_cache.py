@@ -10,6 +10,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.cache.redis_cache import RedisCache
 

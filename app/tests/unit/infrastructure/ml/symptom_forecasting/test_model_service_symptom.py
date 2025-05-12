@@ -1,5 +1,7 @@
 """Unit tests for Symptom Forecasting Model Service."""
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip("Skipping symptom forecasting model service tests (torch unsupported)", allow_module_level=True)
 from datetime import date, datetime, timedelta

@@ -3,8 +3,12 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
@@ -57,6 +61,7 @@ class TestXGBoostIntegration:
     # Ensure that the mock_service is correctly passed and used,
     # and the paths match the implemented router. <-- This is now addressed.
 
+    @pytest.mark.asyncio
     async def test_risk_prediction_flow(self, client: AsyncClient, 
                                       mock_service: MockXGBoostService) -> None:
         """Test the risk prediction workflow."""
@@ -103,6 +108,7 @@ class TestXGBoostIntegration:
             clinical_data=risk_request["clinical_data"],
         )
 
+    @pytest.mark.asyncio
     async def test_outcome_prediction(self, client: AsyncClient,
                                           mock_service: MockXGBoostService) -> None:
         """Test the outcome prediction workflow."""
@@ -165,6 +171,7 @@ class TestXGBoostIntegration:
 
     # --- Add tests for other endpoints (outcome, model info, etc.) ---
     # Example for model info (assuming endpoint exists in router)
+    @pytest.mark.asyncio
     async def test_model_info_flow(self, client: AsyncClient, 
                                    mock_service: MockXGBoostService) -> None:
         """Test the model information workflow."""
@@ -179,6 +186,7 @@ class TestXGBoostIntegration:
         await client.get(f"/api/v1/xgboost/model-info/{model_type}") # Path adjusted if necessary
 
     # --- Add healthcheck test if endpoint exists ---
+    @pytest.mark.asyncio
     async def test_healthcheck(self, client: AsyncClient) -> None:
         """Test the healthcheck endpoint."""
         # Assuming healthcheck endpoint exists at /api/v1/xgboost/health

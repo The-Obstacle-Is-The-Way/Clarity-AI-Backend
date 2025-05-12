@@ -5,7 +5,9 @@ This module contains tests for the Symptom Forecasting Service, which
 implements psychiatric symptom forecasting using an ensemble of models,
 following Clean Architecture principles and ensuring HIPAA compliance.
 """
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip("Skipping symptom forecasting tests (torch unsupported in this environment)", allow_module_level=True)
 from unittest.mock import AsyncMock, patch
@@ -123,6 +125,7 @@ def patient_data():
 
 @pytest.mark.asyncio()
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_preprocess_patient_data(forecasting_service, patient_data):
     """Test preprocessing of patient data."""
     patient_id = uuid4()

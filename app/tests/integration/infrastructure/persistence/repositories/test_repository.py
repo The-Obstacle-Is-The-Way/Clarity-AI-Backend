@@ -10,7 +10,9 @@ import logging
 import uuid
 from datetime import date
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -331,6 +333,7 @@ class TestPatientRepositoryIntegration:
     Integration tests for the PatientRepository.
     """
 
+    @pytest.mark.asyncio
     async def test_create_patient(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
         """
         Test creating a new patient using the real repository.
@@ -401,6 +404,7 @@ class TestPatientRepositoryIntegration:
         assert emergency_contact_data["name"] == "Emergency Contact"
         assert emergency_contact_data["phone"] == "9876543210"
 
+    @pytest.mark.asyncio
     # async def test_get_by_id(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test getting a patient by ID.
@@ -417,6 +421,7 @@ class TestPatientRepositoryIntegration:
     #     assert found_patient.id == created_patient.id
     #     assert found_patient.name.first_name == "Integration"
 
+    @pytest.mark.asyncio
     # async def test_get_by_id_not_found(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test getting a non-existent patient.
@@ -428,6 +433,7 @@ class TestPatientRepositoryIntegration:
     #
     #     assert found_patient is None
 
+    @pytest.mark.asyncio
     # async def test_update_patient(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test updating an existing patient.
@@ -457,6 +463,7 @@ class TestPatientRepositoryIntegration:
     #     decrypted_last_name = mock_encryption_service.decrypt(db_model.last_name).decode()
     #     assert decrypted_last_name == "Tested"
 
+    @pytest.mark.asyncio
     # async def test_update_patient_not_found(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test updating a non-existent patient raises error.
@@ -467,6 +474,7 @@ class TestPatientRepositoryIntegration:
     #     with pytest.raises(ResourceNotFoundError):
     #         await repository.update(non_existent_patient)
 
+    @pytest.mark.asyncio
     # async def test_delete_patient(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test deleting a patient.
@@ -488,6 +496,7 @@ class TestPatientRepositoryIntegration:
     #     db_model = result.scalars().first()
     #     assert db_model is None
 
+    @pytest.mark.asyncio
     # async def test_delete_patient_not_found(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test deleting a non-existent patient.
@@ -498,6 +507,7 @@ class TestPatientRepositoryIntegration:
     #     deleted = await repository.delete(non_existent_id)
     #     assert deleted is False
 
+    @pytest.mark.asyncio
     # async def test_list_patients(self, db_session: AsyncSession, mock_encryption_service: BaseEncryptionService):
     #     """
     #     Test listing patients.

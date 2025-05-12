@@ -5,7 +5,9 @@ These tests verify that the Treatment Response Model correctly
 predicts medication efficacy and side effects based on patient data.
 """
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip("Skipping pharmacogenomics treatment model tests (torch unsupported)", allow_module_level=True)
 from unittest.mock import MagicMock, patch
@@ -107,6 +109,7 @@ class TestTreatmentResponseModel:
             } # Added comma
         } # Removed extra closing brace
 
+    @pytest.mark.asyncio
     async def test_initialize_loads_model_and_medication_data(self, model): # Added model fixture and colon
         """Test that initialize loads the model and medication data correctly."""
         # Setup - Using patch as context manager
@@ -171,6 +174,7 @@ class TestTreatmentResponseModel:
             # Clean up all patches
             patch.stopall()
 
+    @pytest.mark.asyncio
     async def test_initialize_handles_missing_files(self): # No model fixture needed here
         """Test that initialize handles missing model and medication data files gracefully."""
         # Setup
@@ -196,6 +200,7 @@ class TestTreatmentResponseModel:
             # Clean up all patches
             mock_exists_patch.stop() # Stop only the patch started in this test
 
+    @pytest.mark.asyncio
     async def test_predict_treatment_response_success( # Added colon
             self, model, sample_patient_data):
         """Test successful treatment response prediction."""
@@ -230,6 +235,7 @@ class TestTreatmentResponseModel:
         assert "lowest_side_effects" in result["comparative_analysis"] # Added colon if this was meant to be a function def start
 
 
+    @pytest.mark.asyncio
     async def test_predict_treatment_response_no_medications( # Added colon
             self, model, sample_patient_data):
         """Test prediction with empty medications list."""
@@ -241,6 +247,7 @@ class TestTreatmentResponseModel:
                 metabolizer_status={"CYP2D6": "normal"}
             )
 
+    @pytest.mark.asyncio
     async def test_predict_treatment_response_invalid_medication( # Added colon
             self, model, sample_patient_data):
         """Test prediction with invalid medication."""
@@ -261,6 +268,7 @@ class TestTreatmentResponseModel:
         assert "comparative_analysis" in result
         assert result["comparative_analysis"] == {} # Added indentation for block
 
+    @pytest.mark.asyncio
     async def test_preprocess_patient_data( # Added colon
             self, model, sample_patient_data):
         """Test patient data preprocessing."""
@@ -272,6 +280,7 @@ class TestTreatmentResponseModel:
         assert features.shape[0] == 1  # One patient
         assert features.shape[1] > 0   # Multiple features
 
+    @pytest.mark.asyncio
     async def test_format_efficacy_result(self, model): # Added colon
         """Test efficacy result formatting."""
         # Setup # Corrected indentation
@@ -289,6 +298,7 @@ class TestTreatmentResponseModel:
         assert result["confidence"] == confidence
         assert 0 <= result["percentile"] <= 100 # Added indentation for block
 
+    @pytest.mark.asyncio
     async def test_format_side_effects_result(self, model): # Added colon, corrected indentation
         """Test side effects result formatting."""
         # Setup # Corrected indentation
@@ -311,6 +321,7 @@ class TestTreatmentResponseModel:
         risks = [effect["risk"] for effect in result]
         assert risks == [0.35, 0.28, 0.15] # Added indentation for block
 
+    @pytest.mark.asyncio
     async def test_get_model_info(self, model): # Added colon
         """Test model info retrieval."""
         # Execute # Corrected indentation

@@ -11,7 +11,9 @@ from datetime import datetime, timezone # This line should correctly define 'dat
 from datetime import date
 from sqlalchemy import text
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from pydantic import ValidationError
 from app.core.exceptions import PersistenceError
 from app.core.domain.enums.gender import Gender # Added import for Gender enum

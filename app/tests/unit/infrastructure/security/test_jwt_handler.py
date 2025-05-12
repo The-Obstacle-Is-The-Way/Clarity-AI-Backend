@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.config.settings import Settings
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException

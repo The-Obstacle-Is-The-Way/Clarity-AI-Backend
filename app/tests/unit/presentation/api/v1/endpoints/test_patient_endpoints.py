@@ -1,4 +1,5 @@
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from unittest.mock import AsyncMock, MagicMock
 from faker import Faker
 from fastapi import status, FastAPI, HTTPException, APIRouter, Depends
@@ -206,6 +207,7 @@ async def test_create_patient_success(
         response_model=PatientCreateResponse,
         status_code=status.HTTP_201_CREATED
     )
+    @pytest.mark.asyncio
     async def test_create_patient_endpoint(
         patient_data: PatientCreateRequest,
         service: PatientService = Depends(lambda: StubPatientService()),
@@ -261,6 +263,7 @@ async def test_create_patient_validation_error(
         response_model=PatientCreateResponse,
         status_code=status.HTTP_201_CREATED
     )
+    @pytest.mark.asyncio
     async def test_validation_endpoint(
         patient_data: PatientCreateRequest,
         service: PatientService = Depends(lambda: AsyncMock(spec=PatientService)),

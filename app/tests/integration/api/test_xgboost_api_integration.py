@@ -12,8 +12,12 @@ from unittest.mock import AsyncMock
 import uuid
 import httpx
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from fastapi import FastAPI, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -274,6 +278,7 @@ def valid_outcome_prediction_data() -> dict[str, Any]:
 class TestXGBoostAPIIntegration:
     """Test suite for XGBoost API integration focusing on authentication and validation."""
 
+    @pytest.mark.asyncio
     async def test_predict_risk_success(
         self,
         client: httpx.AsyncClient,
@@ -308,6 +313,7 @@ class TestXGBoostAPIIntegration:
             clinical_data=valid_risk_prediction_data["clinical_data"]
         )
 
+    @pytest.mark.asyncio
     async def test_predict_risk_validation_error(
         self,
         client: httpx.AsyncClient,
@@ -332,6 +338,7 @@ class TestXGBoostAPIIntegration:
         # Ensure the service method was NOT called
         mock_xgboost_service.predict_risk_mock.assert_not_awaited()
 
+    @pytest.mark.asyncio
     async def test_predict_risk_phi_detection(
         self,
         client: httpx.AsyncClient,
@@ -371,6 +378,7 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
+    @pytest.mark.asyncio
     async def test_predict_risk_unauthorized(
         self,
         client: httpx.AsyncClient,
@@ -392,6 +400,7 @@ class TestXGBoostAPIIntegration:
         mock_xgboost_service.predict_risk_mock.assert_not_awaited()
 
 
+    @pytest.mark.asyncio
     async def test_predict_treatment_response_success(
         self,
         client: httpx.AsyncClient,
@@ -423,6 +432,7 @@ class TestXGBoostAPIIntegration:
             clinical_data=valid_treatment_response_data.get("clinical_data", {})
         )
 
+    @pytest.mark.asyncio
     async def test_predict_outcome_success(
         self,
         client: httpx.AsyncClient,
@@ -455,6 +465,7 @@ class TestXGBoostAPIIntegration:
             treatment_plan=valid_outcome_prediction_data.get("treatment_plan", {})
         )
 
+    @pytest.mark.asyncio
     async def test_get_feature_importance_success(
         self,
         client: httpx.AsyncClient,
@@ -490,6 +501,7 @@ class TestXGBoostAPIIntegration:
             prediction_id=prediction_id
         )
 
+    @pytest.mark.asyncio
     async def test_get_feature_importance_not_found(
         self,
         client: httpx.AsyncClient,
@@ -516,6 +528,7 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.get_feature_importance_mock.side_effect = None
 
+    @pytest.mark.asyncio
     async def test_integrate_with_digital_twin_success(
         self,
         client: httpx.AsyncClient,
@@ -546,6 +559,7 @@ class TestXGBoostAPIIntegration:
             patient_id=patient_id, profile_id=profile_id, prediction_id=prediction_id
         )
 
+    @pytest.mark.asyncio
     async def test_get_model_info_success(
         self,
         client: httpx.AsyncClient,
@@ -577,6 +591,7 @@ class TestXGBoostAPIIntegration:
         # Simulate successful call to demonstrate proper test expectations
         await mock_xgboost_service.get_model_info_mock(model_type=model_type)
 
+    @pytest.mark.asyncio
     async def test_get_model_info_not_found(
         self,
         client: httpx.AsyncClient, # Use client
@@ -598,6 +613,7 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.get_model_info_mock.side_effect = None
 
+    @pytest.mark.asyncio
     async def test_service_unavailable(
         self,
         client: httpx.AsyncClient, # Use client
@@ -621,6 +637,7 @@ class TestXGBoostAPIIntegration:
         # Reset side effect
         mock_xgboost_service.predict_risk_mock.side_effect = None
 
+    @pytest.mark.asyncio
     async def test_predict_risk_no_auth(self, client: httpx.AsyncClient, valid_risk_prediction_data: dict[str, Any]):
         """Test predict risk endpoint without authentication headers."""
         response = await client.post(
@@ -630,6 +647,7 @@ class TestXGBoostAPIIntegration:
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Response: {response.text}"
 
+    @pytest.mark.asyncio
     async def test_get_model_info_no_auth(self, client: httpx.AsyncClient):
         """Test get model info endpoint without authentication headers."""
         response = await client.get("/api/v1/xgboost/info/risk_prediction")

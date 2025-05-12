@@ -11,7 +11,9 @@ import os
 import uuid
 from typing import Any
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, insert, select, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import SQLAlchemyError

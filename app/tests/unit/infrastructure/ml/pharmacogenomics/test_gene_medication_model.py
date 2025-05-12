@@ -5,7 +5,9 @@ These tests verify that the Gene Medication Model correctly
 analyzes genetic variants and predicts medication interactions.
 """
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip("Skipping pharmacogenomics gene medication model tests (torch unsupported)", allow_module_level=True)
 from unittest.mock import MagicMock, patch

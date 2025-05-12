@@ -9,8 +9,12 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from httpx import AsyncClient
 
 # Mark all tests in this module as asyncio tests
@@ -138,6 +142,7 @@ def patient_id():
 @pytest.mark.skip("Skipping temporal neurotransmitter integration: pending mapping signature update")
 @pytest.mark.asyncio()
 @pytest.mark.db_required()
+@pytest.mark.asyncio
 async def test_temporal_service_with_xgboost_integration(
     temporal_service: TemporalNeurotransmitterService,
     xgboost_service: EnhancedXGBoostService,

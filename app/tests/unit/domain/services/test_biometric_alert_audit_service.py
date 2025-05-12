@@ -9,7 +9,9 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.services.biometric_alert_audit_service import BiometricAlertAuditService
@@ -103,6 +105,7 @@ class TestBiometricAlertAuditService:
         )
 
 
+    @pytest.mark.asyncio
     async def test_notify_alert_creates_audit_record(
         self, audit_service, mock_audit_logger, sample_alert
     ):
@@ -133,6 +136,7 @@ class TestBiometricAlertAuditService:
         assert "data_points" not in alert_data
         assert "data_point" not in alert_data
 
+    @pytest.mark.asyncio
     async def test_record_alert_acknowledgment(
         self, audit_service, mock_alert_repository, mock_audit_logger,
         sample_alert, sample_alert_id, sample_provider_id
@@ -168,6 +172,7 @@ class TestBiometricAlertAuditService:
         assert log_args["data"]["alert"]["acknowledged_by"] == str(sample_provider_id)
         assert log_args["data"]["alert"]["acknowledged_at"] is not None
 
+    @pytest.mark.asyncio
     async def test_create_alert_audit_record_sanitizes_phi(
         self, audit_service, mock_audit_logger, sample_alert, sample_provider_id
     ):
@@ -212,6 +217,7 @@ class TestBiometricAlertAuditService:
         # Verify additional data is included
         assert log_args["data"]["additional"] == "data"
 
+    @pytest.mark.asyncio
     async def test_search_audit_trail(
         self, audit_service, mock_audit_logger, sample_patient_id,
         sample_alert_id, sample_provider_id
@@ -250,6 +256,7 @@ class TestBiometricAlertAuditService:
         assert search_args["limit"] == 50
         assert search_args["offset"] == 10
 
+    @pytest.mark.asyncio
     async def test_no_audit_record_for_nonexistent_alert_acknowledgment(
         self, audit_service, mock_alert_repository, mock_audit_logger,
         sample_alert_id, sample_provider_id

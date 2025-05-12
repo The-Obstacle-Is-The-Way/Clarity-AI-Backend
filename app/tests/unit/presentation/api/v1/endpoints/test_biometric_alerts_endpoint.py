@@ -12,8 +12,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from asgi_lifespan import LifespanManager
 from faker import Faker
 from fastapi import FastAPI, status
@@ -186,6 +190,7 @@ def mock_alert_service() -> MagicMock:
     return create_autospec(AlertServiceInterface, instance=True)
 
 @pytest_asyncio.fixture(scope="function")
+@pytest.mark.asyncio
 async def test_app(
     test_settings: AppSettings,
     # Changed to global_mock_jwt_service to match conftest.py more clearly if needed later
@@ -246,6 +251,7 @@ def sample_patient_id() -> uuid.UUID:
 
 @pytest.mark.asyncio
 class TestBiometricAlertsEndpoints:
+    @pytest.mark.asyncio
     async def test_get_alert_rules(
         self,
         client: AsyncClient,
@@ -256,6 +262,7 @@ class TestBiometricAlertsEndpoints:
         response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_create_alert_rule_from_template(
         self,
         client: AsyncClient,
@@ -279,6 +286,7 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_create_alert_rule_from_condition(
         self,
         client: AsyncClient,
@@ -310,6 +318,7 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_create_alert_rule_validation_error(
         self,
         client: AsyncClient,
@@ -320,6 +329,7 @@ class TestBiometricAlertsEndpoints:
         # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any, assumed it was only a skip)
 
+    @pytest.mark.asyncio
     async def test_get_alert_rule(
         self,
         client: AsyncClient,
@@ -335,6 +345,7 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_get_alert_rule_not_found(
         self,
         client: AsyncClient,
@@ -350,6 +361,7 @@ class TestBiometricAlertsEndpoints:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    @pytest.mark.asyncio
     async def test_update_alert_rule(
         self,
         client: AsyncClient,
@@ -381,6 +393,7 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_delete_alert_rule(
         self,
         client: AsyncClient,
@@ -396,6 +409,7 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_get_rule_templates(
         self,
         client: AsyncClient,
@@ -409,6 +423,7 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_get_alerts(
         self,
         client: AsyncClient,
@@ -422,6 +437,7 @@ class TestBiometricAlertsEndpoints:
         )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR # REVERTED from HTTP_404_NOT_FOUND
 
+    @pytest.mark.asyncio
     async def test_get_alerts_with_filters(
         self,
         client: AsyncClient,
@@ -456,6 +472,7 @@ class TestBiometricAlertsEndpoints:
         # assert response.json() == [] # Cannot assert body on 404 typically
         # mock_alert_service.get_alerts.assert_awaited_once() # Service won't be called if route is missing
 
+    @pytest.mark.asyncio
     async def test_update_alert_status_acknowledge(
         self,
         client: AsyncClient,
@@ -466,6 +483,7 @@ class TestBiometricAlertsEndpoints:
         # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
+    @pytest.mark.asyncio
     async def test_update_alert_status_resolve(
         self,
         client: AsyncClient,
@@ -476,6 +494,7 @@ class TestBiometricAlertsEndpoints:
         # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
+    @pytest.mark.asyncio
     async def test_update_alert_status_not_found(
         self,
         client: AsyncClient,
@@ -493,6 +512,7 @@ class TestBiometricAlertsEndpoints:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    @pytest.mark.asyncio
     async def test_get_patient_alert_summary(
         self,
         client: AsyncClient,
@@ -503,6 +523,7 @@ class TestBiometricAlertsEndpoints:
         # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
+    @pytest.mark.asyncio
     async def test_get_patient_alert_summary_not_found(
         self,
         client: AsyncClient,
@@ -518,6 +539,7 @@ class TestBiometricAlertsEndpoints:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    @pytest.mark.asyncio
     async def test_create_alert_rule_template(
         self,
         client: AsyncClient,
@@ -549,12 +571,14 @@ class TestBiometricAlertsEndpoints:
         )
         # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # Original position
 
+    @pytest.mark.asyncio
     async def test_update_alert_status_unauthorized(
         self, client: AsyncClient, sample_patient_id: uuid.UUID # No get_valid_provider_auth_headers here
     ) -> None:
         pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
         # ... (rest of original test if any)
 
+    @pytest.mark.asyncio
     async def test_update_alert_status_invalid_payload(
         self,
         client: AsyncClient,
@@ -565,6 +589,7 @@ class TestBiometricAlertsEndpoints:
         # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
+    @pytest.mark.asyncio
     async def test_trigger_alert_manually_success(
         self,
         client: AsyncClient,
@@ -575,6 +600,7 @@ class TestBiometricAlertsEndpoints:
         # headers = get_valid_provider_auth_headers # Original code was just a skip
         # ... (rest of original test if any)
 
+    @pytest.mark.asyncio
     async def test_hipaa_compliance_no_phi_in_url_or_errors(
         self,
         client: AsyncClient,

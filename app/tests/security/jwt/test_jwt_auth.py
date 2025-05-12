@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 from datetime import timedelta
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # import jwt # Use JWTService methods for encoding/decoding
 from fastapi import status

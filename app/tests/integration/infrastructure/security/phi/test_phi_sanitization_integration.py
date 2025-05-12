@@ -13,7 +13,9 @@ from datetime import date
 from io import StringIO
 from typing import Any
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Mark all tests in this file as skipped pending update to match new implementation
 pytestmark = pytest.mark.skip(reason="PHI sanitization integration tests need updating to match new domain entity structures")
@@ -31,6 +33,7 @@ from app.infrastructure.security.phi import PHISanitizer, get_sanitized_logger
 
 @pytest.fixture
 @pytest.mark.db_required
+@pytest.mark.asyncio
 async def test_patient() -> Patient:
     """Create a test patient with PHI for testing."""
     patient_id = uuid.uuid4()

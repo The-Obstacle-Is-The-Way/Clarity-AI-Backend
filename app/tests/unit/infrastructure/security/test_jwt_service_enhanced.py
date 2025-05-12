@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 
 import jwt
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from freezegun import freeze_time
 import uuid
 
@@ -94,6 +95,7 @@ class TestJWTService:
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
+    @pytest.mark.asyncio
     async def test_create_access_token(self, jwt_service: JWTService):
         """Test creation of access tokens."""
         # Create a basic access token
@@ -137,6 +139,7 @@ class TestJWTService:
             # Otherwise use the configured value
             assert decoded["exp"] - decoded["iat"] == TEST_ACCESS_EXPIRE_MINUTES * 60
 
+    @pytest.mark.asyncio
     async def test_create_refresh_token(self, jwt_service: JWTService):
         """Test creation of refresh tokens."""
         # Create a refresh token
@@ -168,6 +171,7 @@ class TestJWTService:
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
+    @pytest.mark.asyncio
     async def test_verify_token_valid(self, jwt_service: JWTService):
         """Test verification of valid tokens."""
         # Create a valid token
@@ -182,6 +186,7 @@ class TestJWTService:
         assert payload.roles[0] == "patient" if hasattr(payload, "roles") and payload.roles else None
         assert hasattr(payload, "type")
 
+    @pytest.mark.asyncio
     async def test_verify_token_expired(self, jwt_service: JWTService):
         """Test verification of expired tokens."""
         # Create an expired token by setting 'exp' in the past
@@ -205,6 +210,7 @@ class TestJWTService:
         with pytest.raises(TokenExpiredException): # decode_token raises TokenExpiredException
             jwt_service.decode_token(expired_token) # Changed from verify_token, removed await
 
+    @pytest.mark.asyncio
     async def test_verify_token_invalid_signature(self, jwt_service: JWTService):
         """Test verification of tokens with invalid signatures."""
         # Create a valid token
@@ -229,6 +235,7 @@ class TestJWTService:
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
+    @pytest.mark.asyncio
     async def test_verify_token_invalid_audience(self, jwt_service: JWTService, test_settings: MagicMock):
         """Test verification of tokens with invalid audience."""
         # Create token with the correct audience first
@@ -255,6 +262,7 @@ class TestJWTService:
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
+    @pytest.mark.asyncio
     async def test_verify_token_invalid_issuer(self, jwt_service: JWTService):
         """Test verification of tokens with invalid issuer."""
         # Create token with the correct issuer
@@ -279,6 +287,7 @@ class TestJWTService:
         with pytest.raises(InvalidTokenException):
             wrong_iss_service.decode_token(token)
 
+    @pytest.mark.asyncio
     async def test_verify_token_malformed(self, jwt_service: JWTService):
         """Test verification of malformed tokens."""
         # Create malformed token
@@ -382,6 +391,7 @@ class TestJWTService:
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
+    @pytest.mark.asyncio
     async def test_token_timestamps_are_correct(self, jwt_service: JWTService):
         """Test token timestamps are set correctly."""
         # Create token with fixed time

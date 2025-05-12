@@ -3,7 +3,9 @@ Tests for the MockAsyncSession class.
 
 This module tests the mock database session used for testing.
 """
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy import select
 
 # Override select to avoid SQLAlchemy coercion for object type

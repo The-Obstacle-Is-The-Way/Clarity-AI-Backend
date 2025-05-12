@@ -5,7 +5,9 @@ These tests verify that the RetrieveAggregatedAnalytics use case correctly retri
 and aggregates analytics data based on specified dimensions, filters, and time ranges.
 """
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Skip these tests temporarily while fixing relationship issues
 pytest.skip("Skipping RetrieveAggregatedAnalytics tests while fixing SQLAlchemy relationship issues", allow_module_level=True)

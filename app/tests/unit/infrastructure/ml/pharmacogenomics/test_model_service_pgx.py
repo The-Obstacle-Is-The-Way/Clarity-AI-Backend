@@ -5,7 +5,9 @@ These tests verify that the Pharmacogenomics Model Service correctly
 analyzes genetic data and predicts medication responses.
 """
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip("Skipping pharmacogenomics model service tests (torch unsupported)", allow_module_level=True)
 from datetime import datetime

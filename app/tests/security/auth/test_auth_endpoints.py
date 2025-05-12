@@ -6,7 +6,9 @@ using direct API calls to ensure proper behavior with async handling.
 """
 from unittest.mock import AsyncMock
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from httpx import AsyncClient
 from fastapi import FastAPI
 import uuid

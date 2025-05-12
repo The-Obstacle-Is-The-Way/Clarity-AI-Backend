@@ -15,7 +15,9 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import fastapi
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import Depends, FastAPI, HTTPException, status
 from httpx import AsyncClient
 from pytest_mock import MockerFixture
@@ -294,6 +296,7 @@ def actigraphy_data() -> dict[str, Any]:
 class TestActigraphyAPI:
     """Integration tests for the Actigraphy API."""
 
+    @pytest.mark.asyncio
     async def test_analyze_actigraphy(
         self,
         test_client: AsyncClient,
@@ -338,6 +341,7 @@ class TestActigraphyAPI:
             if "readings_count" in data["data_summary"]:
                 assert data["data_summary"]["readings_count"] == len(actigraphy_data["readings"])
 
+    @pytest.mark.asyncio
     async def test_get_actigraphy_embeddings(
         self,
         test_client: AsyncClient,
@@ -368,6 +372,7 @@ class TestActigraphyAPI:
         assert data["patient_id"] == actigraphy_data["patient_id"]
         assert "timestamp" in data
 
+    @pytest.mark.asyncio
     async def test_analyze_again(
         self,
         test_client: AsyncClient,
@@ -396,6 +401,7 @@ class TestActigraphyAPI:
         assert isinstance(data["data_summary"], dict)
         assert len(data["data_summary"]) > 0
 
+    @pytest.mark.asyncio
     async def test_embeddings_endpoint(
         self,
         test_client: AsyncClient,
@@ -419,6 +425,7 @@ class TestActigraphyAPI:
         assert data["patient_id"] == actigraphy_data["patient_id"]
         assert "timestamp" in data
 
+    @pytest.mark.asyncio
     async def test_placeholder_endpoint(
         self,
         test_client: AsyncClient,
@@ -436,6 +443,7 @@ class TestActigraphyAPI:
         assert "message" in data
         assert data["message"] == "Placeholder endpoint for actigraphy data"
 
+    @pytest.mark.asyncio
     async def test_analyze_with_different_data(
         self,
         test_client: AsyncClient,
@@ -483,6 +491,7 @@ class TestActigraphyAPI:
         assert "data_summary" in data
         assert "timestamp" in data
 
+    @pytest.mark.asyncio
     async def test_unauthorized_access(
         self,
         test_client: AsyncClient,
@@ -496,6 +505,7 @@ class TestActigraphyAPI:
         assert response.status_code == 401
         assert "detail" in response.json()
 
+    @pytest.mark.asyncio
     async def test_reanalyze_actigraphy(
         self,
         test_client: AsyncClient,

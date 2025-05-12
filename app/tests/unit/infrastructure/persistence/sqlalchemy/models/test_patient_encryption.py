@@ -10,7 +10,9 @@ import uuid # Added import for uuid
 from unittest.mock import patch, MagicMock, AsyncMock # Added AsyncMock
 from datetime import date # Added date
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.persistence.sqlalchemy.models.patient import Patient as PatientModel
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
@@ -92,6 +94,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_encrypted_string_process_bind_param(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock):
         """Test EncryptedString.process_bind_param calls encrypt_string."""
         mock_esi.encrypt = mock_encryption_service_for_model_tests.encrypt
@@ -106,6 +109,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_encrypted_string_process_result_value(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock):
         """Test EncryptedString.process_result_value calls decrypt_string."""
         mock_esi.decrypt = mock_encryption_service_for_model_tests.decrypt
@@ -120,6 +124,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_encrypted_json_process_bind_param(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock):
         """Test EncryptedJSON.process_bind_param calls json.dumps and encrypt_string."""
         mock_esi.encrypt = mock_encryption_service_for_model_tests.encrypt
@@ -135,6 +140,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_encrypted_json_process_result_value(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock):
         """Test EncryptedJSON._convert_result_value properly handles JSON parsing."""
         # Create a decorator instance
@@ -153,6 +159,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_encrypted_json_process_result_value_handles_none(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock):
         """Test EncryptedJSON.process_result_value handles None input gracefully."""
         mock_esi.decrypt = mock_encryption_service_for_model_tests.decrypt
@@ -162,6 +169,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_encrypted_json_process_bind_param_handles_none(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock):
         """Test EncryptedJSON.process_bind_param handles None input gracefully."""
         mock_esi.encrypt = mock_encryption_service_for_model_tests.encrypt
@@ -171,6 +179,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_patient_model_to_domain(
         self,
         mock_esi: MagicMock, # This is the ESI for TypeDecorators
@@ -237,6 +246,7 @@ class TestPatientModelEncryptionAndTypes:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_patient_model_from_domain(self, mock_esi: MagicMock, mock_encryption_service_for_model_tests: MagicMock, sample_domain_patient_data: dict):
         """Test PatientModel.from_domain sets attributes correctly.
         Encryption itself is handled by TypeDecorator on flush, not by from_domain.

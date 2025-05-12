@@ -11,7 +11,9 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 import logging
 
+import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import FastAPI, status
 from httpx import AsyncClient
 
@@ -292,6 +294,7 @@ class TestAuthorization:
             (UserRole.ADMIN, status.HTTP_200_OK),
         ],
     )
+    @pytest.mark.asyncio
     async def test_role_specific_endpoint_access(
         self,
         client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
@@ -678,6 +681,7 @@ async def test_access_patient_phi_data_patient_not_found(
 
 @pytest.mark.asyncio
 @pytest.mark.db_required # Added db_required as it likely interacts with DB through user/patient lookups
+@pytest.mark.asyncio
 async def test_authenticated_but_unknown_role(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
     global_mock_jwt_service: MagicMock # Corrected

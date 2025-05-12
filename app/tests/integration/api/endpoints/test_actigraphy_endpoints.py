@@ -9,8 +9,12 @@ import uuid
 from typing import Any, AsyncGenerator, Callable
 from unittest.mock import AsyncMock, patch
 
+import asyncio
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import asyncio
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from httpx import AsyncClient
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
@@ -206,6 +210,7 @@ class TestActigraphyEndpoints:
     """Test suite for Actigraphy API Endpoints integration."""
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_unauthenticated_access(
         self,
         test_client: AsyncClient
@@ -225,6 +230,7 @@ class TestActigraphyEndpoints:
         assert "Field required" in str(response.json())
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_authorized_access(
         self,
         authenticated_client: AsyncClient # Uses patient_token by default
@@ -245,6 +251,7 @@ class TestActigraphyEndpoints:
         assert "model_name" in response_data
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_input_validation(
         self,
         authenticated_client: AsyncClient # Uses patient_token by default
@@ -267,6 +274,7 @@ class TestActigraphyEndpoints:
         assert "detail" in response.json() # Should have validation details
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_role_based_access_control(
         self, 
         authenticated_client: AsyncClient, # Patient client
@@ -306,6 +314,7 @@ class TestActigraphyEndpoints:
         assert patient_analysis_response.status_code == 422 # Expect 422 due to invalid data, not 401/403
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_hipaa_audit_logging(
         self,
         authenticated_client: AsyncClient # Uses patient_token by default
@@ -321,6 +330,7 @@ class TestActigraphyEndpoints:
         assert response.status_code == 200, f"Expected 200 OK but got {response.status_code}: {response.text}"
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_phi_data_sanitization(
         self, 
         authenticated_client: AsyncClient # Uses patient_token by default
@@ -342,6 +352,7 @@ class TestActigraphyEndpoints:
         assert "date_of_birth" not in response_data
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_secure_data_transmission(
         self, 
         authenticated_client: AsyncClient # Uses patient_token by default
@@ -361,6 +372,7 @@ class TestActigraphyEndpoints:
         # The actual header checks happen in separate security tests for the middleware
 
     @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_api_response_structure(
         self, 
         authenticated_client: AsyncClient # Uses patient_token by default
@@ -385,6 +397,7 @@ class TestActigraphyEndpoints:
 TEST_USER_ID = str(uuid.uuid4()) # Use a consistent test user ID
 
 @pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_upload_actigraphy_data(
     authenticated_client: AsyncClient, # Uses patient_token by default
     actigraphy_file_content: bytes,
@@ -416,6 +429,7 @@ async def test_upload_actigraphy_data(
     assert response.json()["filename"] == actigraphy_file_name, "Filename should match the uploaded file"
 
 @pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_get_actigraphy_data_summary(authenticated_client: AsyncClient): # Uses patient_token by default
     """Test retrieving actigraphy data summaries."""
     # Use a valid patient UUID
@@ -431,6 +445,7 @@ async def test_get_actigraphy_data_summary(authenticated_client: AsyncClient): #
     assert isinstance(response_data["summaries"], list)
 
 @pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_get_specific_actigraphy_data(authenticated_client: AsyncClient): # Uses patient_token by default
     """Test retrieving specific actigraphy data with proper authentication."""
     # Use a valid data ID
@@ -446,6 +461,7 @@ async def test_get_specific_actigraphy_data(authenticated_client: AsyncClient): 
     assert response_data["data_id"] == data_id
 
 @pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_unauthorized_access(test_client: AsyncClient):
     """Test that unauthorized access is properly handled.
     
@@ -464,6 +480,7 @@ async def test_unauthorized_access(test_client: AsyncClient):
     assert "kwargs" in str(response.json()["detail"]), "Should require kwargs parameter indicating auth dependency is present"
 
 @pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_invalid_date_format(
     authenticated_client: AsyncClient # Uses patient_token by default
 ):

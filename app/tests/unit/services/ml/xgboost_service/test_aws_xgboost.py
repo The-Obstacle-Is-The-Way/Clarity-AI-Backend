@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock as PatchAsyncMock
 from unittest.mock import patch
 
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.core.services.ml.xgboost.aws_service import AWSXGBoostService, PrivacyLevel
 from app.core.services.ml.xgboost.exceptions import ConfigurationError

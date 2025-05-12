@@ -15,7 +15,9 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
+import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.patient import Patient as PatientEntity
@@ -245,6 +247,7 @@ class TestPatientRepository:
     
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance') # Target the instance used by TypeDecorators
+    @pytest.mark.asyncio
     async def test_get_by_id(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, sample_patient_data: dict):
         """Test retrieving a patient by ID."""
         patient_uuid = uuid.UUID(sample_patient_id)
@@ -315,6 +318,7 @@ class TestPatientRepository:
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient.from_domain', new_callable=AsyncMock) # Corrected patch target
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_create_patient(self, mock_patient_module_esi: MagicMock, mock_patient_from_domain: AsyncMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict, mock_encryption_service: MagicMock):
         """Test creating a new patient, ensuring data is encrypted and returned correctly."""
         # The primary interaction should be with mock_esi for TypeDecorator behavior.
@@ -347,6 +351,7 @@ class TestPatientRepository:
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.Patient', new_callable=MagicMock)
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_update_patient(self, mock_patient_module_esi: MagicMock, MockPatientClass: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str, mock_encryption_service: MagicMock):
         """Test updating an existing patient."""
         mock_patient_module_esi.encrypt = mock_encryption_service.encrypt
@@ -385,6 +390,7 @@ class TestPatientRepository:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_get_all_patients(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_list_data: list[dict]): # Use new fixture
         """Test retrieving all patients with limit and offset."""
         # mock_patient_module_esi used by TypeDecorators implicitly
@@ -444,6 +450,7 @@ class TestPatientRepository:
 
     @pytest.mark.asyncio
     @patch('app.infrastructure.persistence.sqlalchemy.models.patient.encryption_service_instance')
+    @pytest.mark.asyncio
     async def test_get_by_email(self, mock_patient_module_esi: MagicMock, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_data: dict):
         """Test retrieving a patient by email."""
         # mock_patient_module_esi used by TypeDecorators implicitly

@@ -5,6 +5,7 @@ Unit tests for database connection and session management.
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
 import pytest
+from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -41,6 +42,7 @@ def event_loop():
 
 @pytest.mark.asyncio
 @patch.object(dbmod, 'create_async_engine')  # Patch the underlying engine creation
+@pytest.mark.asyncio
 async def test_get_engine(mock_create_engine, test_settings: Settings):
     """Test the get_engine function."""
     # Ensure the test_settings fixture provides the DATABASE_URL
@@ -73,6 +75,7 @@ async def test_get_engine(mock_create_engine, test_settings: Settings):
 
 @pytest.mark.asyncio
 @patch.object(dbmod, 'sessionmaker')  # Patch sessionmaker creation
+@pytest.mark.asyncio
 async def test_get_session_local(mock_sessionmaker, test_settings: Settings):
     """Test the creation of the sessionmaker via get_session_local."""
     mock_engine = AsyncMock()
@@ -126,6 +129,7 @@ async def test_get_session_context_manager_exception():
 
 
 # Example test demonstrating how to use the dependency with a mock request if needed
+@pytest.mark.asyncio
 # async def test_route_using_get_db():
 #     mock_session = AsyncMock(spec=AsyncSession)
 #     async def override_get_db():
