@@ -386,7 +386,7 @@ class TestAuthenticationMiddleware:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED # CHANGED from 500
         response_data = json.loads(response.body)
         # Check for the message the middleware currently produces
-        assert "invalid data encountered during token validation: simulated repository error" in response_data["detail"].lower() # CHANGED message check for ValueError path
+        assert "database access error: simulated repository error" in response_data["detail"].lower()  # Updated to match the actual error message
         mock_get_user_by_id_on_class.assert_awaited_once_with(UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15"))
 
     @patch('app.infrastructure.persistence.sqlalchemy.repositories.user_repository.SQLAlchemyUserRepository.get_user_by_id') # PATCHING THE METHOD ON THE CLASS

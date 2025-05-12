@@ -47,10 +47,9 @@ logger = logging.getLogger(__name__)
 # Pydantic model for authenticated user context
 class AuthenticatedUser(BaseModel):
     id: str | UUID 
-    # Consider adding other fields like roles, username if they are commonly needed by endpoints from request.scope.user
-    # For now, keeping it minimal based on direct user fetching.
-    # roles: List[str] = [] 
-    # username: str | None = None
+    username: str | None = None
+    email: str | None = None
+    roles: list[str] = []
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(
@@ -131,7 +130,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.debug(f"Token decoded. Subject: {token_payload.sub}, Roles: {token_payload.roles}")
             
             # Get user from repository
-            user_id = token_payload.sub
+            user_id_str = token_payload.sub
+            
+            # Convert string to UUID
+            try:
+                logger.debug(f"Attempting to parse user ID string '{user_id_str}' to UUID.")
+                user_id = UUID(user_id_str)
+                logger.debug(f"User ID parsed successfully: {user_id}")
+            except ValueError as e:
+                logger.error(f"Invalid user ID format in token 'sub' claim: {user_id_str}. Error: {e}")
+                raise UserNotFoundException("Invalid user ID format in token.")
             
             # Get or create user repository
             if self.user_repository:
@@ -181,10 +189,15 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # Create authenticated user object
             auth_user = AuthenticatedUser(
                 id=str(domain_user.id),
-                username=getattr(domain_user, 'username', None),
-                email=getattr(domain_user, 'email', None),
+                username=domain_user.username,
+                email=domain_user.email,
                 roles=user_roles
             )
+            
+            # Set additional fields if they exist on the domain user
+            for field in ['username', 'email', 'roles']:
+                if hasattr(domain_user, field):
+                    setattr(auth_user, field, getattr(domain_user, field))
             
             # Get scopes from token
             scopes = token_payload.roles if hasattr(token_payload, 'roles') else []
@@ -203,7 +216,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             raise
         except Exception as e:
             logger.error(f"Unexpected error during token validation: {e}", exc_info=True)
-            raise AuthenticationException(f"Authentication failed: {e}")
+            raise AuthenticationException(f"Invalid data encountered during token validation: {e}")
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         # Check if path is public
