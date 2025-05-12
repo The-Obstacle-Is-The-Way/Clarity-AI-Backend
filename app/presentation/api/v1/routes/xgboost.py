@@ -393,14 +393,24 @@ async def predict_outcome(
             include_recommendations=request.include_recommendations,
         )
         
-        # Map result to response model
-        return OutcomePredictionResponse(
-            patient_id=request.patient_id,
-            expected_outcomes=result.get("expected_outcomes", []),
-            outcome_trajectories=result.get("outcome_trajectories"),
-            response_likelihood=result.get("response_likelihood"),
-            recommended_therapies=result.get("recommended_therapies"),
-        )
+        # Map result to response model - handle both object and dict results
+        if isinstance(result, dict):
+            return OutcomePredictionResponse(
+                patient_id=request.patient_id,
+                expected_outcomes=result.get("expected_outcomes", []),
+                outcome_trajectories=result.get("outcome_trajectories"),
+                response_likelihood=result.get("response_likelihood"),
+                recommended_therapies=result.get("recommended_therapies"),
+            )
+        else:
+            # Handle object-like result with attribute access
+            return OutcomePredictionResponse(
+                patient_id=request.patient_id,
+                expected_outcomes=getattr(result, "expected_outcomes", []),
+                outcome_trajectories=getattr(result, "outcome_trajectories", None),
+                response_likelihood=getattr(result, "response_likelihood", None),
+                recommended_therapies=getattr(result, "recommended_therapies", None),
+            )
         
     except ServiceUnavailableError:
         logger.error(f"XGBoost service unavailable for outcome prediction: {request.patient_id}")
