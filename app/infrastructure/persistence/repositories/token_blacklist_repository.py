@@ -74,7 +74,7 @@ class TokenBlacklistRepository(ITokenRepository):
                 return False
                 
             # Check if token has expired from the blacklist
-            if self._token_blacklist[token] < datetime.utcnow():
+            if self._token_blacklist[token] < datetime.now(datetime.UTC):
                 # Clean up expired token
                 del self._token_blacklist[token]
                 return False
@@ -96,7 +96,8 @@ class TokenBlacklistRepository(ITokenRepository):
         """
         try:
             # Add an extra year to the expiration to ensure tokens are rejected
-            expiry = datetime.utcnow().replace(year=datetime.utcnow().year + 1)
+            now = datetime.now(datetime.UTC)
+            expiry = now.replace(year=now.year + 1)
             
             # Blacklist all user tokens
             if user_id in self._user_tokens:
@@ -122,7 +123,8 @@ class TokenBlacklistRepository(ITokenRepository):
         """
         try:
             # Add an extra year to the expiration to ensure tokens are rejected
-            expiry = datetime.utcnow().replace(year=datetime.utcnow().year + 1)
+            now = datetime.now(datetime.UTC)
+            expiry = now.replace(year=now.year + 1)
             
             # Blacklist all session tokens
             if session_id in self._session_tokens:
@@ -147,7 +149,7 @@ class TokenBlacklistRepository(ITokenRepository):
             RepositoryException: If the operation fails
         """
         try:
-            now = datetime.utcnow()
+            now = datetime.now(datetime.UTC)
             expired_tokens = [
                 token for token, expires_at in self._token_blacklist.items()
                 if expires_at < now
