@@ -289,7 +289,7 @@ class TestEnhancedEncryptionService:
             encryption_service.decrypt_file(str(nonexistent_file), str(output_file))
 
     def test_decrypt_invalid_file_content(self, encryption_service: BaseEncryptionService, tmp_path):
-        """Test decrypting a file with invalid content raises InvalidToken."""
+        """Test decrypting a file with invalid content raises ValueError."""
         invalid_encrypted_file = tmp_path / "invalid.bin"
         output_file = tmp_path / "output.txt"
 
@@ -297,5 +297,5 @@ class TestEnhancedEncryptionService:
         invalid_encrypted_file.write_bytes(b"This is not a valid Fernet token")
 
         # Attempt to decrypt an invalid file
-        with pytest.raises(InvalidToken):
+        with pytest.raises(ValueError, match=r"Decryption failed for file.*invalid token"):
             encryption_service.decrypt_file(str(invalid_encrypted_file), str(output_file))

@@ -175,6 +175,22 @@ class FieldEncryptor:
                     # For complex types, convert to string and encrypt
                     try:
                         import json
+                        # Special handling for address objects and other nested structures
+                        if field in ["address", "contact", "name"] or field.endswith(".address") or field.endswith(".contact") or field.endswith(".name"):
+                            # For fields like address that are complex, we need to process nested fields
+                            # This is crucial for patient PHI
+                            if isinstance(value, dict):
+                                # Encrypt each field in the nested structure
+                                processed = {}
+                                for k, v in value.items():
+                                    if isinstance(v, str) and not v.startswith(self._encryption.VERSION_PREFIX):
+                                        processed[k] = self._encryption.encrypt_string(v)
+                                    else:
+                                        processed[k] = v
+                                obj[field] = processed
+                                return
+                        
+                        # Regular processing for other complex types
                         json_str = json.dumps(value)
                         encrypted_value = self._encryption.encrypt_string(json_str)
                         obj[field] = encrypted_value
@@ -204,6 +220,19 @@ class FieldEncryptor:
                     except ValueError as e:
                         logger.error(f"Failed to decrypt field '{field}': {e}")
                         obj[field] = f"[DECRYPTION ERROR]"
+                # Special handling for address objects and other nested structures during decryption
+                elif isinstance(value, dict) and (field in ["address", "contact", "name"] or field.endswith(".address") or field.endswith(".contact") or field.endswith(".name")):
+                    # Decrypt each field in the nested structure
+                    processed = {}
+                    for k, v in value.items():
+                        if isinstance(v, str) and v.startswith(self._encryption.VERSION_PREFIX):
+                            try:
+                                processed[k] = self._encryption.decrypt_string(v)
+                            except ValueError:
+                                processed[k] = v  # Keep original on error
+                        else:
+                            processed[k] = v
+                    obj[field] = processed
                 # else not encrypted or not a string - leave as is
 
         except Exception as e:

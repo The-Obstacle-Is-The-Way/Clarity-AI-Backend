@@ -287,7 +287,7 @@ decryption methods for strings and dictionaries.
             logger.exception(f"Encryption failed: {e}")
             raise ValueError("Encryption operation failed.") from e
 
-    def decrypt(self, data: Union[str, bytes], context: Optional[Dict[str, Any]] = None) -> Optional[bytes]:
+    def decrypt(self, data: Union[str, bytes], context: Optional[Dict[str, Any]] = None) -> Union[str, bytes, None]:
         """
         Decrypt data that was encrypted by this service.
         
@@ -296,7 +296,7 @@ decryption methods for strings and dictionaries.
             context: Optional contextual information for logging/security
             
         Returns:
-            Optional[bytes]: Decrypted data as bytes or None if input was None
+            Union[str, bytes, None]: Decrypted data as string if input was string, bytes if input was bytes, or None if input was None
             
         Raises:
             ValueError: If decryption fails due to invalid data or tampering
@@ -306,7 +306,8 @@ decryption methods for strings and dictionaries.
         
         # Handle both string and bytes inputs
         try:
-            if isinstance(data, str):
+            original_type_was_str = isinstance(data, str)
+            if original_type_was_str:
                 # String input - handle version prefix if present
                 if data.startswith(self.VERSION_PREFIX):
                     # Remove version prefix
@@ -327,12 +328,20 @@ decryption methods for strings and dictionaries.
                 
             # Try with primary cipher first
             try:
-                return self.cipher.decrypt(encrypted_bytes)
+                decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
+                # If original input was string, return string
+                if original_type_was_str:
+                    return decrypted_bytes.decode('utf-8')
+                return decrypted_bytes
             except InvalidToken:
                 if self.previous_cipher:
                     try:
                         logger.debug("Primary key failed, trying with previous key.")
-                        return self.previous_cipher.decrypt(encrypted_bytes)
+                        decrypted_bytes = self.previous_cipher.decrypt(encrypted_bytes)
+                        # If original input was string, return string
+                        if original_type_was_str:
+                            return decrypted_bytes.decode('utf-8')
+                        return decrypted_bytes
                     except InvalidToken:
                         raise ValueError("Decryption failed: Invalid token")
                 else:
@@ -431,8 +440,9 @@ decryption methods for strings and dictionaries.
         """Decrypt a field if it's an encrypted string, otherwise return as is."""
         if isinstance(encrypted_value, str) and encrypted_value.startswith(self.VERSION_PREFIX):
             try:
-                decrypted_bytes = self.decrypt(encrypted_value)
-                return decrypted_bytes.decode('utf-8') if decrypted_bytes else None
+                decrypted_value = self.decrypt(encrypted_value)
+                # No need to decode since decrypt now handles string conversion
+                return decrypted_value
             except ValueError as e:
                 logger.warning(f"Failed to decrypt field value: {e}. Value: '{encrypted_value[:50]}...'")
                 return encrypted_value # Return original on error

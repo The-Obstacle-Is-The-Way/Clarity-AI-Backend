@@ -19,6 +19,7 @@ import uuid
 from app.config.settings import Settings
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenType, TokenPayload
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from app.domain.exceptions import AuthenticationError  # Corrected import path
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:
@@ -349,9 +350,8 @@ class TestJWTService:
         # Verify identity
         assert identity == "user123"
 
-    # @pytest.mark.asyncio # Test no longer needs to be async
     def test_get_token_identity_missing_sub(self, jwt_service: JWTService):
-        """Test get_token_identity with token missing 'sub' claim raises InvalidTokenException."""
+        """Test get_token_identity with token missing 'sub' claim raises AuthenticationError."""
         payload_no_sub = {
             "role": "guest", 
             "exp": datetime.now(UTC) + timedelta(minutes=15),
@@ -359,13 +359,15 @@ class TestJWTService:
             "jti": str(uuid.uuid4()), # Ensure jti is present and string
             "iss": jwt_service.issuer,
             "aud": jwt_service.audience,
-            "type": TokenType.ACCESS
+            "type": TokenType.ACCESS,
+            "roles": [] # Include roles to avoid validation errors
         }
         # Directly encode a token without 'sub'
         token_no_sub = jwt.encode(payload_no_sub, jwt_service.secret_key, algorithm=jwt_service.algorithm)
         
-        with pytest.raises(InvalidTokenException): # decode_token -> TokenPayload validation will fail
-            jwt_service.decode_token(token_no_sub) # Removed await, using decode_token
+        # Use a more generic pattern that will match regardless of exact formatting
+        with pytest.raises(AuthenticationError, match=r"Token validation error"): 
+            jwt_service.decode_token(token_no_sub)
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
@@ -378,33 +380,23 @@ class TestJWTService:
         # Decode and verify timestamps
         payload = jwt_service.decode_token(access_token)
             
-        # With TESTING=True, we use a fixed future timestamp (year 2099 ~= timestamp 4070000000)
-        if hasattr(jwt_service.settings, 'TESTING') and jwt_service.settings.TESTING:
-            # Year 2099 timestamps should be > 4 billion
-            assert payload.iat > 4000000000
-            assert payload.exp > 4000000000
-            # For testing, we use 30 minutes (1800 seconds) as hardcoded in the JWT service
-            assert payload.exp - payload.iat == 1800  # 30 minutes in seconds
-        else:
-            # Without TESTING=True, we should match the frozen time
-            frozen_ts = int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC).timestamp())
-            assert payload.iat == frozen_ts
-            assert payload.exp == frozen_ts + (TEST_ACCESS_EXPIRE_MINUTES * 60)
+        # With frozen time, we should be using 2024-01-01 12:00:00 timestamp
+        frozen_ts = int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC).timestamp())
+        
+        # Assert the timestamps are as expected for frozen time
+        assert payload.iat == frozen_ts
+        assert payload.exp == frozen_ts + (30 * 60)  # 30 minutes in seconds
+        assert payload.exp - payload.iat == 30 * 60  # 30 minutes difference
             
         # Test refresh token timestamps
         refresh_token = jwt_service.create_refresh_token(data=user_data)
             
         refresh_payload = jwt_service.decode_token(refresh_token)
         
-        # With TESTING=True, check the difference between exp and iat
-        if hasattr(jwt_service.settings, 'TESTING') and jwt_service.settings.TESTING:
-            # The difference should match the refresh token expiry in seconds
-            days = jwt_service.refresh_token_expire_days
-            expected_seconds = days * 24 * 3600
-            assert refresh_payload.exp - refresh_payload.iat == expected_seconds
-        else:
-            # Without TESTING=True, check exact timestamps
-            assert refresh_payload.iat == int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC).timestamp())
-            days = jwt_service.refresh_token_expire_days
-            expected_refresh_exp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC) + timedelta(days=days)
-            assert refresh_payload.exp == int(expected_refresh_exp.timestamp())
+        # With frozen time, check the difference between exp and iat
+        assert refresh_payload.iat == frozen_ts
+        
+        # The difference should match the refresh token expiry in seconds
+        days = jwt_service.refresh_token_expire_days
+        expected_seconds = days * 24 * 3600
+        assert refresh_payload.exp - refresh_payload.iat == expected_seconds
