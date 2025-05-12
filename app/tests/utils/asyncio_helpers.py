@@ -7,7 +7,9 @@ event loops in tests, addressing common issues with asyncio tests.
 
 import asyncio
 import pytest
-from typing import AsyncGenerator, Generator, Any
+from typing import AsyncGenerator, Generator, Any, Callable, TypeVar, Awaitable
+
+T = TypeVar('T')
 
 def configure_test_event_loop() -> asyncio.AbstractEventLoop:
     """Create and configure a test event loop.
@@ -42,23 +44,66 @@ def cleanup_event_loop(loop: asyncio.AbstractEventLoop) -> None:
     # Close the loop
     loop.close()
 
-async def run_with_timeout(coro: AsyncGenerator[Any, None], timeout: float = 5.0) -> Any:
-    """Run a coroutine with a timeout.
+async def run_with_timeout(
+    awaitable: Any, 
+    timeout: float = 5.0,
+) -> T:
+    """Run an async function or awaitable with a timeout.
     
-    This function runs a coroutine with a timeout, and raises an exception if
-    the coroutine doesn't complete within the timeout.
+    This function accepts either an awaitable object (coroutine) or a callable
+    that returns an awaitable. It runs the awaitable with a timeout.
     
     Args:
-        coro: The coroutine to run
-        timeout: The timeout in seconds
+        awaitable: The awaitable object (coroutine) or callable that returns an awaitable
+        timeout: Timeout in seconds
         
     Returns:
-        The result of the coroutine
+        The result of the awaitable
         
     Raises:
-        asyncio.TimeoutError: If the coroutine doesn't complete within the timeout
+        asyncio.TimeoutError: If the operation doesn't complete within the timeout
     """
-    return await asyncio.wait_for(coro, timeout)
+    if callable(awaitable):
+        # If a callable was passed, call it to get the coroutine
+        awaitable = awaitable()
+    
+    # Now we should have a coroutine object
+    return await asyncio.wait_for(awaitable, timeout=timeout)
+
+# Alias for backward compatibility with code that imports run_with_timeout_asyncio
+run_with_timeout_asyncio = run_with_timeout
+
+@pytest.fixture
+async def async_test_timeout() -> float:
+    """Return the default timeout for async tests."""
+    return 5.0
+
+async def ensure_event_loop() -> asyncio.AbstractEventLoop:
+    """Ensure an event loop is available and return it.
+    
+    This function tries to get the current event loop, and if none exists,
+    it creates a new one and sets it as the current event loop.
+    
+    Returns:
+        asyncio.AbstractEventLoop: The current or newly created event loop
+    """
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = configure_test_event_loop()
+    return loop
+
+@pytest.fixture
+async def ensure_test_event_loop() -> asyncio.AbstractEventLoop:
+    """Ensure a test event loop is available and return it.
+    
+    This fixture tries to get the current event loop, and if none exists,
+    it creates a new one and sets it as the current event loop.
+    
+    Returns:
+        asyncio.AbstractEventLoop: The current or newly created event loop
+    """
+    return await ensure_event_loop()
 
 # Pre-defined fixtures that can be imported and used in test modules
 @pytest.fixture

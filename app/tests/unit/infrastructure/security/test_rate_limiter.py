@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone  # Added timezone
 from unittest.mock import AsyncMock, MagicMock, patch  # Added call and AsyncMock
 
 import pytest
+import pytest_asyncio
 from app.tests.utils.asyncio_helpers import run_with_timeout
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio

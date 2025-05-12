@@ -1,90 +1,166 @@
-# Future-Proofing Asyncio Test Handling
+# Asyncio Future-Proofing Guide
 
-This document outlines the strategy for future-proofing our asyncio test handling to address deprecation warnings and create a more sustainable testing infrastructure.
+This document outlines best practices for asyncio testing and development in the Clarity AI Backend codebase to prevent future issues and ensure consistent patterns.
 
-## Current Issues
+## Core Principles
 
-1. **Deprecation Warnings**: We're seeing many warnings about redefined event loop fixtures
-2. **Inconsistent Event Loop Handling**: Different test files handle event loops differently
-3. **Object Comparison Issues**: Complex objects like `BiometricRule` lack proper equality methods
-4. **Multiple Event Loop Fixtures**: We have redundant event loop definitions
+1. **Consistent Test Patterns**: Use standardized approaches for all asyncio-based tests
+2. **Proper Fixture Management**: Handle event loops with appropriate fixtures and scopes
+3. **Error Handling**: Ensure timeout mechanisms for all async operations in tests
+4. **Import Discipline**: Maintain correct asyncio-related imports in all test modules
 
-## Implementation Plan
-
-### 1. Normalize pytest-asyncio Configuration
-
-Update `pytest.ini` to use the most modern configuration approach:
-
-```ini
-[pytest]
-asyncio_mode = auto
-```
-
-### 2. Use Decorator-Based Approach
-
-Replace custom event loop fixtures with the more modern decorator-based approach:
+## Modern Asyncio Testing Pattern
 
 ```python
-# Before:
-@pytest.fixture(scope="function")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
-
-# After:
-@pytest.mark.asyncio(scope="function")
-async def test_something():
-    # test code here
-```
-
-### 3. Implement Proper Object Comparison
-
-Add `__eq__` and `__hash__` methods to domain entities to enable proper comparison:
-
-```python
-def __eq__(self, other):
-    if not isinstance(other, self.__class__):
-        return False
-    return self.id == other.id
-
-def __hash__(self):
-    return hash(self.id)
-```
-
-### 4. Create a Common Test Utils Module
-
-Create a common test utilities module for shared test functionality:
-
-```python
-# app/tests/utils/asyncio_helpers.py
-import asyncio
 import pytest
+import pytest_asyncio
+import asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout
 
-def configure_test_event_loop():
-    """Configure event loop for tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    asyncio.set_event_loop(loop)
-    return loop
+@pytest.mark.asyncio
+async def test_async_operation():
+    # Simple async operation
+    result = await some_async_function()
+    assert result == expected_value
+    
+    # Async operation with timeout
+    result = await run_with_timeout(some_async_function(), timeout=1.0)
+    assert result == expected_value
 ```
 
-### 5. Phase Out Custom Event Loop Fixtures
+## Test Class Pattern
 
-Gradually remove custom event loop fixtures from individual test files, relying on the centralized configuration.
+For test classes, apply the decorator at the class level for all methods:
 
-## Implementation Timeline
+```python
+import pytest
+import pytest_asyncio
 
-1. Start with enhancing domain entities with proper equality methods
-2. Update the pytest.ini file with proper asyncio configuration
-3. Create a test utilities package
-4. Update one test category at a time (infrastructure, then domain, then application)
-5. Test thoroughly after each phase
+@pytest.mark.asyncio
+class TestAsyncService:
+    async def test_method_one(self):
+        # Test implementation
+        pass
+        
+    async def test_method_two(self):
+        # Test implementation
+        pass
+```
 
-## Expected Benefits
+## Advanced Patterns
 
-1. Elimination of deprecation warnings
-2. More consistent test behavior
-3. Better maintainability
-4. Future compatibility with newer pytest and pytest-asyncio versions
-5. Improved test reliability 
+### Mixing Sync and Async Code
+
+When a test needs to mix synchronous and asynchronous code:
+
+```python
+import pytest
+import pytest_asyncio
+from app.tests.utils.asyncio_helpers import standard_event_loop
+
+def test_mixed_sync_async(standard_event_loop):
+    # Synchronous code
+    service = SomeService()
+    
+    # Run async code from sync context
+    result = standard_event_loop.run_until_complete(service.async_method())
+    assert result == expected_value
+```
+
+### Parallel Async Operations
+
+For testing parallel operations:
+
+```python
+@pytest.mark.asyncio
+async def test_parallel_operations():
+    tasks = [some_async_function(i) for i in range(5)]
+    results = await asyncio.gather(*tasks)
+    assert len(results) == 5
+```
+
+### Mocking Async Functions
+
+```python
+@pytest.mark.asyncio
+async def test_with_async_mock(mocker):
+    # Create an async mock
+    mock_async_func = mocker.AsyncMock(return_value="mocked_result")
+    
+    # Patch the function
+    with mocker.patch("module.async_function", mock_async_func):
+        result = await function_under_test()
+        assert result == "mocked_result"
+        mock_async_func.assert_called_once()
+```
+
+## HIPAA-Compliant Error Handling
+
+For HIPAA compliance, ensure no PHI leaks in error states:
+
+```python
+@pytest.mark.asyncio
+async def test_error_handling():
+    with pytest.raises(SomeError) as excinfo:
+        await service.method_that_raises()
+    
+    # Ensure no PHI in error message
+    error_message = str(excinfo.value)
+    assert not contains_phi(error_message)
+    
+    # Use pattern matching for error validation instead of exact messages
+    assert re.search(r"Error pattern without PHI", error_message)
+```
+
+## Performance Considerations
+
+To ensure tests don't hang or slow down CI/CD pipelines:
+
+1. Always use timeouts with `run_with_timeout` for external dependencies
+2. Use appropriate mocks for third-party services
+3. Configure reasonable timeouts for all async operations
+
+```python
+@pytest.mark.asyncio
+async def test_with_external_dependency():
+    # Use a short timeout for testing
+    result = await run_with_timeout(
+        external_service.slow_method(), 
+        timeout=0.5
+    )
+```
+
+## Debugging Asyncio Tests
+
+When debugging asyncio-related failures:
+
+1. Check for the correct imports
+2. Ensure proper event loop creation and cleanup
+3. Look for unhandled coroutines (common in test failures)
+4. Verify timeouts are appropriate for the operations
+
+Debug logging for asyncio can be enabled with:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger('asyncio').setLevel(logging.DEBUG)
+```
+
+## Recommended Migration Path
+
+As you update existing code:
+
+1. Replace any custom event loop fixtures with `@pytest.mark.asyncio`
+2. Use the helpers in `app/tests/utils/asyncio_helpers.py` for common patterns
+3. Add timeouts to all external service calls in tests
+4. Ensure proper error handling for HIPAA compliance
+
+## Quality Checklist for New Asyncio Tests
+
+- [ ] Imports pytest_asyncio module
+- [ ] Uses @pytest.mark.asyncio decorator
+- [ ] Uses run_with_timeout for operations that could hang
+- [ ] Properly handles event loops (no manual loop creation unless needed)
+- [ ] Avoids leaking PHI in error messages
+- [ ] Follows the test patterns in this document 

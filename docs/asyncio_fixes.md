@@ -1,120 +1,134 @@
-# Asyncio Event Loop Fixes
+# Asyncio Testing Fixes
 
-This document explains how we fixed the asyncio event loop issues in our test suite.
+This document explains the asyncio testing patterns and fixes implemented in the Clarity AI Backend codebase to address event loop and asyncio-related testing issues.
 
-## Background
+## Problem Statement
 
-The test suite was experiencing widespread failures with the error:
-```
-RuntimeError: There is no current event loop in thread 'MainThread'.
-```
+The test suite was experiencing widespread asyncio event loop errors, primarily:
 
-This occurs when async tests attempt to run without a properly configured event loop.
+1. `RuntimeError: There is no current event loop in thread 'MainThread'`
+2. Coroutine object handling issues (passing coroutines vs. callables)
+3. Missing pytest_asyncio imports
+4. Cleanup of event loops between tests
 
-## Implemented Solutions
+## Solutions Implemented
 
 ### 1. Central Event Loop Fixture
 
-We created a central event loop fixture in `app/tests/unit/conftest.py`:
+A central event loop fixture was created in `app/tests/conftest.py` to ensure all tests have access to a properly configured event loop.
 
 ```python
-@pytest.fixture(scope="function")
-def event_loop():
-    """Create an instance of the default event loop for each test case.
-    
-    This fixture ensures that each test gets a clean event loop, which helps prevent
-    test isolation issues where one test could affect another's event loop.
-    
-    Returns:
-        asyncio.AbstractEventLoop: A new event loop for the test.
-    """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    # The loop should be closed at the end of the test
-    loop.close()
+# app/tests/conftest.py
+import pytest_asyncio
+import sys
+
+# Make the module available to be imported by tests
+sys.modules['pytest_asyncio'] = pytest_asyncio
 ```
 
-### 2. Module-Level Event Loop Fixtures
+### 2. Asyncio Utilities
 
-For standalone test files that weren't inheriting the central fixture, we added:
+We created a dedicated utilities package (`app/tests/utils/asyncio_helpers.py`) with functions for properly managing event loops:
+
+- `configure_test_event_loop()`: Create a new event loop for tests
+- `cleanup_event_loop()`: Properly close and clean up event loops
+- `run_with_timeout()`: Run async operations with timeouts
+- Various event loop fixtures with different scopes
+
+### 3. Decorator-Based Approach
+
+We standardized on the pytest-asyncio decorator approach:
 
 ```python
-import asyncio
-import pytest
-
-@pytest.fixture(scope="function")
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    # The loop should be closed at the end of the test
-    loop.close()
+@pytest.mark.asyncio
+async def test_example():
+    # Test implementation
 ```
 
-### 3. Added Missing Asyncio Imports
+### 4. Fixed run_with_timeout Function
 
-We added `import asyncio` statements to files with async tests that were missing it.
+The `run_with_timeout` function has been improved to handle both:
+- Awaitable objects (coroutines)
+- Callable functions that return awaitables
 
-### 4. Test Scripts for Verification
+```python
+async def run_with_timeout(
+    awaitable: Any, 
+    timeout: float = 5.0,
+) -> T:
+    """Run an async function or awaitable with a timeout."""
+    if callable(awaitable):
+        # If a callable was passed, call it to get the coroutine
+        awaitable = awaitable()
+    
+    # Now we should have a coroutine object
+    return await asyncio.wait_for(awaitable, timeout=timeout)
+```
 
-We created two scripts to verify our fixes:
-- `run_asyncio_tests.sh`: Tests the specific files we fixed
-- `run_comprehensive_tests.sh`: Tests multiple layers of the application
+### 5. Pytest Configuration
 
-## Additional Test Fixes
-
-Beyond the event loop issues, we also fixed:
-
-1. **Object Comparison in Tests**: Fixed `AttributeError: 'BiometricRule' object has no attribute 'created_at'` error in `test_clinical_rule_engine.py` by replacing direct object comparison with ID-based comparison.
-
-2. **Regex Pattern Fix**: Updated regex pattern in `test_mock_pat.py` to match actual error message format:
-   ```python
-   # Before
-   excinfo.match(r"^Analysis not found")
-   
-   # After - more flexible pattern
-   excinfo.match(r"Analysis .* not found")
-   ```
-
-## Fixed Files
-
-1. Infrastructure Layer:
-   - `app/tests/unit/infrastructure/cache/test_redis_cache.py`
-   - `app/tests/unit/infrastructure/services/test_redis_cache_service.py`
-   - `app/tests/unit/infrastructure/security/test_jwt_service_enhanced.py`
-   - `app/tests/unit/infrastructure/messaging/test_secure_messaging_service.py`
-   - `app/tests/unit/infrastructure/ml/test_digital_twin_integration_service.py`
-
-2. Application Layer:
-   - `app/tests/unit/core/test_database.py`
-   - `app/tests/unit/presentation/api/v1/endpoints/test_auth_endpoints.py`
-   - `app/tests/unit/presentation/api/dependencies/test_rate_limiter_deps.py`
-
-3. Standalone Services:
-   - `app/tests/standalone/core/test_mock_mentallama.py`
-   - `app/tests/unit/core/services/ml/pat/test_mock_pat.py`
-   
-4. Domain Layer:
-   - `app/tests/unit/domain/services/test_clinical_rule_engine.py`
-
-## Pytest Configuration
-
-The `pytest.ini` file already had the correct configuration:
+Updated `pytest.ini` to use modern asyncio mode settings:
 
 ```ini
-# Asyncio mode for async tests
+[pytest]
 asyncio_mode = auto
 ```
 
-## Remaining Warnings
+## Usage Guidelines
 
-There are still deprecation warnings from pytest-asyncio about redefining the event loop fixture. These are not critical errors and come from the fact that we have multiple event loop fixtures defined in different scopes. The tests are still running successfully.
+### Basic Test Pattern
 
-## Future Improvements
+```python
+import pytest
+import pytest_asyncio
 
-1. Consider using `pytest-asyncio`'s scope argument with the `@pytest.mark.asyncio(scope="function")` decorator instead of custom fixtures
-2. Refactor to use the event_loop_policy fixture for different types of event loops
-3. Fix the pytest-asyncio deprecation warnings
-4. Implement a proper equality method for BiometricRule to avoid comparison issues 
+@pytest.mark.asyncio
+async def test_my_async_function():
+    # Test implementation
+    result = await some_async_function()
+    assert result == expected_value
+```
+
+### Using run_with_timeout
+
+```python
+from app.tests.utils.asyncio_helpers import run_with_timeout
+
+@pytest.mark.asyncio
+async def test_with_timeout():
+    # Pass a coroutine directly
+    result = await run_with_timeout(some_async_function(), timeout=1.0)
+    
+    # OR pass a callable function
+    result = await run_with_timeout(some_async_function, timeout=1.0)
+```
+
+### Using Custom Event Loop Fixtures
+
+```python
+from app.tests.utils.asyncio_helpers import standard_event_loop
+
+def test_with_loop(standard_event_loop):
+    # The loop is set as the current event loop
+    # Run sync code that calls async code internally
+    result = standard_event_loop.run_until_complete(some_async_function())
+    assert result == expected_value
+```
+
+## Troubleshooting
+
+If you encounter asyncio-related errors in tests:
+
+1. Ensure your test module imports `pytest_asyncio`
+2. Use the `@pytest.mark.asyncio` decorator for async tests
+3. For tests that mix sync and async code, consider using an event loop fixture
+4. For complex async operations, use `run_with_timeout` to prevent hanging tests
+
+## Future Maintenance
+
+As the codebase evolves:
+
+1. Maintain the central event loop fixture in `conftest.py`
+2. Keep the asyncio helper utilities up to date with any pytest or asyncio changes
+3. Use the standard testing patterns described above for all new tests
+4. Consider periodically running the `scripts/fix_pytest_asyncio_imports.py` script to catch missing imports 
