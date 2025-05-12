@@ -14,7 +14,7 @@ from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
 from starlette.responses import JSONResponse
-from fastapi.security import AuthCredentials
+from starlette.authentication import AuthCredentials
 
 from app.core.domain.entities.user import User
 

@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # --- Helper Functions ---
 def _initialize_sentry(settings: Settings) -> None:
     """Initializes Sentry if DSN is provided."""
-        if settings.SENTRY_DSN:
+    if settings.SENTRY_DSN:
         logger.info("Sentry DSN found, initializing Sentry.")
         try:
             sentry_sdk.init(
