@@ -98,14 +98,21 @@ class FieldEncryptor:
             if current_key in data:
                 if remaining_path:
                     # If this is a special path like "demographics.address" and we want to encrypt the entire address
-                    if encrypt and "demographics.address" in field_path and current_key == "demographics" and remaining_path == "address" and isinstance(data["address"], dict):
-                        self._encrypt_or_decrypt_value(data, "address", data["address"], encrypt)
+                    if encrypt and "demographics.address" in field_path and current_key == "demographics" and remaining_path == "address":
+                        # Safely check if the address field exists in the data
+                        if "address" in data.get("demographics", {}):
+                            if isinstance(data["demographics"]["address"], dict):
+                                self._encrypt_or_decrypt_value(data["demographics"], "address", data["demographics"]["address"], encrypt)
                     # Similarly for name
-                    elif encrypt and "demographics.name" in field_path and current_key == "demographics" and remaining_path == "name" and not "." in remaining_path and isinstance(data["name"], dict):
-                        self._encrypt_or_decrypt_value(data, "name", data["name"], encrypt)
+                    elif encrypt and "demographics.name" in field_path and current_key == "demographics" and remaining_path == "name" and not "." in remaining_path:
+                        if "name" in data.get("demographics", {}):
+                            if isinstance(data["demographics"]["name"], dict):
+                                self._encrypt_or_decrypt_value(data["demographics"], "name", data["demographics"]["name"], encrypt)
                     # For contact
-                    elif encrypt and "demographics.contact" in field_path and current_key == "demographics" and remaining_path == "contact" and not "." in remaining_path and isinstance(data["contact"], dict):
-                        self._encrypt_or_decrypt_value(data, "contact", data["contact"], encrypt)
+                    elif encrypt and "demographics.contact" in field_path and current_key == "demographics" and remaining_path == "contact" and not "." in remaining_path:
+                        if "contact" in data.get("demographics", {}):
+                            if isinstance(data["demographics"]["contact"], dict):
+                                self._encrypt_or_decrypt_value(data["demographics"], "contact", data["demographics"]["contact"], encrypt)
                     else:
                         # Regular navigation - go deeper in the structure
                         self._process_field(data[current_key], remaining_path, encrypt)

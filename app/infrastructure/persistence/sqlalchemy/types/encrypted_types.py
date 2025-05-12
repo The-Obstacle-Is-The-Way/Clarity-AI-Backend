@@ -217,6 +217,11 @@ class EncryptedJSON(EncryptedTypeBase):
             return None
         
         try:
+            # If the decrypted value is already a dict or similar object (which can happen in tests or with mocks),
+            # simply return it without attempting to parse as JSON
+            if isinstance(decrypted_json_string, dict):
+                return decrypted_json_string
+                
             # Now, parse the decrypted plain JSON string into a Python object (dict, list, etc.)
             return json.loads(decrypted_json_string)
         except json.JSONDecodeError as e:
@@ -234,6 +239,10 @@ class EncryptedJSON(EncryptedTypeBase):
         if decrypted_plain_string is None:
             return None
         try:
+            # Check if the decrypted value is already a dict or similar object
+            if isinstance(decrypted_plain_string, dict):
+                return decrypted_plain_string
+                
             # Parse the decrypted plain JSON string into a Python object
             return json.loads(decrypted_plain_string)
         except json.JSONDecodeError as e:

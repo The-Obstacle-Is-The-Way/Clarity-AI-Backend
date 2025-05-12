@@ -90,8 +90,8 @@ def get_logger(name: str) -> logging.Logger:
         # Add handler to logger
         logger.addHandler(console_handler)
         
-        # Allow propagation to root logger for pytest capture
-        # logger.propagate = False
+        # Prevent propagation to root logger to avoid duplicate logs
+        logger.propagate = False
         
     return logger
 

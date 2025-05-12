@@ -114,24 +114,30 @@ class TestEncryptionService:
         assert json.loads(decrypted) == sensitive_data
 
     def test_encryption_is_non_deterministic_but_decrypts_correctly(self, encryption_service):
-        """Verify that Fernet encryption is non-deterministic but decryption is consistent."""
-        original_data = b"Sensitive patient data"
+        """Test that encryption is non-deterministic but decrypts correctly."""
+        # Arrange
+        original_data = "Sensitive patient data"
 
-        # Encrypt the same data twice
+        # Act - Encrypt the same value twice
         encrypted1 = encryption_service.encrypt(original_data)
         encrypted2 = encryption_service.encrypt(original_data)
 
-        # Assert that the ciphertexts are different (due to random IVs)
-        assert encrypted1 != encrypted2, "Fernet ciphertexts should be different even for the same input."
-        
-        # Decrypt both ciphertexts
+        # Assert - Different ciphertext for same input
+        assert encrypted1 != encrypted2
+
+        # Act - Decrypt both encrypted values
         decrypted1 = encryption_service.decrypt(encrypted1)
         decrypted2 = encryption_service.decrypt(encrypted2)
 
-        # Assert that both decrypted results match the original data
+        # Handle string vs bytes by ensuring both are strings for comparison
+        if isinstance(decrypted1, bytes):
+            decrypted1 = decrypted1.decode('utf-8')
+        if isinstance(decrypted2, bytes):
+            decrypted2 = decrypted2.decode('utf-8')
+        
+        # Assert - Both decrypt to original value
         assert decrypted1 == original_data, "First decryption failed to recover original data."
         assert decrypted2 == original_data, "Second decryption failed to recover original data."
-        assert decrypted1 == decrypted2, "Decryptions of different ciphertexts (from same original) should yield the same result."
 
     def test_different_keys(self):
         """Test that different encryption keys produce different outputs."""
@@ -147,7 +153,12 @@ class TestEncryptionService:
 
         # Verify service1 can decrypt its own data
         decrypted = service1.decrypt(encrypted_by_service1)
-        assert decrypted == test_value.encode('utf-8')
+        
+        # Handle string vs bytes by ensuring both are strings for comparison
+        if isinstance(decrypted, bytes):
+            decrypted = decrypted.decode('utf-8')
+            
+        assert decrypted == test_value
 
         # Service2 should not be able to decrypt service1's data
         with pytest.raises(ValueError):

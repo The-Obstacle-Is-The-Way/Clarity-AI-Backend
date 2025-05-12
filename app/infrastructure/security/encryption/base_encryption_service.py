@@ -686,7 +686,7 @@ decryption methods for strings and dictionaries.
                 # Re-raise already formatted error
                 raise
             logger.error(f"String decryption failed: {e}", exc_info=True)
-            raise ValueError(f"String decryption failed: {e}")
+            raise ValueError(f"Failed to decrypt: {e}")
 
 # --- Factory Function --- #
 
