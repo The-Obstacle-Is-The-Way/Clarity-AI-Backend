@@ -372,31 +372,32 @@ async def get_feature_importance(
     xgboost_service: XGBoostDep,
     user: UserDep,
     patient_id: str = Query(..., description="The patient ID associated with the prediction"),
+    model_type: str = Query("risk", description="The type of model used for prediction"),
 ) -> FeatureImportanceResponse:
     """
-    Get feature importance for a risk prediction.
-    
-    This endpoint retrieves the feature importance scores for a specific
-    risk prediction, providing insight into which factors most influenced
-    the model's output. HIPAA compliant with appropriate access controls.
+    Get feature importance for a prediction.
     
     Args:
         prediction_id: The ID of the risk prediction
         xgboost_service: The XGBoost service instance
         user: The authenticated user
         patient_id: The ID of the patient
+        model_type: The type of model used for prediction
         
     Returns:
-        FeatureImportanceResponse: Feature importance data
-        
-    Raises:
-        HTTPException: If prediction not found, unauthorized, or service error
+        Feature importance data for the prediction
     """
+    logger.info(f"Getting feature importance for prediction {prediction_id} for patient {patient_id}")
+    
+    # Verify the user has access to the patient's data
+    await verify_provider_access(user, patient_id)
+    
     try:
         # Get feature importance from service
         importance_data = await xgboost_service.get_feature_importance(
             prediction_id=prediction_id,
-            patient_id=patient_id
+            patient_id=patient_id,
+            model_type=model_type
         )
         
         # Convert to response model
