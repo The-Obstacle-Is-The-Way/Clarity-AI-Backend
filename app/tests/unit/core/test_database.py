@@ -3,7 +3,7 @@ Unit tests for database connection and session management.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
-
+import asyncio
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -30,6 +30,14 @@ def test_settings() -> Settings:
     # Ensure other DB settings that might affect engine creation are consistent if needed
     settings.DATABASE_ECHO = False # Usually false for tests
     return settings
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    # The loop should be closed at the end of the test
+    loop.close()
 
 @pytest.mark.asyncio
 @patch.object(dbmod, 'create_async_engine')  # Patch the underlying engine creation
