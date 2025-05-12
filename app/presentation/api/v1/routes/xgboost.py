@@ -9,6 +9,7 @@ the new presentation layer endpoints following SOLID principles.
 from typing import Annotated
 import logging
 import re
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
@@ -249,32 +250,25 @@ def _has_phi(request_data):
                 if any(pattern in k.lower() for pattern in phi_field_patterns):
                     logger.warning(f"Potential PHI detected in field name: {path}.{k}")
                     return True
-        
+            return False
         elif isinstance(value, list):
-            for i, v in enumerate(value):
-                if check_value(v, f"{path}[{i}]"):
+            for i, item in enumerate(value):
+                if check_value(item, f"{path}[{i}]"):
                     return True
-        
-        # Check for values that look like SSNs, phone numbers, etc.
+            return False
         elif isinstance(value, str):
-            # Check for SSN pattern (123-45-6789)
-            if re.search(r"\d{3}-\d{2}-\d{4}", value):
-                logger.warning(f"SSN pattern detected in {path}")
+            # Simple check for patterns that might indicate PHI
+            # This is not comprehensive and should be expanded in a real implementation
+            if (
+                re.search(r"\b\d{3}[-.]?\d{2}[-.]?\d{4}\b", value)  # SSN pattern
+                or re.search(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", value)  # Phone pattern
+                or re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", value)  # Email pattern
+            ):
+                logger.warning(f"Potential PHI detected in value at {path}")
                 return True
-            
-            # Check for phone number pattern
-            if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", value):
-                logger.warning(f"Phone number pattern detected in {path}")
-                return True
-            
-            # Check for email pattern
-            if re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", value):
-                logger.warning(f"Email pattern detected in {path}")
-                return True
-        
         return False
     
-    return check_value(request_data.__dict__ if hasattr(request_data, "__dict__") else dict(request_data))
+    return check_value(request_data)
 
 
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
@@ -302,7 +296,7 @@ async def predict_risk(
         HTTPException: If prediction fails or PHI detected in data
     """
     # Verify patient access authorization
-    verify_provider_access(user, request.patient_id)
+    await verify_provider_access(user, request.patient_id)
     
     # Check for and sanitize PHI
     try:
@@ -364,7 +358,7 @@ async def predict_risk(
 async def predict_outcome(
     request: OutcomePredictionRequest,
     xgboost_service: XGBoostDep,
-    user: ProviderAccessDep,
+    user: UserDep,
 ) -> OutcomePredictionResponse:
     """
     Generate an outcome prediction for a patient's treatment.
@@ -385,7 +379,7 @@ async def predict_outcome(
         HTTPException: If prediction fails or user lacks permissions
     """
     # Verify provider has access to this patient's data
-    verify_provider_access(user, request.patient_id)
+    await verify_provider_access(user, request.patient_id)
     
     try:
         # Call XGBoost service for outcome prediction
@@ -401,15 +395,11 @@ async def predict_outcome(
         
         # Map result to response model
         return OutcomePredictionResponse(
-            prediction_id=result.prediction_id,
             patient_id=request.patient_id,
-            outcome_probabilities=result.outcome_probabilities,
-            expected_improvement=result.expected_improvement,
-            timeframe_days=request.timeframe_days,
-            timestamp=result.timestamp,
-            model_version=result.model_version,
-            trajectories=result.trajectories if request.include_trajectories else None,
-            recommendations=result.recommendations if request.include_recommendations else None,
+            expected_outcomes=result.get("expected_outcomes", []),
+            outcome_trajectories=result.get("outcome_trajectories"),
+            response_likelihood=result.get("response_likelihood"),
+            recommended_therapies=result.get("recommended_therapies"),
         )
         
     except ServiceUnavailableError:
@@ -464,10 +454,10 @@ async def get_feature_importance(
         return FeatureImportanceResponse(
             prediction_id=prediction_id,
             patient_id=patient_id,
-            features=importance_data.features,
-            timestamp=importance_data.timestamp,
-            model_version=importance_data.model_version,
-            explanation_method=importance_data.explanation_method
+            features=importance_data.get("features", {}),
+            timestamp=importance_data.get("timestamp", datetime.now().isoformat()),
+            model_version=importance_data.get("model_version", "1.0"),
+            explanation_method=importance_data.get("explanation_method", "SHAP")
         )
     except ModelNotFoundError as e:
         raise HTTPException(
