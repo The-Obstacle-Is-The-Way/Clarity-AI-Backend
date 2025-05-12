@@ -355,11 +355,27 @@ class TestPatientRepository:
         patient_uuid = uuid.UUID(sample_patient_id)
         existing_model_from_db = MagicMock(spec=PatientModel)
         existing_model_from_db.id = patient_uuid
-        async def mock_to_domain_on_updated_model(): 
-            return PatientEntity(id=patient_uuid, first_name="UpdatedFirstName", last_name="UpdatedLastName", date_of_birth=date(1990,1,1), email="update@example.com")
-        existing_model_from_db.to_domain = AsyncMock(side_effect=mock_to_domain_on_updated_model)
-        mock_db_session.execute.return_value.scalars.return_value.one_or_none.return_value = existing_model_from_db
+        
+        # Create a proper async mock for to_domain that returns a patient entity
+        domain_patient = PatientEntity(
+            id=patient_uuid, 
+            first_name="UpdatedFirstName", 
+            last_name="UpdatedLastName", 
+            email="update@example.com", 
+            date_of_birth=date(1990,1,1)
+        )
+        to_domain_mock = AsyncMock()
+        to_domain_mock.return_value = domain_patient
+        existing_model_from_db.to_domain = to_domain_mock
+        
+        # Configure the mock_db_session correctly for select query
+        mock_result = MagicMock()
+        mock_scalar = MagicMock()
+        mock_scalar.one_or_none.return_value = existing_model_from_db
+        mock_result.scalar = MagicMock(return_value=mock_scalar)
+        mock_db_session.execute.return_value = mock_result
 
+        # Create the updated patient details
         updated_patient_details = PatientEntity(
             id=patient_uuid, 
             first_name="UpdatedFirstName", 
@@ -367,11 +383,17 @@ class TestPatientRepository:
             email="update@example.com", 
             date_of_birth=date(1990,1,1) 
         )
+        
+        # Call the update method
         result_entity = await patient_repository.update(updated_patient_details)
+        
+        # Verify the interactions
         mock_db_session.execute.assert_awaited_once()
         existing_model_from_db.to_domain.assert_awaited_once()
         mock_db_session.flush.assert_awaited_once()
         mock_db_session.refresh.assert_awaited_once_with(existing_model_from_db)
+        
+        # Verify the result
         assert result_entity is not None
         assert result_entity.first_name == "UpdatedFirstName"
 
