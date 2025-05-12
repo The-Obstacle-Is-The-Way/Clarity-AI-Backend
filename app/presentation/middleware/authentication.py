@@ -57,18 +57,21 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp, # Standard for BaseHTTPMiddleware
         jwt_service: JWTServiceInterface,
-        # user_repo: IUserRepository, # REMOVED
+        user_repository: IUserRepository | None = None,
         public_paths: set[str] | None = None,
         public_path_regexes: list[str] | None = None, # RENAMED from public_path_regex
     ):
         super().__init__(app)
         self.jwt_service = jwt_service
-        # self.user_repo = user_repo # REMOVED
-
+        self.user_repository = user_repository
+        
         default_public_paths = {
             "/docs", "/openapi.json", "/redoc", 
             "/health", 
             "/", 
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/status/health",
         }
         self.public_paths = public_paths if public_paths is not None else default_public_paths
         
@@ -99,157 +102,160 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if auth_header and auth_header.startswith("Bearer "):
             return auth_header.replace("Bearer ", "")
         # Test-specific header, consider if this should be in production middleware
-        # if "X-Test-Token" in request.headers: 
-        #     return request.headers.get("X-Test-Token")
+        if "X-Test-Token" in request.headers: 
+            return request.headers.get("X-Test-Token")
         return request.cookies.get("access_token") # Also check cookies
 
     async def _validate_and_prepare_user_context(
         self, token: str, request: Request 
     ) -> tuple[AuthenticatedUser, list[str]]: # Return type is tuple
-        logger.debug("Attempting to validate token and prepare user context.")
+        """
+        Validate the JWT token and prepare the user context.
         
-        # === MORE DETAILED DEBUGGING ===
-        the_app_on_request = request.app
-        logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request ID: {id(the_app_on_request)}, type: {type(the_app_on_request)}")
-        logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.__class__ is {the_app_on_request.__class__}")
-        try:
-            logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.__dict__ is {the_app_on_request.__dict__}")
-        except AttributeError:
-            logger.warning("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request has no __dict__ attribute.")
-
-        if hasattr(the_app_on_request, 'state'):
-            logger.info(f"MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.state exists. State ID: {id(the_app_on_request.state)}")
-            if hasattr(the_app_on_request.state, 'actual_session_factory'):
-                logger.info("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.state.actual_session_factory exists.")
-            else:
-                logger.warning("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request.state.actual_session_factory DOES NOT EXIST.")
-        else:
-            logger.warning("MIDDLEWARE_VALIDATE_PREPARE_APP_VAR: the_app_on_request has NO state attribute.")
-        # === END MORE DETAILED DEBUGGING ===
-
-        try:
-            token_payload: TokenPayload = await self.jwt_service.decode_token(token)
-            logger.debug(f"Token decoded. Payload sub: {token_payload.sub if hasattr(token_payload, 'sub') else 'N/A'}, Roles from token: {token_payload.roles if hasattr(token_payload, 'roles') else 'N/A'}")
-
-            # === HAIL MARY GETATTR ===
-            logger.info(f"Attempting getattr(the_app_on_request, 'state')")
-            retrieved_state = getattr(the_app_on_request, 'state')
-            logger.info(f"getattr(the_app_on_request, 'state') returned: {type(retrieved_state)}")
-            logger.info(f"Attempting getattr(retrieved_state, 'actual_session_factory')")
-            session_factory = getattr(retrieved_state, 'actual_session_factory')
-            logger.info(f"Successfully retrieved session_factory via getattr: {type(session_factory)}")
-            # === END HAIL MARY GETATTR ===
-
-            async with session_factory() as db_session:
-                user_repo_instance = SQLAlchemyUserRepository(db_session=db_session)
-                
-                user_id_as_uuid = UUID(str(token_payload.sub))
-                domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
-
-            if not domain_user:
-                logger.warning(f"User with id {user_id_as_uuid} not found in repository.")
-                raise UserNotFoundException("User associated with token not found.")
-
-            logger.debug(f"User {domain_user.id} found. Checking status: {domain_user.account_status}")
-            if domain_user.account_status != UserStatus.ACTIVE:
-                logger.warning(f"User {domain_user.id} is not active (status: {domain_user.account_status}). Access denied.")
-                raise AuthenticationException(
-                    f"User account is {domain_user.account_status.value.lower()}. Access denied.", 
-                    status_code=HTTP_403_FORBIDDEN # Set 403 for inactive user
-                )
+        Args:
+            token: JWT token to validate
+            request: FastAPI request object
             
-            logger.debug(f"User {domain_user.id} is active.")
-
-            # Prepare roles for AuthenticatedUser Pydantic model
-            # domain_user.roles is typically a set of UserRole enums or list of role strings from mock
-            if isinstance(domain_user.roles, set):
-                user_roles_for_model = sorted([role.value for role in domain_user.roles]) # sort for consistency
-            elif isinstance(domain_user.roles, list):
-                user_roles_for_model = sorted(domain_user.roles) # sort for consistency
+        Returns:
+            tuple: (AuthenticatedUser, list of scopes)
+            
+        Raises:
+            AuthenticationException: If token validation fails
+            UserNotFoundException: If user not found or inactive
+        """
+        logger.debug("Validating token and preparing user context")
+        
+        try:
+            # Decode and validate the token
+            token_payload = await self.jwt_service.decode_token(token)
+            logger.debug(f"Token decoded. Subject: {token_payload.sub}, Roles: {token_payload.roles}")
+            
+            # Get user from repository
+            user_id = token_payload.sub
+            
+            # Get or create user repository
+            if self.user_repository:
+                user_repository = self.user_repository
+                domain_user = await user_repository.get_user_by_id(user_id)
             else:
-                user_roles_for_model = []
-
-            auth_user_for_scope = AuthenticatedUser(
+                # Use app's session factory if available
+                try:
+                    # Get session factory from app.state
+                    if hasattr(request.app, 'state') and hasattr(request.app.state, 'session_factory'):
+                        session_factory = request.app.state.session_factory
+                    elif hasattr(request.app, 'state') and hasattr(request.app.state, 'actual_session_factory'):
+                        session_factory = request.app.state.actual_session_factory
+                    else:
+                        logger.error("No session factory found in app state")
+                        raise UserNotFoundException("Cannot access user database")
+                        
+                    # Get user from database
+                    async with session_factory() as db_session:
+                        user_repository = SQLAlchemyUserRepository(db_session=db_session)
+                        domain_user = await user_repository.get_user_by_id(user_id)
+                except Exception as e:
+                    logger.error(f"Error getting user repository: {e}")
+                    raise UserNotFoundException(f"Database access error: {e}")
+            
+            # Check if user exists
+            if not domain_user:
+                logger.warning(f"User with ID {user_id} not found in database")
+                raise UserNotFoundException("User associated with token not found.")
+                
+            # Check user status
+            if hasattr(domain_user, 'account_status') and domain_user.account_status != UserStatus.ACTIVE:
+                logger.warning(f"User {domain_user.id} has inactive status: {domain_user.account_status}")
+                raise AuthenticationException(
+                    f"User account is {domain_user.account_status.value.lower()}. Access denied.",
+                    status_code=HTTP_403_FORBIDDEN
+                )
+                
+            # Process user roles
+            user_roles = []
+            if hasattr(domain_user, 'roles'):
+                if isinstance(domain_user.roles, set):
+                    user_roles = [role.value for role in domain_user.roles]
+                elif isinstance(domain_user.roles, list):
+                    user_roles = domain_user.roles
+                    
+            # Create authenticated user object
+            auth_user = AuthenticatedUser(
                 id=str(domain_user.id),
-                username=domain_user.username,
-                email=getattr(domain_user, 'email', None), # Ensure email attribute exists or handle gracefully
-                roles=user_roles_for_model
+                username=getattr(domain_user, 'username', None),
+                email=getattr(domain_user, 'email', None),
+                roles=user_roles
             )
             
-            # Scopes for AuthCredentials should come from the token payload's 'roles' field
-            auth_scopes_for_starlette = token_payload.roles if token_payload.roles is not None else []
+            # Get scopes from token
+            scopes = token_payload.roles if hasattr(token_payload, 'roles') else []
             
-            logger.info(f"User {domain_user.id} validated. User object roles: {user_roles_for_model}, Auth Scopes from token: {auth_scopes_for_starlette}")
-            return auth_user_for_scope, auth_scopes_for_starlette # Return the user and the token's scopes
-
-        except (AuthenticationException, UserNotFoundException, InvalidTokenException, TokenExpiredException) as exc:
-            logger.warning(f"Handled auth exception in _validate_and_prepare_user_context: {type(exc).__name__} - {exc}")
-            raise 
-        except ValueError as ve: # Handles UUID conversion errors or other ValueErrors
-            logger.error(f"ValueError during token validation: {ve}. Traceback: {traceback.format_exc()}")
-            raise AuthenticationException(f"Invalid data encountered during token validation: {ve}")
+            logger.debug(f"User context prepared. User ID: {auth_user.id}, Roles: {user_roles}, Scopes: {scopes}")
+            return auth_user, scopes
+            
+        except (InvalidTokenException, TokenExpiredException) as e:
+            logger.warning(f"Token validation error: {e}")
+            raise
+        except UserNotFoundException as e:
+            logger.warning(f"User not found: {e}")
+            raise
+        except AuthenticationException as e:
+            logger.warning(f"Authentication error: {e}")
+            raise
         except Exception as e:
-            logger.error(f"UNEXPECTED error in _validate_and_prepare_user_context: {type(e).__name__} - {e}. Traceback: {traceback.format_exc()}")
-            # For unexpected errors, re-raise as a generic AuthenticationException that leads to 401
-            # Or, consider a more specific internal server error if appropriate
-            raise AuthenticationException(f"Unexpected internal error during token validation: {str(e)}")
+            logger.error(f"Unexpected error during token validation: {e}", exc_info=True)
+            raise AuthenticationException(f"Authentication failed: {e}")
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        # Log the app instance ID from the request scope
-        logger.info(f"MIDDLEWARE_DISPATCH: request.app ID: {id(request.app)}, type: {type(request.app)}")
-        
-        # Try to access state to see if it exists on this app instance
-        if hasattr(request.app, 'state') and request.app.state:
-            logger.info(f"MIDDLEWARE_DISPATCH: request.app.state exists. Factory ID: {id(getattr(request.app.state, 'actual_session_factory', None))}")
-        else:
-            logger.warning("MIDDLEWARE_DISPATCH: request.app has no state or state is empty.")
-
-        # Bypass authentication for public paths
-        if request.url.path in self.public_paths:
-            logger.debug(f"Dispatch: Path '{request.url.path}' is in public_paths. Skipping auth.")
+        # Check if path is public
+        if await self._is_public_path(request.url.path):
+            logger.debug(f"Public path: {request.url.path} - Skipping authentication")
             request.scope["user"] = UnauthenticatedUser()
             request.scope["auth"] = AuthCredentials([])
             return await call_next(request)
 
-        for regex_pattern in self.public_path_patterns:
-            if regex_pattern.match(request.url.path):
-                logger.debug(f"Dispatch: Path '{request.url.path}' matches public regex '{regex_pattern.pattern}'. Skipping auth.")
-                request.scope["user"] = UnauthenticatedUser()
-                request.scope["auth"] = AuthCredentials([])
-                return await call_next(request)
-
+        # Extract token
         token = self._extract_token(request)
         if not token:
-            logger.info(f"Authentication token missing for protected path: {request.url.path}")
+            logger.info(f"Missing authentication token for protected path: {request.url.path}")
             return JSONResponse(
                 {"detail": "Authentication token required."},
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
 
         try:
-            auth_user_obj, token_scopes = await self._validate_and_prepare_user_context(token, request)
+            # Validate token and get user
+            auth_user, scopes = await self._validate_and_prepare_user_context(token, request)
             
-            request.scope["user"] = auth_user_obj
-            request.scope["auth"] = AuthCredentials(scopes=token_scopes) 
+            # Set user and credentials in request scope
+            request.scope["user"] = auth_user
+            request.scope["auth"] = AuthCredentials(scopes=scopes)
             
-        # Explicitly catch specific token exceptions first, then broader AuthenticationException
-        except (InvalidTokenException, TokenExpiredException) as te:
-            logger.warning(f"Token validation error for path {request.url.path}: {type(te).__name__} - {te}. Status code: {getattr(te, 'status_code', status.HTTP_401_UNAUTHORIZED)}")
+            # Continue with the request
+            return await call_next(request)
+            
+        except InvalidTokenException as e:
             return JSONResponse(
-                {"detail": str(te)},
-                status_code=getattr(te, 'status_code', status.HTTP_401_UNAUTHORIZED)
+                {"detail": str(e)},
+                status_code=status.HTTP_401_UNAUTHORIZED
             )
-        except AuthenticationException as e: # Catches other auth-related known issues like UserNotFound, Inactive user
-            logger.warning(f"Authentication failed for path {request.url.path}: {type(e).__name__} - {e}. Status code: {getattr(e, 'status_code', status.HTTP_401_UNAUTHORIZED)}")
+        except TokenExpiredException as e:
+            return JSONResponse(
+                {"detail": str(e)},
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+        except UserNotFoundException as e:
+            return JSONResponse(
+                {"detail": str(e)},
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+        except AuthenticationException as e:
             return JSONResponse(
                 {"detail": str(e)},
                 status_code=getattr(e, 'status_code', status.HTTP_401_UNAUTHORIZED)
             )
-        except Exception as e: # Catch-all for truly unexpected issues during auth prep
-            logger.error(f"CRITICAL UNEXPECTED error during dispatch auth phase for {request.url.path}: {type(e).__name__} - {e}. Traceback: {traceback.format_exc()}")
+        except Exception as e:
+            logger.error(f"Unhandled error in authentication middleware: {e}", exc_info=True)
             return JSONResponse(
-                {"detail": "An unexpected server error occurred during authentication."},
+                {"detail": "Internal server error during authentication"},
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        
-        return await call_next(request) 
+            ) 

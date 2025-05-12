@@ -147,27 +147,55 @@ class FieldEncryptor:
             
         try:
             if encrypt:
-                 # Encrypt only if it's not already encrypted
-                 if not (isinstance(value, str) and value.startswith(self._encryption.VERSION_PREFIX)):
-                    encrypted_value = self._encryption.encrypt(value)
-                    if encrypted_value is not None: # Check if encryption returned None
+                # Handle different value types
+                if isinstance(value, str):
+                    # For string values, use encrypt_string
+                    if not value.startswith(self._encryption.VERSION_PREFIX):
+                        encrypted_value = self._encryption.encrypt_string(value)
                         obj[field] = encrypted_value
                     else:
-                        # Handle case where encryption returns None (e.g., input was None initially)
-                        obj[field] = None 
-                 else:
-                     logger.debug(f"Value for field '{field}' appears already encrypted, skipping encryption.")
-            else: # Decrypt
+                        logger.debug(f"Field '{field}' appears already encrypted, skipping")
+                elif isinstance(value, (dict, list)):
+                    # For complex types, convert to string and encrypt
+                    try:
+                        import json
+                        json_str = json.dumps(value)
+                        encrypted_value = self._encryption.encrypt_string(json_str)
+                        obj[field] = encrypted_value
+                    except Exception as e:
+                        logger.error(f"Failed to JSON encode complex value for field '{field}': {e}")
+                else:
+                    # For other types (int, float, etc.), convert to string first
+                    try:
+                        str_value = str(value)
+                        encrypted_value = self._encryption.encrypt_string(str_value)
+                        obj[field] = encrypted_value
+                    except Exception as e:
+                        logger.error(f"Failed to convert and encrypt value for field '{field}': {e}")
+            else:
+                # Decryption - only attempt if it's a string with version prefix
                 if isinstance(value, str) and value.startswith(self._encryption.VERSION_PREFIX):
-                    decrypted_value = self._encryption.decrypt_field(value)
-                    obj[field] = decrypted_value
-                # else: Value is not a string or doesn't have the prefix, assume not encrypted
+                    try:
+                        decrypted_value = self._encryption.decrypt_string(value)
+                        # Try to parse as JSON in case it was a complex type
+                        try:
+                            import json
+                            obj[field] = json.loads(decrypted_value)
+                        except json.JSONDecodeError:
+                            # Not JSON, use as plain string
+                            obj[field] = decrypted_value
+                    except ValueError as e:
+                        logger.error(f"Failed to decrypt field '{field}': {e}")
+                        obj[field] = f"[DECRYPTION ERROR]"
+                # else not encrypted or not a string - leave as is
 
-        except (ValueError, TypeError) as e:
+        except Exception as e:
             op = "Encryption" if encrypt else "Decryption"
-            logger.error(f"{op} error for field '{field}': {e}. Keeping original value.")
-            # Keep original value in case of error during processing
-            pass # Keep obj[field] as it was
+            logger.error(f"{op} error for field '{field}': {e}", exc_info=True)
+            # In case of encryption error, keep original
+            # In case of decryption error, mark as error
+            if not encrypt:
+                obj[field] = f"[DECRYPTION ERROR]"
     
     def encrypt_phi_fields(self, data: dict[str, Any], phi_fields: set[str]) -> dict[str, Any]:
         """Encrypt all PHI fields in a data structure.

@@ -314,14 +314,16 @@ decryption methods for strings and dictionaries.
                     encrypted_bytes = encrypted_data.encode('utf-8')
                 else:
                     logger.warning(f"Encrypted string lacks expected version prefix '{self.VERSION_PREFIX}'. Treating as raw encrypted data.")
-                    encrypted_bytes = data.encode('utf-8')
+                    # For strict format checking, raise error
+                    raise ValueError("Invalid encrypted data format: Missing version prefix")
             else:
                 # Bytes input - check for version prefix in bytes
                 if data.startswith(self._version_prefix_bytes):
                     encrypted_bytes = data[len(self._version_prefix_bytes):]
                 else:
-                    # No version prefix, treat as raw encrypted data
-                    encrypted_bytes = data
+                    # No version prefix, indicate format error
+                    logger.warning("Raw bytes without version prefix detected.")
+                    raise ValueError("Invalid encrypted data format: Missing version prefix")
                 
             # Try with primary cipher first
             try:
@@ -337,8 +339,8 @@ decryption methods for strings and dictionaries.
                     raise ValueError("Decryption failed: Invalid token")
                 
         except Exception as e:
-            if isinstance(e, ValueError) and "Decryption failed" in str(e):
-                # Re-raise already formatted error
+            if isinstance(e, ValueError):
+                # Re-raise ValueError with original message
                 raise
             else:
                 # Format all other errors
@@ -587,72 +589,94 @@ decryption methods for strings and dictionaries.
         return self.verify_hash(data, salt_hex, key_hex_to_verify)
 
     def encrypt_string(self, value: str, is_phi: bool = True) -> str:
-        """Encrypts a string value.
-        
-        If is_phi is False, and the value is in NON_SENSITIVE_FIELDS common list,
-        it might bypass encryption based on future policy (not yet implemented here).
-        Currently, all strings are encrypted if this method is called.
-
-        Args:
-            value: The string to encrypt.
-            is_phi: Flag indicating if the data is PHI (default True).
-
-        Returns:
-            Encrypted string or original value if encryption fails/skipped.
         """
-        if value is None: # Only return None as is. Empty strings will be encrypted.
-            return value
+        Encrypt a string value with proper versioning and string handling.
         
-        # Removed: self._ensure_fernet_initialized() # Property handles initialization
-        
+        Args:
+            value: String to encrypt
+            is_phi: Whether this contains PHI (for logging purposes)
+            
+        Returns:
+            str: Encrypted string with version prefix
+        """
+        if value is None:
+            return None
+            
         try:
-            encrypted_data = self.encrypt(value) # Uses self.cipher property
-            if encrypted_data is None: 
-                logger.warning(f"Encryption returned None for a value. Input type: {type(value)}")
-                # This case should ideally not happen with self.encrypt if input is not None
-                # and key is valid. If self.encrypt itself failed and returned None (e.g. future change)
-                # then returning original value might be a fallback.
-                # Given current self.encrypt, it raises ValueError on failure rather than returning None.
-                # However, if value was an empty string, self.encrypt will encrypt it.
-                return value # Fallback if encrypt somehow returns None for a non-None value
-            return encrypted_data
-        except ValueError as ve: 
-            logger.error(f"ValueError during string encryption: {ve}. Returning original value for safety.")
-            return value 
+            # Convert string to bytes
+            value_bytes = value.encode('utf-8')
+            
+            # Encrypt the bytes
+            encrypted_bytes = self.cipher.encrypt(value_bytes)
+            
+            # Convert encrypted bytes to base64 string and add version prefix
+            encrypted_str = base64.urlsafe_b64encode(encrypted_bytes).decode('utf-8')
+            versioned_encrypted = f"{self.VERSION_PREFIX}{encrypted_str}"
+            
+            return versioned_encrypted
         except Exception as e:
-            logger.error(f"Unexpected error during string encryption: {e}. Input: '{str(value)[:50]}...'")
-            return value
+            logger.error(f"String encryption failed: {e}", exc_info=True)
+            raise ValueError(f"String encryption failed: {e}")
 
     def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str | None:
-        """Decrypts a string that was encrypted by this service.
         """
-        if not encrypted_value:
-            return encrypted_value # Return None or empty string as is
-
-        if not encrypted_value.startswith(self.VERSION_PREFIX):
-            logger.warning(f"Value to decrypt does not start with known prefix ('{self.VERSION_PREFIX}'). Value: '{encrypted_value[:50]}...' Potentially not an encrypted string or wrong format.")
-            # Making this stricter to align with test_decrypt_invalid_string expectations
-            raise ValueError(f"Failed to decrypt: Value does not have expected prefix '{self.VERSION_PREFIX}'.")
+        Decrypt a string that was encrypted by encrypt_string.
+        
+        Args:
+            encrypted_value: Encrypted string to decrypt
+            is_phi: Whether this contains PHI (for logging purposes)
             
-        # self._ensure_fernet_initialized() # Removed: Property handles initialization
-
+        Returns:
+            str: Decrypted string value or None if input was None
+            
+        Raises:
+            ValueError: If decryption fails
+        """
+        if encrypted_value is None:
+            return None
+            
         try:
-            decrypted_bytes = self.decrypt(encrypted_value) # decrypt returns bytes
-            if decrypted_bytes is None:
-                 # decrypt now returns b'' for empty input, so this might not be hit unless decrypt itself fails and returns None
-                 return None 
-            return decrypted_bytes.decode('utf-8') # Decode bytes to string
-        except ValueError as e:
-            logger.warning(f"ValueError during string decryption (likely invalid token or key issue): {e}. Encrypted value: '{encrypted_value[:50]}...'")
-            # Raise the error to make failures clearer
-            raise ValueError(f"String decryption failed: {e}") from e 
-            # return None # Or return encrypted_value, or raise specific error
+            # Check for version prefix
+            if not encrypted_value.startswith(self.VERSION_PREFIX):
+                logger.warning(f"Encrypted string lacks version prefix '{self.VERSION_PREFIX}'")
+                # Try to decrypt without the prefix as a fallback
+                encrypted_base64 = encrypted_value
+            else:
+                # Remove version prefix
+                encrypted_base64 = encrypted_value[len(self.VERSION_PREFIX):]
+                
+            # Decode from base64 to bytes
+            try:
+                encrypted_bytes = base64.urlsafe_b64decode(encrypted_base64.encode('utf-8'))
+            except Exception as e:
+                logger.error(f"Base64 decoding failed: {e}")
+                raise ValueError(f"Invalid base64 encoding in encrypted string: {e}")
+                
+            # Try with primary cipher first
+            try:
+                decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
+                return decrypted_bytes.decode('utf-8')
+            except InvalidToken:
+                # Try with previous cipher if available
+                if self.previous_cipher:
+                    try:
+                        logger.debug("Primary key failed, trying with previous key.")
+                        decrypted_bytes = self.previous_cipher.decrypt(encrypted_bytes)
+                        return decrypted_bytes.decode('utf-8')
+                    except InvalidToken:
+                        raise ValueError("Decryption failed: Invalid token")
+                else:
+                    raise ValueError("Decryption failed: Invalid token")
+                    
+        except UnicodeDecodeError as e:
+            logger.error(f"Unicode decoding error: {e}")
+            raise ValueError(f"String decryption failed: Unable to decode result as UTF-8: {e}")
         except Exception as e:
-            # Catch any other unexpected errors during decryption.
-            logger.error(f"Unexpected error during string decryption: {e}. Encrypted value: '{encrypted_value[:50]}...'")
-            # Raise the error
-            raise ValueError(f"Unexpected error during string decryption: {e}") from e
-            # return None # Or re-raise, or return encrypted_value
+            if isinstance(e, ValueError) and "Decryption failed" in str(e):
+                # Re-raise already formatted error
+                raise
+            logger.error(f"String decryption failed: {e}", exc_info=True)
+            raise ValueError(f"String decryption failed: {e}")
 
 # --- Factory Function --- #
 
