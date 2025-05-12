@@ -7,7 +7,7 @@ require network connections, databases, and other external services.
 
 import logging
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
@@ -582,21 +582,24 @@ async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> Asyn
         yield client
 
 @pytest_asyncio.fixture
-async def test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_auth_dependency) -> FastAPI:
-    """
-    Provides a test app with authentication dependencies overridden for testing different
-    user roles without actual authentication.
-    """
-    from app.presentation.api.dependencies.auth import (
-        get_current_user, 
-        get_current_active_user,
-        require_admin_role,
-        require_clinician_role
-    )
-    
+async def test_app_with_auth_override(
+    test_app_with_db_session: FastAPI, 
+    mock_auth_dependency,
+    # mock_jwt_service_with_placeholder_handling: JWTServiceInterface # Not directly used here, already in app from previous fixture if needed by create_application
+):
+    """Overrides authentication dependencies for a test application instance."""
+    app_to_override = test_app_with_db_session
+    logger.info(f"DEBUG_AUTH_OVERRIDE_FIXTURE: Received app type: {type(app_to_override)}, id: {id(app_to_override)}") # Unique logger message
+    if not isinstance(app_to_override, FastAPI):
+        logger.error(f"DEBUG_AUTH_OVERRIDE_FIXTURE: app_to_override IS NOT A FastAPI instance! Type: {type(app_to_override)}")
+        raise TypeError("test_app_with_db_session did not yield a FastAPI app for auth override.")
+
+    # Store original overrides to restore them specifically, though clear() is usually enough
+    original_overrides = app_to_override.dependency_overrides.copy()
+
     # Override authentication dependencies with appropriate role handlers
     test_app_with_db_session.dependency_overrides[get_current_user] = mock_auth_dependency("PATIENT")
-    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency("DEFAULT")
+    test_app_with_db_session.dependency_overrides[get_current_active_user] = mock_auth_dependency("PATIENT")
     test_app_with_db_session.dependency_overrides[require_admin_role] = mock_auth_dependency("ADMIN")
     test_app_with_db_session.dependency_overrides[require_clinician_role] = mock_auth_dependency("CLINICIAN")
     

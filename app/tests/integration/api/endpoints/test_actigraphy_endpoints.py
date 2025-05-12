@@ -16,6 +16,7 @@ from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 from asgi_lifespan import LifespanManager
 import io
+import logging
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
@@ -101,15 +102,19 @@ Sample device information
 # Removed the local mock_auth_dependency fixture - now using the one from conftest.py
 
 @pytest_asyncio.fixture
-async def test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_auth_dependency):
+async def actigraphy_test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_auth_dependency):
     """
-    FastAPI test application with authentication dependencies overridden.
-    
-    This fixture overrides the authentication dependencies in the application
-    to avoid requiring real JWT tokens for testing.
-    It also sets the appropriate mock user based on the role specified for the override.
+    FastAPI test application with authentication dependencies overridden for actigraphy tests.
+    Uses the mock_auth_dependency from integration/conftest.py to provide mock users.
     """
-    # Import auth dependencies here to avoid circular imports
+    app_to_override = test_app_with_db_session
+    logger.info(f"DEBUG_ACTIGRAPHY_OVERRIDES_ Eingang: app_to_override type is {type(app_to_override)}, id is {id(app_to_override)}.") # Unique log message
+    logger.info(f"DEBUG_ACTIGRAPHY_OVERRIDES_Eingang: mock_auth_dependency type is {type(mock_auth_dependency)}.")
+
+    if not isinstance(app_to_override, FastAPI):
+        logger.error(f"CRITICAL_ACTIGRAPHY_ERROR: app_to_override expected FastAPI, got {type(app_to_override)}.")
+        raise TypeError(f"actigraphy_test_app_with_auth_override expects FastAPI app, received {type(app_to_override)}")
+
     from app.presentation.api.dependencies.auth import (
         get_current_user, 
         get_current_active_user,
@@ -139,7 +144,7 @@ async def test_app_with_auth_override(test_app_with_db_session: FastAPI, mock_au
 
 @pytest_asyncio.fixture
 async def authenticated_client(
-    test_app_with_auth_override: FastAPI, 
+    actigraphy_test_app_with_auth_override: FastAPI, # UPDATED to use renamed fixture
     patient_token: str # Default to using patient_token
 ) -> AsyncGenerator[AsyncClient, None]:
     """
@@ -150,7 +155,7 @@ async def authenticated_client(
         AsyncClient: A test client with authentication overrides and default auth header.
     """
     async with AsyncClient(
-        app=test_app_with_auth_override, # This app is already lifespan-managed
+        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed
         base_url="http://test", 
         headers={"Authorization": f"Bearer {patient_token}"} # Set default auth header
     ) as client:
@@ -159,39 +164,39 @@ async def authenticated_client(
 # Fixture for a client authenticated as a provider
 @pytest_asyncio.fixture
 async def provider_authenticated_client(
-    test_app_with_auth_override: FastAPI, 
+    actigraphy_test_app_with_auth_override: FastAPI, # UPDATED to use renamed fixture
     mock_auth_dependency, # To re-override for provider
     provider_token: str
 ) -> AsyncGenerator[AsyncClient, None]:
     from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
     # Override the user to be a provider for this client
-    test_app_with_auth_override.dependency_overrides[get_current_user] = mock_auth_dependency("CLINICIAN")
-    test_app_with_auth_override.dependency_overrides[get_current_active_user] = mock_auth_dependency("CLINICIAN")
+    actigraphy_test_app_with_auth_override.dependency_overrides[get_current_user] = mock_auth_dependency("CLINICIAN")
+    actigraphy_test_app_with_auth_override.dependency_overrides[get_current_active_user] = mock_auth_dependency("CLINICIAN")
 
     async with AsyncClient(
-        app=test_app_with_auth_override, # This app is already lifespan-managed
+        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed
         base_url="http://test", 
         headers={"Authorization": f"Bearer {provider_token}"}
     ) as client:
         yield client
-    # Clean up overrides for this specific fixture if necessary, though test_app_with_auth_override should handle its own.
-    # Might be safer to explicitly clear what this fixture changed if test_app_with_auth_override doesn't fully reset.
+    # Clean up overrides for this specific fixture if necessary, though actigraphy_test_app_with_auth_override should handle its own.
+    # Might be safer to explicitly clear what this fixture changed if actigraphy_test_app_with_auth_override doesn't fully reset.
 
 # Fixture for a client authenticated as an admin
 @pytest_asyncio.fixture
 async def admin_authenticated_client(
-    test_app_with_auth_override: FastAPI, 
+    actigraphy_test_app_with_auth_override: FastAPI, # UPDATED to use renamed fixture
     mock_auth_dependency, # To re-override for admin
     admin_token: str
 ) -> AsyncGenerator[AsyncClient, None]:
     from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user, require_admin_role
     # Override the user to be an admin for this client
-    test_app_with_auth_override.dependency_overrides[get_current_user] = mock_auth_dependency("ADMIN")
-    test_app_with_auth_override.dependency_overrides[get_current_active_user] = mock_auth_dependency("ADMIN")
-    test_app_with_auth_override.dependency_overrides[require_admin_role] = mock_auth_dependency("ADMIN") # Ensure admin role check passes
+    actigraphy_test_app_with_auth_override.dependency_overrides[get_current_user] = mock_auth_dependency("ADMIN")
+    actigraphy_test_app_with_auth_override.dependency_overrides[get_current_active_user] = mock_auth_dependency("ADMIN")
+    actigraphy_test_app_with_auth_override.dependency_overrides[require_admin_role] = mock_auth_dependency("ADMIN") # Ensure admin role check passes
 
     async with AsyncClient(
-        app=test_app_with_auth_override, # This app is already lifespan-managed
+        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed
         base_url="http://test", 
         headers={"Authorization": f"Bearer {admin_token}"}
     ) as client:
@@ -508,3 +513,9 @@ def actigraphy_file_name() -> str:
         A sample filename for test uploads
     """
     return "test_actigraphy_data.csv"
+
+# Get a logger instance for this test file
+logger = logging.getLogger(__name__)
+
+# Sample data for tests
+TEST_PATIENT_ID = "649b0b2d-6b32-4955-a30e-46bd447e2bcb"

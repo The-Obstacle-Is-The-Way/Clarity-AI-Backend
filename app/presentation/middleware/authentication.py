@@ -16,13 +16,14 @@ from starlette.status import (
 )
 from starlette.types import ASGIApp # Keep ASGIApp
 import logging
+import traceback # ADDED
 
 # Core interfaces
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 # Domain entities for type hinting what user_repo returns
-from app.core.domain.entities.user import User as DomainUser, UserRole # Corrected, AuthenticatedUser is local
+from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus # Corrected, AuthenticatedUser is local, added UserStatus
 # Exceptions
 from app.domain.exceptions.auth_exceptions import (
     AuthenticationException,
@@ -103,133 +104,124 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return request.cookies.get("access_token") # Also check cookies
 
     async def _validate_and_prepare_user_context(
-        self, token: str, request: Request # ADDED request to access app.state
-    ) -> tuple[AuthenticatedUser, list[str]]: 
+        self, token: str, request: Request 
+    ) -> tuple[AuthenticatedUser, list[str]]: # Return type is tuple
         logger.debug("Attempting to validate token and prepare user context.")
         try:
-            token_payload: TokenPayload = await self.jwt_service.decode_token(token) # Added type hint for clarity
-            logger.debug(f"Token decoded. Payload sub: {token_payload.sub if hasattr(token_payload, 'sub') else 'N/A'}, Scopes: {token_payload.roles if hasattr(token_payload, 'roles') else 'N/A'}")
+            token_payload: TokenPayload = await self.jwt_service.decode_token(token)
+            logger.debug(f"Token decoded. Payload sub: {token_payload.sub if hasattr(token_payload, 'sub') else 'N/A'}, Roles from token: {token_payload.roles if hasattr(token_payload, 'roles') else 'N/A'}")
 
-            # --- Instantiate UserRepository on-the-fly ---
             session_factory = request.app.state.actual_session_factory
-            if not session_factory:
-                logger.critical("CRITICAL: actual_session_factory not found on request.app.state in _validate_and_prepare_user_context.")
-                raise AuthenticationException("Internal server configuration error: Session factory not available.", status_code=HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            async with session_factory() as db_session_for_repo:
-                user_repo_instance = SQLAlchemyUserRepository(session_factory=lambda: db_session_for_repo)
-
-            user_id_from_token: str | UUID | None = token_payload.sub # USE attribute access
-            if not user_id_from_token:
-                logger.warning("AuthenticationMiddleware: 'sub' (user ID) not found in token payload.")
-                raise InvalidTokenException("'sub' claim missing from token")
-            logger.debug(f"User ID from token 'sub': {user_id_from_token}")
-
-            user_id_as_uuid: UUID
-            try:
-                # Attempt to convert to UUID if your user IDs are UUIDs
-                user_id_as_uuid = UUID(str(user_id_from_token)) # Ensure it's a string before UUID conversion
-                logger.debug(f"User ID converted to UUID: {user_id_as_uuid}")
-            except ValueError as ve: # Catch specific error
-                logger.warning(f"AuthenticationMiddleware: 'sub' claim (\'{user_id_from_token}\') is not a valid UUID. Error: {ve}")
-                raise InvalidTokenException("'sub' claim is not a valid UUID")
-
-            # Fetch user from repository
-            domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
-            logger.debug(f"User fetched from repository: {'Found' if domain_user else 'Not Found'}")
+            async with session_factory() as db_session:
+                user_repo_instance = SQLAlchemyUserRepository(db_session)
+                
+                user_id_as_uuid = UUID(str(token_payload.sub))
+                domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
 
             if not domain_user:
-                logger.warning(f"User not found for ID from token: {user_id_as_uuid}")
-                raise UserNotFoundException(f"User with ID {user_id_as_uuid} not found.")
+                logger.warning(f"User with id {user_id_as_uuid} not found in repository.")
+                raise UserNotFoundException("User associated with token not found.")
 
-            if not domain_user.is_active: # Assuming DomainUser has is_active
-                logger.warning(f"Attempt to authenticate inactive user: {domain_user.id}")
-                raise AuthenticationException("User account is inactive.")
+            logger.debug(f"User {domain_user.id} found. Checking status: {domain_user.account_status}")
+            if domain_user.account_status != UserStatus.ACTIVE:
+                logger.warning(f"User {domain_user.id} is not active (status: {domain_user.account_status}). Access denied.")
+                raise AuthenticationException(
+                    f"User account is {domain_user.account_status.value.lower()}. Access denied.", 
+                    status_code=HTTP_403_FORBIDDEN # Set 403 for inactive user
+                )
+            
             logger.debug(f"User {domain_user.id} is active.")
 
-            authenticated_user_context = AuthenticatedUser(id=str(domain_user.id))
+            # Prepare roles for AuthenticatedUser Pydantic model
+            # domain_user.roles is typically a set of UserRole enums or list of role strings from mock
+            if isinstance(domain_user.roles, set):
+                user_roles_for_model = sorted([role.value for role in domain_user.roles]) # sort for consistency
+            elif isinstance(domain_user.roles, list):
+                user_roles_for_model = sorted(domain_user.roles) # sort for consistency
+            else:
+                user_roles_for_model = []
+
+            auth_user_for_scope = AuthenticatedUser(
+                id=str(domain_user.id),
+                username=domain_user.username,
+                email=getattr(domain_user, 'email', None), # Ensure email attribute exists or handle gracefully
+                roles=user_roles_for_model
+            )
             
-            token_scopes = token_payload.roles if hasattr(token_payload, 'roles') else [] # USE attribute access
-            if token_scopes is None: 
-                token_scopes = []
-            elif not isinstance(token_scopes, list):
-                logger.warning(f"Token scopes for user {domain_user.id} are not a list: {type(token_scopes)}. Using empty list.")
-                token_scopes = []
-            logger.debug(f"Authenticated user context created. ID: {authenticated_user_context.id}, Scopes: {token_scopes}")
-            return authenticated_user_context, token_scopes
+            # Scopes for AuthCredentials should come from the token payload's 'roles' field
+            auth_scopes_for_starlette = token_payload.roles if token_payload.roles is not None else []
+            
+            logger.info(f"User {domain_user.id} validated. User object roles: {user_roles_for_model}, Auth Scopes from token: {auth_scopes_for_starlette}")
+            return auth_user_for_scope, auth_scopes_for_starlette # Return the user and the token's scopes
+
         except (AuthenticationException, UserNotFoundException, InvalidTokenException, TokenExpiredException) as exc:
             logger.warning(f"Handled auth exception in _validate_and_prepare_user_context: {type(exc).__name__} - {exc}")
-            raise # Re-raise to be caught by dispatch's handler
+            raise 
+        except ValueError as ve: # Handles UUID conversion errors or other ValueErrors
+            logger.error(f"ValueError during token validation: {ve}. Traceback: {traceback.format_exc()}")
+            raise AuthenticationException(f"Invalid data encountered during token validation: {ve}")
         except Exception as e:
-            logger.exception(f"UNEXPECTED error in _validate_and_prepare_user_context: {type(e).__name__} - {e}")
-            raise AuthenticationException(f"Unexpected internal error during token validation: {e}")
+            logger.error(f"UNEXPECTED error in _validate_and_prepare_user_context: {type(e).__name__} - {e}. Traceback: {traceback.format_exc()}")
+            # For unexpected errors, re-raise as a generic AuthenticationException that leads to 401
+            # Or, consider a more specific internal server error if appropriate
+            raise AuthenticationException(f"Unexpected internal error during token validation: {str(e)}")
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        request.scope["user"] = UnauthenticatedUser() 
-        request.scope["auth"] = None 
+        # ... (public path check remains the same) ...
+        # if any(regex.match(request.url.path) for regex in self.public_path_regexes_compiled) or request.url.path in self.public_paths:
+        #    request.scope["user"] = UnauthenticatedUser()
+        #    request.scope["auth"] = AuthCredentials([])
+        #    return await call_next(request)
         
-        # Logging for debugging request.state
-        logger.info(f"DISPATCH: request.state type: {type(request.state)}")
-        if hasattr(request.state, "_state"):
-            logger.info(f"DISPATCH: request.state._state type: {type(request.state._state)}, value: {request.state._state}")
-        else:
-            logger.info("DISPATCH: request.state has no _state attribute.")
-        if hasattr(request.state, "__dict__"):
-             logger.info(f"DISPATCH: request.state.__dict__: {request.state.__dict__}")
-
-        # Attach app state to request state if not already done by an earlier middleware
-        try:
-            _ = request.state.actual_session_factory
-        except AttributeError:
-            if hasattr(request.app, 'state') and hasattr(request.app.state, 'actual_session_factory'):
-                setattr(request.state, 'actual_session_factory', request.app.state.actual_session_factory)
-
-        try:
-            _ = request.state.settings
-        except AttributeError:
-            if hasattr(request.app, 'state') and hasattr(request.app.state, 'settings'):
-                setattr(request.state, 'settings', request.app.state.settings)
-            
-        if await self._is_public_path(request.url.path):
-            logger.debug(f"Public path '{request.url.path}', skipping authentication.")
+        # --- Standard path checks from original code ---
+        # Check if the path is public (exact match or regex)
+        if request.url.path in self.public_paths:
+            logger.debug(f"Dispatch: Path '{request.url.path}' is in public_paths. Skipping auth.")
+            request.scope["user"] = UnauthenticatedUser()
+            request.scope["auth"] = AuthCredentials([])
             return await call_next(request)
-        
+
+        for regex_pattern in self.public_path_patterns:
+            if regex_pattern.match(request.url.path):
+                logger.debug(f"Dispatch: Path '{request.url.path}' matches public regex '{regex_pattern.pattern}'. Skipping auth.")
+                request.scope["user"] = UnauthenticatedUser()
+                request.scope["auth"] = AuthCredentials([])
+                return await call_next(request)
+        # --- End standard path checks ---
+
+
         token = self._extract_token(request)
         if not token:
             logger.info(f"Authentication token missing for protected path: {request.url.path}")
             return JSONResponse(
-                status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Authentication token required."}, 
+                {"detail": "Authentication token required."},
+                status_code=status.HTTP_401_UNAUTHORIZED
             )
-            
+
         try:
-            # Pass the request object to _validate_and_prepare_user_context
-            user_context, token_scopes = await self._validate_and_prepare_user_context(token, request)
-            request.scope["user"] = user_context 
-            request.scope["auth"] = AuthCredentials(scopes=token_scopes)
-            logger.debug(f"User {user_context.id} authenticated for path {request.url.path}. Scopes: {token_scopes}")
-
-        except (AuthenticationException, UserNotFoundException, InvalidTokenException, TokenExpiredException) as exc:
-            status_code = HTTP_401_UNAUTHORIZED 
-            detail = str(exc) 
-
-            if isinstance(exc, (InvalidTokenException, TokenExpiredException)):
-                 detail = str(exc) 
-            elif isinstance(exc, UserNotFoundException):
-                detail = "User associated with token not found." 
-            elif isinstance(exc, AuthenticationException):
-                if "User account is inactive" in str(exc): # Specific check
-                    status_code = HTTP_403_FORBIDDEN
-                    detail = "User account is inactive."
-                # else, detail remains str(exc) which is fine for other AuthExceptions
+            auth_user_obj, token_scopes = await self._validate_and_prepare_user_context(token, request)
             
-            logger.warning(f"Authentication failed for path {request.url.path}: {type(exc).__name__} - {detail}. Status code: {status_code}") # Added status code to log
-            return JSONResponse(status_code=status_code, content={"detail": detail})
-        except Exception as e: # Catch any other unexpected errors
-            logger.exception(f"UNEXPECTED error in dispatch for path {request.url.path}: {type(e).__name__} - {e}") # Enhanced logging
+            request.scope["user"] = auth_user_obj
+            request.scope["auth"] = AuthCredentials(scopes=token_scopes) 
+            
+        # Explicitly catch specific token exceptions first, then broader AuthenticationException
+        except (InvalidTokenException, TokenExpiredException) as te:
+            logger.warning(f"Token validation error for path {request.url.path}: {type(te).__name__} - {te}. Status code: {getattr(te, 'status_code', status.HTTP_401_UNAUTHORIZED)}")
             return JSONResponse(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": "An internal server error occurred during authentication."}
+                {"detail": str(te)},
+                status_code=getattr(te, 'status_code', status.HTTP_401_UNAUTHORIZED)
+            )
+        except AuthenticationException as e: # Catches other auth-related known issues like UserNotFound, Inactive user
+            logger.warning(f"Authentication failed for path {request.url.path}: {type(e).__name__} - {e}. Status code: {getattr(e, 'status_code', status.HTTP_401_UNAUTHORIZED)}")
+            return JSONResponse(
+                {"detail": str(e)},
+                status_code=getattr(e, 'status_code', status.HTTP_401_UNAUTHORIZED)
+            )
+        except Exception as e: # Catch-all for truly unexpected issues during auth prep
+            logger.error(f"CRITICAL UNEXPECTED error during dispatch auth phase for {request.url.path}: {type(e).__name__} - {e}. Traceback: {traceback.format_exc()}")
+            return JSONResponse(
+                {"detail": "An unexpected server error occurred during authentication."},
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         return await call_next(request) 

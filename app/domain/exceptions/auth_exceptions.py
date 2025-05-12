@@ -11,8 +11,14 @@ from app.domain.exceptions.base import DomainException
 class AuthenticationException(DomainException):
     """Base class for all authentication related exceptions."""
     
-    def __init__(self, message: str = "Authentication error", *args, **kwargs):
+    def __init__(self, message: str = "Authentication error", status_code: int | None = None, *args, **kwargs):
         super().__init__(message, *args, **kwargs)
+        # Set status_code if provided, otherwise subclasses might set it or it defaults
+        # when handled by API layer. For generic AuthenticationException, it might be 401 or 403.
+        if status_code is not None:
+            self.status_code = status_code
+        # else: # Don't default here, let it be None or set by subclasses / handlers
+            # self.status_code = 401 
 
 
 class AuthorizationException(DomainException):
