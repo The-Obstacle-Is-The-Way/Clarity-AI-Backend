@@ -315,8 +315,27 @@ class Patient(Base, TimestampMixin, AuditMixin):
         # For EncryptedText/EncryptedJSON that store serialized complex types, use json.dumps.
 
         contact_info_vo = getattr(patient, 'contact_info', None)
-        # Assign the Pydantic model instance directly; EncryptedJSON will serialize it
-        model._contact_info = contact_info_vo
+        # Don't assign the Pydantic model directly - serialize it to dict first
+        if contact_info_vo is not None:
+            if hasattr(contact_info_vo, 'model_dump'):
+                model._contact_info = contact_info_vo.model_dump()
+            elif hasattr(contact_info_vo, 'to_dict'):
+                model._contact_info = contact_info_vo.to_dict()
+            elif hasattr(contact_info_vo, 'dict'):
+                model._contact_info = contact_info_vo.dict()
+            else:
+                # Try to convert to dict using __dict__
+                try:
+                    model._contact_info = dict(contact_info_vo.__dict__)
+                except (AttributeError, TypeError):
+                    # Last resort - serialize to JSON and parse back to dict
+                    try:
+                        model._contact_info = json.loads(json.dumps(contact_info_vo, default=str))
+                    except Exception as e:
+                        logger.error(f"Could not serialize contact_info to JSON: {e}")
+                        model._contact_info = {"serialization_error": str(contact_info_vo)}
+        else:
+            model._contact_info = None
 
         address_vo_from_domain = getattr(patient, 'address', None)
         # Assign the VO instance directly; EncryptedJSON will serialize it
