@@ -5,25 +5,28 @@ This module contains tests that verify the behavior of the actigraphy API endpoi
 including authentication, authorization, input validation, and HIPAA compliance.
 """
 
+import io
+import logging
 import uuid
 from typing import Any, AsyncGenerator, Callable
 from unittest.mock import AsyncMock, patch
 
-import asyncio
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
-from httpx import AsyncClient
+from asgi_lifespan import LifespanManager
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
-from asgi_lifespan import LifespanManager
-import io
-import logging
+from httpx import AsyncClient, ASGITransport
 
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
+
+# Get a logger instance for this test file
+logger = logging.getLogger(__name__)
+
+# Sample data for tests
+TEST_PATIENT_ID = "649b0b2d-6b32-4955-a30e-46bd447e2bcb"
+TEST_USER_ID = str(uuid.uuid4())  # Use a consistent test user ID
 
 # Fixtures removed:
 # @pytest.fixture
@@ -38,49 +41,44 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 # via specific test markers.
 @pytest.fixture
 def patient_token() -> str:
-
     """Fixture that returns a JWT token for a patient user.
 
     Returns:
-JWT token
-"""
+        JWT token
+    """
     # Use the mock token string recognized by conftest.py async_client mock
     return "VALID_PATIENT_TOKEN"
 
 
 @pytest.fixture
 def provider_token() -> str:
-
     """Fixture that returns a JWT token for a provider user.
 
     Returns:
         JWT token
-        """
+    """
     # Use the mock token string recognized by conftest.py async_client mock
     return "VALID_PROVIDER_TOKEN"
 
 
 @pytest.fixture
 def admin_token() -> str:
-
     """Fixture that returns a JWT token for an admin user.
 
     Returns:
         JWT token
-        """
+    """
     # Use the mock token string recognized by conftest.py async_client mock
     return "VALID_ADMIN_TOKEN"
 
 
 @pytest.fixture
 def sample_readings() -> list[dict[str, float]]:
-
     """Fixture that returns sample accelerometer readings.
 
     Returns:
         Sample accelerometer readings
-        """
-
+    """
     return [
         {"x": 0.1, "y": 0.2, "z": 0.9},
         {"x": 0.2, "y": 0.3, "z": 0.8},
@@ -90,19 +88,46 @@ def sample_readings() -> list[dict[str, float]]:
 
 @pytest.fixture
 def sample_device_info() -> dict[str, Any]:
-
     """Fixture that returns sample device information.
 
     Returns:
-Sample device information
-"""
-
+        Sample device information
+    """
     return {
         "device_id": "test-device-123",
         "model": "Test Actigraph 1.0",
         "firmware_version": "v1.0.0",
         "battery_level": 85
     }
+
+
+@pytest.fixture
+def actigraphy_file_content() -> bytes:
+    """
+    Fixture providing sample content for an actigraphy data file.
+    
+    Returns:
+        Sample CSV content representing actigraphy data
+    """
+    csv_content = """timestamp,x,y,z,activity_count
+2023-01-01T00:00:00Z,0.1,0.2,0.3,10
+2023-01-01T00:00:01Z,0.2,0.3,0.4,15
+2023-01-01T00:00:02Z,0.3,0.4,0.5,20
+2023-01-01T00:00:03Z,0.4,0.5,0.6,25
+2023-01-01T00:00:04Z,0.5,0.6,0.7,30
+"""
+    return csv_content.encode('utf-8')
+
+
+@pytest.fixture
+def actigraphy_file_name() -> str:
+    """
+    Fixture providing a sample filename for an actigraphy data file.
+    
+    Returns:
+        A sample filename for test uploads
+    """
+    return "test_actigraphy_data.csv"
 
 # Removed the local mock_auth_dependency fixture - now using the one from conftest.py
 
@@ -158,11 +183,12 @@ async def authenticated_client(
     """
     logger.info(f"DEBUG_AUTHENTICATED_CLIENT: Received app_to_override type: {type(actigraphy_test_app_with_auth_override)}, id: {id(actigraphy_test_app_with_auth_override)}") # DEBUG LOG
     async with AsyncClient(
-        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed by test_app_with_db_session
+        transport=ASGITransport(app=actigraphy_test_app_with_auth_override), # Using explicit style instead of deprecated shortcut
         base_url="http://test", 
         headers={"Authorization": f"Bearer {patient_token}"} # Set default auth header
     ) as client:
         yield client
+
 
 # Fixture for a client authenticated as a provider
 @pytest_asyncio.fixture
@@ -177,13 +203,14 @@ async def provider_authenticated_client(
     actigraphy_test_app_with_auth_override.dependency_overrides[get_current_active_user] = mock_auth_dependency("CLINICIAN")
 
     async with AsyncClient(
-        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed
+        transport=ASGITransport(app=actigraphy_test_app_with_auth_override), # Using explicit style instead of deprecated shortcut
         base_url="http://test", 
         headers={"Authorization": f"Bearer {provider_token}"}
     ) as client:
         yield client
     # Clean up overrides for this specific fixture if necessary, though actigraphy_test_app_with_auth_override should handle its own.
     # Might be safer to explicitly clear what this fixture changed if actigraphy_test_app_with_auth_override doesn't fully reset.
+
 
 # Fixture for a client authenticated as an admin
 @pytest_asyncio.fixture
@@ -199,18 +226,17 @@ async def admin_authenticated_client(
     actigraphy_test_app_with_auth_override.dependency_overrides[require_admin_role] = mock_auth_dependency("ADMIN") # Ensure admin role check passes
 
     async with AsyncClient(
-        app=actigraphy_test_app_with_auth_override, # This app is already lifespan-managed
+        transport=ASGITransport(app=actigraphy_test_app_with_auth_override), # Using explicit style instead of deprecated shortcut
         base_url="http://test", 
         headers={"Authorization": f"Bearer {admin_token}"}
     ) as client:
         yield client
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 class TestActigraphyEndpoints:
     """Test suite for Actigraphy API Endpoints integration."""
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_unauthenticated_access(
         self,
@@ -230,7 +256,6 @@ class TestActigraphyEndpoints:
         # Just check that there is an error message, not its exact content
         assert isinstance(response_data["detail"], (str, dict)), "Response should include an error message in the detail field"
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_authorized_access(
         self,
@@ -251,7 +276,6 @@ class TestActigraphyEndpoints:
         assert "model_version" in response_data
         assert "model_name" in response_data
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_input_validation(
         self,
@@ -274,7 +298,6 @@ class TestActigraphyEndpoints:
         assert response.status_code == 422 # Unprocessable Entity 
         assert "detail" in response.json() # Should have validation details
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_role_based_access_control(
         self, 
@@ -314,7 +337,6 @@ class TestActigraphyEndpoints:
         )
         assert patient_analysis_response.status_code == 422 # Expect 422 due to invalid data, not 401/403
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_hipaa_audit_logging(
         self,
@@ -330,7 +352,6 @@ class TestActigraphyEndpoints:
         # Verify response is successful, audit logging is tested in separate audit log tests
         assert response.status_code == 200, f"Expected 200 OK but got {response.status_code}: {response.text}"
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_phi_data_sanitization(
         self, 
@@ -352,7 +373,6 @@ class TestActigraphyEndpoints:
         assert "ssn" not in response_data
         assert "date_of_birth" not in response_data
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_secure_data_transmission(
         self, 
@@ -372,7 +392,6 @@ class TestActigraphyEndpoints:
         # Just ensure we get a successful response to show the endpoint is working
         # The actual header checks happen in separate security tests for the middleware
 
-    @pytest.mark.anyio
     @pytest.mark.asyncio
     async def test_api_response_structure(
         self, 
@@ -394,23 +413,16 @@ class TestActigraphyEndpoints:
         assert "version" in response_data
 
 
-# Update the standalone test functions too
-TEST_USER_ID = str(uuid.uuid4()) # Use a consistent test user ID
-
-@pytest.mark.anyio
+# Standalone test functions
 @pytest.mark.asyncio
 async def test_upload_actigraphy_data(
     authenticated_client: AsyncClient, # Uses patient_token by default
     actigraphy_file_content: bytes,
     actigraphy_file_name: str
 ):
-    """
-    Test uploading actigraphy data through the API endpoint.
+    """Test uploading actigraphy data through the API endpoint.
     
-    This test verifies:
-    - File upload functionality
-    - Validation of file format and contents
-    - Response structure and status code
+    Verifies file upload functionality, validation, and response structure.
     """
     # Create a file-like object and multipart form data
     file = io.BytesIO(actigraphy_file_content)
@@ -429,7 +441,7 @@ async def test_upload_actigraphy_data(
     assert "filename" in response.json(), "Response should contain the filename"
     assert response.json()["filename"] == actigraphy_file_name, "Filename should match the uploaded file"
 
-@pytest.mark.anyio
+
 @pytest.mark.asyncio
 async def test_get_actigraphy_data_summary(authenticated_client: AsyncClient): # Uses patient_token by default
     """Test retrieving actigraphy data summaries."""
@@ -445,7 +457,7 @@ async def test_get_actigraphy_data_summary(authenticated_client: AsyncClient): #
     assert "summaries" in response_data
     assert isinstance(response_data["summaries"], list)
 
-@pytest.mark.anyio
+
 @pytest.mark.asyncio
 async def test_get_specific_actigraphy_data(authenticated_client: AsyncClient): # Uses patient_token by default
     """Test retrieving specific actigraphy data with proper authentication."""
@@ -461,7 +473,7 @@ async def test_get_specific_actigraphy_data(authenticated_client: AsyncClient): 
     assert "data_id" in response_data
     assert response_data["data_id"] == data_id
 
-@pytest.mark.anyio
+
 @pytest.mark.asyncio
 async def test_unauthorized_access(test_client: AsyncClient):
     """Test that unauthorized access is properly handled."""
@@ -478,7 +490,7 @@ async def test_unauthorized_access(test_client: AsyncClient):
     # Just check that there is an error message, not its exact content
     assert isinstance(response_data["detail"], (str, dict)), "Response should include an error message in the detail field"
 
-@pytest.mark.anyio
+
 @pytest.mark.asyncio
 async def test_invalid_date_format(
     authenticated_client: AsyncClient # Uses patient_token by default
@@ -500,36 +512,3 @@ async def test_invalid_date_format(
     validation_errors = response_data["detail"]
     date_error = any("date" in str(error).lower() for error in validation_errors)
     assert date_error, "Validation error should mention invalid date format"
-
-@pytest.fixture
-def actigraphy_file_content() -> bytes:
-    """
-    Fixture providing sample content for an actigraphy data file.
-    
-    Returns:
-        Sample CSV content representing actigraphy data
-    """
-    csv_content = """timestamp,x,y,z,activity_count
-2023-01-01T00:00:00Z,0.1,0.2,0.3,10
-2023-01-01T00:00:01Z,0.2,0.3,0.4,15
-2023-01-01T00:00:02Z,0.3,0.4,0.5,20
-2023-01-01T00:00:03Z,0.4,0.5,0.6,25
-2023-01-01T00:00:04Z,0.5,0.6,0.7,30
-"""
-    return csv_content.encode('utf-8')
-
-@pytest.fixture
-def actigraphy_file_name() -> str:
-    """
-    Fixture providing a sample filename for an actigraphy data file.
-    
-    Returns:
-        A sample filename for test uploads
-    """
-    return "test_actigraphy_data.csv"
-
-# Get a logger instance for this test file
-logger = logging.getLogger(__name__)
-
-# Sample data for tests
-TEST_PATIENT_ID = "649b0b2d-6b32-4955-a30e-46bd447e2bcb"
