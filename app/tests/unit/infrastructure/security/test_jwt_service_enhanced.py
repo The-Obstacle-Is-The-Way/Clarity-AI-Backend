@@ -5,6 +5,7 @@ This test suite provides comprehensive coverage for JWT token generation,
 validation, and management to ensure secure authentication within the platform.
 """
 
+import asyncio
 from datetime import datetime, timedelta, timezone  # Corrected import
 
 # from app.domain.utils.datetime_utils import UTC # Use timezone.utc directly
@@ -34,6 +35,16 @@ TEST_SECRET_KEY = "enhanced-secret-key-for-testing-purpose-only-32+"
 TEST_ALGORITHM = "HS256"
 TEST_ISSUER = "test_issuer_enhanced"
 TEST_AUDIENCE = "test_audience_enhanced"
+
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    # The loop should be closed at the end of the test
+    loop.close()
+
 
 @pytest.fixture
 def test_settings() -> Settings:

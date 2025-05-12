@@ -6,11 +6,21 @@ serialization, error handling, and TTL management.
 """
 
 import json
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.infrastructure.cache.redis_cache import RedisCache
+
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    # The loop should be closed at the end of the test
+    loop.close()
 
 
 @pytest.fixture

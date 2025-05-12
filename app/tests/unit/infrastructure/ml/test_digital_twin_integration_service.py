@@ -6,6 +6,7 @@ coordinates between different ML microservices to generate comprehensive
 patient insights.
 """
 
+import asyncio
 from unittest.mock import AsyncMock
 from uuid import uuid4
 

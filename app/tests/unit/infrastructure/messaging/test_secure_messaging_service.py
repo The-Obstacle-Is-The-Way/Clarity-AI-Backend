@@ -4,6 +4,7 @@ Tests for the Secure Messaging Service.
 
 import time
 import uuid
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
