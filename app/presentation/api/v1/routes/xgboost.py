@@ -168,13 +168,13 @@ async def get_model_info_by_id(
 
 
 @router.get("/info/{model_type}", response_model=ModelInfoResponse)
-async def get_model_info(
+async def get_model_info_by_type(
     model_type: str,
     xgboost_service: XGBoostDep,
     user: UserDep,
 ) -> ModelInfoResponse:
     """
-    Get information about an XGBoost model.
+    Get information about an XGBoost model by type.
     
     This endpoint returns metadata about the requested XGBoost model,
     including its purpose, performance metrics, and version.
