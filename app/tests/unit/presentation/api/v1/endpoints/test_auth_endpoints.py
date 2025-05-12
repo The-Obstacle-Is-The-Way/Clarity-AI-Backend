@@ -51,6 +51,7 @@ TEST_INACTIVE_USER_ID = "00000000-0000-0000-0000-000000000002"
 
 
 @pytest.fixture(scope="session", autouse=True)
+@pytest.mark.asyncio
 async def setup_database() -> None:
     """Create database tables before running tests."""
     # Create in-memory database for testing
@@ -207,6 +208,7 @@ def mock_dependencies(
 
 
 # Tests for login endpoint
+@pytest.mark.asyncio
 async def test_login_success(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
@@ -239,6 +241,7 @@ async def test_login_success(
     }
 
 
+@pytest.mark.asyncio
 async def test_login_invalid_credentials(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
@@ -257,6 +260,7 @@ async def test_login_invalid_credentials(
     assert response.json()["detail"] == "Invalid credentials" # Updated expected string
 
 
+@pytest.mark.asyncio
 async def test_login_inactive_account(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
@@ -276,6 +280,7 @@ async def test_login_inactive_account(
 
 
 # Tests for refresh token endpoint
+@pytest.mark.asyncio
 async def test_refresh_token_success(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
@@ -301,6 +306,7 @@ async def test_refresh_token_success(
     # assert response.json().get("token_type") == "bearer"
 
 
+@pytest.mark.asyncio
 async def test_refresh_token_invalid(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
@@ -317,6 +323,7 @@ async def test_refresh_token_invalid(
 
 
 # Test for session info endpoint
+@pytest.mark.asyncio
 async def test_session_info(
     client: TestClient, 
     mock_dependencies: Callable
