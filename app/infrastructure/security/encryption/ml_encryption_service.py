@@ -212,15 +212,11 @@ class MLEncryptionService(BaseEncryptionService):
         return np.array(embedding_list)
         
     def encrypt_tensors(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
-        """
-        Encrypt a dictionary of tensor data.
+        """Alias for encrypt_tensors method to match tests."""
+        return self._encrypt_tensors_impl(tensors)
         
-        Args:
-            tensors: Dictionary of tensor name to NumPy array
-            
-        Returns:
-            Dictionary with encrypted tensors
-        """
+    def _encrypt_tensors_impl(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
+        """Implementation of encrypt_tensors to avoid recursive calls."""
         if tensors is None:
             return None
             
@@ -234,7 +230,7 @@ class MLEncryptionService(BaseEncryptionService):
                 result[key] = self.encrypt_string(json.dumps(tensor_list))
                 
         return result
-        
+    
     def decrypt_tensors(self, encrypted_tensors: Dict[str, str]) -> Dict[str, np.ndarray]:
         """
         Decrypt a dictionary of encrypted tensors.
@@ -635,93 +631,6 @@ class MLEncryptionService(BaseEncryptionService):
                 
         return result
         
-    # Method aliases to match test expectations
-    def encrypt_tensors(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
-        """Alias for encrypt_tensors method to match tests."""
-        return self._encrypt_tensors_impl(tensors)
-        
-    def _encrypt_tensors_impl(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
-        """Implementation of encrypt_tensors to avoid recursive calls."""
-        if tensors is None:
-            return None
-            
-        result = {}
-        for key, tensor in tensors.items():
-            if tensor is None:
-                result[key] = None
-            else:
-                # Convert tensor to list for serialization
-                tensor_list = tensor.tolist() if isinstance(tensor, np.ndarray) else tensor
-                result[key] = self.encrypt_string(json.dumps(tensor_list))
-                
-        return result
-        
-    def encrypt_ml_data(self, ml_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Alias for encrypt_ml_data to match tests."""
-        return self._encrypt_ml_data_impl(ml_data)
-        
-    def _encrypt_ml_data_impl(self, ml_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Implementation of encrypt_ml_data."""
-        if ml_data is None:
-            return None
-            
-        result = {}
-        
-        # List of fields that should always be encrypted (potential PHI)
-        sensitive_fields = {
-            "patient_identifiers", "feature_names", "patient_data", 
-            "demographics", "notes", "medical_history"
-        }
-        
-        # List of fields that should never be encrypted (non-PHI)
-        non_sensitive_fields = {
-            "model_type", "version", "created_at", "updated_at", 
-            "hyperparameters", "performance_metrics"
-        }
-        
-        for key, value in ml_data.items():
-            # Always encrypt sensitive fields
-            if key in sensitive_fields:
-                if isinstance(value, dict):
-                    # For nested dictionaries, encrypt all values
-                    result[key] = {k: self.encrypt_string(v) if isinstance(v, (str, int, float)) else 
-                                  self.encrypt_string(json.dumps(v)) for k, v in value.items()}
-                else:
-                    # For simple values, encrypt directly
-                    result[key] = self.encrypt_string(json.dumps(value))
-                    
-            # Never encrypt non-sensitive fields
-            elif key in non_sensitive_fields:
-                result[key] = value
-                
-            # Special handling for metadata
-            elif key == "metadata":
-                # Metadata might contain mixed sensitive/non-sensitive info
-                if isinstance(value, dict):
-                    result[key] = {k: self.encrypt_string(v) if k in ["author", "department", "notes"] else v 
-                                  for k, v in value.items()}
-                else:
-                    result[key] = value
-                    
-            # Special handling for embeddings
-            elif key == "embeddings":
-                if isinstance(value, dict):
-                    # For dictionary of embeddings, encrypt each one
-                    result[key] = {k: self.encrypt_embeddings(v) for k, v in value.items()}
-                else:
-                    # For single embedding value
-                    result[key] = self.encrypt_embeddings(value)
-                    
-            # Default: encrypt if it looks like PHI based on field name
-            elif any(phi_term in key.lower() for phi_term in ["patient", "name", "id", "ssn", "address", "phone", "email", "dob"]):
-                result[key] = self.encrypt_string(json.dumps(value))
-                
-            # Otherwise, keep as is
-            else:
-                result[key] = value
-                
-        return result
-
     def encrypt_embeddings(self, embeddings: List[float]) -> str:
         """
         Encrypt vector embeddings for secure storage.
