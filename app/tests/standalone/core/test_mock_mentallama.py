@@ -7,6 +7,7 @@ behavior for testing purposes. The tests verify initialization, error handling,
 and all core psychiatry analysis features.
 """
 
+import asyncio
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +22,16 @@ from app.infrastructure.ml.mentallama.mock_service import MockMentaLLaMA
 
 # Import PHI service needed for mock init
 from app.infrastructure.ml.phi_detection.service import PHIDetectionService
+
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    # The loop should be closed at the end of the test
+    loop.close()
 
 
 @pytest.fixture(scope="function")

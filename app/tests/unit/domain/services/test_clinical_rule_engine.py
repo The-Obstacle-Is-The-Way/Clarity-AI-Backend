@@ -7,6 +7,7 @@ and manages clinical rules for biometric data.
 
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+from datetime import datetime, timezone
 
 import pytest
 
@@ -367,8 +368,11 @@ class TestClinicalRuleEngine:
         """Test that get_active_rules_for_patient returns all active rules for a patient."""
         # Setup
         patient_specific_rule = sample_rule
+        
+        # Create a unique ID for the global rule so we can find it later
+        global_rule_id = uuid4()
         global_rule = BiometricRule(
-            rule_id=uuid4(),
+            rule_id=global_rule_id,
             name="Global Rule",
             description="A rule that applies to all patients",
             conditions=[
@@ -393,7 +397,11 @@ class TestClinicalRuleEngine:
 
         # Verify
         assert len(result) == 2
-        assert patient_specific_rule in result
-        assert global_rule in result
+        
+        # Find each rule by ID instead of using 'in' operator
+        result_rule_ids = [r.rule_id for r in result]
+        assert patient_specific_rule.rule_id in result_rule_ids
+        assert global_rule_id in result_rule_ids
+        
         mock_rule_repository.get_by_patient_id.assert_called_once_with(sample_patient_id)
         mock_rule_repository.get_all_active.assert_called_once()

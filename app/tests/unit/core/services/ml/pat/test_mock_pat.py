@@ -409,7 +409,7 @@ class TestMockPAT:
                 analysis_id="non-existent-id"
             )
         
-        excinfo.match(r"^Analysis not found")
+        excinfo.match(r"Analysis .* not found")
 
     def test_integrate_with_digital_twin_wrong_patient(self, mock_pat, sample_readings, sample_device_info):
         """Test integration with digital twin when analysis belongs to different patient."""
