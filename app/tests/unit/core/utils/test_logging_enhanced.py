@@ -63,8 +63,8 @@ class TestGetLogger:
 
         # Mock the PHISanitizingFilter to avoid circular imports
         with patch("app.core.utils.logging.PHISanitizingFilter", return_value=MagicMock()) as mock_phi_filter:
-            with patch("app.core.utils.logging.StreamHandler", return_value=mock_handler) as mock_stream_handler:
-                with patch("app.core.utils.logging.Formatter", return_value=mock_formatter) as mock_formatter_class:
+            with patch("app.core.utils.logging.logging.StreamHandler", return_value=mock_handler) as mock_stream_handler:
+                with patch("app.core.utils.logging.logging.Formatter", return_value=mock_formatter) as mock_formatter_class:
                     # Act: Call the function
                     result_logger = get_logger(logger_name=TEST_LOGGER_NAME)
                     
