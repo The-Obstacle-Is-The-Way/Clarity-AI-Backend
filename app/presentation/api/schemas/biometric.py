@@ -13,6 +13,7 @@ from uuid import UUID
 from pydantic import Field, validator
 
 from app.core.domain.entities.biometric import BiometricType
+from app.core.utils.date_utils import utcnow
 
 # Corrected import path for BaseModelConfig
 from app.presentation.api.schemas.xgboost import BaseModelConfig
@@ -28,7 +29,7 @@ class BiometricBase(BaseModelConfig):
     @validator("timestamp")
     def validate_timestamp(cls, v):
         """Ensure timestamp is not in the future."""
-        if v > datetime.now():
+        if v > utcnow():
             raise ValueError("Timestamp cannot be in the future")
         return v
 

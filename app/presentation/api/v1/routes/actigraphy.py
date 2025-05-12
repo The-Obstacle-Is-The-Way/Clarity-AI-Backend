@@ -3,7 +3,7 @@
 Handles endpoints related to retrieving and managing actigraphy data.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 import uuid
 from typing import Any, Dict, List, Optional, Literal
 import random
@@ -18,6 +18,7 @@ from app.presentation.api.dependencies.auth import CurrentUserDep
 from app.presentation.api.dependencies.database import get_db
 from app.core.domain.entities.user import UserRole, User
 from app.infrastructure.logging.audit_logger import audit_log_phi_access
+from app.core.utils.date_utils import utcnow, format_date_iso
 
 # Import centralized schemas
 from app.presentation.api.schemas.actigraphy import (
@@ -51,7 +52,7 @@ class MockPATService(IPATService):
     
     async def analyze_actigraphy(self, data: ActigraphyAnalysisRequest) -> dict[str, Any]:
         """Mock implementation of actigraphy analysis. Now returns a dict matching AnalyzeActigraphyResponse structure."""
-        now = datetime.now()
+        now = utcnow()
         mock_analysis_id = uuid.uuid4()
 
         # Create a mock ActigraphyAnalysisResult
@@ -75,7 +76,7 @@ class MockPATService(IPATService):
         return {
             "embeddings": [0.1, 0.2, 0.3, 0.4, 0.5],
             "patient_id": data.get("patient_id"),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": format_date_iso(utcnow())
         }
 
 router = APIRouter()
@@ -214,7 +215,7 @@ async def get_model_info(
         model_name="Actigraph v1",
         model_version="1.0.0",
         supported_analysis_types=[AnalysisType.SLEEP, AnalysisType.ACTIVITY],
-        last_updated=datetime.now(timezone.utc),  # Use timezone-aware datetime
+        last_updated=utcnow(),  # Use timezone-aware datetime
         model_id="actigraph-v1",
         # Add these fields to make tests pass
         message="Actigraphy model information retrieved successfully",
@@ -246,7 +247,7 @@ async def get_actigraphy_summary_stub(
 ):
     # Return a compliant ActigraphySummaryResponse
     mock_daily_summary = DailySummary(
-        date=datetime.now(), 
+        date=utcnow(),
         total_sleep_time=480.0, 
         sleep_efficiency=0.85, 
         total_steps=5000, 

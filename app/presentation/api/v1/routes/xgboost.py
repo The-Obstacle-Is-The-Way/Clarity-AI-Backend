@@ -7,13 +7,13 @@ the new presentation layer endpoints following SOLID principles.
 """
 
 from typing import Annotated
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 # Import from the new clean architecture
 from app.core.domain.entities.user import User
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
+from app.core.utils.date_utils import utcnow, format_date_iso
 from app.infrastructure.di.provider import get_service_instance
 from app.presentation.api.dependencies.auth import get_current_user, verify_provider_access
 from app.presentation.api.schemas.xgboost import (
@@ -146,7 +146,7 @@ async def predict_risk(
             risk_level=prediction_result["risk_level"],
             risk_score=prediction_result["risk_score"],
             confidence=prediction_result["confidence"],
-            timestamp=datetime.now().isoformat(), # Explicitly provide required field
+            timestamp=format_date_iso(utcnow()), # Use timezone-aware datetime
             time_frame_days=90, # Explicitly provide required field
             # Other fields rely on defaults or are optional
         )
