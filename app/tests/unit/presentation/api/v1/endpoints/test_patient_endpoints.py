@@ -49,57 +49,17 @@ async def lifespan_wrapper(app: FastAPI) -> AsyncGenerator[None, None]:
         finally:
             await app.router.shutdown()
 
-# Fixture for a JWT service that properly handles the test token
-@pytest.fixture
-def mock_jwt_service() -> AsyncMock:
-    """Provides a mocked JWT service that accepts our test token."""
-    mock_service = AsyncMock(spec=JWTServiceInterface)
-    
-    async def mock_decode_token(token: str) -> TokenPayload:
-        # Handle a real-looking JWT token format
-        if token.startswith("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"):
-            # For a properly formatted test token, return a valid payload with consistent user ID
-            # This ID must match the one in mock_current_user for consistency
-            user_id = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-            return TokenPayload(
-                sub=user_id,
-                exp=9999999999,  # Far future expiry
-                iat=1713830000,  # Issue time
-                jti="test-token-id",
-                type="access",
-                roles=["read:patients", "write:clinical_notes"],  # Example scopes
-                iss="test-issuer",
-                aud="test-audience"
-            )
-        # For backward compatibility
-        elif token == "valid.jwt.token":
-            return TokenPayload(
-                sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",  # Consistent user ID
-                exp=9999999999,
-                iat=1713830000,
-                jti="test-token-id",
-                type="access",
-                roles=["read:patients", "write:clinical_notes"],
-                iss="test-issuer",
-                aud="test-audience"
-            )
-        # Otherwise, reject the token
-        raise InvalidTokenException(f"Invalid test token: {token}")
-    
-    mock_service.decode_token.side_effect = mock_decode_token
-    return mock_service
-
 # Fixture for App instance and AsyncClient
 @pytest.fixture(scope="function") 
-async def client(test_settings: AppSettings, mock_jwt_service: AsyncMock, mock_current_user: DomainUser) -> Tuple[FastAPI, AsyncClient]:
+async def client(test_settings: AppSettings, global_mock_jwt_service: MagicMock, authenticated_user: DomainUser) -> Tuple[FastAPI, AsyncClient]:
     """Provides a FastAPI app instance and an AsyncClient instance scoped per test function."""
     app_instance = create_application(settings_override=test_settings)
     
-    # Override the JWT service dependency to use our mock
-    app_instance.dependency_overrides[get_jwt_service] = lambda: mock_jwt_service
+    # Override the JWT service dependency to use our global mock
+    app_instance.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
     
-    # Also override the current user dependency for all tests
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
+    # Override the current user dependency with authenticated_user
+    app_instance.dependency_overrides[get_current_user] = lambda: authenticated_user
     
     async with lifespan_wrapper(app_instance): # MODIFIED: Wrap client in lifespan
         async with AsyncClient(transport=ASGITransport(app=app_instance), base_url="http://test") as async_client: # Use transport explicitly
@@ -132,12 +92,18 @@ def mock_current_user() -> DomainUser:
 
 # Fixture for providing auth header to test client
 @pytest.fixture
-def auth_headers(mock_current_user: DomainUser) -> dict[str, str]:
+async def auth_headers(global_mock_jwt_service: MagicMock, authenticated_user: DomainUser) -> dict[str, str]:
     """Provides headers with a test JWT token for authenticated requests."""
-    # Create a properly formatted JWT token for testing (header.payload.signature)
-    # This matches the format expected by the JWT service
-    test_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZXhwIjo5OTk5OTk5OTk5LCJpYXQiOjE1MTYyMzkwMjIsInR5cGUiOiJhY2Nlc3MiLCJyb2xlcyI6WyJyZWFkOnBhdGllbnRzIiwid3JpdGU6Y2xpbmljYWxfbm90ZXMiXX0.valid_jwt_token"
-    return {"Authorization": f"Bearer {test_token}"}
+    # Create a token using the global mock JWT service
+    token_data = {
+        "sub": str(authenticated_user.id),
+        "roles": [role.value for role in authenticated_user.roles],
+        "username": authenticated_user.username,
+        "email": authenticated_user.email,
+        "type": "access"
+    }
+    access_token = await global_mock_jwt_service.create_access_token(data=token_data)
+    return {"Authorization": f"Bearer {access_token}"}
 
 # Update based on PatientRead schema
 TEST_PATIENT_ID = str(uuid.uuid4())
