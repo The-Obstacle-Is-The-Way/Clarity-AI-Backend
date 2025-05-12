@@ -288,80 +288,62 @@ decryption methods for strings and dictionaries.
             raise ValueError("Encryption operation failed.") from e
 
     def decrypt(self, data: Union[str, bytes], context: Optional[Dict[str, Any]] = None) -> Optional[bytes]:
-        """Decrypts data that was encrypted by this service.
-        Handles both string (version-prefixed, base64-encoded) and raw bytes input.
-        Returns the decrypted data as bytes, or None if input is None.
         """
-        logger.debug(f"[BaseEncryptionService.decrypt] CALLED. Input data TYPE: {type(data)}, VALUE (first 50): {str(data)[:50]}") # DEBUG
-
-        if not data:
-            logger.warning("Decrypt called with empty or None data.")
-            # Return None if input is None or empty string/bytes
-            return None if data is None else b'' 
+        Decrypt data that was encrypted by this service.
+        
+        Args:
+            data: The encrypted data to decrypt
+            context: Optional contextual information for logging/security
             
+        Returns:
+            Optional[bytes]: Decrypted data as bytes or None if input was None
+            
+        Raises:
+            ValueError: If decryption fails due to invalid data or tampering
+        """
+        if data is None:
+            return None
+        
+        # Handle both string and bytes inputs
         try:
-            # Handle both string and bytes input
-            if isinstance(data, bytes):
-                # If bytes, try decoding to utf-8 to check for v1: prefix
-                try:
-                    potential_str = data.decode('utf-8')
-                    if potential_str.startswith(self.VERSION_PREFIX):
-                        # It was a string stored as bytes, extract base64 part
-                        encrypted_data_b64 = potential_str[len(self.VERSION_PREFIX):]
-                        try:
-                            encrypted_data = base64.urlsafe_b64decode(encrypted_data_b64)
-                            has_version_prefix = True
-                        except (binascii.Error, ValueError) as e:
-                            logger.error(f"Base64 decoding failed for prefix-checked bytes input: {e}")
-                            raise ValueError("Decryption failed: Invalid base64 encoding after prefix") from e
-                    else:
-                        # Raw bytes, no prefix
-                        encrypted_data = data
-                        has_version_prefix = False
-                except UnicodeDecodeError:
-                    # Not a UTF-8 string, assume raw bytes
-                    encrypted_data = data
-                    has_version_prefix = False
-            elif isinstance(data, str):
+            if isinstance(data, str):
+                # String input - handle version prefix if present
                 if data.startswith(self.VERSION_PREFIX):
-                    encrypted_data_b64 = data[len(self.VERSION_PREFIX):]
-                    try:
-                        # Encode the string slice to bytes before decoding base64
-                        encrypted_data = base64.urlsafe_b64decode(encrypted_data_b64.encode('utf-8'))
-                        has_version_prefix = True
-                    except (binascii.Error, ValueError) as e:
-                        logger.error(f"Base64 decoding failed for string input: {e}. Input slice: {encrypted_data_b64[:50]}...", exc_info=False)
-                        raise ValueError("Decryption failed: Invalid base64 encoding") from e
+                    # Remove version prefix
+                    encrypted_data = data[len(self.VERSION_PREFIX):]
+                    encrypted_bytes = encrypted_data.encode('utf-8')
                 else:
-                    # String without prefix - treat as invalid format for decryption
-                    logger.warning("Attempted to decrypt string without version prefix.")
-                    raise ValueError("Invalid encrypted data format: Missing version prefix")
+                    logger.warning(f"Encrypted string lacks expected version prefix '{self.VERSION_PREFIX}'. Treating as raw encrypted data.")
+                    encrypted_bytes = data.encode('utf-8')
             else:
-                logger.error(f"Invalid data type for decryption: {type(data)}")
-                raise TypeError("Data for decryption must be str or bytes")
-
-            # If data was raw bytes without prefix, log warning (potential issue)
-            if not has_version_prefix:
-                 logger.warning("Decrypting raw bytes without version prefix. Ensure this is intended.")
-
-            # Actual Decryption
+                # Bytes input - check for version prefix in bytes
+                if data.startswith(self._version_prefix_bytes):
+                    encrypted_bytes = data[len(self._version_prefix_bytes):]
+                else:
+                    # No version prefix, treat as raw encrypted data
+                    encrypted_bytes = data
+                
+            # Try with primary cipher first
             try:
-                decrypted_bytes = self.cipher.decrypt(encrypted_data)
-                logger.debug(f"[BaseEncryptionService.decrypt] SUCCESS. Output TYPE: {type(decrypted_bytes)}") # DEBUG
-                return decrypted_bytes
-            except InvalidToken as e:
-                logger.error("Decryption failed: InvalidToken (likely tampered or wrong key)")
-                raise ValueError("Decryption failed: Invalid token") from e
-            # Removed attempt with previous key for simplification, can be added back if rotation needed
-
-        except ValueError as e:
-             # Catch ValueErrors raised above (format, base64) and the wrapped InvalidToken
-            logger.error(f"Decryption failed: {e}", exc_info=True)
-            raise # Re-raise the specific ValueError
+                return self.cipher.decrypt(encrypted_bytes)
+            except InvalidToken:
+                if self.previous_cipher:
+                    try:
+                        logger.debug("Primary key failed, trying with previous key.")
+                        return self.previous_cipher.decrypt(encrypted_bytes)
+                    except InvalidToken:
+                        raise ValueError("Decryption failed: Invalid token")
+                else:
+                    raise ValueError("Decryption failed: Invalid token")
+                
         except Exception as e:
-            logger.error(f"Unexpected error during decryption: {e}", exc_info=True)
-            # Wrap unexpected errors
-            raise ValueError(f"Decryption failed: Unexpected error ({type(e).__name__})") from e
+            if isinstance(e, ValueError) and "Decryption failed" in str(e):
+                # Re-raise already formatted error
+                raise
+            else:
+                # Format all other errors
+                logger.error(f"Decryption error: {e}", exc_info=True)
+                raise ValueError(f"Decryption failed: {e}")
 
     def encrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively encrypt all string values in a dictionary.

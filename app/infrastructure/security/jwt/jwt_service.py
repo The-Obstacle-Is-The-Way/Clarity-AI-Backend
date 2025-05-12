@@ -250,32 +250,56 @@ class JWTService(IJwtService):
                 "require_iat": True,
             }
             
-            payload_dict = jwt.decode(
+            # First, decode token without verification to check type
+            try:
+                unverified_payload = jwt.decode(
+                    token, 
+                    options={"verify_signature": False}
+                )
+                token_type = unverified_payload.get("type", TokenType.ACCESS)
+            except Exception:
+                # If this fails, assume it's an access token for verification purposes
+                token_type = TokenType.ACCESS
+            
+            # Perform full validation
+            payload = jwt.decode(
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],
                 audience=self.audience,
                 issuer=self.issuer,
-                options=options
+                options=options,
             )
             
-            # Parse the payload into our Pydantic model for validation and strongly-typed access
+            # Convert to TokenPayload model for validation and easier attribute access
             try:
-                payload = TokenPayload(**payload_dict)
-                return payload
-            except ValidationError as e:
-                logger.error(f"JWT payload validation failed: {e}")
-                raise InvalidTokenException(f"Invalid token payload: {e}") from e
+                # Ensure roles exists (may be empty list)
+                if "roles" not in payload:
+                    payload["roles"] = []
+                
+                # Ensure sub is present
+                if "sub" not in payload and "user_id" in payload:
+                    payload["sub"] = payload["user_id"]
+                
+                # Ensure proper type
+                if "type" not in payload:
+                    payload["type"] = token_type  # Use the extracted or default type
+                
+                token_payload = TokenPayload(**payload)
+                return token_payload
+            except ValidationError as ve:
+                logger.error(f"Token payload validation error: {ve}")
+                raise InvalidTokenException(f"Token payload validation failed: {ve}")
                 
         except ExpiredSignatureError as e:
             logger.warning(f"Token expired: {e}")
-            raise TokenExpiredException("Signature has expired") from e
+            raise TokenExpiredException("Token has expired.")
         except JWTError as e:
             logger.warning(f"JWT error: {e}")
-            raise InvalidTokenException(f"Invalid token: {e}") from e
+            raise InvalidTokenException(f"Invalid token: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error decoding token: {e}")
-            raise InvalidTokenException(f"Token verification failed: {e}") from e
+            logger.error(f"Unexpected error during token decoding: {e}", exc_info=True)
+            raise AuthenticationError(f"Token validation error: {e}")
 
     def verify_refresh_token(self, token: str) -> TokenPayload:
         """Verifies a refresh token and returns its payload."""
