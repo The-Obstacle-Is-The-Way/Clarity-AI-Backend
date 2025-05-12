@@ -170,7 +170,7 @@ def mock_current_user() -> User:
         full_name="Test Admin User",
         password_hash="fake_hash",
         roles={UserRole.ADMIN},
-        status=UserStatus.ACTIVE
+        account_status=UserStatus.ACTIVE
     )
     return mock_user
 

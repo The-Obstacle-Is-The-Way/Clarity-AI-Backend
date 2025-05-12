@@ -197,6 +197,7 @@ def mock_get_current_user() -> User:
         is_active=True,
         is_verified=True,
         email_verified=True,
+        account_status=UserStatus.ACTIVE
     )
 
 

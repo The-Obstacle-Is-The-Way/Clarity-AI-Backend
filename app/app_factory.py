@@ -398,9 +398,8 @@ def create_application(
     if not skip_auth_middleware: # CHECK THE FLAG
         logger.info("Adding AuthenticationMiddleware to the application.")
         effective_jwt_service = jwt_service_override if jwt_service_override is not None else JWTService(settings=app_settings)
-        fastapi_app.add_middleware(
+        app_instance.add_middleware(
             AuthenticationMiddleware,
-            app=fastapi_app,
             jwt_service=effective_jwt_service,
             public_paths=set(app_settings.PUBLIC_PATHS),
             public_path_regexes=app_settings.PUBLIC_PATH_REGEXES

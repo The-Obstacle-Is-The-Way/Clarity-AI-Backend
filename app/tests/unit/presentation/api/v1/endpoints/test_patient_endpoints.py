@@ -73,7 +73,7 @@ def mock_current_user() -> DomainUser:
         full_name="Test User",
         password_hash="hashed_password_for_testing", # Required by dataclass
         roles={UserRole.ADMIN}, # Dataclass expects set[UserRole]
-        status=UserStatus.ACTIVE # Dataclass expects UserStatus
+        account_status=UserStatus.ACTIVE # Dataclass expects UserStatus
     )
 
 # Update based on PatientRead schema

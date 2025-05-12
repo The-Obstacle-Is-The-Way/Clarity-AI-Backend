@@ -32,7 +32,7 @@ from app.core.config import Settings
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service as get_jwt_service_provider
 from app.core.models.token_models import TokenPayload
-from app.core.domain.entities.user import UserRole
+from app.core.domain.entities.user import UserRole, User, UserStatus
 from app.domain.exceptions.token_exceptions import InvalidTokenException
 # Import the predefined test user UUIDs
 from app.tests.integration.utils.test_db_initializer import TEST_USER_ID, TEST_CLINICIAN_ID
