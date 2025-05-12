@@ -33,7 +33,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base, Timestam
 # Break circular import by using string reference to User model
 # This follows SQLAlchemy best practices for circular relationship references
 from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
-from app.infrastructure.security.encryption.encryption_service import EncryptionService
+# from app.infrastructure.security.encryption.encryption_service import EncryptionService # Old import removed
 from app.core.config import settings
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON
 # from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location # This line will be removed

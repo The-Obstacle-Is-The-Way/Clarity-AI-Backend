@@ -183,11 +183,13 @@ class TestEncryptionService:
         # 1. Test decrypting raw invalid bytes (should fail format check)
         with pytest.raises(ValueError) as excinfo_invalid:
             encryption_service.decrypt(invalid_data)
-        assert "Invalid encrypted data format" in str(excinfo_invalid.value) # Expect format error first
+        # Ensure the error message is specifically about the format for raw bytes
+        assert "Invalid encrypted data format" in str(excinfo_invalid.value)
 
-        # 2. Test decrypting the tampered *string* (should fail InvalidToken)
-        with pytest.raises((ValueError, InvalidToken)) as excinfo_tampered:
+        # 2. Test decrypting the tampered *string* (should fail InvalidToken wrapped in ValueError)
+        with pytest.raises(ValueError) as excinfo_tampered:
             encryption_service.decrypt(tampered_data_str)
+        # Ensure the error message is specifically about decryption failure for tampered data
         assert "Decryption failed" in str(excinfo_tampered.value)
 
         # 3. Test decrypting None
@@ -230,7 +232,10 @@ class TestFieldEncryption:
             "demographics.name.last",
             "demographics.date_of_birth",
             "demographics.ssn",
-            "demographics.address",
+            "demographics.address.street",
+            "demographics.address.city",
+            "demographics.address.state",
+            "demographics.address.zip",
             "demographics.contact.phone",
             "demographics.contact.email",
             "demographics.race",

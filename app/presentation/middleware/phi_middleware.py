@@ -23,7 +23,7 @@ from starlette.types import ASGIApp
 from app.core.domain.exceptions.phi_exceptions import PHIInUrlError, PHISanitizationError
 from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 from app.infrastructure.di.container import get_container
-from app.infrastructure.security.encryption import EncryptionService
+from app.infrastructure.security.encryption import BaseEncryptionService
 
 # Configure PHI audit logger
 phi_audit_logger = logging.getLogger("phi_audit")
@@ -82,7 +82,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             self.encryption_service = container.get(IEncryptionService)
         except KeyError:
             # Create encryption service if not available
-            self.encryption_service = EncryptionService()
+            self.encryption_service = BaseEncryptionService()
             container.register(IEncryptionService, self.encryption_service)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

@@ -19,18 +19,23 @@ from app.infrastructure.security.encryption.base_encryption_service import (
     get_encryption_key,
 )
 
-# Include the EncryptionService implementation
-from app.infrastructure.security.encryption.encryption_service import EncryptionService
-
 # Field-level encryption utilities
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
+from app.infrastructure.security.encryption.ml_encryption_service import MLEncryptionService
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# GLOBAL ENCRYPTION SERVICE INSTANCE
-# This instance can be used by other modules like SQLAlchemy TypeDecorators
-encryption_service_instance = EncryptionService()
+# Global instance for easy access, particularly for SQLAlchemy types
+# NOTE: Consider using dependency injection for better testability/configurability
+try:
+    # encryption_service_instance = EncryptionService() # OLD
+    encryption_service_instance = BaseEncryptionService() # NEW
+    logger.info("Successfully created global encryption_service_instance using BaseEncryptionService.")
+except ValueError as e:
+    logger.critical(f"Failed to initialize global encryption service instance: {e}. Encryption will not work.")
+    # Decide on fallback: raise, set to None, or use a dummy service
+    encryption_service_instance = None
 
 # PHI specific encryption functions
 def encrypt_phi(data: dict[str, Any] | str) -> dict[str, Any] | str:
@@ -101,9 +106,9 @@ def generate_phi_key() -> str:
 # Set default exports to maintain clean imports across the codebase
 __all__ = [
     'BaseEncryptionService',
-    'EncryptionService',
-    'encryption_service_instance',
     'FieldEncryptor',
+    'MLEncryptionService',
+    'encryption_service_instance',
     'decrypt_field',
     'decrypt_phi',
     'decrypt_value',

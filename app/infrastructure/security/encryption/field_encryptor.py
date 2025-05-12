@@ -159,7 +159,7 @@ class FieldEncryptor:
                      logger.debug(f"Value for field '{field}' appears already encrypted, skipping encryption.")
             else: # Decrypt
                 if isinstance(value, str) and value.startswith(self._encryption.VERSION_PREFIX):
-                    decrypted_value = self._encryption.decrypt(value)
+                    decrypted_value = self._encryption.decrypt_field(value)
                     obj[field] = decrypted_value
                 # else: Value is not a string or doesn't have the prefix, assume not encrypted
 

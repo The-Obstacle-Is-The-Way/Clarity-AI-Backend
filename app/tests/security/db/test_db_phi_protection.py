@@ -54,7 +54,7 @@ try:
     )
     # AsyncSQLAlchemyUnitOfWork is now imported globally
     # from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import AsyncSQLAlchemyUnitOfWork as UnitOfWork # Keep alias for try block if needed
-    from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi
+    from app.infrastructure.security.encryption import encrypt_phi, decrypt_phi, BaseEncryptionService
     from app.domain.value_objects.address import Address as DomainAddress
     from app.domain.value_objects.emergency_contact import EmergencyContact as DomainEmergencyContact
     from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
@@ -83,7 +83,6 @@ except ImportError:
 # Import the domain entity for Patient
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.infrastructure.persistence.sqlalchemy.models import Patient
-from app.infrastructure.security.encryption import EncryptionService
 # from app.core.domain.exceptions.phi_exceptions import PHIExposureError # Removed unused import
 from app.domain.exceptions import RepositoryError
 # from sqlalchemy.exc import IntegrityError # Keep if used, or remove

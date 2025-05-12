@@ -12,7 +12,7 @@ from app.core.interfaces.services.encryption_service_interface import (
     IEncryptionService,
 )
 from app.infrastructure.di.container import get_container
-from app.infrastructure.security.encryption.encryption_service import EncryptionService
+from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 
 # Re-export from database.py for backward compatibility
 from app.presentation.api.dependencies.database import DatabaseSessionDep, get_repository
@@ -38,7 +38,7 @@ def get_encryption_service() -> IEncryptionService:
         return container.get(IEncryptionService)
     except KeyError:
         # Lazily register if not already available
-        service = EncryptionService()
+        service = BaseEncryptionService()
         container.register(IEncryptionService, service)
         return service
 

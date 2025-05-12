@@ -34,7 +34,7 @@ from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
 from app.infrastructure.persistence.sqlalchemy.models.user import User
 from app.infrastructure.security.password.hashing import pwd_context # Added import
 
-from app.infrastructure.security.encryption.encryption_service import EncryptionService
+from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
 # from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
 from app.core.config import settings
 
@@ -44,10 +44,10 @@ from app.infrastructure.persistence.sqlalchemy.models import patient as patient_
 if not hasattr(patient_module_for_esi, 'encryption_service_instance'):
     # This is a fallback/assertion, actual instance should be created in patient.py
     logging.warning("encryption_service_instance not found in patient.py module, creating a temporary one for tests.")
-    patient_module_for_esi.encryption_service_instance = EncryptionService()
+    patient_module_for_esi.encryption_service_instance = BaseEncryptionService()
 
 from app.core.exceptions.base_exceptions import PersistenceError
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import SQLAlchemyPatientRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import PatientRepository
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,12 @@ TEST_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 TEST_PATIENT_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
 @pytest_asyncio.fixture(scope="function")
-async def encryption_service_fixture() -> EncryptionService:
+async def encryption_service_fixture() -> BaseEncryptionService:
     # Uses PHI_ENCRYPTION_KEY from settings by default
-    return EncryptionService()
+    return BaseEncryptionService()
 
 @pytest_asyncio.fixture(scope="function")
-async def integration_db_session(encryption_service_fixture: EncryptionService):
+async def integration_db_session(encryption_service_fixture: BaseEncryptionService):
     original_esi = getattr(patient_module_for_esi, 'encryption_service_instance', None)
     patient_module_for_esi.encryption_service_instance = encryption_service_fixture
     
@@ -244,7 +244,7 @@ class TestPatientEncryptionIntegration:
 
 
     @pytest.mark.asyncio
-    async def test_phi_encrypted_in_database(self, integration_db_session: tuple[AsyncSession, uuid.UUID], encryption_service_fixture: EncryptionService):
+    async def test_phi_encrypted_in_database(self, integration_db_session: tuple[AsyncSession, uuid.UUID], encryption_service_fixture: BaseEncryptionService):
         session, patient_audit_log_id = integration_db_session # Correctly unpacks the tuple
         
         assert patient_audit_log_id is not None, "Patient AuditLog ID from fixture is None"
@@ -348,7 +348,7 @@ class TestPatientEncryptionIntegration:
             assert retrieved_domain_patient.medical_history == original_domain_patient.medical_history
 
     @pytest.mark.asyncio
-    async def test_encryption_error_handling(self, encryption_service_fixture: EncryptionService):
+    async def test_encryption_error_handling(self, encryption_service_fixture: BaseEncryptionService):
         logger.info("[Test] Running test_encryption_error_handling")
         
         # Test encryption/decryption of empty string
@@ -366,7 +366,7 @@ class TestPatientEncryptionIntegration:
         # Test decryption of None
         assert encryption_service_fixture.decrypt_string(None) is None
 
-        random_key_service = EncryptionService() # Will generate its own key if env var not found or different one
+        random_key_service = BaseEncryptionService() # Will generate its own key if env var not found or different one
         encrypted_by_other = random_key_service.encrypt_string("secret data")
         if encrypted_by_other == "secret data": # If encryption service is a dummy/passthrough
              logger.warning("Encryption service seems to be a passthrough; cannot test cross-key decryption meaningfully.")
