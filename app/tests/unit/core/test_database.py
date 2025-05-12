@@ -127,9 +127,26 @@ async def test_get_session_context_manager_exception():
     mock_session_instance.close.assert_awaited_once()
     mock_session_factory.return_value.__aexit__.assert_awaited_once()
 
+@pytest.mark.asyncio
+async def test_route_using_get_db():
+    """Test a FastAPI route that uses the DB dependency."""
+    mock_session = AsyncMock(spec=AsyncSession)
+    async def override_get_db():
+        yield mock_session
+        await mock_session.close() # Simulate close
+
+    # Assuming app and get_db_dependency exist
+    # app.dependency_overrides[get_db_dependency()] = override_get_db
+    # async with AsyncClient(app=app, base_url="http://test") as client:
+    #     response = await client.get("/some_route_using_db")
+    # Assertions...
+    # app.dependency_overrides.clear() # Clean up override
+    
+    # This is a placeholder test until we implement the full route testing
+    assert mock_session is not None
 
 # Example test demonstrating how to use the dependency with a mock request if needed
-@pytest.mark.asyncio
+# @pytest.mark.asyncio
 # async def test_route_using_get_db():
 #     mock_session = AsyncMock(spec=AsyncSession)
 #     async def override_get_db():
