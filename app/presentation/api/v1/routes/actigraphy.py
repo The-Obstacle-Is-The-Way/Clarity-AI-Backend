@@ -3,7 +3,7 @@
 Handles endpoints related to retrieving and managing actigraphy data.
 """
 
-from datetime import timedelta, timezone
+from datetime import timedelta, timezone, datetime
 import uuid
 from typing import Any, Dict, List, Optional, Literal
 import random
