@@ -490,13 +490,19 @@ class PHISanitizer:
         # Apply patterns one by one, checking for redaction markers after each
         result = text
         for pattern, replacement in self._compiled_patterns.items():
-            # Skip applying patterns if the string already contains a redaction marker for this pattern
-            if f"[REDACTED {pattern.pattern.split('[REDACTED ')[1].split(']')[0]}]" in result:
-                continue
-                
+            # Skip applying patterns if the string already contains a redaction marker
+            redaction_markers = ["[REDACTED NAME]", "[REDACTED SSN]", "[REDACTED PHONE]", 
+                               "[REDACTED EMAIL]", "[REDACTED ADDRESS]", "[REDACTED MRN]", 
+                               "[REDACTED DATE]", "[REDACTED DOB]"]
+            
+            # Check if replacement is a redaction marker and if it's already in the result
+            if isinstance(replacement, str) and any(marker in replacement for marker in redaction_markers):
+                marker = next((m for m in redaction_markers if m in replacement), None)
+                if marker and marker in result:
+                    continue
+                    
             # Apply the pattern, checking for modification
-            new_result = pattern.sub(replacement, result)
-            result = new_result
+            result = pattern.sub(replacement, result)
             
         return result
     
