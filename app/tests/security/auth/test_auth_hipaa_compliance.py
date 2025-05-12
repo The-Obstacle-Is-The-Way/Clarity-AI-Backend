@@ -86,9 +86,15 @@ class RoleManager:
 
     def get_role_from_token(self, token_payload):
         """Extract role from token payload."""
-        if not token_payload or 'role' not in token_payload:
+        if not token_payload:
             return "guest"
-        return token_payload['role']
+        # Handle both dict and object access
+        if isinstance(token_payload, dict) and 'role' in token_payload:
+            return token_payload['role']
+        elif hasattr(token_payload, 'role'):
+            return token_payload.role
+        else:
+            return "guest"
 
 class TestHIPAAAuthCompliance:
     """Test authentication and authorization for HIPAA compliance."""
@@ -142,7 +148,7 @@ class TestHIPAAAuthCompliance:
         """Test that valid tokens authenticate successfully."""
         payload = auth_middleware.authenticate(doctor_token)
         assert payload is not None
-        assert payload["role"] == "doctor"
+        assert (payload.role if hasattr(payload, 'role') else payload["role"]) == "doctor"
         assert "sub" in payload
         assert "exp" in payload
 
@@ -270,8 +276,8 @@ class TestHIPAAAuthCompliance:
 
         # Verify MFA information is in token
         payload = jwt_service.decode_token(mfa_token)
-        assert payload["mfa_complete"] is True
-        assert payload["auth_level"] == "2"
+        assert (payload.mfa_complete if hasattr(payload, 'mfa_complete') else payload["mfa_complete"]) is True
+        assert (payload.auth_level if hasattr(payload, 'auth_level') else payload["auth_level"]) == "2"
 
     def test_minimal_phi_in_token(self, jwt_service):
         """Test that tokens contain minimal PHI, even for authorized users."""

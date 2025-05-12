@@ -218,9 +218,9 @@ async def test_create_patient_success(client: tuple[FastAPI, AsyncClient], faker
     # Assert
     assert response.status_code == status.HTTP_201_CREATED, f"Expected 201, got {response.status_code}. Response: {response.text}"
     response_data = response.json()
-    assert response_data["first_name"] == patient_payload["first_name"]
-    assert response_data["last_name"] == patient_payload["last_name"]
-    assert response_data["date_of_birth"] == patient_payload["date_of_birth"]
+    assert response_data["first_name"] == (patient_payload.first_name if hasattr(patient_payload, 'first_name') else patient_payload["first_name"])
+    assert response_data["last_name"] == (patient_payload.last_name if hasattr(patient_payload, 'last_name') else patient_payload["last_name"])
+    assert response_data["date_of_birth"] == (patient_payload.date_of_birth if hasattr(patient_payload, 'date_of_birth') else patient_payload["date_of_birth"])
     assert uuid.UUID(response_data["id"])  # Should be a valid UUID
     assert "created_at" in response_data
     assert "updated_at" in response_data

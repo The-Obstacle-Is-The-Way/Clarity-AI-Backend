@@ -146,7 +146,7 @@ async def get_current_user(
         raise credentials_exception
 
     try:
-        user_id_str_from_payload = str(payload["sub"])
+        user_id_str_from_payload = str(payload.sub) if hasattr(payload, 'sub') else str(payload["sub"])
         user_id_from_token = uuid.UUID(user_id_str_from_payload)
         user = await user_repo.get_user_by_id(user_id=user_id_from_token)
         

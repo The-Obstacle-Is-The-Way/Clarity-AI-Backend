@@ -46,6 +46,8 @@ if not hasattr(patient_module_for_esi, 'encryption_service_instance'):
     logging.warning("encryption_service_instance not found in patient.py module, creating a temporary one for tests.")
     patient_module_for_esi.encryption_service_instance = EncryptionService()
 
+from app.core.exceptions.base_exceptions import PersistenceError
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import SQLAlchemyPatientRepository
 
 logger = logging.getLogger(__name__)
 

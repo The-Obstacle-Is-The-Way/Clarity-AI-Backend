@@ -88,11 +88,7 @@ class MentalLLaMAInferenceError(MentalLLaMABaseException):
 
         # Use provided details or default to empty, then merge
         current_details = details or {}
-        combined_details = {
-            # model_name and inference_parameters will be added from current_details if present,
-            # or from self if not.
-            **current_details 
-        }
+        combined_details = current_details.copy()
         if "model_name" not in combined_details and self.model_name is not None:
             combined_details["model_name"] = self.model_name
         if "inference_parameters" not in combined_details: # self.inference_parameters is already a dict

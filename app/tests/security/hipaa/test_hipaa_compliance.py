@@ -132,9 +132,8 @@ except ImportError as e:
         # For expired token test - check if this specific token structure exists
         try:
             payload = jwt.decode(token, "test_key", algorithms=["HS256"], options={"verify_signature": False})
-            if "exp" in payload and isinstance(payload["exp"], (int, float)):
-                # If token has an exp claim in the past
-                exp_time = datetime.fromtimestamp(payload["exp"], tz=UTC)
+            if (hasattr(payload, 'exp') and isinstance(payload.exp, (int, float))) or ("exp" in payload and isinstance(payload["exp"], (int, float))):
+                exp_time = datetime.fromtimestamp(payload.exp if hasattr(payload, 'exp') else payload["exp"], tz=UTC)
                 if exp_time < datetime.now(UTC):
                     raise jwt.JWTError("Token has expired")
         except jwt.JWTError:

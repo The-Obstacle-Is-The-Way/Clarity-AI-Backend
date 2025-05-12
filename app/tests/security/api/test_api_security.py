@@ -134,7 +134,7 @@ class TestAuthorization:
         client, current_fastapi_app = client_app_tuple_func_scoped
         headers = get_valid_auth_headers
         token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
-        accessing_user_id = uuid.UUID(token_data["sub"])
+        accessing_user_id = uuid.UUID(token_data.sub) if hasattr(token_data, 'sub') else uuid.UUID(token_data["sub"])
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
         async def mock_get_user_by_id(*, user_id: uuid.UUID):
@@ -235,7 +235,7 @@ class TestAuthorization:
         client, current_fastapi_app = client_app_tuple_func_scoped
         headers = get_valid_provider_auth_headers
         token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
-        provider_user_id = uuid.UUID(token_data["sub"])
+        provider_user_id = uuid.UUID(token_data.sub) if hasattr(token_data, 'sub') else uuid.UUID(token_data["sub"])
         patient_to_access_id = uuid.UUID(TEST_PATIENT_ID)
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
@@ -496,7 +496,7 @@ class TestErrorHandling:
         client, current_fastapi_app = client_app_tuple_func_scoped
         headers = get_valid_auth_headers
         token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
-        requesting_user_id = uuid.UUID(token_data["sub"])
+        requesting_user_id = uuid.UUID(token_data.sub) if hasattr(token_data, 'sub') else uuid.UUID(token_data["sub"])
 
         # Mock user repo to return a valid user for authentication
         mock_user_repo = AsyncMock(spec=IUserRepository)
@@ -545,7 +545,7 @@ async def test_access_patient_phi_data_success_provider(
     client, current_fastapi_app = client_app_tuple_func_scoped
     headers = get_valid_provider_auth_headers
     token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
-    provider_user_id = uuid.UUID(token_data["sub"])
+    provider_user_id = uuid.UUID(token_data.sub) if hasattr(token_data, 'sub') else uuid.UUID(token_data["sub"])
     target_patient_id = uuid.UUID(TEST_PATIENT_ID)
 
     mock_user_repo = AsyncMock(spec=IUserRepository)
@@ -642,7 +642,7 @@ async def test_access_patient_phi_data_patient_not_found(
     client, current_fastapi_app = client_app_tuple_func_scoped
     headers = get_valid_provider_auth_headers
     token_data = await global_mock_jwt_service.decode_token(token=headers["Authorization"].replace("Bearer ", ""))
-    provider_user_id = uuid.UUID(token_data["sub"])
+    provider_user_id = uuid.UUID(token_data.sub) if hasattr(token_data, 'sub') else uuid.UUID(token_data["sub"])
     non_existent_patient_id = uuid.uuid4()
 
     mock_user_repo = AsyncMock(spec=IUserRepository)

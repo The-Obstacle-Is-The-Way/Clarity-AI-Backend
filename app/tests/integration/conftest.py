@@ -569,13 +569,10 @@ async def test_app_with_db_session(
     try:
         async with LifespanManager(app) as manager:
             logger.info("Application lifespan startup completed, actual_session_factory is properly set")
-            if hasattr(manager.app.state, 'actual_session_factory'):
-                logger.info("Manager app.state.actual_session_factory FOUND after lifespan startup.")
+            if hasattr(manager.app, 'state') and hasattr(manager.app.state, 'actual_session_factory'):
+                yield manager.app
             else:
-                logger.warning("Manager app.state.actual_session_factory NOT FOUND after lifespan startup.")
-            
-            logger.info(f"PRE_YIELD_MANAGER_LOG: Type of manager is {type(manager)}, id is {id(manager)}.") # UNIQUE LOG
-            yield manager.app # Yield the 'managed' app
+                yield app
     except Exception as e:
         logger.error(f"Error in test_app_with_db_session fixture: {e}")
         raise

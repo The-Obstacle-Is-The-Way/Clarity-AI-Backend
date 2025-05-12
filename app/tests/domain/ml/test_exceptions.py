@@ -103,12 +103,18 @@ class TestMentalLLaMAExceptions:
         model = "gpt-4"
         details = {"error_type": "timeout", "duration": 30.5}
 
-        exception = MentalLLaMAInferenceError(message, model, details)
+        exception = MentalLLaMAInferenceError(message, model_name=model, details=details)
 
         # Verify properties
         assert exception.message == message
-        assert exception.model == model
-        assert exception.details == details
+        assert exception.model_name == model
+        # Expect details to be merged according to __init__ logic
+        expected_details = details.copy()
+        if "model_name" not in expected_details:
+            expected_details["model_name"] = model
+        if "inference_parameters" not in expected_details:
+            expected_details["inference_parameters"] = {}
+        assert exception.details == expected_details
         assert str(exception).startswith(message)
         assert model in str(exception)
 
@@ -121,8 +127,9 @@ class TestMentalLLaMAExceptions:
 
         # Verify properties
         assert exception.message == message
-        assert exception.model == model
-        assert exception.details == {}
+        assert exception.model_name == model
+        # Expect details to contain model_name and inference_parameters (empty dict here)
+        assert exception.details == {"model_name": model, "inference_parameters": {}}
         assert str(exception).startswith(message)
         assert model in str(exception)
 
@@ -160,7 +167,7 @@ class TestMentalLLaMAExceptions:
         # Verify properties
         assert exception.message == message
         assert exception.validation_errors == validation_errors
-        assert exception.details == {}
+        assert exception.details == {"validation_errors": validation_errors}
         assert str(exception).startswith(message)
         # Check that validation errors are included in string representation
         for field, error in validation_errors.items():

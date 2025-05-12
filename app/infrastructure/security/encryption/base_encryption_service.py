@@ -611,20 +611,10 @@ decryption methods for strings and dictionaries.
             return value
 
     def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str | None:
-        """Decrypts an encrypted string.
-
-        Args:
-            encrypted_value: The string to decrypt.
-            is_phi: Flag indicating if the data is PHI (default True).
-
-        Returns:
-            Decrypted string, or original value if not apparently encrypted, or None if decryption fails.
-        
-        Raises:
-            ValueError: If the encrypted_value is not in the expected format (e.g., missing prefix).
+        """Decrypts a string that was encrypted by this service.
         """
-        if not encrypted_value: # Do not decrypt None or empty strings
-            return encrypted_value
+        if not encrypted_value:
+            return encrypted_value # Return None or empty string as is
 
         if not encrypted_value.startswith(self.VERSION_PREFIX):
             logger.warning(f"Value to decrypt does not start with known prefix ('{self.VERSION_PREFIX}'). Value: '{encrypted_value[:50]}...' Potentially not an encrypted string or wrong format.")
@@ -634,11 +624,12 @@ decryption methods for strings and dictionaries.
         # self._ensure_fernet_initialized() # Removed: Property handles initialization
 
         try:
-            # self.decrypt will use self.cipher and self.previous_cipher properties
-            return self.decrypt(encrypted_value) 
-        except ValueError as ve:
-            # ValueError from self.decrypt typically means "InvalidToken" or other decryption integrity issue.
-            logger.warning(f"ValueError during string decryption (likely invalid token or key issue): {ve}. Encrypted value: '{encrypted_value[:50]}...'")
+            decrypted_bytes = self.decrypt(encrypted_value) # decrypt returns bytes
+            if decrypted_bytes is None:
+                 return None # Handle case where decrypt returns None
+            return decrypted_bytes.decode('utf-8') # Decode bytes to string
+        except ValueError as e:
+            logger.warning(f"ValueError during string decryption (likely invalid token or key issue): {e}. Encrypted value: '{encrypted_value[:50]}...'")
             return None # Or return encrypted_value, or raise specific error
         except Exception as e:
             # Catch any other unexpected errors during decryption.

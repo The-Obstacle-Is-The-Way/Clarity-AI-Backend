@@ -141,7 +141,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # === END HAIL MARY GETATTR ===
 
             async with session_factory() as db_session:
-                user_repo_instance = SQLAlchemyUserRepository(db_session)
+                user_repo_instance = SQLAlchemyUserRepository(db_session=db_session)
                 
                 user_id_as_uuid = UUID(str(token_payload.sub))
                 domain_user: DomainUser | None = await user_repo_instance.get_user_by_id(user_id_as_uuid)
