@@ -10,6 +10,7 @@ from collections.abc import Callable
 from unittest.mock import AsyncMock
 
 import pytest
+import asyncio
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
@@ -205,6 +206,15 @@ def mock_dependencies(
     )
     app.dependency_overrides[get_current_user] = lambda: test_user
     app.dependency_overrides[get_optional_user] = lambda: test_user 
+
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    # The loop should be closed at the end of the test
+    loop.close()
 
 
 # Tests for login endpoint
