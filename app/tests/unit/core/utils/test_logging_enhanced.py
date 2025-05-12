@@ -54,13 +54,17 @@ class TestGetLogger:
         # Setup mock logger to simulate no handlers
         mock_logger_instance = MagicMock()
         mock_logger_instance.handlers = [] # Ensure handlers list is empty
+        # Set propagate to True initially so it can be verified to be changed to False
+        mock_logger_instance.propagate = True
         mock_get_logger.return_value = mock_logger_instance
         
         mock_handler = MagicMock(spec=logging.StreamHandler)
         mock_formatter = MagicMock(spec=logging.Formatter)
 
+        # Mock the PHISanitizingFilter to avoid circular imports
         with patch("app.core.utils.logging.logging.StreamHandler", return_value=mock_handler) as mock_stream_handler, \
-             patch("app.core.utils.logging.logging.Formatter", return_value=mock_formatter) as mock_formatter_class:
+             patch("app.core.utils.logging.logging.Formatter", return_value=mock_formatter) as mock_formatter_class, \
+             patch("app.core.utils.logging.PHISanitizingFilter", return_value=MagicMock()) as mock_phi_filter:
 
             # Get logger
             logger = get_logger("test_config_module_unique") # Use unique name
@@ -79,4 +83,6 @@ class TestGetLogger:
             # Verify logger configuration
             mock_logger_instance.setLevel.assert_called_once_with(logging.INFO) # Assuming default level
             mock_logger_instance.addHandler.assert_called_once_with(mock_handler)
-            assert logger.propagate is False
+            
+            # Verify propagate was set to False
+            assert mock_logger_instance.propagate is False
