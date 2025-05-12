@@ -187,8 +187,9 @@ class TestPatientEncryptionIntegration:
     def setup_method(self, method):
         """Initialize the encryption service before each test method."""
         global encryption_service_instance
-        from app.infrastructure.security.encryption.base_encryption_service import VERSION_PREFIX
+        from app.infrastructure.security.encryption.base_encryption_service import VERSION_PREFIX, BaseEncryptionService
         self.VERSION_PREFIX = VERSION_PREFIX
+        self.BaseEncryptionService = BaseEncryptionService
         
         # Initialize the encryption service
         if encryption_service_instance is None:
@@ -431,7 +432,7 @@ class TestPatientEncryptionIntegration:
             pytest.skip("TEST_OTHER_ENCRYPTION_KEY not configured, skipping wrong key test.")
             return
 
-        other_service = BaseEncryptionService(direct_key=other_key)
+        other_service = self.BaseEncryptionService(direct_key=other_key)
         encrypted_with_main_key = service.encrypt("data for main key")
         
         with pytest.raises(ValueError, match="Decryption failed: Invalid token"):

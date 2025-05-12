@@ -19,6 +19,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asgi_lifespan import LifespanManager
+from sqlalchemy import text
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -520,6 +521,54 @@ def actigraphy_file_content() -> bytes:
         "2023-01-01T00:00:02Z,0.3,0.4,0.7\\n"
     )
     return csv_content.encode('utf-8')
+
+@pytest_asyncio.fixture
+async def test_db_engine(test_settings: Settings):
+    """
+    Creates an async SQLAlchemy engine for integration tests.
+    Uses the database URL from test_settings.
+    
+    Returns:
+        AsyncEngine: SQLAlchemy AsyncEngine instance suitable for integration tests
+    """
+    from sqlalchemy.ext.asyncio import create_async_engine
+    
+    # Get database URL from settings, with fallback
+    database_url = getattr(test_settings, "DATABASE_URL", None) or "sqlite+aiosqlite:///:memory:"
+    
+    # Set async database URL attribute if it doesn't exist (prevents NoneType startswith error)
+    if not hasattr(test_settings, "ASYNC_DATABASE_URL") or test_settings.ASYNC_DATABASE_URL is None:
+        test_settings.ASYNC_DATABASE_URL = database_url
+    
+    logger.info(f"Creating async database engine for integration tests with URL: {database_url}")
+    
+    # Create engine with appropriate settings for testing (echo=False in tests to reduce noise)
+    engine = create_async_engine(
+        database_url,
+        echo=False,
+        future=True,
+        connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {}
+    )
+    
+    logger.info(f"AsyncEngine created successfully: {engine}")
+    
+    # Setup any engine-level configurations if needed
+    async with engine.begin() as conn:
+        # For SQLite: Enable foreign key constraints
+        if database_url.startswith("sqlite"):
+            await conn.execute(text("PRAGMA foreign_keys=ON"))
+        
+        # Create all tables in a single transaction
+        from app.infrastructure.persistence.sqlalchemy.models.base import Base
+        await conn.run_sync(Base.metadata.create_all)
+    
+    logger.info(f"All database tables created from metadata")
+    
+    yield engine
+    
+    # Cleanup: dispose of the engine to release connections
+    logger.info(f"Disposing test database engine")
+    await engine.dispose()
 
 @pytest_asyncio.fixture
 async def test_app_with_db_session(

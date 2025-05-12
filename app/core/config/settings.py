@@ -100,7 +100,6 @@ class Settings(BaseSettings):
     }
     
     # HIPAA Compliance Settings
-    PHI_ENCRYPTION_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     AUDIT_LOG_RETENTION_DAYS: int = 365  # 1 year retention for HIPAA
     SESSION_COOKIE_SECURE: bool = True
     SESSION_COOKIE_HTTPONLY: bool = True
@@ -113,6 +112,21 @@ class Settings(BaseSettings):
     POSTGRES_DB: str | None = None
     POSTGRES_PORT: str | None = None
     SECRET_KEY: str | None = None
+    
+    # Security & Auth Settings
+    HTTP_COOKIE_DOMAIN: str = Field(default="localhost")
+    HTTP_COOKIE_MAX_AGE: int = Field(default=86400)
+    HTTP_COOKIE_NAME: str = Field(default="clarity_session")
+    HTTP_COOKIE_PATH: str = Field(default="/")
+    HTTP_COOKIE_SAMESITE: str = Field(default="lax")
+    HTTP_COOKIE_SECURE: bool = Field(default=True)
+    
+    # --- PHI Encryption Settings ---
+    # PHI encryption settings with dummy keys for testing (NEVER use in production)
+    # With proper environment setup, these will be overridden with real keys
+    PHI_ENCRYPTION_KEY: str = Field(secrets.token_urlsafe(32), description="The current encryption key")
+    PHI_ENCRYPTION_PREVIOUS_KEY: str | None = Field(None, description="Previous encryption key for rotation")
+    TEST_OTHER_ENCRYPTION_KEY: str = Field(secrets.token_urlsafe(32), description="Secondary test key for encryption error testing")
     
     model_config = ConfigDict(
         env_file=".env",
