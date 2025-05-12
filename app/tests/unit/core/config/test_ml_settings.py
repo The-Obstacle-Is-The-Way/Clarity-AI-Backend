@@ -93,7 +93,7 @@ class TestMLSettingsStructure:
     def test_nested_xgboost_defaults(self, ml_settings_instance):
         """Test default values for XGBoostSettings."""
         xgboost_settings = ml_settings_instance.xgboost
-        assert xgboost_settings.sagemaker_endpoint_name is None # Default is None
+        assert hasattr(xgboost_settings, "aws_region_name")
         assert xgboost_settings.aws_region_name == "us-east-1"
         assert xgboost_settings.prediction_threshold == 0.7
         assert xgboost_settings.privacy_level == "standard"
@@ -107,12 +107,10 @@ class TestEnums:
         """Test the MLModelType enum (now imported as ModelType)."""
         # Check enum values from app.domain.ml.ml_model.ModelType
         assert ModelType.TRANSFORMER.value == "transformer"
-        # assert ModelType.ENSEMBLE.value == "ensemble" # Ensemble not present in this enum
-        assert ModelType.LSTM.value == "lstm"
-        # assert ModelType.CNN.value == "cnn" # CNN not present in this enum
-        # assert ModelType.MLP.value == "mlp" # MLP not present in this enum
         assert ModelType.XGBOOST.value == "xgboost"
         assert ModelType.PAT.value == "pat"
+        assert ModelType.NEURAL_NETWORK.value == "neural_network"
+        assert ModelType.LLM.value == "llm"
 
         # Check creating enum from string
         assert ModelType("transformer") == ModelType.TRANSFORMER

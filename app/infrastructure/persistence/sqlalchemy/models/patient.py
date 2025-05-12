@@ -258,6 +258,33 @@ class Patient(Base, TimestampMixin, AuditMixin):
         model._email = getattr(patient, 'email', None)
         model._phone_number = getattr(patient, 'phone_number', None)
         
+        # Fix gender handling - convert to proper enum instance for the database model
+        gender_value = getattr(patient, 'gender', None)
+        if gender_value is not None:
+            # If it's already an enum instance, use it directly
+            if isinstance(gender_value, Gender):
+                model._gender = gender_value
+            # If it's a string matching an enum value, convert to enum
+            elif isinstance(gender_value, str):
+                try:
+                    model._gender = Gender(gender_value)
+                except ValueError:
+                    # Case-insensitive check
+                    gender_lower = gender_value.lower()
+                    for g in Gender:
+                        if g.value.lower() == gender_lower:
+                            model._gender = g
+                            break
+                    else:  # No break occurred in for loop
+                        logger.warning(f"Invalid gender value in domain object: {gender_value}. Setting to None.")
+                        model._gender = None
+            else:
+                # Invalid type, log and set to None
+                logger.warning(f"Unexpected gender type in domain object: {type(gender_value)}. Setting to None.")
+                model._gender = None
+        else:
+            model._gender = None
+            
         dob_value = getattr(patient, 'date_of_birth', None)
         if isinstance(dob_value, (date, datetime)):
             model._date_of_birth = dob_value.isoformat()
@@ -269,7 +296,6 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
         # Extended PII - fields NOT in core DomainPatient, use getattr with None default
         model._middle_name = getattr(patient, 'middle_name', None)
-        model._gender = getattr(patient, 'gender', None) # DomainPatient doesn't have gender
         model._ssn = getattr(patient, 'social_security_number_lve', None) # Corrected to use _lve from DomainPatient
         model._mrn = getattr(patient, 'medical_record_number_lve', None) # Corrected to use _lve from DomainPatient
 
@@ -524,8 +550,18 @@ class Patient(Base, TimestampMixin, AuditMixin):
         phone = _decode_if_bytes(self._phone_number)
         ssn = _decode_if_bytes(self._ssn)
         medical_record_number = _decode_if_bytes(self._mrn)
-        gender_value = self._gender # This might be an Enum instance or string
-        gender = str(gender_value) if gender_value is not None else None # Ensure string for Pydantic model
+        
+        # Fix gender handling - convert to string value for domain model
+        gender_value = self._gender
+        if gender_value is not None:
+            # Handle both enum instances and string values
+            if hasattr(gender_value, 'value'):
+                gender = gender_value.value  # Get string value from enum
+            else:
+                gender = str(gender_value)   # Ensure it's a string
+        else:
+            gender = None
+            
         insurance_provider = _decode_if_bytes(self._insurance_provider)
 
         logger.debug(f"[to_domain] Accessed simple PII for {self.id}")

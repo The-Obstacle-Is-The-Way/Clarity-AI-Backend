@@ -158,6 +158,34 @@ class Patient(BaseModel):
             raise ValueError('Date of birth must be in the past')
         return v
 
+    @field_validator('gender', mode='before')
+    @classmethod
+    def validate_gender(cls, v):
+        """Validate and normalize gender values"""
+        if v is None:
+            return None
+            
+        if isinstance(v, Gender):
+            return v
+            
+        # Handle string values
+        if isinstance(v, str):
+            try:
+                # Try to convert to Gender enum
+                return Gender(v)
+            except ValueError:
+                # Check if it matches any enum value (case insensitive)
+                v_lower = v.lower()
+                for gender in Gender:
+                    if gender.value.lower() == v_lower:
+                        return gender
+                        
+                # If we get here, no match was found
+                raise ValueError(f"Invalid gender value: {v}. Must be one of: {', '.join([g.value for g in Gender])}")
+        
+        # If not None, Gender instance, or string, it's invalid
+        raise ValueError(f"Gender must be a string or Gender enum instance, got {type(v)}")
+
     def update_timestamp(self):
         self.updated_at = datetime.now(timezone.utc)
 

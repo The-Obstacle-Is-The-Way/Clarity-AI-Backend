@@ -18,9 +18,17 @@ class Gender(str, Enum):
 
     MALE = "male"
     FEMALE = "female"
-    NON_BINARY = "non_binary"
+    NON_BINARY = "non-binary"
     OTHER = "other"
     PREFER_NOT_TO_SAY = "prefer_not_to_say"
+
+    @classmethod
+    def _missing_(cls, value):
+        """Handle case-insensitive lookup"""
+        for member in cls:
+            if member.value.lower() == value.lower():
+                return member
+        return None
 
 class InsuranceStatus(str, Enum):
     """Insurance verification status enum."""
@@ -106,7 +114,13 @@ class Patient:
             try:
                 self.gender = Gender(self.gender)
             except ValueError:
-                raise ValidationException(f"Invalid gender: {self.gender}")
+                # Try case-insensitive lookup
+                for g in Gender:
+                    if g.value.lower() == self.gender.lower():
+                        self.gender = g
+                        break
+                else:  # No match found
+                    raise ValidationException(f"Invalid gender: {self.gender}")
 
         if isinstance(self.insurance_status, str):
             try:
@@ -192,10 +206,18 @@ class Patient:
 
     def add_medication(self, medication):
         """Add a medication."""
+        # Handle both string medication names and dictionary medication objects
+        if isinstance(medication, str):
+            medication = {"name": medication, "dosage": "Unknown"}
+        elif not isinstance(medication, dict):
+            raise ValidationException("Medication must be a string name or a dictionary")
+            
+        # Validate the dictionary
         if "name" not in medication:
             raise ValidationException("Medication must have a name")
         if "dosage" not in medication:
-            raise ValidationException("Medication must have a dosage")
+            medication["dosage"] = "Unknown"  # Set default dosage
+            
         self.medications.append(medication)
         self.updated_at = datetime.now()
 
