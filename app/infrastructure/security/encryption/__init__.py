@@ -9,33 +9,139 @@ import base64
 import json
 import logging
 import os
-from typing import Any, Dict, Union
-
-# Core encryption service
-from app.infrastructure.security.encryption.base_encryption_service import (
-    BaseEncryptionService,
-    decrypt_value,
-    encrypt_value,
-    get_encryption_key,
-)
-
-# Field-level encryption utilities
-from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
-from app.infrastructure.security.encryption.ml_encryption_service import MLEncryptionService
+from typing import Any, Dict, Union, Optional
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# Global instance for easy access, particularly for SQLAlchemy types
-# NOTE: Consider using dependency injection for better testability/configurability
-try:
-    # encryption_service_instance = EncryptionService() # OLD
-    encryption_service_instance = BaseEncryptionService() # NEW
-    logger.info("Successfully created global encryption_service_instance using BaseEncryptionService.")
-except ValueError as e:
-    logger.critical(f"Failed to initialize global encryption service instance: {e}. Encryption will not work.")
-    # Decide on fallback: raise, set to None, or use a dummy service
-    encryption_service_instance = None
+# Default encryption key for testing - NEVER use in production
+# In production, keys should be loaded from secure environment variables or key vaults
+DEFAULT_TEST_KEY = "WnZr4u7x!A%D*G-KaPdSgVkYp3s6v9y$"
+
+def get_settings():
+    """
+    Get application settings from settings module.
+    
+    Returns:
+        Settings: Application settings object
+    """
+    try:
+        from app.core.config.settings import get_settings as get_app_settings
+        return get_app_settings()
+    except ImportError:
+        logger.warning("Could not import app settings, using defaults")
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            PHI_ENCRYPTION_KEY=DEFAULT_TEST_KEY,
+            PHI_ENCRYPTION_PREVIOUS_KEY=None,
+            DEBUG=False
+        )
+
+def get_default_encryption_key() -> str:
+    """
+    Get the default encryption key from settings or environment.
+    
+    This function prioritizes settings over environment variables and
+    provides a fallback for testing environments.
+    
+    Returns:
+        str: Encryption key string
+    """
+    settings = get_settings()
+    
+    # Try to get the key from settings
+    if hasattr(settings, "PHI_ENCRYPTION_KEY") and settings.PHI_ENCRYPTION_KEY:
+        return settings.PHI_ENCRYPTION_KEY
+    
+    if hasattr(settings, "ENCRYPTION_KEY") and settings.ENCRYPTION_KEY:
+        return settings.ENCRYPTION_KEY
+    
+    # Check environment variables
+    env_key = os.environ.get("PHI_ENCRYPTION_KEY") or os.environ.get("ENCRYPTION_KEY")
+    if env_key:
+        return env_key
+    
+    # Fallback for testing - NEVER use in production
+    logger.warning("No encryption key found, using default test key. DO NOT USE IN PRODUCTION!")
+    return DEFAULT_TEST_KEY
+
+def get_encryption_key() -> str:
+    """Get the current primary encryption key from settings.
+    
+    Returns:
+        str: Current encryption key
+    """
+    settings = get_settings()
+    if not settings.PHI_ENCRYPTION_KEY:
+        logger.warning("PHI_ENCRYPTION_KEY is not set in settings, using default key.")
+        return DEFAULT_TEST_KEY
+    return settings.PHI_ENCRYPTION_KEY
+
+# Global encryption service instance for singleton access
+encryption_service_instance = None
+
+def get_encryption_service(direct_key: Optional[str] = None, 
+                          previous_key: Optional[str] = None,
+                          reinitialize: bool = False) -> 'BaseEncryptionService':
+    """
+    Get an instance of the encryption service.
+    
+    This implements the singleton pattern with thread safety considerations.
+    
+    Args:
+        direct_key: Optional key to use directly (primarily for testing)
+        previous_key: Optional previous key to support key rotation
+        reinitialize: Force reinitialization of the encryption service
+        
+    Returns:
+        BaseEncryptionService: The encryption service instance
+    """
+    global encryption_service_instance
+    
+    try:
+        # Singleton initialization
+        if encryption_service_instance is None or reinitialize:
+            from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+            
+            # Use the provided key or get from settings
+            if direct_key is None:
+                key = get_encryption_key()
+                from app.core.config.settings import get_settings as get_app_settings
+                settings = get_app_settings()
+                prev_key = getattr(settings, "PHI_ENCRYPTION_PREVIOUS_KEY", None)
+            else:
+                key = direct_key
+                prev_key = previous_key
+                
+            encryption_service_instance = BaseEncryptionService(
+                secret_key=key,
+                salt=prev_key,
+                direct_key=direct_key,
+                previous_key=prev_key
+            )
+            logger.info("Successfully created global encryption_service_instance using get_encryption_service.")
+            
+        return encryption_service_instance
+    except Exception as e:
+        logger.error(f"Error creating encryption service: {str(e)}")
+        # Fallback to a default instance for testing
+        from app.infrastructure.security.encryption.base_encryption_service import BaseEncryptionService
+        return BaseEncryptionService(
+            secret_key=DEFAULT_TEST_KEY,
+            direct_key=direct_key,
+            previous_key=previous_key
+        )
+
+# Import main components at the end to avoid circular imports
+from app.infrastructure.security.encryption.base_encryption_service import (
+    BaseEncryptionService, VERSION_PREFIX, KDF_ITERATIONS
+)
+from app.infrastructure.security.encryption.ml_encryption_service import (
+    MLEncryptionService, get_ml_encryption_service
+)
+
+# Field-level encryption utilities - after base class is imported
+from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
 
 # PHI specific encryption functions
 def encrypt_phi(data: dict[str, Any] | str) -> dict[str, Any] | str:
@@ -49,7 +155,7 @@ def encrypt_phi(data: dict[str, Any] | str) -> dict[str, Any] | str:
     """
     if isinstance(data, dict):
         # Create a BaseEncryptionService instance for encrypting the dictionary
-        encryption_service = BaseEncryptionService()
+        encryption_service = BaseEncryptionService(secret_key=get_encryption_key())
         return encryption_service.encrypt_dict(data)
     else:
         # For simple string values, use the encrypt_value function
@@ -66,7 +172,7 @@ def decrypt_phi(encrypted_data: dict[str, Any] | str) -> dict[str, Any] | str:
     """
     if isinstance(encrypted_data, dict):
         # Create a BaseEncryptionService instance for decrypting the dictionary
-        encryption_service = BaseEncryptionService()
+        encryption_service = BaseEncryptionService(secret_key=get_encryption_key())
         return encryption_service.decrypt_dict(encrypted_data)
     else:
         # For simple string values, use the decrypt_value function
@@ -103,6 +209,52 @@ def generate_phi_key() -> str:
     key = base64.urlsafe_b64encode(os.urandom(32)).decode()
     return key
 
+def create_encryption_service(
+    secret_key: Optional[str] = None,
+    salt: Optional[str] = None
+) -> BaseEncryptionService:
+    """
+    Create a new instance of the encryption service.
+    
+    Args:
+        secret_key: Optional encryption key
+        salt: Optional salt for key derivation
+        
+    Returns:
+        BaseEncryptionService: New encryption service instance
+    """
+    # Get key if not provided
+    if secret_key is None:
+        secret_key = get_default_encryption_key()
+    
+    # Create the service
+    return BaseEncryptionService(secret_key=secret_key, salt=salt)
+
+# Import ML encryption service after all helper functions are defined
+# This prevents circular imports
+from app.infrastructure.security.encryption.ml_encryption_service import MLEncryptionService
+
+def create_ml_encryption_service(
+    secret_key: Optional[str] = None,
+    salt: Optional[str] = None
+) -> MLEncryptionService:
+    """
+    Create a new instance of the ML encryption service.
+    
+    Args:
+        secret_key: Optional encryption key
+        salt: Optional salt for key derivation
+        
+    Returns:
+        MLEncryptionService: New ML encryption service instance
+    """
+    # Get key if not provided
+    if secret_key is None:
+        secret_key = get_default_encryption_key()
+    
+    # Create the service
+    return MLEncryptionService(secret_key=secret_key, salt=salt)
+
 # Set default exports to maintain clean imports across the codebase
 __all__ = [
     'BaseEncryptionService',
@@ -117,7 +269,10 @@ __all__ = [
     'encrypt_value',
     'generate_phi_key',
     'get_encryption_key',
-    'get_settings'
+    'get_settings',
+    'get_encryption_service',
+    'create_encryption_service',
+    'create_ml_encryption_service',
 ]
 
 # Potentially import from encryption_service if needed elsewhere
@@ -126,17 +281,4 @@ __all__ = [
 #     EncryptionHandler, 
 #     KeyRotationManager, 
 #     AESEncryption
-# )
-
-def get_settings():
-    """
-    Get application settings.
-    
-    This function is a proxy to the core get_settings function to allow mocking
-    in tests without disturbing the actual settings module.
-    
-    Returns:
-        The application settings object
-    """
-    from app.core.config.settings import get_settings as core_get_settings
-    return core_get_settings() 
+# ) 

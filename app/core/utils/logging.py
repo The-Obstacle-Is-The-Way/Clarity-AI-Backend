@@ -25,14 +25,18 @@ class PHISanitizingFilter(logging.Filter):
 
     def __init__(self, name: str = "PHISanitizer"):
         super().__init__(name)
-        # Import here to break circular dependency
-        from app.core.utils.data_transformation import DataAnonymizer
-        # It's potentially inefficient to create this on every filter call,
-        # but okay for now. Consider making it a class member if performance issues arise.
-        self.anonymizer = DataAnonymizer()
+        # Avoid circular import by not creating the anonymizer in __init__
+        self.anonymizer = None
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Sanitize the log record message using DataAnonymizer."""
+        # Lazy load the anonymizer when needed to avoid circular imports
+        if self.anonymizer is None:
+            # Import here to break circular dependency
+            from app.core.utils.data_transformation import DataAnonymizer
+            # Create anonymizer instance only when first needed
+            self.anonymizer = DataAnonymizer()
+        
         # Ensure message is formatted correctly before sanitization
         original_message = record.getMessage()
         
