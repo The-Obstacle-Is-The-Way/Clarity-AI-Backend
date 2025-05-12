@@ -7,13 +7,14 @@ authentication workflows.
 """
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from app.core.domain.entities.user import User
 from app.core.interfaces.repositories.user_repository_interface import (
     IUserRepository,
 )
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+from app.core.utils.date_utils import utcnow
 from app.infrastructure.security.password.password_handler import PasswordHandler
 
 
@@ -201,7 +202,7 @@ class AuthenticationService(AuthServiceInterface):
         token = secrets.token_urlsafe(32)
         
         # Set expiration (24 hours from now)
-        expires = datetime.utcnow() + timedelta(hours=24)
+        expires = utcnow() + timedelta(hours=24)
         
         # Update user with token
         user.set_reset_token(token, expires)

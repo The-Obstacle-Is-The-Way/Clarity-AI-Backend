@@ -7,7 +7,7 @@ following HIPAA compliance requirements for secure authentication and authorizat
 
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import jwt
@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
 from app.core.config import Settings
+from app.core.utils.date_utils import utcnow, as_utc
 from app.domain.exceptions.auth_exceptions import (
     InvalidTokenException,
     TokenBlacklistedException,
@@ -99,7 +100,7 @@ class JWTService:
         """
         # Calculate expiration time
         expires_delta = timedelta(minutes=self.settings.access_token_expire_minutes)
-        expire = datetime.now(datetime.UTC) + expires_delta
+        expire = utcnow() + expires_delta
         expires_in = int(expires_delta.total_seconds())
         
         # Create token ID
@@ -109,7 +110,7 @@ class JWTService:
         payload = {
             "sub": user_id,
             "exp": int(expire.timestamp()),
-            "iat": int(datetime.now(datetime.UTC).timestamp()),
+            "iat": int(utcnow().timestamp()),
             "jti": token_id,
             "session_id": session_id,
             "user_id": user_id,
@@ -158,7 +159,7 @@ class JWTService:
         """
         # Calculate expiration time
         expires_delta = timedelta(days=self.settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
-        expire = datetime.now(datetime.UTC) + expires_delta
+        expire = utcnow() + expires_delta
         
         # Create token ID
         token_id = str(uuid.uuid4())
@@ -167,7 +168,7 @@ class JWTService:
         payload = {
             "sub": user_id,
             "exp": int(expire.timestamp()),
-            "iat": int(datetime.now(datetime.UTC).timestamp()),
+            "iat": int(utcnow().timestamp()),
             "jti": token_id,
             "session_id": session_id,
             "user_id": user_id,

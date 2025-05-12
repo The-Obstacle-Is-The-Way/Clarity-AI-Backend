@@ -5,7 +5,6 @@ This module provides comprehensive audit logging for all PHI access and
 modifications, ensuring compliance with HIPAA Security Rule § 164.312(b).
 """
 
-import datetime
 import json
 import logging
 import os
@@ -13,8 +12,10 @@ import re
 import tempfile
 import uuid
 from typing import Any, Dict, Optional
+from datetime import date
 
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
+from app.core.utils.date_utils import utcnow, format_date_iso
 
 # Corrected import path
 # from app.config.settings import settings # Keep only get_settings
@@ -74,7 +75,8 @@ class AuditLogger(IAuditLogger):
             os.makedirs(audit_log_dir, exist_ok=True)
             
             # Create a file handler for the audit log
-            audit_file = os.path.join(audit_log_dir, f"hipaa_audit_{datetime.date.today().isoformat()}.log")
+            today = date.today()
+            audit_file = os.path.join(audit_log_dir, f"hipaa_audit_{today.isoformat()}.log")
             handler = logging.FileHandler(audit_file)
         except (OSError, PermissionError):
             # Fallback to memory handler for tests
@@ -130,7 +132,7 @@ class AuditLogger(IAuditLogger):
         
         # Add timestamp if not present
         if "timestamp" not in metadata:
-            metadata["timestamp"] = datetime.datetime.now().isoformat()
+            metadata["timestamp"] = format_date_iso(utcnow())
         
         # Format the message as JSON for machine readability
         message = json.dumps(metadata)
@@ -153,7 +155,7 @@ class AuditLogger(IAuditLogger):
             "user_id": user_id,
             "patient_id": patient_id,
             "action": action,
-            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamp": format_date_iso(utcnow()),
             "details": details or {}
         }
         
@@ -173,7 +175,7 @@ class AuditLogger(IAuditLogger):
             "event_type": event_type,
             "user_id": user_id or "system",
             "action": "security_event",
-            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamp": format_date_iso(utcnow()),
             "details": details or {}
         }
         

@@ -9,6 +9,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from app.core.utils.date_utils import utcnow
+
 
 class BiometricType(str, Enum):
     """Types of biometric data that can be captured."""
@@ -97,7 +99,7 @@ class Biometric:
         if not self.value:
             raise ValueError("Biometric value cannot be empty")
             
-        if self.timestamp > datetime.now():
+        if self.timestamp > utcnow():
             raise ValueError("Timestamp cannot be in the future")
             
         # Type-specific validations

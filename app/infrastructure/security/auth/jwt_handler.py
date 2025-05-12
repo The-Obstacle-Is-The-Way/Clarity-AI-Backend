@@ -6,7 +6,7 @@ for use in authentication throughout the application.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 # Import settings for JWT configuration
 from app.core.config.settings import get_settings
+from app.core.utils.date_utils import utcnow
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -41,9 +42,9 @@ def create_access_token(
     
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(datetime.UTC) + expires_delta
+        expire = utcnow() + expires_delta
     else:
-        expire = datetime.now(datetime.UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
     to_encode.update({"exp": expire})
     
@@ -77,11 +78,11 @@ def create_refresh_token(
     
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(datetime.UTC) + expires_delta
+        expire = utcnow() + expires_delta
     else:
         # Default refresh token expiration (typically longer than access token)
         days = getattr(settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', 7)
-        expire = datetime.now(datetime.UTC) + timedelta(days=days)
+        expire = utcnow() + timedelta(days=days)
         
     to_encode.update({"exp": expire, "token_type": "refresh"})
     
