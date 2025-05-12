@@ -189,60 +189,44 @@ class TestEnhancedEncryptionService:
 
 
     def test_key_rotation(self):
-        """Test encryption key rotation."""
-        # Initialize with original key
-        original_key = Fernet.generate_key()
-        original_salt = os.urandom(16)
+        """Test encryption key rotation using fixed test keys."""
+        # Use fixed test keys and salt for reliable testing
+        primary_key = "test_primary_key_for_rotation_testing_1"
+        previous_key = "test_previous_key_for_rotation_testing_2"
+        test_salt = b'salt-for-testing-rotation-key-12345'
+        test_data = "Sensitive PHI data for rotation test"
         
-        # Create a mock settings object with only original key
-        settings_orig = MagicMock()
-        settings_orig.ENCRYPTION_KEY = original_key.decode()
-        settings_orig.ENCRYPTION_SALT = original_salt.hex()
-        settings_orig.PHI_ENCRYPTION_KEY = None
-        settings_orig.PREVIOUS_ENCRYPTION_KEY = None
-
-        # Create a service using only the original key
-        with patch("app.infrastructure.security.encryption.get_settings", return_value=settings_orig):
-            service_orig = BaseEncryptionService()
-
-        # Encrypt data with original key
-        data = "Sensitive patient information"
-        encrypted_v1 = service_orig.encrypt(data)
-        assert encrypted_v1.startswith("v1:")
-
-        # Create a new service with new primary key and original key as previous
-        new_key = Fernet.generate_key()
-        settings_new = MagicMock()
-        settings_new.ENCRYPTION_KEY = new_key.decode()
-        settings_new.PREVIOUS_ENCRYPTION_KEY = original_key.decode()
-        settings_new.ENCRYPTION_SALT = original_salt.hex()
-        settings_new.PHI_ENCRYPTION_KEY = None
-
-        # New service that uses the new key with original as previous
-        service_new = None
-        with patch("app.infrastructure.security.encryption.get_settings", return_value=settings_new):
-            service_new = BaseEncryptionService()
-
-            # Should be able to decrypt data encrypted with the previous key
-            decrypted_from_v1 = service_new.decrypt(encrypted_v1)
-            assert decrypted_from_v1 == data
-
-            # Encrypt with new key
-            encrypted_v2 = service_new.encrypt(data)
-            assert encrypted_v2.startswith("v1:")
-            assert encrypted_v2 != encrypted_v1
-
-            # Verify can decrypt with new service (using the new key)
-            assert service_new.decrypt(encrypted_v2) == data
-
-        # Reset to a completely fresh service with only the original key
-        # This represents an old service instance trying to decrypt new data
-        service_orig_fresh = BaseEncryptionService(direct_key=original_key.decode())
+        # Create service with only the previous key
+        service_prev = BaseEncryptionService(
+            direct_key=previous_key,
+            salt=test_salt
+        )
         
-        # This should fail because service_orig_fresh only has the original key,
-        # not the new key used to encrypt encrypted_v2
+        # Encrypt data with previous key
+        encrypted_with_prev = service_prev.encrypt(test_data)
+        assert encrypted_with_prev.startswith("v1:")
+        
+        # Create a new service with a new primary key and the previous key
+        service_new = BaseEncryptionService(
+            direct_key=primary_key,
+            previous_key=previous_key,
+            salt=test_salt
+        )
+        
+        # Service should be able to decrypt data encrypted with previous key
+        decrypted = service_new.decrypt(encrypted_with_prev)
+        assert decrypted == test_data
+        
+        # Encrypt with new primary key
+        encrypted_with_new = service_new.encrypt(test_data)
+        assert encrypted_with_new != encrypted_with_prev
+        
+        # Verify new encryption works
+        assert service_new.decrypt(encrypted_with_new) == test_data
+        
+        # Verify previous service can't decrypt data encrypted with new key
         with pytest.raises(ValueError, match=r"Decryption failed"):
-            service_orig_fresh.decrypt(encrypted_v2)
+            service_prev.decrypt(encrypted_with_new)
 
 
     def test_file_encryption(self, encryption_service: BaseEncryptionService, tmp_path):

@@ -895,6 +895,26 @@ class MLEncryptionService(BaseEncryptionService):
         except Exception as e:
             logger.error(f"Tensor encryption failed: {str(e)}")
             raise ValueError(f"Failed to encrypt tensor: {str(e)}")
+
+    def encrypt_dict(self, data: dict, legacy_mode: bool = True) -> Optional[Union[Dict[str, Any], str]]:
+        """
+        Encrypt a dictionary, using legacy mode by default for ML operations.
+        
+        This overrides the base class method to use legacy_mode=True by default,
+        ensuring backward compatibility with existing ML encryption tests.
+        
+        Args:
+            data: Dictionary to encrypt
+            legacy_mode: If True (default), encrypt the whole dictionary as JSON
+                        If False, encrypt individual sensitive fields
+            
+        Returns:
+            Encrypted string or dictionary with encrypted fields
+            
+        Raises:
+            ValueError: If encryption fails
+        """
+        return super().encrypt_dict(data, legacy_mode=legacy_mode)
         
     def decrypt_tensor(self, encrypted_tensor: str) -> np.ndarray:
         """
