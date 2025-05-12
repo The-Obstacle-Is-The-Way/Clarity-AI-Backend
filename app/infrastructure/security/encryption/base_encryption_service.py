@@ -291,34 +291,34 @@ class BaseEncryptionService:
             logger.error(f"String encryption failed: {str(e)}")
             raise ValueError(f"String encryption failed: {str(e)}")
 
-    def decrypt_string(self, value: Union[str, bytes, None]) -> Optional[str]:
+    def decrypt_string(self, value: Optional[str]) -> str:
         """
-        Decrypt a string with proper error handling.
+        Decrypt a string that was encrypted with encrypt_string.
         
         Args:
-            value: Encrypted value to decrypt
+            value: Encrypted string value
             
         Returns:
-            Decrypted string or None if input is None
+            Decrypted string
             
         Raises:
-            ValueError: If decryption fails
+            ValueError: If decryption fails or input is None
         """
         if value is None:
-            return None
-            
-        if not isinstance(value, (str, bytes)):
-            raise ValueError(f"Cannot decrypt value of type {type(value).__name__}")
+            logger.error("Cannot decrypt None value")
+            raise ValueError("Cannot decrypt None value")
             
         try:
-            # Decrypt to bytes
             decrypted_bytes = self.decrypt(value)
-            
-            # Convert bytes to string
-            return decrypted_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            logger.error("Failed to decode decrypted bytes to UTF-8")
-            raise ValueError("Decryption failed: Invalid UTF-8 encoding in decrypted data")
+            if decrypted_bytes is None:
+                return None
+                
+            # Try to decode as UTF-8
+            try:
+                return decrypted_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                logger.warning("Decryption returned non-UTF8 bytes, falling back to str conversion")
+                return str(decrypted_bytes)
         except Exception as e:
             logger.error(f"String decryption failed: {str(e)}")
             raise ValueError(f"String decryption failed: {str(e)}")
