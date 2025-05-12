@@ -135,9 +135,16 @@ class TestEncryptionService:
         if isinstance(decrypted2, bytes):
             decrypted2 = decrypted2.decode('utf-8')
         
+        # Convert the original data to string if needed for comparison
+        original_for_comparison = original_data
+        if isinstance(original_data, str) and isinstance(decrypted1, bytes):
+            original_for_comparison = original_data.encode('utf-8')
+        elif isinstance(original_data, bytes) and isinstance(decrypted1, str):
+            original_for_comparison = original_data.decode('utf-8')
+        
         # Assert - Both decrypt to original value
-        assert decrypted1 == original_data, "First decryption failed to recover original data."
-        assert decrypted2 == original_data, "Second decryption failed to recover original data."
+        assert decrypted1 == original_for_comparison, "First decryption failed to recover original data."
+        assert decrypted2 == original_for_comparison, "Second decryption failed to recover original data."
 
     def test_different_keys(self):
         """Test that different encryption keys produce different outputs."""
@@ -157,8 +164,15 @@ class TestEncryptionService:
         # Handle string vs bytes by ensuring both are strings for comparison
         if isinstance(decrypted, bytes):
             decrypted = decrypted.decode('utf-8')
+        
+        # Convert test value to same type as decrypted for comparison
+        test_value_for_comparison = test_value
+        if isinstance(test_value, str) and isinstance(decrypted, bytes):
+            test_value_for_comparison = test_value.encode('utf-8')
+        elif isinstance(test_value, bytes) and isinstance(decrypted, str):
+            test_value_for_comparison = test_value.decode('utf-8')
             
-        assert decrypted == test_value
+        assert decrypted == test_value_for_comparison
 
         # Service2 should not be able to decrypt service1's data
         with pytest.raises(ValueError):

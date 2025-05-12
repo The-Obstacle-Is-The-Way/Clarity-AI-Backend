@@ -219,7 +219,7 @@ class EncryptedJSON(EncryptedTypeBase):
         try:
             # If the decrypted value is already a dict or similar object (which can happen in tests or with mocks),
             # simply return it without attempting to parse as JSON
-            if isinstance(decrypted_json_string, dict):
+            if isinstance(decrypted_json_string, (dict, list)):
                 return decrypted_json_string
                 
             # Now, parse the decrypted plain JSON string into a Python object (dict, list, etc.)
@@ -227,9 +227,11 @@ class EncryptedJSON(EncryptedTypeBase):
         except json.JSONDecodeError as e:
             logger.error(f"EncryptedJSON: Failed to decode JSON from decrypted string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
             # It's important to know if the decrypted string was empty or malformed
-            if not decrypted_json_string.strip():
+            if not isinstance(decrypted_json_string, str):
+                logger.error(f"EncryptedJSON: Decrypted string was not a string but {type(decrypted_json_string)}")
+            elif not decrypted_json_string.strip():
                 logger.error("EncryptedJSON: Decrypted string was empty or whitespace.")
-            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{decrypted_json_string[:100]}'") from e
+            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{str(decrypted_json_string)[:100]}'") from e
         except Exception as e: # Catch any other error during json.loads
             logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_json_string)}", exc_info=True)
             raise ValueError("Failed to process decrypted JSON data after decryption.") from e
@@ -240,16 +242,18 @@ class EncryptedJSON(EncryptedTypeBase):
             return None
         try:
             # Check if the decrypted value is already a dict or similar object
-            if isinstance(decrypted_plain_string, dict):
+            if isinstance(decrypted_plain_string, (dict, list)):
                 return decrypted_plain_string
                 
             # Parse the decrypted plain JSON string into a Python object
             return json.loads(decrypted_plain_string)
         except json.JSONDecodeError as e:
             logger.error(f"EncryptedJSON: Failed to decode JSON from decrypted string: {e}. Decrypted string (repr): {repr(decrypted_plain_string)}", exc_info=True)
-            if not decrypted_plain_string.strip():
+            if not isinstance(decrypted_plain_string, str):
+                logger.error(f"EncryptedJSON: Decrypted string was not a string but {type(decrypted_plain_string)}")
+            elif not decrypted_plain_string.strip():
                 logger.error("EncryptedJSON: Decrypted string was empty or whitespace.")
-            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{decrypted_plain_string[:100]}'") from e
+            raise ValueError(f"Failed to decode JSON from decrypted data. Content (first 100 chars): '{str(decrypted_plain_string)[:100]}'") from e
         except Exception as e:
             logger.error(f"EncryptedJSON: Error processing decrypted JSON string: {e}. Decrypted string (repr): {repr(decrypted_plain_string)}", exc_info=True)
             raise ValueError("Failed to process decrypted JSON data after decryption.") from e

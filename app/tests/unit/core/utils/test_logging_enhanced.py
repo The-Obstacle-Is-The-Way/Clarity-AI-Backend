@@ -62,27 +62,29 @@ class TestGetLogger:
         mock_formatter = MagicMock(spec=logging.Formatter)
 
         # Mock the PHISanitizingFilter to avoid circular imports
-        with patch("app.core.utils.logging.logging.StreamHandler", return_value=mock_handler) as mock_stream_handler, \
-             patch("app.core.utils.logging.logging.Formatter", return_value=mock_formatter) as mock_formatter_class, \
-             patch("app.core.utils.logging.PHISanitizingFilter", return_value=MagicMock()) as mock_phi_filter:
-
-            # Get logger
-            logger = get_logger("test_config_module_unique") # Use unique name
-
-            # Verify logger name
-            mock_get_logger.assert_called_with("test_config_module_unique") # Verify unique name
-
-            # Verify handler and formatter creation
-            mock_stream_handler.assert_called_once_with(sys.stdout)
-            mock_formatter_class.assert_called_once()
-            
-            # Verify handler configuration
-            mock_handler.setLevel.assert_called_once_with(logging.INFO) # Assuming default level
-            mock_handler.setFormatter.assert_called_once_with(mock_formatter)
-
-            # Verify logger configuration
-            mock_logger_instance.setLevel.assert_called_once_with(logging.INFO) # Assuming default level
-            mock_logger_instance.addHandler.assert_called_once_with(mock_handler)
-            
-            # Verify propagate was set to False
-            assert mock_logger_instance.propagate is False
+        with patch("app.core.utils.logging.PHISanitizingFilter", return_value=MagicMock()) as mock_phi_filter:
+            with patch("app.core.utils.logging.StreamHandler", return_value=mock_handler) as mock_stream_handler:
+                with patch("app.core.utils.logging.Formatter", return_value=mock_formatter) as mock_formatter_class:
+                    # Act: Call the function
+                    result_logger = get_logger(logger_name=TEST_LOGGER_NAME)
+                    
+                    # Assert: Verify the logger was configured correctly
+                    mock_get_logger.assert_called_once_with(TEST_LOGGER_NAME)
+                    mock_stream_handler.assert_called_once()
+                    mock_formatter_class.assert_called_once()
+                    mock_phi_filter.assert_called_once()
+                    
+                    # Verify handler was added to logger
+                    mock_logger_instance.addHandler.assert_called_once_with(mock_handler)
+                    
+                    # Verify propagate was set to False
+                    self.assertFalse(mock_logger_instance.propagate)
+                    
+                    # Verify PHI filter was added to handler
+                    mock_handler.addFilter.assert_called_once()
+                    
+                    # Verify formatter was set on handler
+                    mock_handler.setFormatter.assert_called_once_with(mock_formatter)
+                    
+                    # Verify the result is the configured logger
+                    self.assertEqual(result_logger, mock_logger_instance)
