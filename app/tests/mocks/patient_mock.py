@@ -89,6 +89,9 @@ class Patient:
         # Generate ID if not provided
         if self.id is None:
             self.id = uuid4()
+        # Validate UUID format if ID is a string
+        elif isinstance(self.id, str) and not self._is_valid_uuid(self.id):
+            raise ValidationException(f"Invalid UUID format: {self.id}")
 
         # Validate required fields
         if not self.first_name:
@@ -101,6 +104,12 @@ class Patient:
             raise ValidationException("Gender is required")
         if not self.email and not self.phone:
             raise ValidationException("Either email or phone is required")
+            
+        # Validate name length
+        if len(self.first_name) > 100:
+            raise ValidationException("First name cannot exceed 100 characters")
+        if len(self.last_name) > 100:
+            raise ValidationException("Last name cannot exceed 100 characters")
 
         # Convert string dates to date objects
         if isinstance(self.date_of_birth, str):
@@ -108,6 +117,10 @@ class Patient:
                 self.date_of_birth = datetime.strptime(self.date_of_birth, "%Y-%m-%d").date()
             except ValueError:
                 raise ValidationException(f"Invalid date format: {self.date_of_birth}")
+                
+        # Validate date is not in the future
+        if isinstance(self.date_of_birth, date) and self.date_of_birth > date.today():
+            raise ValidationException("Date of birth cannot be in the future")
 
         # Convert string enums to enum values
         if isinstance(self.gender, str):
@@ -141,6 +154,14 @@ class Patient:
         # Validate phone format if provided
         if self.phone and not self._validate_phone(self.phone):
             raise ValidationException(f"Invalid phone format: {self.phone}")
+
+    def _is_valid_uuid(self, uuid_string):
+        """Validate UUID format."""
+        try:
+            UUID(uuid_string)
+            return True
+        except ValueError:
+            return False
 
     def _validate_email(self, email: str) -> bool:
         """Validate email format."""

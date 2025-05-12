@@ -590,8 +590,14 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 contact_info_domain_obj = contact_info_raw # Pass dict if DomainPatient expects it
             except Exception as e:
                 logger.error(f"Failed to process contact_info for patient {self.id}: {e}")
+        elif isinstance(contact_info_raw, str):
+            # Try to parse JSON string to dict
+            try:
+                contact_info_domain_obj = json.loads(contact_info_raw)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse contact_info JSON string for patient {self.id}")
         elif contact_info_raw is not None:
-             logger.warning(f"contact_info for patient {self.id} is not a dict: {type(contact_info_raw)}")
+             logger.warning(f"contact_info for patient {self.id} is not a dict or string: {type(contact_info_raw)}")
 
         # Prepare Address domain object
         address_raw = self._address_details # Should be dict or None after EncryptedJSON
@@ -601,6 +607,13 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 address_domain_obj = Address(**address_raw)
             except Exception as e:
                 logger.error(f"Failed to create Address VO for patient {self.id} from _address_details: {e}")
+        elif isinstance(address_raw, str):
+            # Try to parse JSON string to dict
+            try:
+                address_dict = json.loads(address_raw)
+                address_domain_obj = Address(**address_dict)
+            except (json.JSONDecodeError, Exception) as e:
+                logger.error(f"Failed to parse address_details JSON string for patient {self.id}: {e}")
         elif address_raw is not None:
             # If _address_details is None, try constructing from individual fields
             # This is a fallback if _address_details wasn't populated from a full VO during from_domain
@@ -626,8 +639,15 @@ class Patient(Base, TimestampMixin, AuditMixin):
                 emergency_contact_domain_obj = EmergencyContact(**emergency_contact_raw)
             except Exception as e:
                 logger.error(f"Failed to create EmergencyContact VO for patient {self.id} from _emergency_contact_details: {e}")
+        elif isinstance(emergency_contact_raw, str):
+            # Try to parse JSON string to dict
+            try:
+                ec_dict = json.loads(emergency_contact_raw)
+                emergency_contact_domain_obj = EmergencyContact(**ec_dict)
+            except (json.JSONDecodeError, Exception) as e:
+                logger.error(f"Failed to parse emergency_contact_details JSON string for patient {self.id}: {e}")
         elif emergency_contact_raw is not None:
-            logger.warning(f"emergency_contact_details for patient {self.id} is not a dict: {type(emergency_contact_raw)}")
+            logger.warning(f"emergency_contact_details for patient {self.id} is not a dict or string: {type(emergency_contact_raw)}")
         
         preferences_dict = self._preferences # Assumed to be dict or None
         
@@ -680,7 +700,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             "first_name": _decode_if_bytes(self._first_name),
             "last_name": _decode_if_bytes(self._last_name),
             "middle_name": _decode_if_bytes(self._middle_name),
-            "gender": _decode_if_bytes(self._gender),
+            "gender": gender,
             "date_of_birth": date_of_birth,
             "social_security_number_lve": _decode_if_bytes(self._ssn),
             "phone_number_lve": _decode_if_bytes(self._phone_number),
