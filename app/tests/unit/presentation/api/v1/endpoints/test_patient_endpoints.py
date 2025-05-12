@@ -156,10 +156,7 @@ async def test_read_patient_success(
     )
     
     # Override the dependency that provides the patient entity
-    app_instance.dependency_overrides[get_patient_id] = lambda: mock_patient_entity # CORRECTED NAME
-    # We don't need to mock the service anymore for this read test, as the entity is provided directly
-    # app_instance.dependency_overrides[get_patient_service] = lambda: mock_service 
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user # Override auth
+    app_instance.dependency_overrides[get_patient_id] = lambda: mock_patient_entity
 
     # Act - Include auth headers
     response: Response = await async_client.get(f"/api/v1/patients/{test_patient_id}", headers=auth_headers)
@@ -170,12 +167,9 @@ async def test_read_patient_success(
     # Reconstruct the expected JSON based on PatientRead schema
     expected_response_json = PatientRead.model_validate(mock_patient_entity).model_dump(mode="json")
     assert response.json() == expected_response_json
-    # mock_service.get_patient_by_id.assert_awaited_once_with(test_patient_id)
 
     # Clean up overrides
-    # del app_instance.dependency_overrides[get_patient_service]
-    del app_instance.dependency_overrides[get_current_user]
-    del app_instance.dependency_overrides[get_patient_id] # CORRECTED NAME
+    del app_instance.dependency_overrides[get_patient_id]
 
 @pytest.mark.asyncio
 async def test_read_patient_not_found(
@@ -193,9 +187,7 @@ async def test_read_patient_not_found(
     async def mock_dependency_not_found():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Patient with id {patient_id} not found")
         
-    app_instance.dependency_overrides[get_patient_id] = mock_dependency_not_found # CORRECTED NAME
-    # app_instance.dependency_overrides[get_patient_service] = lambda: mock_service # Not needed
-    app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user # Override auth
+    app_instance.dependency_overrides[get_patient_id] = mock_dependency_not_found
 
     # Act - Include auth headers
     response: Response = await async_client.get(f"/api/v1/patients/{patient_id}", headers=auth_headers)
@@ -203,12 +195,9 @@ async def test_read_patient_not_found(
     # Assert
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": f"Patient with id {patient_id} not found"}
-    # mock_service.get_patient_by_id.assert_awaited_once_with(patient_id) # Service not called
 
     # Clean up overrides
-    # del app_instance.dependency_overrides[get_patient_service]
-    del app_instance.dependency_overrides[get_current_user]
-    del app_instance.dependency_overrides[get_patient_id] # CORRECTED NAME
+    del app_instance.dependency_overrides[get_patient_id]
 
 @pytest.mark.asyncio
 async def test_create_patient_success(
