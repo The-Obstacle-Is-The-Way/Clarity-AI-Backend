@@ -74,7 +74,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         # Configure the PHISanitizer instance
         self.phi_sanitizer = phi_sanitizer or PHISanitizer(
             whitelist_patterns=set(_sanitizer_global_whitelist_list), 
-            path_whitelist=_sanitizer_path_whitelist
+            path_whitelist_patterns=_sanitizer_path_whitelist
         )
         
         # Default paths to exclude (common API docs and health check paths)
