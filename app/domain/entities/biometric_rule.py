@@ -211,3 +211,31 @@ class BiometricRule:
         """Update the last_updated timestamp and version."""
         self.last_updated = now_utc()
         self.version += 1 
+        
+    def __eq__(self, other):
+        """Equality comparison based on ID.
+        
+        This ensures that rules can be compared effectively in collections or
+        assertions without running into issues with other attributes like
+        created_at timestamps.
+        
+        Args:
+            other: The object to compare with
+            
+        Returns:
+            bool: True if the objects represent the same rule (same ID)
+        """
+        if not isinstance(other, BiometricRule):
+            return False
+        return self.id == other.id
+        
+    def __hash__(self):
+        """Hash implementation to complement __eq__.
+        
+        This is required for objects that implement __eq__ if they will be
+        used in hash-based collections like sets or as dict keys.
+        
+        Returns:
+            int: Hash value based on ID
+        """
+        return hash(self.id) 

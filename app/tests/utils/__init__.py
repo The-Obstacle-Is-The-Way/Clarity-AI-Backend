@@ -1,5 +1,5 @@
-"""Test utilities for database and setup operations.
+"""
+Test utilities package.
 
-This module provides utility functions for testing database operations, 
-initializing test environments, and fixing common issues.
+This package provides common utility functions and helpers for testing.
 """ 
