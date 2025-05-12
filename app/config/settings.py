@@ -64,6 +64,14 @@ class XGBoostSettings(BaseSettings):
     treatment_response_model_path: str = Field(default="/models/xgboost/treatment_response.xgb", json_schema_extra={"env": "TREATMENT_RESPONSE_MODEL_PATH"})
     outcome_prediction_model_path: str = Field(default="/models/xgboost/outcome_prediction.xgb", json_schema_extra={"env": "OUTCOME_PREDICTION_MODEL_PATH"})
     risk_prediction_model_path: str = Field(default="/models/xgboost/risk_prediction.xgb", json_schema_extra={"env": "RISK_PREDICTION_MODEL_PATH"})
+    
+    # AWS SageMaker integration settings
+    sagemaker_endpoint_name: str | None = Field(default=None, json_schema_extra={"env": "SAGEMAKER_ENDPOINT_NAME"})
+    aws_region_name: str = Field(default="us-east-1", json_schema_extra={"env": "AWS_REGION_NAME"})
+    
+    # Model behavior settings
+    prediction_threshold: float = Field(default=0.7, json_schema_extra={"env": "PREDICTION_THRESHOLD"})
+    privacy_level: str = Field(default="standard", json_schema_extra={"env": "PRIVACY_LEVEL"})
 
 class LSTMSettings(BaseSettings):
     model_config = ConfigDict(env_prefix='LSTM_', protected_namespaces=('settings_',))
