@@ -9,8 +9,9 @@ import logging
 import os
 import secrets
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
+from typing import Self
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,26 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of {valid_levels}")
         return v.upper()
+    
+    @model_validator(mode='after')
+    def ensure_async_database_url(self) -> Self:
+        """Ensure ASYNC_DATABASE_URL is set properly from DATABASE_URL."""
+        if not self.ASYNC_DATABASE_URL and self.DATABASE_URL:
+            db_url = self.DATABASE_URL
+            # If it's a SQLite URL without async driver, convert it
+            if db_url.startswith("sqlite:///") and "aiosqlite" not in db_url:
+                self.ASYNC_DATABASE_URL = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+            else:
+                # Otherwise, use the original URL
+                self.ASYNC_DATABASE_URL = db_url
+            logger.info(f"Set ASYNC_DATABASE_URL to {self.ASYNC_DATABASE_URL} based on DATABASE_URL")
+        
+        # Ensure ASYNC_DATABASE_URL is never None
+        if not self.ASYNC_DATABASE_URL:
+            self.ASYNC_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+            logger.warning("ASYNC_DATABASE_URL was None, set to default in-memory SQLite")
+        
+        return self
 
 
 # Create a global settings instance

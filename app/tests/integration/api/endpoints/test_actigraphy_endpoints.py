@@ -464,21 +464,17 @@ async def test_get_specific_actigraphy_data(authenticated_client: AsyncClient): 
 @pytest.mark.anyio
 @pytest.mark.asyncio
 async def test_unauthorized_access(test_client: AsyncClient):
-    """Test that unauthorized access is properly handled.
-    
-    Note: In the test environment, authentication middleware is disabled,
-    so this test verifies that the endpoint requires missing kwargs parameter 
-    which is a sign that the endpoint is requiring auth.
-    """
-    # Without authentication, in actual production environment this would return 401,
-    # but in test environment we get 422 because auth is skipped but kwargs param is required
+    """Test that unauthorized access is properly handled."""
+    # Make request without authentication token
     response = await test_client.get("/api/v1/actigraphy/model-info")
     
-    # In test environment, expect a validation error due to missing kwargs parameter
-    # This indicates that the endpoint requires auth, which is what we want to test
-    assert response.status_code == 422
-    assert "detail" in response.json()
-    assert "kwargs" in str(response.json()["detail"]), "Should require kwargs parameter indicating auth dependency is present"
+    # Should return 401 Unauthorized
+    assert response.status_code == 401, f"Expected 401 Unauthorized but got {response.status_code}: {response.text}"
+    
+    # Check proper error message
+    response_data = response.json()
+    assert "detail" in response_data
+    assert "Not authenticated" in response_data["detail"], "Response should indicate authentication failure"
 
 @pytest.mark.anyio
 @pytest.mark.asyncio
