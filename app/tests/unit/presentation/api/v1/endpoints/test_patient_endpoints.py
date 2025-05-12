@@ -19,14 +19,17 @@ from app.presentation.api.v1.routes.patient import get_patient_service
 from app.app_factory import create_application
 from app.core.config.settings import Settings as AppSettings # Use alias
 from app.presentation.api.schemas.patient import PatientCreateRequest, PatientRead, PatientCreateResponse # Import schemas
-from app.presentation.api.dependencies.auth import CurrentUserDep, get_current_user # MODIFIED: Removed DomainUser import from here
+from app.presentation.api.dependencies.auth import CurrentUserDep, get_current_user, get_jwt_service # FIXED: Import get_jwt_service from auth.py
 # CORRECTED DomainUser and related imports to align with auth.py
 from app.core.domain.entities.user import User as DomainUser, UserStatus, UserRole 
 # Import the dependency to override for read tests
 from app.presentation.api.dependencies.patient import get_patient_id # CORRECTED NAME
 from app.core.domain.entities.patient import Patient # Import Patient entity for mocking
-from app.core.domain.entities.jwt import JWTServiceInterface, TokenPayload, InvalidTokenException
-from app.presentation.api.dependencies.jwt import get_jwt_service
+
+# FIXED JWT imports
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
+from app.domain.exceptions.token_exceptions import InvalidTokenException
 
 # Helper context manager for lifespan
 @asynccontextmanager
@@ -53,15 +56,32 @@ def mock_jwt_service() -> AsyncMock:
     mock_service = AsyncMock(spec=JWTServiceInterface)
     
     async def mock_decode_token(token: str) -> TokenPayload:
-        if token == "valid.jwt.token":
-            # For test_token, return a valid payload
+        # Handle a real-looking JWT token format
+        if token.startswith("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"):
+            # For a properly formatted test token, return a valid payload with consistent user ID
+            # This ID must match the one in mock_current_user for consistency
+            user_id = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
             return TokenPayload(
-                sub=str(uuid.uuid4()),  # Subject is user ID
+                sub=user_id,
                 exp=9999999999,  # Far future expiry
                 iat=1713830000,  # Issue time
                 jti="test-token-id",
                 type="access",
-                roles=["read:patients", "write:clinical_notes"]  # Example scopes
+                roles=["read:patients", "write:clinical_notes"],  # Example scopes
+                iss="test-issuer",
+                aud="test-audience"
+            )
+        # For backward compatibility
+        elif token == "valid.jwt.token":
+            return TokenPayload(
+                sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",  # Consistent user ID
+                exp=9999999999,
+                iat=1713830000,
+                jti="test-token-id",
+                type="access",
+                roles=["read:patients", "write:clinical_notes"],
+                iss="test-issuer",
+                aud="test-audience"
             )
         # Otherwise, reject the token
         raise InvalidTokenException(f"Invalid test token: {token}")
@@ -98,8 +118,8 @@ def mock_service() -> AsyncMock:
 @pytest.fixture
 def mock_current_user() -> DomainUser:
     """Provides a mock active user for dependency overrides."""
-    # DomainUser is now app.core.domain.entities.user.User (dataclass)
-    user_id = uuid.uuid4()
+    # Use a consistent UUID for the test user
+    user_id = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
     return DomainUser(
         id=user_id,
         email="testuser@example.com",
@@ -114,9 +134,9 @@ def mock_current_user() -> DomainUser:
 @pytest.fixture
 def auth_headers(mock_current_user: DomainUser) -> dict[str, str]:
     """Provides headers with a test JWT token for authenticated requests."""
-    # For testing, create a simple token that the middleware will accept
-    # In a real app, this would use real JWT encoding with proper key
-    test_token = "valid.jwt.token"  # Special token that mock_jwt_service accepts
+    # Create a properly formatted JWT token for testing (header.payload.signature)
+    # This matches the format expected by the JWT service
+    test_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZXhwIjo5OTk5OTk5OTk5LCJpYXQiOjE1MTYyMzkwMjIsInR5cGUiOiJhY2Nlc3MiLCJyb2xlcyI6WyJyZWFkOnBhdGllbnRzIiwid3JpdGU6Y2xpbmljYWxfbm90ZXMiXX0.valid_jwt_token"
     return {"Authorization": f"Bearer {test_token}"}
 
 # Update based on PatientRead schema
