@@ -109,11 +109,7 @@ class MockXGBoostService:
 
 @pytest.fixture
 def test_app(mock_xgboost_service, db_session) -> FastAPI:
-    """Create a FastAPI application instance with xgboost mocks for testing.
-    
-    This implements a clean architecture approach with dependency injection for tests,
-    removing the need for complex middleware authentication in the test environment.
-    """
+    """Create a FastAPI application instance with xgboost mocks for testing."""
     # Configure test environment with standardized settings
     setup_test_environment()
     
@@ -123,53 +119,40 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Set skip_auth_middleware=True to disable the real authentication middleware
     app = create_application(skip_auth_middleware=True)
     
-    # Add test authentication middleware for the integration tests
-    from app.tests.integration.utils.test_authentication import TestAuthenticationMiddleware
-    app.add_middleware(
-        TestAuthenticationMiddleware,
-        public_paths=["/api/v1/xgboost/info/risk_prediction"],
-        auth_bypass_header="X-Test-Auth-Bypass"
-    )
+    # Completely override all auth-related dependencies for testing
+    # This fully decouples the test from actual auth mechanisms
     
     # Define test-specific dependency overrides
     from app.infrastructure.persistence.sqlalchemy.session import get_db
     
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        """
-        Provide a clean database session for tests.
-        
-        This override ensures tests have consistent database state.
-        """
+        """Provide a clean database session for tests."""
         async with db_session() as session:
             yield session
     
     def override_get_xgboost_service() -> XGBoostInterface:
-        """
-        Provide a mock XGBoost service for testing.
-        
-        This override enables isolated testing of API endpoints.
-        """
+        """Provide a mock XGBoost service for testing."""
         return mock_xgboost_service
     
     # Override authentication dependencies
-    async def override_get_current_user(*args, **kwargs) -> User:
+    async def override_get_current_user() -> User:
         """Mock the current user dependency to bypass authentication."""
         return User(
             id="00000000-0000-0000-0000-000000000002", 
             username="test_provider",
-            email="test.provider@novamind.ai",
+            email="test.provider@clarity.health",
             full_name="Test Provider",
             password_hash="$2b$12$FakePasswordHashForTestUse..",
             roles={UserRole.CLINICIAN, UserRole.ADMIN},
             account_status=UserStatus.ACTIVE
         )
     
-    async def override_verify_provider_access(*args, **kwargs) -> User:
+    async def override_verify_provider_access(user: User = Depends(), patient_id: str = None) -> User:
         """Mock provider access check to bypass authentication."""
         return User(
             id="00000000-0000-0000-0000-000000000002", 
             username="test_provider",
-            email="test.provider@novamind.ai",
+            email="test.provider@clarity.health",
             full_name="Test Provider",
             password_hash="$2b$12$FakePasswordHashForTestUse..",
             roles={UserRole.CLINICIAN, UserRole.ADMIN},
@@ -178,6 +161,7 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     
     # Register all dependency overrides
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db_dependency] = override_get_db
     app.dependency_overrides[get_xgboost_service] = override_get_xgboost_service
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[verify_provider_access] = override_verify_provider_access

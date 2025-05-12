@@ -369,9 +369,9 @@ async def predict_outcome(
 @router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)
 async def get_feature_importance(
     prediction_id: str,
+    xgboost_service: XGBoostDep,
+    user: UserDep,
     patient_id: str = Query(..., description="The patient ID associated with the prediction"),
-    xgboost_service: XGBoostDep = Depends(),
-    user: UserDep = Depends(),
 ) -> FeatureImportanceResponse:
     """
     Get feature importance for a risk prediction.
@@ -382,9 +382,9 @@ async def get_feature_importance(
     
     Args:
         prediction_id: The ID of the risk prediction
-        patient_id: The ID of the patient
         xgboost_service: The XGBoost service instance
         user: The authenticated user
+        patient_id: The ID of the patient
         
     Returns:
         FeatureImportanceResponse: Feature importance data
