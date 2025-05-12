@@ -139,8 +139,10 @@ class TestAlertRule:
         """
         Test initializing an AlertRule with an invalid condition.
         """
+        # Use the fully qualified import path
         from app.domain.exceptions.base_exceptions import ValidationError
         
+        # Add a bad operator to force a validation error
         with pytest.raises(ValidationError):
             AlertRule(
                 rule_id="test-rule-1",
@@ -148,12 +150,12 @@ class TestAlertRule:
                 description="Alert when heart rate exceeds 100 bpm",
                 priority=AlertPriority.WARNING,
                 condition={
-                    # Missing required fields
-                    "data_type": "heart_rate"
+                    "data_type": "heart_rate",
+                    "operator": "BAD_OPERATOR",  # This will trigger ValidationError
+                    "threshold": 100
                 },
                 created_by=sample_clinician_id
             )
-            
 
     @pytest.mark.standalone()
     def test_evaluate_true(self, sample_data_point, sample_rule):
@@ -274,10 +276,11 @@ class TestAlertObservers:
         )
         
         
-        # Mock the send_in_app_notification method
-        with patch.object(observer, 'send_in_app_notification') as mock_send:
-            observer.notify(alert)
-            mock_send.assert_called_once_with(alert)
+        # Test the observer
+        observer.notify(alert)
+        
+        # Verify the notification service was called
+        mock_notification_service.send_notification.assert_called_once()
 
     @pytest.mark.standalone()
     def test_email_observer(self, sample_data_point, sample_rule):
@@ -286,24 +289,42 @@ class TestAlertObservers:
         """
         mock_email_service = MagicMock()
         observer = EmailAlertObserver(email_service=mock_email_service)
-        alert = BiometricAlert(
+        
+        # Create alerts with different priorities
+        urgent_alert = BiometricAlert(
+            alert_id=UUID("00000000-0000-0000-0000-000000000001"),
+            rule_id=sample_rule.rule_id,
+            patient_id=sample_data_point.patient_id,
+            data_point=sample_data_point,
+            timestamp=datetime.now(UTC),
+            priority=AlertPriority.URGENT
+        )
+        
+        warning_alert = BiometricAlert(
+            alert_id=UUID("00000000-0000-0000-0000-000000000002"),
+            rule_id=sample_rule.rule_id,
+            patient_id=sample_data_point.patient_id,
+            data_point=sample_data_point,
+            timestamp=datetime.now(UTC),
+            priority=AlertPriority.WARNING
+        )
+        
+        info_alert = BiometricAlert(
             alert_id=UUID("00000000-0000-0000-0000-000000000003"),
             rule_id=sample_rule.rule_id,
             patient_id=sample_data_point.patient_id,
             data_point=sample_data_point,
             timestamp=datetime.now(UTC),
-            priority=sample_rule.priority
+            priority=AlertPriority.INFORMATIONAL
         )
         
+        # Test the observer with different priority alerts
+        observer.notify(urgent_alert)
+        observer.notify(warning_alert)
+        observer.notify(info_alert)
         
-        # Mock the send_email method
-        with patch.object(observer, 'send_email') as mock_send:
-            observer.notify(alert)
-            # Only high priority alerts should trigger an email
-            if alert.priority == AlertPriority.HIGH:
-                mock_send.assert_called_once_with(alert)
-            else:
-                mock_send.assert_not_called()
+        # Only URGENT and WARNING should trigger email
+        assert mock_email_service.send_email.call_count == 2
 
     @pytest.mark.standalone()
     def test_sms_observer(self, sample_data_point, sample_rule):

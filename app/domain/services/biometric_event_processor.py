@@ -302,6 +302,21 @@ class EmailAlertObserver(AlertObserver):
         Args:
             alert: The alert to notify about
         """
+        # Only send emails for high alerts or higher to reduce email volume
+        if alert.priority != AlertPriority.URGENT and alert.priority != AlertPriority.WARNING:
+            return
+            
+        # Send email through helper method
+        self.send_email(alert)
+        
+    def send_email(self, alert: BiometricAlert) -> None:
+        """
+        Send an email notification for an alert.
+        This is a separate method to allow for easier testing and mocking.
+        
+        Args:
+            alert: The alert to notify about
+        """
         # In a real implementation, this would use the email service
         # to send a HIPAA-compliant email notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
@@ -369,7 +384,18 @@ class SMSAlertObserver(AlertObserver):
         # enforced by the unit‑test suite.
         if alert.priority != AlertPriority.URGENT:
             return
+            
+        # Send SMS through helper method
+        self.send_sms(alert)
+    
+    def send_sms(self, alert: BiometricAlert) -> None:
+        """
+        Send an SMS notification for an alert.
+        This is a separate method to allow for easier testing and mocking.
         
+        Args:
+            alert: The alert to notify about
+        """
         # In a real implementation, this would use the SMS service
         # to send a HIPAA-compliant SMS notification
         recipient = self._get_recipient_for_patient(alert.patient_id)
@@ -426,6 +452,17 @@ class InAppAlertObserver(AlertObserver):
     def notify(self, alert: BiometricAlert) -> None:
         """
         Send an in-app notification for an alert.
+        
+        Args:
+            alert: The alert to notify about
+        """
+        # Send in-app notification through helper method
+        self.send_in_app_notification(alert)
+    
+    def send_in_app_notification(self, alert: BiometricAlert) -> None:
+        """
+        Send an in-app notification for an alert.
+        This is a separate method to allow for easier testing and mocking.
         
         Args:
             alert: The alert to notify about

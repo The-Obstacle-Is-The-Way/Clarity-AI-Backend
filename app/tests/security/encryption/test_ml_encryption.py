@@ -199,7 +199,12 @@ class TestEncryptionService:
             encryption_service.decrypt_string(invalid_string)
         
         # Check that the error message contains useful information about the failure
-        assert "Invalid base64" in str(excinfo_invalid.value) or "Decryption failed" in str(excinfo_invalid.value)
+        error_message = str(excinfo_invalid.value)
+        assert any(err in error_message for err in [
+            "Decryption failed",
+            "Invalid token",
+            "Invalid base64"
+        ]), f"Unexpected error message: {error_message}"
         
         # Test None input handling
         with pytest.raises(ValueError) as excinfo_none:

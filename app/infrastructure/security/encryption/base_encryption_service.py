@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Set, Union
 import hashlib
 import hmac
 import binascii
+import json
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
@@ -31,6 +32,11 @@ NON_SENSITIVE_FIELDS = {
     "id", "patient_id", "clinician_id", "organization_id", "status"
 }
 
+# Constants for encryption
+VERSION_PREFIX = "v1:"  # Version prefix for current encryption scheme
+KDF_ITERATIONS = 100000  # NIST recommends at least 10,000 iterations
+SALT_SIZE = 16  # 128 bits for salt
+
 # --- Helper Functions --- #
 
 def encrypt_value(value: str, key: str = None) -> str:
@@ -45,7 +51,7 @@ def encrypt_value(value: str, key: str = None) -> str:
     """
     if not value:
         return value
-    service = BaseEncryptionService(direct_key=key)
+    service = BaseEncryptionService(secret_key=key)
     return service.encrypt(value)
 
 def decrypt_value(encrypted_value: str, key: str = None) -> str:
@@ -60,7 +66,7 @@ def decrypt_value(encrypted_value: str, key: str = None) -> str:
     """
     if not encrypted_value:
         return encrypted_value
-    service = BaseEncryptionService(direct_key=key)
+    service = BaseEncryptionService(secret_key=key)
     return service.decrypt(encrypted_value)
 
 def get_encryption_key() -> str:
@@ -79,384 +85,282 @@ def get_encryption_key() -> str:
 # --- Primary Encryption Service Class --- #
 
 class BaseEncryptionService:
-    """HIPAA-compliant encryption service using Fernet.
+    """
+    Base implementation of encryption service.
     
-    Handles key management (including rotation) and provides core encryption/
-decryption methods for strings and dictionaries.
+    This class provides the core encryption functionality using Fernet
+    (AES-128-CBC with HMAC-SHA256 for authentication) and follows HIPAA 
+    requirements for PHI protection.
+    
+    New implementations should extend this class and override methods as needed.
     """
     
-    VERSION_PREFIX = "v1:"
-    
-    def __init__(self, direct_key: str = None, previous_key: str = None):
-        """Initialize encryption service with primary and optional rotation keys.
-        
-        Keys are primarily loaded from settings unless `direct_key` is provided.
-
-        Args:
-            direct_key: Optional explicit key (use with caution, primarily for testing/specific scenarios).
-            previous_key: Optional previous key override for rotation support.
+    def __init__(self, secret_key: Union[str, bytes], salt: Union[str, bytes] = None):
         """
-        self._direct_key = direct_key
-        self._direct_previous_key = previous_key
-        self._cipher = None
-        self._previous_cipher = None
-        self._version_prefix_bytes = self.VERSION_PREFIX.encode()
+        Initialize the encryption service with a secret key.
         
-        # Proactively access cipher to ensure key availability and format is checked at init
-        # This aligns with tests expecting ValueError from constructor if key is bad/missing
-        try:
-            _ = self.cipher
-        except ValueError as e:
-            # Re-raise with a message more specific to initialization if desired,
-            # or let the original ValueError from self.cipher propagate.
-            if (
-                "Primary encryption key is unavailable" in str(e)
-                or "Invalid format for direct_key" in str(e)
-                or "Encryption key is missing in configuration" in str(e) 
-            ):
-                raise ValueError(f"Encryption service initialization failed: {e}") from e
-            raise # Re-raise other unexpected ValueErrors
-    
-    @property
-    def cipher(self) -> Fernet:
-        """Get the primary Fernet cipher instance, creating it if necessary."""
-        if self._cipher is None:
-            key = self._get_key()
-            if not key:
-                logger.critical("Failed to load primary encryption key!")
-                raise ValueError("Primary encryption key is unavailable.")
-            self._cipher = Fernet(key)
-        return self._cipher
-    
-    @property
-    def previous_cipher(self) -> Optional[Fernet]:
-        """Get the previous Fernet cipher for key rotation, creating it if necessary."""
-        if self._previous_cipher is None:
-            prev_key = self._get_previous_key()
-            if prev_key:
-                try:
-                    self._previous_cipher = Fernet(prev_key)
-                except Exception as e:
-                    logger.error(f"Failed to initialize previous cipher: {e}")
-                    pass
-        return self._previous_cipher
-    
-    def _prepare_key_for_fernet(self, key_material: str) -> Optional[bytes]:
-        """Validates and formats a key string for Fernet."""
-        if not key_material:
-            return None
-        
-        if len(key_material) == 44 and key_material.endswith('='):
-            try:
-                base64.urlsafe_b64decode(key_material.encode())
-                return key_material.encode()
-            except Exception:
-                logger.error("Provided key looks like Fernet key but failed base64 decode.")
-                return None
-        else:
-            key_bytes = key_material.encode()
-            if len(key_bytes) < 32:
-                logger.warning("Raw key material is less than 32 bytes, padding with zeros.")
-                key_bytes = key_bytes.ljust(32, b'\0')
-            elif len(key_bytes) > 32:
-                logger.warning("Raw key material is more than 32 bytes, truncating.")
-                key_bytes = key_bytes[:32]
+        Args:
+            secret_key: The secret key used for encryption/decryption
+            salt: Optional salt for key derivation
             
-            return base64.urlsafe_b64encode(key_bytes)
-
-    def _get_key(self) -> Optional[bytes]:
-        """Get primary encryption key formatted for Fernet, prioritizing direct key."""
-        if self._direct_key:
-            prepared_key = self._prepare_key_for_fernet(self._direct_key)
-            if prepared_key:
-                return prepared_key
-            else:
-                logger.error("Invalid direct_key provided.")
-                raise ValueError("Invalid format for direct_key")
-        
-        settings = get_settings()
-        if hasattr(settings, 'PHI_ENCRYPTION_KEY') and settings.PHI_ENCRYPTION_KEY:
-            prepared_key = self._prepare_key_for_fernet(settings.PHI_ENCRYPTION_KEY)
-            if prepared_key:
-                return prepared_key
-            else:
-                logger.error("Invalid PHI_ENCRYPTION_KEY format in settings.")
-        
-        # Try with the standard ENCRYPTION_KEY setting
-        if hasattr(settings, 'ENCRYPTION_KEY') and settings.ENCRYPTION_KEY:
-            prepared_key = self._prepare_key_for_fernet(settings.ENCRYPTION_KEY)
-            if prepared_key:
-                return prepared_key
-            else:
-                logger.error("Invalid ENCRYPTION_KEY format in settings.")
-        
-        logger.warning("PHI_ENCRYPTION_KEY not found or invalid, attempting key derivation as fallback.")
-        salt_str = getattr(settings, 'ENCRYPTION_SALT', None)
-        if not salt_str:
-             logger.error("ENCRYPTION_SALT is required for key derivation fallback.")
-             return None
-        
+        Raises:
+            ValueError: If the secret key is invalid
+        """
         try:
-            # Handle salt as hex string or raw bytes
-            if isinstance(salt_str, str):
-                if len(salt_str) == 32 and all(c in '0123456789abcdefABCDEF' for c in salt_str):
-                    # Looks like a hex string
-                    salt = bytes.fromhex(salt_str)
-                else:
-                    salt = salt_str.encode()
-            else:
-                salt = salt_str
+            # Ensure we have bytes for the key
+            if isinstance(secret_key, str):
+                secret_key = secret_key.encode()
                 
-            password = getattr(settings, 'DERIVATION_PASSWORD', "DEFAULT_DERIVATION_PW").encode()
-            
+            # Use provided salt or generate a new one
+            if salt is None:
+                salt = os.urandom(SALT_SIZE)
+            elif isinstance(salt, str):
+                salt = salt.encode()
+                
+            # Derive a proper key using PBKDF2
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
-                length=32,
+                length=32,  # 256 bits
                 salt=salt,
-                iterations=getattr(settings, 'DERIVATION_ITERATIONS', 200000),
+                iterations=KDF_ITERATIONS,
             )
-            derived_key = kdf.derive(password)
-            logger.warning("Using derived key - ensure this is acceptable for your security posture.")
-            return base64.urlsafe_b64encode(derived_key)
-        except Exception as e:
-            logger.error(f"Key derivation failed: {e}")
-            return None
-    
-    def _get_previous_key(self) -> Optional[bytes]:
-        """Get previous encryption key formatted for Fernet, prioritizing direct key."""
-        if self._direct_previous_key:
-            prepared_key = self._prepare_key_for_fernet(self._direct_previous_key)
-            if prepared_key:
-                return prepared_key
-            else:
-                logger.error("Invalid direct_previous_key provided.")
-                return None 
+            derived_key = base64.urlsafe_b64encode(kdf.derive(secret_key))
             
-        settings = get_settings()
-        if hasattr(settings, 'PREVIOUS_ENCRYPTION_KEY') and settings.PREVIOUS_ENCRYPTION_KEY:
-            prepared_key = self._prepare_key_for_fernet(settings.PREVIOUS_ENCRYPTION_KEY)
-            if prepared_key:
-                return prepared_key
-            else:
-                logger.error("Invalid PREVIOUS_ENCRYPTION_KEY format in settings.")
-        
-        # Try the previous PHI key if available
-        if hasattr(settings, 'PREVIOUS_PHI_ENCRYPTION_KEY') and settings.PREVIOUS_PHI_ENCRYPTION_KEY:
-            prepared_key = self._prepare_key_for_fernet(settings.PREVIOUS_PHI_ENCRYPTION_KEY)
-            if prepared_key:
-                return prepared_key
-        
-        return None
-    
-    def encrypt(self, value: Union[str, bytes]) -> Optional[str]:
-        """Encrypt a string or bytes value.
+            # Initialize Fernet with the derived key
+            self.cipher = Fernet(derived_key)
+            self.salt = salt
+            logger.debug("Encryption service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize encryption service: {str(e)}")
+            raise ValueError(f"Invalid encryption key: {str(e)}")
+
+    def encrypt(self, value: Union[str, bytes, None]) -> Optional[str]:
+        """
+        Encrypt a value and add version prefix.
         
         Args:
             value: String or bytes value to encrypt.
             
         Returns:
-            Encrypted value with version prefix, or None if input is None.
+            Version-prefixed encrypted value or None if input is None.
             
         Raises:
-            ValueError: If the input is invalid or encryption fails.
-            TypeError: If the input cannot be encoded.
+            ValueError: If encryption fails
+            TypeError: If input type is invalid
         """
         if value is None:
-            return None 
+            return None
+            
+        # Log encryption attempt (without revealing the value)
+        logger.debug(f"Encrypting value of type {type(value).__name__}")
             
         try:
+            # Convert input to bytes if it's not already
             if isinstance(value, str):
-                value_bytes = value.encode()
+                value_bytes = value.encode("utf-8")
             elif isinstance(value, bytes):
                 value_bytes = value
             else:
-                try:
-                    value_bytes = str(value).encode()
-                    logger.warning(f"Encrypting non-string/bytes type: {type(value)}")
-                except Exception as conv_err:
-                     logger.error(f"Cannot encode value of type {type(value)} for encryption: {conv_err}")
-                     raise TypeError(f"Value of type {type(value)} cannot be encoded for encryption.")
-            
+                raise TypeError(f"Cannot encrypt value of type {type(value).__name__}")
+                
+            # Encrypt the value
             encrypted_bytes = self.cipher.encrypt(value_bytes)
-            return f"{self.VERSION_PREFIX}{encrypted_bytes.decode()}"
-
-        except TypeError as te:
-             logger.error(f"Type error during encryption: {te}")
-             raise
+            
+            # Convert to base64 string and add version prefix
+            encrypted_str = base64.b64encode(encrypted_bytes).decode("utf-8")
+            return f"{VERSION_PREFIX}{encrypted_str}"
         except Exception as e:
-            logger.exception(f"Encryption failed: {e}")
-            raise ValueError("Encryption operation failed.") from e
+            logger.error(f"Encryption failed: {str(e)}")
+            raise ValueError(f"Encryption failed: {str(e)}")
 
-    def decrypt(self, encrypted_value: str | bytes) -> Any:
+    def decrypt(self, value: Union[str, bytes, None]) -> Optional[bytes]:
         """
-        Decrypts an encrypted string or bytes.
+        Decrypt a version-prefixed encrypted value.
         
         Args:
-            encrypted_value: The encrypted value, either as string or bytes.
+            value: Encrypted value with version prefix
             
         Returns:
-            The decrypted value.
+            Decrypted bytes or None if input is None
             
         Raises:
-            ValueError: If decryption fails.
+            ValueError: If decryption fails or version is unsupported
+        """
+        if value is None:
+            logger.warning("Attempted to decrypt None value")
+            raise ValueError("cannot decrypt None value")
+            
+        # Log decryption attempt (without revealing the value)
+        logger.debug(f"Decrypting value of type {type(value).__name__}")
+            
+        try:
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+                
+            # Handle version prefix
+            if value.startswith(VERSION_PREFIX):
+                # Strip version prefix
+                value = value[len(VERSION_PREFIX):]
+            else:
+                logger.warning(f"No version prefix found, assuming current version")
+            
+            # Decode base64 and decrypt
+            encrypted_bytes = base64.b64decode(value)
+            decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
+            
+            return decrypted_bytes
+        except InvalidToken:
+            logger.error("Invalid token for decryption")
+            raise ValueError("Decryption failed: Invalid token")
+        except base64.binascii.Error:
+            logger.error("Invalid base64 encoding in encrypted value")
+            raise ValueError("Decryption failed: Invalid base64 encoding")
+        except Exception as e:
+            logger.error(f"Decryption failed: {str(e)}")
+            raise ValueError(f"Decryption failed: {str(e)}")
+
+    def encrypt_string(self, value: Union[str, Any], is_phi: bool = True) -> Optional[str]:
+        """
+        Encrypt a string value with proper handling for all input types.
+        
+        This method ensures proper conversion of any input to a string before encryption.
+        
+        Args:
+            value: String or stringifiable value to encrypt
+            is_phi: Flag indicating if this contains PHI (for audit logging)
+            
+        Returns:
+            Encrypted string with version prefix
+            
+        Raises:
+            ValueError: If encryption fails
+        """
+        if value is None:
+            return None
+            
+        try:
+            # Convert any non-string value to string
+            if not isinstance(value, str):
+                # Handle various types that need special serialization
+                if hasattr(value, "model_dump") and callable(value.model_dump):
+                    # Handle Pydantic v2 models
+                    str_value = json.dumps(value.model_dump())
+                elif hasattr(value, "dict") and callable(value.dict):
+                    # Handle Pydantic v1 models
+                    str_value = json.dumps(value.dict())
+                elif hasattr(value, "to_dict") and callable(value.to_dict):
+                    # Handle objects with to_dict method
+                    str_value = json.dumps(value.to_dict())
+                else:
+                    # Try direct string conversion
+                    str_value = str(value)
+            else:
+                str_value = value
+                
+            if is_phi:
+                # Log PHI access (without revealing the value)
+                logger.info("Encrypting PHI data")
+                
+            # Encrypt the string
+            return self.encrypt(str_value)
+        except Exception as e:
+            logger.error(f"String encryption failed: {str(e)}")
+            raise ValueError(f"String encryption failed: {str(e)}")
+
+    def decrypt_string(self, value: Union[str, bytes, None]) -> Optional[str]:
+        """
+        Decrypt a string with proper error handling.
+        
+        Args:
+            value: Encrypted value to decrypt
+            
+        Returns:
+            Decrypted string or None if input is None
+            
+        Raises:
+            ValueError: If decryption fails
+        """
+        if value is None:
+            return None
+            
+        if not isinstance(value, (str, bytes)):
+            raise ValueError(f"Cannot decrypt value of type {type(value).__name__}")
+            
+        try:
+            # Decrypt to bytes
+            decrypted_bytes = self.decrypt(value)
+            
+            # Convert bytes to string
+            return decrypted_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            logger.error("Failed to decode decrypted bytes to UTF-8")
+            raise ValueError("Decryption failed: Invalid UTF-8 encoding in decrypted data")
+        except Exception as e:
+            logger.error(f"String decryption failed: {str(e)}")
+            raise ValueError(f"String decryption failed: {str(e)}")
+
+    def encrypt_dict(self, data: dict) -> Optional[str]:
+        """
+        Encrypt a dictionary by converting to JSON.
+        
+        Args:
+            data: Dictionary to encrypt
+            
+        Returns:
+            Encrypted JSON string
+            
+        Raises:
+            ValueError: If encryption fails
+            TypeError: If input is not a dictionary
+        """
+        if data is None:
+            return None
+            
+        if not isinstance(data, dict):
+            raise TypeError(f"encrypt_dict requires a dictionary, got {type(data).__name__}")
+            
+        try:
+            # Convert dict to JSON string
+            json_str = json.dumps(data)
+            
+            # Encrypt the JSON string
+            return self.encrypt(json_str)
+        except TypeError as e:
+            logger.error(f"JSON serialization failed: {str(e)}")
+            raise ValueError(f"Failed to serialize dictionary to JSON: {str(e)}")
+        except Exception as e:
+            logger.error(f"Dictionary encryption failed: {str(e)}")
+            raise ValueError(f"Dictionary encryption failed: {str(e)}")
+
+    def decrypt_dict(self, encrypted_value: Union[str, bytes, None]) -> Optional[dict]:
+        """
+        Decrypt a dictionary from an encrypted JSON string.
+        
+        Args:
+            encrypted_value: Encrypted JSON string
+            
+        Returns:
+            Decrypted dictionary or None if input is None
+            
+        Raises:
+            ValueError: If decryption or JSON parsing fails
         """
         if encrypted_value is None:
             return None
             
         try:
-            # If it's bytes, convert to string if possible for consistent handling
-            if isinstance(encrypted_value, bytes):
-                try:
-                    encrypted_str = encrypted_value.decode('utf-8')
-                except UnicodeDecodeError:
-                    # If we can't decode to UTF-8, treat as raw bytes with no prefix
-                    encrypted_bytes = encrypted_value
-                    # Skip version prefix check since we're using raw bytes
-                    decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
-                    try:
-                        return decrypted_bytes.decode('utf-8')
-                    except UnicodeDecodeError:
-                        return decrypted_bytes
-            else:
-                encrypted_str = str(encrypted_value)
+            # Decrypt to JSON string
+            json_str = self.decrypt_string(encrypted_value)
             
-            # Handle version prefix if present
-            if encrypted_str.startswith(self.VERSION_PREFIX):
-                # Remove version prefix to get the actual encrypted content
-                encrypted_content = encrypted_str[len(self.VERSION_PREFIX):]
-                encrypted_bytes = encrypted_content.encode()
-            # Handle ENC: prefix if present (legacy format)
-            elif encrypted_str.startswith("ENC:"):
-                encrypted_bytes = encrypted_str[4:].encode()  # Remove prefix
-            else:
-                # No prefix, use as is
-                encrypted_bytes = encrypted_str.encode()
-            
-            # Decrypt using the cipher
-            try:
-                decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
-                # Return as string if possible, otherwise as bytes
-                try:
-                    return decrypted_bytes.decode('utf-8')
-                except UnicodeDecodeError:
-                    return decrypted_bytes
-            except InvalidToken as e:
-                # Try with previous cipher if available
-                if self.previous_cipher:
-                    try:
-                        logger.debug("Primary key failed, trying with previous key.")
-                        decrypted_bytes = self.previous_cipher.decrypt(encrypted_bytes)
-                        try:
-                            return decrypted_bytes.decode('utf-8')
-                        except UnicodeDecodeError:
-                            return decrypted_bytes
-                    except InvalidToken:
-                        raise ValueError("Decryption failed: Invalid token")
-                else:
-                    raise ValueError("Decryption failed: Invalid token")
-                
-        except InvalidToken as e:
-            logger.warning(f"Invalid token during decryption: {e}")
-            raise ValueError("Decryption failed: Invalid token") from e
+            # Parse JSON to dictionary
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing failed: {str(e)}")
+            raise ValueError(f"Failed to parse decrypted JSON: {str(e)}")
         except Exception as e:
-            if isinstance(e, ValueError) and "Decryption failed" in str(e):
-                # Re-raise already formatted error
-                raise
-            logger.error(f"Decryption failed: {e}", exc_info=True)
-            raise ValueError(f"Failed to decrypt: {e}")
+            logger.error(f"Dictionary decryption failed: {str(e)}")
+            raise ValueError(f"Dictionary decryption failed: {str(e)}")
 
-    def encrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Recursively encrypt all string values in a dictionary.
-        
-        Args:
-            data: Dictionary with values to encrypt
-            
-        Returns:
-            Dictionary with all string values encrypted
-        """
-        if data is None:
-            return None
-            
-        result = {}
-        for key, value in data.items():
-            if isinstance(value, dict):
-                result[key] = self.encrypt_dict(value)
-            elif isinstance(value, list):
-                result[key] = [
-                    self.encrypt_dict(item) if isinstance(item, dict) 
-                    else self._encrypt_sensitive_field(item, key) 
-                    for item in value
-                ]
-            else:
-                result[key] = self._encrypt_sensitive_field(value, key)
-        return result
-
-    def _encrypt_sensitive_field(self, value: Any, field_name: str) -> Any:
-        """Encrypt a field if it's sensitive, otherwise return as is.
-        
-        Args:
-            value: The value to potentially encrypt
-            field_name: The name of the field (used to determine if it's sensitive)
-            
-        Returns:
-            Encrypted value if sensitive, original value otherwise
-        """
-        # Always encrypt specific fields regardless of their general category
-        # This is especially important for test cases
-        special_sensitive_fields = {"patient_id", "ssn", "name", "street"}
-        
-        if field_name in special_sensitive_fields:
-            return self.encrypt_field(value)
-            
-        if field_name.lower() in NON_SENSITIVE_FIELDS:
-            return value
-            
-        return self.encrypt_field(value)
-
-    def decrypt_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Recursively decrypt all encrypted string values in a dictionary.
-        
-        Args:
-            data: Dictionary with encrypted values
-            
-        Returns:
-            Dictionary with all encrypted values decrypted
-        """
-        if data is None:
-            return None
-            
-        result = {}
-        for key, value in data.items():
-            if isinstance(value, dict):
-                result[key] = self.decrypt_dict(value)
-            elif isinstance(value, list):
-                result[key] = [
-                    self.decrypt_dict(item) if isinstance(item, dict)
-                    else self.decrypt_field(item)
-                    for item in value
-                ]
-            else:
-                result[key] = self.decrypt_field(value)
-        return result
-
-    def encrypt_field(self, value: Union[str, bytes]) -> Optional[str]:
-        """Encrypt a field if it's a string or bytes, otherwise return as is."""
-        if isinstance(value, (str, bytes)) and value:
-            return self.encrypt(value)
-        return value
-
-    def decrypt_field(self, encrypted_value: Optional[str]) -> Optional[str]:
-        """Decrypt a field if it's an encrypted string, otherwise return as is."""
-        if isinstance(encrypted_value, str) and encrypted_value.startswith(self.VERSION_PREFIX):
-            try:
-                decrypted_value = self.decrypt(encrypted_value)
-                # No need to decode since decrypt now handles string conversion
-                return decrypted_value
-            except ValueError as e:
-                logger.warning(f"Failed to decrypt field value: {e}. Value: '{encrypted_value[:50]}...'")
-                return encrypted_value # Return original on error
-        return encrypted_value
-        
     def encrypt_file(self, input_path: str, output_path: str) -> None:
         """Encrypt a file.
         
@@ -607,96 +511,6 @@ decryption methods for strings and dictionaries.
         """
         return self.verify_hash(data, salt_hex, key_hex_to_verify)
 
-    def encrypt_string(self, value: str, is_phi: bool = True) -> str:
-        """
-        Encrypt a string value with proper versioning and string handling.
-        
-        Args:
-            value: String to encrypt
-            is_phi: Whether this contains PHI (for logging purposes)
-            
-        Returns:
-            str: Encrypted string with version prefix
-        """
-        if value is None:
-            return None
-            
-        try:
-            # Convert string to bytes
-            value_bytes = value.encode('utf-8')
-            
-            # Encrypt the bytes
-            encrypted_bytes = self.cipher.encrypt(value_bytes)
-            
-            # Convert encrypted bytes to base64 string and add version prefix
-            encrypted_str = base64.urlsafe_b64encode(encrypted_bytes).decode('utf-8')
-            versioned_encrypted = f"{self.VERSION_PREFIX}{encrypted_str}"
-            
-            return versioned_encrypted
-        except Exception as e:
-            logger.error(f"String encryption failed: {e}", exc_info=True)
-            raise ValueError(f"String encryption failed: {e}")
-
-    def decrypt_string(self, encrypted_value: str, is_phi: bool = True) -> str | None:
-        """
-        Decrypt a string that was encrypted by encrypt_string.
-        
-        Args:
-            encrypted_value: Encrypted string to decrypt
-            is_phi: Whether this contains PHI (for logging purposes)
-            
-        Returns:
-            str: Decrypted string value or None if input was None
-            
-        Raises:
-            ValueError: If decryption fails
-        """
-        if encrypted_value is None:
-            return None
-            
-        try:
-            # Check for version prefix
-            if not encrypted_value.startswith(self.VERSION_PREFIX):
-                logger.warning(f"Encrypted string lacks version prefix '{self.VERSION_PREFIX}'")
-                # Try to decrypt without the prefix as a fallback
-                encrypted_base64 = encrypted_value
-            else:
-                # Remove version prefix
-                encrypted_base64 = encrypted_value[len(self.VERSION_PREFIX):]
-                
-            # Decode from base64 to bytes
-            try:
-                encrypted_bytes = base64.urlsafe_b64decode(encrypted_base64.encode('utf-8'))
-            except Exception as e:
-                logger.error(f"Base64 decoding failed: {e}")
-                raise ValueError(f"Invalid base64 encoding in encrypted string: {e}")
-                
-            # Try with primary cipher first
-            try:
-                decrypted_bytes = self.cipher.decrypt(encrypted_bytes)
-                return decrypted_bytes.decode('utf-8')
-            except InvalidToken:
-                # Try with previous cipher if available
-                if self.previous_cipher:
-                    try:
-                        logger.debug("Primary key failed, trying with previous key.")
-                        decrypted_bytes = self.previous_cipher.decrypt(encrypted_bytes)
-                        return decrypted_bytes.decode('utf-8')
-                    except InvalidToken:
-                        raise ValueError("Decryption failed: Invalid token")
-                else:
-                    raise ValueError("Decryption failed: Invalid token")
-                    
-        except UnicodeDecodeError as e:
-            logger.error(f"Unicode decoding error: {e}")
-            raise ValueError(f"String decryption failed: Unable to decode result as UTF-8: {e}")
-        except Exception as e:
-            if isinstance(e, ValueError) and "Decryption failed" in str(e):
-                # Re-raise already formatted error
-                raise
-            logger.error(f"String decryption failed: {e}", exc_info=True)
-            raise ValueError(f"Failed to decrypt: {e}")
-
 # --- Factory Function --- #
 
 def get_encryption_service() -> BaseEncryptionService:
@@ -708,6 +522,6 @@ def get_encryption_service() -> BaseEncryptionService:
     """
     settings = get_settings()
     key = getattr(settings, 'PHI_ENCRYPTION_KEY', None)
-    previous_key = getattr(settings, 'PREVIOUS_PHI_ENCRYPTION_KEY', None)
+    salt = getattr(settings, 'ENCRYPTION_SALT', None)
     
-    return BaseEncryptionService(direct_key=key, previous_key=previous_key)
+    return BaseEncryptionService(secret_key=key, salt=salt)
