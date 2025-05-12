@@ -514,7 +514,6 @@ class TestPatientRepository:
 
         # Assertions
         mock_db_session.get.assert_awaited_once_with(PatientModel, patient_uuid)
-        # mock_db_session.execute.assert_awaited_once() # No longer asserting execute for delete
         mock_db_session.delete.assert_called_once_with(mock_patient_to_delete)
         mock_db_session.flush.assert_awaited_once()
         assert result is True
@@ -523,13 +522,13 @@ class TestPatientRepository:
     async def test_delete_patient_not_found(self, patient_repository: PatientRepository, mock_db_session: AsyncMock, sample_patient_id: str):
         """Test deleting a patient that does not exist."""
         patient_uuid = uuid.UUID(sample_patient_id)
+        
         # Configure session.get to return None, simulating patient not found
         mock_db_session.get = AsyncMock(return_value=None)
 
         result = await patient_repository.delete(sample_patient_id)
 
         mock_db_session.get.assert_awaited_once_with(PatientModel, patient_uuid)
-        # mock_db_session.execute.assert_awaited_once() # No longer asserting execute for delete
         mock_db_session.delete.assert_not_called()
         mock_db_session.flush.assert_not_awaited() 
         assert result is False
