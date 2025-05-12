@@ -28,6 +28,7 @@ from app.presentation.api.schemas.xgboost import (
     TimeFrame,
     TreatmentResponseRequest,
     TreatmentResponseResponse,
+    FeatureImportanceResponse,
 )
 from app.core.services.ml.xgboost.exceptions import DataPrivacyError, ModelNotFoundError, ServiceUnavailableError
 
@@ -164,6 +165,57 @@ async def get_model_info_by_id(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving model info: {e!s}",
         ) from e
+
+
+@router.get("/info/{model_type}", response_model=ModelInfoResponse)
+async def get_model_info(
+    model_type: str,
+    xgboost_service: XGBoostDep,
+    user: UserDep,
+) -> ModelInfoResponse:
+    """
+    Get information about an XGBoost model.
+    
+    This endpoint returns metadata about the requested XGBoost model,
+    including its purpose, performance metrics, and version.
+    
+    Args:
+        model_type: The type/name of the model to get info for
+        xgboost_service: The XGBoost service instance
+        user: The authenticated user
+    
+    Returns:
+        ModelInfoResponse: Information about the XGBoost model
+    
+    Raises:
+        HTTPException: If model not found or user lacks permissions
+    """
+    try:
+        result = await xgboost_service.get_model_info(model_type=model_type)
+        
+        return ModelInfoResponse(
+            model_id=result["model_id"],
+            model_type=result["model_type"],
+            model_version=result["model_version"],
+            description=result["description"],
+            performance_metrics=result["performance_metrics"],
+            created_at=result["created_at"],
+            last_updated=result["last_updated"],
+            features=result.get("features", {}),
+            hyperparameters=result.get("hyperparameters", {})
+        )
+    except ModelNotFoundError as e:
+        logger.warning(f"Model info not found: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Model information not found: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error getting model info: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving model information: {str(e)}"
+        )
 
 
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
@@ -407,3 +459,58 @@ async def predict_treatment_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error predicting treatment response: {e!s}",
         ) from e
+
+
+@router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)
+async def get_feature_importance(
+    prediction_id: str,
+    patient_id: str,
+    xgboost_service: XGBoostDep,
+    user: UserDep,
+) -> FeatureImportanceResponse:
+    """
+    Get feature importance for a risk prediction.
+    
+    This endpoint retrieves the feature importance scores for a specific
+    risk prediction, providing insight into which factors most influenced
+    the model's output. HIPAA compliant with appropriate access controls.
+    
+    Args:
+        prediction_id: The ID of the risk prediction
+        patient_id: The ID of the patient
+        xgboost_service: The XGBoost service instance
+        user: The authenticated user
+        
+    Returns:
+        FeatureImportanceResponse: The feature importance scores
+        
+    Raises:
+        HTTPException: If the prediction is not found or user lacks permissions
+    """
+    try:
+        # Get feature importance from the service
+        result = await xgboost_service.get_feature_importance(
+            patient_id=patient_id,
+            model_type="risk",
+            prediction_id=prediction_id
+        )
+        
+        return FeatureImportanceResponse(
+            prediction_id=result["prediction_id"],
+            model_type=result["model_type"],
+            feature_importance=result["feature_importance"],
+            timestamp=result.get("timestamp", format_date_iso(utcnow()))
+        )
+    except ModelNotFoundError as e:
+        # Model or prediction not found
+        logger.warning(f"Feature importance not found: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Feature importance not found: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error getting feature importance: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving feature importance: {str(e)}"
+        )
