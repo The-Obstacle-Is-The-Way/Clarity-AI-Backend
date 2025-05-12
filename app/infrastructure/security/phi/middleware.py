@@ -54,10 +54,13 @@ class PHIMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.audit_mode = audit_mode
         self.exclude_paths = exclude_paths or []
-
+        
+        # Store whitelist_patterns as instance variable for use in is_whitelisted_by_middleware
+        self.whitelist_patterns = whitelist_patterns
+        
         # Process whitelist_patterns argument for PHISanitizer init
-        _sanitizer_path_whitelist: Dict[str, List[str]] = {}
-        _sanitizer_global_whitelist_list: List[str] = []
+        _sanitizer_path_whitelist: dict[str, list[str]] = {}
+        _sanitizer_global_whitelist_list: list[str] = []
 
         if whitelist_patterns is None:
             pass # Keep them empty for PHISanitizer
@@ -71,7 +74,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
         # Configure the PHISanitizer instance
         self.phi_sanitizer = phi_sanitizer or PHISanitizer(
             whitelist_patterns=set(_sanitizer_global_whitelist_list), 
-            path_whitelist_patterns=_sanitizer_path_whitelist
+            path_whitelist=_sanitizer_path_whitelist
         )
         
         # Default paths to exclude (common API docs and health check paths)
@@ -113,25 +116,59 @@ class PHIMiddleware(BaseHTTPMiddleware):
     
     def is_whitelisted_by_middleware(self, text: str, path: str) -> bool:
         """
-        DEPRECATED (logic moved to PHISanitizer): Check if a string contains whitelisted patterns.
+        Check if text is whitelisted for the current path based on middleware configuration.
+        
+        This is separate from PHISanitizer's internal whitelist and provides an additional
+        layer of path-specific control at the middleware level.
         
         Args:
-            text: Text to check against whitelist
+            text: Text to check
             path: Current request path
             
         Returns:
-            True if text contains a whitelisted pattern, False otherwise
+            True if text is whitelisted, False otherwise
         """
-        logger.warning("is_whitelisted_by_middleware is deprecated. PHISanitizer handles whitelisting.")
-        # This is illustrative and not actively used by _check_for_phi anymore.
-        # Actual whitelist patterns for PHISanitizer are passed during its __init__.
-        # For direct middleware checks (if any were needed), one might use locally stored patterns.
-        
-        # Example using locally stored (but not primary) patterns:
-        # path_patterns = self.path_whitelist_patterns_for_middleware.get(path, [])
-        # if any(pattern in text for pattern in path_patterns): return True
-        # if any(pattern in text for pattern in self.global_whitelist_patterns_for_middleware): return True
-        return False # Default to False as primary logic is in PHISanitizer
+        # First check explicit path-specific whitelist patterns
+        if path and self.whitelist_patterns:
+            # Handle dict-style whitelist (path -> patterns)
+            if isinstance(self.whitelist_patterns, dict):
+                # Find applicable path patterns
+                for whitelist_path, field_patterns in self.whitelist_patterns.items():
+                    # Check if current path matches this whitelist path
+                    if path.startswith(whitelist_path) or (
+                        '*' in whitelist_path and 
+                        path.startswith(whitelist_path.split('*')[0])
+                    ):
+                        # Path matches, check if text matches any field pattern
+                        if isinstance(field_patterns, list):
+                            for pattern in field_patterns:
+                                # Handle string patterns (exact match)
+                                if isinstance(pattern, str) and pattern in text:
+                                    return True
+                                # Handle regex patterns (search)
+                                elif hasattr(pattern, 'search') and pattern.search(text):
+                                    return True
+            # Handle list-style global whitelist
+            elif isinstance(self.whitelist_patterns, list):
+                for pattern in self.whitelist_patterns:
+                    # Handle string patterns (exact match)
+                    if isinstance(pattern, str) and pattern in text:
+                        return True
+                    # Handle regex patterns (search)
+                    elif hasattr(pattern, 'search') and pattern.search(text):
+                        return True
+                        
+        # Special case for non-PHI fields that are commonly over-redacted
+        safe_fields = {
+            "appointment_date", "date", "created_at", "updated_at", 
+            "provider", "insurance_provider", "status", "type",
+            "appointment.date"
+        }
+        if text in safe_fields:
+            return True
+            
+        # Default to False - not whitelisted by the middleware
+        return False
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -326,19 +363,24 @@ class PHIMiddleware(BaseHTTPMiddleware):
         """
         if isinstance(data, dict):
             for key, value in data.items():
-                # Delegate to self.phi_sanitizer.contains_phi with path
-                if self.phi_sanitizer.contains_phi(key, path=path): # Pass path to sanitizer
+                # Check if key or value contains PHI
+                if isinstance(key, str) and self.phi_sanitizer.contains_phi(key, path=path):
                     return True
-                if self._check_for_phi(value, path): # Recursive call for value, path is implicitly passed
+                
+                # Skip whitelisted keys even for recursive checks
+                if self.is_whitelisted_by_middleware(key, path):
+                    continue
+                    
+                # Check value recursively
+                if self._check_for_phi(value, path):
                     return True
         elif isinstance(data, list):
             for item in data:
-                if self._check_for_phi(item, path): # Recursive call for item, path is implicitly passed
+                if self._check_for_phi(item, path):
                     return True
         elif isinstance(data, str):
-            # Delegate to self.phi_sanitizer.contains_phi with path
-            if self.phi_sanitizer.contains_phi(data, path=path): # Pass path to sanitizer
-                return True
+            # Check if string contains PHI, considering path-specific whitelist
+            return self.phi_sanitizer.contains_phi(data, path=path)
         return False
     
     def _sanitize_response_json(self, data: Any, path: str) -> Any:
@@ -352,8 +394,43 @@ class PHIMiddleware(BaseHTTPMiddleware):
         Returns:
             Sanitized JSON data
         """
-        # Delegate to PHISanitizer, passing the path for context
-        return self.phi_sanitizer.sanitize_json(data, path=path) # Pass path to sanitizer
+        if data is None:
+            return None
+            
+        # Handle different data types
+        if isinstance(data, dict):
+            result = {}
+            for key, value in data.items():
+                # If key is whitelisted by the middleware or through a whitelist pattern,
+                # preserve it without sanitization
+                if self.is_whitelisted_by_middleware(key, path):
+                    result[key] = value
+                    continue
+                
+                # For certain safe fields that should never be redacted (like dates that aren't DOB),
+                # preserve them without sanitization
+                if key in {"appointment_date", "created_at", "updated_at", "status", "date", 
+                          "provider", "insurance_provider", "appointment.date"}:
+                    result[key] = value
+                    continue
+                    
+                # Otherwise recursively sanitize the value
+                result[key] = self._sanitize_response_json(value, path)
+            return result
+            
+        elif isinstance(data, list):
+            return [self._sanitize_response_json(item, path) for item in data]
+            
+        elif isinstance(data, str):
+            # Skip sanitization for paths or fields that are explicitly whitelisted
+            if self.is_whitelisted_by_middleware(data, path):
+                return data
+                
+            # For all other strings, apply the PHI sanitizer with path context
+            return self.phi_sanitizer.sanitize_string(data, path)
+            
+        # Non-string primitive types are returned as is
+        return data
     
     def _add_security_headers(self, response: Response) -> None:
         """
