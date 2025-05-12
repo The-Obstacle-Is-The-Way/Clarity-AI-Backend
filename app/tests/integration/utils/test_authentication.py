@@ -85,7 +85,6 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                     full_name="Test Provider",
                     password_hash="$2b$12$FakePasswordHashForTestUse..",
                     roles=set(token_payload["roles"]),
-                    is_active=True,
                     account_status=UserStatus.ACTIVE,
                 )
                 
