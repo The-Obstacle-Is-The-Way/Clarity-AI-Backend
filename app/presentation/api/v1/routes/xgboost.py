@@ -170,8 +170,8 @@ async def get_model_info_by_id(
 @router.get("/info/{model_type}", response_model=ModelInfoResponse)
 async def get_model_info(
     model_type: str,
-    xgboost_service: XGBoostDep = Depends(),
-    user: UserDep = Depends(),
+    xgboost_service: XGBoostDep,
+    user: UserDep,
 ) -> ModelInfoResponse:
     """
     Get information about an XGBoost model.
@@ -220,8 +220,8 @@ async def get_model_info(
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
 async def predict_risk(
     request: RiskPredictionRequest,
-    xgboost_service: XGBoostDep = Depends(),
-    user: ProviderAccessDep = Depends(),
+    xgboost_service: XGBoostDep,
+    user: ProviderAccessDep,
 ) -> RiskPredictionResponse:
     """
     Generate a risk prediction for a patient.
@@ -303,8 +303,8 @@ async def predict_risk(
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
 async def predict_outcome(
     request: OutcomePredictionRequest,
-    xgboost_service: XGBoostDep = Depends(),
-    user: ProviderAccessDep = Depends(),
+    xgboost_service: XGBoostDep,
+    user: ProviderAccessDep,
 ) -> OutcomePredictionResponse:
     """
     Generate an outcome prediction for a patient's treatment.
@@ -366,43 +366,68 @@ async def predict_outcome(
         )
 
 
-@router.get("/explain/{model_type}/{prediction_id}", response_model=dict)
+@router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)
 async def get_feature_importance(
-    model_type: str,
     prediction_id: str,
-    patient_id: str,
-    xgboost_service: XGBoostDep,
-    user: ProviderAccessDep,
-) -> dict:
+    patient_id: str = Query(..., description="The patient ID associated with the prediction"),
+    xgboost_service: XGBoostDep = Depends(),
+    user: UserDep = Depends(),
+) -> FeatureImportanceResponse:
     """
-    Get feature importance for a prediction.
+    Get feature importance for a risk prediction.
+    
+    This endpoint retrieves the feature importance scores for a specific
+    risk prediction, providing insight into which factors most influenced
+    the model's output. HIPAA compliant with appropriate access controls.
     
     Args:
-        model_type: Type of model (e.g., "risk_prediction")
-        prediction_id: ID of the prediction
-        patient_id: ID of the patient
-        xgboost_service: The XGBoost service
+        prediction_id: The ID of the risk prediction
+        patient_id: The ID of the patient
+        xgboost_service: The XGBoost service instance
         user: The authenticated user
-    
+        
     Returns:
-        Dict with feature importance data
+        FeatureImportanceResponse: Feature importance data
+        
+    Raises:
+        HTTPException: If prediction not found, unauthorized, or service error
     """
     try:
-        result = await xgboost_service.get_feature_importance(
-            patient_id=patient_id,
-            model_type=model_type,
-            prediction_id=prediction_id
+        # Get feature importance from service
+        importance_data = await xgboost_service.get_feature_importance(
+            prediction_id=prediction_id,
+            patient_id=patient_id
         )
-        return result
+        
+        # Convert to response model
+        return FeatureImportanceResponse(
+            prediction_id=prediction_id,
+            patient_id=patient_id,
+            features=importance_data.features,
+            timestamp=importance_data.timestamp,
+            model_version=importance_data.model_version,
+            explanation_method=importance_data.explanation_method
+        )
     except ModelNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=str(e)
+        ) from e
+    except UnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        ) from e
+    except ServiceUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e)
         ) from e
     except Exception as e:
+        logger.error(f"Error getting feature importance for prediction {prediction_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving feature importance: {str(e)}",
+            detail=f"Error retrieving feature importance: {str(e)}"
         ) from e
 
 
@@ -464,59 +489,3 @@ async def predict_treatment_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error predicting treatment response: {e!s}",
         ) from e
-
-
-@router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)
-async def get_feature_importance(
-    prediction_id: str,
-    patient_id: str = Query(..., description="The patient ID associated with the prediction"),
-    xgboost_service: XGBoostDep = Depends(),
-    user: UserDep = Depends(),
-) -> FeatureImportanceResponse:
-    """
-    Get feature importance for a risk prediction.
-    
-    This endpoint retrieves the feature importance scores for a specific
-    risk prediction, providing insight into which factors most influenced
-    the model's output. HIPAA compliant with appropriate access controls.
-    
-    Args:
-        prediction_id: The ID of the risk prediction
-        patient_id: The ID of the patient
-        xgboost_service: The XGBoost service instance
-        user: The authenticated user
-        
-    Returns:
-        FeatureImportanceResponse: Feature importance for the prediction
-        
-    Raises:
-        HTTPException: If prediction not found or user lacks patient permission
-    """
-    try:
-        # Verify user has access to this patient data
-        verify_provider_access(user, patient_id)
-        
-        result = await xgboost_service.get_feature_importance(
-            prediction_id=prediction_id,
-            patient_id=patient_id,
-        )
-        
-        return FeatureImportanceResponse(
-            prediction_id=prediction_id,
-            patient_id=patient_id,
-            features=result.features,
-            timestamp=result.timestamp,
-            model_version=result.model_version,
-            explanation_method=result.explanation_method,
-        )
-        
-    except ModelNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Prediction with ID {prediction_id} not found for patient {patient_id}",
-        )
-    except UnauthorizedError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Not authorized to access patient data for {patient_id}",
-        )

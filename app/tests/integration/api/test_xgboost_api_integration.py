@@ -209,9 +209,7 @@ def authenticated_client(client: httpx.AsyncClient, provider_auth_headers: dict[
     This fixture applies provider authentication headers to the base client.
     """
     # Update headers with authentication 
-    client.headers.update({
-        "X-Test-Auth-Bypass": "clinician"
-    })
+    client.headers.update(provider_auth_headers)
     return client
 
 @pytest.fixture(scope="session")
@@ -231,10 +229,8 @@ def psychiatrist_auth_headers() -> dict[str, str]:
 @pytest.fixture
 def provider_auth_headers() -> dict[str, str]:
     """Authentication headers for a provider (clinician) role."""
-    return {
-        "X-Test-Auth-Bypass": "clinician",
-        "Authorization": "Bearer test_provider_token"
-    }
+    from app.tests.integration.utils.test_authentication import create_test_headers_for_role
+    return create_test_headers_for_role("clinician")
 
 @pytest.fixture
 def patient_auth_headers() -> dict[str, str]:

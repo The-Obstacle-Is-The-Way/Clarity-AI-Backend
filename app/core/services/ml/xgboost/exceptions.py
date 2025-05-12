@@ -322,7 +322,7 @@ class ModelTimeoutError(XGBoostServiceError):
 
 
 class SerializationError(XGBoostServiceError):
-    """Exception raised when data serialization or deserialization fails."""
+    """Exception raised when serialization or deserialization fails."""
     
     def __init__(self, message: str, data_type: str | None = None, format_type: str | None = None,
                  cause: str | None = None, **kwargs):
@@ -331,9 +331,9 @@ class SerializationError(XGBoostServiceError):
         
         Args:
             message: Error message
-            data_type: Type of data being serialized/deserialized (e.g., 'features', 'result')
-            format_type: Format being used (e.g., 'json', 'csv')
-            cause: Root cause of the serialization error
+            data_type: Type of data that failed to serialize/deserialize
+            format_type: Format type that was attempted
+            cause: Cause of the failure
             **kwargs: Additional error context
         """
         super().__init__(
@@ -341,5 +341,29 @@ class SerializationError(XGBoostServiceError):
             data_type=data_type,
             format_type=format_type,
             cause=cause,
+            **kwargs
+        )
+
+
+class UnauthorizedError(XGBoostServiceError):
+    """Exception raised when a user does not have authorization to access a resource."""
+    
+    def __init__(self, message: str, user_id: str | None = None, resource_id: str | None = None, 
+                resource_type: str | None = None, **kwargs):
+        """
+        Initialize an unauthorized error.
+        
+        Args:
+            message: Error message
+            user_id: ID of the user who was denied access
+            resource_id: ID of the resource that was being accessed
+            resource_type: Type of resource that was being accessed
+            **kwargs: Additional error context
+        """
+        super().__init__(
+            message,
+            user_id=user_id,
+            resource_id=resource_id,
+            resource_type=resource_type,
             **kwargs
         )

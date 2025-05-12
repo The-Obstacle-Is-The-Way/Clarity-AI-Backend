@@ -69,12 +69,31 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
             # Get and decode the test user data
             try:
                 role_value = request.headers.get(self.auth_bypass_header, "clinician")
+                
+                # Map string roles to UserRole enum values
+                role_mapping = {
+                    "clinician": UserRole.CLINICIAN,
+                    "admin": UserRole.ADMIN,
+                    "patient": UserRole.PATIENT,
+                    "researcher": UserRole.RESEARCHER,
+                    "provider": UserRole.CLINICIAN,  # Map provider to clinician for compatibility
+                }
+                
+                # Convert the role string to UserRole
+                user_role = role_mapping.get(role_value.lower())
+                if not user_role:
+                    logger.error(f"TestAuthMiddleware: Invalid role value: {role_value}")
+                    return JSONResponse(
+                        {"detail": f"Invalid test authentication role: {role_value}. Valid roles are: {list(role_mapping.keys())}"},
+                        status_code=HTTP_401_UNAUTHORIZED
+                    )
+                
+                # Create token payload
                 token_payload = {
-                    "id": "00000000-0000-0000-0000-000000000002",  # Test clinician ID
-                    "sub": "test.provider@novamind.ai",
-                    "roles": [role_value, "provider"],  # Always include provider role for these tests
-                    "iss": "https://test.auth.novamind.ai/",
-                    "exp": int(time.time()) + 3600  # Token valid for 1 hour
+                    "sub": f"test.{role_value}@clarity.health",
+                    "id": "00000000-0000-0000-0000-000000000002",
+                    "roles": [user_role.value],
+                    "exp": int(time.time()) + 3600
                 }
                 
                 # Get user model directly from test data
@@ -84,26 +103,34 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                     email=token_payload["sub"],
                     full_name="Test Provider",
                     password_hash="$2b$12$FakePasswordHashForTestUse..",
-                    roles=set(UserRole(role.lower()) for role in token_payload["roles"]),
+                    roles={user_role},
                     account_status=UserStatus.ACTIVE,
                 )
                 
-                # Set authentication in request scope
+                # Attach user and credentials to the request
                 request.scope["user"] = user
-                request.scope["auth"] = AuthCredentials(["authenticated"] + token_payload["roles"])
+                request.scope["auth"] = AuthCredentials(["authenticated"])
+                logger.debug(f"TestAuthMiddleware: Authenticated test user with role: {user_role}")
                 
-                # For debugging
-                logger.debug(f"TestAuthMiddleware: Added test auth for route {request.url.path}, user {user.id}")
-                return await call_next(request)
-                
-            except (ValueError, KeyError) as e:
-                logger.error(f"TestAuthMiddleware: Invalid test token format: {str(e)}")
+            except Exception as e:
+                logger.error(f"TestAuthMiddleware: Authentication error: {str(e)}")
                 return JSONResponse(
-                    status_code=HTTP_401_UNAUTHORIZED,
-                    content={"detail": f"Invalid test authentication: {str(e)}"}
+                    {"detail": f"Invalid test authentication: {str(e)}"},
+                    status_code=HTTP_401_UNAUTHORIZED
                 )
-                
-        # Proceed normally if no test bypass header
+        else:
+            # For paths that aren't public but don't have the header, set unauthenticated
+            if not await self._is_public_path(request.url.path):
+                return JSONResponse(
+                    {"detail": "Not authenticated"},
+                    status_code=HTTP_401_UNAUTHORIZED
+                )
+            # For public paths, attach unauthenticated user
+            logger.debug(f"TestAuthMiddleware: Public path accessed: {request.url.path}")
+            request.scope["user"] = None  # No user for public paths
+            request.scope["auth"] = AuthCredentials([])
+        
+        # Continue with the request pipeline
         return await call_next(request)
     
     def _is_public_path(self, path: str) -> bool:
@@ -119,27 +146,35 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
         )
 
 
-def create_test_headers_for_role(role: str, user_id: str = None) -> dict[str, str]:
+def create_test_headers_for_role(role: str) -> dict[str, str]:
     """
-    Create test headers that will bypass authentication in test environment.
+    Create a set of test request headers that will be recognized by TestAuthenticationMiddleware.
+    
+    This provides a clean way to create authentication headers for tests without
+    dealing with actual JWTs. The role should match one of the supported roles in
+    the TestAuthenticationMiddleware.
     
     Args:
-        role: User role (e.g., "PATIENT", "CLINICIAN")
-        user_id: Optional user ID, defaults to standard test IDs if not provided
-        
+        role: Role for the test user (e.g., "CLINICIAN", "ADMIN", "PATIENT")
+            This will be normalized to lowercase.
+    
     Returns:
-        Dict with headers for test authentication bypass
+        dict: Headers to add to test requests
     """
-    if user_id is None:
-        # Default test user IDs
-        if role.upper() == "PATIENT":
-            user_id = "00000000-0000-0000-0000-000000000001"
-        elif role.upper() in ("CLINICIAN", "PROVIDER"):
-            user_id = "00000000-0000-0000-0000-000000000002"
-        elif role.upper() == "ADMIN":
-            user_id = "00000000-0000-0000-0000-000000000003"
+    normalized_role = role.lower()
+    
+    # Map role to a consistent format
+    role_mapping = {
+        "clinician": "clinician",
+        "admin": "admin", 
+        "patient": "patient",
+        "researcher": "researcher",
+        "provider": "clinician",  # Map provider to clinician for compatibility
+    }
+    
+    mapped_role = role_mapping.get(normalized_role, normalized_role)
     
     return {
-        "X-Test-Auth-Bypass": f"{role.upper()}:{user_id}",
-        "Content-Type": "application/json"
+        "X-Test-Auth-Bypass": mapped_role,
+        "Authorization": f"Bearer test_{mapped_role}_token"
     }
