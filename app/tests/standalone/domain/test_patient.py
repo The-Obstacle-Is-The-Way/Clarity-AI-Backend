@@ -350,24 +350,42 @@ class TestPatient:
         # Use the correct method signature: add_medication(medication: str)
         valid_patient.add_medication(med_name)
         assert len(valid_patient.medications) == original_count + 1
-        assert med_name in valid_patient.medications
+        
+        # Look for the medication dictionary with the correct name
+        found = False
+        for med in valid_patient.medications:
+            if isinstance(med, dict) and med.get("name") == med_name:
+                found = True
+                break
+        assert found, f"Medication '{med_name}' not found in medications list"
 
     @pytest.mark.standalone()
     def test_remove_medication(self, valid_patient):
         """Test removing a medication by index after adding it."""
-        # Add a medication first using the *real* entity method
-        med_to_remove = "Test Med To Remove"
-        valid_patient.add_medication(med_to_remove)
+        # Add a medication first
+        med_name = "Test Med To Remove"
+        valid_patient.add_medication(med_name)
         
         original_count = len(valid_patient.medications)
-        # Find index to remove (assuming it's the last one added)
-        try:
-            index_to_remove = valid_patient.medications.index(med_to_remove)
-            # Remove by index
-            valid_patient.remove_medication(index_to_remove)
-            assert len(valid_patient.medications) == original_count - 1
-        except ValueError:
-             assert False, "Medication added but not found for removal"
+        
+        # Find the medication by looking at the last one added (which should be our medication)
+        # since we can't use direct string comparison with dictionary objects
+        index_to_remove = len(valid_patient.medications) - 1
+        
+        # Verify this is our medication
+        assert valid_patient.medications[index_to_remove].get("name") == med_name
+        
+        # Remove by index
+        valid_patient.remove_medication(index_to_remove)
+        assert len(valid_patient.medications) == original_count - 1
+        
+        # Verify the medication was removed
+        found = False
+        for med in valid_patient.medications:
+            if isinstance(med, dict) and med.get("name") == med_name:
+                found = True
+                break
+        assert not found, f"Medication '{med_name}' was found after removal"
 
     @pytest.mark.standalone()
     def test_remove_nonexistent_medication(self, valid_patient):

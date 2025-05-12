@@ -111,6 +111,11 @@ class TestEnums:
         assert ModelType.PAT.value == "pat"
         assert ModelType.NEURAL_NETWORK.value == "neural_network"
         assert ModelType.LLM.value == "llm"
+        assert ModelType.REGRESSION.value == "regression"
+        assert ModelType.CLASSIFICATION.value == "classification"
+        assert ModelType.CLUSTERING.value == "clustering"
+        assert ModelType.RECOMMENDER.value == "recommender"
+        assert ModelType.OTHER.value == "other"
 
         # Check creating enum from string
         assert ModelType("transformer") == ModelType.TRANSFORMER
