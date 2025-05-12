@@ -74,22 +74,6 @@ def mock_service() -> AsyncMock:
     """Provides a mock PatientService scoped per test function."""
     return AsyncMock(spec=PatientService)
 
-# Fixture for a mock user to satisfy auth dependency
-@pytest.fixture
-def mock_current_user() -> DomainUser:
-    """Provides a mock active user for dependency overrides."""
-    # Use a consistent UUID for the test user
-    user_id = uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
-    return DomainUser(
-        id=user_id,
-        email="testuser@example.com",
-        username="testuser",
-        full_name="Test User",
-        password_hash="hashed_password_for_testing", # Required by dataclass
-        roles={UserRole.ADMIN}, # Dataclass expects set[UserRole]
-        account_status=UserStatus.ACTIVE # Dataclass expects UserStatus
-    )
-
 # Fixture for providing auth header to test client
 @pytest.fixture
 async def auth_headers(global_mock_jwt_service: MagicMock, authenticated_user: DomainUser) -> dict[str, str]:
@@ -121,7 +105,7 @@ EXPECTED_PATIENT_READ = {
 async def test_read_patient_success(
     client: tuple[FastAPI, AsyncClient], 
     mock_service: AsyncMock, 
-    mock_current_user: DomainUser,
+    authenticated_user: DomainUser,
     auth_headers: dict[str, str]
 ) -> None:
     """Test successful retrieval of a patient."""
@@ -138,7 +122,7 @@ async def test_read_patient_success(
         email=EXPECTED_PATIENT_READ["email"],
         phone_number=EXPECTED_PATIENT_READ["phone_number"],
         # Add other required fields for Patient entity if any, with dummy data
-        created_by_id=mock_current_user.id # Assuming this might be needed
+        created_by_id=authenticated_user.id # Using authenticated_user.id
     )
     
     # Override the dependency that provides the patient entity
@@ -161,7 +145,7 @@ async def test_read_patient_success(
 async def test_read_patient_not_found(
     client: tuple[FastAPI, AsyncClient], 
     mock_service: AsyncMock, 
-    mock_current_user: DomainUser,
+    authenticated_user: DomainUser,
     auth_headers: dict[str, str]
 ) -> None:
     """Test GET /patients/{patient_id} when patient is not found."""
@@ -189,7 +173,7 @@ async def test_read_patient_not_found(
 async def test_create_patient_success(
     client: tuple[FastAPI, AsyncClient], 
     faker: Faker, 
-    mock_current_user: DomainUser,
+    authenticated_user: DomainUser,
     auth_headers: dict[str, str]
 ) -> None:
     """Test successful creation of a patient."""
@@ -198,8 +182,8 @@ async def test_create_patient_success(
     # Define stubs and overrides
     async def stub_create_patient(patient_data: PatientCreateRequest, created_by_id: uuid.UUID = None) -> PatientCreateResponse:
         # Simulate service creating the patient
-        user_id = created_by_id or mock_current_user.id  # Use provided ID or default to mock user
-        assert user_id == mock_current_user.id  # Verify correct user ID passed
+        user_id = created_by_id or authenticated_user.id  # Use provided ID or default to authenticated user
+        assert user_id == authenticated_user.id  # Verify correct user ID passed
         return PatientCreateResponse(
             id=uuid.uuid4(),  # Generate a new ID for the response
             first_name=patient_data.first_name,
@@ -225,7 +209,7 @@ async def test_create_patient_success(
     async def test_create_patient_endpoint(
         patient_data: PatientCreateRequest,
         service: PatientService = Depends(lambda: StubPatientService()),
-        user: DomainUser = Depends(lambda: mock_current_user)
+        user: DomainUser = Depends(lambda: authenticated_user)
     ) -> PatientCreateResponse:
         # Use keyword argument for created_by_id to avoid duplication
         return await service.create_patient(patient_data, created_by_id=user.id)
@@ -263,7 +247,7 @@ async def test_create_patient_success(
 async def test_create_patient_validation_error(
     client: tuple[FastAPI, AsyncClient], 
     faker: Faker, 
-    mock_current_user: DomainUser,
+    authenticated_user: DomainUser,
     auth_headers: dict[str, str]
 ) -> None:
     """Test validation error when creating a patient with invalid data."""
@@ -280,7 +264,7 @@ async def test_create_patient_validation_error(
     async def test_validation_endpoint(
         patient_data: PatientCreateRequest,
         service: PatientService = Depends(lambda: AsyncMock(spec=PatientService)),
-        user: DomainUser = Depends(lambda: mock_current_user)
+        user: DomainUser = Depends(lambda: authenticated_user)
     ) -> PatientCreateResponse:
         # This endpoint uses Pydantic validation from FastAPI
         # We won't actually call the service since validation should fail
