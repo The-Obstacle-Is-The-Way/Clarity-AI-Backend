@@ -678,7 +678,7 @@ class TestXGBoostAPIIntegration:
     async def test_predict_risk_no_auth(self, client: httpx.AsyncClient, valid_risk_prediction_data: dict[str, Any]):
         """Test predict risk endpoint without authentication headers."""
         response = await client.post(
-            "/api/v1/xgboost/predict/risk",
+            "/api/v1/xgboost/risk-prediction",
             json=valid_risk_prediction_data
             # No headers provided
         )
