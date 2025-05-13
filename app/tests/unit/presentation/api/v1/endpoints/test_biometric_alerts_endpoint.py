@@ -250,6 +250,55 @@ async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
 def sample_patient_id() -> uuid.UUID:
     return uuid.UUID("abcdef12-e89b-12d3-a456-426614174abc")
 
+@pytest.fixture
+def test_settings() -> AppSettings:
+    """Provides test settings for the API endpoints."""
+    return AppSettings(
+        PROJECT_NAME="Test Biometric Alerts API",
+        API_V1_STR="/api/v1",
+        JWT_SECRET="test_secret_key_for_biometric_alerts_tests_only",
+        JWT_ALGORITHM="HS256",
+        JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30,
+        JWT_REFRESH_TOKEN_EXPIRE_MINUTES=60,
+    )
+
+@pytest.fixture
+def global_mock_jwt_service() -> MagicMock:
+    """Provides a mock JWT service for tests."""
+    mock = MagicMock(spec=JWTServiceInterface)
+    
+    # Mock create_access_token to return a test token
+    async def create_access_token_mock(*args, **kwargs):
+        return "test.provider.token"
+        
+    # Set up the mock
+    mock.create_access_token = AsyncMock(side_effect=create_access_token_mock)
+    
+    return mock
+
+@pytest.fixture
+def mock_auth_service() -> MagicMock:
+    """Provides a mock auth service for tests."""
+    return MagicMock(spec=AuthServiceInterface)
+
+@pytest.fixture
+def authenticated_provider_user() -> DomainUser:
+    """Returns a provider user for authentication tests."""
+    return DomainUser(
+        id=uuid.UUID("123e4567-e89b-12d3-a456-426614174001"),
+        email="provider@example.com",
+        username="testprovider",
+        full_name="Test Provider",
+        hashed_password="fake_hash",
+        roles=[UserRole.PROVIDER],
+        status=UserStatus.ACTIVE
+    )
+
+@pytest.fixture
+def get_valid_provider_auth_headers(global_mock_jwt_service) -> dict[str, str]:
+    """Generate valid auth headers for a provider user."""
+    return {"Authorization": f"Bearer test.provider.token"}
+
 @pytest.mark.asyncio
 class TestBiometricAlertsEndpoints:
     @pytest.mark.asyncio

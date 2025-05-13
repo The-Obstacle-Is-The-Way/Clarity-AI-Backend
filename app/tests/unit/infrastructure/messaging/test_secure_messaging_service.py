@@ -34,10 +34,15 @@ from app.infrastructure.security.encryption.base_encryption_service import BaseE
 def encryption_service():
     """Fixture for encryption service."""
     service = MagicMock(spec=BaseEncryptionService)
-    # Use encrypt_file based on the AttributeError hint
-    service.encrypt_file.side_effect = lambda x: f"encrypted_{x}"
-    # Corrected decrypt_field side effect
-    service.decrypt_field.side_effect = lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x
+    # Mock encrypt and decrypt methods
+    service.encrypt = MagicMock(side_effect=lambda x: f"encrypted_{x}")
+    service.decrypt = MagicMock(side_effect=lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x)
+    # Mock encrypt_field and decrypt_field methods
+    service.encrypt_field = MagicMock(side_effect=lambda x: f"encrypted_{x}")
+    service.decrypt_field = MagicMock(side_effect=lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x)
+    # Mock file-based methods
+    service.encrypt_file = MagicMock(side_effect=lambda x: f"encrypted_{x}")
+    service.decrypt_file = MagicMock(side_effect=lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x)
     return service
 
 @pytest.fixture
