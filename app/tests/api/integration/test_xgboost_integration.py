@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from dataclasses import dataclass
 from types import SimpleNamespace
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from app.core.services.ml.xgboost.mock import MockXGBoostService
 from app.presentation.api.v1.routes.xgboost import router as xgboost_router
@@ -46,12 +47,47 @@ def mock_service() -> MockXGBoostService:
     """Create a mock XGBoost service for testing."""
     return MockXGBoostService()
 
+# Fixture for creating an in-memory SQLite database with async session
+@pytest_asyncio.fixture
+async def test_db_session():
+    """Create an in-memory SQLite database for testing."""
+    # Create an async SQLite engine
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,
+        future=True,
+    )
+    
+    # Create tables (if needed for the tests)
+    # Note: This part is commented out as it might not be necessary for this specific test
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.create_all)
+    
+    # Create a session factory
+    session_factory = async_sessionmaker(
+        engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+    
+    return engine, session_factory
 
 # Refactored test client fixture
 @pytest_asyncio.fixture
-async def client(mock_service: MockXGBoostService) -> AsyncGenerator[AsyncClient, None]:
+async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGenerator[AsyncClient, None]:
     """Provide a test client with mocked dependencies."""
+    engine, session_factory = test_db_session
+    
     app = FastAPI()
+    
+    # Set essential app state that would normally be set by lifespan
+    app.state.actual_session_factory = session_factory
+    app.state.db_engine = engine
+    app.state.settings = SimpleNamespace(
+        ENVIRONMENT="test",
+        REDIS_URL=None,  # No Redis for tests
+        ASYNC_DATABASE_URL="sqlite+aiosqlite:///:memory:",
+    )
 
     # Override the dependency
     from app.presentation.api.dependencies.auth import verify_provider_access
@@ -62,10 +98,24 @@ async def client(mock_service: MockXGBoostService) -> AsyncGenerator[AsyncClient
     # Include the router
     app.include_router(xgboost_router, prefix="/api/v1/xgboost")
 
+    # Middleware to copy app_state essentials to request_state
+    @app.middleware("http")
+    async def set_essential_app_state_on_request_middleware(request, call_next):
+        # Copy important app state to request state
+        request.state.actual_session_factory = app.state.actual_session_factory
+        request.state.db_engine = app.state.db_engine
+        request.state.settings = app.state.settings
+        
+        response = await call_next(request)
+        return response
+
     # Create and yield the client
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client_instance:
         yield client_instance
+
+    # Clean up
+    await engine.dispose()
 
 
 # Define the test class
@@ -122,8 +172,10 @@ class TestXGBoostIntegration:
         # Verify mock was called
         mock_service.predict_risk.assert_called_once_with(
             patient_id="patient-123",
-            risk_type="suicide_attempt", # Match the request
+            risk_type="suicide_attempt",
             clinical_data=risk_request["clinical_data"],
+            time_frame_days=90,  # Default value from the RiskPredictionRequest model
+            include_explainability=False  # Default value from the RiskPredictionRequest model
         )
 
     @pytest.mark.asyncio
@@ -184,7 +236,7 @@ class TestXGBoostIntegration:
             prediction_domains=None, # Default from request schema if not provided
             prediction_types=None, # Default from request schema if not provided
             include_trajectories=False, # Default from request schema if not provided
-            include_recommendations=False # Default from request schema if not provided
+            include_recommendations=True # Default from request schema if not provided
         )
 
     # --- Add tests for other endpoints (outcome, model info, etc.) ---

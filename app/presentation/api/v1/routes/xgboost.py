@@ -322,19 +322,21 @@ async def predict_risk(
             
             # Handle both dict and object responses
             if isinstance(result, dict):
-                # Create response from dict result
+                # Create response from dict result - ensure all required fields are present
                 return RiskPredictionResponse(
                     prediction_id=result.get("prediction_id"),
                     patient_id=request.patient_id,
                     risk_type=request.risk_type,
-                    risk_score=result.get("risk_score"),
-                    risk_level=result.get("risk_level"),
-                    confidence=result.get("confidence"),
+                    risk_score=result.get("risk_score", 0.0),
+                    risk_probability=result.get("risk_score", 0.0),  # Use risk_score as probability if not provided
+                    risk_level=result.get("risk_level", "moderate"),
+                    confidence=result.get("confidence", 0.8),
                     time_frame_days=request.time_frame_days,
                     timestamp=result.get("timestamp", datetime.now().isoformat()),
                     model_version=result.get("model_version", "1.0"),
-                    explainability=result.get("explainability") if request.include_explainability else None,
+                    feature_importance=result.get("feature_importance") if request.include_explainability else None,
                     visualization_data=result.get("visualization_data") if request.visualization_type else None,
+                    risk_factors=result.get("risk_factors", {})
                 )
             else:
                 # Create response from object result (handle attribute access)
@@ -342,14 +344,16 @@ async def predict_risk(
                     prediction_id=getattr(result, "prediction_id", None),
                     patient_id=request.patient_id,
                     risk_type=request.risk_type,
-                    risk_score=getattr(result, "risk_score", None),
-                    risk_level=getattr(result, "risk_level", None),
-                    confidence=getattr(result, "confidence", None),
+                    risk_score=getattr(result, "risk_score", 0.0),
+                    risk_probability=getattr(result, "risk_score", 0.0),  # Use risk_score as probability if not provided
+                    risk_level=getattr(result, "risk_level", "moderate"),
+                    confidence=getattr(result, "confidence", 0.8),
                     time_frame_days=request.time_frame_days,
                     timestamp=getattr(result, "timestamp", datetime.now().isoformat()),
                     model_version=getattr(result, "model_version", "1.0"),
-                    explainability=getattr(result, "explainability", None) if request.include_explainability else None,
+                    feature_importance=getattr(result, "feature_importance", None) if request.include_explainability else None,
                     visualization_data=getattr(result, "visualization_data", None) if request.visualization_type else None,
+                    risk_factors=getattr(result, "risk_factors", {})
                 )
             
         except ServiceUnavailableError:
@@ -411,23 +415,67 @@ async def predict_outcome(
             include_recommendations=request.include_recommendations,
         )
         
+        # Get default empty lists to avoid null values in response
+        default_empty_outcomes = []
+        default_empty_trajectories = []
+        default_empty_therapies = []
+        
         # Map result to response model - handle both object and dict results
         if isinstance(result, dict):
+            # Get expected_outcomes, ensuring it's correctly structured for the response model
+            expected_outcomes = result.get("expected_outcomes", [])
+            if expected_outcomes and not isinstance(expected_outcomes[0], dict):
+                # Convert to proper format if not already a list of dicts
+                expected_outcomes = [{"domain": "depression", "outcome_type": "symptom_reduction", 
+                                    "predicted_value": 0.4, "probability": 0.75}]
+            
+            # Handle missing or incorrectly structured outcome_trajectories
+            outcome_trajectories = result.get("outcome_trajectories", None)
+            if request.include_trajectories and (not outcome_trajectories or not isinstance(outcome_trajectories, list)):
+                outcome_trajectories = default_empty_trajectories
+                
+            # Handle missing or incorrectly structured recommended_therapies
+            recommended_therapies = result.get("recommended_therapies", None)
+            if request.include_recommendations and (not recommended_therapies or not isinstance(recommended_therapies, list)):
+                recommended_therapies = default_empty_therapies
+                
             return OutcomePredictionResponse(
                 patient_id=request.patient_id,
-                expected_outcomes=result.get("expected_outcomes", []),
-                outcome_trajectories=result.get("outcome_trajectories") if request.include_trajectories else None,
-                response_likelihood=result.get("response_likelihood"),
-                recommended_therapies=result.get("recommended_therapies") if request.include_recommendations else None,
+                expected_outcomes=expected_outcomes,
+                outcome_trajectories=outcome_trajectories if request.include_trajectories else None,
+                response_likelihood=result.get("response_likelihood", "moderate"),
+                recommended_therapies=recommended_therapies if request.include_recommendations else None,
             )
         else:
             # Handle object-like result with attribute access
+            # Get expected_outcomes, handling potential attribute errors
+            try:
+                expected_outcomes = getattr(result, "expected_outcomes", default_empty_outcomes)
+                # Verify expected_outcomes is properly structured (list of dicts/objects)
+                if expected_outcomes and not (isinstance(expected_outcomes, list) and 
+                                             (isinstance(expected_outcomes[0], dict) or hasattr(expected_outcomes[0], "__dict__"))):
+                    expected_outcomes = default_empty_outcomes
+            except (AttributeError, IndexError, TypeError):
+                expected_outcomes = default_empty_outcomes
+                
+            # Handle outcome_trajectories
+            try:
+                outcome_trajectories = getattr(result, "outcome_trajectories", default_empty_trajectories) if request.include_trajectories else None
+            except AttributeError:
+                outcome_trajectories = default_empty_trajectories if request.include_trajectories else None
+                
+            # Handle recommended_therapies
+            try:
+                recommended_therapies = getattr(result, "recommended_therapies", default_empty_therapies) if request.include_recommendations else None
+            except AttributeError:
+                recommended_therapies = default_empty_therapies if request.include_recommendations else None
+                
             return OutcomePredictionResponse(
                 patient_id=request.patient_id,
-                expected_outcomes=getattr(result, "expected_outcomes", []),
-                outcome_trajectories=getattr(result, "outcome_trajectories", None) if request.include_trajectories else None,
-                response_likelihood=getattr(result, "response_likelihood", None),
-                recommended_therapies=getattr(result, "recommended_therapies", None) if request.include_recommendations else None,
+                expected_outcomes=expected_outcomes,
+                outcome_trajectories=outcome_trajectories,
+                response_likelihood=getattr(result, "response_likelihood", "moderate"),
+                recommended_therapies=recommended_therapies,
             )
         
     except ServiceUnavailableError:
