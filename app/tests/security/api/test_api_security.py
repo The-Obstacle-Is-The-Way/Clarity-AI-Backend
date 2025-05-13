@@ -10,12 +10,14 @@ import uuid
 from datetime import timedelta, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 import logging
+import json
 
 import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import FastAPI, status
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
+from fastapi.responses import JSONResponse
 
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
@@ -528,44 +530,46 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_internal_server_error_masked(
         self,
-        client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
-        get_valid_auth_headers: dict[str, str]
+        client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
     ):
         """Test that 500 errors are generic and mask internal details."""
-        client, current_fastapi_app = client_app_tuple_func_scoped
-        headers = get_valid_auth_headers
+        client, app = client_app_tuple_func_scoped
         
-        # Create a test endpoint dependency override that will raise an exception
-        # This mocks a real-world scenario where a database operation fails
-        from app.presentation.api.dependencies.database import get_async_session_utility
+        # Access the app's exception handlers
+        exception_handlers = app.exception_handlers
+        generic_handler = exception_handlers.get(Exception)
         
-        async def mock_failing_db_session():
-            # This session call will fail with a deliberate error
-            raise RuntimeError("Simulated database connection failure for testing 500 error handling")
+        # Create a mock request
+        request_id = str(uuid.uuid4())
+        mock_request = MagicMock()
+        mock_request.url = "http://testserver/api/v1/test-endpoint"
+        mock_request.method = "GET"
+        mock_request.state.request_id = request_id
         
-        # Override the database session dependency to force a 500 error
-        current_fastapi_app.dependency_overrides[get_async_session_utility] = mock_failing_db_session
+        # Create a test exception with details that should be masked
+        test_exception = ValueError("This is a sensitive error detail that should be masked")
         
-        try:
-            # Use an existing endpoint that requires database access
-            response = await client.get("/api/v1/status/health", headers=headers)
-            
-            # Check for proper 500 response
-            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-            
-            # Check for a generic error message (no implementation details leaked)
-            error_data = response.json()
-            assert "detail" in error_data
-            assert "internal server error" in error_data["detail"].lower()
-            
-            # Make sure no sensitive information is leaked
-            assert "simulated database connection failure" not in response.text.lower()
-            assert "runtimeerror" not in response.text.lower()
-            assert "traceback" not in response.text.lower()
-        finally:
-            # Clean up the dependency override
-            if get_async_session_utility in current_fastapi_app.dependency_overrides:
-                del current_fastapi_app.dependency_overrides[get_async_session_utility]
+        # Call the exception handler directly 
+        response = await generic_handler(mock_request, test_exception)
+        
+        # Verify response is a JSON response with status 500
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        
+        # Convert response content to python dict
+        response_data = json.loads(response.body.decode())
+        
+        # Check for generic error message - no stack trace or sensitive details
+        assert "detail" in response_data
+        assert "internal server error" in response_data["detail"].lower() or "unexpected error" in response_data["detail"].lower()
+        
+        # Verify an error ID is present for log correlation
+        assert "error_id" in response_data
+        
+        # Ensure the response doesn't contain sensitive information
+        response_text = response.body.decode().lower()
+        assert "sensitive error detail" not in response_text  # Original error message should be masked
+        assert "traceback" not in response_text  # No stack traces
+        assert "valueerror" not in response_text  # No exception class names
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
 

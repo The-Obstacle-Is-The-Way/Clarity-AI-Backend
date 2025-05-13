@@ -18,7 +18,9 @@ import asyncio
 import time
 import uuid
 from unittest.mock import MagicMock
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
+import jwt
+from jose import jwt as jose_jwt
 
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
@@ -203,7 +205,7 @@ class TestJWTAuthentication:
         assert payload.exp > int(time.time()), "Expiration time should be in the future"
 
     @pytest.mark.asyncio
-    async def test_token_validation(self, jwt_service: JWTService, token_factory):
+    async def test_token_validation(self, jwt_service: JWTService, token_factory, monkeypatch):
         """Verify valid tokens and rejection of invalid ones."""
         # Test valid token
         valid_token = await token_factory(user_type="admin")
@@ -220,12 +222,29 @@ class TestJWTAuthentication:
             jwt_service.decode_token(invalid_sig_token)
         assert "Signature verification failed" in str(exc_info.value)
         
-        # Test expired token
-        expired_token = await token_factory(user_type="admin", expired=True)
-        await asyncio.sleep(0.1) # Ensure time passes expiry
+        # Create an explicitly expired token - avoid the special testing logic
+        # 1. Create a token with a fixed expiration time in the past
+        user_data = {
+            "sub": TEST_USERS["admin"]["sub"],
+            "roles": [TEST_USERS["admin"]["role"]],
+            "permissions": TEST_USERS["admin"]["permissions"],
+            "exp": int((datetime.now(timezone.utc) - timedelta(minutes=5)).timestamp()),  # 5 minutes ago
+            "iat": int((datetime.now(timezone.utc) - timedelta(minutes=10)).timestamp()), # 10 minutes ago (to ensure iat < exp)
+            "jti": str(uuid.uuid4()),
+            "type": "access"
+        }
+        
+        # Directly encode the token with explicit claims, bypassing the service's methods
+        expired_token = jwt.encode(
+            user_data,
+            jwt_service.secret_key,
+            algorithm=jwt_service.algorithm
+        )
+        
+        # The token should be rejected as expired
         with pytest.raises(TokenExpiredException):
             jwt_service.decode_token(expired_token)
-            
+        
         # Test malformed token
         malformed_token = "this.is.not.jwt"
         with pytest.raises(InvalidTokenException) as exc_info:

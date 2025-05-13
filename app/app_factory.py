@@ -33,6 +33,7 @@ from app.presentation.middleware.security_headers import SecurityHeadersMiddlewa
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service, JWTService
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
+from app.presentation.api.v1.endpoints.test_endpoints import router as test_endpoints_router
 
 # Potentially import test routers conditionally or via a flag
 from app.tests.routers.admin_test_router import router as admin_test_router
@@ -464,7 +465,9 @@ def create_application(
 
     if include_test_routers:
         app_instance.include_router(admin_test_router, prefix=f"{app_settings.API_V1_STR}/admin", tags=["Test Admin"])
+        app_instance.include_router(test_endpoints_router, prefix=f"{app_settings.API_V1_STR}", tags=["Test"])
         logger.info(f"Including TEST admin router prefix: {app_settings.API_V1_STR}/admin")
+        logger.info(f"Including TEST endpoints router prefix: {app_settings.API_V1_STR}/test")
 
     # --- Global Exception Handlers ---
     @app_instance.exception_handler(RequestValidationError)
