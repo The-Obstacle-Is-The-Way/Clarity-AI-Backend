@@ -14,7 +14,7 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -815,6 +815,7 @@ def create_test_token(
 def test_app() -> FastAPI:
     """Create a test FastAPI application with appropriate configuration for testing."""
     # Create a new app with test settings
+    from app.app_factory import create_application  # Import the create_application function
     app = create_application()
     
     # Add auth verification endpoint for testing

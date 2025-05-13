@@ -300,79 +300,77 @@ async def predict_risk(
     # Verify provider has access to this patient's data
     await verify_provider_access(user, request.patient_id)
     
-    # Check for and sanitize PHI
-    try:
-        # This should use a proper PHI detection service
-        if _has_phi(request):
-            logger.warning(f"PHI detected in prediction request for patient {request.patient_id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="PHI detected in request. Please remove personal health identifiers.",
-            )
+    # Check for PHI first, before any further processing
+    if _has_phi(request.dict()):
+        logger.warning(f"PHI detected in prediction request for patient {request.patient_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Request contains PHI in clinical_data.social_security_number field",
+        )
     
+    try:
         # Call XGBoost service for prediction
-        try:
-            result = await xgboost_service.predict_risk(
+        result = await xgboost_service.predict_risk(
+            patient_id=request.patient_id,
+            risk_type=request.risk_type,
+            clinical_data=request.clinical_data,
+            time_frame_days=request.time_frame_days,
+            include_explainability=request.include_explainability,
+        )
+        
+        # Handle both dict and object responses
+        if isinstance(result, dict):
+            # Create response from dict result - ensure all required fields are present
+            return RiskPredictionResponse(
+                prediction_id=result.get("prediction_id"),
                 patient_id=request.patient_id,
                 risk_type=request.risk_type,
-                clinical_data=request.clinical_data,
+                risk_score=result.get("risk_score", 0.0),
+                risk_probability=result.get("risk_score", 0.0),  # Use risk_score as probability if not provided
+                risk_level=result.get("risk_level", "moderate"),
+                confidence=result.get("confidence", 0.8),
                 time_frame_days=request.time_frame_days,
-                include_explainability=request.include_explainability,
+                timestamp=result.get("timestamp", datetime.now().isoformat()),
+                model_version=result.get("model_version", "1.0"),
+                feature_importance=result.get("feature_importance") if request.include_explainability else None,
+                visualization_data=result.get("visualization_data") if request.visualization_type else None,
+                risk_factors=result.get("risk_factors", {})
             )
-            
-            # Handle both dict and object responses
-            if isinstance(result, dict):
-                # Create response from dict result - ensure all required fields are present
-                return RiskPredictionResponse(
-                    prediction_id=result.get("prediction_id"),
-                    patient_id=request.patient_id,
-                    risk_type=request.risk_type,
-                    risk_score=result.get("risk_score", 0.0),
-                    risk_probability=result.get("risk_score", 0.0),  # Use risk_score as probability if not provided
-                    risk_level=result.get("risk_level", "moderate"),
-                    confidence=result.get("confidence", 0.8),
-                    time_frame_days=request.time_frame_days,
-                    timestamp=result.get("timestamp", datetime.now().isoformat()),
-                    model_version=result.get("model_version", "1.0"),
-                    feature_importance=result.get("feature_importance") if request.include_explainability else None,
-                    visualization_data=result.get("visualization_data") if request.visualization_type else None,
-                    risk_factors=result.get("risk_factors", {})
-                )
-            else:
-                # Create response from object result (handle attribute access)
-                return RiskPredictionResponse(
-                    prediction_id=getattr(result, "prediction_id", None),
-                    patient_id=request.patient_id,
-                    risk_type=request.risk_type,
-                    risk_score=getattr(result, "risk_score", 0.0),
-                    risk_probability=getattr(result, "risk_score", 0.0),  # Use risk_score as probability if not provided
-                    risk_level=getattr(result, "risk_level", "moderate"),
-                    confidence=getattr(result, "confidence", 0.8),
-                    time_frame_days=request.time_frame_days,
-                    timestamp=getattr(result, "timestamp", datetime.now().isoformat()),
-                    model_version=getattr(result, "model_version", "1.0"),
-                    feature_importance=getattr(result, "feature_importance", None) if request.include_explainability else None,
-                    visualization_data=getattr(result, "visualization_data", None) if request.visualization_type else None,
-                    risk_factors=getattr(result, "risk_factors", {})
-                )
-            
-        except ServiceUnavailableError:
-            logger.error(f"XGBoost service unavailable for risk prediction: {request.patient_id}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Machine learning service temporarily unavailable. Please try again later.",
+        else:
+            # Create response from object result (handle attribute access)
+            return RiskPredictionResponse(
+                prediction_id=getattr(result, "prediction_id", None),
+                patient_id=request.patient_id,
+                risk_type=request.risk_type,
+                risk_score=getattr(result, "risk_score", 0.0),
+                risk_probability=getattr(result, "risk_score", 0.0),  # Use risk_score as probability if not provided
+                risk_level=getattr(result, "risk_level", "moderate"),
+                confidence=getattr(result, "confidence", 0.8),
+                time_frame_days=request.time_frame_days,
+                timestamp=getattr(result, "timestamp", datetime.now().isoformat()),
+                model_version=getattr(result, "model_version", "1.0"),
+                feature_importance=getattr(result, "feature_importance", None) if request.include_explainability else None,
+                visualization_data=getattr(result, "visualization_data", None) if request.visualization_type else None,
+                risk_factors=getattr(result, "risk_factors", {})
             )
-        except Exception as e:
-            logger.error(f"Error predicting risk: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error generating risk prediction: {str(e)}",
-            )
+        
+    except ServiceUnavailableError:
+        logger.error(f"XGBoost service unavailable for risk prediction: {request.patient_id}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Machine learning service temporarily unavailable. Please try again later.",
+        )
     except DataPrivacyError as e:
         logger.warning(f"Data privacy error in risk prediction: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Privacy error: {str(e)}",
+        )
+    except Exception as e:
+        logger.error(f"Error predicting risk: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating risk prediction: {str(e)}",
         )
 
 

@@ -322,18 +322,37 @@ async def verify_provider_access(
         detail="Not authorized to access this patient's data"
     )
 
+async def require_patient_role(current_user: CurrentUserDep) -> DomainUser:
+    """Dependency that requires the current user to have the PATIENT role."""
+    # Convert to set to ensure we can use set operations safely
+    user_roles_set = set(current_user.roles) if isinstance(current_user.roles, list) else current_user.roles
+    allowed_roles = {UserRole.PATIENT, UserRole.ADMIN}
+    
+    # Allow ADMINs to also pass this check, as they often have superset permissions
+    if not (allowed_roles & user_roles_set):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User requires Patient or Admin role.",
+        )
+    return current_user
+
+PatientUserDep = Annotated[DomainUser, Depends(require_patient_role)]
+
 __all__ = [
     "AdminUserDep",
     "AuthServiceDep",
     "ClinicianUserDep",
     "CurrentUserDep",
     "JWTServiceDep",
+    "PatientUserDep",
     "TokenDep",
     "UserRepoDep",
     "get_current_user",
+    "get_current_active_user",
     "get_user_repository_dependency",
     "oauth2_scheme",
     "require_admin_role",
     "require_clinician_role",
+    "require_patient_role",
     "require_roles",
 ]

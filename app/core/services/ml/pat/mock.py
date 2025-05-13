@@ -79,10 +79,22 @@ class MockPATService(PATInterface):
             "id": test_profile_id,
             "profile_id": test_profile_id,  # Added for test compatibility
             "patient_id": "test-patient",  # Matches test_integrate_with_digital_twin_success
-            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "health_score": 78.0,  # Add default health score
-            "activity_level": "moderate",  # Add default activity level
+            "created_at": datetime.datetime.now(datetime.timezone.utc),
+            "updated_at": datetime.datetime.now(datetime.timezone.utc),
+            "status": "active",
+            "data": {
+                "activity_patterns": {
+                    "morning": 0.7,
+                    "afternoon": 0.5,
+                    "evening": 0.3,
+                    "night": 0.1
+                },
+                "sleep_patterns": {
+                    "duration": 7.5,
+                    "quality": 0.8,
+                    "regularity": 0.9
+                }
+            }
         }
         
         # Add profile456 needed for test_integrate_with_digital_twin tests

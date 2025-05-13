@@ -1,88 +1,144 @@
 """
-Datetime utilities for the Novamind Digital Twin platform.
+DateTime Utilities
 
-This module provides mathematically precise datetime handling with timezone awareness,
-ensuring consistent behavior across all Python versions and computational contexts.
-Following clean architecture principles, this abstraction isolates the core domain
-from implementation details of the Python standard library.
+This module provides datetime utility functions and constants for consistent
+datetime handling throughout the application. It ensures proper timezone
+management and ISO 8601 formatting.
 """
 
 import datetime
+from typing import Optional, Union
 
-# Define a true UTC timezone following mathematical principles
-# This creates a single source of truth for UTC timezone access
-# rather than relying on implementation-specific imports
+# Standard UTC timezone constant for consistent usage across the application
 UTC = datetime.timezone.utc
 
-def now_utc() -> datetime.datetime:
+def now() -> datetime.datetime:
     """
-    Get the current time in UTC with timezone information.
+    Get current UTC datetime with timezone information.
     
     Returns:
-        Current datetime in UTC with explicit timezone information
+        datetime.datetime: Current time in UTC with timezone info
     """
     return datetime.datetime.now(UTC)
 
-def from_timestamp_utc(timestamp: float) -> datetime.datetime:
+def utc_now() -> datetime.datetime:
     """
-    Convert a Unix timestamp to a UTC datetime.
+    Alias for now() - provides current UTC datetime.
+    
+    Returns:
+        datetime.datetime: Current time in UTC with timezone info
+    """
+    return now()
+
+def now_utc() -> datetime.datetime:
+    """
+    Alias for utc_now() - provides current UTC datetime.
+    Added for backward compatibility with existing code.
+    
+    Returns:
+        datetime.datetime: Current time in UTC with timezone info
+    """
+    return utc_now()
+
+def format_iso(dt: Optional[datetime.datetime] = None) -> str:
+    """
+    Format a datetime as ISO 8601 string with timezone info.
     
     Args:
-        timestamp: Unix timestamp (seconds since epoch)
+        dt: Datetime to format. If None, current UTC time is used.
         
     Returns:
-        Datetime object in UTC timezone
+        str: ISO 8601 formatted datetime string
     """
-    return datetime.datetime.fromtimestamp(timestamp, tz=UTC)
+    if dt is None:
+        dt = now()
+    elif dt.tzinfo is None:
+        # Ensure timezone info is present
+        dt = dt.replace(tzinfo=UTC)
+        
+    return dt.isoformat()
+
+def parse_iso(iso_str: str) -> datetime.datetime:
+    """
+    Parse an ISO 8601 string into a datetime object with timezone info.
+    
+    Args:
+        iso_str: ISO 8601 formatted datetime string
+        
+    Returns:
+        datetime.datetime: Parsed datetime with timezone info
+        
+    Raises:
+        ValueError: If the string cannot be parsed as ISO format
+    """
+    dt = datetime.datetime.fromisoformat(iso_str)
+    
+    # Ensure timezone info is present
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+        
+    return dt
 
 def to_utc(dt: datetime.datetime) -> datetime.datetime:
     """
-    Ensure a datetime is in UTC timezone.
-    
-    If datetime is naive (no timezone), assumes it is UTC.
-    If datetime has a different timezone, converts to UTC.
+    Convert a datetime to UTC timezone.
     
     Args:
-        dt: Datetime object to convert
+        dt: Datetime to convert
         
     Returns:
-        Datetime in UTC timezone
+        datetime.datetime: Datetime in UTC timezone
     """
     if dt.tzinfo is None:
         # Assume naive datetimes are already UTC
         return dt.replace(tzinfo=UTC)
+    
     return dt.astimezone(UTC)
 
-def format_iso8601(dt: datetime.datetime) -> str:
+def timestamp_ms() -> int:
     """
-    Format datetime as ISO-8601 string with UTC timezone indicator.
+    Get current UTC timestamp in milliseconds.
     
-    Args:
-        dt: Datetime to format, will be converted to UTC if needed
-        
     Returns:
-        ISO-8601 formatted string with UTC timezone ('Z' suffix)
+        int: Current timestamp in milliseconds
     """
-    utc_dt = to_utc(dt)
-    # Format with 'Z' suffix to explicitly indicate UTC
-    return utc_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    return int(now().timestamp() * 1000)
 
-def parse_iso8601(iso_str: str) -> datetime.datetime:
+def days_between(start: Union[datetime.datetime, str], end: Union[datetime.datetime, str]) -> int:
     """
-    Parse ISO-8601 string into UTC datetime.
-    
-    Handles various ISO format variations.
+    Calculate the number of days between two datetimes.
     
     Args:
-        iso_str: ISO-8601 formatted datetime string
+        start: Start datetime or ISO string
+        end: End datetime or ISO string
         
     Returns:
-        Datetime object in UTC timezone
+        int: Number of days between start and end
     """
-    # Handle format with Z suffix
-    if iso_str.endswith('Z'):
-        iso_str = iso_str[:-1] + '+00:00'
+    # Convert strings to datetime if needed
+    if isinstance(start, str):
+        start = parse_iso(start)
     
-    # Parse with timezone information
-    dt = datetime.datetime.fromisoformat(iso_str)
-    return to_utc(dt)
+    if isinstance(end, str):
+        end = parse_iso(end)
+    
+    # Ensure both datetimes have timezone info
+    start = to_utc(start)
+    end = to_utc(end)
+    
+    # Calculate days
+    delta = end - start
+    return delta.days
+
+def format_iso8601(dt: Optional[datetime.datetime] = None) -> str:
+    """
+    Alias for format_iso() - format a datetime as ISO 8601 string.
+    Added for backward compatibility with existing code.
+    
+    Args:
+        dt: Datetime to format. If None, current UTC time is used.
+        
+    Returns:
+        str: ISO 8601 formatted datetime string
+    """
+    return format_iso(dt)
