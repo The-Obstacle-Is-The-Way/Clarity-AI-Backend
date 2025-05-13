@@ -248,78 +248,62 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path: {request.url.path} - Skipping authentication")
             request.scope["user"] = UnauthenticatedUser()
-            request.scope["auth"] = AuthCredentials([])
             return await call_next(request)
-
-        # Extract token
+        
+        # Extract the token from the request
         token = self._extract_token(request)
         if not token:
-            logger.info(f"Missing authentication token for protected path: {request.url.path}")
+            logger.debug("No authentication token provided")
             return JSONResponse(
-                {"detail": "Authentication token required."},
-                status_code=status.HTTP_401_UNAUTHORIZED
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": "Not authenticated"}
             )
-
-        # Handle test bypass headers for integration testing
-        if "X-Test-Auth-Bypass" in request.headers:
-            try:
-                # Parse role from header (format: "ROLE:USER_ID")
-                auth_info = request.headers.get("X-Test-Auth-Bypass")
-                role, user_id = auth_info.split(":", 1)
-                
-                # Create a mock authenticated user for testing
-                auth_user = AuthenticatedUser(
-                    id=user_id,
-                    username=f"test_{role.lower()}",
-                    email=f"test.{role.lower()}@example.com",
-                    roles=[role.upper()]
-                )
-                
-                # Set user and credentials in request scope
-                request.scope["user"] = auth_user
-                request.scope["auth"] = AuthCredentials(scopes=[role.upper()])
-                
-                # Continue with the request
-                return await call_next(request)
-            except Exception as e:
-                logger.warning(f"Test auth bypass error: {e}")
-                # Continue with standard auth if test bypass fails
-
+        
         try:
-            # Validate token and get user
+            # Validate the token and get user data
             auth_user, scopes = await self._validate_and_prepare_user_context(token, request)
             
-            # Set user and credentials in request scope
+            # Add authentication to request scope
             request.scope["user"] = auth_user
             request.scope["auth"] = AuthCredentials(scopes=scopes)
             
             # Continue with the request
             return await call_next(request)
             
-        except InvalidTokenException as e:
-            return JSONResponse(
-                {"detail": str(e)},
-                status_code=HTTP_401_UNAUTHORIZED
-            )
-        except TokenExpiredException as e:
-            return JSONResponse(
-                {"detail": "Token has expired. Please log in again."},
-                status_code=HTTP_401_UNAUTHORIZED
-            )
         except UserNotFoundException as e:
+            # Return 401 for user not found scenarios
+            logger.warning(f"User not found: {e}")
             return JSONResponse(
-                {"detail": str(e)},
-                status_code=HTTP_401_UNAUTHORIZED
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": "Could not validate credentials"}
             )
+            
+        except TokenExpiredException:
+            logger.warning("Token expired")
+            return JSONResponse(
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": "Token expired"}
+            )
+            
+        except InvalidTokenException as e:
+            logger.warning(f"Invalid token: {e}")
+            return JSONResponse(
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": "Could not validate credentials"}
+            )
+            
         except AuthenticationException as e:
+            # Authentication exceptions can specify a custom status code
             status_code = getattr(e, "status_code", HTTP_401_UNAUTHORIZED)
+            logger.warning(f"Authentication error: {e}, status: {status_code}")
             return JSONResponse(
-                {"detail": str(e)},
-                status_code=status_code
+                status_code=status_code,
+                content={"detail": str(e)}
             )
+            
         except Exception as e:
-            logger.error(f"Unexpected error in authentication middleware: {e}", exc_info=True)
+            logger.error(f"Unexpected authentication error: {e}", exc_info=True)
             return JSONResponse(
-                {"detail": "Authentication error. Please try again later."},
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "Authentication error. Please try again later."}
             ) 

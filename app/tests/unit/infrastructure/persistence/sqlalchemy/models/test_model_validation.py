@@ -27,15 +27,23 @@ class TestUserModelValidation:
 
     def test_domain_to_persistence_mapping(self):
         """Test domain user can be properly mapped to persistence model."""
-        # Create a domain user
-        domain_user = DomainUser(
-            id=str(uuid.uuid4()),
-            username="test_user",
-            email="test@example.com",
-            hashed_password="hashed_password",
-            is_active=True,
-            roles=["admin"]
-        )
+        # Create a domain user with the correct attribute names
+        domain_user_attrs = {
+            "id": str(uuid.uuid4()),
+            "username": "test_user",
+            "email": "test@example.com",
+            "roles": ["admin"],
+            "is_active": True
+        }
+        
+        # Add the password attribute using the correct name based on the model
+        if hasattr(DomainUser, "password_hash"):
+            domain_user_attrs["password_hash"] = "hashed_password"
+        else:
+            domain_user_attrs["hashed_password"] = "hashed_password"
+            
+        # Create domain user
+        domain_user = DomainUser(**domain_user_attrs)
         
         # Convert to persistence model
         persistence_model = UserMapper.to_persistence(domain_user)
@@ -43,8 +51,13 @@ class TestUserModelValidation:
         # Verify key attributes were properly mapped
         assert persistence_model.username == domain_user.username
         assert persistence_model.email == domain_user.email
-        assert persistence_model.hashed_password == domain_user.hashed_password
         assert persistence_model.is_active == domain_user.is_active
+        
+        # Verify password was correctly mapped regardless of attribute name
+        if hasattr(domain_user, "password_hash"):
+            assert persistence_model.password_hash == domain_user.password_hash
+        else:
+            assert persistence_model.password_hash == domain_user.hashed_password
 
     def test_persistence_to_domain_mapping(self):
         """Test persistence model can be properly mapped back to domain entity."""
@@ -54,7 +67,7 @@ class TestUserModelValidation:
             id=user_id,
             username="test_user", 
             email="test@example.com",
-            hashed_password="hashed_password",
+            password_hash="hashed_password",
             is_active=True
         )
         
@@ -68,9 +81,14 @@ class TestUserModelValidation:
         assert domain_user.id == user_id
         assert domain_user.username == persistence_model.username
         assert domain_user.email == persistence_model.email
-        assert domain_user.hashed_password == persistence_model.hashed_password
         assert domain_user.is_active == persistence_model.is_active
         assert "admin" in domain_user.roles
+        
+        # Verify password was correctly mapped regardless of attribute name
+        if hasattr(domain_user, "password_hash"):
+            assert domain_user.password_hash == persistence_model.password_hash
+        else:
+            assert domain_user.hashed_password == persistence_model.password_hash
 
     def test_legacy_model_aliasing(self):
         """Verify legacy model is properly aliased to canonical model."""

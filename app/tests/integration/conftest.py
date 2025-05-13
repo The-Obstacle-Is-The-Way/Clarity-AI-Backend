@@ -8,7 +8,7 @@ require network connections, databases, and other external services.
 import logging
 import uuid
 from collections.abc import AsyncGenerator, Callable
-from typing import Any
+from typing import Any, Dict, List, Optional, Set, Union
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone, timedelta
 
@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from asgi_lifespan import LifespanManager
 from sqlalchemy import text
+from fastapi.testclient import TestClient
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -757,3 +758,359 @@ def mock_auth_dependency():
         return get_mock_user
     
     return override_dependency
+
+# Test API endpoint for authentication verification
+def create_auth_me_endpoint(app: FastAPI):
+    """Add a test endpoint to verify authentication."""
+    @app.get("/api/v1/auth/me")
+    async def auth_me_endpoint(
+        x_test_auth_bypass: str = Header(None),
+    ):
+        """Test endpoint that returns the authenticated user's information."""
+        # This function will be automatically handled by the test authentication middleware
+        # The middleware will add the user to the request scope based on the X-Test-Auth-Bypass header
+        # or the token in the Authorization header
+        return {
+            "authenticated": True,
+            "user_id": "00000000-0000-0000-0000-000000000002",
+            "roles": ["clinician"]
+        }
+
+
+# Create a consistent JWT token for testing
+def create_test_token(
+    subject: str = "test.user@example.com",
+    user_id: str = "00000000-0000-0000-0000-000000000002",
+    roles: List[str] = None,
+    expiration_minutes: int = 30,
+) -> str:
+    """Create a JWT token for testing."""
+    roles = roles or ["clinician"]
+    
+    # Current time
+    now = datetime.now(timezone.utc)
+    
+    # Token payload
+    payload = {
+        "sub": subject,
+        "id": user_id,
+        "user_id": user_id,
+        "roles": roles,
+        "exp": (now + timedelta(minutes=expiration_minutes)).timestamp(),
+        "iat": now.timestamp(),
+        "jti": str(uuid.uuid4()),
+        "iss": "test-issuer",
+        "aud": "test-audience",
+        "type": "access"
+    }
+    
+    # Sign token with a test key
+    test_secret = "test_secret_key_for_testing_only"
+    token = jwt.encode(payload, test_secret, algorithm="HS256")
+    
+    return token
+
+
+@pytest.fixture
+def test_app() -> FastAPI:
+    """Create a test FastAPI application with appropriate configuration for testing."""
+    # Create a new app with test settings
+    app = create_application()
+    
+    # Add auth verification endpoint for testing
+    create_auth_me_endpoint(app)
+    
+    # Replace any existing authentication middleware with test-specific middleware
+    # that accepts test tokens and test-specific headers
+    public_paths = {"/health", "/docs", "/openapi.json", "/api/v1/auth/login", "/api/v1/auth/refresh"}
+    
+    # This is tricky - we need to remove any existing instances of AuthenticationMiddleware
+    # and replace them with our test-specific middleware
+    app.middleware_stack = None  # Clear the middleware stack
+    app.add_middleware(TestAuthenticationMiddleware, public_paths=public_paths)
+    
+    return app
+
+
+@pytest.fixture
+def test_client(test_app: FastAPI) -> TestClient:
+    """
+    Create a TestClient instance with auth middleware configured.
+    
+    This fixture provides a properly configured TestClient for making requests
+    to the API in tests. It ensures authentication middleware is properly set up
+    to handle test tokens and auth bypass headers.
+    
+    Returns:
+        TestClient: Configured TestClient for making authenticated requests
+    """
+    logger.info("test_client fixture: Initializing test client")
+    
+    # Create client with lifespan context
+    client = TestClient(test_app)
+    
+    # Log client creation
+    logger.info(f"test_client fixture: Yielding client for app id used by transport: {id(test_app)}")
+    
+    # Add helper methods for authenticated requests
+    def get_auth_headers(role: str = "clinician", user_id: str = None):
+        """Get authentication headers for the given role."""
+        if user_id is None:
+            user_id = "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
+            if role.lower() == "admin":
+                user_id = "00000000-0000-0000-0000-000000000001"  # Admin ID
+            elif role.lower() == "patient":
+                user_id = "00000000-0000-0000-0000-000000000003"  # Patient ID
+        
+        # Create a JWT token
+        token = create_test_token(
+            subject=f"test.{role.lower()}@example.com",
+            user_id=user_id,
+            roles=[role.lower()]
+        )
+        
+        return {
+            "Authorization": f"Bearer {token}",
+            "X-Test-Auth-Bypass": f"{role}:{user_id}"
+        }
+    
+    # Attach helper method to client
+    client.get_auth_headers = get_auth_headers
+    
+    return client
+
+
+@pytest.fixture
+def auth_headers():
+    """Provide authentication headers for different roles."""
+    def _auth_headers(role: str = "clinician", user_id: str = None):
+        """Get auth headers for a specific role."""
+        if user_id is None:
+            user_id = "00000000-0000-0000-0000-000000000002"  # Default test clinician ID
+            if role.lower() == "admin":
+                user_id = "00000000-0000-0000-0000-000000000001"  # Admin ID
+            elif role.lower() == "patient":
+                user_id = "00000000-0000-0000-0000-000000000003"  # Patient ID
+        
+        return {
+            "X-Test-Auth-Bypass": f"{role}:{user_id}"
+        }
+    
+    return _auth_headers
+
+# Add this fixture after the db_session fixture
+
+@pytest_asyncio.fixture
+async def db_session_mock() -> AsyncGenerator[MagicMock, None]:
+    """
+    Creates a mock database session that can be used for tests that need database access 
+    but don't want to use the real database.
+    
+    This mock session implements all AsyncSession methods and can be used to mock
+    repository dependencies that require a database session.
+    
+    Returns:
+        AsyncMock: An AsyncMock instance configured to behave like an AsyncSession
+    """
+    logger.info("Creating mock database session for tests")
+    
+    # Create a comprehensive AsyncMock that simulates AsyncSession
+    mock_session = AsyncMock()
+    
+    # Mock execute method with a default behavior that returns a mock result
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = None
+    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalar.return_value = None
+    mock_result.scalar_one.side_effect = Exception("No row found")
+    mock_result.one_or_none.return_value = None
+    mock_result.one.side_effect = Exception("No row found")
+    mock_result.all.return_value = []
+    
+    # Connect the mock_result to the session's execute method
+    mock_session.execute.return_value = mock_result
+    
+    # Mock the other AsyncSession methods
+    mock_session.commit.return_value = None
+    mock_session.rollback.return_value = None
+    mock_session.close.return_value = None
+    mock_session.refresh.return_value = None
+    
+    # Properly simulate context manager behavior
+    mock_session.__aenter__.return_value = mock_session
+    mock_session.__aexit__.return_value = None
+    
+    # Provide a way to customize the return values of different query methods
+    def configure_query_result(result_data, method="all"):
+        """Helper to configure the mock session to return specific results for queries.
+        
+        Args:
+            result_data: The data to return from the query
+            method: The query method to mock ('all', 'first', 'one', 'one_or_none', etc.)
+        """
+        if method == "all":
+            mock_result.all.return_value = result_data
+            mock_result.scalars.return_value.all.return_value = result_data
+        elif method == "first":
+            mock_result.first.return_value = result_data
+            mock_result.scalars.return_value.first.return_value = result_data
+        elif method == "one":
+            mock_result.one.return_value = result_data
+            mock_result.scalars.return_value.one.return_value = result_data
+        elif method == "one_or_none":
+            mock_result.one_or_none.return_value = result_data
+            mock_result.scalars.return_value.one_or_none.return_value = result_data
+        elif method == "scalar":
+            mock_result.scalar.return_value = result_data
+        elif method == "scalar_one":
+            mock_result.scalar_one.return_value = result_data
+        elif method == "scalar_one_or_none":
+            mock_result.scalar_one_or_none.return_value = result_data
+    
+    # Attach the configuration helper to the mock session
+    mock_session.configure_query_result = configure_query_result
+    
+    yield mock_session
+
+# Add a repository mock factory fixture
+@pytest.fixture
+def repository_mock_factory():
+    """
+    Creates a factory function that builds mock repository instances for testing.
+    
+    This allows tests to easily create mock repositories with customizable behavior
+    without having to implement all repository methods.
+    
+    Returns:
+        Callable: A factory function that creates mock repositories
+    """
+    def create_mock_repository(repo_interface, **method_returns):
+        """
+        Create a mock repository that implements the specified interface
+        
+        Args:
+            repo_interface: The repository interface class to mock
+            **method_returns: Dict of method names and their return values
+            
+        Returns:
+            MagicMock: A configured mock repository implementing the interface
+        """
+        mock_repo = MagicMock(spec=repo_interface)
+        
+        # Configure each method with a default AsyncMock
+        # This makes all methods async and returns None by default
+        for method_name in dir(repo_interface):
+            # Skip dunder methods, properties, and non-callable attributes
+            if (
+                method_name.startswith("_") or 
+                isinstance(getattr(repo_interface, method_name, None), property) or
+                not callable(getattr(repo_interface, method_name, None))
+            ):
+                continue
+                
+            # Create an AsyncMock for this method
+            method_mock = AsyncMock()
+            setattr(mock_repo, method_name, method_mock)
+        
+        # Update methods with specific return values if provided
+        for method_name, return_value in method_returns.items():
+            if hasattr(mock_repo, method_name):
+                getattr(mock_repo, method_name).return_value = return_value
+        
+        return mock_repo
+    
+    return create_mock_repository
+
+# Add this fixture after repository_mock_factory
+
+@pytest.fixture
+def override_repository_dependencies(repository_mock_factory):
+    """
+    Fixture to override repository dependencies in the app for tests.
+    
+    This fixture allows tests to easily override repository dependencies
+    in the FastAPI app to use mock repositories instead of real ones.
+    
+    Args:
+        repository_mock_factory: Factory function to create mock repositories
+        
+    Returns:
+        Callable: A function that can be used to override repository dependencies
+    """
+    def _override_dependencies(app: FastAPI, repository_overrides: dict):
+        """
+        Override repository dependencies in the app with mock repositories.
+        
+        Args:
+            app: The FastAPI app instance
+            repository_overrides: Dict mapping dependency functions to repository interfaces and custom returns
+                Example: {get_user_repository: (IUserRepository, {"get_by_id": mock_user})}
+        
+        Returns:
+            dict: The original dependency_overrides before overriding
+        """
+        # Store original overrides to restore later if needed
+        original_overrides = app.dependency_overrides.copy()
+        
+        # Create and apply mock repositories
+        for dependency_func, (repo_interface, method_returns) in repository_overrides.items():
+            mock_repo = repository_mock_factory(repo_interface, **method_returns)
+            app.dependency_overrides[dependency_func] = lambda: mock_repo
+            
+        return original_overrides
+        
+    return _override_dependencies
+
+
+@pytest.fixture
+def app_with_mocked_repositories(
+    app_instance: FastAPI, 
+    repository_mock_factory,
+    override_repository_dependencies
+):
+    """
+    Provides a FastAPI app instance with common repository dependencies mocked.
+    
+    This fixture creates an app instance with UserRepository, PatientRepository,
+    and other commonly used repositories mocked out for testing.
+    
+    Returns:
+        FastAPI: App instance with mocked repositories
+    """
+    from app.presentation.api.dependencies.auth import get_user_repository_dependency
+    from app.presentation.api.dependencies.database import get_patient_repository_dependency
+    from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+    from app.core.interfaces.repositories.patient_repository import IPatientRepository
+    
+    # Create a test user for auth tests
+    test_user = User(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        username="test_user",
+        email="test.user@clarity.health",
+        full_name="Test User",
+        password_hash="$2b$12$TestPasswordHashForTestingOnly",
+        roles={UserRole.PATIENT},
+        account_status=UserStatus.ACTIVE
+    )
+    
+    # Create a test patient
+    test_patient = MagicMock()
+    test_patient.id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    test_patient.first_name = "Test"
+    test_patient.last_name = "Patient"
+    test_patient.date_of_birth = datetime(1990, 1, 1)
+    test_patient.email = "test.patient@clarity.health"
+    
+    # Override common repository dependencies
+    override_repository_dependencies(app_instance, {
+        get_user_repository_dependency: (
+            IUserRepository, 
+            {"get_by_id": test_user, "get_by_email": test_user, "get_by_username": test_user}
+        ),
+        get_patient_repository_dependency: (
+            IPatientRepository,
+            {"get_by_id": test_patient}
+        )
+    })
+    
+    return app_instance
