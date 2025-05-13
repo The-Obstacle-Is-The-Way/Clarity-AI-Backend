@@ -93,7 +93,7 @@ class PHIDetectionService:
 
     def _load_patterns(self) -> None:
         """Load PHI detection patterns from file."""
-        # self.logger.debug(f"Attempting to load PHI patterns from: {self.pattern_file.resolve()}")
+        self.logger.debug(f"Attempting to load PHI patterns from: {self.pattern_file.resolve()}")
         if not self.pattern_file.is_file():
             self.logger.warning(f"PHI pattern file not found: {self.pattern_file}")
             self.logger.info("Falling back to default PHI patterns.")
@@ -106,20 +106,41 @@ class PHIDetectionService:
                 config = yaml.safe_load(f)
 
             if not isinstance(config, dict):
-                 raise ValueError(f"Invalid format in PHI pattern file: {self.pattern_file}")
-
-            for category, patterns_in_category in config.items():
-                 if not isinstance(patterns_in_category, list): continue
-                 for pattern_info in patterns_in_category:
-                     if (not isinstance(pattern_info, dict) or
-                         'name' not in pattern_info or
-                         'pattern' not in pattern_info): continue
-                     patterns_loaded.append(
-                         PHIPattern(
-                             name=pattern_info["name"],
-                             pattern=pattern_info["pattern"],
-                             description=pattern_info.get("description", ""),
-                             category=category))
+                raise ValueError(f"Invalid format in PHI pattern file: {self.pattern_file}")
+                
+            # Check for patterns key in the YAML structure
+            if 'patterns' in config and isinstance(config['patterns'], list):
+                for pattern_info in config['patterns']:
+                    if (not isinstance(pattern_info, dict) or
+                        'name' not in pattern_info or
+                        'pattern' not in pattern_info):
+                        continue
+                        
+                    patterns_loaded.append(
+                        PHIPattern(
+                            name=pattern_info["name"],
+                            pattern=pattern_info["pattern"],
+                            description=pattern_info.get("description", ""),
+                            category=pattern_info.get("category", "unknown"),
+                            risk_level=pattern_info.get("risk_level", "high")
+                        )
+                    )
+            else:
+                # Legacy format handling for backward compatibility
+                for category, patterns_in_category in config.items():
+                    if not isinstance(patterns_in_category, list): continue
+                    for pattern_info in patterns_in_category:
+                        if (not isinstance(pattern_info, dict) or
+                            'name' not in pattern_info or
+                            'pattern' not in pattern_info): continue
+                        patterns_loaded.append(
+                            PHIPattern(
+                                name=pattern_info["name"],
+                                pattern=pattern_info["pattern"],
+                                description=pattern_info.get("description", ""),
+                                category=category)
+                        )
+                        
             self.logger.info(f"Loaded {len(patterns_loaded)} PHI patterns from {self.pattern_file}")
             self.patterns = patterns_loaded
         except (yaml.YAMLError, FileNotFoundError) as e:
