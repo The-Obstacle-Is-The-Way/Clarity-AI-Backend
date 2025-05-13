@@ -1,0 +1,21 @@
+"""
+Migrated from standalone test: test_standalone_biometric_processor.py
+
+This is a migrated test that needs to be updated to use the actual implementations
+from the domain layer instead of self-contained implementations.
+"""
+
+# TODO: Update imports to use actual implementations instead of standalone ones
+# Original source: app/tests/standalone/core/test_standalone_biometric_processor.py
+
+# Add proper imports here
+import pytest
+from unittest.mock import MagicMock, patch
+
+# TODO: Add proper domain imports
+# from app.domain.services...
+
+# TODO: Create proper test fixtures
+
+# TODO: Remove standalone implementations and use actual implementations
+
