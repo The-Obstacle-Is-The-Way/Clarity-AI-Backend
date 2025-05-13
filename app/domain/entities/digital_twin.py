@@ -41,6 +41,15 @@ class DigitalTwin:
     """Core Digital Twin entity."""
     # Define non-default fields first
     patient_id: UUID 
+    # Define neurotransmitter baseline parameters needed for tests
+    baseline_serotonin: float = 1.0
+    baseline_dopamine: float = 1.0
+    baseline_gaba: float = 1.0
+    baseline_norepinephrine: float = 1.0
+    # Define sensitivity parameters needed for tests
+    cortisol_sensitivity: float = 0.5
+    medication_sensitivity: float = 1.0
+    therapy_sensitivity: float = 0.8
     # Define other fields, including ID with default
     id: UUID = field(default_factory=uuid4) # Keep default factory
     configuration: DigitalTwinConfiguration = field(default_factory=DigitalTwinConfiguration)
@@ -55,6 +64,12 @@ class DigitalTwin:
         # Make last_updated reference the same object as created_at
         if self.created_at is not None and self.last_updated is not None:
             object.__setattr__(self, "last_updated", self.created_at)
+        
+        # Validate neurotransmitter levels
+        if self.baseline_serotonin < 0 or self.baseline_dopamine < 0 or \
+           self.baseline_gaba < 0 or self.baseline_norepinephrine < 0:
+            from app.domain.exceptions.base_exceptions import ValidationError
+            raise ValidationError("Neurotransmitter baselines must be non-negative")
 
     def update_state(self, new_state_data: dict[str, Any]):
         """Update the twin's state based on new data."""

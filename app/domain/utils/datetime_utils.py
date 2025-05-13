@@ -1,82 +1,72 @@
 """
-DateTime Utilities
+Datetime utilities for consistent timezone handling.
 
-This module provides datetime utility functions and constants for consistent
-datetime handling throughout the application. It ensures proper timezone
-management and ISO 8601 formatting.
+This module provides constants and helper functions for working
+with dates and times in a consistent manner across the application.
 """
 
 import datetime
 from typing import Optional, Union
+from zoneinfo import ZoneInfo
 
-# Standard UTC timezone constant for consistent usage across the application
-UTC = datetime.timezone.utc
+# Standard timezone for all application operations
+UTC = ZoneInfo("UTC")
 
 def now() -> datetime.datetime:
     """
-    Get current UTC datetime with timezone information.
+    Get current datetime in UTC.
     
     Returns:
-        datetime.datetime: Current time in UTC with timezone info
+        datetime.datetime: Current time in UTC timezone
     """
     return datetime.datetime.now(UTC)
 
-def utc_now() -> datetime.datetime:
-    """
-    Alias for now() - provides current UTC datetime.
-    
-    Returns:
-        datetime.datetime: Current time in UTC with timezone info
-    """
-    return now()
-
 def now_utc() -> datetime.datetime:
     """
-    Alias for utc_now() - provides current UTC datetime.
+    Get current datetime in UTC.
     Added for backward compatibility with existing code.
     
     Returns:
-        datetime.datetime: Current time in UTC with timezone info
+        datetime.datetime: Current time in UTC timezone
     """
-    return utc_now()
+    return now()
 
-def format_iso(dt: Optional[datetime.datetime] = None) -> str:
+def today() -> datetime.date:
     """
-    Format a datetime as ISO 8601 string with timezone info.
+    Get current date in UTC.
+    
+    Returns:
+        datetime.date: Current date in UTC timezone
+    """
+    return now().date()
+
+def format_iso(dt: datetime.datetime) -> str:
+    """
+    Format datetime in ISO 8601 format with timezone.
     
     Args:
-        dt: Datetime to format. If None, current UTC time is used.
+        dt: Datetime to format
         
     Returns:
         str: ISO 8601 formatted datetime string
     """
-    if dt is None:
-        dt = now()
-    elif dt.tzinfo is None:
-        # Ensure timezone info is present
-        dt = dt.replace(tzinfo=UTC)
-        
     return dt.isoformat()
 
-def parse_iso(iso_str: str) -> datetime.datetime:
+def parse_iso(date_str: str) -> datetime.datetime:
     """
-    Parse an ISO 8601 string into a datetime object with timezone info.
+    Parse ISO 8601 datetime string to datetime object.
+    
+    Ensures the result has UTC timezone if none specified.
     
     Args:
-        iso_str: ISO 8601 formatted datetime string
+        date_str: ISO 8601 formatted string
         
     Returns:
-        datetime.datetime: Parsed datetime with timezone info
-        
-    Raises:
-        ValueError: If the string cannot be parsed as ISO format
+        datetime.datetime: Parsed datetime with timezone
     """
-    dt = datetime.datetime.fromisoformat(iso_str)
-    
-    # Ensure timezone info is present
+    dt = datetime.datetime.fromisoformat(date_str)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
-        
     return dt
 
 def to_utc(dt: datetime.datetime) -> datetime.datetime:

@@ -11,6 +11,11 @@ from .brain_region import BrainRegion
 from .clinical_insight import ClinicalInsight
 from .clinical_significance import ClinicalSignificance
 from .digital_twin import DigitalTwin, DigitalTwinConfiguration, DigitalTwinState
+from .neurotransmitter_model import (
+    NeurotransmitterTwinModel,
+    MentalStateModel,
+    MedicationResponseModel
+)
 
 __all__ = [
     "BrainRegion",
@@ -20,4 +25,7 @@ __all__ = [
     "DigitalTwinConfiguration",
     "DigitalTwinState",
     "TemporalNeurotransmitterSequence",
+    "NeurotransmitterTwinModel",
+    "MentalStateModel",
+    "MedicationResponseModel"
 ] 
