@@ -3,7 +3,7 @@ Migrated from standalone test to proper unit test.
 Original file: app/tests/standalone/core/test_biometric_event_processor.py
 
 This test uses the actual implementations from the main codebase.
-Migration date: Tue May 13 10:35:53 EDT 2025
+Migration date: Tue May 13 10:38:16 EDT 2025
 """
 
 """
