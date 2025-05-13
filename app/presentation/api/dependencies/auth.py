@@ -183,8 +183,8 @@ async def get_current_user(
         logger.error(f"GET_CURRENT_USER: Error accessing basic user attributes before status check: {e_access}", exc_info=True)
     # --- END ACCESS OTHER ATTRIBUTES ---
 
-    if user.account_status != UserStatus.ACTIVE:
-        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.account_status}")
+    if user.status != UserStatus.ACTIVE:
+        logger.warning(f"get_current_user: User {user.username} is not active. Status: {user.status}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
     logger.info(f"get_current_user: User {user.username} authenticated successfully.")
@@ -226,7 +226,7 @@ async def get_current_active_user(
     current_user: DomainUser = Depends(get_current_user)
 ) -> DomainUser:
     """Dependency to get the current active user."""
-    if current_user.account_status != UserStatus.ACTIVE:
+    if current_user.status != UserStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account is inactive"
@@ -297,7 +297,7 @@ async def get_optional_user(
         user_id = uuid.UUID(str(user_id_str))
         user = await user_repo.get_user_by_id(user_id=user_id)
         
-        if user and user.account_status == UserStatus.ACTIVE:
+        if user and user.status == UserStatus.ACTIVE:
             return user
             
         return None

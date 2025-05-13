@@ -55,16 +55,18 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
         finally:
             await mock_session.close()
     
-    # Now wrap this context manager in a factory function that returns the same context manager instance
-    # This is key - we need to return the context manager itself, not call it
-    def mock_session_factory():
-        # Return the async context manager directly
-        return mock_session_cm
+    # THIS IS THE KEY FIX: return the context manager directly, not a function that returns it
+    # The mock_session_factory should BE the async context manager, not return one
+    mock_session_factory = mock_session_cm
     
     # Add mock session factory to app state
     app.state.actual_session_factory = mock_session_factory
     app.state.db_engine = MagicMock()
     app.state.session_factory = mock_session_factory
+    
+    # Override the database session dependency
+    from app.presentation.api.dependencies.database import get_async_session_utility
+    app.dependency_overrides[get_async_session_utility] = lambda: mock_session_factory
     
     # Add special test-only endpoint for /api/v1/auth/me
     @app.get("/api/v1/auth/me")
@@ -128,10 +130,10 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
         patient = await patient_repo.get_by_id(patient_id=patient_id)
         if not patient:
             return JSONResponse(
-                {"detail": "Patient not found"},
+                {"detail": f"Patient with id {patient_id} not found."},
                 status_code=status.HTTP_404_NOT_FOUND
             )
-            
+        
         # Return patient data
         return {
             "id": str(patient.id),
@@ -413,7 +415,7 @@ async def get_valid_auth_headers(auth_test_helper, authenticated_user, global_mo
         "last_name": authenticated_user.last_name,
         "full_name": authenticated_user.full_name,
         "roles": [role.value if hasattr(role, 'value') else role for role in authenticated_user.roles],
-        "account_status": authenticated_user.status.value if hasattr(authenticated_user.status, 'value') else authenticated_user.status,
+        "status": authenticated_user.status.value if hasattr(authenticated_user.status, 'value') else authenticated_user.status,
         "is_active": authenticated_user.is_active,
         "created_at": int(authenticated_user.created_at.timestamp()) if authenticated_user.created_at else int(datetime.now(timezone.utc).timestamp()),
         "jti": str(uuid.uuid4()),
