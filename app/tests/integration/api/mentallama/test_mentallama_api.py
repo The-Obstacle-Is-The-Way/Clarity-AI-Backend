@@ -75,8 +75,14 @@ async def mock_mentallama_service_instance() -> AsyncMock:
     mock.is_healthy.return_value = True
     
     # Create async process method that returns a proper dictionary
-    async def process_side_effect(text: str, model_type: str, options: dict):
-        """Process method implementation that returns different responses based on model_type."""
+    async def process_side_effect(*args, **kwargs):
+        """Process method implementation that handles different parameter formats.
+        Some endpoints pass text=..., others pass prompt=..., and the kwargs vary.
+        """
+        # Get the input text from either the 'text' or 'prompt' parameter
+        input_text = kwargs.get('text', kwargs.get('prompt', ''))
+        model_type = kwargs.get('model_type', kwargs.get('model', 'default'))
+        
         # Return different responses based on the model_type
         if model_type == "analysis":
             return {
@@ -100,11 +106,29 @@ async def mock_mentallama_service_instance() -> AsyncMock:
                 "success": True,
                 "response": "I understand you're feeling that way. Let's explore this further."
             }
+        elif model_type == "risk":
+            return {
+                "success": True,
+                "risk_level": "low",
+                "assessment": "No immediate risk detected",
+                "recommendations": ["Regular follow-up"]
+            }
+        elif model_type == "wellness":
+            return {
+                "success": True,
+                "dimensions": {
+                    "physical": 0.8,
+                    "emotional": 0.7,
+                    "social": 0.6,
+                    "spiritual": 0.5
+                },
+                "assessment": "Overall positive wellness profile"
+            }
         else:
             # Default response for any other model type
             return {
                 "success": True,
-                "generated_text": f"Response for {text} using {model_type}",
+                "generated_text": f"Response for {input_text} using {model_type}",
                 "model_used": model_type,
                 "processing_time": 0.1
             }
@@ -260,13 +284,12 @@ async def test_process_endpoint(mentallama_test_client: AsyncClient, auth_header
         f"{MENTALLAMA_API_PREFIX}/process", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
-    # Check against the mocked service return value
-    assert response.json() == {
-        "model": "mock_model",
-        "prompt": TEST_PROMPT,
-        "response": "mock process response",
-        "provider": "mock_provider",
-    }
+    # Check response matches our mock implementation
+    response_json = response.json()
+    assert response_json["success"] is True
+    assert response_json["generated_text"] == f"Response for {TEST_PROMPT} using {TEST_MODEL}"
+    assert response_json["model_used"] == TEST_MODEL
+    assert "processing_time" in response_json
 
 @pytest.mark.asyncio
 async def test_analyze_text_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
@@ -276,8 +299,13 @@ async def test_analyze_text_endpoint(mentallama_test_client: AsyncClient, auth_h
         f"{MENTALLAMA_API_PREFIX}/analyze", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
-    # Assuming analyze uses the same mock process method for now
-    assert "response" in response.json() 
+    # Check response matches our mock implementation for analysis model type
+    response_json = response.json()
+    assert response_json["success"] is True
+    assert "analysis" in response_json
+    assert "sentiment" in response_json["analysis"]
+    assert "topics" in response_json["analysis"]
+    assert "emotions" in response_json["analysis"]
 
 @pytest.mark.asyncio
 async def test_detect_conditions_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
@@ -287,8 +315,11 @@ async def test_detect_conditions_endpoint(mentallama_test_client: AsyncClient, a
         f"{MENTALLAMA_API_PREFIX}/detect-conditions", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
-    # Check that the response has expected structure but don't assume specific fields
-    assert isinstance(response.json(), dict)
+    # Check response matches our mock implementation for conditions model type
+    response_json = response.json()
+    assert response_json["success"] is True
+    assert "conditions" in response_json
+    assert isinstance(response_json["conditions"], list)
 
 @pytest.mark.asyncio
 async def test_therapeutic_response_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
@@ -301,8 +332,10 @@ async def test_therapeutic_response_endpoint(mentallama_test_client: AsyncClient
         f"{MENTALLAMA_API_PREFIX}/therapeutic-response", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
-    # Check that the response has expected structure but don't assume specific fields
-    assert isinstance(response.json(), dict)
+    # Check response matches our mock implementation for therapeutic model type
+    response_json = response.json()
+    assert response_json["success"] is True
+    assert "response" in response_json
 
 @pytest.mark.asyncio
 async def test_suicide_risk_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
@@ -312,8 +345,12 @@ async def test_suicide_risk_endpoint(mentallama_test_client: AsyncClient, auth_h
         f"{MENTALLAMA_API_PREFIX}/assess-suicide-risk", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
-    # Don't assume specific fields in the response
-    assert isinstance(response.json(), dict)
+    # Check response matches our mock implementation for risk model type
+    response_json = response.json()
+    assert response_json["success"] is True
+    assert "risk_level" in response_json
+    assert "assessment" in response_json
+    assert "recommendations" in response_json
 
 @pytest.mark.asyncio
 async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
@@ -323,8 +360,11 @@ async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient,
         f"{MENTALLAMA_API_PREFIX}/assess-wellness", json=payload, headers=auth_headers
     )
     assert response.status_code == 200
-    # Don't assume specific fields in the response
-    assert isinstance(response.json(), dict)
+    # Check response matches our mock implementation for wellness model type
+    response_json = response.json()
+    assert response_json["success"] is True
+    assert "dimensions" in response_json
+    assert "assessment" in response_json
 
 @pytest.mark.asyncio
 async def test_service_unavailable(mentallama_test_client: AsyncClient, mock_mentallama_service_instance: AsyncMock, auth_headers: dict[str, str]) -> None:

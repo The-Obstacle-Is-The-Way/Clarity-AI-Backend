@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
 from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
+from enum import Enum
 
 import asyncio
 import pytest
@@ -26,8 +27,27 @@ from httpx import ASGITransport, AsyncClient
 
 from app.app_factory import create_application
 from app.core.config.settings import Settings as AppSettings
-from app.core.domain.entities.user import User, UserRole, UserStatus
-from app.core.domain.entities.user import User as DomainUser
+from app.domain.models.user import UserRole, User
+
+# Define UserStatus locally for testing
+class UserStatus(str, Enum):
+    """User status enum for tests."""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+
+# Create a DomainUser class for testing
+class DomainUser:
+    """Domain user model for tests."""
+    def __init__(self, id, email, username, full_name, hashed_password, roles, status):
+        self.id = id
+        self.email = email
+        self.username = username
+        self.full_name = full_name
+        self.hashed_password = hashed_password
+        self.roles = roles
+        self.status = status
+
 from app.core.domain.entities.alert import AlertPriority, AlertStatus
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
@@ -174,17 +194,17 @@ def mock_template_repository() -> AsyncMock:
 
 @pytest.fixture
 def mock_current_user() -> User:
-    test_user_id = uuid.UUID("123e4567-e89b-12d3-a456-426614174000")
-    mock_user = User(
-        id=test_user_id,
-        email="test@example.com",
-        username="testadmin",
-        full_name="Test Admin User",
-        password_hash="fake_hash",
-        roles={UserRole.ADMIN},
-        account_status=UserStatus.ACTIVE
+    """Returns a mock user for current_user dependency."""
+    # Use a valid UUID string instead of a UUID object
+    return User(
+        id="123e4567-e89b-42d3-a456-426614174000",  # Use a valid UUIDv4 string
+        email="test@example.com", 
+        hashed_password="fake_hash",
+        roles=[UserRole.ADMIN],
+        is_active=True,
+        first_name="Test",
+        last_name="Admin User"
     )
-    return mock_user
 
 @pytest.fixture(scope="function")
 def mock_alert_service() -> MagicMock:
@@ -206,40 +226,50 @@ async def test_app(
     mock_current_user: User,
     authenticated_provider_user: DomainUser,
 ) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
-    logger.info("Creating test_app for BiometricAlertsEndpoints with LifespanManager.")
+    """
+    Creates a test application with specific dependency overrides:
     
-    reset_container()
-    # Create app with authentication middleware disabled
-    app = create_application(
-        settings_override=test_settings, 
-        include_test_routers=False,
-        skip_auth_middleware=True  # Added this parameter to skip auth middleware
-    )
-
-    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
-    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
-    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
-    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
-    app.dependency_overrides[get_current_user] = lambda: authenticated_provider_user  # Use authenticated_provider_user instead
+    1. JWT Service: Provides a mock that returns pre-configured tokens
+    2. Alert Service: For alert endpoint testing
+    3. Alert Repository: For alert data persistence mocking
+    4. Rule Repository: For rule data persistence mocking
+    5. Template Repository: For alert template data access mocking
+    6. Event Processor: For biometric data processing mocking
+    7. Current User: For authentication testing
+    """
+    
+    # Create the application with test settings
+    app = create_application()
+    
+    # Override dependencies
     app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
     app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
     app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
-    logger.info(f"Applied FastAPI dependency_overrides. Keys: {list(app.dependency_overrides.keys())}")
-
-    container = get_container()
-    container.register(JWTServiceInterface, global_mock_jwt_service)
-    container.register(AuthServiceInterface, mock_auth_service)
-    container.register(AlertServiceInterface, mock_alert_service)
-    logger.info("Explicitly registered MOCK services in DI container for BiometricAlerts test_app.")
-
-    # Use LifespanManager to handle startup/shutdown
-    async with LifespanManager(app):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
-            yield app, client
+    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
+    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
+    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
+    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
     
-    # Cleanup outside the LifespanManager context if needed, though overrides are typically cleared before next test.
-    app.dependency_overrides.clear() # This might be redundant if LifespanManager handles full app cycle
-    reset_container() # Ensure container is reset
+    # Mock the current user dependency to return our provider user
+    app.dependency_overrides[get_current_user] = lambda: authenticated_provider_user
+    
+    # Create a test client
+    transport = ASGITransport(app=app)
+    client = AsyncClient(transport=transport, base_url="http://testserver")
+    
+    # Start the application lifecycle for testing
+    async with LifespanManager(app):
+        try:
+            # Yield both the app and client for use in tests
+            yield app, client
+        finally:
+            # Clear dependency overrides
+            app.dependency_overrides.clear()
+            logger.info("Cleared dependency overrides after test")
+            
+            # Reset DI container if used
+            reset_container()
+            logger.info("Reset DI container after test")
 
 @pytest.fixture
 async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
@@ -285,7 +315,7 @@ def mock_auth_service() -> MagicMock:
 def authenticated_provider_user() -> DomainUser:
     """Returns a provider user for authentication tests."""
     return DomainUser(
-        id=uuid.UUID("123e4567-e89b-12d3-a456-426614174001"),
+        id="123e4567-e89b-42d3-a456-426614174001",  # Use a valid UUIDv4 string
         email="provider@example.com",
         username="testprovider",
         full_name="Test Provider",
