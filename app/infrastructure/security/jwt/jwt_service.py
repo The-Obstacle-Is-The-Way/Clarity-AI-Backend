@@ -143,8 +143,10 @@ class JWTService(IJwtService):
 
     def create_refresh_token(
         self,
-        data: dict[str, Any],
+        data: dict[str, Any] = None,
         *,
+        subject: str = None,
+        jti: str = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
     ) -> str:
@@ -153,13 +155,31 @@ class JWTService(IJwtService):
 
         Args:
             data: Dictionary containing claims to include in the token
+            subject: Subject claim (user ID) if not provided in data
+            jti: Token ID if not provided in data
             expires_delta: Optional ``timedelta`` override for token expiration
-            expires_delta_minutes: Optional override for token expiration in minutes (legacy)
+            expires_delta_minutes: Optional override for token expiration in minutes
+            
+        Returns:
+            JWT refresh token as a string
         """
+        # If data is None, create empty dict
+        data = data or {}
+        
+        # If subject is provided directly, add it to data
+        if subject and "sub" not in data:
+            data["sub"] = subject
+            
+        # If jti is provided directly, add it to data
+        if jti and "jti" not in data:
+            data["jti"] = jti
+            
+        # Then calculate expiration
         if expires_delta is not None:
             minutes = int(expires_delta.total_seconds() / 60)
         else:
             minutes = expires_delta_minutes or (self.refresh_token_expire_days * 24 * 60)
+        
         return self._create_token(data=data, token_type=TokenType.REFRESH, expires_delta_minutes=minutes)
 
     def _create_token(
@@ -336,15 +356,32 @@ class JWTService(IJwtService):
             raise AuthenticationError(f"Token validation error: {e}")
 
     def verify_refresh_token(self, token: str) -> TokenPayload:
-        """Verifies a refresh token and returns its payload."""
+        """
+        Verify and decode a refresh token, ensuring it's valid and of the refresh type.
+        
+        Args:
+            token: The refresh token to verify
+            
+        Returns:
+            TokenPayload: Decoded payload if token is valid
+            
+        Raises:
+            InvalidTokenException: If token is invalid or not a refresh token
+            TokenExpiredException: If token has expired
+        """
+        # First, decode the token
         payload = self.decode_token(token)
-
-        # Additional checks specific to refresh tokens
-        if payload.type != TokenType.REFRESH:
-            raise InvalidTokenException("Invalid token type: Expected refresh token.")
-
-        # Potentially check against a database of valid refresh tokens/sessions here
-
+        
+        # Ensure it's a refresh token
+        if not hasattr(payload, 'type') or payload.type != TokenType.REFRESH:
+            logger.warning(f"Invalid token type for refresh - expected 'refresh', got '{getattr(payload, 'type', 'unknown')}'")
+            raise InvalidTokenException("Invalid token type for refresh operation")
+        
+        # Check if the token has been revoked
+        if self._is_token_blacklisted(token):
+            logger.warning(f"Attempted to use blacklisted refresh token with jti {payload.jti}")
+            raise InvalidTokenException("Token has been revoked")
+        
         return payload
 
     async def get_user_from_token(self, token: str) -> User | None:
@@ -574,6 +611,80 @@ class JWTService(IJwtService):
                 
         # No token found
         return None
+        
+    def create_unauthorized_response(self, error_type: str, message: str) -> dict:
+        """
+        Create a standardized HIPAA-compliant error response for authentication failures.
+        
+        Args:
+            error_type: Type of error (e.g., "invalid_token", "token_expired", "insufficient_permissions")
+            message: Detailed error message
+            
+        Returns:
+            dict: A dictionary with status_code and response body
+        """
+        # Determine appropriate status code
+        if error_type in ["invalid_token", "token_expired", "missing_token"]:
+            status_code = 401  # Unauthorized
+        elif error_type == "insufficient_permissions":
+            status_code = 403  # Forbidden
+        else:
+            status_code = 401  # Default to Unauthorized
+            
+        # Create a HIPAA-compliant error message (no PHI, limited details)
+        # The message should be generic enough to not leak sensitive information
+        sanitized_message = self._sanitize_error_message(message)
+            
+        return {
+            "status_code": status_code,
+            "body": {
+                "error": error_type,
+                "message": sanitized_message,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            },
+            "headers": {
+                "WWW-Authenticate": "Bearer"
+            }
+        }
+        
+    def _sanitize_error_message(self, message: str) -> str:
+        """
+        Sanitize error messages to ensure no PHI or sensitive information is leaked.
+        
+        Args:
+            message: The original error message
+            
+        Returns:
+            str: Sanitized error message
+        """
+        # Keep the message short
+        if len(message) > 100:
+            message = message[:97] + "..."
+            
+        # Remove any potential PHI patterns (e.g., UUIDs, emails, etc.)
+        # This is a very basic implementation - in production, use more sophisticated pattern matching
+        phi_patterns = [
+            r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",  # UUID
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",  # Email
+            r"\b\d{3}[-.]?\d{2}[-.]?\d{4}\b",  # SSN
+            r"\b\d{9}\b",  # 9-digit number (potential SSN or MRN)
+            r"patient",  # Word "patient"
+            r"user_id",  # Word "user_id"
+        ]
+        
+        sanitized = message
+        
+        import re
+        for pattern in phi_patterns:
+            # Replace matched patterns with redaction markers
+            if pattern == r"patient":
+                sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
+            elif pattern == r"user_id":
+                sanitized = re.sub(pattern, "ID", sanitized)
+            else:
+                sanitized = re.sub(pattern, "[REDACTED]", sanitized)
+                
+        return sanitized
 
 def get_jwt_service() -> IJwtService:
     """
