@@ -54,6 +54,7 @@ class TestAuthentication:
         headers = {"Authorization": "Bearer invalid.token.format"}
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "Invalid token" in response.json().get("detail", "")
         assert "Invalid token:" in response.json().get("detail", "")
 
     @pytest.mark.asyncio
