@@ -55,12 +55,9 @@ def authenticated_user() -> User:
         id=uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"),
         username="test_doctor",
         email="test.doctor@example.com", 
-        first_name="Test",
-        last_name="Doctor",
+        full_name="Test Doctor",
         roles={UserRole.CLINICIAN},
-        status=UserStatus.ACTIVE,
-        is_active=True,
+        account_status=UserStatus.ACTIVE,
         password_hash="hashed_password_not_real",
         created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc)
     ) 
