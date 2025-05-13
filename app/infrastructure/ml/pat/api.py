@@ -101,7 +101,7 @@ async def analyze_actigraphy_data(
         # Convert patient metadata to format expected by PAT service
         patient_metadata = None
         if request.patient_metadata:
-            patient_metadata = request.patient_metadata.dict()
+            patient_metadata = request.patient_metadata.model_dump()
         
         # Run analysis
         results = await pat_service.analyze(

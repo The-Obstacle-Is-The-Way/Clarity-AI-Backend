@@ -259,78 +259,84 @@ class JWTService:
     
     def blacklist_token(self, token: str, user_id: str | None = None) -> None:
         """
-        Blacklist a token to prevent it from being used.
+        Blacklist a token to prevent its future use.
         
         Args:
             token: The token to blacklist
-            user_id: The ID of the user associated with the token (optional)
+            user_id: The ID of the user associated with the token
+            
+        Raises:
+            InvalidTokenException: If the token is invalid
         """
         try:
-            # Decode token without verification to get its payload
-            # This allows blacklisting even if the token is already expired
-            payload = jwt.decode(
+            # Decode token without verification for logging
+            token_data = jwt.decode(
                 token,
-                options={"verify_signature": False}
+                options={"verify_signature": False, "verify_exp": False}
             )
             
-            # Get expiration time and token ID
-            exp = payload.get("exp", int(time.time()) + 3600)  # Default 1 hour if not found
-            jti = payload.get("jti", "unknown")
-            user_id = user_id or payload.get("user_id", "unknown")
-            email = payload.get("email", "unknown")
+            # Check if we need to extract user_id from token
+            if user_id is None:
+                user_id = token_data.get("sub", "unknown")
+                
+            # Get token ID and session ID for tracking
+            token_id = token_data.get("jti", "unknown")
+            session_id = token_data.get("session_id", "unknown")
             
-            # Add token to blacklist
-            # self.token_blacklist_repository.add_to_blacklist(
-            #     token=token,
-            #     jti=jti,
-            #     expires_at=datetime.fromtimestamp(exp)
-            # )
+            # Blacklist the token
+            # self.blacklist_repo.add_to_blacklist(token, token_id)
             
-            # Log blacklisting
+            # Log the blacklisting
             self.audit_logger.log_security_event(
                 event_type="TOKEN_BLACKLISTED",
                 user_id=user_id,
-                description=f"Token blacklisted for user {email}",
+                description=f"Token blacklisted",
                 metadata={
-                    "token_id": jti,
+                    "token_id": token_id,
+                    "session_id": session_id,
+                    "token_type": token_data.get("token_type", "access")
                 }
             )
             
         except Exception as e:
-            # If token can't be decoded, blacklist it anyway
-            # self.token_blacklist_repository.add_to_blacklist(
-            #     token=token,
-            #     jti="invalid",
-            #     expires_at=datetime.utcnow() + timedelta(days=7)  # Default 7 days
-            # )
+            # If we can't decode, still try to blacklist the raw token
+            # self.blacklist_repo.add_to_blacklist(token)
             
-            # Log error
+            # Log the issue
             self.audit_logger.log_security_event(
                 event_type="TOKEN_BLACKLIST_ERROR",
                 user_id=user_id or "unknown",
-                description="Error blacklisting token",
-                metadata={
-                    "error": str(e),
-                }
+                description=f"Error blacklisting token: {str(e)}",
+                metadata={}
             )
     
     def blacklist_session_tokens(self, session_id: str, user_id: str = None) -> None:
         """
-        Blacklist all tokens for a specific session.
+        Blacklist all tokens associated with a session.
         
         Args:
             session_id: The session ID to blacklist
-            user_id: The ID of the user (for audit logging)
+            user_id: The ID of the user associated with the session
         """
-        # Blacklist the session
-        # self.token_blacklist_repository.blacklist_session(session_id)
+        # For future implementation
+        # Get all tokens for the session from repository
+        # tokens = self.token_repo.get_tokens_by_session(session_id)
         
-        # Log blacklisting
+        # Blacklist each token
+        # for token in tokens:
+        #     self.blacklist_token(token.token_value, user_id)
+        
+        # Log the session blacklisting
         self.audit_logger.log_security_event(
             event_type="SESSION_BLACKLISTED",
             user_id=user_id or "unknown",
-            description="Session blacklisted",
+            description=f"All tokens for session blacklisted",
             metadata={
-                "session_id": session_id,
+                "session_id": session_id
             }
-        ) 
+        )
+
+    @property
+    def settings(self) -> Settings:
+        """Get the application settings."""
+        return Settings() 

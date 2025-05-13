@@ -92,7 +92,7 @@ class PATRepository:
                 file_path = os.path.join(analysis_type_dir, f"{result.analysis_id}.json")
             
             # Convert result to dictionary
-            result_dict = result.dict()
+            result_dict = result.model_dump()
             
             # Convert datetime objects to ISO format strings
             result_dict["timestamp"] = result_dict["timestamp"].isoformat()

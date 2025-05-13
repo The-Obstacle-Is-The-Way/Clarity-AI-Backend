@@ -351,22 +351,24 @@ class BaseEncryptionService:
             
         try:
             # Convert any non-string value to string
-            if not isinstance(value, str):
-                # Handle various types that need special serialization
-                if hasattr(value, "model_dump") and callable(value.model_dump):
-                    # Handle Pydantic v2 models
-                    str_value = json.dumps(value.model_dump())
-                elif hasattr(value, "dict") and callable(value.dict):
-                    # Handle Pydantic v1 models
-                    str_value = json.dumps(value.dict())
-                elif hasattr(value, "to_dict") and callable(value.to_dict):
-                    # Handle objects with to_dict method
-                    str_value = json.dumps(value.to_dict())
-                else:
-                    # Try direct string conversion
-                    str_value = str(value)
+            if not isinstance(value, (str, bytes)):
+                try:
+                    # Try to convert to JSON if possible (e.g., for Pydantic models)
+                    if hasattr(value, 'model_dump'):
+                        # Use model_dump for Pydantic v2 models
+                        str_value = json.dumps(value.model_dump())
+                    elif hasattr(value, 'dict'):
+                        # Fallback for Pydantic v1 models or custom objects
+                        str_value = json.dumps(value.dict())
+                    else:
+                        # Last resort, try direct JSON conversion
+                        str_value = json.dumps(value)
+                except Exception as ex:
+                    logger.error(f"Failed to convert value to JSON: {str(ex)}")
+                    raise ValueError(f"Could not serialize value: {str(ex)}")
             else:
-                str_value = value
+                # Convert string or bytes to string
+                str_value = value if isinstance(value, str) else value.decode("utf-8")
                 
             if is_phi:
                 # Log PHI access (without revealing the value)

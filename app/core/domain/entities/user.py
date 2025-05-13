@@ -10,7 +10,7 @@ import enum
 from datetime import datetime
 from typing import List, Optional, Set, Union
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class UserRole(str, enum.Enum):
@@ -61,10 +61,8 @@ class User(BaseModel):
     hashed_password: str = Field(default="dummy_password_hash", description="Hashed password for authentication")
     password_hash: str = Field(default="dummy_password_hash", description="Alias for hashed_password")
     
-    class Config:
-        """Pydantic configuration for the User entity."""
-        
-        use_enum_values = True
+    # Modern Pydantic V2 configuration using ConfigDict
+    model_config = ConfigDict(use_enum_values=True)
 
     def has_role(self, role: Union[UserRole, str]) -> bool:
         """Check if the user has a specific role.
