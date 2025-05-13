@@ -19,6 +19,7 @@ from app.domain.entities.appointment import (
     # AppointmentPriority # Still assuming this doesn't exist
 )
 from app.domain.exceptions import ValidationError  # Moved from below
+from app.domain.exceptions.appointment_exceptions import AppointmentConflictError
 
 # Removed duplicate import of InvalidAppointmentTimeError
 # Removed AppointmentNotFoundException, PatientNotFoundException, ProviderNotFoundException
@@ -140,7 +141,7 @@ class TestAppointmentService:
             )
         ]
         
-        with pytest.raises(ValidationError):
+        with pytest.raises(AppointmentConflictError):
             appointment_service.create_appointment(
                 patient_id="patient123",
                 provider_id="provider456",
@@ -167,7 +168,7 @@ class TestAppointmentService:
         ]
         appointment_repository.get_by_provider_id.return_value = appointments
         
-        with pytest.raises(ValidationError): # Assuming conflict error is raised for limit
+        with pytest.raises(AppointmentConflictError): # Change to AppointmentConflictError
             appointment_service.create_appointment(
                 patient_id="patient_new",
                 provider_id="provider456",

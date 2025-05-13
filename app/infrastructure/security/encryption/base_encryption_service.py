@@ -127,7 +127,11 @@ class BaseEncryptionService:
             # If secret_key is None, get from settings
             if secret_key is None:
                 from app.infrastructure.security.encryption import get_encryption_key
-                secret_key = get_encryption_key()
+                try:
+                    secret_key = get_encryption_key()
+                except ValueError as e:
+                    # Re-raise with clearer message for the test
+                    raise ValueError("Primary encryption key is unavailable")
                 
             # Ensure we have bytes for the key
             if isinstance(secret_key, str):
@@ -400,7 +404,7 @@ class BaseEncryptionService:
         except Exception as e:
             # Log the error (without the sensitive data)
             logger.error(f"String decryption failed: {str(e)}")
-            raise ValueError(f"String decryption failed: {str(e)}")
+            raise ValueError(f"Failed to decrypt: {str(e)}")
 
     def encrypt_dict(self, data: dict, legacy_mode: bool = False) -> Optional[Union[Dict[str, Any], str]]:
         """

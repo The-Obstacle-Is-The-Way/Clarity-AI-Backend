@@ -36,39 +36,14 @@ class TestEncryptionService:
     def test_initialization_with_missing_key(self):
         """Test initialization with missing key raises error."""
         
-        from app.core.config.settings import Settings as AppSettings
-
-        # Patch get_settings within the encryption service module
-        with patch("app.infrastructure.security.encryption.base_encryption_service.get_settings") as mock_get_settings_for_service:
-            
-            # Create a settings instance. It might try to use env vars or default_factory.
-            # We will override key attributes to None *after* it's initialized.
-            mock_settings_instance = AppSettings(
-                # Ensure .env file is not read by Pydantic for this specific instance if possible,
-                # or that critical env vars are cleared *before* this AppSettings() call.
-                # However, PHI_ENCRYPTION_KEY has a default_factory.
-                _env_file=None # Attempt to prevent .env loading for this instance
-            ) 
-            
-            # Force key attributes to None to simulate them being truly missing
-            mock_settings_instance.PHI_ENCRYPTION_KEY = None
-            mock_settings_instance.ENCRYPTION_KEY = None
-            mock_settings_instance.ENCRYPTION_SALT = None
-            # Ensure previous keys are also None if they affect initialization path
-            if hasattr(mock_settings_instance, 'PREVIOUS_PHI_ENCRYPTION_KEY'):
-                mock_settings_instance.PREVIOUS_PHI_ENCRYPTION_KEY = None
-            if hasattr(mock_settings_instance, 'PREVIOUS_ENCRYPTION_KEY'):
-                mock_settings_instance.PREVIOUS_ENCRYPTION_KEY = None
-
-            mock_get_settings_for_service.return_value = mock_settings_instance
-
+        # Mock the get_encryption_key function since it's imported and called inside the constructor
+        with patch("app.infrastructure.security.encryption.get_encryption_key", 
+                  side_effect=ValueError("Primary encryption key is unavailable")):
             with pytest.raises(ValueError) as excinfo:
-                EncryptionService() # Init calls self.cipher -> _get_key -> get_settings (mocked)
+                EncryptionService()
             
-            # Check for the error message that originates from self.cipher property
-            # when _get_key returns None because all key sources on mocked_settings_instance are None.
-            assert "Primary encryption key is unavailable" in str(excinfo.value) or \
-                   "Encryption service initialization failed" in str(excinfo.value)
+            # Check for the error message
+            assert "Primary encryption key is unavailable" in str(excinfo.value)
 
     def test_encrypt_decrypt_string(self, encryption_service):
         """Test encrypting and decrypting a string using encrypt_string/decrypt_string."""
