@@ -13,11 +13,12 @@ from app.domain.exceptions import InvalidAppointmentStateError, InvalidAppointme
 import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
+from app.domain.utils.datetime_utils import UTC
 
 @pytest.fixture
 def sample_appointment():
     """Create a sample appointment for testing."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     start_time = now + timedelta(days=1)
     end_time = start_time + timedelta(hours=1)
     
