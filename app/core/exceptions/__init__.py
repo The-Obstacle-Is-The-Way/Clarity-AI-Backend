@@ -6,7 +6,6 @@ This package contains all exceptions used throughout the application.
 
 from app.core.exceptions.base_exceptions import (
     AnalysisError,
-    ApplicationError,
     AuthenticationException,
     AuthorizationError,
     AuthorizationException,
@@ -38,6 +37,59 @@ from app.core.exceptions.ml_exceptions import (
     PHIDetectionError,
     ServiceUnavailableError,
     XGBoostServiceError,
+)
+
+# Application specific errors and codes
+from app.core.exceptions.application_error import (
+    ApplicationError,
+    ErrorCode,
+)
+
+# JWT exceptions
+from app.core.exceptions.jwt_exceptions import (
+    JWTError,
+    JWTExpiredError,
+    JWTInvalidError,
+    JWTMissingError,
+)
+
+# Auth exceptions
+from app.core.exceptions.auth_exceptions import (
+    InvalidCredentialsError,
+    UserNotFoundError,
+    UserAlreadyExistsError,
+    UserInactiveError,
+    PasswordMismatchError,
+    PermissionDeniedError,
+    RoleNotFoundError,
+)
+
+# Data privacy exceptions
+from app.core.exceptions.data_privacy import (
+    DataPrivacyException,
+    PHIExposureRiskException,
+    EncryptionError,
+    DecryptionError,
+)
+
+# ML exceptions
+from app.core.exceptions.ml_exceptions import (
+    MLException,
+    ModelLoadingError,
+    PredictionError,
+    InvalidInputFormatError,
+    ModelTrainingError,
+    ModelEvaluationError,
+    FeatureExtractionError,
+    ModelVersionError,
+    ModelConfigurationError,
+)
+
+# Security errors from different modules
+from app.core.errors.security_exceptions import (
+    SecurityError,
+    AccessDeniedError,
+    AuthenticationFailedError,
 )
 
 __all__ = [
@@ -73,4 +125,32 @@ __all__ = [
     "ValidationError",
     "ValidationException",
     "XGBoostServiceError",
+    "ErrorCode",
+    "JWTError",
+    "JWTExpiredError",
+    "JWTInvalidError",
+    "JWTMissingError",
+    "InvalidCredentialsError",
+    "UserNotFoundError",
+    "UserAlreadyExistsError",
+    "UserInactiveError",
+    "PasswordMismatchError",
+    "PermissionDeniedError",
+    "RoleNotFoundError",
+    "DataPrivacyException",
+    "PHIExposureRiskException",
+    "EncryptionError",
+    "DecryptionError",
+    "MLException",
+    "ModelLoadingError",
+    "PredictionError",
+    "InvalidInputFormatError",
+    "ModelTrainingError",
+    "ModelEvaluationError",
+    "FeatureExtractionError",
+    "ModelVersionError",
+    "ModelConfigurationError",
+    "SecurityError",
+    "AccessDeniedError",
+    "AuthenticationFailedError",
 ]

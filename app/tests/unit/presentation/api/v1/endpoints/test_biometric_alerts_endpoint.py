@@ -337,10 +337,10 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        pytest.skip("Skipping test until AlertRuleService is implemented") # MOVED TO TOP
         headers = get_valid_provider_auth_headers
         response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
-        # pytest.skip("Skipping test until AlertRuleService is implemented") # Original position
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     @pytest.mark.asyncio
     async def test_create_alert_rule_from_template(

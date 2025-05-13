@@ -5,6 +5,7 @@ Provides API endpoints for managing biometric alert rules.
 """
 
 import logging
+import uuid
 from datetime import datetime
 from uuid import UUID
 
@@ -12,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
 from app.core.domain.entities.user import User
 from app.presentation.api.dependencies.database import get_db
 from app.infrastructure.security.rate_limiting.limiter import RateLimiter
@@ -19,8 +21,13 @@ from app.presentation.api.dependencies.auth import (
     get_current_active_user_wrapper,
 )
 from app.presentation.api.schemas.alert import (
+    AlertRuleCreateFromTemplateRequest,
+    AlertRuleCreateRequest,
     AlertRuleResponse,
     AlertRuleUpdateRequest,
+)
+from app.presentation.api.v1.dependencies.biometric_alert import (
+    get_biometric_alert_rule_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,168 +38,345 @@ router = APIRouter(
 )
 
 
-# =============================================================================
-# Temporarily comment out the entire POST endpoint to isolate the FastAPIError
-# =============================================================================
-# @router.post(
-#     "",
-#     response_model=None,
-#     status_code=status.HTTP_201_CREATED,
-#     summary="Create a new biometric alert rule",
-#     description="Adds a new biometric alert rule to the system.",
-# )
-# async def create_alert_rule(
-#     rule_data: AlertRuleCreateRequest,
-#     # rule_repo: BiometricRuleRepository = Depends(get_biometric_rule_repository),
-#     current_user: User = Depends(get_current_active_user_wrapper),
-#     db: AsyncSession = Depends(get_db),
-# ) -> AlertRuleResponse:
-#     """Endpoint to create a new biometric alert rule."""
-#     # Placeholder implementation
-#     # In a real implementation, you would use rule_repo to save the rule
-#     # logger.info(f"User {current_user.id} creating alert rule: {rule_data.name}") # Needs uncommenting later
-#     logger.info(f"User creating alert rule: {rule_data.name}") # Temp log
-#     # TODO: Implement actual repository call
-#     # rule = await rule_repo.create_rule(user_id=current_user.id, rule_data=rule_data)
-#     # Placeholder response - replace with actual created object
-#     # return AlertRuleResponse.model_validate(rule)
-#     return AlertRuleResponse(
-#         id=UUID("11111111-1111-1111-1111-111111111111"),  # Dummy ID
-#         name=rule_data.name,
-#         description=rule_data.description,
-#         biometric_type=rule_data.biometric_type,
-#         threshold_level=rule_data.threshold_level,
-#         comparison_operator=rule_data.comparison_operator,
-#         is_active=rule_data.is_active,
-#         created_by=str(current_user.id),  # RESTORED (assuming string UUID)
-#         updated_by=str(current_user.id),  # RESTORED
-#     )
-# =============================================================================
+@router.post(
+    "",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new biometric alert rule",
+    description="Adds a new biometric alert rule to the system.",
+)
+async def create_alert_rule(
+    rule_data: AlertRuleCreateRequest,
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
+    current_user: User = Depends(get_current_active_user_wrapper),
+    db: AsyncSession = Depends(get_db),
+) -> AlertRuleResponse:
+    """Endpoint to create a new biometric alert rule."""
+    logger.info(f"User {current_user.id} creating alert rule: {rule_data.name}")
+    
+    try:
+        # Convert request data to service format
+        rule_dict = {
+            "name": rule_data.name,
+            "description": rule_data.description,
+            "patient_id": UUID(rule_data.patient_id) if rule_data.patient_id else None,
+            "provider_id": UUID(current_user.id) if current_user.id else None,
+            "conditions": [
+                {
+                    "metric_name": rule_data.biometric_type,
+                    "comparator_operator": rule_data.comparison_operator,
+                    "threshold_value": rule_data.threshold_level,
+                    "description": rule_data.description
+                }
+            ],
+            "logical_operator": "and",  # Default for simple rule
+            "priority": rule_data.priority,
+            "is_active": rule_data.is_active
+        }
+        
+        # Create rule using service
+        rule = await alert_rule_service.create_rule(rule_dict)
+        
+        # Convert to response model
+        return AlertRuleResponse(
+            id=rule.id,
+            name=rule.name,
+            description=rule.description,
+            biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+            threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+            comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
+            is_active=rule.is_active,
+            created_by=str(rule.provider_id) if rule.provider_id else str(current_user.id),
+            updated_by=str(current_user.id),
+            created_at=rule.created_at,
+            last_updated=rule.updated_at or rule.created_at,
+        )
+    except Exception as e:
+        logger.error(f"Error creating alert rule: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create alert rule: {str(e)}"
+        )
+
+
+@router.post(
+    "/from-template",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new alert rule from a template",
+    description="Creates a new alert rule based on a predefined template with custom overrides.",
+)
+async def create_alert_rule_from_template(
+    template_request: AlertRuleCreateFromTemplateRequest,
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
+    current_user: User = Depends(get_current_active_user_wrapper),
+) -> AlertRuleResponse:
+    """Endpoint to create a new alert rule from a template."""
+    logger.info(f"User {current_user.id} creating alert rule from template: {template_request.template_id}")
+    
+    try:
+        # Parse IDs
+        try:
+            template_id = UUID(template_request.template_id)
+            patient_id = UUID(template_request.patient_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid UUID format in request"
+            )
+        
+        # Prepare overrides
+        custom_overrides = template_request.customization.dict() if template_request.customization else {}
+        custom_overrides["provider_id"] = UUID(current_user.id) if current_user.id else None
+        
+        # Create rule from template
+        rule = await alert_rule_service.create_rule_from_template(
+            template_id=template_id,
+            patient_id=patient_id,
+            custom_overrides=custom_overrides
+        )
+        
+        # Convert to response model
+        return AlertRuleResponse(
+            id=rule.id,
+            name=rule.name,
+            description=rule.description,
+            biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+            threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+            comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
+            is_active=rule.is_active,
+            created_by=str(rule.provider_id) if rule.provider_id else str(current_user.id),
+            updated_by=str(current_user.id),
+            created_at=rule.created_at,
+            last_updated=rule.updated_at or rule.created_at,
+        )
+    except Exception as e:
+        logger.error(f"Error creating alert rule from template: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create alert rule from template: {str(e)}"
+        )
 
 
 @router.get(
     "",
-    response_model=None,
-    summary="Get biometric alert rules for the current user",
+    response_model=list[AlertRuleResponse],
+    summary="Get biometric alert rules",
     description=(
-        "Retrieves a list of biometric alert rules configured for the currently "
-        "authenticated user."
+        "Retrieves a list of biometric alert rules with optional filtering."
     ),
-    tags=["Biometric Alert Rules"],
 )
 async def get_alert_rules(
-    # db: AsyncSession = Depends(get_db),
+    patient_id: UUID | None = Query(None, description="Filter by patient ID"),
+    is_active: bool | None = Query(None, description="Filter by active status"),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
     current_user: User = Depends(get_current_active_user_wrapper),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> list[AlertRuleResponse]:
-    logger.info(f"User {current_user.id} fetching alert rules with limit {limit}, offset {offset}. DB session temporarily removed.")
-    # TODO: Implement actual repository call using the 'db' session
-    # rules = await rule_repo.get_rules_by_user(db=db, user_id=current_user.id, limit=limit, offset=offset)
-    # Placeholder response:
-    return []
+    """Get a list of alert rules with optional filtering."""
+    logger.info(f"User {current_user.id} fetching alert rules with filters: patient_id={patient_id}, is_active={is_active}")
+    
+    try:
+        # Fetch rules using service
+        rules = await alert_rule_service.get_rules(
+            patient_id=patient_id,
+            is_active=is_active,
+            skip=offset,
+            limit=limit
+        )
+        
+        # Convert to response models
+        return [
+            AlertRuleResponse(
+                id=rule.id,
+                name=rule.name,
+                description=rule.description,
+                biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+                threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+                comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
+                is_active=rule.is_active,
+                created_by=str(rule.provider_id) if rule.provider_id else "unknown",
+                updated_by=str(rule.provider_id) if rule.provider_id else "unknown",
+                created_at=rule.created_at,
+                last_updated=rule.updated_at or rule.created_at,
+            )
+            for rule in rules
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching alert rules: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving alert rules"
+        )
 
 
-# @router.get(
-#     "/{rule_id}",
-#     response_model=None,
-#     status_code=status.HTTP_200_OK,
-#     summary="Get a specific biometric alert rule by ID",
-# )
-# async def get_alert_rule(
-#     rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
-#     db: AsyncSession = Depends(get_db),
-#     current_user: User = Depends(get_current_active_user_wrapper),
-# ) -> AlertRuleResponse:
-#     """
-#     Get details for a specific biometric alert rule owned by the current user.
-#
-#     (Placeholder Implementation)
-#     """
-#     logger.info(f"User {current_user.id} fetching alert rule {rule_id}")
-#     # TODO: Implement actual repository call using the 'db' session
-#     # rule = await rule_repo.get_rule_by_id(db=db, rule_id=rule_id, user_id=current_user.id)
-#     # if not rule:
-#     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
-#     # Placeholder response:
-#     # This placeholder needs access to AlertRuleResponse fields to be valid
-#     # For now, let's assume we'd fetch and return based on the ID
-#     if str(rule_id) == "11111111-1111-1111-1111-111111111111": # Dummy check
-#         return AlertRuleResponse(
-#             id=UUID("11111111-1111-1111-1111-111111111111"),
-#             name="Placeholder Rule",
-#             description="This is a placeholder",
-#             biometric_type="HEART_RATE", # Assuming biometric type
-#             threshold_level=100, # Assuming threshold level
-#             comparison_operator="GREATER_THAN", # Assuming comparison operator
-#             is_active=True,
-#             created_by=str(current_user.id),  # RESTORED (assuming string UUID)
-#             updated_by=str(current_user.id),  # RESTORED
-#             created_at=datetime.now(),
-#             last_updated=datetime.now(),
-#         )
-#     else:
-#         raise HTTPException(status_code=404, detail="Rule not found")
+@router.get(
+    "/{rule_id}",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get a specific biometric alert rule by ID",
+)
+async def get_alert_rule(
+    rule_id: UUID4 = Path(..., description="ID of the alert rule to retrieve"),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
+    current_user: User = Depends(get_current_active_user_wrapper),
+) -> AlertRuleResponse:
+    """
+    Get details for a specific biometric alert rule.
+    """
+    logger.info(f"User {current_user.id} fetching alert rule {rule_id}")
+    
+    try:
+        # Fetch rule using service
+        rule = await alert_rule_service.get_rule_by_id(rule_id)
+        
+        if not rule:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Alert rule not found"
+            )
+            
+        # Convert to response model
+        return AlertRuleResponse(
+            id=rule.id,
+            name=rule.name,
+            description=rule.description,
+            biometric_type=rule.conditions[0].metric_type.value if rule.conditions else None,
+            threshold_level=rule.conditions[0].threshold_value if rule.conditions else None,
+            comparison_operator=rule.conditions[0].operator.value if rule.conditions else None,
+            is_active=rule.is_active,
+            created_by=str(rule.provider_id) if rule.provider_id else "unknown",
+            updated_by=str(rule.provider_id) if rule.provider_id else "unknown",
+            created_at=rule.created_at,
+            last_updated=rule.updated_at or rule.created_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching alert rule {rule_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving the alert rule"
+        )
 
 
-# @router.put(
-#     "/{rule_id}",
-#     response_model=None,
-#     status_code=status.HTTP_200_OK,
-#     summary="Update a biometric alert rule",
-# )
-# async def update_alert_rule(
-#     rule_data: AlertRuleUpdateRequest,
-#     rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
-#     db: AsyncSession = Depends(get_db),
-#     current_user: User = Depends(get_current_active_user_wrapper),
-# ) -> AlertRuleResponse:
-#     """
-#     Update an existing biometric alert rule owned by the current user.
-#
-#     (Placeholder Implementation)
-#     """
-#     logger.info(f"User {current_user.id} updating alert rule {rule_id}")
-#     # TODO: Implement actual repository call using the 'db' session
-#     # updated_rule = await rule_repo.update_rule(db=db, rule_id=rule_id, user_id=current_user.id, update_data=rule_data)
-#     # if not updated_rule:
-#     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
-#     # Placeholder response:
-#     return AlertRuleResponse(
-#         id=rule_id,
-#         name=rule_data.name or "Updated Rule Name",
-#         description=rule_data.description or "Updated description",
-#         biometric_type=rule_data.biometric_type or "HEART_RATE", # Assuming biometric type
-#         threshold_level=rule_data.threshold_level or 100, # Assuming threshold level
-#         comparison_operator=rule_data.comparison_operator or "GREATER_THAN", # Assuming comparison operator
-#         is_active=rule_data.is_active if rule_data.is_active is not None else True,
-#         created_by=str(current_user.id),
-#         updated_by=str(current_user.id),
-#         created_at=datetime.now(), # Placeholder - should be original
-#         last_updated=datetime.now(),
-#     )
+@router.put(
+    "/{rule_id}",
+    response_model=AlertRuleResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update a biometric alert rule",
+)
+async def update_alert_rule(
+    rule_data: AlertRuleUpdateRequest,
+    rule_id: UUID4 = Path(..., description="ID of the alert rule to update"),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
+    current_user: User = Depends(get_current_active_user_wrapper),
+) -> AlertRuleResponse:
+    """
+    Update an existing biometric alert rule.
+    """
+    logger.info(f"User {current_user.id} updating alert rule {rule_id}")
+    
+    try:
+        # Convert request data to service format
+        update_dict = rule_data.dict(exclude_unset=True)
+        
+        # If there are biometric-related updates, format them as conditions
+        if any(key in update_dict for key in ["biometric_type", "comparison_operator", "threshold_level"]):
+            # Get the current rule to maintain consistency for fields not being updated
+            current_rule = await alert_rule_service.get_rule_by_id(rule_id)
+            if not current_rule:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail="Alert rule not found"
+                )
+                
+            # Extract current values to use as defaults
+            current_metric = current_rule.conditions[0].metric_type.value if current_rule.conditions else None
+            current_operator = current_rule.conditions[0].operator.value if current_rule.conditions else None
+            current_threshold = current_rule.conditions[0].threshold_value if current_rule.conditions else None
+            current_description = current_rule.conditions[0].description if current_rule.conditions else None
+            
+            # Create conditions with updated values
+            update_dict["conditions"] = [
+                {
+                    "metric_name": update_dict.pop("biometric_type", current_metric),
+                    "comparator_operator": update_dict.pop("comparison_operator", current_operator),
+                    "threshold_value": update_dict.pop("threshold_level", current_threshold),
+                    "description": current_description
+                }
+            ]
+            
+        # Add updated_by
+        update_dict["provider_id"] = UUID(current_user.id) if current_user.id else None
+            
+        # Update rule using service
+        updated_rule = await alert_rule_service.update_rule(rule_id, update_dict)
+        
+        if not updated_rule:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Alert rule not found or update failed"
+            )
+            
+        # Convert to response model
+        return AlertRuleResponse(
+            id=updated_rule.id,
+            name=updated_rule.name,
+            description=updated_rule.description,
+            biometric_type=updated_rule.conditions[0].metric_type.value if updated_rule.conditions else None,
+            threshold_level=updated_rule.conditions[0].threshold_value if updated_rule.conditions else None,
+            comparison_operator=updated_rule.conditions[0].operator.value if updated_rule.conditions else None,
+            is_active=updated_rule.is_active,
+            created_by=str(updated_rule.provider_id) if updated_rule.provider_id else "unknown",
+            updated_by=str(current_user.id),
+            created_at=updated_rule.created_at,
+            last_updated=updated_rule.updated_at or datetime.utcnow(),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating alert rule {rule_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to update alert rule: {str(e)}"
+        )
 
 
-# @router.delete(
-#     "/{rule_id}",
-#     status_code=status.HTTP_204_NO_CONTENT,
-#     response_model=None,
-#     summary="Delete a biometric alert rule",
-# )
-# async def delete_alert_rule(
-#     rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
-#     db: AsyncSession = Depends(get_db),
-#     current_user: User = Depends(get_current_active_user_wrapper),
-# ) -> None:
-#     """
-#     Delete a specific biometric alert rule owned by the current user.
-#
-#     (Placeholder Implementation)
-#     """
-#     logger.info(f"User {current_user.id} deleting alert rule {rule_id}")
-#     # TODO: Implement actual repository call using the 'db' session
-#     # success = await rule_repo.delete_rule(db=db, rule_id=rule_id, user_id=current_user.id)
-#     # if not success:
-#     #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found or not authorized")
-#     # No return body for 204
-#     return None
+@router.delete(
+    "/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Delete a biometric alert rule",
+)
+async def delete_alert_rule(
+    rule_id: UUID4 = Path(..., description="ID of the alert rule to delete"),
+    alert_rule_service: BiometricAlertRuleService = Depends(get_biometric_alert_rule_service),
+    current_user: User = Depends(get_current_active_user_wrapper),
+) -> None:
+    """
+    Delete a specific biometric alert rule.
+    """
+    logger.info(f"User {current_user.id} deleting alert rule {rule_id}")
+    
+    try:
+        # Delete rule using service
+        success = await alert_rule_service.delete_rule(rule_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Alert rule not found"
+            )
+            
+        # No return body for 204
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting alert rule {rule_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting the alert rule"
+        )
