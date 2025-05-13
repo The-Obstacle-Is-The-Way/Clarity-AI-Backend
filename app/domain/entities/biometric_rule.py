@@ -2,7 +2,7 @@
 Domain entities related to Biometric Rules for the Digital Twin.
 """
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any, List, Optional
 from uuid import UUID, uuid4
@@ -296,7 +296,7 @@ class BiometricAlertRule:
     provider_id: UUID | None = None  # Provider who created the rule
     is_active: bool = True
     is_template: bool = False  # Whether this rule is a template for creating other rules
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now(UTC))
     updated_at: datetime | None = None
     version: int = 1
     
@@ -309,14 +309,14 @@ class BiometricAlertRule:
     def activate(self) -> "BiometricAlertRule":
         """Activate this rule."""
         self.is_active = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
         self.version += 1
         return self
     
     def deactivate(self) -> "BiometricAlertRule":
         """Deactivate this rule."""
         self.is_active = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
         self.version += 1
         return self
     
@@ -334,7 +334,7 @@ class BiometricAlertRule:
             if hasattr(self, key) and key not in ["id", "created_at"]:
                 setattr(self, key, value)
         
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
         self.version += 1
         return self
     
@@ -381,3 +381,17 @@ class BiometricAlertRule:
         
         # Create the new rule
         return cls(**attributes) 
+
+    def mark_updated(self) -> None:
+        """Mark the rule as updated with current timestamp."""
+        self.updated_at = datetime.now(UTC)
+        
+    def assign_to_patient(self, patient_id: str) -> None:
+        """
+        Assign this rule to a patient.
+        
+        Args:
+            patient_id: The patient ID to assign this rule to
+        """
+        self.patient_id = patient_id
+        self.updated_at = datetime.now(UTC) 
