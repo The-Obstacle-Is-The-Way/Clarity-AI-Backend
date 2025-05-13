@@ -514,7 +514,7 @@ class AuditLogger:
         
         for log_id, log_entry in self._logs.items():
             # Skip logs that fail integrity check if verification is enabled
-            if verify_integrity and not self.verify_log_integrity(log_entry.get("log_id")):
+            if verify_integrity and not self.verify_log_integrity(log_id):
                 logger.warning(f"Log {log_id} failed integrity verification during export")
                 continue
                 

@@ -8,7 +8,7 @@ requirements (45 CFR § 164.312(b) and 45 CFR § 164.308(a)(1)(ii)(D)).
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Union
 
 # Get a dedicated logger for audit events
@@ -55,7 +55,7 @@ class AuditLogger:
         # Construct the log entry
         log_entry = {
             "log_id": log_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": "phi_access",
             "resource_id": resource_id,
             "resource_type": resource_type,
@@ -98,7 +98,7 @@ class AuditLogger:
         # Construct the log entry
         log_entry = {
             "log_id": log_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "event_details": event_details,
             "user_id": user_id,
@@ -136,7 +136,7 @@ class AuditLogger:
         # Construct the log entry
         log_entry = {
             "log_id": log_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "event_details": event_details,
             "user_id": user_id

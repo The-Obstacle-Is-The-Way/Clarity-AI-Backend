@@ -260,7 +260,7 @@ def audit_async_phi_access(
                     break
             
             # If not found in kwargs, check the first positional argument
-            # (common pattern is function(resource_id, ...))
+            # (common pattern is function(record_id, ...))
             if resource_id is None and len(args) > 0:
                 # Check if the first arg is an object with an id
                 if hasattr(args[0], 'id'):
@@ -268,11 +268,11 @@ def audit_async_phi_access(
                 # Otherwise assume the first arg itself is the ID (most common case)
                 elif not isinstance(args[0], (dict, list, tuple, set)):
                     resource_id = args[0]
-                
+                    
             if not user_id:
-                logger.warning(f"PHI access without user ID: {resource_type}:{resource_id} {action}")
+                logger.warning(f"Async PHI access without user ID: {resource_type}:{resource_id} {action}")
                 
-            # Log the PHI access before executing the function
+            # Log the PHI access initiation
             try:
                 audit_logger.log_data_modification(
                     user_id=user_id or "anonymous",
@@ -284,9 +284,9 @@ def audit_async_phi_access(
                     phi_fields=phi_fields
                 )
             except Exception as e:
-                logger.error(f"Error logging PHI access audit: {e}")
+                logger.error(f"Error logging async PHI access audit: {e}")
                 
-            # Execute the function
+            # Execute the async function
             try:
                 result = await func(*args, **kwargs)
                 
