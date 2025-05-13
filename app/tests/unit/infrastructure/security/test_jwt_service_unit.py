@@ -16,6 +16,7 @@ from freezegun import freeze_time
 
 from app.config.settings import Settings  # Import actual Settings
 from app.domain.exceptions import InvalidTokenException, TokenExpiredException
+from app.domain.exceptions.base_exceptions import AuthenticationError
 
 # Corrected imports
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload
@@ -275,7 +276,48 @@ class TestJWTService:
 
     # Add more tests as needed, e.g., for blacklisting, etc.
 
-    # @pytest.mark.skip(reason="Refresh token family tracking not implemented directly in JWTService")
-    # @pytest.mark.asyncio
-    # async def test_refresh_token_family(self, jwt_service: JWTService):
-    #     pass # Re-evaluate if this logic is part of JWTService or another layer
+    @pytest.mark.asyncio
+    async def test_refresh_token_family(self, jwt_service: JWTService, user_claims: dict[str, Any]):
+        """Test refresh token family tracking for security against replay attacks."""
+        # Create initial refresh token
+        initial_refresh_token = jwt_service.create_refresh_token(data=user_claims)
+        
+        # Decode to verify family ID is present
+        initial_payload = jwt_service.decode_token(initial_refresh_token)
+        assert "family_id" in initial_payload
+        initial_family_id = initial_payload.family_id
+        initial_jti = initial_payload.jti
+        
+        # Generate new token pair using the refresh token
+        new_access_token, new_refresh_token = await jwt_service.refresh_token_pair(initial_refresh_token)
+        
+        # Verify new tokens
+        assert new_access_token is not None
+        assert new_refresh_token is not None
+        assert new_refresh_token != initial_refresh_token
+        
+        # Verify new refresh token maintains the family ID
+        new_payload = jwt_service.decode_token(new_refresh_token)
+        assert new_payload.family_id == initial_family_id
+        assert new_payload.jti != initial_jti
+        assert hasattr(new_payload, 'parent_jti')
+        assert new_payload.parent_jti == str(initial_jti)
+        
+        # Use the new refresh token to get another pair
+        newer_access_token, newer_refresh_token = await jwt_service.refresh_token_pair(new_refresh_token)
+        assert newer_refresh_token != new_refresh_token
+        
+        # Attempt to reuse the original refresh token (should fail)
+        with pytest.raises((InvalidTokenException, AuthenticationError)) as exc_info:
+            await jwt_service.refresh_token_pair(initial_refresh_token)
+        # Either "token has been revoked" or "refresh token reuse"
+        assert any(phrase in str(exc_info.value).lower() for phrase in ["token has been revoked", "security violation", "refresh token reuse"])
+        
+        # Also verify that the newer token is still valid
+        newest_payload = jwt_service.decode_token(newer_refresh_token)
+        assert newest_payload.family_id == initial_family_id
+        
+        # Attempt to reuse the second token (should also fail)
+        with pytest.raises((InvalidTokenException, AuthenticationError)) as exc_info:
+            await jwt_service.refresh_token_pair(new_refresh_token)
+        assert any(phrase in str(exc_info.value).lower() for phrase in ["token has been revoked", "security violation", "refresh token reuse"])

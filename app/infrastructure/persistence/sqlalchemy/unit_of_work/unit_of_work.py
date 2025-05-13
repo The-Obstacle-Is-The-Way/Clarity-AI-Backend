@@ -126,9 +126,11 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     logger.debug(f"Committing {log_level} transaction.")
                     # Add audit logic here if needed
                     if is_top_level and self._metadata:
-                        # Log audit trail for HIPAA compliance
-                        logger.info(f"AUDIT: Transaction committed with metadata: {self._metadata}")
-                    self._session.commit() # Commits main transaction or releases savepoint
+                        # Use the new audit-enabled commit method for top-level commits with metadata
+                        self._commit_with_audit()
+                    else:
+                        # Use regular commit for nested transactions or those without metadata
+                        self._session.commit() # Commits main transaction or releases savepoint
                 else:
                     # --- No exception, not read-only, but no explicit commit --- 
                     log_level = "main" if is_top_level else "nested"
@@ -252,10 +254,103 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                  raise RepositoryError("Failed to enter read-only context properly.")
 
     def set_metadata(self, metadata: dict[str, Any]) -> None:
-        """Sets metadata for the current transaction for audit logging."""
+        """
+        Sets metadata for the current transaction for HIPAA-compliant audit logging.
+        
+        This method records who is making changes, what type of changes, and what 
+        entities are being affected - critical for HIPAA audit trails.
+        
+        Args:
+            metadata: Dictionary containing audit metadata such as:
+                - user_id: The ID of the user making the change
+                - operation: Type of operation (create, update, delete)
+                - entity_type: Type of entity being modified (patient, medical_record, etc.)
+                - entity_id: ID of the entity being modified
+                - access_reason: Reason for accessing PHI (treatment, payment, operations)
+                - additional_context: Any additional context for the audit trail
+        """
+        from app.infrastructure.logging.audit import get_audit_logger
+        
         # Store metadata for audit logging 
         self._metadata.update(metadata)
+        
+        # Get required fields for HIPAA logging
+        user_id = metadata.get('user_id')
+        operation = metadata.get('operation')
+        entity_type = metadata.get('entity_type')
+        entity_id = metadata.get('entity_id')
+        access_reason = metadata.get('access_reason', 'not_specified')
+        
+        # Log immediately to ensure it's captured even if transaction fails
+        try:
+            # Get the audit logger
+            audit_logger = get_audit_logger()
+            
+            # Log the access event
+            if user_id and (entity_type or operation):
+                # Create audit log entry
+                audit_logger.log_phi_access(
+                    user_id=user_id,
+                    action=operation or 'access',
+                    resource_type=entity_type or 'unknown',
+                    resource_id=str(entity_id) if entity_id else 'unknown',
+                    access_reason=access_reason,
+                    additional_context=metadata.get('additional_context')
+                )
+            else:
+                logger.warning(f"Incomplete audit metadata: {metadata}")
+        except Exception as e:
+            # Don't fail the transaction if audit logging fails
+            # But log the error so it can be investigated
+            logger.error(f"Error in audit logging: {e}")
+            
         logger.debug(f"UoW Metadata set: {metadata}")
+        
+    def _commit_with_audit(self) -> None:
+        """Commit changes with audit logging for HIPAA compliance."""
+        if not self._session:
+            raise RepositoryError("No active session to commit")
+            
+        try:
+            # Prepare audit log entry if metadata exists
+            if self._metadata:
+                from app.infrastructure.logging.audit import get_audit_logger
+                audit_logger = get_audit_logger()
+                
+                # Log transaction completion
+                if 'user_id' in self._metadata:
+                    audit_logger.log_data_modification(
+                        user_id=self._metadata['user_id'],
+                        action=self._metadata.get('operation', 'modify'),
+                        entity_type=self._metadata.get('entity_type', 'unknown'),
+                        entity_id=str(self._metadata.get('entity_id', 'unknown')),
+                        status='success',
+                        details=f"Transaction committed: {self._metadata}"
+                    )
+                
+            # Commit changes
+            self._session.commit()
+            logger.info(f"Transaction committed successfully with metadata: {self._metadata}")
+            
+        except Exception as e:
+            # Log failure but don't swallow the exception
+            if self._metadata and 'user_id' in self._metadata:
+                try:
+                    from app.infrastructure.logging.audit import get_audit_logger
+                    audit_logger = get_audit_logger()
+                    audit_logger.log_data_modification(
+                        user_id=self._metadata['user_id'],
+                        action=self._metadata.get('operation', 'modify'),
+                        entity_type=self._metadata.get('entity_type', 'unknown'),
+                        entity_id=str(self._metadata.get('entity_id', 'unknown')),
+                        status='failed',
+                        details=f"Transaction failed: {e}"
+                    )
+                except Exception as audit_err:
+                    logger.error(f"Failed to log transaction failure in audit: {audit_err}")
+            
+            # Re-raise the original exception
+            raise
 
     def _get_repository(self, repo_type: type[Repo]) -> Repo:
         """Retrieves or creates a repository instance of the given type."""

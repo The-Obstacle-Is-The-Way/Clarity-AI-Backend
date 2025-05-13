@@ -110,6 +110,12 @@ class JWTService(IJwtService):
         # In production, this should be stored in Redis or similar
         self._token_blacklist: dict[str, datetime] = {}
         
+        # Token family tracking for refresh token rotation
+        # Maps family_id -> latest_jti to detect refresh token reuse
+        self._token_families: dict[str, str] = {}
+        # Maps jti -> family_id to quickly find a token's family
+        self._token_family_map: dict[str, str] = {}
+        
         logger.info(f"JWT service initialized with algorithm {self.algorithm}")
 
     def create_access_token(
@@ -147,6 +153,8 @@ class JWTService(IJwtService):
         *,
         subject: str = None,
         jti: str = None,
+        family_id: str = None,
+        parent_jti: str = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
     ) -> str:
@@ -157,6 +165,8 @@ class JWTService(IJwtService):
             data: Dictionary containing claims to include in the token
             subject: Subject claim (user ID) if not provided in data
             jti: Token ID if not provided in data
+            family_id: Optional token family ID for refresh token chain tracking
+            parent_jti: JTI of the token that was used to create this one (for token lineage)
             expires_delta: Optional ``timedelta`` override for token expiration
             expires_delta_minutes: Optional override for token expiration in minutes
             
@@ -173,6 +183,18 @@ class JWTService(IJwtService):
         # If jti is provided directly, add it to data
         if jti and "jti" not in data:
             data["jti"] = jti
+        else:
+            data["jti"] = str(uuid.uuid4())
+            
+        # Add token family tracking
+        if not family_id:
+            # Create a new token family if none exists
+            family_id = str(uuid.uuid4())
+        
+        # Add family_id and parent_jti to the token data
+        data["family_id"] = family_id
+        if parent_jti:
+            data["parent_jti"] = parent_jti
             
         # Then calculate expiration
         if expires_delta is not None:
@@ -180,7 +202,12 @@ class JWTService(IJwtService):
         else:
             minutes = expires_delta_minutes or (self.refresh_token_expire_days * 24 * 60)
         
-        return self._create_token(data=data, token_type=TokenType.REFRESH, expires_delta_minutes=minutes)
+        token = self._create_token(data=data, token_type=TokenType.REFRESH, expires_delta_minutes=minutes)
+        
+        # Register this token in the token family system
+        self._register_token_in_family(data["jti"], family_id)
+        
+        return token
 
     def _create_token(
         self,
@@ -358,6 +385,7 @@ class JWTService(IJwtService):
     def verify_refresh_token(self, token: str) -> TokenPayload:
         """
         Verify and decode a refresh token, ensuring it's valid and of the refresh type.
+        Also checks for refresh token reuse.
         
         Args:
             token: The refresh token to verify
@@ -366,7 +394,7 @@ class JWTService(IJwtService):
             TokenPayload: Decoded payload if token is valid
             
         Raises:
-            InvalidTokenException: If token is invalid or not a refresh token
+            InvalidTokenException: If token is invalid, not a refresh token, or a used token
             TokenExpiredException: If token has expired
         """
         # First, decode the token
@@ -381,6 +409,16 @@ class JWTService(IJwtService):
         if self._is_token_blacklisted(token):
             logger.warning(f"Attempted to use blacklisted refresh token with jti {payload.jti}")
             raise InvalidTokenException("Token has been revoked")
+        
+        # Check for token reuse
+        jti = str(payload.jti)
+        family_id = getattr(payload, 'family_id', None)
+        
+        if family_id and self._is_token_reused(jti, family_id):
+            logger.warning(f"Refresh token reuse detected! JTI: {jti}, Family: {family_id}")
+            # Revoke all tokens in this family - security breach attempt
+            self._revoke_token_family(family_id)
+            raise InvalidTokenException("Security violation: Refresh token reuse detected")
         
         return payload
 
@@ -526,11 +564,14 @@ class JWTService(IJwtService):
     def clear_issued_tokens(self) -> None:
         """
         Clears any internally tracked issued tokens (e.g., blacklist).
-        For the real JWTService, this primarily means clearing the token blacklist.
+        For the real JWTService, this means clearing the token blacklist
+        and token family tracking.
         """
-        logger.info("JWTService: clear_issued_tokens called. Clearing token blacklist.")
+        logger.info("JWTService: clear_issued_tokens called. Clearing token blacklist and family tracking.")
         self._token_blacklist.clear()
-        logger.info("JWTService: Token blacklist cleared.")
+        self._token_families.clear()
+        self._token_family_map.clear()
+        logger.info("JWTService: Token tracking data cleared.")
 
     def check_resource_access(self, request, resource_path: str, resource_owner_id: str | None = None) -> bool:
         """
@@ -685,6 +726,121 @@ class JWTService(IJwtService):
                 sanitized = re.sub(pattern, "[REDACTED]", sanitized)
                 
         return sanitized
+
+    def _register_token_in_family(self, jti: str, family_id: str) -> None:
+        """
+        Register a token in a token family for tracking refresh token lineage.
+        
+        Args:
+            jti: Token's unique identifier
+            family_id: Family identifier this token belongs to
+        """
+        jti_str = str(jti)
+        family_id_str = str(family_id)
+        
+        # Update the latest token in this family
+        self._token_families[family_id_str] = jti_str
+        
+        # Map this token to its family
+        self._token_family_map[jti_str] = family_id_str
+        
+        logger.debug(f"Registered token {jti_str} in family {family_id_str}")
+
+    def _is_token_reused(self, jti: str, family_id: str) -> bool:
+        """
+        Check if a token is being reused after its family has moved on.
+        
+        Args:
+            jti: Token's unique identifier
+            family_id: Family identifier this token belongs to
+            
+        Returns:
+            bool: True if token is being reused
+        """
+        jti_str = str(jti)
+        family_id_str = str(family_id)
+        
+        # Check if this family exists
+        if family_id_str not in self._token_families:
+            return False
+            
+        # Check if this token is the latest in its family
+        latest_jti = self._token_families.get(family_id_str)
+        if latest_jti != jti_str:
+            logger.warning(f"Token reuse attempt: {jti_str} is not the latest in family {family_id_str}")
+            return True
+            
+        return False
+
+    def _revoke_token_family(self, family_id: str) -> None:
+        """
+        Revoke all tokens in a family due to potential security breach.
+        
+        Args:
+            family_id: Family identifier to revoke
+        """
+        family_id_str = str(family_id)
+        
+        # Remove the family from tracking
+        if family_id_str in self._token_families:
+            self._token_families.pop(family_id_str)
+            
+        # Log the security event
+        logger.warning(f"Revoked entire token family {family_id_str} due to potential security breach")
+        
+        # Note: In a production system, we would also add all known tokens
+        # from this family to a persistent blacklist to ensure they cannot
+        # be used even after service restart
+
+    async def refresh_token_pair(self, refresh_token: str) -> tuple[str, str]:
+        """
+        Refresh an access-refresh token pair using a valid refresh token.
+        This implements token rotation for enhanced security.
+        
+        Args:
+            refresh_token: The refresh token to use
+            
+        Returns:
+            tuple: New (access_token, refresh_token) pair
+            
+        Raises:
+            InvalidTokenException: If refresh token is invalid or reused
+            TokenExpiredException: If refresh token has expired
+        """
+        # Verify the refresh token is valid and not reused
+        payload = self.verify_refresh_token(refresh_token)
+        
+        # Extract claims from the current token
+        sub = payload.sub
+        jti = str(payload.jti)
+        family_id = getattr(payload, 'family_id', None)
+        
+        # If no family_id exists, create one
+        if not family_id:
+            family_id = str(uuid.uuid4())
+            logger.info(f"Created new token family {family_id} for refresh operation")
+        
+        # Extract any other custom claims to preserve
+        custom_claims = {}
+        for key, value in payload.model_dump().items():
+            if key not in ["sub", "exp", "iat", "jti", "iss", "aud", "type", "family_id", "parent_jti"]:
+                custom_claims[key] = value
+        
+        # Create new tokens
+        new_access_token = self.create_access_token(data={"sub": sub, **custom_claims})
+        
+        new_refresh_token = self.create_refresh_token(
+            data=custom_claims,
+            subject=sub,
+            family_id=family_id,
+            parent_jti=jti
+        )
+        
+        # Invalidate the old refresh token to prevent reuse
+        await self.revoke_token(refresh_token)
+        
+        logger.info(f"Refreshed token pair for user {sub}, family {family_id}")
+        return new_access_token, new_refresh_token
 
 def get_jwt_service() -> IJwtService:
     """
