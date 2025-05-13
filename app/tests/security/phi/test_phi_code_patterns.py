@@ -350,9 +350,7 @@ class TestPHIInSourceFiles:
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
     def test_audit_code_for_phi(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
-        """Test the comprehensive audit function.
-           NOTE: This test needs review. audit_code was likely part of PHIAuditor.
-        """
+        """Test the comprehensive audit function."""
         # Use Path objects
         py_file = temp_dir / "audit_me.py"
         content = """
@@ -361,20 +359,24 @@ class TestPHIInSourceFiles:
         """
         self.write_temp_file(py_file, content)
 
-        # Assume audit_code or similar logic exists elsewhere now.
-        # This test is likely invalid for PHICodeAnalyzer as is.
-        # result = phi_analyzer.audit_code(temp_dir)
+        # Call the audit_code method
+        result = phi_analyzer.audit_code(str(temp_dir))
         
-        # assert result["summary"]["files_with_phi"] == 1
-        # assert result["summary"]["total_findings"] > 0
-        pytest.skip("Audit logic moved/changed. Test needs refactoring.") 
+        # Verify results
+        assert result["status"] == "completed"
+        assert result["summary"]["files_with_phi"] == 1
+        assert result["summary"]["total_findings"] > 0
+        
+        # Check that findings exist for the test file
+        finding_for_file = [
+            f for f in result["findings"] 
+            if str(py_file) in f["file_path"]
+        ]
+        assert len(finding_for_file) > 0
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
     def test_audit_api_endpoints(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
-        """Test auditing API endpoints.
-           NOTE: audit_api_endpoints is now a stub in PHICodeAnalyzer.
-                 Actual logic belongs elsewhere.
-        """
+        """Test auditing API endpoints."""
         # Use Path object
         api_spec_file = temp_dir / "openapi.yaml" 
         content = """
@@ -403,17 +405,19 @@ class TestPHIInSourceFiles:
         """
         self.write_temp_file(api_spec_file, content)
         
-        # Call the stub method (will return empty list)
-        findings = phi_analyzer.audit_api_endpoints()
-        assert findings == [] # As it's a stub
-
-        # Original assertion was likely based on a different implementation
-        # result = phi_analyzer.audit_api_endpoints(api_spec_file)
-        # assert result["status"] == "completed"
-        # assert len(result["findings"]) > 0
-        # ssn_finding = [f for f in result["findings"] if "ssn" in f["match"].lower()]
-        # assert len(ssn_finding) > 0
-        # assert ssn_finding[0]["severity"] == CodeSeverity.HIGH
+        # Call the actual method with the file path
+        findings = phi_analyzer.audit_api_endpoints(str(api_spec_file))
+        
+        # Verify results
+        assert isinstance(findings, list)
+        assert len(findings) > 0
+        
+        # Find PHI-related findings
+        phi_findings = [
+            f for f in findings 
+            if "ssn" in f.message.lower() or "dob" in f.message.lower()
+        ]
+        assert len(phi_findings) > 0
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
     def test_audit_configuration(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:

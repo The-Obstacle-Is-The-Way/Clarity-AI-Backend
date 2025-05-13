@@ -46,6 +46,54 @@ class AuditLogger:
         # Cache of users allowed to access audit logs by role
         self._allowed_roles = {"admin"}  # Only admins have full access by default
 
+    def log_access(
+        self,
+        resource_id: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        field_name: Optional[str] = None,
+        action: str = "field_access",
+        user_id: Optional[str] = None,
+        ip_address: str = "127.0.0.1"
+    ) -> str:
+        """
+        Log PHI field access to the audit trail.
+        
+        Args:
+            resource_id: ID of the specific resource (e.g., patient ID)
+            resource_type: Type of resource (e.g., Patient)
+            field_name: Name of the field being accessed
+            action: Action performed (default: field_access)
+            user_id: ID of the user accessing PHI (if available)
+            ip_address: IP address of the user (default for testing)
+            
+        Returns:
+            log_id: Unique ID of the created audit log entry
+        """
+        log_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        # Create the log entry
+        log_entry = {
+            "log_id": log_id,
+            "timestamp": timestamp,
+            "user_id": user_id,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "field_name": field_name,
+            "action": action,
+            "ip_address": ip_address
+        }
+        
+        # Add HMAC signature for integrity verification
+        log_entry["signature"] = self._sign_log_entry(log_entry)
+        
+        # Store the log entry
+        self._logs[log_id] = log_entry
+        
+        logger.info(f"PHI Access: {action} {resource_type}:{resource_id} field:{field_name}")
+        
+        return log_id
+
     def log_phi_access(
         self,
         user_id: str,
