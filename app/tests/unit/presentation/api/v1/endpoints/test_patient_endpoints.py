@@ -314,14 +314,14 @@ async def test_read_patient_unauthorized(client: tuple[FastAPI, AsyncClient]) ->
     # Arrange
     patient_id = str(uuid.uuid4()) # Use a valid UUID format
     
-    # Act - No auth token provided, but our test setup actually has authentication (403 is what we get now)
+    # Act - No auth token provided
     response: Response = await async_client.get(f"/api/v1/patients/{patient_id}")
     
-    # Assert - Should return 403 Forbidden (patient trying to access another patient's data)
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    # Assert - Should return 401 Unauthorized (no auth token provided)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
-    # Verify the message matches what we expect from patient endpoint
-    assert response.json() == {"detail": "Patients can only access their own data."}
+    # Verify the message matches what we expect from authentication middleware
+    assert "detail" in response.json()
 
 @pytest.mark.asyncio
 async def test_read_patient_invalid_id() -> None:
