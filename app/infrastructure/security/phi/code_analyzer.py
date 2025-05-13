@@ -361,83 +361,73 @@ class PHICodeAnalyzer:
         try:
             tree = ast.parse(code)
             
-            class PHIVisitor(ast.NodeVisitor):
-                def __init__(self):
+            class PHINodeVisitor(ast.NodeVisitor):
+                """AST visitor to find PHI in Python code."""
+
+                def __init__(self, file_path):
+                    """Initialize visitor with file path."""
+                    self.file_path = file_path
                     self.findings = []
                     self.current_line = 0
-                
-                def visit_Call(self, node):
-                    # Check function calls for logging and prints
-                    self.current_line = node.lineno
-                    
-                    if isinstance(node.func, ast.Attribute):
-                        if node.func.attr in ('debug', 'info', 'warning', 'error', 'critical'):
-                            # This might be a logging call
+
+                def generic_visit(self, node):
+                    """Visit a node and track line numbers."""
+                    if hasattr(node, 'lineno'):
+                        self.current_line = node.lineno
+                    ast.NodeVisitor.generic_visit(self, node)
+
+                def visit_Constant(self, node):
+                    """Visit string literals in modern Python (3.8+)."""
+                    # Handle string constants which may contain PHI
+                    if isinstance(node.value, str):
+                        for pattern in PHICodeAnalyzer.PHI_PATTERNS:
+                            if re.search(pattern, node.value):
+                                # String literal contains PHI pattern
+                                self.findings.append(PHIFinding(
+                                    file_path=self.file_path,
+                                    line_number=self.current_line,
+                                    code_snippet=f'"{node.value[:20]}..."' if len(node.value) > 20 else f'"{node.value}"',
+                                    message="String literal contains PHI pattern",
+                                    severity=CodeSeverity.CRITICAL
+                                ))
+                                break
+                    self.generic_visit(node)
+
+                # For backward compatibility with older Python versions
+                def visit_Str(self, node):
+                    """Legacy method for string literals (Python < 3.8)."""
+                    self.visit_Constant(ast.Constant(value=node.s, lineno=node.lineno, col_offset=node.col_offset))
+
+                def visit_Name(self, node):
+                    """Visit variable names."""
+                    for pattern in PHICodeAnalyzer.PHI_VARIABLE_NAMES:
+                        if re.search(pattern, node.id, re.IGNORECASE):
                             self.findings.append(PHIFinding(
-                                file_path=file_path,
-                                line_number=node.lineno,
-                                code_snippet=ast.get_source_segment(code, node),
-                                message="Potential PHI in logging call",
+                                file_path=self.file_path,
+                                line_number=self.current_line,
+                                code_snippet=f"Variable name: {node.id}",
+                                message=f"Variable name suggests PHI: {node.id}",
                                 severity=CodeSeverity.WARNING
                             ))
-                    elif isinstance(node.func, ast.Name) and node.func.id == 'print':
-                        # This is a print call
-                        self.findings.append(PHIFinding(
-                            file_path=file_path,
-                            line_number=node.lineno,
-                            code_snippet=ast.get_source_segment(code, node),
-                            message="Potential PHI in print statement",
-                            severity=CodeSeverity.INFO
-                        ))
-                    
-                    # Continue visiting children
+                            break
                     self.generic_visit(node)
-                
-                def visit_Name(self, node):
-                    # Check variable names for potential PHI indicators
-                    self.current_line = getattr(node, 'lineno', self.current_line)
-                    var_name = node.id.lower()
-                    
-                    for phi_var in PHICodeAnalyzer.PHI_VARIABLE_NAMES:
-                        if phi_var in var_name:
-                            # Variable name suggests PHI
+
+                def visit_ClassDef(self, node):
+                    """Visit class definitions to check for PHI-related models."""
+                    # Check for PHI-related class names
+                    for pattern in PHICodeAnalyzer.PHI_MODEL_NAMES:
+                        if re.search(pattern, node.name, re.IGNORECASE):
                             self.findings.append(PHIFinding(
-                                file_path=file_path,
+                                file_path=self.file_path,
                                 line_number=self.current_line,
-                                code_snippet=var_name,
-                                message=f"Variable name suggests PHI: {var_name}",
+                                code_snippet=f"class {node.name}:",
+                                message=f"Class name suggests PHI: {node.name}",
                                 severity=CodeSeverity.INFO
                             ))
                             break
-                    
-                    # Continue visiting children
-                    self.generic_visit(node)
-                
-                def visit_Str(self, node):
-                    # Check string literals for PHI patterns
-                    self.current_line = getattr(node, 'lineno', self.current_line)
-                    
-                    for pattern in PHICodeAnalyzer.PHI_PATTERNS:
-                        # Use node.value instead of node.s (deprecated in Python 3.14)
-                        # Get the string value using the modern approach
-                        node_value = getattr(node, "value", getattr(node, "s", ""))
-                        
-                        if re.search(pattern, node_value):
-                            # String literal contains PHI pattern
-                            self.findings.append(PHIFinding(
-                                file_path=file_path,
-                                line_number=self.current_line,
-                                code_snippet=f'"{node_value[:20]}..."' if len(node_value) > 20 else f'"{node_value}"',
-                                message="String literal contains PHI pattern",
-                                severity=CodeSeverity.CRITICAL
-                            ))
-                            # Only report one pattern per string to avoid duplicates
-                            break
-                    
-                    # Continue visiting children
                     self.generic_visit(node)
             
-            visitor = PHIVisitor()
+            visitor = PHINodeVisitor(file_path)
             visitor.visit(tree)
             findings.extend(visitor.findings)
             
