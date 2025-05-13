@@ -278,14 +278,16 @@ async def predict_risk(
     user: ProviderAccessDep,
 ) -> RiskPredictionResponse:
     """
-    Generate a risk prediction for a patient.
+    Generate risk predictions for psychiatric outcomes.
     
-    This endpoint analyzes patient data to predict clinical risks
-    such as suicide attempt or hospitalization risk. HIPAA compliant
-    with appropriate access controls.
+    This endpoint uses XGBoost models to predict various risks such as:
+    - Suicide attempts 
+    - Relapse risk
+    - Hospitalization risk
+    - Treatment non-adherence risk
     
     Args:
-        request: The risk prediction request with patient data
+        request: The risk prediction request with patient and clinical data
         xgboost_service: The XGBoost service instance
         user: The authenticated user with verified patient access
     
@@ -293,9 +295,9 @@ async def predict_risk(
         RiskPredictionResponse: The risk prediction results
     
     Raises:
-        HTTPException: If prediction fails or PHI detected in data
+        HTTPException: For validation errors, PHI detection, or service unavailability
     """
-    # Verify patient access authorization
+    # Verify provider has access to this patient's data
     await verify_provider_access(user, request.patient_id)
     
     # Check for and sanitize PHI
@@ -313,26 +315,42 @@ async def predict_risk(
             result = await xgboost_service.predict_risk(
                 patient_id=request.patient_id,
                 risk_type=request.risk_type,
-                patient_data=request.patient_data,
                 clinical_data=request.clinical_data,
                 time_frame_days=request.time_frame_days,
                 include_explainability=request.include_explainability,
             )
             
-            # Create response from result
-            return RiskPredictionResponse(
-                prediction_id=result.prediction_id,
-                patient_id=request.patient_id,
-                risk_type=request.risk_type,
-                risk_score=result.risk_score,
-                risk_level=result.risk_level,
-                confidence=result.confidence,
-                time_frame_days=request.time_frame_days,
-                timestamp=result.timestamp,
-                model_version=result.model_version,
-                explainability=result.explainability if request.include_explainability else None,
-                visualization_data=result.visualization_data if request.visualization_type else None,
-            )
+            # Handle both dict and object responses
+            if isinstance(result, dict):
+                # Create response from dict result
+                return RiskPredictionResponse(
+                    prediction_id=result.get("prediction_id"),
+                    patient_id=request.patient_id,
+                    risk_type=request.risk_type,
+                    risk_score=result.get("risk_score"),
+                    risk_level=result.get("risk_level"),
+                    confidence=result.get("confidence"),
+                    time_frame_days=request.time_frame_days,
+                    timestamp=result.get("timestamp", datetime.now().isoformat()),
+                    model_version=result.get("model_version", "1.0"),
+                    explainability=result.get("explainability") if request.include_explainability else None,
+                    visualization_data=result.get("visualization_data") if request.visualization_type else None,
+                )
+            else:
+                # Create response from object result (handle attribute access)
+                return RiskPredictionResponse(
+                    prediction_id=getattr(result, "prediction_id", None),
+                    patient_id=request.patient_id,
+                    risk_type=request.risk_type,
+                    risk_score=getattr(result, "risk_score", None),
+                    risk_level=getattr(result, "risk_level", None),
+                    confidence=getattr(result, "confidence", None),
+                    time_frame_days=request.time_frame_days,
+                    timestamp=getattr(result, "timestamp", datetime.now().isoformat()),
+                    model_version=getattr(result, "model_version", "1.0"),
+                    explainability=getattr(result, "explainability", None) if request.include_explainability else None,
+                    visualization_data=getattr(result, "visualization_data", None) if request.visualization_type else None,
+                )
             
         except ServiceUnavailableError:
             logger.error(f"XGBoost service unavailable for risk prediction: {request.patient_id}")
@@ -387,8 +405,8 @@ async def predict_outcome(
             patient_id=request.patient_id,
             features=request.features,
             timeframe_days=request.timeframe_days,
-            clinical_data=request.clinical_data,
-            treatment_plan=request.treatment_plan,
+            prediction_domains=request.prediction_domains,
+            prediction_types=request.prediction_types,
             include_trajectories=request.include_trajectories,
             include_recommendations=request.include_recommendations,
         )
@@ -398,18 +416,18 @@ async def predict_outcome(
             return OutcomePredictionResponse(
                 patient_id=request.patient_id,
                 expected_outcomes=result.get("expected_outcomes", []),
-                outcome_trajectories=result.get("outcome_trajectories"),
+                outcome_trajectories=result.get("outcome_trajectories") if request.include_trajectories else None,
                 response_likelihood=result.get("response_likelihood"),
-                recommended_therapies=result.get("recommended_therapies"),
+                recommended_therapies=result.get("recommended_therapies") if request.include_recommendations else None,
             )
         else:
             # Handle object-like result with attribute access
             return OutcomePredictionResponse(
                 patient_id=request.patient_id,
                 expected_outcomes=getattr(result, "expected_outcomes", []),
-                outcome_trajectories=getattr(result, "outcome_trajectories", None),
+                outcome_trajectories=getattr(result, "outcome_trajectories", None) if request.include_trajectories else None,
                 response_likelihood=getattr(result, "response_likelihood", None),
-                recommended_therapies=getattr(result, "recommended_therapies", None),
+                recommended_therapies=getattr(result, "recommended_therapies", None) if request.include_recommendations else None,
             )
         
     except ServiceUnavailableError:

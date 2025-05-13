@@ -12,6 +12,8 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from dataclasses import dataclass
+from types import SimpleNamespace
 
 from app.core.services.ml.xgboost.mock import MockXGBoostService
 from app.presentation.api.v1.routes.xgboost import router as xgboost_router
@@ -23,6 +25,19 @@ pytestmark = pytest.mark.asyncio
 # Mock the dependency
 async def mock_verify_provider_access() -> dict[str, Any]:
     return {"sub": "test_provider", "scopes": ["xgboost:predict"]}
+
+
+# Create a RiskPredictionResult class to mimic the expected model structure
+@dataclass
+class RiskPredictionResult:
+    prediction_id: str
+    risk_score: float
+    risk_level: str
+    confidence: float
+    timestamp: str
+    model_version: str
+    explainability: dict = None
+    visualization_data: dict = None
 
 
 # Fixture for the mock service instance
@@ -66,14 +81,16 @@ class TestXGBoostIntegration:
     async def test_risk_prediction_flow(self, client: AsyncClient, 
                                       mock_service: MockXGBoostService) -> None:
         """Test the risk prediction workflow."""
-        # Configure mock return value
-        mock_service.predict_risk = AsyncMock(return_value={
-            "prediction_id": "pred_risk_123",
-            "risk_score": 0.75,
-            "risk_level": "high", 
-            "confidence": 0.9,
-            "details": "Mock prediction details"
-        })
+        # Configure mock return value using the RiskPredictionResult dataclass
+        result = RiskPredictionResult(
+            prediction_id="pred_risk_123",
+            risk_score=0.75,
+            risk_level="high", 
+            confidence=0.9,
+            timestamp=datetime.now().isoformat(),
+            model_version="1.0"
+        )
+        mock_service.predict_risk = AsyncMock(return_value=result)
 
         # Prepare request data matching RiskPredictionRequest
         risk_request = {
@@ -114,9 +131,9 @@ class TestXGBoostIntegration:
                                           mock_service: MockXGBoostService) -> None:
         """Test the outcome prediction workflow."""
         # Configure mock return value for predict_outcome
-        mock_service.predict_outcome = AsyncMock(return_value={
-            "patient_id": "patient-123",
-            "expected_outcomes": [
+        mock_service.predict_outcome = AsyncMock(return_value=SimpleNamespace(
+            patient_id="patient-123",
+            expected_outcomes=[
                 {
                     "domain": "depression",
                     "outcome_type": "symptom_reduction",
@@ -125,8 +142,8 @@ class TestXGBoostIntegration:
                     "confidence_interval": [0.32, 0.48]
                 }
             ],
-            "response_likelihood": "moderate",
-            "recommended_therapies": [
+            response_likelihood="moderate",
+            recommended_therapies=[
                 {
                     "therapy_id": "cbt-001",
                     "therapy_name": "Cognitive Behavioral Therapy",
@@ -135,7 +152,7 @@ class TestXGBoostIntegration:
                     "is_medication": False
                 }
             ]
-        })
+        ))
 
         # Prepare request data for OutcomePredictionRequest
         outcome_request = {
@@ -177,12 +194,12 @@ class TestXGBoostIntegration:
                                    mock_service: MockXGBoostService) -> None:
         """Test the model information workflow."""
         model_type = "risk-relapse"  
-        mock_service.get_model_info = AsyncMock(return_value={
-            "model_type": model_type,
-            "version": "1.2.0",
-            "training_date": datetime.now().isoformat(),
-            "performance_metrics": {"auc": 0.85}
-        })
+        mock_service.get_model_info = AsyncMock(return_value=SimpleNamespace(
+            model_type=model_type,
+            version="1.2.0",
+            training_date=datetime.now().isoformat(),
+            performance_metrics={"auc": 0.85}
+        ))
         # Correct path based on router
         await client.get(f"/api/v1/xgboost/model-info/{model_type}") # Path adjusted if necessary
 
