@@ -1,257 +1,273 @@
 """
-In-memory implementation of the BiometricAlertTemplateRepository.
+In-Memory Biometric Alert Template Repository Module.
 
-This module provides a simple memory-based repository for alert templates
-with predefined templates for testing and development.
+This module provides an in-memory implementation of the template repository interface
+for biometric alert templates. It's useful for testing, development, or when
+a persistent storage is not required.
 """
 
-import logging
+import copy
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from app.domain.entities.biometric_alert_rule import AlertPriority, BiometricMetricType, ComparatorOperator
-from app.domain.repositories.biometric_alert_template_repository import (
-    BiometricAlertTemplateRepository,
+from app.core.domain.entities.biometric import MetricType
+from app.core.interfaces.repositories.template_repository_interface import ITemplateRepository
+from app.domain.entities.biometric_rule import (
+    AlertPriority,
+    BiometricAlertRule,
+    BiometricRuleCondition,
+    LogicalOperator,
+    RuleOperator,
 )
 
 
-logger = logging.getLogger(__name__)
-
-
-# Predefined templates as a seed for the repository
-PREDEFINED_TEMPLATES = [
-    {
-        "id": uuid.UUID("11111111-1111-1111-1111-111111111111"),
-        "name": "High Heart Rate Alert",
-        "description": "Alert when heart rate exceeds threshold",
-        "category": "cardiac",
-        "metric_type": BiometricMetricType.HEART_RATE,
-        "default_threshold": 100.0,
-        "operator": ComparatorOperator.GREATER_THAN,
-        "default_priority": AlertPriority.MEDIUM,
-        "created_at": datetime.utcnow(),
-        "conditions": [
-            {
-                "metric_type": BiometricMetricType.HEART_RATE,
-                "operator": ComparatorOperator.GREATER_THAN,
-                "threshold_value": 100.0,
-                "description": "Heart rate exceeds threshold"
-            }
-        ],
-        "logical_operator": "and"
-    },
-    {
-        "id": uuid.UUID("22222222-2222-2222-2222-222222222222"),
-        "name": "Low Heart Rate Alert",
-        "description": "Alert when heart rate falls below threshold",
-        "category": "cardiac",
-        "metric_type": BiometricMetricType.HEART_RATE,
-        "default_threshold": 50.0,
-        "operator": ComparatorOperator.LESS_THAN,
-        "default_priority": AlertPriority.HIGH,
-        "created_at": datetime.utcnow(),
-        "conditions": [
-            {
-                "metric_type": BiometricMetricType.HEART_RATE,
-                "operator": ComparatorOperator.LESS_THAN,
-                "threshold_value": 50.0,
-                "description": "Heart rate is too low"
-            }
-        ],
-        "logical_operator": "and"
-    },
-    {
-        "id": uuid.UUID("33333333-3333-3333-3333-333333333333"),
-        "name": "Low Oxygen Saturation Alert",
-        "description": "Alert when oxygen saturation falls below threshold",
-        "category": "respiratory",
-        "metric_type": BiometricMetricType.OXYGEN_SATURATION,
-        "default_threshold": 92.0,
-        "operator": ComparatorOperator.LESS_THAN,
-        "default_priority": AlertPriority.CRITICAL,
-        "created_at": datetime.utcnow(),
-        "conditions": [
-            {
-                "metric_type": BiometricMetricType.OXYGEN_SATURATION,
-                "operator": ComparatorOperator.LESS_THAN,
-                "threshold_value": 92.0,
-                "description": "Blood oxygen is below safe levels"
-            }
-        ],
-        "logical_operator": "and"
-    },
-    {
-        "id": uuid.UUID("44444444-4444-4444-4444-444444444444"),
-        "name": "High Blood Pressure Alert",
-        "description": "Alert when blood pressure exceeds threshold",
-        "category": "cardiac",
-        "metric_type": BiometricMetricType.BLOOD_PRESSURE,
-        "default_threshold": 140.0,
-        "operator": ComparatorOperator.GREATER_THAN,
-        "default_priority": AlertPriority.MEDIUM,
-        "created_at": datetime.utcnow(),
-        "conditions": [
-            {
-                "metric_type": BiometricMetricType.BLOOD_PRESSURE,
-                "operator": ComparatorOperator.GREATER_THAN,
-                "threshold_value": 140.0,
-                "description": "Systolic blood pressure is high"
-            }
-        ],
-        "logical_operator": "and"
-    },
-    {
-        "id": uuid.UUID("55555555-5555-5555-5555-555555555555"),
-        "name": "High Blood Glucose Alert",
-        "description": "Alert when blood glucose exceeds threshold",
-        "category": "metabolic",
-        "metric_type": BiometricMetricType.BLOOD_GLUCOSE,
-        "default_threshold": 180.0,
-        "operator": ComparatorOperator.GREATER_THAN,
-        "default_priority": AlertPriority.MEDIUM,
-        "created_at": datetime.utcnow(),
-        "conditions": [
-            {
-                "metric_type": BiometricMetricType.BLOOD_GLUCOSE,
-                "operator": ComparatorOperator.GREATER_THAN,
-                "threshold_value": 180.0,
-                "description": "Blood glucose is above target range"
-            }
-        ],
-        "logical_operator": "and"
-    }
-]
-
-
-class InMemoryBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
+class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
     """
-    In-memory implementation of BiometricAlertTemplateRepository.
+    In-memory implementation of biometric alert template repository.
     
-    This class stores templates in memory, providing a simple implementation
-    for testing, development, and environments where persistence is not required.
+    This repository stores all templates in memory and provides predefined
+    templates for common biometric alert scenarios.
     """
     
     def __init__(self):
-        """Initialize with predefined templates."""
-        self.templates = {str(template["id"]): template.copy() for template in PREDEFINED_TEMPLATES}
-        logger.info(f"Initialized InMemoryBiometricAlertTemplateRepository with {len(self.templates)} templates")
-
-    async def get_all_templates(self) -> List[Dict[str, Any]]:
+        """Initialize the repository with predefined templates."""
+        self._templates: Dict[UUID, BiometricAlertRule] = {}
+        self._initialize_predefined_templates()
+    
+    def _initialize_predefined_templates(self) -> None:
+        """Initialize the repository with predefined templates."""
+        # Heart rate high template
+        hr_high_id = uuid.uuid4()
+        hr_high = BiometricAlertRule(
+            id=hr_high_id,
+            name="High Heart Rate Alert Template",
+            description="Template for detecting abnormally high heart rate",
+            conditions=[
+                BiometricRuleCondition(
+                    metric_type=MetricType.HEART_RATE,
+                    operator=RuleOperator.GREATER_THAN,
+                    threshold_value=100,
+                    description="Heart rate above 100 BPM"
+                )
+            ],
+            logical_operator=LogicalOperator.AND,
+            priority=AlertPriority.MEDIUM,
+            is_active=True,
+            is_template=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        self._templates[hr_high_id] = hr_high
+        
+        # Heart rate low template
+        hr_low_id = uuid.uuid4()
+        hr_low = BiometricAlertRule(
+            id=hr_low_id,
+            name="Low Heart Rate Alert Template",
+            description="Template for detecting abnormally low heart rate",
+            conditions=[
+                BiometricRuleCondition(
+                    metric_type=MetricType.HEART_RATE,
+                    operator=RuleOperator.LESS_THAN,
+                    threshold_value=50,
+                    description="Heart rate below 50 BPM"
+                )
+            ],
+            logical_operator=LogicalOperator.AND,
+            priority=AlertPriority.HIGH,
+            is_active=True,
+            is_template=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        self._templates[hr_low_id] = hr_low
+        
+        # High blood pressure template
+        bp_high_id = uuid.uuid4()
+        bp_high = BiometricAlertRule(
+            id=bp_high_id,
+            name="High Blood Pressure Alert Template",
+            description="Template for detecting high blood pressure",
+            conditions=[
+                BiometricRuleCondition(
+                    metric_type=MetricType.BLOOD_PRESSURE_SYSTOLIC,
+                    operator=RuleOperator.GREATER_THAN,
+                    threshold_value=140,
+                    description="Systolic pressure above 140 mmHg"
+                ),
+                BiometricRuleCondition(
+                    metric_type=MetricType.BLOOD_PRESSURE_DIASTOLIC,
+                    operator=RuleOperator.GREATER_THAN,
+                    threshold_value=90,
+                    description="Diastolic pressure above 90 mmHg"
+                )
+            ],
+            logical_operator=LogicalOperator.AND,
+            priority=AlertPriority.MEDIUM,
+            is_active=True,
+            is_template=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        self._templates[bp_high_id] = bp_high
+        
+        # Elevated body temperature template
+        temp_high_id = uuid.uuid4()
+        temp_high = BiometricAlertRule(
+            id=temp_high_id,
+            name="Fever Alert Template",
+            description="Template for detecting elevated body temperature",
+            conditions=[
+                BiometricRuleCondition(
+                    metric_type=MetricType.BODY_TEMPERATURE,
+                    operator=RuleOperator.GREATER_THAN,
+                    threshold_value=38.0,  # 38°C / 100.4°F
+                    description="Body temperature above 38°C (100.4°F)"
+                )
+            ],
+            logical_operator=LogicalOperator.AND,
+            priority=AlertPriority.MEDIUM,
+            is_active=True,
+            is_template=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        self._templates[temp_high_id] = temp_high
+        
+        # Low blood glucose level template
+        glucose_low_id = uuid.uuid4()
+        glucose_low = BiometricAlertRule(
+            id=glucose_low_id,
+            name="Hypoglycemia Alert Template",
+            description="Template for detecting low blood glucose levels",
+            conditions=[
+                BiometricRuleCondition(
+                    metric_type=MetricType.BLOOD_GLUCOSE,
+                    operator=RuleOperator.LESS_THAN,
+                    threshold_value=70,  # 70 mg/dL
+                    description="Blood glucose below 70 mg/dL"
+                )
+            ],
+            logical_operator=LogicalOperator.AND,
+            priority=AlertPriority.HIGH,
+            is_active=True,
+            is_template=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        self._templates[glucose_low_id] = glucose_low
+    
+    async def get_all_templates(self) -> List[BiometricAlertRule]:
         """
-        Retrieve all available templates.
+        Get all available templates.
         
         Returns:
-            List of all template definitions
+            List of all template entities
         """
-        logger.debug("Getting all templates")
-        return list(self.templates.values())
-
-    async def get_template_by_id(self, template_id: UUID) -> Dict[str, Any] | None:
+        return list(self._templates.values())
+    
+    async def get_template_by_id(self, template_id: UUID) -> Optional[BiometricAlertRule]:
         """
-        Retrieve a template by its ID.
+        Get a template by its ID.
         
         Args:
-            template_id: UUID of the template to retrieve
+            template_id: The unique identifier of the template
             
         Returns:
-            The template definition if found, None otherwise
+            The template entity if found, None otherwise
         """
-        template_id_str = str(template_id)
-        logger.debug(f"Getting template with ID {template_id_str}")
-        return self.templates.get(template_id_str)
-
-    async def get_by_id(self, template_id: UUID) -> Dict[str, Any] | None:
+        return self._templates.get(template_id)
+    
+    async def create_template(self, template_data: Dict[str, Any]) -> BiometricAlertRule:
         """
-        Alias for get_template_by_id for consistency with other repositories.
+        Create a new template.
         
         Args:
-            template_id: UUID of the template to retrieve
+            template_data: Dictionary containing template data
             
         Returns:
-            The template definition if found, None otherwise
-        """
-        return await self.get_template_by_id(template_id)
-
-    async def get_templates_by_category(self, category: str) -> List[Dict[str, Any]]:
-        """
-        Retrieve templates filtered by category.
-        
-        Args:
-            category: Category name to filter by
+            The created template entity
             
-        Returns:
-            List of template definitions in the category
+        Raises:
+            ValueError: If the template data is invalid
         """
-        logger.debug(f"Getting templates in category {category}")
-        return [
-            template for template in self.templates.values()
-            if template.get("category", "").lower() == category.lower()
-        ]
-
-    async def get_templates_by_metric_type(self, metric_type: str) -> List[Dict[str, Any]]:
-        """
-        Retrieve templates filtered by metric type.
+        # If no ID is provided, generate one
+        if "id" not in template_data:
+            template_data["id"] = uuid.uuid4()
         
-        Args:
-            metric_type: Metric type to filter by
-            
-        Returns:
-            List of template definitions for the metric type
-        """
-        logger.debug(f"Getting templates for metric type {metric_type}")
-        return [
-            template for template in self.templates.values()
-            if str(template.get("metric_type", "")).lower() == metric_type.lower()
-        ]
-
-    async def save_template(self, template: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Save a template definition.
+        # Ensure it's marked as a template
+        template_data["is_template"] = True
         
-        If the template has an ID and exists, it will be updated.
-        If the template doesn't have an ID or doesn't exist, it will be created.
+        # Set creation and update timestamps
+        now = datetime.utcnow()
+        template_data["created_at"] = now
+        template_data["updated_at"] = now
         
-        Args:
-            template: The template definition to save
-            
-        Returns:
-            The saved template definition with updated fields
-        """
-        # Check if this is a new template or an update
-        template_id = template.get("id")
-        if not template_id:
-            # New template - generate ID
-            template_id = uuid.uuid4()
-            template["id"] = template_id
-            logger.info(f"Creating new template with ID {template_id}")
-        else:
-            logger.info(f"Updating template with ID {template_id}")
-            
-        # Ensure created_at is set
-        if "created_at" not in template:
-            template["created_at"] = datetime.utcnow()
-            
-        # Store the template
-        self.templates[str(template_id)] = template.copy()
+        # Create the template entity
+        try:
+            template = BiometricAlertRule(**template_data)
+        except Exception as e:
+            raise ValueError(f"Invalid template data: {str(e)}")
         
+        # Store in memory
+        self._templates[template.id] = template
         return template
-
+    
+    async def update_template(
+        self, template_id: UUID, template_data: Dict[str, Any]
+    ) -> Optional[BiometricAlertRule]:
+        """
+        Update an existing template.
+        
+        Args:
+            template_id: The unique identifier of the template to update
+            template_data: Dictionary containing updated template data
+            
+        Returns:
+            The updated template entity if found, None otherwise
+            
+        Raises:
+            ValueError: If the template data is invalid
+        """
+        # Check if template exists
+        if template_id not in self._templates:
+            return None
+        
+        # Get existing template and update with new data
+        existing_template = self._templates[template_id]
+        updated_data = copy.deepcopy(existing_template.__dict__)
+        
+        # Update fields
+        for key, value in template_data.items():
+            if key != "id" and hasattr(existing_template, key):  # Don't allow changing ID
+                updated_data[key] = value
+        
+        # Update timestamp
+        updated_data["updated_at"] = datetime.utcnow()
+        
+        # Create updated entity
+        try:
+            updated_template = BiometricAlertRule(**updated_data)
+        except Exception as e:
+            raise ValueError(f"Invalid template data: {str(e)}")
+        
+        # Store updated template
+        self._templates[template_id] = updated_template
+        return updated_template
+    
     async def delete_template(self, template_id: UUID) -> bool:
         """
-        Delete a template by its ID.
+        Delete a template.
         
         Args:
-            template_id: UUID of the template to delete
+            template_id: The unique identifier of the template to delete
             
         Returns:
             True if the template was deleted, False if not found
         """
-        template_id_str = str(template_id)
-        logger.info(f"Deleting template with ID {template_id_str}")
-        
-        if template_id_str in self.templates:
-            del self.templates[template_id_str]
+        if template_id in self._templates:
+            del self._templates[template_id]
             return True
         return False 

@@ -7,7 +7,7 @@ strict validation of all input and output data for HIPAA compliance.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import Field, field_validator, UUID4, BaseModel
@@ -126,6 +126,26 @@ class AlertRuleCreateRequest(AlertRuleBase):
 
     # patient_id and provider_id might be set by the service/context, not directly in request
     pass
+
+
+class AlertRuleTemplateCustomization(BaseModelConfig):
+    """Schema for customizing alert rule templates."""
+    
+    name: str | None = Field(None, min_length=1, max_length=100, description="Custom name for the rule")
+    description: str | None = Field(None, max_length=500, description="Custom description for the rule")
+    priority: RuleAlertPriority | None = Field(None, description="Custom priority level")
+    threshold_value: Any | None = Field(None, description="Custom threshold value")
+    is_active: bool | None = Field(None, description="Custom active status")
+
+
+class AlertRuleCreateFromTemplateRequest(BaseModelConfig):
+    """Request schema for creating a new biometric alert rule from a template."""
+    
+    template_id: str = Field(..., description="ID of the template to use")
+    patient_id: str = Field(..., description="ID of the patient this rule applies to")
+    customization: AlertRuleTemplateCustomization | None = Field(
+        None, description="Optional customizations to the template"
+    )
 
 
 class AlertRuleUpdateRequest(BaseModelConfig):

@@ -30,6 +30,63 @@ class BiometricType(str, Enum):
     CORTISOL = "cortisol"
 
 
+class MetricType(str, Enum):
+    """Types of metrics that can be used in biometric alert rules.
+    
+    This is a more fine-grained set of metrics that can be monitored
+    for alerts, including both direct biometric measurements and 
+    derived/calculated metrics.
+    """
+    # Cardiovascular metrics
+    HEART_RATE = "heart_rate"
+    BLOOD_PRESSURE_SYSTOLIC = "blood_pressure_systolic"
+    BLOOD_PRESSURE_DIASTOLIC = "blood_pressure_diastolic"
+    HEART_RATE_VARIABILITY = "heart_rate_variability"
+    
+    # Blood/metabolic metrics 
+    BLOOD_GLUCOSE = "blood_glucose"
+    HEMOGLOBIN_A1C = "hemoglobin_a1c"
+    CHOLESTEROL_TOTAL = "cholesterol_total"
+    CHOLESTEROL_LDL = "cholesterol_ldl"
+    CHOLESTEROL_HDL = "cholesterol_hdl"
+    TRIGLYCERIDES = "triglycerides"
+    
+    # Respiratory metrics
+    OXYGEN_SATURATION = "oxygen_saturation"
+    RESPIRATION_RATE = "respiration_rate"
+    
+    # Physical metrics
+    WEIGHT = "weight"
+    BMI = "bmi"
+    BODY_TEMPERATURE = "body_temperature"
+    STEPS = "steps"
+    EXERCISE_MINUTES = "exercise_minutes"
+    
+    # Sleep metrics
+    SLEEP_DURATION = "sleep_duration"
+    SLEEP_QUALITY = "sleep_quality"
+    SLEEP_DEEP_PERCENTAGE = "sleep_deep_percentage"
+    SLEEP_REM_PERCENTAGE = "sleep_rem_percentage"
+    
+    # Mental health metrics
+    STRESS_LEVEL = "stress_level"
+    MOOD_SCORE = "mood_score"
+    ANXIETY_SCORE = "anxiety_score"
+    DEPRESSION_SCORE = "depression_score"
+    PHQ9_SCORE = "phq9_score"
+    GAD7_SCORE = "gad7_score"
+    
+    # Hormone/neurotransmitter levels
+    CORTISOL = "cortisol"
+    SEROTONIN = "serotonin"
+    DOPAMINE = "dopamine"
+    MELATONIN = "melatonin"
+    
+    def __str__(self) -> str:
+        """Return the string value of the enum."""
+        return self.value
+
+
 class Biometric:
     """
     Biometric domain entity representing physiological measurements.

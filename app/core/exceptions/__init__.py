@@ -37,6 +37,7 @@ from app.core.exceptions.ml_exceptions import (
     PHIDetectionError,
     ServiceUnavailableError,
     XGBoostServiceError,
+    PHISecurityError,
 )
 
 # Application specific errors and codes
@@ -48,48 +49,36 @@ from app.core.exceptions.application_error import (
 # JWT exceptions
 from app.core.exceptions.jwt_exceptions import (
     JWTError,
-    JWTExpiredError,
-    JWTInvalidError,
-    JWTMissingError,
+    TokenExpiredError,
+    InvalidTokenError,
+    MissingTokenError,
 )
 
 # Auth exceptions
 from app.core.exceptions.auth_exceptions import (
-    InvalidCredentialsError,
-    UserNotFoundError,
-    UserAlreadyExistsError,
-    UserInactiveError,
-    PasswordMismatchError,
-    PermissionDeniedError,
-    RoleNotFoundError,
+    AuthenticationError,
+    AuthorizationError,
+    TokenExpiredError,
+    InvalidTokenError,
 )
 
 # Data privacy exceptions
 from app.core.exceptions.data_privacy import (
-    DataPrivacyException,
-    PHIExposureRiskException,
-    EncryptionError,
-    DecryptionError,
-)
-
-# ML exceptions
-from app.core.exceptions.ml_exceptions import (
-    MLException,
-    ModelLoadingError,
-    PredictionError,
-    InvalidInputFormatError,
-    ModelTrainingError,
-    ModelEvaluationError,
-    FeatureExtractionError,
-    ModelVersionError,
-    ModelConfigurationError,
+    DataPrivacyError,
+    # PHIExposureRiskException,
+    # EncryptionError,
+    # DecryptionError,
 )
 
 # Security errors from different modules
 from app.core.errors.security_exceptions import (
-    SecurityError,
-    AccessDeniedError,
-    AuthenticationFailedError,
+    SecurityException,
+    InvalidCredentialsError,
+    TokenExpiredError as SecurityTokenExpiredError,
+    TokenValidationError,
+    InsufficientPermissionsError,
+    SessionExpiredError,
+    RateLimitExceededError,
 )
 
 __all__ = [
@@ -116,6 +105,7 @@ __all__ = [
     "MentalLLaMAServiceError",
     "ModelNotFoundError",
     "PHIDetectionError",
+    "PHISecurityError",
     "PersistenceError",
     "ResourceNotFoundError",
     "ResourceNotFoundException",
@@ -127,30 +117,19 @@ __all__ = [
     "XGBoostServiceError",
     "ErrorCode",
     "JWTError",
-    "JWTExpiredError",
-    "JWTInvalidError",
-    "JWTMissingError",
+    "TokenExpiredError",
+    "InvalidTokenError",
+    "MissingTokenError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "DataPrivacyError",
+    # "PHIExposureRiskException",
+    # "EncryptionError",
+    # "DecryptionError",
     "InvalidCredentialsError",
-    "UserNotFoundError",
-    "UserAlreadyExistsError",
-    "UserInactiveError",
-    "PasswordMismatchError",
-    "PermissionDeniedError",
-    "RoleNotFoundError",
-    "DataPrivacyException",
-    "PHIExposureRiskException",
-    "EncryptionError",
-    "DecryptionError",
-    "MLException",
-    "ModelLoadingError",
-    "PredictionError",
-    "InvalidInputFormatError",
-    "ModelTrainingError",
-    "ModelEvaluationError",
-    "FeatureExtractionError",
-    "ModelVersionError",
-    "ModelConfigurationError",
-    "SecurityError",
-    "AccessDeniedError",
-    "AuthenticationFailedError",
+    "SecurityTokenExpiredError",
+    "TokenValidationError",
+    "InsufficientPermissionsError",
+    "SessionExpiredError",
+    "RateLimitExceededError",
 ]

@@ -4,10 +4,11 @@ Domain entities related to Biometric Rules for the Digital Twin.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, List, Optional
 from uuid import UUID, uuid4
 
 from app.domain.utils.datetime_utils import now_utc
+from app.core.domain.entities.biometric import MetricType
 
 
 class AlertPriority(Enum):
@@ -239,3 +240,144 @@ class BiometricRule:
             int: Hash value based on ID
         """
         return hash(self.id) 
+
+
+@dataclass
+class BiometricRuleCondition:
+    """Enhanced condition for biometric alert rules that uses the MetricType enum."""
+    
+    metric_type: MetricType  # Using the enum for stronger typing
+    operator: RuleOperator
+    threshold_value: Any
+    description: str | None = None
+    time_window_hours: int | None = None
+    aggregation_method: str | None = None
+    
+    def __post_init__(self):
+        """Validate and normalize the condition data after initialization."""
+        # Auto-convert string operator to enum if needed
+        if isinstance(self.operator, str):
+            try:
+                self.operator = RuleOperator(self.operator)
+            except ValueError:
+                # Try matching by name instead of value
+                for op in RuleOperator:
+                    if op.name == self.operator.upper():
+                        self.operator = op
+                        break
+        
+        # Auto-convert string metric_type to enum if needed
+        if isinstance(self.metric_type, str):
+            try:
+                self.metric_type = MetricType(self.metric_type)
+            except ValueError:
+                # Try matching by name
+                for metric in MetricType:
+                    if metric.name == self.metric_type.upper():
+                        self.metric_type = metric
+                        break
+
+
+@dataclass
+class BiometricAlertRule:
+    """
+    Represents a biometric alert rule for the Digital Twin.
+    
+    This class encapsulates the conditions that trigger biometric alerts,
+    providing a domain-specific entity for alert rule management.
+    """
+    id: UUID = field(default_factory=uuid4)
+    name: str = ""
+    description: str | None = None
+    conditions: List[BiometricRuleCondition] = field(default_factory=list)
+    logical_operator: LogicalOperator = LogicalOperator.AND
+    priority: AlertPriority = AlertPriority.MEDIUM
+    patient_id: UUID | None = None  # If None, considered a template or global rule
+    provider_id: UUID | None = None  # Provider who created the rule
+    is_active: bool = True
+    is_template: bool = False  # Whether this rule is a template for creating other rules
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime | None = None
+    version: int = 1
+    
+    def __post_init__(self):
+        """Initialize and validate after creation."""
+        # Set updated_at to created_at initially if not provided
+        if self.updated_at is None:
+            self.updated_at = self.created_at
+    
+    def activate(self) -> "BiometricAlertRule":
+        """Activate this rule."""
+        self.is_active = True
+        self.updated_at = datetime.utcnow()
+        self.version += 1
+        return self
+    
+    def deactivate(self) -> "BiometricAlertRule":
+        """Deactivate this rule."""
+        self.is_active = False
+        self.updated_at = datetime.utcnow()
+        self.version += 1
+        return self
+    
+    def update(self, **kwargs) -> "BiometricAlertRule":
+        """
+        Update rule attributes.
+        
+        Args:
+            **kwargs: Attributes to update
+            
+        Returns:
+            The updated rule
+        """
+        for key, value in kwargs.items():
+            if hasattr(self, key) and key not in ["id", "created_at"]:
+                setattr(self, key, value)
+        
+        self.updated_at = datetime.utcnow()
+        self.version += 1
+        return self
+    
+    @classmethod
+    def create_from_template(
+        cls, 
+        template: "BiometricAlertRule", 
+        patient_id: UUID,
+        provider_id: Optional[UUID] = None,
+        **custom_overrides
+    ) -> "BiometricAlertRule":
+        """
+        Create a new rule from a template.
+        
+        Args:
+            template: The template rule
+            patient_id: Patient ID for the new rule
+            provider_id: Provider ID creating the rule (optional)
+            **custom_overrides: Custom overrides for the new rule
+            
+        Returns:
+            A new rule based on the template
+        """
+        if not template.is_template:
+            raise ValueError("Source rule must be a template")
+        
+        # Start with a copy of the template's attributes
+        attributes = {
+            "name": template.name,
+            "description": template.description,
+            "conditions": [condition for condition in template.conditions],
+            "logical_operator": template.logical_operator,
+            "priority": template.priority,
+            "is_active": template.is_active,
+            "is_template": False,  # The new rule is not a template
+            "patient_id": patient_id,
+            "provider_id": provider_id,
+        }
+        
+        # Apply custom overrides
+        for key, value in custom_overrides.items():
+            if key in attributes and key not in ["id", "created_at", "updated_at", "version"]:
+                attributes[key] = value
+        
+        # Create the new rule
+        return cls(**attributes) 
