@@ -1,94 +1,67 @@
-# Next Steps for Clarity AI Backend Refactoring
+# Next Prompt for Clarity AI Backend
 
-## Summary of Completed Work
+## Summary of Completed Changes (Analytics Module Iteration)
 
-### 1. Standalone Test Migration
+In this iteration, we focused on fixing critical issues in the Analytics module, improving code quality, and ensuring HIPAA compliance:
 
-We successfully migrated all essential standalone tests from `app/tests/standalone/` to their proper locations in the `app/tests/unit/` directory. This refactoring follows Clean Architecture principles and improves the maintainability of the test suite.
+1. **Fixed SQLAlchemy Relationship Issues**
+   - Established proper bidirectional relationship between `User` and `AnalyticsEventModel`
+   - Configured lazy loading strategy with `selectin` for optimal performance
+   - Added proper cascading behavior for delete operations
 
-Accomplishments:
-- Removed duplicated test implementations by using actual domain services and entities
-- Created proper mocks in `app/domain/services/mocks/` for testing
-- Fixed datetime timezone handling to use consistently timezone-aware objects
-- Added proper unit test fixtures that use the actual implementations
-- Completely removed the `app/tests/standalone` directory
-- Ensured all migrated tests are passing
+2. **Fixed Timezone Handling for HIPAA Compliance**
+   - Replaced deprecated `datetime.utcnow()` with timezone-aware `datetime.now(UTC)` in analytics module
+   - Updated timezone handling in biometric rules and alert templates
+   - Ensured consistent timestamp handling for audit logs and event tracking
 
-Key implementations:
-1. Fixed the `DigitalTwin` and `NeurotransmitterTwinModel` classes to support testing
-2. Created `MockDigitalTwinService` for testing the digital twin functionality
-3. Fixed `Appointment` entity tests to use proper cancellation logic
-4. Added missing `now_utc()` function to `datetime_utils.py`
-5. Created proper entity exports in `__init__.py` files
+3. **Improved Test Structure**
+   - Updated mock objects to properly use MagicMock with AsyncMock
+   - Fixed HTTP client tests to use ASGITransport pattern
+   - Improved caching test behavior to properly handle cached objects
+   - Updated test fixtures to work with actual implementations
 
-### 2. Fixed Failing Tests
+4. **Fixed Authentication in Tests**
+   - Added option to skip authentication middleware in tests
+   - Properly mocked authentication dependencies
 
-We resolved all critical test failures identified in the previous iteration:
+5. **Eliminated Warnings**
+   - Fixed deprecation warnings for datetime usage
+   - Eliminated timezone-related problems
 
-1. Fixed encryption service tests:
-   - Fixed the `test_initialization_with_missing_key` test by properly mocking the encryption key access
-   - Updated the error message in `decrypt_string` method to properly match the expected format in tests
+## Next Priority Areas (Vertical Slices)
 
-2. Fixed appointment service tests:
-   - Updated the `test_create_appointment_conflict` and `test_create_appointment_daily_limit` tests to expect `AppointmentConflictError` instead of `ValidationError`
-   - Ensured consistent exception handling across the appointment service module
+For the next iteration, we should focus on one of these critical areas:
 
-## Current Test Status
+### Option 1: JWT Authentication and Security Module
+- Fix remaining JWT implementation to use timezone-aware datetime
+- Update token creation and validation to follow HIPAA best practices
+- Implement automatic token refresh mechanism
+- Add comprehensive activity logging for authentication events
 
-The test suite currently has:
-- 1240 passing tests (increased from 807 in previous iteration)
-- 96 skipped tests (mostly awaiting implementation of specific endpoints/services)
-- 1 failing test in the security boundary module (unrelated to our current task)
-- 1 expected failure (XFAIL) in the encryption service
+### Option 2: PHI Sanitization in API Responses
+- Implement consistent PHI sanitization across all endpoints
+- Update API models to enforce HIPAA compliance
+- Add PHI detection and sanitization middleware
+- Fix skipped tests in the PHI sanitization modules
 
-## Next Steps
+### Option 3: Patient/User Repository Layer
+- Standardize repository patterns following SOLID principles
+- Ensure consistent error handling and logging
+- Complete test coverage for repository operations
+- Update cascading relationship behaviors
 
-The following areas need to be addressed in the next iteration:
+## Recommendation
 
-### 1. Address Remaining JWT Security Test Failure
+I recommend proceeding with Option 1 (JWT Authentication) as this is foundational for HIPAA compliance and secures the entire API surface. The security layer impacts all areas of the application and fixes here will benefit all endpoints.
 
-- Fix the failing `test_token_expiration` test in `app/tests/integration/infrastructure/security/test_security_boundary.py`
-- Ensure proper token expiration handling in the JWT service
+## Technical Guidelines
+- Domain paths: `app/domain/entities/`, `app/domain/exceptions/`
+- Application layer: `app/application/use_cases/`, `app/application/services/`
+- Infrastructure: `app/infrastructure/persistence/`, `app/infrastructure/security/`
+- APIs: `app/presentation/api/`
+- Tests: `app/tests/`
 
-### 2. Address Timezone Warnings
-
-The test suite generates several deprecation warnings related to `datetime.utcnow()` usage. These should be updated to use the recommended `datetime.now(UTC)` approach for better future compatibility.
-
-### 3. Implement Missing Endpoints
-
-Several endpoints are currently missing implementation, causing skipped tests in the biometric alerts and digital twins modules:
-- Implement the missing routes in the digital twin API
-- Complete the AlertRuleService implementation
-- Add the missing endpoints for alerts management
-
-### 4. Address Technical Debt in Data Models
-
-A few areas needing attention:
-- Update Pydantic models to use `ConfigDict` instead of class-based config
-- Fix SQLAlchemy relationship issues in analytics models
-- Address encryption service implementation inconsistencies
-
-### 5. Documentation
-
-- Update API documentation to reflect the current endpoint implementations
-- Add more detailed docstrings to domain entities and services
-- Create architecture diagrams for the clean architecture implementation
-
-## Long-term Improvements
-
-For future iterations:
-1. Implement CI/CD pipeline with automatic test running
-2. Add performance tests for critical API endpoints
-3. Implement comprehensive HIPAA compliance logging and auditing
-4. Create integration tests for the complete patient journey
-5. Implement infrastructure as code for deployment
-
-## Suggested Next Command
-
-To begin the next iteration, focus on fixing the remaining security test failure:
-
+## Test Command
 ```
-cd /Users/ray/Desktop/CLARITY-DIGITAL-TWIN/Clarity-AI-Backend && python -m pytest app/tests/integration/infrastructure/security/test_security_boundary.py::TestSecurityBoundary::test_token_expiration -v
-```
-
-This will provide more detailed information about the JWT token expiration issue that needs to be addressed. 
+python -m pytest
+``` 
