@@ -98,7 +98,7 @@ def test_user() -> User:
         email="test@example.com",
         first_name="Test",
         last_name="User",
-        roles=[Role.PROVIDER.value],
+        roles=[Role.PROVIDER],
         is_active=True,
         created_at=datetime.now()
     )
@@ -120,7 +120,7 @@ def mock_auth_service(test_user: User) -> AsyncMock:
                 email="inactive@example.com",
                 first_name="Inactive",
                 last_name="User",
-                roles=[Role.PROVIDER.value],
+                roles=[Role.PROVIDER],
                 is_active=False,
                 created_at=datetime.now()
             )
@@ -165,7 +165,7 @@ def mock_user_repository(test_user: User) -> AsyncMock:
                 email="inactive@example.com",
                 first_name="Inactive",
                 last_name="User",
-                roles=[Role.PROVIDER.value],
+                roles=[Role.PROVIDER],
                 is_active=False,
                 created_at=datetime.now()
             )
@@ -182,7 +182,7 @@ def mock_user_repository(test_user: User) -> AsyncMock:
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
-                roles=[Role.PROVIDER.value],
+                roles=[Role.PROVIDER],
                 is_active=True,
                 hashed_password="hashed_password",
                 created_at=datetime.now()
@@ -194,7 +194,7 @@ def mock_user_repository(test_user: User) -> AsyncMock:
                 email="inactive@example.com",
                 first_name="Inactive",
                 last_name="User",
-                roles=[Role.PROVIDER.value],
+                roles=[Role.PROVIDER],
                 is_active=False,
                 hashed_password="hashed_password",
                 created_at=datetime.now()
@@ -386,4 +386,4 @@ async def test_session_info(
     assert session_data["authenticated"] is True
     assert session_data["session_active"] is True
     assert session_data["user_id"] == TEST_USER_ID
-    assert session_data["roles"] == [Role.PROVIDER.value]
+    assert session_data["roles"] == [Role.PROVIDER]

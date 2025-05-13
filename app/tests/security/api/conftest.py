@@ -212,17 +212,19 @@ class AuthTestHelper:
     
     async def get_auth_headers(self, user_id, username=None, email=None, roles=None):
         """
-        Get authorization headers for a user
+        Generate authentication headers with JWT token for a user
         
         Args:
-            user_id: User ID (str or UUID)
-            username: Username
-            email: Email
-            roles: List of role strings
+            user_id: User ID for the token subject
+            username: Username to include in the token
+            email: Email to include in the token
+            roles: Roles to include in the token (can be string, enum, or list of either)
             
         Returns:
-            Dict of headers with Authorization
+            Dict with Authorization header
         """
+        # Pass the roles directly to create_token
+        # Let the token creation logic handle conversion of enum values if needed
         token = await self.create_token(user_id, username, email, roles)
         return {"Authorization": f"Bearer {token}"}
     
