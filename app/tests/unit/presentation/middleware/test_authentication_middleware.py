@@ -10,6 +10,7 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID # For direct UUID usage if needed
+from datetime import datetime
 
 from starlette.requests import Request as StarletteRequest
 from fastapi import FastAPI, Request, Response, status
@@ -112,6 +113,9 @@ def mock_get_user_by_id_side_effect_fixture(): # RENAMED and REFACTORED
         mock_orm_user.is_active = is_active_val
         mock_orm_user.password_hash = password_hash_val
         mock_orm_user.status = account_status_val # Expects UserStatus enum
+        # Add missing required fields
+        mock_orm_user.created_at = datetime.now() # Add required created_at field
+        mock_orm_user.updated_at = None
         # Add other fields UserMapper.to_domain might access if it were called (but it won't be with this patch strategy)
         # For direct use by middleware (treating this mock ORM as DomainUser):
         mock_orm_user.account_status = account_status_val # Middleware might check this

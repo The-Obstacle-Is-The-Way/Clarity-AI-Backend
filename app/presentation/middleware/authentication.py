@@ -126,7 +126,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         try:
             # Decode and validate the token
-            token_payload = await self.jwt_service.decode_token(token)
+            token_payload = self.jwt_service.decode_token(token)
             logger.debug(f"Token decoded. Subject: {token_payload.sub}, Roles: {token_payload.roles}")
             
             # Get user from repository
