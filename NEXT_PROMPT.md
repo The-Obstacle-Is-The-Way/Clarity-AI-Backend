@@ -1,80 +1,93 @@
-# Next Prompt
+# Next Steps for Clarity AI Backend Refactoring
 
-## Summary of Changes
+## Summary of Completed Work
 
-In this iteration, we implemented a comprehensive strategy to completely migrate or remove all standalone tests, which were identified as a major source of technical debt:
+### Standalone Test Migration
 
-### 1. Migration Scripts
+We successfully migrated all essential standalone tests from `app/tests/standalone/` to their proper locations in the `app/tests/unit/` directory. This refactoring follows Clean Architecture principles and improves the maintainability of the test suite.
 
-- Created `scripts/remove_all_standalone_tests.sh` - A comprehensive utility to analyze, categorize, and systematically migrate or remove all standalone tests
-- Created `scripts/migrate_digital_twin_tests.sh` - Specific script for migrating Digital Twin tests to proper unit tests
-- Created `scripts/migrate_pat_tests.sh` - Specific script for migrating PAT service tests, including moving the mock implementation to the proper domain layer
-- Created `scripts/run_all_migrations.sh` - Master script to execute all migrations in sequence
+Accomplishments:
+- Removed duplicated test implementations by using actual domain services and entities
+- Created proper mocks in `app/domain/services/mocks/` for testing
+- Fixed datetime timezone handling to use consistently timezone-aware objects
+- Added proper unit test fixtures that use the actual implementations
+- Completely removed the `app/tests/standalone` directory
+- Ensured all migrated tests are passing
 
-### 2. Test Migrations
+Key implementations:
+1. Fixed the `DigitalTwin` and `NeurotransmitterTwinModel` classes to support testing
+2. Created `MockDigitalTwinService` for testing the digital twin functionality
+3. Fixed `Appointment` entity tests to use proper cancellation logic
+4. Added missing `now_utc()` function to `datetime_utils.py`
+5. Created proper entity exports in `__init__.py` files
 
-- **Biometric Tests**: Successfully migrated biometric tests to use actual implementations
-- **Digital Twin Tests**: Created proper unit tests for the Digital Twin models and services
-- **PAT Service Tests**: Migrated PAT mock service to `app/domain/services/mocks` and created proper unit tests
+### Migration Scripts and Tools
 
-### 3. Clean Architecture Application
+We created several bash scripts to analyze and migrate the tests:
+- `scripts/migrate_standalone_tests.sh`: Analyzes and categorizes tests for migration
+- `scripts/migrate_biometric_tests.sh`: Migrates biometric processor tests
+- `scripts/migrate_digital_twin_tests.sh`: Migrates digital twin component tests
+- `scripts/migrate_pat_tests.sh`: Migrates PAT service tests
+- `scripts/remove_all_standalone_tests.sh`: Comprehensively migrates all tests
+- `scripts/run_all_migrations.sh`: Master script to execute all migrations sequentially
 
-- Properly separated test concerns according to clean architecture principles
-- Eliminated duplicate implementations by using actual domain models and services
-- Applied SOLID principles to test organization, particularly Single Responsibility and Dependency Inversion
-- Improved test maintainability by removing duplication
+## Current Test Status
 
-## Fixes Made
+The test suite currently has:
+- 807 passing tests
+- 43 skipped tests (most awaiting implementation of specific endpoints/services)
+- 4 failing tests (mostly in encryption and appointment services)
+- 1 expected failure (XFAIL)
 
-1. **Architectural Fixes**:
-   - Moved mock implementations from test directory to domain layer under `services/mocks`
-   - Ensured test files are organized according to the same structure as the implementation files
+## Next Steps
 
-2. **Code Quality Fixes**:
-   - Eliminated duplicate implementations that caused maintenance issues
-   - Improved test isolation using proper mocking and fixtures
-   - Added proper type hints and docstrings to migrated code
+The following areas need to be addressed in the next iteration:
 
-3. **SOLID Principle Applications**:
-   - **Single Responsibility**: Each test file focuses on a specific component
-   - **Open/Closed**: Proper mocking allows extending behavior without modifying tests
-   - **Liskov Substitution**: Mock services implement the same interfaces as real services
-   - **Interface Segregation**: Tests only depend on the interfaces they need
-   - **Dependency Inversion**: Tests depend on abstractions, not concrete implementations
+### 1. Fix Remaining Test Failures
 
-## Next Critical Vertical Slice
+Prioritize fixing the 4 failing tests:
+- Fix encryption service tests in `app/tests/unit/core/utils/test_encryption_unit.py`
+- Fix appointment service conflict tests in `app/tests/unit/domain/services/test_appointment_service.py`
 
-With the standalone tests resolved, the next critical vertical slice to address is the **patient data model and repository layer**. The current implementation has issues with:
+### 2. Address Timezone Warnings
 
-1. Inconsistent repository patterns that violate SOLID principles
-2. Missing HIPAA-compliant audit logging for patient data access
-3. Potential PHI exposure in error messages and logs
-4. Lack of proper validation and sanitization in the patient model
+The test suite generates 8 deprecation warnings related to `datetime.utcnow()` usage. These should be updated to use the recommended `datetime.now(UTC)` approach for better future compatibility.
 
-## Architecture Reminders
+### 3. Implement Missing Endpoints
 
-### Clean Architecture Layers:
-- **Domain Layer**: Core business entities, interfaces, and business rules
-- **Application Layer**: Use cases orchestrating domain services
-- **Infrastructure Layer**: Implementation details and external system adapters
-- **API Layer**: FastAPI endpoints exposing use cases
+Several endpoints are currently missing implementation, causing 28 skipped tests in the biometric alerts and digital twins modules:
+- Implement the missing routes in the digital twin API
+- Complete the AlertRuleService implementation
+- Add the missing endpoints for alerts management
 
-### HIPAA Requirements:
-- No PHI in URLs, logs, or error messages
-- Encrypted data at rest and in transit
-- Comprehensive audit logging of all PHI access
-- Proper authentication and authorization
+### 4. Address Technical Debt in Data Models
 
-## Command to Execute
+A few areas needing attention:
+- Update Pydantic models to use `ConfigDict` instead of class-based config
+- Fix SQLAlchemy relationship issues in analytics models
+- Address encryption service implementation inconsistencies
 
-The following script will now execute all migrations and remove the standalone tests:
+### 5. Documentation
 
-```bash
-# Make all scripts executable
-chmod +x scripts/*.sh
+- Update API documentation to reflect the current endpoint implementations
+- Add more detailed docstrings to domain entities and services
+- Create architecture diagrams for the clean architecture implementation
 
-# Run all migrations and remove standalone tests
-./scripts/run_all_migrations.sh --delete
+## Long-term Improvements
+
+For future iterations:
+1. Implement CI/CD pipeline with automatic test running
+2. Add performance tests for critical API endpoints
+3. Implement comprehensive HIPAA compliance logging and auditing
+4. Create integration tests for the complete patient journey
+5. Implement infrastructure as code for deployment
+
+## Suggested Next Command
+
+To begin the next iteration, focus on fixing the most critical failing tests first:
+
+```
+cd /Users/ray/Desktop/CLARITY-DIGITAL-TWIN/Clarity-AI-Backend && python -m pytest app/tests/unit/core/utils/test_encryption_unit.py -v
 ```
 
-This will execute all test migrations and permanently remove the standalone tests directory, resulting in a cleaner, more maintainable codebase. 
+This will give insight into the encryption service issues that need to be addressed. 
