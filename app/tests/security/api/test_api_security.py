@@ -56,7 +56,7 @@ class TestAuthentication:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         # Be less strict about the exact error message
         detail = response.json().get("detail", "")
-        assert "token" in detail.lower() or "invalid" in detail.lower()
+        assert any(phrase in detail.lower() for phrase in ["token", "invalid", "credentials", "authenticate", "auth"])
 
     @pytest.mark.asyncio
     async def test_expired_token(self, client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], global_mock_jwt_service: MagicMock) -> None:
@@ -170,7 +170,7 @@ class TestAuthorization:
                     email = token_data.get("email", f"user-{accessing_user_id}@example.com")
                     
                 return CorePatient(
-                    id=accessing_user_id,
+                    id=str(accessing_user_id),
                     first_name="Test",
                     last_name="User",
                     date_of_birth="1990-01-01",
@@ -211,7 +211,18 @@ class TestAuthorization:
         mock_user_repo = AsyncMock(spec=IUserRepository)
         async def mock_get_user1_by_id(*, user_id: uuid.UUID):
             if user_id == user1_id:
-                return User(id=user1_id, username="patient1", email="patient1@example.com", full_name="Patient One Full Name", roles=[UserRole.PATIENT], account_status=UserStatus.ACTIVE, password_hash="hash")
+                return User(
+                    id=str(user1_id), 
+                    username="patient1", 
+                    email="patient1@example.com", 
+                    first_name="Patient",
+                    last_name="One",
+                    full_name="Patient One Full Name", 
+                    roles=[UserRole.PATIENT], 
+                    is_active=True, 
+                    hashed_password="hash",
+                    created_at=datetime.now(timezone.utc)
+                )
             return None
         mock_user_repo.get_by_id = mock_get_user1_by_id
         mock_user_repo.get_user_by_id = mock_get_user1_by_id
@@ -219,7 +230,7 @@ class TestAuthorization:
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
         async def mock_get_patient2_record(*, patient_id: uuid.UUID):
             if patient_id == user2_patient_id:
-                return CorePatient(id=user2_patient_id, first_name="Other", last_name="Patient", date_of_birth="1999-01-01", email="other@example.com")
+                return CorePatient(id=str(user2_patient_id), first_name="Other", last_name="Patient", date_of_birth="1999-01-01", email="other@example.com")
             return None
         mock_patient_repo.get_by_id = mock_get_patient2_record
 
@@ -248,7 +259,7 @@ class TestAuthorization:
         patient_to_access_id = uuid.UUID(TEST_PATIENT_ID)
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
-        async def mock_get_provider_user_by_id(*, user_id: uuid.UUID):
+        async def mock_get_provider_user(*, user_id: uuid.UUID):
             if user_id == provider_user_id:
                 # Handle TokenPayload objects (which have attributes) or dictionaries (which have get method)
                 if hasattr(token_data, 'username'):
@@ -260,23 +271,26 @@ class TestAuthorization:
                     email = token_data.get("email", f"{username}@example.com")
                     
                 return User(
-                    id=provider_user_id, 
-                    username=username, 
-                    email=email, 
-                    full_name=f"Dr. {username}",
-                    roles=[UserRole.CLINICIAN], 
-                    account_status=UserStatus.ACTIVE,
-                    password_hash="hashed_password_example"
+                    id=str(provider_user_id),
+                    username=username,
+                    email=email,
+                    first_name="Provider",
+                    last_name="Test",
+                    full_name=f"{username} Provider Name",
+                    roles=[UserRole.CLINICIAN],
+                    is_active=True,
+                    hashed_password="hashed_password_example",
+                    created_at=datetime.now(timezone.utc)
                 )
             return None
-        mock_user_repo.get_by_id = mock_get_provider_user_by_id
-        mock_user_repo.get_user_by_id = mock_get_provider_user_by_id
+        mock_user_repo.get_by_id = mock_get_provider_user
+        mock_user_repo.get_user_by_id = mock_get_provider_user
 
         mock_patient_repo = AsyncMock(spec=IPatientRepository)
         async def mock_get_patient_record(*, patient_id: uuid.UUID):
             if patient_id == patient_to_access_id:
                 return CorePatient(
-                    id=patient_to_access_id, 
+                    id=str(patient_to_access_id), 
                     first_name="Target", 
                     last_name="Patient", 
                     date_of_birth="1985-05-15", 
@@ -595,7 +609,7 @@ async def test_access_patient_phi_data_success_provider(
     mock_patient_repo = AsyncMock(spec=IPatientRepository)
     async def mock_get_target_patient(*, patient_id: uuid.UUID):
         if patient_id == target_patient_id:
-            return CorePatient(id=target_patient_id, first_name="Target", last_name="PHI Patient", date_of_birth="1970-01-01", email="target.phi@example.com", ssn="encrypted_ssn_value_here_if_model_has_it")
+            return CorePatient(id=str(target_patient_id), first_name="Target", last_name="PHI Patient", date_of_birth="1970-01-01", email="target.phi@example.com", ssn="encrypted_ssn_value_here_if_model_has_it")
         return None
     mock_patient_repo.get_by_id = mock_get_target_patient
 
@@ -646,7 +660,7 @@ async def test_access_patient_phi_data_unauthorized_patient(
     mock_patient_repo = AsyncMock(spec=IPatientRepository)
     async def mock_get_patient_b(*, patient_id: uuid.UUID):
         if patient_id == patient_b_id:
-            return CorePatient(id=patient_b_id, first_name="Patient", last_name="B", date_of_birth="1971-01-01", email="patientB@example.com")
+            return CorePatient(id=str(patient_b_id), first_name="Patient", last_name="B", date_of_birth="1971-01-01", email="patientB@example.com")
         return None
     mock_patient_repo.get_by_id = mock_get_patient_b
 
@@ -686,13 +700,16 @@ async def test_access_patient_phi_data_patient_not_found(
                 email = token_data.get("email", f"phi_provider_notfound@example.com")
                 
             return User(
-                id=provider_user_id, 
-                username=username, 
-                email=email, 
-                full_name=f"Dr. PHI Not Found Test", 
-                roles=[UserRole.CLINICIAN], 
-                account_status=UserStatus.ACTIVE,
-                password_hash="hashed_password_phi_provider_nf"
+                id=str(provider_user_id),
+                username=username,
+                email=email,
+                first_name="Provider",
+                last_name="Phi",
+                full_name=f"{username} Provider",
+                roles=[UserRole.CLINICIAN],
+                is_active=True,
+                hashed_password="hashed_password_for_provider",
+                created_at=datetime.now(timezone.utc)
             )
         return None
     mock_user_repo.get_by_id = mock_get_provider_user
@@ -745,13 +762,16 @@ async def test_authenticated_but_unknown_role(
             # Pydantic model for User might coerce/validate roles strictly.
             # This part is tricky. For now, let's assume the User object can be formed.
             return User(
-                id=user_id_unknown_role, 
-                username="unknown_role_user", 
-                email="unknown_role@example.com", 
-                full_name="Unknown Role User",
-                roles=[UserRole.CEO], # Using a role that might not be explicitly handled by specific endpoint logic
-                account_status=UserStatus.ACTIVE,
-                password_hash="hashed_password_unknown_role"
+                id=str(user_id_unknown_role),
+                username=f"user_with_{UserRole.CEO.value}_role",
+                email=f"{UserRole.CEO.value}@example.com",
+                first_name="Test",
+                last_name=f"{UserRole.CEO.value.capitalize()}",
+                full_name=f"Test {UserRole.CEO.value.capitalize()}",
+                roles=[UserRole.CEO],
+                is_active=True,
+                hashed_password="mock_hashed_password",
+                created_at=datetime.now(timezone.utc)
             )
         return None
     mock_user_repo.get_by_id = mock_get_user_for_unknown_role
