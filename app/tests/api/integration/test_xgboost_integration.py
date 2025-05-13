@@ -10,7 +10,7 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from httpx import ASGITransport, AsyncClient
 from dataclasses import dataclass
 from types import SimpleNamespace
@@ -18,14 +18,35 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 from app.core.services.ml.xgboost.mock import MockXGBoostService
 from app.presentation.api.v1.routes.xgboost import router as xgboost_router
+from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
 
 
-# Mock the dependency
-async def mock_verify_provider_access() -> dict[str, Any]:
-    return {"sub": "test_provider", "scopes": ["xgboost:predict"]}
+# Mock user for authentication
+mock_user = DomainUser(
+    id="test-user-id",
+    email="test@example.com",
+    username="testuser",
+    role=UserRole.PROVIDER,
+    roles=[UserRole.PROVIDER],
+    full_name="Test User",
+    is_active=True,
+    account_status=UserStatus.ACTIVE,
+    created_at=datetime.now(),
+    updated_at=datetime.now(),
+)
+
+# Mock for get_current_user dependency
+async def mock_get_current_user():
+    """Mock implementation of get_current_user dependency."""
+    return mock_user
+
+# Mock for verify_provider_access dependency
+async def mock_verify_provider_access(*args, **kwargs):
+    """Mock implementation of verify_provider_access dependency."""
+    return mock_user
 
 
 # Create a RiskPredictionResult class to mimic the expected model structure
@@ -89,9 +110,11 @@ async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGene
         ASYNC_DATABASE_URL="sqlite+aiosqlite:///:memory:",
     )
 
-    # Override the dependency
-    from app.presentation.api.dependencies.auth import verify_provider_access
+    # Override the dependencies
+    from app.presentation.api.dependencies.auth import verify_provider_access, get_current_user
     app.dependency_overrides[verify_provider_access] = mock_verify_provider_access
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    
     from app.presentation.api.v1.routes.xgboost import get_xgboost_service
     app.dependency_overrides[get_xgboost_service] = lambda: mock_service
 
