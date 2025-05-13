@@ -28,11 +28,11 @@ pytestmark = pytest.mark.asyncio
 mock_user = DomainUser(
     id="test-user-id",
     email="test@example.com",
-    username="testuser",
-    full_name="Test User",
-    password_hash="hashed_password_for_testing",
+    first_name="Test",
+    last_name="User",
     roles={UserRole.CLINICIAN},
-    account_status=UserStatus.ACTIVE,
+    status=UserStatus.ACTIVE,
+    is_active=True,
     created_at=datetime.now(),
 )
 

@@ -23,6 +23,15 @@ class UserRole(str, enum.Enum):
     SYSTEM = "system"
 
 
+class UserStatus(str, enum.Enum):
+    """User account status within the system."""
+    
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+    PENDING_VERIFICATION = "pending_verification"
+
+
 class User(BaseModel):
     """User domain entity representing a user in the system."""
     
@@ -34,6 +43,9 @@ class User(BaseModel):
         default_factory=list, description="User's roles in the system"
     )
     is_active: bool = Field(True, description="Whether the user is active")
+    status: UserStatus = Field(
+        default=UserStatus.ACTIVE, description="User's account status"
+    )
     created_at: datetime = Field(
         ..., description="When the user was created"
     )
