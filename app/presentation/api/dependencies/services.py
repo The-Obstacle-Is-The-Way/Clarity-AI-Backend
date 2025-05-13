@@ -12,6 +12,9 @@ from app.application.services.digital_twin_service import DigitalTwinApplication
 from app.core.config import settings
 # from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT # Example PAT implementation
 from app.infrastructure.ml.pat.service import PATService # Correct path
+from app.application.services.audit_log_service import AuditLogService
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.presentation.api.dependencies.repositories import get_audit_log_repository
 
 logger = logging.getLogger(__name__)
 
@@ -48,3 +51,20 @@ def get_pat_service() -> PATService:
     # return PATService(pat_model=BedrockPAT(config=settings)) # Pass the model instance - BedrockPAT missing
     # NOTE: Returning None as a stub until BedrockPAT is available.
     return None
+
+async def get_audit_logger(
+    repository = Depends(get_audit_log_repository)
+) -> IAuditLogger:
+    """
+    Get the audit logger for the current request.
+    
+    Args:
+        repository: The audit log repository
+        
+    Returns:
+        IAuditLogger: The audit logger
+    """
+    return AuditLogService(repository)
+
+# Define typed dependencies for better code organization
+AuditLoggerDep = Annotated[IAuditLogger, Depends(get_audit_logger)]

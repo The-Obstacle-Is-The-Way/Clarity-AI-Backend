@@ -34,6 +34,10 @@ from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service, JWTService
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 from app.presentation.api.v1.endpoints.test_endpoints import router as test_endpoints_router
+from app.infrastructure.security.audit.middleware import AuditLogMiddleware
+from app.application.services.audit_log_service import AuditLogService
+from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
+from app.infrastructure.database.session import SessionLocal
 
 # Potentially import test routers conditionally or via a flag
 from app.tests.routers.admin_test_router import router as admin_test_router
@@ -379,7 +383,16 @@ def create_application(
     # app_instance.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
     logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
 
-    # 4. Authentication Middleware - MOVED TO LIFESPAN (NOW MOVING BACK)
+    # 4. Audit Log Middleware
+    audit_logger = AuditLogService(AuditLogRepository(SessionLocal()))
+    app_instance.add_middleware(
+        AuditLogMiddleware,
+        audit_logger=audit_logger,
+        skip_paths=["/docs", "/redoc", "/openapi.json", "/api/health"]
+    )
+    logger.info("Audit log middleware added.")
+
+    # 5. Authentication Middleware - MOVED TO LIFESPAN (NOW MOVING BACK)
     # This is where AuthenticationMiddleware should be added.
     # It now depends on jwt_service (from app_settings) and accesses user_repo via request.app.state.
     if not skip_auth_middleware:

@@ -7,209 +7,331 @@ Tests the audit logging system for HIPAA compliance (§164.312(b) - Audit contro
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Any, List
 
 import pytest
+from fastapi import FastAPI, Request, Response, Depends
+from fastapi.testclient import TestClient
+from unittest.mock import MagicMock, AsyncMock, patch
+
+from app.application.services.audit_log_service import AuditLogService
+from app.core.interfaces.services.audit_logger_interface import (
+    IAuditLogger, AuditEventType, AuditSeverity
+)
+from app.domain.entities.audit_log import AuditLog
+from app.infrastructure.security.audit.middleware import AuditLogMiddleware
+from app.presentation.api.dependencies.services import get_audit_logger
+from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
+
 
 # Test data
-TEST_USER = {
-    "user_id": str(uuid.uuid4()),
-    "username": "doctor_smith",
-    "role": "doctor"
-}
-
-TEST_PATIENT = {
-    "patient_id": str(uuid.uuid4()),
-    "name": "Test Patient"
-}
+TEST_USER_ID = str(uuid.uuid4())
+TEST_PATIENT_ID = str(uuid.uuid4())
 
 
-@pytest.mark.venv_only()
-class TestAuditLogging:
-    """Test the audit logging system for HIPAA compliance"""
+class MockAuditLogRepository:
+    """Mock repository for testing."""
+    
+    def __init__(self):
+        self.logs = {}
+        self._create = AsyncMock(return_value=str(uuid.uuid4()))
+        self._get_by_id = AsyncMock(return_value=None)
+        self._search = AsyncMock(return_value=[])
+        self._get_statistics = AsyncMock(return_value={})
+    
+    async def create(self, audit_log: AuditLog) -> str:
+        """Mock implementation of create."""
+        log_id = await self._create(audit_log)
+        self.logs[log_id] = audit_log
+        return log_id
+    
+    async def get_by_id(self, log_id: str):
+        """Mock implementation of get_by_id."""
+        if log_id in self.logs:
+            return self.logs[log_id]
+        return await self._get_by_id(log_id)
+    
+    async def search(self, **kwargs):
+        """Mock implementation of search."""
+        return await self._search(**kwargs)
+    
+    async def get_statistics(self, **kwargs):
+        """Mock implementation of get_statistics."""
+        return await self._get_statistics(**kwargs)
 
-    @pytest.fixture
-    def audit_logger(self):
-        """Return the audit logger to test"""
-        try:
-            from app.infrastructure.security.audit_logger import AuditLogger
-            return AuditLogger()
-        except ImportError:
-            pytest.skip("Audit logger not implemented yet")
 
-    def test_log_phi_access(self, audit_logger):
-        """Test logging of PHI access events"""
-        # Log PHI access
-        log_id = audit_logger.log_phi_access(
-            user_id=TEST_USER["user_id"],
-            resource_type="patient_record",
-            resource_id=TEST_PATIENT["patient_id"],
-            action="view",
-            reason="treatment"
-        )
+@pytest.fixture
+def mock_repository():
+    """Fixture for mock repository."""
+    return MockAuditLogRepository()
 
-        # Verify log was created
-        assert log_id is not None, "Failed to create audit log"
 
-        # Retrieve log
-        log_entry = audit_logger.get_log_entry(log_id)
+@pytest.fixture
+def audit_service(mock_repository):
+    """Fixture for audit service."""
+    return AuditLogService(mock_repository)
 
-        # Check required HIPAA fields
-        assert log_entry["user_id"] == TEST_USER["user_id"], "Missing user ID in audit log"
-        assert log_entry["resource_type"] == "patient_record", "Missing resource type in audit log"
-        assert log_entry["resource_id"] == TEST_PATIENT["patient_id"], "Missing resource ID in audit log"
-        assert log_entry["action"] == "view", "Missing action in audit log"
-        assert log_entry["reason"] == "treatment", "Missing access reason in audit log"
-        assert "timestamp" in log_entry, "Missing timestamp in audit log"
-        assert "ip_address" in log_entry, "Missing IP address in audit log"
 
-    def test_search_audit_logs(self, audit_logger):
-        """Test searching audit logs"""
-        # Create multiple log entries
-        for action in ["view", "update", "print"]:
-            audit_logger.log_phi_access(
-                user_id=TEST_USER["user_id"],
-                resource_type="patient_record",
-                resource_id=TEST_PATIENT["patient_id"],
-                action=action,
-                reason="treatment"
-            )
+@pytest.fixture
+def app(audit_service):
+    """Create test app with audit logging middleware."""
+    app = FastAPI()
+    
+    # Override dependency
+    app.dependency_overrides[get_audit_logger] = lambda: audit_service
+    
+    # Add middleware
+    app.add_middleware(
+        AuditLogMiddleware,
+        audit_logger=audit_service,
+        skip_paths=["/docs", "/redoc", "/openapi.json", "/health"]
+    )
+    
+    # Add test routes
+    @app.get("/patients/{patient_id}")
+    async def get_patient(
+        patient_id: str,
+        audit_logger: IAuditLogger = Depends(get_audit_logger)
+    ):
+        # This route should trigger PHI access logging
+        return {"id": patient_id, "name": "Test Patient"}
+    
+    @app.get("/health")
+    async def health_check():
+        # This route should not trigger PHI access logging
+        return {"status": "ok"}
+    
+    return app
 
-        # Search by user
-        user_logs = audit_logger.search_logs(user_id=TEST_USER["user_id"])
-        assert len(user_logs) >= 3, "Failed to retrieve logs by user ID"
 
-        # Search by patient (resource)
-        patient_logs = audit_logger.search_logs(resource_id=TEST_PATIENT["patient_id"])
-        assert len(patient_logs) >= 3, "Failed to retrieve logs by patient ID"
+@pytest.fixture
+def client(app):
+    """Create test client."""
+    return TestClient(app)
 
-        # Search by action
-        view_logs = audit_logger.search_logs(action="view")
-        assert len(view_logs) >= 1, "Failed to retrieve logs by action"
 
-        # Search by date range
-        now = datetime.now()
-        recent_logs = audit_logger.search_logs(
-            start_date=now.replace(hour=0, minute=0, second=0),
-            end_date=now
-        )
-        assert len(recent_logs) >= 3, "Failed to retrieve logs by date range"
+class TestAuditLoggingIntegration:
+    """Integration tests for audit logging system."""
 
-    def test_tamper_resistance(self, audit_logger):
-        """Test audit log tamper resistance"""
-        # Create log entry
-        log_id = audit_logger.log_phi_access(
-            user_id=TEST_USER["user_id"],
-            resource_type="patient_record",
-            resource_id=TEST_PATIENT["patient_id"],
-            action="view",
-            reason="treatment"
-        )
-
-        # Verify log integrity
-        is_valid = audit_logger.verify_log_integrity(log_id)
-        assert is_valid, "Log integrity check failed for untampered log"
-
-        # Attempt to modify log (should fail or be detected)
-        try:
-            # This should either fail or create a detectable change
-            modified = audit_logger.modify_log_entry_for_testing(log_id, {"action": "MODIFIED"})
-
-            # If modification was allowed, integrity check should detect it
-            if modified:
-                is_valid = audit_logger.verify_log_integrity(log_id)
-                assert not is_valid, "Tampered log passed integrity check"
-        except Exception as e:
-            # If modification throws exception, that's also acceptable
-            assert "permission" in str(e).lower() or "tamper" in str(e).lower() or "read" in str(e).lower(), "Expected permission or tampering error"
-
-    def test_log_security(self, audit_logger):
-        """Test audit log security controls"""
-        # Verify admin can access logs
-        admin_access = audit_logger.check_log_access(
-            user_id=str(uuid.uuid4()),  # Admin user
-            role="admin"
-        )
-        assert admin_access, "Admin should have access to audit logs"
-
-        # Verify doctor cannot access all logs
-        doctor_access = audit_logger.check_log_access(
-            user_id=TEST_USER["user_id"],
-            role="doctor"
-        )
-        assert not doctor_access or doctor_access == "limited", "Doctor should have limited or no access to audit logs"
-
-        # Verify patient cannot access logs
-        patient_access = audit_logger.check_log_access(
-            user_id=str(uuid.uuid4()),  # Patient user
-            role="patient"
-        )
-        assert not patient_access, "Patients should not have access to audit logs"
-
-    def test_log_export(self, audit_logger, monkeypatch):
-        """Test audit log export for compliance reporting"""
-        # Create test logs
-        log_ids = []
-        for i in range(5):
-            log_id = audit_logger.log_phi_access(
-                user_id=TEST_USER["user_id"],
-                resource_type="patient_record",
-                resource_id=TEST_PATIENT["patient_id"],
-                action="view",
-                reason="treatment"
-            )
-            log_ids.append(log_id)
-
-        # Create a mock for open to verify it would be called correctly
-        original_open = open
-        mock_file_content = []
-
-        class MockFile:
-            def __init__(self, *args, **kwargs):
-                self.path = args[0] if args else None
-                self.mode = args[1] if len(args) > 1 else None
-                
-            def __enter__(self):
-                return self
-                
-            def __exit__(self, *args):
-                pass
-                
-            def write(self, content):
-                mock_file_content.append(content)
-                
-            def read(self):
-                return '[]'  # Return empty JSON array
-                
-        def mock_open(*args, **kwargs):
-            return MockFile(*args, **kwargs)
-            
-        # Use mock only within this test
-        monkeypatch.setattr('builtins.open', mock_open)
+    def test_phi_access_logged(self, client, audit_service, mock_repository):
+        """Test that PHI access is logged."""
+        # Reset mock
+        mock_repository._create.reset_mock()
         
-        try:
-            # Test export functionality
-            export_file = audit_logger.export_logs(
-                start_date=datetime.now().replace(hour=0, minute=0, second=0),
-                end_date=datetime.now(),
-                format="json"
+        # Make request with auth
+        client.headers = {"Authorization": f"Bearer token"}
+        response = client.get(f"/patients/{TEST_PATIENT_ID}")
+        
+        # Check response
+        assert response.status_code == 200
+        
+        # Check that create was called at least once
+        assert mock_repository._create.call_count >= 1
+        
+        # Find the PHI access log
+        phi_access_log = None
+        for call in mock_repository._create.call_args_list:
+            log = call[0][0]
+            if (log.event_type == AuditEventType.PHI_ACCESSED and 
+                log.resource_id == TEST_PATIENT_ID):
+                phi_access_log = log
+                break
+        
+        # Verify the log
+        assert phi_access_log is not None
+        assert phi_access_log.resource_type == "patient"
+        assert phi_access_log.action == "view"
+        assert phi_access_log.status == "success"
+    
+    def test_non_phi_path_not_logged(self, client, audit_service, mock_repository):
+        """Test that non-PHI paths are not logged."""
+        # Reset mock
+        mock_repository._create.reset_mock()
+        
+        # Make request to non-PHI path
+        response = client.get("/health")
+        
+        # Check response
+        assert response.status_code == 200
+        
+        # Check that create was not called for PHI access
+        phi_access_log = None
+        for call in mock_repository._create.call_args_list:
+            log = call[0][0]
+            if log.event_type == AuditEventType.PHI_ACCESSED:
+                phi_access_log = log
+                break
+        
+        assert phi_access_log is None
+    
+    def test_failed_request_logged(self, client, audit_service, mock_repository):
+        """Test that failed requests are logged."""
+        # Reset mock
+        mock_repository._create.reset_mock()
+        
+        # Make request to non-existent route
+        response = client.get("/nonexistent")
+        
+        # Check response
+        assert response.status_code == 404
+        
+        # Middleware should still log the attempt
+        assert mock_repository._create.call_count >= 1
+
+
+class TestAuditLogExport:
+    """Tests for audit log export functionality."""
+    
+    @pytest.mark.asyncio
+    async def test_export_audit_logs(self, audit_service, mock_repository):
+        """Test exporting audit logs."""
+        # Create some test logs
+        test_logs = [
+            AuditLog(
+                id=str(uuid.uuid4()),
+                timestamp=datetime.now(timezone.utc),
+                event_type=AuditEventType.PHI_ACCESSED,
+                actor_id=TEST_USER_ID,
+                resource_type="patient",
+                resource_id=TEST_PATIENT_ID,
+                action="view",
+                status="success",
+                details={"reason": "treatment"}
+            ),
+            AuditLog(
+                id=str(uuid.uuid4()),
+                timestamp=datetime.now(timezone.utc) - timedelta(hours=1),
+                event_type=AuditEventType.LOGIN,
+                actor_id=TEST_USER_ID,
+                action="login",
+                status="success"
+            )
+        ]
+        
+        # Mock the search method
+        mock_repository._search.reset_mock()
+        mock_repository._search.return_value = test_logs
+        
+        # Export logs
+        with patch("aiofiles.open", new_callable=AsyncMock) as mock_open:
+            # Mock file operations
+            mock_file = AsyncMock()
+            mock_open.return_value.__aenter__.return_value = mock_file
+            
+            # Call export
+            file_path = await audit_service.export_audit_logs(
+                format="csv",
+                filters={"actor_id": TEST_USER_ID},
+                start_time=datetime.now(timezone.utc) - timedelta(days=1),
+                end_time=datetime.now(timezone.utc)
             )
             
-            # The export file is mocked, but we can directly check the logs
-            exported_logs = []
-            for log_id in log_ids:
-                log_entry = audit_logger.get_log_entry(log_id)
-                if log_entry:  # Ensure the log exists
-                    exported_logs.append(log_entry)
-                    
-            assert len(exported_logs) >= 5, "Failed to create required number of audit logs"
-            assert all("user_id" in log for log in exported_logs), "Logs missing user ID"
-            assert all("timestamp" in log for log in exported_logs), "Logs missing timestamp"
+            # Check that search was called with correct filters
+            mock_repository._search.assert_called_once()
             
-            # Verify the export path looks correct
-            assert export_file is not None, "Failed to return export file path"
-            assert "audit_export_" in export_file, "Invalid export file name"
+            # Check that file was written
+            assert mock_file.write.call_count >= 1
             
-        finally:
-            # Restore original open function
-            monkeypatch.setattr('builtins.open', original_open)
+            # Check content includes headers and data
+            content = "".join([call[0][0] for call in mock_file.write.call_args_list])
+            assert "timestamp" in content.lower()
+            assert "event_type" in content.lower()
+            assert "actor_id" in content.lower()
+            assert "resource_id" in content.lower()
+            assert TEST_USER_ID in content
+            assert TEST_PATIENT_ID in content
+
+
+class TestAuditAnomalyDetection:
+    """Tests for audit anomaly detection functionality."""
+    
+    @pytest.mark.asyncio
+    async def test_detect_anomalies(self, audit_service, mock_repository):
+        """Test anomaly detection in audit logs."""
+        # Reset service state
+        audit_service._user_access_history = {}
+        audit_service._suspicious_ips = set()
+        
+        # Reset mock repository
+        mock_repository._create.reset_mock()
+        
+        # Create a series of access logs that trigger an anomaly
+        # (too many accesses in a short time)
+        for i in range(10):
+            await audit_service.log_phi_access(
+                actor_id=TEST_USER_ID,
+                patient_id=str(uuid.uuid4()),  # Different patients
+                resource_type="patient",
+                action="view",
+                status="success",
+                phi_fields=["name", "dob"],
+                reason="treatment",
+                request_context={
+                    "ip_address": "127.0.0.1",
+                    "user_agent": "test-agent"
+                }
+            )
+        
+        # Check if anomaly was detected and logged
+        security_event_logged = False
+        for call in mock_repository._create.call_args_list:
+            log = call[0][0]
+            if (log.event_type == AuditEventType.SECURITY_EVENT and 
+                "anomaly" in str(log.details).lower()):
+                security_event_logged = True
+                break
+        
+        assert security_event_logged
+    
+    @pytest.mark.asyncio
+    async def test_geographic_anomaly(self, audit_service, mock_repository):
+        """Test geographic location anomaly detection."""
+        # Reset service state
+        audit_service._user_access_history = {}
+        audit_service._suspicious_ips = set()
+        
+        # Reset mock repository
+        mock_repository._create.reset_mock()
+        
+        # First access from one location
+        await audit_service.log_phi_access(
+            actor_id=TEST_USER_ID,
+            patient_id=TEST_PATIENT_ID,
+            resource_type="patient",
+            action="view",
+            status="success",
+            phi_fields=["name", "dob"],
+            reason="treatment",
+            request_context={
+                "ip_address": "192.168.1.1",
+                "geo_location": "New York, USA"
+            }
+        )
+        
+        # Second access from very different location soon after
+        await audit_service.log_phi_access(
+            actor_id=TEST_USER_ID,
+            patient_id=TEST_PATIENT_ID,
+            resource_type="patient",
+            action="view",
+            status="success",
+            phi_fields=["name", "dob"],
+            reason="treatment",
+            request_context={
+                "ip_address": "10.0.0.1",
+                "geo_location": "Tokyo, Japan"
+            }
+        )
+        
+        # Check if geographic anomaly was detected
+        geo_anomaly_logged = False
+        for call in mock_repository._create.call_args_list:
+            log = call[0][0]
+            details_str = str(log.details).lower()
+            if (log.event_type == AuditEventType.SECURITY_EVENT and 
+                "location" in details_str and "anomaly" in details_str):
+                geo_anomaly_logged = True
+                break
+        
+        assert geo_anomaly_logged

@@ -23,6 +23,9 @@ from app.infrastructure.persistence.sqlalchemy.repositories.user_repository impo
     SQLAlchemyUserRepository,
 )
 
+from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
+from app.core.interfaces.repositories.audit_log_repository_interface import IAuditLogRepository
+
 logger = logging.getLogger(__name__) 
 
 
@@ -39,7 +42,21 @@ def get_user_repository(
 UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository)]
 
 
+async def get_audit_log_repository(db: AsyncSession = Depends(get_db)) -> IAuditLogRepository:
+    """
+    Get the audit log repository for the current request.
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        IAuditLogRepository: The audit log repository
+    """
+    return AuditLogRepository(db)
+
+
 __all__ = [
     "get_user_repository",
     "UserRepoDep",
+    "get_audit_log_repository",
 ]
