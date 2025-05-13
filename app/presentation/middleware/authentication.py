@@ -309,7 +309,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         except UserNotFoundException as e:
             return JSONResponse(
                 {"detail": str(e)},
-                status_code=HTTP_403_FORBIDDEN
+                status_code=HTTP_401_UNAUTHORIZED
             )
         except AuthenticationException as e:
             status_code = getattr(e, "status_code", HTTP_401_UNAUTHORIZED)
