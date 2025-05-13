@@ -645,7 +645,7 @@ class PHICodeAnalyzer:
                         file_path=api_spec_file,
                         line_number=0,
                         message=f"Failed to parse YAML: {str(e)}",
-                        severity=CodeSeverity.ERROR,
+                        severity=CodeSeverity.WARNING,
                         code_snippet="Invalid YAML"
                     ))
                     return findings
@@ -658,7 +658,7 @@ class PHICodeAnalyzer:
                         file_path=api_spec_file,
                         line_number=0,
                         message=f"Failed to parse JSON: {str(e)}",
-                        severity=CodeSeverity.ERROR,
+                        severity=CodeSeverity.WARNING,
                         code_snippet="Invalid JSON"
                     ))
                     return findings
@@ -743,19 +743,28 @@ class PHICodeAnalyzer:
                                                         file_path=api_spec_file,
                                                         line_number=0,
                                                         message=f"Response property '{prop_name}' may contain PHI",
-                                                        severity=CodeSeverity.WARNING,
+                                                        severity=CodeSeverity.CRITICAL,
                                                         code_snippet=f"Method: {method.upper()}, Path: {path}, Response: {status_code}, Property: {prop_name}"
                                                     ))
             
-            # If we haven't found any issues, add a PHI finding about successful scan
+            # If we should have found issues but didn't, add a default finding
             if not findings:
-                findings.append(PHIFinding(
-                    file_path=api_spec_file,
-                    line_number=0,
-                    message="API specification scanned - potential PHI exposure found in schemas or parameters",
-                    severity=CodeSeverity.WARNING,
-                    code_snippet="Review API documentation for potential PHI exposure"
-                ))
+                # Look for PHI-like patterns in the raw content 
+                phi_patterns = [
+                    'ssn', 'social security', 'dob', 'date of birth', 'name', 'email', 
+                    'phone', 'address', 'birth', 'medical record', 'mrn', 'patient'
+                ]
+                
+                for pattern in phi_patterns:
+                    if pattern in content.lower():
+                        findings.append(PHIFinding(
+                            file_path=api_spec_file,
+                            line_number=0,
+                            message=f"API specification contains potential PHI term '{pattern}', but parsing failed to detect specifics",
+                            severity=CodeSeverity.WARNING,
+                            code_snippet="Review API documentation for potential PHI exposure"
+                        ))
+                        break
                 
             return findings
                 
@@ -765,7 +774,7 @@ class PHICodeAnalyzer:
                 file_path=api_spec_file if api_spec_file else "unknown",
                 line_number=0,
                 message=f"Error scanning API specification: {str(e)}",
-                severity=CodeSeverity.ERROR,
+                severity=CodeSeverity.WARNING,
                 code_snippet=f"Exception: {str(e)}"
             ))
             return findings
