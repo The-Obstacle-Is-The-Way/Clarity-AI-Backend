@@ -12,6 +12,12 @@ from app.domain.exceptions.base_exceptions import (
     ConfigurationError,
     IntegrationError,
     BusinessRuleError,
+    ApplicationError,
+    AuthorizationError,
+    DomainError,
+    InfrastructureError,
+    NotFoundError,
+    ResourceNotFoundError,
 )
 
 from app.domain.exceptions.persistence_exceptions import (
@@ -74,6 +80,12 @@ __all__ = [
     "ConfigurationError",
     "IntegrationError",
     "BusinessRuleError",
+    "ApplicationError",
+    "AuthorizationError",
+    "DomainError",
+    "InfrastructureError",
+    "NotFoundError",
+    "ResourceNotFoundError",
     
     # Persistence exceptions
     "PersistenceError",

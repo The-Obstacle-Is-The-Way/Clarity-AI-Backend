@@ -298,39 +298,85 @@ class PatientRepository:
         Returns:
             The updated patient entity or None if the patient was not found.
         """
+        # Handle the case where parameters might be passed in reverse order (patient_id first, entity second)
+        # This is a defensive approach to support both calling conventions:
+        # - update(entity, id) - standard
+        # - update(id, entity) - also supported for backward compatibility
+        if isinstance(patient_entity, (str, UUID)) and isinstance(patient_id, PatientEntity):
+            # Parameters are passed in reverse order
+            patient_id, patient_entity = patient_entity, patient_id
+            self.logger.debug("Detected reversed parameter order in update method")
+            
         # Use patient_id from parameter if provided, otherwise from entity
-        patient_id = patient_id or patient_entity.id
+        if patient_id is None and hasattr(patient_entity, 'id'):
+            patient_id = patient_entity.id
         
         # Handle the case where patient_id is a UUID object directly
         entity_id_str = str(patient_entity.id) if hasattr(patient_entity, 'id') else 'None'
         self.logger.debug(f"Attempting to update patient with ID: {patient_id} using entity ID: {entity_id_str} with context: {context}")
 
         # Prepare data for DB update, mapping domain fields to model fields
-        # This is a simplified example; a more robust solution might involve a dedicated mapper.
         update_data_for_model = {}
+        domain_dict = {}
         
-        # Handle different Patient entity implementations with different serialization methods
+        # Try multiple approaches to extract entity data, from most robust to least
         if hasattr(patient_entity, 'model_dump'):
+            # Pydantic v2 approach
             try:
-                # Try Pydantic v2 style
                 domain_dict = patient_entity.model_dump(exclude_none=True)
-            except TypeError:
-                # Try Pydantic v1 style if exclude_none causes an error
+            except (TypeError, AttributeError):
                 try:
-                    domain_dict = patient_entity.model_dump(exclude_unset=False, exclude_none=True)
-                except TypeError:
-                    # Fallback to dict() for Pydantic v1 or dataclass
                     domain_dict = patient_entity.model_dump()
-        elif hasattr(patient_entity, 'dict'):
-            # Pydantic v1 compatibility
-            domain_dict = patient_entity.dict(exclude_unset=False, exclude_none=True)
-        elif hasattr(patient_entity, '__dict__'):
-            # Standard Python object
-            domain_dict = {k: v for k, v in patient_entity.__dict__.items() if not k.startswith('_') and v is not None}
-        else:
-            # Last resort
-            domain_dict = vars(patient_entity)
+                except (TypeError, AttributeError):
+                    self.logger.warning("Failed to use model_dump() method")
+        
+        # Try dict() approach (Pydantic v1)
+        if not domain_dict and hasattr(patient_entity, 'dict'):
+            try:
+                domain_dict = patient_entity.dict(exclude_unset=False, exclude_none=True)
+            except (TypeError, AttributeError):
+                try:
+                    domain_dict = patient_entity.dict()
+                except (TypeError, AttributeError):
+                    self.logger.warning("Failed to use dict() method")
+        
+        # Try __dict__ approach
+        if not domain_dict and hasattr(patient_entity, '__dict__'):
+            try:
+                domain_dict = {k: v for k, v in patient_entity.__dict__.items() 
+                              if not k.startswith('_') and v is not None}
+            except (TypeError, AttributeError):
+                self.logger.warning("Failed to access __dict__ attribute")
+        
+        # Try attribute iteration
+        if not domain_dict:
+            self.logger.warning(f"Using fallback attribute extraction for patient update")
+            for attr in dir(patient_entity):
+                if not attr.startswith('_') and not callable(getattr(patient_entity, attr, None)):
+                    try:
+                        value = getattr(patient_entity, attr)
+                        if value is not None:
+                            domain_dict[attr] = value
+                    except Exception as e:
+                        self.logger.warning(f"Couldn't access attribute {attr}: {e}")
+            
+            # If still empty, try to use the entity directly as a dict-like object
+            if not domain_dict and hasattr(patient_entity, 'items'):
+                try:
+                    domain_dict = dict(patient_entity.items())
+                except (TypeError, AttributeError):
+                    self.logger.warning("Failed to convert entity to dictionary")
 
+        # Last resort - try using the entity as is if it's already a dict
+        if not domain_dict and isinstance(patient_entity, dict):
+            domain_dict = patient_entity
+            
+        # If we still don't have data, log an error
+        if not domain_dict:
+            self.logger.error(f"Failed to extract data from patient entity: {patient_entity}")
+            return None
+
+        # The rest of the method remains unchanged
         field_map = {
             "first_name": "_first_name",
             "last_name": "_last_name",
@@ -382,8 +428,24 @@ class PatientRepository:
             self.logger.warning(f"No updatable fields found for patient ID: {patient_id} from entity: {patient_entity}")
             # Optionally, could return the patient as is, or raise an error/return None
             # For now, let's try to retrieve and return the existing patient if no updates are made.
-            async with self._with_session(lambda session: session.get(PatientModel, patient_id)) as db_patient:
-                return await db_patient.to_domain() if db_patient else None
+            try:
+                # Ensure patient_id is properly formatted as UUID
+                db_id = patient_id
+                if isinstance(db_id, str):
+                    db_id = UUID(db_id)
+                elif isinstance(db_id, UUID):
+                    pass
+                else:
+                    self.logger.error(f"Invalid patient_id type: {type(patient_id)}")
+                    return None
+                
+                db_patient = await self._with_session(lambda session: session.get(PatientModel, db_id))
+                if db_patient:
+                    return await db_patient.to_domain()
+                return None
+            except Exception as e:
+                self.logger.error(f"Error retrieving patient after update attempt: {e}")
+                return None
 
         async def _update_operation(session: AsyncSession) -> PatientEntity | None:
             self.logger.debug(f"Executing update for patient ID: {patient_id} with model data: {update_data_for_model}")

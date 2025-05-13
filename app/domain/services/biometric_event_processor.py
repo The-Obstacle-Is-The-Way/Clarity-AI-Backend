@@ -5,11 +5,13 @@ This module implements the Observer pattern to process biometric data streams
 and trigger clinical interventions when concerning patterns emerge.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
-from uuid import UUID, uuid4  # Corrected import, add uuid4 for test BiometricAlert
+from typing import Any, Dict, List, Optional, Set, Union
+from uuid import UUID, uuid4
 
 from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.entities.biometric_twin import BiometricDataPoint
@@ -91,13 +93,13 @@ class AlertRule:
         threshold = self.condition.get("threshold", 0)
         
         # Apply context data if specified in the condition
-        if "context_key" in self.condition and self.condition["context_key"] in context:
+        if "context_key" in self.condition and context and self.condition["context_key"] in context:
             context_value = context[self.condition["context_key"]]
             if context_value is not None:
                 return True
                 
         # Handle context-based threshold comparisons
-        if "context_operator" in self.condition and "context_threshold" in self.condition:
+        if "context_operator" in self.condition and "context_threshold" in self.condition and context:
             if "previous_reading" in context:
                 diff = abs(data_point.value - context["previous_reading"])
                 context_operator = self.condition["context_operator"]
@@ -114,6 +116,7 @@ class AlertRule:
                 elif context_operator == "==" or context_operator == "=":
                     return diff == context_threshold
             
+        # Standard comparison operators
         if operator == ">":
             return data_point.value > threshold
         elif operator == ">=":
@@ -126,10 +129,25 @@ class AlertRule:
             return data_point.value == threshold
         elif operator == "!=":
             return data_point.value != threshold
-        elif operator and operator not in [">=", "<=", ">", "<", "==", "=", "!="]:
+        # Handle string versions of operators as well for flexibility
+        elif operator == "greater_than":
+            return data_point.value > threshold
+        elif operator == "greater_than_or_equal":
+            return data_point.value >= threshold
+        elif operator == "less_than":
+            return data_point.value < threshold
+        elif operator == "less_than_or_equal":
+            return data_point.value <= threshold
+        elif operator == "equal":
+            return data_point.value == threshold
+        elif operator == "not_equal":
+            return data_point.value != threshold
+        elif operator and operator not in [">", ">=", "<", "<=", "==", "=", "!=", 
+                                         "greater_than", "greater_than_or_equal", 
+                                         "less_than", "less_than_or_equal", 
+                                         "equal", "not_equal"]:
             # If an unknown operator is provided, raise a validation error
             # This enforces validation on invalid operators which is important for maintaining system integrity
-            from app.domain.exceptions import ValidationError
             raise ValidationError(f"Unknown operator: {operator}")
             
         # Complex conditions would be evaluated here
