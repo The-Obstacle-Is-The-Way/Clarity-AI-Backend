@@ -49,6 +49,9 @@ def global_mock_jwt_service() -> MagicMock:
     """Create a module-scoped mock JWT service that can be used across tests."""
     mock_service = MagicMock(spec=JWTServiceInterface)
     
+    # Import the TokenPayload class and TokenType enum to match the expected return type
+    from app.infrastructure.security.jwt.jwt_service import TokenPayload, TokenType
+    
     # Mock tokens storage to simulate token validation
     token_store = {}
     token_exp_store = {}
@@ -58,6 +61,8 @@ def global_mock_jwt_service() -> MagicMock:
     async def mock_create_access_token(data: dict, expires_delta: timedelta = None):
         expires = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
         token = f"mock_token_{uuid.uuid4()}"
+        # Store with TokenType
+        data["type"] = TokenType.ACCESS
         token_store[token] = data
         token_exp_store[token] = expires
         return token
@@ -71,7 +76,26 @@ def global_mock_jwt_service() -> MagicMock:
             raise ValueError(f"Simplified mock: Token {token} not in store")
         if datetime.now(timezone.utc) > token_exp_store.get(token, datetime.max.replace(tzinfo=timezone.utc)):
             raise ValueError("Mock token has expired")
-        return token_store[token]
+        # Convert dictionary to TokenPayload object
+        data = token_store[token]
+        token_type = data.get("type", TokenType.ACCESS)
+        # Ensure token_type is an enum
+        if isinstance(token_type, str):
+            token_type = TokenType.ACCESS if token_type.lower() == "access" else TokenType.REFRESH
+            
+        return TokenPayload(
+            sub=data.get("sub", ""),
+            roles=data.get("roles", []),
+            username=data.get("username", ""),
+            email=data.get("email", ""),
+            exp=int(token_exp_store[token].timestamp()),
+            iat=int(datetime.now(timezone.utc).timestamp()),
+            jti=str(uuid.uuid4()),  # Add a unique JWT ID
+            iss="test-issuer",      # Add issuer
+            aud="test-audience",    # Add audience
+            type=token_type,
+            permissions=data.get("permissions", None)
+        )
     
     mock_decode.side_effect = mock_decode_token
     mock_service.decode_token = mock_decode
