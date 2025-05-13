@@ -10,6 +10,7 @@ import hashlib
 import ipaddress
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Union, Set
@@ -74,6 +75,7 @@ class AuditLogService(IAuditLogger):
         metadata: Optional[Dict[str, Any]] = None,
         timestamp: Optional[datetime] = None,
         request: Optional[Request] = None,
+        _skip_anomaly_check: bool = False,  # Internal flag to prevent recursion
     ) -> str:
         """
         Log an audit event in the system.
@@ -90,6 +92,7 @@ class AuditLogService(IAuditLogger):
             metadata: Additional metadata for the event
             timestamp: When the event occurred (defaults to now if None)
             request: Optional FastAPI request object for extracting IP and headers
+            _skip_anomaly_check: Internal flag to prevent recursion
             
         Returns:
             str: Unique identifier for the audit log entry
@@ -119,8 +122,11 @@ class AuditLogService(IAuditLogger):
             success=status == "success" if status else True
         )
         
-        # Check for anomalies if enabled
-        if self._anomaly_detection_enabled and actor_id:
+        # Check for anomalies if enabled and not a security event itself
+        # This prevents infinite recursion
+        if (self._anomaly_detection_enabled and actor_id and not _skip_anomaly_check
+            and event_type != AuditEventType.SECURITY_EVENT
+            and event_type != AuditEventType.ANOMALY_DETECTED):
             await self._check_for_anomalies(actor_id, audit_log)
         
         # Store the audit log
@@ -196,6 +202,7 @@ class AuditLogService(IAuditLogger):
         phi_fields: Optional[List[str]] = None,
         reason: Optional[str] = None,
         request: Optional[Request] = None,
+        request_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Log PHI access event specifically.
@@ -209,6 +216,7 @@ class AuditLogService(IAuditLogger):
             phi_fields: Specific PHI fields accessed (without values)
             reason: Business reason for accessing the PHI
             request: Optional FastAPI request object for extracting IP and headers
+            request_context: Additional context from the request (location, device, etc.)
             
         Returns:
             str: Unique identifier for the audit log entry
@@ -233,6 +241,10 @@ class AuditLogService(IAuditLogger):
             "reason": reason,
             "phi_fields": phi_fields or ["all"],
         }
+        
+        # Add request context if provided
+        if request_context:
+            details.update({"context": request_context})
         
         # Log the PHI access event
         return await self.log_event(
@@ -352,67 +364,103 @@ class AuditLogService(IAuditLogger):
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         format: str = "json",
-        file_path: Optional[str] = None
+        file_path: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
-        Export audit logs for compliance reporting.
+        Export audit logs to a file in the specified format.
         
         Args:
-            start_time: Start time for the export
-            end_time: End time for the export
-            format: Format for the export (json, csv)
-            file_path: Path to save the export (if None, uses a default path)
+            start_time: Start time for logs to export
+            end_time: End time for logs to export
+            format: Export format (json, csv, xml)
+            file_path: Path to save the export file (generated if None)
+            filters: Additional filters for the export (actor_id, resource_type, etc.)
             
         Returns:
             str: Path to the exported file
         """
-        # Default time range if not specified
+        # Set default time range if not provided
+        start_time = start_time or datetime.now(timezone.utc) - timedelta(days=7)
         end_time = end_time or datetime.now(timezone.utc)
-        start_time = start_time or (end_time - timedelta(days=30))
         
-        # Get logs for the time range (all of them)
-        logs = await self._repository.search(
-            start_time=start_time,
-            end_time=end_time,
-            limit=10000  # Large limit, in practice would use pagination
-        )
-        
-        # Create a default file path if not specified
+        # Generate default file path if not provided
         if not file_path:
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            file_path = f"audit_export_{timestamp}.{format}"
+            file_path = f"logs/audit_export_{timestamp}.{format}"
         
-        # Convert to dictionaries for export
-        # IMPORTANT: Anonymize PHI before export
-        log_dicts = [log.anonymize_phi().model_dump() for log in logs]
+        # Build search parameters
+        search_params = {
+            "start_time": start_time,
+            "end_time": end_time,
+        }
         
-        # Export in the specified format
-        if format.lower() == "json":
-            async with aiofiles.open(file_path, "w") as f:
-                await f.write(json.dumps(
-                    {
-                        "metadata": {
-                            "start_time": start_time.isoformat(),
-                            "end_time": end_time.isoformat(),
-                            "exported_at": datetime.now(timezone.utc).isoformat(),
-                            "total_logs": len(logs)
-                        },
-                        "logs": log_dicts
-                    },
-                    indent=2
-                ))
-        else:
-            # Default to JSON if format not supported
-            logger.warning(f"Unsupported export format: {format}, defaulting to JSON")
-            await self.export_audit_logs(
-                start_time=start_time,
-                end_time=end_time,
-                format="json",
-                file_path=file_path.replace(f".{format}", ".json")
-            )
+        # Add any additional filters
+        if filters:
+            search_params.update(filters)
         
-        # Return the file path
-        return file_path
+        # Retrieve logs
+        logs = await self._repository.search(**search_params)
+        
+        try:
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            # Write to file in specified format
+            # Use regular open since aiofiles is causing issues
+            with open(file_path, "w") as f:
+                if format.lower() == "json":
+                    # Convert to JSON serializable format
+                    serializable_logs = [log.model_dump() for log in logs]
+                    f.write(json.dumps(serializable_logs, default=str, indent=2))
+                    
+                elif format.lower() == "csv":
+                    # Write CSV header
+                    if logs:
+                        headers = ["id", "timestamp", "event_type", "actor_id", 
+                                  "resource_type", "resource_id", "action", 
+                                  "status", "ip_address", "details"]
+                        f.write(",".join(headers) + "\n")
+                        
+                        # Write each log as CSV row
+                        for log in logs:
+                            log_dict = log.model_dump()
+                            # Convert complex fields to strings
+                            if isinstance(log_dict.get("details"), dict):
+                                log_dict["details"] = json.dumps(log_dict["details"])
+                                
+                            row = [str(log_dict.get(header, "")) for header in headers]
+                            f.write(",".join(row) + "\n")
+                    
+                elif format.lower() == "xml":
+                    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                    f.write('<AuditLogs>\n')
+                    
+                    for log in logs:
+                        log_dict = log.model_dump()
+                        f.write('  <AuditLog>\n')
+                        
+                        for key, value in log_dict.items():
+                            if value is not None:
+                                # Handle complex values
+                                if isinstance(value, dict):
+                                    f.write(f'    <{key}>{json.dumps(value)}</{key}>\n')
+                                else:
+                                    f.write(f'    <{key}>{value}</{key}>\n')
+                                    
+                        f.write('  </AuditLog>\n')
+                        
+                    f.write('</AuditLogs>\n')
+                    
+                else:
+                    raise ValueError(f"Unsupported export format: {format}")
+                    
+            logger.info(f"Exported {len(logs)} audit logs to {file_path}")
+            return file_path
+            
+        except Exception as e:
+            logger.error(f"Failed to export audit logs: {e}", exc_info=True)
+            raise
     
     # Private methods
     
@@ -471,75 +519,88 @@ class AuditLogService(IAuditLogger):
     
     async def _check_for_anomalies(self, user_id: str, log: AuditLog) -> None:
         """
-        Check for anomalous access patterns.
+        Check for suspicious activity patterns that may indicate security issues.
+        
+        This implements behavioral analytics for HIPAA security compliance by 
+        detecting unusual access patterns that might indicate unauthorized access.
         
         Args:
             user_id: ID of the user to check
-            log: Current audit log entry
+            log: The current audit log entry
         """
-        # Initialize user history if not exists
+        now = datetime.now(timezone.utc)
+        anomalies_detected = []
+        
+        # Track user access history for velocity analysis
         if user_id not in self._user_access_history:
             self._user_access_history[user_id] = []
         
-        # Add current access time
-        self._user_access_history[user_id].append(log.timestamp)
+        # Add this access to history
+        self._user_access_history[user_id].append(now)
         
-        # Keep only recent history (last 24 hours)
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        # Keep only recent history (last 1 hour)
         self._user_access_history[user_id] = [
-            ts for ts in self._user_access_history[user_id] if ts >= cutoff
+            t for t in self._user_access_history[user_id] 
+            if now - t < timedelta(hours=1)
         ]
         
-        # Check for velocity anomalies (too many requests in a short time)
-        history = self._user_access_history[user_id]
-        if len(history) > 100:  # More than 100 accesses in 24 hours
-            # Calculate time between consecutive requests
-            if len(history) >= 2:
-                for i in range(1, min(20, len(history))):  # Check up to last 20
-                    time_diff = (history[-i] - history[-(i+1)]).total_seconds()
-                    if time_diff < 0.5:  # Less than 0.5 seconds between requests
-                        # Log the anomaly
-                        await self.log_security_event(
-                            description="Anomalous access pattern detected: High velocity",
-                            actor_id=user_id,
-                            status="detected",
-                            severity=AuditSeverity.HIGH,
-                            details={
-                                "anomaly_type": "velocity",
-                                "requests_in_24h": len(history),
-                                "fastest_interval_ms": int(time_diff * 1000)
-                            }
-                        )
-                        break
+        # Check for rapid access velocity (more than 10 accesses in 1 minute)
+        recent_accesses = [
+            t for t in self._user_access_history[user_id]
+            if now - t < timedelta(minutes=1)
+        ]
         
-        # Check for unusual IP addresses
-        if log.ip_address and log.ip_address not in self._suspicious_ips:
-            try:
-                ip = ipaddress.ip_address(log.ip_address)
+        if len(recent_accesses) >= 10:
+            anomaly_detail = {
+                "type": "velocity",
+                "description": f"Unusual access velocity detected: {len(recent_accesses)} accesses in 1 minute",
+                "accesses_count": len(recent_accesses),
+                "timeframe": "1 minute",
+                "user_id": user_id
+            }
+            
+            anomalies_detected.append(anomaly_detail)
+            
+            # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
+            await self.log_event(
+                event_type=AuditEventType.SECURITY_EVENT,
+                actor_id=user_id,
+                action="anomaly_detected",
+                status="warning",
+                details=anomaly_detail,
+                severity=AuditSeverity.HIGH,
+                _skip_anomaly_check=True  # Prevent recursion
+            )
+        
+        # Check for geographic anomalies if IP address is available
+        ip_address = log.ip_address
+        if ip_address and hasattr(log, 'details') and log.details:
+            # Get location info from details if available
+            location_info = log.details.get("context", {}).get("location", {})
+            
+            # For this example, we'll use a simple check - in a real system this would be more sophisticated
+            if location_info and not location_info.get("is_private", True):
+                # Consider it an anomaly if the user is accessing from a non-private IP
+                # In a real system, we'd check against known locations, impossible travel, etc.
+                anomaly_detail = {
+                    "type": "geographic",
+                    "description": "Access from unusual location",
+                    "ip_address": ip_address,
+                    "user_id": user_id
+                }
                 
-                # Check if it's a private IP accessing from outside (potential VPN bypass)
-                if ip.is_private and log.details and log.details.get("request_context", {}).get("origin") == "external":
-                    self._suspicious_ips.add(log.ip_address)
-                    await self.log_security_event(
-                        description="Anomalous access pattern detected: Private IP from external origin",
-                        actor_id=user_id,
-                        status="detected",
-                        severity=AuditSeverity.CRITICAL,
-                        details={
-                            "anomaly_type": "suspicious_ip",
-                            "ip_address": log.ip_address
-                        }
-                    )
-            except ValueError:
-                # Invalid IP address, could be suspicious
-                self._suspicious_ips.add(log.ip_address)
-                await self.log_security_event(
-                    description="Invalid IP address in audit log",
+                anomalies_detected.append(anomaly_detail)
+                
+                # Log a security event for the anomaly - pass _skip_anomaly_check=True to prevent recursion
+                await self.log_event(
+                    event_type=AuditEventType.SECURITY_EVENT,
                     actor_id=user_id,
-                    status="detected",
-                    severity=AuditSeverity.MEDIUM,
-                    details={
-                        "anomaly_type": "invalid_ip",
-                        "ip_address": log.ip_address
-                    }
-                ) 
+                    action="geographic_anomaly",
+                    status="warning",
+                    details=anomaly_detail,
+                    severity=AuditSeverity.HIGH,
+                    _skip_anomaly_check=True  # Prevent recursion
+                )
+        
+        # Return if any anomalies were detected
+        return len(anomalies_detected) > 0 

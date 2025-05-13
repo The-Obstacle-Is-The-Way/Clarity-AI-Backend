@@ -8,6 +8,7 @@ security settings, database connection, and other environment-specific values.
 import logging
 import os
 import secrets
+from pathlib import Path
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -74,6 +75,13 @@ class Settings(BaseSettings):
     # Logging Settings
     LOG_LEVEL: str = "INFO"
     
+    # Audit Logging Settings
+    AUDIT_LOG_FILE: str = Field(default="logs/audit.log")
+    AUDIT_LOG_RETENTION_DAYS: int = 365  # 1 year retention for HIPAA
+    AUDIT_LOG_MAX_SIZE_MB: int = 100  # Maximum size of a single audit log file in MB
+    AUDIT_LOG_BACKUP_COUNT: int = 10  # Number of backup files to keep
+    EXTERNAL_AUDIT_ENABLED: bool = False  # Whether to use external audit service
+    
     # Monitoring and Error Tracking (Sentry)
     SENTRY_DSN: str | None = None
     SENTRY_TRACES_SAMPLE_RATE: float = 0.2  # Percentage of transactions to trace
@@ -101,7 +109,6 @@ class Settings(BaseSettings):
     }
     
     # HIPAA Compliance Settings
-    AUDIT_LOG_RETENTION_DAYS: int = 365  # 1 year retention for HIPAA
     SESSION_COOKIE_SECURE: bool = True
     SESSION_COOKIE_HTTPONLY: bool = True
     SESSION_COOKIE_SAMESITE: str = "Lax"
@@ -161,6 +168,13 @@ class Settings(BaseSettings):
             self.ASYNC_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
             logger.warning("ASYNC_DATABASE_URL was None, set to default in-memory SQLite")
         
+        # Ensure logs directory exists
+        if self.AUDIT_LOG_FILE:
+            log_dir = os.path.dirname(self.AUDIT_LOG_FILE)
+            if log_dir and not os.path.isdir(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+                logger.info(f"Created logs directory: {log_dir}")
+        
         return self
 
 
@@ -199,6 +213,7 @@ def get_settings() -> Settings:
         settings.DATABASE_URL = test_db_url
         settings.ASYNC_DATABASE_URL = test_db_url
         settings.SENTRY_DSN = None
+        settings.AUDIT_LOG_FILE = "logs/audit_test.log"  # Test-specific audit log
         # Ensure JWT_SECRET_KEY is set for tests, even if default_factory had issues
         if not hasattr(settings, 'JWT_SECRET_KEY') or not settings.JWT_SECRET_KEY:
             settings.JWT_SECRET_KEY = "test_jwt_secret_for_test_environment_only_1234567890_abcdefghijklmnopqrstuvwxyz_ABCDEFGHIJKLMNOPQRSTUVWXYZ_01234567890_abcdefghijklmnopqrstuvwxyz"

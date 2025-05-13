@@ -6,9 +6,11 @@ It logs all API requests that access PHI and ensures a complete audit trail
 as required by HIPAA regulations.
 """
 
+import ipaddress
 import json
 import re
-from typing import Callable, Dict, List, Optional, Set, Pattern
+import socket
+from typing import Callable, Dict, List, Optional, Set, Pattern, Tuple, Any
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
@@ -91,8 +93,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         # Check if this path likely involves PHI
-        if not self._is_phi_path(path):
-            return await call_next(request)
+        is_phi_path = self._is_phi_path(path)
         
         # Extract request information for audit log
         user_id = await self._extract_user_id(request)
@@ -100,23 +101,47 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         action = self.method_to_action.get(method, "access")
         resource_type, resource_id = self._extract_resource_info(path)
         
-        # Process the request and capture the response
-        response = await call_next(request)
+        # Create request context for additional security information
+        request_context = await self._create_request_context(request)
         
-        # Log the PHI access event
-        access_status = "success" if 200 <= response.status_code < 300 else "failure"
-        if user_id:
-            # Only log PHI access for authenticated users
-            # This is critical for HIPAA compliance - all PHI access must be tracked
-            await self.audit_logger.log_phi_access(
-                actor_id=user_id,
-                patient_id=resource_id or "unknown",
-                resource_type=resource_type or "api_resource",
-                action=action,
-                status=access_status,
-                reason="API request",
-                request=request
-            )
+        # Process the request and capture the response
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception as e:
+            status_code = 500
+            # Re-raise to ensure proper error handling
+            raise e
+        finally:
+            # Log regardless of success/failure if it's a PHI path
+            if is_phi_path and user_id:
+                access_status = "success" if 200 <= status_code < 300 else "failure"
+                
+                # Only log PHI access for authenticated users
+                # This is critical for HIPAA compliance - all PHI access must be tracked
+                await self.audit_logger.log_phi_access(
+                    actor_id=user_id,
+                    patient_id=resource_id or "unknown",
+                    resource_type=resource_type or "api_resource",
+                    action=action,
+                    status=access_status,
+                    reason="API request",
+                    request=request,
+                    request_context=request_context
+                )
+            elif user_id:
+                # For non-PHI paths, still log API access for authenticated users
+                # This provides a complete audit trail of all user activity
+                await self.audit_logger.log_event(
+                    event_type=AuditEventType.API_REQUEST,
+                    actor_id=user_id,
+                    target_resource=resource_type,
+                    target_id=resource_id,
+                    action=action,
+                    status="success" if 200 <= status_code < 300 else "failure",
+                    details={"path": path, "method": method, "status_code": status_code},
+                    request=request
+                )
         
         return response
     
@@ -131,7 +156,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             bool: True if auditing should be skipped
         """
         # Skip static files, docs, etc.
-        if path in self.skip_paths:
+        if any(path.startswith(skip_path) or path == skip_path for skip_path in self.skip_paths):
             return True
         
         # Skip static asset paths
@@ -169,19 +194,23 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             Optional[str]: The user ID if available
         """
         # Try to get user from request state (set by auth middleware)
-        if hasattr(request.state, "user") and request.state.user:
+        if hasattr(request.state, "user") and getattr(request.state.user, "id", None):
             return request.state.user.id
         
         # Try to get from headers or cookies as fallback
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             # Don't try to decode the token here - just note that there was one
-            # User ID should be populated by auth middleware already
-            return "authenticated_user"
+            # The actual user ID should be populated by auth middleware already
+            return "anonymous_authenticated"
         
+        # Fall back to test user ID for testing
+        if self.settings.TESTING:
+            return "test_user"
+            
         return None
     
-    def _extract_resource_info(self, path: str) -> tuple[Optional[str], Optional[str]]:
+    def _extract_resource_info(self, path: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Extract resource type and ID from the path.
         
@@ -212,4 +241,51 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             resource_id = parts[3] if len(parts) > 3 else None
             return resource_type, resource_id
         
-        return None, None 
+        return None, None
+    
+    async def _create_request_context(self, request: Request) -> Dict[str, Any]:
+        """
+        Create rich context information from the request for security analysis.
+        
+        Args:
+            request: The request object
+            
+        Returns:
+            Dict[str, Any]: Context information for security analysis
+        """
+        # Extract IP address
+        client_host = request.client.host if request.client else None
+        
+        # Extract user agent
+        user_agent = request.headers.get("user-agent", "")
+        
+        # Extract other relevant headers
+        relevant_headers = {
+            "referer": request.headers.get("referer", ""),
+            "origin": request.headers.get("origin", ""),
+            "x-forwarded-for": request.headers.get("x-forwarded-for", ""),
+            "x-real-ip": request.headers.get("x-real-ip", "")
+        }
+        
+        # Try to get general location info without external API calls
+        location_info = None
+        if client_host:
+            try:
+                # Check if it's a private IP
+                ip_obj = ipaddress.ip_address(client_host)
+                is_private = ip_obj.is_private
+                location_info = {"is_private": is_private}
+            except Exception:
+                location_info = {"error": "Could not parse IP address"}
+        
+        # Collect everything into a context object
+        context = {
+            "ip": client_host,
+            "user_agent": user_agent,
+            "headers": relevant_headers,
+            "location": location_info,
+            "url": str(request.url),
+            "method": request.method,
+        }
+        
+        return context 

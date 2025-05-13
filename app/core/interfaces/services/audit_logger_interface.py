@@ -9,7 +9,7 @@ this interface decouples the audit logging contract from its implementations.
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 
 
 class AuditEventType(str, Enum):
@@ -55,6 +55,10 @@ class AuditEventType(str, Enum):
     MODEL_TRAINED = "model_trained"
     MODEL_DEPLOYED = "model_deployed"
     
+    # Security events
+    SECURITY_EVENT = "security_event"
+    ANOMALY_DETECTED = "anomaly_detected"
+    
     # Fallback for other events
     OTHER = "other"
 
@@ -89,6 +93,7 @@ class IAuditLogger(ABC):
         severity: AuditSeverity = AuditSeverity.INFO,
         metadata: Optional[Dict[str, Any]] = None,
         timestamp: Optional[datetime] = None,
+        request: Optional[Any] = None,
     ) -> str:
         """Log an audit event in the system.
         
@@ -103,6 +108,7 @@ class IAuditLogger(ABC):
             severity: Severity level of the event
             metadata: Additional metadata for the event
             timestamp: When the event occurred (defaults to now if None)
+            request: Optional request object for extracting context information
             
         Returns:
             str: Unique identifier for the audit log entry
@@ -117,6 +123,7 @@ class IAuditLogger(ABC):
         status: Optional[str] = None,
         severity: AuditSeverity = AuditSeverity.HIGH,
         details: Optional[Dict[str, Any]] = None,
+        request: Optional[Any] = None,
     ) -> str:
         """Log a security-related event.
         
@@ -128,6 +135,7 @@ class IAuditLogger(ABC):
             status: Status of the security event
             severity: Severity level of the event
             details: Additional details about the event
+            request: Optional request object for extracting context information
             
         Returns:
             str: Unique identifier for the audit log entry
@@ -142,8 +150,10 @@ class IAuditLogger(ABC):
         resource_type: str,
         action: str,
         status: str,
-        phi_fields: Optional[list[str]] = None,
+        phi_fields: Optional[List[str]] = None,
         reason: Optional[str] = None,
+        request: Optional[Any] = None,
+        request_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Log PHI access event specifically.
         
@@ -157,6 +167,8 @@ class IAuditLogger(ABC):
             status: Outcome of the access attempt
             phi_fields: Specific PHI fields accessed (without values)
             reason: Business reason for accessing the PHI
+            request: Optional request object for extracting context information
+            request_context: Additional context from the request (location, device, etc.)
             
         Returns:
             str: Unique identifier for the audit log entry
@@ -171,7 +183,7 @@ class IAuditLogger(ABC):
         end_time: Optional[datetime] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[Dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Retrieve audit trail entries based on filters.
         
         Args:
@@ -182,6 +194,44 @@ class IAuditLogger(ABC):
             offset: Offset for pagination
             
         Returns:
-            list[Dict[str, Any]]: List of audit log entries matching the criteria
+            List[Dict[str, Any]]: List of audit log entries matching the criteria
+        """
+        pass
+    
+    @abstractmethod
+    async def export_audit_logs(
+        self,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        format: str = "json",
+        file_path: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Export audit logs to a file in the specified format.
+        
+        Args:
+            start_time: Start time for logs to export
+            end_time: End time for logs to export 
+            format: Export format (json, csv, xml)
+            file_path: Path to save the export file (generated if None)
+            filters: Additional filters for the export (actor_id, resource_type, etc.)
+            
+        Returns:
+            str: Path to the exported file
+        """
+        pass
+    
+    @abstractmethod
+    async def get_security_dashboard_data(
+        self,
+        days: int = 7
+    ) -> Dict[str, Any]:
+        """Get summary data for security dashboard.
+        
+        Args:
+            days: Number of days to include in the summary
+            
+        Returns:
+            Dict[str, Any]: Security data summary for dashboard
         """
         pass

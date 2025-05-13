@@ -6,6 +6,9 @@ services and repositories within the API endpoints.
 """
 
 import logging
+from typing import Annotated
+
+from fastapi import Depends
 
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService

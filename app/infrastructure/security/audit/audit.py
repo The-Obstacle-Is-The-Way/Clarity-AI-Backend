@@ -51,6 +51,9 @@ class AuditLogger:
         self.log_level = getattr(logging, self.settings.LOG_LEVEL.upper(), logging.INFO)
         self.audit_log_file = self.settings.AUDIT_LOG_FILE
         
+        # Default setting for external audit if not available in settings
+        self.external_audit_enabled = getattr(self.settings, 'EXTERNAL_AUDIT_ENABLED', False)
+        
         # Configure the audit logger
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(self.log_level)
@@ -134,7 +137,7 @@ class AuditLogger:
         self.logger.info(f"PHI_ACCESS: {json.dumps(audit_entry)}")
 
         # If configured, also send to external audit service
-        if self.settings.EXTERNAL_AUDIT_ENABLED:
+        if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
 
     def log_auth_event(
@@ -171,7 +174,7 @@ class AuditLogger:
         self.logger.info(f"AUTH_EVENT: {json.dumps(audit_entry)}")
 
         # If configured, also send to external audit service
-        if self.settings.EXTERNAL_AUDIT_ENABLED:
+        if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
 
     def _send_to_external_audit_service(self, audit_entry: Dict[str, Any]) -> None:
