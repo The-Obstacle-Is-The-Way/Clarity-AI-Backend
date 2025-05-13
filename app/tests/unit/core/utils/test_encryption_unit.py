@@ -33,17 +33,31 @@ class TestEncryptionService:
             service = EncryptionService()
             assert service.cipher is not None
 
-    def test_initialization_with_missing_key(self):
+    def test_initialization_with_missing_key(self, monkeypatch):
         """Test initialization with missing key raises error."""
         
-        # Mock the get_encryption_key function since it's imported and called inside the constructor
-        with patch("app.infrastructure.security.encryption.get_encryption_key", 
-                  side_effect=ValueError("Primary encryption key is unavailable")):
-            with pytest.raises(ValueError) as excinfo:
-                EncryptionService()
+        # Monkeypatch get_encryption_key at module level to completely block any fallbacks
+        monkeypatch.setattr(
+            "app.infrastructure.security.encryption.get_encryption_key", 
+            lambda: exec('raise ValueError("Primary encryption key is unavailable")')
+        )
+        
+        # Also patch the get_encryption_service to prevent default key fallback
+        monkeypatch.setattr(
+            "app.infrastructure.security.encryption.base_encryption_service.get_encryption_service",
+            lambda: exec('raise ValueError("No encryption service available")')
+        )
+        
+        # Clear environment variables that might provide keys
+        monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+        monkeypatch.delenv("PHI_ENCRYPTION_KEY", raising=False)
+        
+        # Now attempt to create service with no key provided
+        with pytest.raises(ValueError) as excinfo:
+            EncryptionService(secret_key=None)
             
-            # Check for the error message
-            assert "Primary encryption key is unavailable" in str(excinfo.value)
+        # Verify the error message
+        assert "Primary encryption key is unavailable" in str(excinfo.value)
 
     def test_encrypt_decrypt_string(self, encryption_service):
         """Test encrypting and decrypting a string using encrypt_string/decrypt_string."""

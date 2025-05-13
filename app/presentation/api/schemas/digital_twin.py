@@ -7,10 +7,11 @@ strict validation of all input and output data for HIPAA compliance.
 """
 
 from datetime import datetime
-from typing import Any
+from enum import Enum
+from typing import Any, List, Dict, Optional
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 from app.core.domain.entities.digital_twin import SimulationType, TwinType
 from app.presentation.api.schemas.base import BaseModelConfig
@@ -45,6 +46,8 @@ class DigitalTwinResponse(DigitalTwinBase):
     version: str
     data: dict[str, Any] | None = None
     user_id: str  # The ID of the patient this digital twin belongs to
+    profile_summary: str | None = None
+    current_state: str | None = None
 
 
 class TwinSimulationRequest(BaseModelConfig):
@@ -62,3 +65,127 @@ class TwinSimulationResponse(BaseModelConfig):
     executed_at: datetime
     timeframe_days: int
     results: dict[str, Any]
+
+
+# New schemas for digital twin endpoints
+
+class ComponentStatus(BaseModelConfig):
+    """Schema for the status of a digital twin component."""
+    has_model: bool | None = None
+    last_updated: datetime | None = None
+    service_available: bool | None = None
+    service_info: dict[str, Any] | None = None
+
+
+class DigitalTwinStatusResponse(BaseModelConfig):
+    """Response schema for digital twin status."""
+    patient_id: str
+    status: str  # "complete", "partial", "initializing", etc.
+    completeness: float = Field(..., ge=0, le=100, description="Percentage of completeness")
+    components: Dict[str, ComponentStatus]
+    last_checked: datetime
+
+
+class SymptomTrend(BaseModelConfig):
+    """Schema for a symptom trend."""
+    symptom: str
+    trend: str  # "increasing", "decreasing", "stable"
+    confidence: float = Field(..., ge=0, le=1)
+    insight_text: str
+
+
+class RiskAlert(BaseModelConfig):
+    """Schema for a risk alert."""
+    symptom: str
+    risk_level: str  # "low", "moderate", "high"
+    alert_text: str
+    importance: float = Field(..., ge=0, le=1)
+
+
+class BiometricCorrelation(BaseModelConfig):
+    """Schema for a biometric correlation."""
+    biometric_type: str
+    mental_health_indicator: str
+    correlation_strength: float = Field(..., ge=0, le=1)
+    direction: str  # "positive", "negative"
+    insight_text: str
+    p_value: float | None = None
+
+
+class MedicationPrediction(BaseModelConfig):
+    """Schema for a medication response prediction."""
+    medication: str
+    predicted_response: str  # "positive", "negative", "neutral"
+    confidence: float = Field(..., ge=0, le=1)
+
+
+class Recommendation(BaseModelConfig):
+    """Schema for a recommendation."""
+    source: str  # "integrated", "forecasting", "biometric", etc.
+    type: str  # "biometric_symptom", "medication_adjustment", etc.
+    recommendation: str
+    importance: float = Field(..., ge=0, le=1)
+
+
+class MedicationResponsePredictions(BaseModelConfig):
+    """Schema for medication response predictions."""
+    predictions: List[MedicationPrediction]
+
+
+class SymptomForecasting(BaseModelConfig):
+    """Schema for symptom forecasting."""
+    trending_symptoms: List[SymptomTrend]
+    risk_alerts: List[RiskAlert]
+
+
+class BiometricCorrelations(BaseModelConfig):
+    """Schema for biometric correlations."""
+    strong_correlations: List[BiometricCorrelation]
+
+
+class PharmacogenomicsData(BaseModelConfig):
+    """Schema for pharmacogenomics data."""
+    medication_responses: MedicationResponsePredictions
+
+
+class PersonalizedInsightResponse(BaseModelConfig):
+    """Response schema for personalized insights."""
+    insight_id: str | None = None
+    digital_twin_id: str
+    patient_id: str | None = None
+    query: str | None = None
+    insight_type: str | None = None
+    insight: str | None = None
+    key_points: List[str] | None = None
+    confidence: float | None = Field(None, ge=0, le=1)
+    timestamp: datetime | None = None
+    generated_at: datetime | None = None
+    symptom_forecasting: SymptomForecasting | None = None
+    biometric_correlation: BiometricCorrelations | None = None
+    pharmacogenomics: PharmacogenomicsData | None = None
+    integrated_recommendations: List[Recommendation] | None = None
+
+
+class AnalysisType(str, Enum):
+    """Types of clinical text analysis."""
+    SUMMARY = "summary"
+    SYMPTOM_EXTRACTION = "symptom_extraction"
+    DIAGNOSIS_SUGGESTION = "diagnosis_suggestion"
+    TREATMENT_RECOMMENDATION = "treatment_recommendation"
+    RISK_ASSESSMENT = "risk_assessment"
+
+
+class ClinicalTextAnalysisRequest(BaseModelConfig):
+    """Request schema for clinical text analysis."""
+    text: str = Field(..., min_length=1)
+    analysis_type: AnalysisType = Field(AnalysisType.SUMMARY)
+    additional_context: dict[str, Any] | None = None
+
+
+class ClinicalTextAnalysisResponse(BaseModelConfig):
+    """Response schema for clinical text analysis."""
+    analysis_type: AnalysisType
+    result: str
+    metadata: dict[str, Any] | None = None
+    confidence: float | None = Field(None, ge=0, le=1)
+    insights: List[str] | None = None

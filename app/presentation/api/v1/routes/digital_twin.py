@@ -5,14 +5,23 @@ Provides API endpoints for interacting with the user's digital twin.
 """
 
 import logging
+from typing import Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.domain.entities.user import User
+from app.core.exceptions.base_exceptions import ResourceNotFoundError, ModelExecutionError
 from app.presentation.api.dependencies.auth import get_current_active_user
 
 # Assuming schemas exist here, adjust if necessary
-from app.presentation.api.schemas.digital_twin import DigitalTwinResponse
+from app.presentation.api.schemas.digital_twin import (
+    DigitalTwinResponse,
+    DigitalTwinStatusResponse,
+    PersonalizedInsightResponse,
+    ClinicalTextAnalysisRequest,
+    ClinicalTextAnalysisResponse
+)
 from app.presentation.api.v1.dependencies.digital_twin import DigitalTwinServiceDep
 
 logger = logging.getLogger(__name__)
@@ -28,25 +37,129 @@ router = APIRouter(
     summary="Get the user's digital twin data",
 )
 async def get_digital_twin(
-    dt_service: DigitalTwinServiceDep,  # Remove redundant = Depends()
+    dt_service: DigitalTwinServiceDep,
     current_user: User = Depends(get_current_active_user),
 ) -> DigitalTwinResponse:
     """
     Retrieve the digital twin representation for the currently authenticated user.
-
-    (Placeholder Implementation)
     """
     logger.info(f"Fetching digital twin for user {current_user.id}")
-    # TODO: Implement actual service call
-    # twin_data = await dt_service.get_twin_for_user(user_id=current_user.id)
-    # if not twin_data:
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digital twin data not found")
+    try:
+        twin_data = await dt_service.get_twin_for_user(user_id=current_user.id)
+        return DigitalTwinResponse(**twin_data)
+    except ResourceNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Digital twin data not found for current user"
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving digital twin: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve digital twin: {str(e)}"
+        )
 
-    # Placeholder response:
-    # Replace with actual data structure based on DigitalTwinResponse schema
-    return DigitalTwinResponse(
-        user_id=str(current_user.id),
-        # Add other placeholder fields based on your schema
-        profile_summary="Placeholder profile summary.",
-        current_state="Placeholder state.",
-    )
+
+@router.get(
+    "/{patient_id}/status",
+    response_model=DigitalTwinStatusResponse,
+    summary="Get the digital twin status for a patient",
+)
+async def get_twin_status(
+    patient_id: UUID,
+    dt_service: DigitalTwinServiceDep,
+    current_user: User = Depends(get_current_active_user),
+) -> DigitalTwinStatusResponse:
+    """
+    Retrieve the status of a patient's digital twin, showing which components are available.
+    """
+    logger.info(f"Fetching digital twin status for patient {patient_id}")
+    try:
+        status_data = await dt_service.get_digital_twin_status(patient_id=patient_id)
+        return DigitalTwinStatusResponse(**status_data)
+    except ResourceNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Digital twin status not found: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving digital twin status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve digital twin status: {str(e)}"
+        )
+
+
+@router.get(
+    "/{patient_id}/insights",
+    response_model=PersonalizedInsightResponse,
+    summary="Get comprehensive insights for a patient",
+)
+async def get_comprehensive_insights(
+    patient_id: UUID,
+    dt_service: DigitalTwinServiceDep,
+    current_user: User = Depends(get_current_active_user),
+) -> PersonalizedInsightResponse:
+    """
+    Generate comprehensive personalized insights for a patient based on their digital twin.
+    """
+    logger.info(f"Generating comprehensive insights for patient {patient_id}")
+    try:
+        insights = await dt_service.generate_comprehensive_patient_insights(patient_id=patient_id)
+        return PersonalizedInsightResponse(**insights)
+    except ResourceNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient or digital twin not found: {str(e)}"
+        )
+    except ModelExecutionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate insights: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error generating insights: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error generating insights: {str(e)}"
+        )
+
+
+@router.post(
+    "/{patient_id}/analyze-text",
+    response_model=ClinicalTextAnalysisResponse,
+    summary="Analyze clinical text using the digital twin",
+)
+async def analyze_clinical_text(
+    patient_id: UUID,
+    request: ClinicalTextAnalysisRequest,
+    dt_service: DigitalTwinServiceDep,
+    current_user: User = Depends(get_current_active_user),
+) -> ClinicalTextAnalysisResponse:
+    """
+    Analyze clinical text using MentaLLaMA integration with the patient's digital twin.
+    """
+    logger.info(f"Analyzing clinical text for patient {patient_id}")
+    try:
+        result = await dt_service.analyze_clinical_text_mentallama(
+            patient_id=patient_id,
+            text=request.text,
+            analysis_type=request.analysis_type
+        )
+        return ClinicalTextAnalysisResponse(**result)
+    except ResourceNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient or digital twin not found: {str(e)}"
+        )
+    except ModelExecutionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Model inference failed: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error analyzing clinical text: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error analyzing text: {str(e)}"
+        )

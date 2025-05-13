@@ -23,22 +23,28 @@ from app.core.exceptions.base_exceptions import (
     ResourceNotFoundError,
 )
 from app.domain.entities.user import User  # Added User import
-from app.presentation.api.dependencies.auth import get_current_user  # Standard auth dependency
+from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user  # Standard auth dependency
 from app.presentation.api.dependencies.services import (
     get_digital_twin_service,
 )
-from app.presentation.api.schemas.digital_twin_schemas import (
+# Import digital_twin specific services
+from app.presentation.api.v1.dependencies.digital_twin import get_digital_twin_service
+from app.presentation.api.schemas.digital_twin import (
     # ClinicalTextAnalysisResponse, # Let's use the specific fixture name for clarity if needed
     PersonalizedInsightResponse, # Assuming this covers the /insights endpoint test case
 )
-from app.presentation.api.v1.endpoints.digital_twins import router as digital_twins_router
+from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
 
 # Add imports for create_application and Settings
 from app.app_factory import create_application
 from app.core.config.settings import Settings as AppSettings # Use alias
+from app.presentation.middleware.authentication import AuthenticationMiddleware
 
 # Define UTC timezone
 UTC = timedelta(0) # Simple UTC offset
+
+# Test Constants
+TEST_JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjk5OTk5OTk5OTl9.N_8jTh-tkBrr7R3lxh9jgfY9H5hZLT7z87Mjzn8w7F4"
 
 # Fixtures
 @pytest.fixture
@@ -48,49 +54,71 @@ def mock_digital_twin_service():
     service = AsyncMock() # Use basic AsyncMock if spec import is problematic
 
     # Mock top-level methods
+    service.get_twin_for_user = AsyncMock()
     service.get_digital_twin_status = AsyncMock()
     service.generate_comprehensive_patient_insights = AsyncMock()
-    service.update_digital_twin = AsyncMock() # Assuming an update method exists
     service.analyze_clinical_text_mentallama = AsyncMock() # Assuming this method exists for the endpoint
 
-    # Mock nested/underlying services if methods are called directly (unlikely based on endpoint structure)
-    # service.mentallama_service = AsyncMock() 
-    # service.symptom_forecasting_service = AsyncMock()
-    # service.biometric_correlation_service = AsyncMock()
-    # service.pharmacogenomics_service = AsyncMock()
-    
     return service
 
 @pytest.fixture
 def mock_current_user():
     """Fixture for a mock User object."""
-    return User(id=UUID("00000000-0000-0000-0000-000000000001"), role="admin", email="test@example.com")
+    from app.core.domain.entities.user import UserStatus
+    return User(
+        id=UUID("00000000-0000-0000-0000-000000000001"), 
+        role="admin", 
+        email="test@example.com",
+        status=UserStatus.ACTIVE,  # Add active status
+        roles=["admin"]  # Ensure roles is a list
+    )
 
 @pytest.fixture
 def app(mock_digital_twin_service: AsyncMock, mock_current_user: User) -> FastAPI:
     """Override the app fixture to use a real FastAPI instance for these tests."""
     test_settings = AppSettings() # Create a default settings instance for tests
-    app_instance = create_application(settings_override=test_settings)
+    app_instance = create_application(
+        settings_override=test_settings, 
+        skip_auth_middleware=True  # Skip authentication middleware completely
+    )
     
     # Apply dependency overrides relevant for these unit tests
-    app_instance.dependency_overrides[get_digital_twin_service] = lambda: mock_digital_twin_service
     app_instance.dependency_overrides[get_current_user] = lambda: mock_current_user
+    app_instance.dependency_overrides[get_current_active_user] = lambda: mock_current_user
     
-    # Get the API router that includes all route modules (including digital_twin_router)
-    from app.presentation.api.v1.api_router import api_v1_router
+    # Override the specific digital_twin_service dependency from the correct module
+    from app.presentation.api.v1.dependencies.digital_twin import get_digital_twin_service as dt_service_dep
+    app_instance.dependency_overrides[dt_service_dep] = lambda: mock_digital_twin_service
+    
+    # Direct import and mounting of the digital_twin router for tests
+    from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
     
     # Clear existing routes to avoid duplicates
     app_instance.router.routes = []
     
-    # Include the complete API router with all routes including digital twins
-    app_instance.include_router(api_v1_router, prefix="/api/v1")
+    # For debugging - print all routes
+    print("\nDebug: Available routes and patterns before mounting:")
+    print([f"{route.path} ({route.name})" for route in app_instance.routes])
+    
+    # Include digital twin router directly with the same prefix as in api_router.py
+    app_instance.include_router(digital_twin_router, prefix="/api/v1/digital-twins")
+    
+    # For debugging - print all routes after mounting
+    print("\nDebug: Available routes and patterns after mounting digital-twins:")
+    print([f"{route.path} ({route.name})" for route in app_instance.routes])
 
     return app_instance
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncClient:  # Changed to async fixture and AsyncClient
     """Create an async test client for the FastAPI app."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    # Define default headers with test JWT token
+    headers = {
+        "Authorization": f"Bearer {TEST_JWT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    async with AsyncClient(app=app, base_url="http://test", headers=headers) as ac:
         yield ac
 
 @pytest.fixture
@@ -193,6 +221,7 @@ def sample_personalized_insight_response(sample_patient_id):
     return {
         "insight_id": str(uuid4()),
         "digital_twin_id": str(sample_patient_id), # Use patient_id as twin_id for simplicity
+        "patient_id": str(sample_patient_id),
         "query": "Summarize recent mood changes.",
         "insight_type": "clinical",
         "insight": "Patient mood shows slight improvement over the past week, but anxiety spikes remain.",
@@ -202,11 +231,28 @@ def sample_personalized_insight_response(sample_patient_id):
             "Correlation with sleep patterns observed."
         ],
         "confidence": 0.88,
-        "timestamp": now.isoformat() # Use ISO format string for JSON compatibility
+        "timestamp": now.isoformat(), # Use ISO format string for JSON compatibility
+        "generated_at": now.isoformat()
     }
 
-# Fixtures for other response types (forecast, correlation, pgx) can be added if needed
-# ...
+# Fixtures for clinical text analysis
+@pytest.fixture
+def sample_clinical_text_analysis_response():
+    """Create a sample clinical text analysis response."""
+    return {
+        "analysis_type": "summary",
+        "result": "Patient presents with increasing anxiety symptoms over the past week, with associated sleep disturbance.",
+        "confidence": 0.9,
+        "insights": [
+            "Anxiety symptoms increasing",
+            "Sleep pattern disruption noted",
+            "Potential correlation with recent life events"
+        ],
+        "metadata": {
+            "processing_time_ms": 254,
+            "model_version": "mentallama-v2.1"
+        }
+    }
 
 # Tests
 class TestDigitalTwinsEndpoints:
@@ -214,72 +260,86 @@ class TestDigitalTwinsEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_twin_status(self, client, mock_digital_twin_service, sample_patient_id, sample_status_response):
-        """Test GET /digital-twin/{patient_id}/status"""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
-        
+        """Test GET /digital-twins/digital-twin/{patient_id}/status"""
+        # Set up mock return value
         mock_digital_twin_service.get_digital_twin_status.return_value = sample_status_response
         
-        response = await client.get(f"/api/v1/digital-twin/{sample_patient_id}/status")
+        # Make request with corrected path
+        response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/status")
         
+        # Print both for debugging
+        print("\nActual response:", response.json())
+        print("\nExpected response:", sample_status_response)
+        
+        # Assert response
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == sample_status_response
-        mock_digital_twin_service.get_digital_twin_status.assert_called_once_with(sample_patient_id)
+        mock_digital_twin_service.get_digital_twin_status.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
     async def test_get_twin_status_not_found(self, client, mock_digital_twin_service, sample_patient_id):
-        """Test GET /digital-twin/{patient_id}/status for not found"""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
+        """Test GET /digital-twins/digital-twin/{patient_id}/status with not found error."""
+        # Setup the mock to raise ResourceNotFoundError
+        mock_digital_twin_service.get_digital_twin_status.side_effect = ResourceNotFoundError(f"No digital twin found for patient {sample_patient_id}")
+
+        # Make request with corrected path
+        response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/status")
         
-        mock_digital_twin_service.get_digital_twin_status.side_effect = ResourceNotFoundError("Status not found")
-        
-        response = await client.get(f"/api/v1/digital-twin/{sample_patient_id}/status")
-        
+        # Assert response
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "not found" in response.json()["detail"].lower()
+        mock_digital_twin_service.get_digital_twin_status.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
     async def test_get_comprehensive_insights(self, client, mock_digital_twin_service, sample_patient_id, sample_personalized_insight_response):
-        """Test GET /digital-twin/{patient_id}/insights"""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
-        
+        """Test GET /digital-twins/digital-twin/{patient_id}/insights with successful response."""
+        # Setup the mock return value
         mock_digital_twin_service.generate_comprehensive_patient_insights.return_value = sample_personalized_insight_response
         
-        response = await client.get(f"/api/v1/digital-twin/{sample_patient_id}/insights")
+        # Make request with corrected path
+        response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights")
         
+        # Assert response
         assert response.status_code == status.HTTP_200_OK
-        mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(sample_patient_id)
+        assert response.json() == sample_personalized_insight_response
+        mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
     async def test_get_comprehensive_insights_error(self, client, mock_digital_twin_service, sample_patient_id):
-        """Test GET /digital-twin/{patient_id}/insights error handling"""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
+        """Test GET /digital-twins/digital-twin/{patient_id}/insights with model execution error."""
+        # Setup the mock to raise ModelExecutionError
+        error_message = "Failed to generate insights due to model execution error"
+        mock_digital_twin_service.generate_comprehensive_patient_insights.side_effect = ModelExecutionError(error_message)
         
-        mock_digital_twin_service.generate_comprehensive_patient_insights.side_effect = ModelExecutionError("Insight generation failed")
+        # Make request with corrected path
+        response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights")
         
-        response = await client.get(f"/api/v1/digital-twin/{sample_patient_id}/insights")
-        
+        # Assert response
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "Failed to generate insights" in response.json()["detail"]
+        mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
-    async def test_analyze_clinical_text(self, client, mock_digital_twin_service, sample_patient_id):
-        """Test POST /digital-twin/{patient_id}/analyze-text"""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
+    async def test_analyze_clinical_text(self, client, mock_digital_twin_service, sample_patient_id, sample_clinical_text_analysis_response):
+        """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with successful analysis."""
+        # Setup the mock return value
+        mock_digital_twin_service.analyze_clinical_text_mentallama.return_value = sample_clinical_text_analysis_response
         
+        # Prepare request body
         request_data = {
-            "text": "Patient reports feeling anxious and having trouble sleeping.",
+            "text": "Patient reports increasing anxiety with sleep disturbance",
             "analysis_type": "summary"
         }
-        mock_response_data = {
-            "analysis_type": "summary",
-            "result": "The patient is experiencing anxiety and sleep difficulties.",
-            "metadata": {"model": "mentallama-v1"}
-        }
-        mock_digital_twin_service.analyze_clinical_text_mentallama.return_value = mock_response_data
         
-        response = await client.post(f"/api/v1/digital-twin/{sample_patient_id}/analyze-text", json=request_data)
+        # Make request with corrected path
+        response = await client.post(
+            f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text",
+            json=request_data
+        )
         
+        # Assert response
         assert response.status_code == status.HTTP_200_OK
+        assert response.json() == sample_clinical_text_analysis_response
         mock_digital_twin_service.analyze_clinical_text_mentallama.assert_called_once_with(
             patient_id=sample_patient_id,
             text=request_data["text"],
@@ -288,30 +348,48 @@ class TestDigitalTwinsEndpoints:
 
     @pytest.mark.asyncio
     async def test_analyze_clinical_text_validation_error(self, client, sample_patient_id):
-        """Test POST /digital-twin/{patient_id}/analyze-text with invalid input"""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
+        """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with validation error."""
+        # Prepare invalid request body (missing required text field)
+        request_data = {
+            "analysis_type": "summary"  # Missing required "text" field
+        }
         
-        request_data = {"text": ""} # Missing analysis_type, empty text
+        # Make request with corrected path
+        response = await client.post(
+            f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text",
+            json=request_data
+        )
         
-        response = await client.post(f"/api/v1/digital-twin/{sample_patient_id}/analyze-text", json=request_data)
-        
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY # FastAPI validation error
-    
+        # Assert response
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
     @pytest.mark.asyncio
     async def test_analyze_clinical_text_service_error(self, client, mock_digital_twin_service, sample_patient_id):
-        """Test error handling for clinical text analysis."""
-        pytest.skip("Test skipped - endpoint not implemented in digital_twin.py routes module. The test assumes endpoints in digital_twins.py module.")
+        """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with service error."""
+        # Setup the mock to raise ModelExecutionError
+        error_message = "Model inference failed for clinical text analysis"
+        mock_digital_twin_service.analyze_clinical_text_mentallama.side_effect = ModelExecutionError(error_message)
         
-        # Setup - Simulate service error
-        mock_digital_twin_service.analyze_clinical_text_mentallama.side_effect = ModelExecutionError("Inference failed")
-        request_data = {"text": "Patient reports feeling anxious.", "analysis_type": "summary"}
-
-        # Execute & Verify - Note: fixing the await here
-        response = await client.post(f"/api/v1/digital-twin/{sample_patient_id}/analyze-text", json=request_data)
+        # Prepare request body
+        request_data = {
+            "text": "Patient reports increasing anxiety with sleep disturbance",
+            "analysis_type": "summary"
+        }
         
-        # Assuming ModelExecutionError maps to 500 Internal Server Error by default or via handler
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR 
-        assert "Inference failed" in response.json()["detail"] # Check if detail contains the error message
+        # Make request with corrected path
+        response = await client.post(
+            f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text",
+            json=request_data
+        )
+        
+        # Assert response
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert "Model inference failed" in response.json()["detail"]
+        mock_digital_twin_service.analyze_clinical_text_mentallama.assert_called_once_with(
+            patient_id=sample_patient_id,
+            text=request_data["text"],
+            analysis_type=request_data["analysis_type"]
+        )
 
 
 # Add tests for other endpoints (/forecast, /correlations, /medication-response, /treatment-plan)

@@ -126,12 +126,18 @@ class BaseEncryptionService:
             
             # If secret_key is None, get from settings
             if secret_key is None:
-                from app.infrastructure.security.encryption import get_encryption_key
+                # For testability, we need a clean method to check and fail for missing keys
                 try:
+                    from app.infrastructure.security.encryption import get_encryption_key
                     secret_key = get_encryption_key()
-                except ValueError as e:
-                    # Re-raise with clearer message for the test
+                except ValueError:
+                    # Immediate failure for missing key - clear error for tests
+                    logger.error("No encryption key available - critical security failure")
                     raise ValueError("Primary encryption key is unavailable")
+                except Exception as e:
+                    # Other errors during key retrieval
+                    logger.error(f"Error retrieving encryption key: {str(e)}")
+                    raise ValueError(f"Error setting up encryption: {str(e)}")
                 
             # Ensure we have bytes for the key
             if isinstance(secret_key, str):
@@ -316,10 +322,10 @@ class BaseEncryptionService:
             # No previous key or previous key also failed
             if isinstance(primary_error, InvalidToken):
                 logger.error("Invalid token for decryption")
-                raise ValueError("Decryption failed: Invalid token")
+                raise ValueError("Failed to decrypt: Invalid token")
             else:
                 logger.error("Invalid base64 encoding in encrypted value")
-                raise ValueError("Decryption failed: Invalid base64 encoding")
+                raise ValueError("Failed to decrypt: Invalid base64 encoding")
         except Exception as e:
             logger.error(f"Decryption failed: {str(e)}")
             raise ValueError(f"Decryption failed: {str(e)}")
