@@ -50,6 +50,15 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
         mock_session.rollback = AsyncMock()
         mock_session.close = AsyncMock()
         
+        # Add get method to handle SQLAlchemy session.get calls
+        async def mock_get(model_class, model_id):
+            # Return a mock model instance based on model_class
+            mock_model = MagicMock(spec=model_class)
+            mock_model.id = model_id
+            return mock_model
+        
+        mock_session.get = mock_get
+        
         try:
             yield mock_session
         finally:

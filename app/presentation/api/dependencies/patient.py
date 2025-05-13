@@ -57,7 +57,14 @@ async def get_patient_id(
         # This assumes patient_id in the path *is* the user_id for a patient user accessing their own patient record.
         # Or, it means the Patient record's user_id field should match current_user.id.
         # For this check, we assume the `patient_id` in the URL for a patient accessing their own data *is* their own user_id.
-        if current_user.id != validated_patient_uuid:
+        
+        # Convert both to strings for comparison to handle UUID vs string properly
+        user_id_str = str(current_user.id)
+        patient_id_str = str(validated_patient_uuid)
+        
+        logger.debug(f"Comparing user_id: {user_id_str} to patient_id: {patient_id_str}")
+        
+        if user_id_str != patient_id_str:
             logger.warning(
                 f"Patient user {current_user.username} (ID: {current_user.id}) " 
                 f"attempted to access patient data for {validated_patient_uuid} - FORBIDDEN."
