@@ -3,7 +3,7 @@ Migrated test from standalone test to proper unit test.
 Original file: app/tests/standalone/core/test_standalone_biometric_processor.py
 
 This test uses the actual implementations from the main codebase.
-Migration date: Tue May 13 10:28:45 EDT 2025
+Migration date: Tue May 13 10:34:28 EDT 2025
 """
 
 # Migrated imports from original file

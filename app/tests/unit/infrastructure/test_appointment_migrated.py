@@ -7,12 +7,12 @@ Migration date: Tue May 13 10:04:16 EDT 2025
 """
 
 # Import the actual implementations being tested
-from app.domain.entities.appointment import Appointment
+from app.domain.entities.appointment import Appointment, AppointmentStatus
 from app.domain.exceptions import InvalidAppointmentStateError, InvalidAppointmentTimeError
 
 import pytest
 from datetime import datetime, timedelta
-from uuid import uuid4
+from uuid import uuid4, UUID
 from app.domain.utils.datetime_utils import UTC
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def sample_appointment():
         start_time=start_time,
         end_time=end_time,
         appointment_type="INITIAL_CONSULTATION",
-        status="SCHEDULED"
+        status="scheduled"
     )
 
 class TestAppointment:
@@ -37,7 +37,7 @@ class TestAppointment:
     
     def test_init(self, sample_appointment):
         """Test that an appointment can be initialized with valid parameters."""
-        assert sample_appointment.status == "SCHEDULED"
+        assert sample_appointment.status == AppointmentStatus.SCHEDULED
         assert sample_appointment.appointment_type == "INITIAL_CONSULTATION"
         
     def test_reschedule(self, sample_appointment):
@@ -53,10 +53,14 @@ class TestAppointment:
     def test_cancel(self, sample_appointment):
         """Test that an appointment can be canceled."""
         reason = "Patient request"
-        sample_appointment.cancel(reason)
+        cancelled_by = UUID(str(uuid4()))  # Create a user ID for who cancelled
         
-        assert sample_appointment.status == "cancelled"
+        sample_appointment.cancel(cancelled_by=cancelled_by, reason=reason)
+        
+        assert sample_appointment.status == AppointmentStatus.CANCELLED
         assert sample_appointment.cancellation_reason == reason
+        assert sample_appointment.cancelled_by_user_id == cancelled_by
+        assert sample_appointment.cancelled_at is not None
 
 # Run with pytest -vx app/tests/unit/infrastructure/test_appointment_migrated.py
 
