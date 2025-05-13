@@ -69,25 +69,50 @@ async def mock_mentallama_service_instance() -> AsyncMock:
     with pre-configured return values.
     """
     # Create a mock instance respecting the MentaLLaMAInterface spec
-    mock_service = AsyncMock(spec=MentaLLaMAInterface)
-
-    # Mock process method with proper async behavior
-    mock_service.process.return_value = {
-        "model": "mock_model",
-        "prompt": TEST_PROMPT,
-        "response": "mock process response",
-        "provider": "mock_provider",
-    }
-
-    # Mock detect_depression method
-    mock_service.detect_depression.return_value = {"depression_detected": True, "score": 0.9}
-
-    # Mock required BaseMLInterface methods
-    mock_service.initialize.return_value = None
-    mock_service.is_healthy.return_value = True
-    mock_service.shutdown.return_value = None
-
-    return mock_service
+    mock = AsyncMock(spec=MentaLLaMAInterface)
+    
+    # Mock is_healthy method to return True for health checks
+    mock.is_healthy.return_value = True
+    
+    # Create async process method that returns a proper dictionary
+    async def process_side_effect(text: str, model_type: str, options: dict):
+        """Process method implementation that returns different responses based on model_type."""
+        # Return different responses based on the model_type
+        if model_type == "analysis":
+            return {
+                "success": True,
+                "analysis": {
+                    "sentiment": "positive",
+                    "topics": ["health", "wellness"],
+                    "emotions": ["happy", "content"]
+                }
+            }
+        elif model_type == "conditions":
+            return {
+                "success": True,
+                "conditions": [
+                    {"name": "anxiety", "confidence": 0.3},
+                    {"name": "depression", "confidence": 0.1}
+                ]
+            }
+        elif model_type == "therapeutic":
+            return {
+                "success": True,
+                "response": "I understand you're feeling that way. Let's explore this further."
+            }
+        else:
+            # Default response for any other model type
+            return {
+                "success": True,
+                "generated_text": f"Response for {text} using {model_type}",
+                "model_used": model_type,
+                "processing_time": 0.1
+            }
+    
+    # Mock the process method with our implementation
+    mock.process.side_effect = process_side_effect
+    
+    return mock
 
 
 @pytest.fixture(scope="function")
@@ -302,31 +327,25 @@ async def test_wellness_dimensions_endpoint(mentallama_test_client: AsyncClient,
     assert isinstance(response.json(), dict)
 
 @pytest.mark.asyncio
-async def test_service_unavailable(
-    mentallama_test_client: AsyncClient, 
-    mock_mentallama_service_instance: AsyncMock,
-    auth_headers: dict[str, str]
-) -> None:
-    """Tests error handling when the MentaLLaMA service is unavailable."""
-    # Configure the mock to raise an exception for this specific test
-    mock_mentallama_service_instance.process.side_effect = Exception("Service Down")
-    mock_mentallama_service_instance.detect_depression.side_effect = Exception("Service Down")
-    # Add side effects for other methods called by endpoints if necessary
-
-    payload = {"prompt": TEST_PROMPT, "user_id": TEST_USER_ID, "model": TEST_MODEL}
+async def test_service_unavailable(mentallama_test_client: AsyncClient, mock_mentallama_service_instance: AsyncMock, auth_headers: dict[str, str]) -> None:
+    """Test behavior when MentaLLaMA service is not available."""
+    # Override is_healthy to return False and make the API throw the expected HTTPException
+    mock_mentallama_service_instance.is_healthy.return_value = False
+    
+    # Test with the process endpoint
     response = await mentallama_test_client.post(
-        f"{MENTALLAMA_API_PREFIX}/process", json=payload, headers=auth_headers
+        f"{MENTALLAMA_API_PREFIX}/process",
+        json={
+            "prompt": TEST_PROMPT,
+            "user_id": TEST_USER_ID,
+            "model": TEST_MODEL
+        },
+        headers=auth_headers
     )
-
-    # Expecting an internal server error or specific service unavailable error
-    assert response.status_code == 503 # Or 500 depending on error handling
-    assert "detail" in response.json()
-    # Check specific detail message if applicable
-    # assert "MentaLLaMA service is currently unavailable" in response.json()["detail"]
-
-    # Reset side effect if the mock instance is used across tests (though it's function scoped here)
-    mock_mentallama_service_instance.process.side_effect = None
-    mock_mentallama_service_instance.detect_depression.side_effect = None
+    
+    # Should return 503 Service Unavailable
+    assert response.status_code == 503
+    assert "MentaLLaMA service is not available" in response.text
 
 
 @pytest_asyncio.fixture(scope="function")
