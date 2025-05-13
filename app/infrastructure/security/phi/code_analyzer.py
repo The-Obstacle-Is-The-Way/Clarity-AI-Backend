@@ -426,6 +426,35 @@ class PHICodeAnalyzer:
                             ))
                             break
                     self.generic_visit(node)
+                    
+                def visit_Call(self, node):
+                    """Visit function calls to check for logging and print statements."""
+                    if hasattr(node, 'lineno'):
+                        self.current_line = node.lineno
+                    
+                    # Check for logging calls
+                    if isinstance(node.func, ast.Attribute):
+                        if node.func.attr in ('debug', 'info', 'warning', 'error', 'critical'):
+                            # This might be a logging call
+                            self.findings.append(PHIFinding(
+                                file_path=self.file_path,
+                                line_number=self.current_line,
+                                code_snippet="Logging call",
+                                message="Potential PHI in logging call",
+                                severity=CodeSeverity.WARNING
+                            ))
+                    elif isinstance(node.func, ast.Name) and node.func.id == 'print':
+                        # This is a print call
+                        self.findings.append(PHIFinding(
+                            file_path=self.file_path,
+                            line_number=self.current_line,
+                            code_snippet="print statement",
+                            message="Potential PHI in print statement",
+                            severity=CodeSeverity.INFO
+                        ))
+                    
+                    # Continue visiting children
+                    self.generic_visit(node)
             
             visitor = PHINodeVisitor(file_path)
             visitor.visit(tree)
