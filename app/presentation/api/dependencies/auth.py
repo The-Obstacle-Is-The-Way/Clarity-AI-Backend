@@ -122,15 +122,21 @@ async def get_current_user(
     try:
         # Ensure the JWT service is correctly injected and used
         logger.debug(f"GET_CURRENT_USER: Using JWT service: {type(jwt_service).__name__}, ID: {id(jwt_service)}")
-        payload = await jwt_service.decode_token(token)
+        # Remove await as decode_token is not an async method
+        payload = jwt_service.decode_token(token)
         logger.debug(f"GET_CURRENT_USER: Token decoded successfully by JWT service. Payload type: {type(payload)}")
         
         # Validate payload structure (basic check)
-        if not isinstance(payload, dict):
-            logger.warning("get_current_user: Decoded payload is not a dictionary.")
+        if not payload:
+            logger.warning("get_current_user: Decoded payload is empty.")
             raise credentials_exception
         
-        username_from_sub: str | None = payload.get("sub")
+        username_from_sub: str | None = None
+        if hasattr(payload, 'sub'):
+            username_from_sub = payload.sub
+        elif isinstance(payload, dict):
+            username_from_sub = payload.get("sub")
+            
         if username_from_sub is None:
             logger.warning("get_current_user: Subject (sub) not in token payload.")
             raise credentials_exception
@@ -263,17 +269,43 @@ async def get_current_active_user_wrapper(user: DomainUser = Depends(get_current
     return user
 
 async def get_optional_user(
-    token: str = Depends(OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)),
+    token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     jwt_service: JWTServiceDep = None,
     user_repo: UserRepoDep = None,
     **kwargs
 ) -> DomainUser | None:
     """Dependency to get the current user if authenticated, or None if not."""
-    if not token:
+    if not token_credentials:
         return None
+        
+    token = token_credentials.credentials
+    
     try:
-        return await get_current_user(token, jwt_service, user_repo)
-    except HTTPException:
+        # Use the same logic as get_current_user but don't raise exceptions
+        if not jwt_service or not user_repo:
+            return None
+            
+        # Decode token without using await
+        payload = jwt_service.decode_token(token)
+        
+        if not payload:
+            return None
+            
+        # Extract user ID from payload
+        user_id_str = payload.sub if hasattr(payload, 'sub') else payload.get("sub")
+        if not user_id_str:
+            return None
+            
+        # Get user from repository
+        user_id = uuid.UUID(str(user_id_str))
+        user = await user_repo.get_user_by_id(user_id=user_id)
+        
+        if user and user.account_status == UserStatus.ACTIVE:
+            return user
+            
+        return None
+    except Exception:
+        # Silently return None for any error
         return None
 
 

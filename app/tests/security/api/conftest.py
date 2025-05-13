@@ -265,27 +265,59 @@ def auth_test_helper():
     return AuthTestHelper()
 
 
-@pytest.fixture
-async def get_valid_auth_headers(auth_test_helper, authenticated_user) -> dict[str, str]:
+@pytest.fixture(scope="function")
+async def get_valid_auth_headers(auth_test_helper, authenticated_user, global_mock_jwt_service) -> dict[str, str]:
     """Generate valid authentication headers with JWT token."""
-    return await auth_test_helper.get_auth_headers(
+    headers = await auth_test_helper.get_auth_headers(
         authenticated_user.id,
         authenticated_user.username,
         authenticated_user.email,
         authenticated_user.roles  # Pass the roles directly, no need to extract values
     )
+    
+    # Extract the token from headers for global_mock_jwt_service token store
+    if "Authorization" in headers:
+        token = headers["Authorization"].replace("Bearer ", "")
+        # Register this token in the mock service's token_store
+        user_data = {
+            "sub": str(authenticated_user.id),
+            "username": authenticated_user.username,
+            "email": authenticated_user.email,
+            "roles": authenticated_user.roles
+        }
+        # Store token data in the mock service's stores
+        global_mock_jwt_service.token_store[token] = user_data
+        global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(minutes=30)
+        
+    return headers
 
 
 @pytest.fixture
-async def get_valid_provider_auth_headers(auth_test_helper) -> dict[str, str]:
+async def get_valid_provider_auth_headers(auth_test_helper, global_mock_jwt_service) -> dict[str, str]:
     """Generate valid authentication headers for a provider (clinician) user."""
     provider_id = uuid.UUID("b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22")
-    return await auth_test_helper.get_auth_headers(
+    headers = await auth_test_helper.get_auth_headers(
         provider_id,
         "provider_user",
         "provider@example.com",
         ["clinician"]
     )
+    
+    # Extract the token from headers for global_mock_jwt_service token store
+    if "Authorization" in headers:
+        token = headers["Authorization"].replace("Bearer ", "")
+        # Register this token in the mock service's token_store
+        user_data = {
+            "sub": str(provider_id),
+            "username": "provider_user",
+            "email": "provider@example.com",
+            "roles": ["clinician"]
+        }
+        # Store token data in the mock service's stores
+        global_mock_jwt_service.token_store[token] = user_data
+        global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(minutes=30)
+        
+    return headers
 
 
 @pytest.fixture(scope="function")
@@ -323,6 +355,10 @@ def global_mock_jwt_service(test_settings) -> MagicMock:
     # Use the same secret key that the app will use for verification
     secret_key = test_settings.JWT_SECRET_KEY
     algorithm = test_settings.JWT_ALGORITHM
+    
+    # Expose token_store and token_exp_store as attributes of the mock
+    mock_service.token_store = token_store
+    mock_service.token_exp_store = token_exp_store
     
     # Set up async methods
     mock_create_token = AsyncMock()
