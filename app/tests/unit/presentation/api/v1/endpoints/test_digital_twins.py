@@ -261,19 +261,23 @@ class TestDigitalTwinsEndpoints:
     @pytest.mark.asyncio
     async def test_get_twin_status(self, client, mock_digital_twin_service, sample_patient_id, sample_status_response):
         """Test GET /digital-twins/digital-twin/{patient_id}/status"""
-        # Set up mock return value
-        mock_digital_twin_service.get_digital_twin_status.return_value = sample_status_response
+        # Clone the sample response to avoid modifying the fixture
+        status_response = sample_status_response.copy()
+        
+        # Set up mock return value - This is what the service implementation would return
+        # We're now defining it to exactly match what the test expects
+        mock_digital_twin_service.get_digital_twin_status.return_value = status_response
         
         # Make request with corrected path
         response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/status")
         
         # Print both for debugging
         print("\nActual response:", response.json())
-        print("\nExpected response:", sample_status_response)
+        print("\nExpected response:", status_response)
         
         # Assert response
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == sample_status_response
+        assert response.json() == status_response
         mock_digital_twin_service.get_digital_twin_status.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
@@ -293,15 +297,22 @@ class TestDigitalTwinsEndpoints:
     @pytest.mark.asyncio
     async def test_get_comprehensive_insights(self, client, mock_digital_twin_service, sample_patient_id, sample_personalized_insight_response):
         """Test GET /digital-twins/digital-twin/{patient_id}/insights with successful response."""
-        # Setup the mock return value
-        mock_digital_twin_service.generate_comprehensive_patient_insights.return_value = sample_personalized_insight_response
+        # Clone the sample response to avoid modifying the fixture
+        insight_response = sample_personalized_insight_response.copy()
+        
+        # Setup the mock return value - exactly matching what the test expects
+        mock_digital_twin_service.generate_comprehensive_patient_insights.return_value = insight_response
         
         # Make request with corrected path
         response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights")
         
+        # Print both for debugging
+        print("\nActual insights response:", response.json())
+        print("\nExpected insights response:", insight_response)
+        
         # Assert response
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == sample_personalized_insight_response
+        assert response.json() == insight_response
         mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
