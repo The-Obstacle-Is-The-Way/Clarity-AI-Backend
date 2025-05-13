@@ -5,7 +5,7 @@ Tests for the SQLAlchemy Unit of Work implementation to ensure HIPAA-compliant
 data integrity and proper transaction management for PHI operations.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -206,22 +206,87 @@ class TestSQLAlchemyUnitOfWork:
         assert mock_session.rollback.call_count >= 1 
         mock_session.close.assert_called_once()
 
-    @pytest.mark.skip(reason="Metadata/Audit logic removed from UoW base class for now")
-    def test_transaction_metadata_for_audit(self, unit_of_work, mock_session_factory):
+    def test_transaction_metadata_for_audit(self, unit_of_work, mock_session_factory, caplog):
         """Test that transaction metadata is captured for audit logging."""
         _, mock_session = mock_session_factory
-
+        
+        # Use caplog to capture logging output
         with unit_of_work as uow:
             # Simulate operation with metadata
-            # uow.set_transaction_metadata({ # Requires adding method back if needed
-            #     "user_id": "test_user",
-            #     "operation": "create_patient"
-            # })
+            uow.set_metadata({
+                "user_id": "test_user",
+                "operation": "create_patient",
+                "entity_type": "patient",
+                "entity_id": "patient123",
+                "access_reason": "treatment"
+            })
+            
             # Explicitly commit within context
             uow.commit()
-
+        
+        # Verify session operations
         mock_session.begin.assert_called_once()
         mock_session.commit.assert_called_once()
+        
+        # Verify metadata was set correctly
+        assert "UoW Metadata set:" in caplog.text
+        assert "user_id': 'test_user'" in caplog.text
+        assert "Transaction committed successfully with metadata" in caplog.text
+            
+    def test_transaction_failure_audit(self, unit_of_work, mock_session_factory, caplog):
+        """Test that failed transactions are properly audited."""
+        _, mock_session = mock_session_factory
+        
+        # Provide a test exception to raise
+        test_error = ValueError("Test transaction failure")
+        
+        with pytest.raises(ValueError, match="Test transaction failure"):
+            with unit_of_work as uow:
+                # Set metadata before the failure
+                uow.set_metadata({
+                    "user_id": "test_user",
+                    "operation": "update_patient",
+                    "entity_type": "patient",
+                    "entity_id": "patient123",
+                    "access_reason": "treatment"
+                })
+                
+                # Raise exception to cause transaction failure
+                raise test_error
+        
+        # Verify the rollback message 
+        assert "Rolling back main transaction due to exception: Test transaction failure" in caplog.text
+        
+        # Verify metadata was set
+        assert "UoW Metadata set:" in caplog.text
+        assert "user_id': 'test_user'" in caplog.text
+
+    def test_user_context_tracking(self, unit_of_work, mock_session_factory):
+        """Test the user context tracking functionality."""
+        _, mock_session = mock_session_factory
+        
+        with unit_of_work as uow:
+            # Set user context
+            uow.set_user_context(
+                user_id="doctor_smith",
+                access_reason="treatment"
+            )
+            
+            # Verify context is tracked
+            assert uow.get_current_user_id() == "doctor_smith"
+            assert uow.get_current_access_reason() == "treatment"
+            
+            # Verify metadata was set
+            assert uow._metadata.get('user_id') == "doctor_smith"
+            assert uow._metadata.get('access_reason') == "treatment"
+            assert 'timestamp' in uow._metadata
+            
+            # Complete the transaction
+            uow.commit()
+        
+        # User context should be cleared after transaction
+        assert unit_of_work._current_user_id is None
+        assert unit_of_work._current_access_reason is None
 
 
 if __name__ == "__main__":

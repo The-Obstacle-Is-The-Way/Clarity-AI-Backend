@@ -8,13 +8,15 @@ ensuring transactional integrity for PHI data operations according to HIPAA requ
 import abc
 import contextlib
 import logging
-from typing import Any, ContextManager, TypeVar
+from datetime import datetime, timezone
+from typing import Any, ContextManager, TypeVar, Dict, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.exceptions import RepositoryError
 from app.domain.interfaces.unit_of_work import UnitOfWork
+from app.infrastructure.logging.audit import get_audit_logger
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -49,7 +51,14 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         self._is_read_only_stack: list[bool] = [] 
         self._committed = False # Track if commit was called in the current context
         self._repositories: dict[str, abc.ABC] = {}
+        
+        # Transaction metadata for audit logging
         self._metadata: dict[str, Any] = {}
+        
+        # Audit metadata tracking
+        self._audit_enabled = True
+        self._current_user_id: Optional[str] = None
+        self._current_access_reason: Optional[str] = None
 
     @property
     def session(self) -> Session:
@@ -115,6 +124,10 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                 log_level = "main" if is_top_level else "nested"
                 logger.warning(f"Rolling back {log_level} transaction due to exception: {exc_val}")
                 self._session.rollback() # Rolls back to savepoint or start
+                
+                # Log the failed transaction for audit purposes if top-level
+                if is_top_level and self._metadata and self._audit_enabled:
+                    self._log_transaction_failure(str(exc_val))
             else:
                 # --- No Exception --- 
                 if is_read_only:
@@ -125,7 +138,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     log_level = "main" if is_top_level else "nested (releasing savepoint)"
                     logger.debug(f"Committing {log_level} transaction.")
                     # Add audit logic here if needed
-                    if is_top_level and self._metadata:
+                    if is_top_level and self._metadata and self._audit_enabled:
                         # Use the new audit-enabled commit method for top-level commits with metadata
                         self._commit_with_audit()
                     else:
@@ -139,6 +152,10 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     if is_top_level:
                          logger.warning(f"Rolling back {log_level} transaction: No explicit commit was called.")
                          self._session.rollback()
+                         
+                         # Log the abandoned transaction for audit purposes if it had metadata
+                         if self._metadata and self._audit_enabled:
+                             self._log_transaction_abandoned()
                     else:
                          logger.debug(f"Rolling back {log_level} transaction (savepoint): No explicit commit.")
                          self._session.rollback() # Rolls back savepoint changes
@@ -149,6 +166,10 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             if is_top_level and self._session:
                 try:
                     self._session.rollback()
+                    
+                    # Log the failed transaction for audit purposes
+                    if self._metadata and self._audit_enabled:
+                        self._log_transaction_failure(f"SQLAlchemy error: {str(e)}")
                 except Exception as final_rb_err:
                     logger.error(f"Error during final rollback attempt: {final_rb_err}")
             raise RepositoryError(f"Error during transaction cleanup: {e!s}") from e
@@ -157,6 +178,10 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             if is_top_level and self._session:
                  try:
                      self._session.rollback()
+                     
+                     # Log the failed transaction for audit purposes
+                     if self._metadata and self._audit_enabled:
+                         self._log_transaction_failure(f"Unexpected error: {str(e)}")
                  except Exception as final_rb_err:
                      logger.error(f"Error during final rollback attempt: {final_rb_err}")
             raise # Re-raise unexpected errors
@@ -173,6 +198,11 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                     self._session.close()
                     self._session = None
                     logger.debug("Exited UoW context: Session closed.")
+                
+                # Clear metadata when exiting top-level context
+                self._metadata = {}
+                self._current_user_id = None
+                self._current_access_reason = None
             elif self._transaction_level > 0:
                 logger.debug(f"Exited nested context. Level now: {self._transaction_level}")
             else: # Should not happen
@@ -213,6 +243,11 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         logger.debug(f"Explicit rollback called for transaction level {self._transaction_level}.")
         self._session.rollback() # Rollback immediately
         self._committed = False # Ensure commit doesn't happen in __exit__ for this level
+        
+        # If we rolled back the top-level transaction and have metadata, log it for audit
+        if self._transaction_level == 1 and self._metadata and self._audit_enabled:
+            self._log_transaction_failure("Explicit rollback requested by application code")
+        
         # If nested, this rolls back the savepoint. If top-level, rolls back the entire transaction.
     
     @contextlib.contextmanager
@@ -269,10 +304,14 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
                 - access_reason: Reason for accessing PHI (treatment, payment, operations)
                 - additional_context: Any additional context for the audit trail
         """
-        from app.infrastructure.logging.audit import get_audit_logger
-        
-        # Store metadata for audit logging 
+        # Update metadata for audit logging
         self._metadata.update(metadata)
+        
+        # Store current user and reason for convenient access
+        if 'user_id' in metadata:
+            self._current_user_id = metadata['user_id']
+        if 'access_reason' in metadata:
+            self._current_access_reason = metadata['access_reason']
         
         # Get required fields for HIPAA logging
         user_id = metadata.get('user_id')
@@ -282,29 +321,79 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         access_reason = metadata.get('access_reason', 'not_specified')
         
         # Log immediately to ensure it's captured even if transaction fails
-        try:
-            # Get the audit logger
-            audit_logger = get_audit_logger()
-            
-            # Log the access event
-            if user_id and (entity_type or operation):
-                # Create audit log entry
-                audit_logger.log_phi_access(
-                    user_id=user_id,
-                    action=operation or 'access',
-                    resource_type=entity_type or 'unknown',
-                    resource_id=str(entity_id) if entity_id else 'unknown',
-                    access_reason=access_reason,
-                    additional_context=metadata.get('additional_context')
-                )
-            else:
-                logger.warning(f"Incomplete audit metadata: {metadata}")
-        except Exception as e:
-            # Don't fail the transaction if audit logging fails
-            # But log the error so it can be investigated
-            logger.error(f"Error in audit logging: {e}")
+        if self._audit_enabled:
+            try:
+                # Get the audit logger
+                audit_logger = get_audit_logger()
+                
+                # Log the access event
+                if user_id and (entity_type or operation):
+                    # Create audit log entry - Using the non-async version for sync code
+                    audit_logger.log_data_modification(
+                        user_id=user_id,
+                        action=operation or 'access',
+                        entity_type=entity_type or 'unknown',
+                        entity_id=str(entity_id) if entity_id else 'unknown',
+                        status='initiated',
+                        details=f"Transaction initiated with reason: {access_reason}",
+                        phi_fields=metadata.get('phi_fields')
+                    )
+                else:
+                    logger.warning(f"Incomplete audit metadata: {metadata}")
+            except Exception as e:
+                # Don't fail the transaction if audit logging fails
+                # But log the error so it can be investigated
+                logger.error(f"Error in audit logging: {e}")
             
         logger.debug(f"UoW Metadata set: {metadata}")
+    
+    def set_user_context(self, user_id: str, access_reason: str) -> None:
+        """
+        Set the current user context for audit logging.
+        
+        This method is a convenience wrapper for setting the most common
+        audit metadata - the current user and the reason for accessing PHI.
+        
+        Args:
+            user_id: ID of the user performing operations
+            access_reason: Reason for accessing PHI (e.g., "treatment", "payment", "operations")
+        """
+        self._current_user_id = user_id
+        self._current_access_reason = access_reason
+        
+        # Update the metadata dictionary
+        self._metadata.update({
+            'user_id': user_id,
+            'access_reason': access_reason,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+        
+        logger.debug(f"UoW User context set: user_id={user_id}, reason={access_reason}")
+    
+    def disable_audit_logging(self) -> None:
+        """
+        Temporarily disable audit logging for this unit of work.
+        
+        WARNING: This should only be used in very specific circumstances
+        where audit logging might cause circular dependencies or for
+        system maintenance operations. Using this without appropriate
+        justification violates HIPAA requirements.
+        """
+        self._audit_enabled = False
+        logger.warning("AUDIT LOGGING DISABLED for this Unit of Work - ensure this is justified")
+    
+    def enable_audit_logging(self) -> None:
+        """Re-enable audit logging if it was previously disabled."""
+        self._audit_enabled = True
+        logger.info("Audit logging re-enabled for this Unit of Work")
+    
+    def get_current_user_id(self) -> Optional[str]:
+        """Get the current user ID for this transaction context."""
+        return self._current_user_id
+    
+    def get_current_access_reason(self) -> Optional[str]:
+        """Get the current access reason for this transaction context."""
+        return self._current_access_reason
         
     def _commit_with_audit(self) -> None:
         """Commit changes with audit logging for HIPAA compliance."""
@@ -313,8 +402,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             
         try:
             # Prepare audit log entry if metadata exists
-            if self._metadata:
-                from app.infrastructure.logging.audit import get_audit_logger
+            if self._metadata and self._audit_enabled:
                 audit_logger = get_audit_logger()
                 
                 # Log transaction completion
@@ -334,9 +422,8 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             
         except Exception as e:
             # Log failure but don't swallow the exception
-            if self._metadata and 'user_id' in self._metadata:
+            if self._metadata and 'user_id' in self._metadata and self._audit_enabled:
                 try:
-                    from app.infrastructure.logging.audit import get_audit_logger
                     audit_logger = get_audit_logger()
                     audit_logger.log_data_modification(
                         user_id=self._metadata['user_id'],
@@ -351,6 +438,48 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             
             # Re-raise the original exception
             raise
+    
+    def _log_transaction_failure(self, error_message: str) -> None:
+        """Log a transaction failure to the audit log."""
+        if not self._audit_enabled:
+            return
+            
+        try:
+            audit_logger = get_audit_logger()
+            
+            # Log the failed transaction
+            if 'user_id' in self._metadata:
+                audit_logger.log_data_modification(
+                    user_id=self._metadata['user_id'],
+                    action=self._metadata.get('operation', 'transaction'),
+                    entity_type=self._metadata.get('entity_type', 'unknown'),
+                    entity_id=str(self._metadata.get('entity_id', 'unknown')),
+                    status='failed',
+                    details=f"Transaction failed: {error_message}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to log transaction failure in audit log: {e}")
+    
+    def _log_transaction_abandoned(self) -> None:
+        """Log an abandoned transaction (exited without commit) to the audit log."""
+        if not self._audit_enabled:
+            return
+            
+        try:
+            audit_logger = get_audit_logger()
+            
+            # Log the abandoned transaction
+            if 'user_id' in self._metadata:
+                audit_logger.log_data_modification(
+                    user_id=self._metadata['user_id'],
+                    action=self._metadata.get('operation', 'transaction'),
+                    entity_type=self._metadata.get('entity_type', 'unknown'),
+                    entity_id=str(self._metadata.get('entity_id', 'unknown')),
+                    status='abandoned',
+                    details="Transaction exited without explicit commit"
+                )
+        except Exception as e:
+            logger.error(f"Failed to log abandoned transaction in audit log: {e}")
 
     def _get_repository(self, repo_type: type[Repo]) -> Repo:
         """Retrieves or creates a repository instance of the given type."""
