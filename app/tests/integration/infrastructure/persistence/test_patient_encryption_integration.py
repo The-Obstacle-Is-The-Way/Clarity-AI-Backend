@@ -403,11 +403,11 @@ class TestPatientEncryptionIntegration:
         # Tamper with the encrypted text
         tampered_text = encrypted_text[:-5] + "XXXXX" # Corrupt the end
         
-        with pytest.raises(ValueError, match="Decryption failed: Invalid token") as excinfo_token: # Adjusted match
+        with pytest.raises(ValueError, match="Failed to decrypt: Invalid token") as excinfo_token:
             service.decrypt(tampered_text) # decrypt directly takes string or bytes
         logger.debug(f"Caught expected InvalidToken error: {excinfo_token.value}")
 
-        with pytest.raises(ValueError, match="Decryption failed: Invalid base64 encoding") as excinfo_b64:
+        with pytest.raises(ValueError, match="Failed to decrypt: Invalid base64 encoding") as excinfo_b64:
             service.decrypt("v1:thisIsNotBase64!@#")
         logger.debug(f"Caught expected base64 error: {excinfo_b64.value}")
         
@@ -420,7 +420,7 @@ class TestPatientEncryptionIntegration:
         logger.debug("Caught expected missing prefix error for string.")
 
         # Test decryption of prefixed but invalid (non-base64) data
-        with pytest.raises(ValueError, match="Decryption failed: Invalid base64 encoding"):
+        with pytest.raises(ValueError, match="Failed to decrypt: Invalid base64 encoding"):
              service.decrypt(f"{service.VERSION_PREFIX}NotValidBase64")
         logger.debug("Caught expected error for prefixed but invalid base64.")
 
@@ -435,6 +435,6 @@ class TestPatientEncryptionIntegration:
         other_service = self.BaseEncryptionService(direct_key=other_key)
         encrypted_with_main_key = service.encrypt("data for main key")
         
-        with pytest.raises(ValueError, match="Decryption failed: Invalid token"):
+        with pytest.raises(ValueError, match="Failed to decrypt: Invalid token"):
             other_service.decrypt(encrypted_with_main_key)
         logger.debug("Caught expected InvalidToken error when decrypting with wrong key.")
