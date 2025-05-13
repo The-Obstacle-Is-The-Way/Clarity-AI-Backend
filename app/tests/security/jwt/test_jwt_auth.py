@@ -253,12 +253,10 @@ class TestJWTAuthentication:
                 "Not enough segments" in str(exc_info.value)), \
                f"Unexpected malformed token error: {exc_info.value!s}"
 
-    @pytest.mark.skip(reason="Needs refactoring to test actual endpoints/middleware, not call non-existent jwt_service method.")
     @pytest.mark.asyncio # Mark as async - Needs refactoring to hit actual endpoints/middleware
     async def test_role_based_access(self, jwt_service: JWTService, token_factory):
         """Test that role-based access control works correctly. 
-           NOTE: This test needs significant refactoring to test actual endpoints.
-           Leaving structure for now, but logic is incorrect.
+           Now tests against the implemented check_resource_access method.
         """
         # Test each role's access to different resources
         for role, resources in RESOURCE_ACCESS.items():

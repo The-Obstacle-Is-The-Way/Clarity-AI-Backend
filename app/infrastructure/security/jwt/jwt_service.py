@@ -495,6 +495,86 @@ class JWTService(IJwtService):
         self._token_blacklist.clear()
         logger.info("JWTService: Token blacklist cleared.")
 
+    def check_resource_access(self, request, resource_path: str, resource_owner_id: str | None = None) -> bool:
+        """
+        Check if the authenticated user has access to the specified resource.
+        
+        Args:
+            request: The request object containing authorization headers or cookies
+            resource_path: The path of the resource being accessed
+            resource_owner_id: Optional ID of the resource owner for own-resource checks
+            
+        Returns:
+            bool: True if access is allowed, False otherwise
+        """
+        # Extract token from request
+        token = self.extract_token_from_request(request)
+        if not token:
+            logger.warning(f"No token found in request for resource {resource_path}")
+            return False
+            
+        try:
+            # Decode and validate the token
+            payload = self.decode_token(token)
+            
+            # Get user ID and roles from token
+            user_id = payload.sub
+            roles = payload.roles if hasattr(payload, 'roles') else []
+            
+            # Check access based on roles and resource path
+            # Admin role has access to everything
+            if 'admin' in roles:
+                logger.debug(f"Admin access granted to {resource_path}")
+                return True
+                
+            # Check if this is an 'own resource' request
+            if resource_owner_id and user_id == resource_owner_id:
+                # User is accessing their own resource
+                logger.debug(f"Own resource access granted to {resource_path} for user {user_id}")
+                return True
+                
+            # Check specific resource permissions based on roles
+            # This should be replaced with a more sophisticated permission system
+            if resource_path.startswith('/api/patients'):
+                return 'doctor' in roles or 'practitioner' in roles
+            elif resource_path.startswith('/api/medical_records'):
+                return 'doctor' in roles or 'practitioner' in roles
+            elif resource_path.startswith('/api/billing'):
+                return 'doctor' in roles or 'finance' in roles or 'admin' in roles
+            elif resource_path.startswith('/api/system_settings'):
+                return 'admin' in roles
+                
+            # Default to denying access
+            logger.warning(f"Access denied to {resource_path} for user {user_id} with roles {roles}")
+            return False
+            
+        except (InvalidTokenException, TokenExpiredException, AuthenticationError) as e:
+            logger.warning(f"Token validation failed: {str(e)}")
+            return False
+            
+    def extract_token_from_request(self, request) -> str | None:
+        """
+        Extract JWT token from request headers or cookies.
+        
+        Args:
+            request: The request object that might contain the token
+            
+        Returns:
+            str | None: The extracted token or None if not found
+        """
+        # Try to get token from Authorization header
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            return auth_header[7:]  # Remove 'Bearer ' prefix
+            
+        # Try to get token from cookies
+        if hasattr(request, "cookies") and request.cookies:
+            if "access_token" in request.cookies:
+                return request.cookies["access_token"]
+                
+        # No token found
+        return None
+
 def get_jwt_service() -> IJwtService:
     """
     Factory function to create a JWTService instance.
