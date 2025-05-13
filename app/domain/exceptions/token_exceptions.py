@@ -1,41 +1,53 @@
 """
-Exception classes for token-related errors.
+Exception classes related to authentication tokens.
 
-This module defines exceptions that can be raised by token operations,
-such as JWT token validation, generation, and verification.
+This module defines exceptions raised during token validation, generation, and usage.
 """
 
-from app.domain.exceptions.base_exceptions import AuthenticationError
+from app.domain.exceptions.base_exceptions import BaseApplicationError, AuthenticationError
+
 
 class TokenException(AuthenticationError):
     """Base class for token-related exceptions."""
-    def __init__(self, message: str = "Token error"):
-        super().__init__(message)
+    
+    def __init__(self, message: str = "Token error", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
 
 class InvalidTokenException(TokenException):
-    """Exception raised when a token is invalid."""
-    def __init__(self, message: str = "Invalid token"):
-        super().__init__(message)
+    """Raised when a token is invalid."""
+    
+    def __init__(self, message: str = "Invalid token", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
 
 class TokenExpiredException(TokenException):
-    """Exception raised when a token has expired."""
-    def __init__(self, message: str = "Token has expired"):
-        super().__init__(message)
+    """Raised when a token has expired."""
+    
+    def __init__(self, message: str = "Token has expired", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
 
 class TokenBlacklistedException(TokenException):
-    """Exception raised when a token has been blacklisted."""
-    def __init__(self, message: str = "Token has been blacklisted"):
-        super().__init__(message)
+    """Raised when a token has been blacklisted."""
+    
+    def __init__(self, message: str = "Token has been blacklisted", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
 
 class TokenGenerationException(TokenException):
-    """Exception raised when token generation fails."""
-    def __init__(self, message: str = "Failed to generate token"):
-        super().__init__(message)
+    """Raised when a token cannot be generated."""
+    
+    def __init__(self, message: str = "Failed to generate token", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
 
 class MissingTokenException(TokenException):
-    """Exception raised when a required token is missing."""
-    def __init__(self, message: str = "Token is missing"):
-        super().__init__(message)
+    """Raised when a token is required but not provided."""
+    
+    def __init__(self, message: str = "Token is required but not provided", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
 
 # Aliases for backward compatibility
 InvalidTokenError = InvalidTokenException

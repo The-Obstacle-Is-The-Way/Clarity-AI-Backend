@@ -1,30 +1,47 @@
 """
-Exception classes for persistence-related errors.
+Exception classes related to persistence operations.
 
-This module defines exceptions that can be raised by the persistence layer.
+This module defines exceptions raised during database and repository operations.
 """
 
 from app.domain.exceptions.base_exceptions import BaseApplicationError
 
-class PersistenceError(BaseApplicationError):
-    """Base class for persistence-related errors."""
-    def __init__(self, message: str = "Persistence operation failed"):
-        super().__init__(message)
-        self.message = message
 
-class RepositoryError(PersistenceError):
-    """Error raised when a repository operation fails."""
-    def __init__(self, message: str = "Repository operation failed"):
-        super().__init__(message)
-        self.message = message
+class PersistenceError(BaseApplicationError):
+    """Base class for persistence-related exceptions."""
+    
+    def __init__(self, message: str = "Persistence operation failed", original_exception: Exception = None, *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+        self.original_exception = original_exception
+
 
 class EntityNotFoundError(PersistenceError):
-    """Error raised when an entity is not found in a repository."""
-    def __init__(self, entity_type: str, entity_id: str):
-        message = f"{entity_type} with ID {entity_id} not found"
-        super().__init__(message)
+    """Raised when an entity cannot be found in the persistence layer."""
+    
+    def __init__(self, entity_type: str = None, entity_id: str = None, message: str = None, *args, **kwargs):
+        if message is None:
+            if entity_type and entity_id:
+                message = f"{entity_type} with ID {entity_id} not found"
+            elif entity_type:
+                message = f"{entity_type} not found"
+            else:
+                message = "Entity not found"
+        super().__init__(message, *args, **kwargs)
         self.entity_type = entity_type
         self.entity_id = entity_id
+
+
+class RepositoryError(PersistenceError):
+    """Raised when a repository operation fails."""
+    
+    def __init__(self, message: str = "Repository operation failed", repository: str = None, operation: str = None, *args, **kwargs):
+        if repository and operation:
+            message = f"{message} in {repository} during {operation}"
+        elif repository:
+            message = f"{message} in {repository}"
+        super().__init__(message, *args, **kwargs)
+        self.repository = repository
+        self.operation = operation
 
 class DataIntegrityError(PersistenceError):
     """Error raised when a data integrity constraint is violated."""

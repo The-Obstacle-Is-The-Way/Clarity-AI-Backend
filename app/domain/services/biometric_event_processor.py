@@ -55,11 +55,24 @@ class AlertRule:
             condition: Condition that triggers the alert
             created_by: ID of the user who created the rule
             patient_id: Optional ID of the patient this rule applies to
+            
+        Raises:
+            ValidationError: If the condition contains an unknown operator
         """
         self.rule_id = rule_id
         self.name = name
         self.description = description
         self.priority = priority
+        
+        # Validate the operator in the condition
+        operator = condition.get("operator", "")
+        valid_operators = [">", ">=", "<", "<=", "==", "=", "!=", 
+                           "greater_than", "greater_than_or_equal", 
+                           "less_than", "less_than_or_equal", 
+                           "equal", "not_equal"]
+        if operator and operator not in valid_operators:
+            raise ValidationError(f"Unknown operator: {operator}")
+            
         self.condition = condition
         self.created_by = created_by
         self.patient_id = patient_id

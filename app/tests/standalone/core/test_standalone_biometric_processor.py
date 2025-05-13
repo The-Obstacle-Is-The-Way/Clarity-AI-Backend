@@ -1119,14 +1119,6 @@ class TestAlertRule(unittest.TestCase):
 
     def test_evaluate_greater_than_or_equal(self):
         """Test evaluating a rule with the greater than or equal operator."""
-        # Create a rule with greater than or equal operator
-        rule = AlertRule(
-            name="High Heart Rate",
-            data_type=BiometricType.HEART_RATE,
-            operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
-            threshold=100
-        )
-        
         # Create data points
         above_threshold = BiometricDataPoint(
             patient_id="patient1",
@@ -1146,10 +1138,33 @@ class TestAlertRule(unittest.TestCase):
             value=90
         )
         
-        # Evaluate the rule
-        self.assertTrue(rule.evaluate(above_threshold))
-        self.assertTrue(rule.evaluate(at_threshold))
-        self.assertFalse(rule.evaluate(below_threshold))
+        # Test each case with a fresh rule to avoid cooldown interference
+        # Test above threshold
+        rule1 = AlertRule(
+            name="High Heart Rate",
+            data_type=BiometricType.HEART_RATE,
+            operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
+            threshold=100
+        )
+        self.assertTrue(rule1.evaluate(above_threshold))
+        
+        # Test at threshold
+        rule2 = AlertRule(
+            name="High Heart Rate",
+            data_type=BiometricType.HEART_RATE,
+            operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
+            threshold=100
+        )
+        self.assertTrue(rule2.evaluate(at_threshold))
+        
+        # Test below threshold
+        rule3 = AlertRule(
+            name="High Heart Rate",
+            data_type=BiometricType.HEART_RATE,
+            operator=ComparisonOperator.GREATER_THAN_OR_EQUAL,
+            threshold=100
+        )
+        self.assertFalse(rule3.evaluate(below_threshold))
 
     def test_evaluate_less_than(self):
         """Test evaluating a rule with the less than operator."""
@@ -1187,14 +1202,6 @@ class TestAlertRule(unittest.TestCase):
 
     def test_evaluate_less_than_or_equal(self):
         """Test evaluating a rule with the less than or equal operator."""
-        # Create a rule with less than or equal operator
-        rule = AlertRule(
-            name="Low Heart Rate",
-            data_type=BiometricType.HEART_RATE,
-            operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
-            threshold=60
-        )
-        
         # Create data points
         above_threshold = BiometricDataPoint(
             patient_id="patient1",
@@ -1214,10 +1221,33 @@ class TestAlertRule(unittest.TestCase):
             value=50
         )
         
-        # Evaluate the rule
-        self.assertFalse(rule.evaluate(above_threshold))
-        self.assertTrue(rule.evaluate(at_threshold))
-        self.assertTrue(rule.evaluate(below_threshold))
+        # Test each case with a fresh rule to avoid cooldown interference
+        # Test above threshold
+        rule1 = AlertRule(
+            name="Low Heart Rate",
+            data_type=BiometricType.HEART_RATE,
+            operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
+            threshold=60
+        )
+        self.assertFalse(rule1.evaluate(above_threshold))
+        
+        # Test at threshold
+        rule2 = AlertRule(
+            name="Low Heart Rate",
+            data_type=BiometricType.HEART_RATE,
+            operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
+            threshold=60
+        )
+        self.assertTrue(rule2.evaluate(at_threshold))
+        
+        # Test below threshold
+        rule3 = AlertRule(
+            name="Low Heart Rate",
+            data_type=BiometricType.HEART_RATE,
+            operator=ComparisonOperator.LESS_THAN_OR_EQUAL,
+            threshold=60
+        )
+        self.assertTrue(rule3.evaluate(below_threshold))
 
     def test_evaluate_equal(self):
         """Test evaluating a rule with the equal operator."""

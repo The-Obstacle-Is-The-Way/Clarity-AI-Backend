@@ -11,25 +11,18 @@ from app.domain.exceptions.base_exceptions import (
     AuthorizationError,
     ConfigurationError,
     IntegrationError,
-    BusinessRuleError,
-    ApplicationError,
-    AuthorizationError,
-    DomainError,
-    InfrastructureError,
-    NotFoundError,
-    ResourceNotFoundError,
+    BusinessRuleError
+)
+
+from app.domain.exceptions.data_exceptions import (
+    DataIntegrityError,
+    DataNotFoundError
 )
 
 from app.domain.exceptions.persistence_exceptions import (
-    PersistenceError,
-    RepositoryError,
     EntityNotFoundError,
-    DataIntegrityError,
-    ConnectionError,
-    TransactionError,
-    MigrationError,
-    QueryError,
-    SerializationError,
+    PersistenceError,
+    RepositoryError
 )
 
 from app.domain.exceptions.token_exceptions import (
@@ -80,23 +73,15 @@ __all__ = [
     "ConfigurationError",
     "IntegrationError",
     "BusinessRuleError",
-    "ApplicationError",
-    "AuthorizationError",
-    "DomainError",
-    "InfrastructureError",
-    "NotFoundError",
-    "ResourceNotFoundError",
     
     # Persistence exceptions
-    "PersistenceError",
-    "RepositoryError", 
     "EntityNotFoundError",
+    "PersistenceError",
+    "RepositoryError",
+    
+    # Data exceptions
     "DataIntegrityError",
-    "ConnectionError",
-    "TransactionError",
-    "MigrationError",
-    "QueryError",
-    "SerializationError",
+    "DataNotFoundError",
     
     # Token exceptions
     "TokenException",

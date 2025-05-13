@@ -1,53 +1,106 @@
 """
-Exception classes for security-related errors.
+Exception classes related to security operations.
 
-This module defines exceptions that can be raised by security-related operations,
-such as authentication, authorization, and access control.
+This module defines exceptions raised during authentication, authorization,
+and other security-related operations.
 """
 
-from app.domain.exceptions.base_exceptions import AuthorizationError, BaseApplicationError
+from app.domain.exceptions.base_exceptions import BaseApplicationError, AuthenticationError, AuthorizationError
+
 
 class SecurityError(BaseApplicationError):
-    """General exception for security-related errors."""
-    def __init__(self, message: str = "A security error occurred"):
-        super().__init__(message)
+    """Base class for security-related exceptions."""
+    
+    def __init__(self, message: str = "Security violation", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
 
-class PHIAccessError(AuthorizationError):
-    """Exception raised specifically for unauthorized attempts to access PHI."""
-    def __init__(self, message: str = "Unauthorized access to Protected Health Information (PHI)"):
-        super().__init__(message)
 
-class PermissionDeniedError(AuthorizationError):
-    """Exception raised when a user lacks required permissions."""
-    def __init__(self, message: str = "Permission denied"):
-        super().__init__(message)
+class PHIAccessError(SecurityError, AuthorizationError):
+    """Raised when unauthorized access to PHI is attempted."""
+    
+    def __init__(self, message: str = "Unauthorized PHI access attempt", 
+                 user_id: str = None, resource_type: str = None, 
+                 action: str = None, *args, **kwargs):
+        if user_id and resource_type and action:
+            message = f"User {user_id} attempted unauthorized {action} on {resource_type} PHI"
+        super().__init__(message, *args, **kwargs)
+        self.user_id = user_id
+        self.resource_type = resource_type
+        self.action = action
 
-class InvalidCredentialsError(SecurityError):
-    """Exception raised when credentials are invalid."""
-    def __init__(self, message: str = "Invalid credentials"):
-        super().__init__(message)
 
-class AccountLockedError(SecurityError):
-    """Exception raised when a user account is locked."""
-    def __init__(self, message: str = "Account is locked"):
-        super().__init__(message)
+class PermissionDeniedError(SecurityError, AuthorizationError):
+    """Raised when a user does not have permission for an operation."""
+    
+    def __init__(self, message: str = "Permission denied", 
+                 user_id: str = None, permission: str = None, 
+                 resource: str = None, *args, **kwargs):
+        if user_id and permission and resource:
+            message = f"User {user_id} lacks permission '{permission}' for resource '{resource}'"
+        elif user_id and permission:
+            message = f"User {user_id} lacks permission '{permission}'"
+        super().__init__(message, *args, **kwargs)
+        self.user_id = user_id
+        self.permission = permission
+        self.resource = resource
 
-class AccountDisabledError(SecurityError):
-    """Exception raised when a user account is disabled."""
-    def __init__(self, message: str = "Account is disabled"):
-        super().__init__(message)
 
-class TooManyAttemptsError(SecurityError):
-    """Exception raised when too many authentication attempts are made."""
-    def __init__(self, message: str = "Too many authentication attempts"):
-        super().__init__(message)
+class InvalidCredentialsError(SecurityError, AuthenticationError):
+    """Raised when invalid credentials are provided."""
+    
+    def __init__(self, message: str = "Invalid credentials", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
 
-class InvalidSessionError(SecurityError):
-    """Exception raised when a session is invalid."""
-    def __init__(self, message: str = "Invalid session"):
-        super().__init__(message)
 
-class SessionExpiredError(SecurityError):
-    """Exception raised when a session has expired."""
-    def __init__(self, message: str = "Session has expired"):
-        super().__init__(message) 
+class AccountLockedError(SecurityError, AuthenticationError):
+    """Raised when a user account is locked."""
+    
+    def __init__(self, message: str = "Account is locked", 
+                 user_id: str = None, until: str = None, *args, **kwargs):
+        if user_id and until:
+            message = f"Account for user {user_id} is locked until {until}"
+        elif user_id:
+            message = f"Account for user {user_id} is locked"
+        super().__init__(message, *args, **kwargs)
+        self.user_id = user_id
+        self.until = until
+
+
+class AccountDisabledError(SecurityError, AuthenticationError):
+    """Raised when a user account is disabled."""
+    
+    def __init__(self, message: str = "Account is disabled", 
+                 user_id: str = None, reason: str = None, *args, **kwargs):
+        if user_id and reason:
+            message = f"Account for user {user_id} is disabled: {reason}"
+        elif user_id:
+            message = f"Account for user {user_id} is disabled"
+        super().__init__(message, *args, **kwargs)
+        self.user_id = user_id
+        self.reason = reason
+
+
+class TooManyAttemptsError(SecurityError, AuthenticationError):
+    """Raised when too many failed authentication attempts occur."""
+    
+    def __init__(self, message: str = "Too many failed attempts", 
+                 user_id: str = None, attempts: int = None, *args, **kwargs):
+        if user_id and attempts:
+            message = f"Too many failed attempts ({attempts}) for user {user_id}"
+        super().__init__(message, *args, **kwargs)
+        self.user_id = user_id
+        self.attempts = attempts
+
+
+class InvalidSessionError(SecurityError, AuthenticationError):
+    """Raised when a session is invalid."""
+    
+    def __init__(self, message: str = "Invalid session", *args, **kwargs):
+        super().__init__(message, *args, **kwargs)
+
+
+class SessionExpiredError(SecurityError, AuthenticationError):
+    """Raised when a session has expired."""
+    
+    def __init__(self, message: str = "Session has expired", *args, **kwargs):
+        super().__init__(message, *args, **kwargs) 
