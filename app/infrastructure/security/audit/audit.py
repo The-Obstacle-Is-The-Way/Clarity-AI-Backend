@@ -21,14 +21,10 @@ import uuid
 from datetime import timezone
 from typing import Any, Dict, Optional
 
-# from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings # Corrected import
+from app.core.config.settings import get_settings
 
-# REMOVED: settings = get_settings() - Defer loading
-logger = logging.getLogger(__name__) # Use standard logger
-
-# REMOVED: Direct import of AuditLogEntry which caused circular import
-# from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog as AuditLogEntry 
+# Use standard logger
+logger = logging.getLogger(__name__)
 
 class AuditLogger:
     """
@@ -46,7 +42,6 @@ class AuditLogger:
         Args:
             logger_name: The name to use for the logger instance
         """
-        # ADDED: Load settings within __init__
         self.settings = get_settings()
         self.log_level = getattr(logging, self.settings.LOG_LEVEL.upper(), logging.INFO)
         self.audit_log_file = self.settings.AUDIT_LOG_FILE
@@ -176,6 +171,43 @@ class AuditLogger:
         # If configured, also send to external audit service
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
+            
+    def log_system_event(
+        self, 
+        event_type: str,
+        description: str,
+        details: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None
+    ) -> None:
+        """
+        Log a system event.
+        
+        Args:
+            event_type: Type of system event (e.g., "startup", "shutdown", "config_change")
+            description: Description of the event
+            details: Additional details about the event
+            user_id: ID of the user who triggered the event (if applicable)
+        """
+        event_id = str(uuid.uuid4())
+        timestamp = datetime.datetime.now(timezone.utc).isoformat()
+        
+        # Create audit entry
+        audit_entry = {
+            "event_id": event_id,
+            "timestamp": timestamp,
+            "event_type": "system_event",
+            "system_event_type": event_type,
+            "description": description,
+            "user_id": user_id,
+            "details": details or {},
+        }
+        
+        # Log the audit entry
+        self.logger.info(f"SYSTEM_EVENT: {json.dumps(audit_entry)}")
+        
+        # If configured, also send to external audit service
+        if self.external_audit_enabled:
+            self._send_to_external_audit_service(audit_entry)
 
     def _send_to_external_audit_service(self, audit_entry: Dict[str, Any]) -> None:
         """
@@ -195,4 +227,19 @@ class AuditLogger:
 # Create a singleton instance for global use
 # (Note: This is not a true singleton as it can be instantiated elsewhere,
 # but provides a convenient access point)
-audit_logger = AuditLogger()
+try:
+    audit_logger = AuditLogger()
+except Exception as e:
+    logger.error(f"Failed to initialize AuditLogger: {e}", exc_info=True)
+    # Create a dummy logger that won't crash when used
+    class DummyAuditLogger:
+        def log_phi_access(self, *args, **kwargs): 
+            logger.error("DummyAuditLogger: log_phi_access called but logger not properly initialized")
+        def log_auth_event(self, *args, **kwargs): 
+            logger.error("DummyAuditLogger: log_auth_event called but logger not properly initialized")
+        def log_system_event(self, *args, **kwargs): 
+            logger.error("DummyAuditLogger: log_system_event called but logger not properly initialized")
+        def _send_to_external_audit_service(self, *args, **kwargs): pass
+    
+    audit_logger = DummyAuditLogger()
+    logger.warning("Using DummyAuditLogger as fallback due to initialization error")
