@@ -37,7 +37,7 @@ from app.presentation.api.v1.endpoints.test_endpoints import router as test_endp
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.application.services.audit_log_service import AuditLogService
 from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
-from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.persistence.sqlalchemy.database import get_session as SessionLocal
 
 # Potentially import test routers conditionally or via a flag
 from app.tests.routers.admin_test_router import router as admin_test_router

@@ -19,8 +19,7 @@ import logging
 import os
 import uuid
 from datetime import timezone
-from typing import Any
-from sqlalchemy.orm import Session
+from typing import Any, Dict, Optional
 
 # from app.config.settings import get_settings # Legacy import
 from app.core.config.settings import get_settings # Corrected import
@@ -28,8 +27,8 @@ from app.core.config.settings import get_settings # Corrected import
 # REMOVED: settings = get_settings() - Defer loading
 logger = logging.getLogger(__name__) # Use standard logger
 
-# from app.core.domain.entities.audit_log import AuditLogEntry # Incorrect import
-from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog as AuditLogEntry # Corrected import
+# REMOVED: Direct import of AuditLogEntry which caused circular import
+# from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog as AuditLogEntry 
 
 class AuditLogger:
     """
@@ -48,9 +47,9 @@ class AuditLogger:
             logger_name: The name to use for the logger instance
         """
         # ADDED: Load settings within __init__
-        settings = get_settings()
-        self.log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
-        self.audit_log_file = settings.AUDIT_LOG_FILE
+        self.settings = get_settings()
+        self.log_level = getattr(logging, self.settings.LOG_LEVEL.upper(), logging.INFO)
+        self.audit_log_file = self.settings.AUDIT_LOG_FILE
         
         # Configure the audit logger
         self.logger = logging.getLogger(logger_name)
@@ -104,7 +103,7 @@ class AuditLogger:
         action: str,
         resource_type: str,
         resource_id: str,
-        details: dict[str, Any] | None = None,
+        details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Log an access to Protected Health Information (PHI).
@@ -135,15 +134,15 @@ class AuditLogger:
         self.logger.info(f"PHI_ACCESS: {json.dumps(audit_entry)}")
 
         # If configured, also send to external audit service
-        if settings.EXTERNAL_AUDIT_ENABLED:
+        if self.settings.EXTERNAL_AUDIT_ENABLED:
             self._send_to_external_audit_service(audit_entry)
 
     def log_auth_event(
         self,
         event_type: str,
-        user_id: str | None,
+        user_id: Optional[str],
         success: bool,
-        details: dict[str, Any] | None = None,
+        details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Log an authentication-related event.
@@ -172,10 +171,10 @@ class AuditLogger:
         self.logger.info(f"AUTH_EVENT: {json.dumps(audit_entry)}")
 
         # If configured, also send to external audit service
-        if settings.EXTERNAL_AUDIT_ENABLED:
+        if self.settings.EXTERNAL_AUDIT_ENABLED:
             self._send_to_external_audit_service(audit_entry)
 
-    def _send_to_external_audit_service(self, audit_entry: dict[str, Any]) -> None:
+    def _send_to_external_audit_service(self, audit_entry: Dict[str, Any]) -> None:
         """
         Send audit entry to an external HIPAA-compliant audit service.
 
@@ -193,4 +192,4 @@ class AuditLogger:
 # Create a singleton instance for global use
 # (Note: This is not a true singleton as it can be instantiated elsewhere,
 # but provides a convenient access point)
-# audit_logger = AuditLogger()
+audit_logger = AuditLogger()
