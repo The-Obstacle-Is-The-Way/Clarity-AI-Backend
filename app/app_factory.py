@@ -210,11 +210,16 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                 logger.info("Redis connection successfully established")
                 
             except Exception as e:
-                logger.error(f"Redis connection failed: {e}", exc_info=True)
-                fastapi_app.state.redis_pool = None
-                fastapi_app.state.redis = None
-                redis_client = None # Ensure vars are None
-                redis_pool = None
+                # CRITICAL FIX: If Redis URL is configured, connection MUST succeed.
+                logger.critical(f"LIFESPAN_REDIS_INIT_FAILURE: Failed to connect to Redis at {current_settings.REDIS_URL}. Error: {e}", exc_info=True)
+                # Treat Redis connection failure as critical if URL is provided
+                raise RuntimeError(f"Critical dependency failure: Could not connect to Redis at {current_settings.REDIS_URL}") from e
+                # # Old non-critical behavior (commented out for reference):
+                # logger.error(f"Redis connection failed: {e}", exc_info=True)
+                # fastapi_app.state.redis_pool = None
+                # fastapi_app.state.redis = None
+                # redis_client = None # Ensure vars are None
+                # redis_pool = None
 
         # --- Common Setup (Sentry) ---
         _initialize_sentry(current_settings)

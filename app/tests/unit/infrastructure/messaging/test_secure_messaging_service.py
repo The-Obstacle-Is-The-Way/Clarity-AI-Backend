@@ -34,7 +34,8 @@ from app.infrastructure.security.encryption.base_encryption_service import BaseE
 def encryption_service():
     """Fixture for encryption service."""
     service = MagicMock(spec=BaseEncryptionService)
-    service.encrypt_field.side_effect = lambda x: f"encrypted_{x}"
+    # Use encrypt_file based on the AttributeError hint
+    service.encrypt_file.side_effect = lambda x: f"encrypted_{x}"
     # Corrected decrypt_field side effect
     service.decrypt_field.side_effect = lambda x: x.replace("encrypted_", "") if isinstance(x, str) else x
     return service
@@ -267,7 +268,7 @@ class TestSecureMessagingService:
         assert message["has_attachments"] is False
 
         # Check that the encryption service was called for the subject
-        encryption_service.encrypt_field.assert_called_once_with(
+        encryption_service.encrypt_file.assert_called_once_with(
             "Test Subject"
         )
 
