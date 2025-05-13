@@ -314,7 +314,7 @@ class Patient:
         # Create new instance
         return self.__class__(**data)
     
-    def model_dump(self, *, exclude=None, exclude_none=False) -> dict:
+    def model_dump(self, *, exclude=None, exclude_none=False, include_phi=True) -> dict:
         """Compatibility method similar to Pydantic v2's model_dump but for dataclasses."""
         from dataclasses import asdict
         data = asdict(self)
@@ -338,10 +338,11 @@ class Patient:
         
         # Exclude PHI fields from serialization by default (HIPAA compliance)
         # Users must explicitly ask for these fields if they want them
-        phi_fields_to_exclude = self.phi_fields - set(data.get('_phi_fields_to_include', []))
-        for field in phi_fields_to_exclude:
-            if field in data:
-                data[field] = "[REDACTED PHI]"
+        if not include_phi:
+            phi_fields_to_exclude = self.phi_fields - set(data.get('_phi_fields_to_include', []))
+            for field in phi_fields_to_exclude:
+                if field in data:
+                    data[field] = "[REDACTED PHI]"
         
         # Remove internal fields
         if '_phi_fields_to_include' in data:
