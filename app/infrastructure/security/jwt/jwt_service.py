@@ -6,13 +6,21 @@ HIPAA security standards and best practices for healthcare applications.
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any, Dict, Optional, Union
 from uuid import UUID
 import traceback
+import secrets
+import hashlib
 
-from jose import ExpiredSignatureError, JWTError, jwt
+# Replace direct jose import with our adapter
+from app.infrastructure.security.jwt.jose_adapter import (
+    encode as jwt_encode,
+    decode as jwt_decode,
+    JWTError,
+    ExpiredSignatureError
+)
 from pydantic import BaseModel, ValidationError, ConfigDict
 
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -35,6 +43,9 @@ class TokenType(str, Enum):
     """Token types used in the application."""
     ACCESS = "access"
     REFRESH = "refresh"
+    RESET = "reset"   # For password reset
+    ACTIVATE = "activate"  # For account activation
+    API = "api"  # For long-lived API tokens with restricted permissions
 
 class TokenPayload(BaseModel):
     """Pydantic model for JWT payload validation."""
@@ -48,6 +59,10 @@ class TokenPayload(BaseModel):
     roles: list[str] = [] # User roles, default to empty list
     # Add other custom claims as needed
     permissions: list[str] | None = None # User permissions
+    device_id: str | None = None  # For device tracking (HIPAA audit logging)
+    ip_hash: str | None = None    # Hashed IP address (for anomaly detection)
+    location_hash: str | None = None  # Hashed location data (for geo-fencing)
+    nbf: int | None = None  # Not valid before timestamp
     
     # Make TokenPayload behave like a dictionary for backward compatibility
     def __getitem__(self, key: str) -> Any:
@@ -124,6 +139,9 @@ class JWTService(IJwtService):
         *,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
+        device_info: dict[str, Any] = None,
+        ip_address: str = None,
+        geo_location: dict[str, Any] = None,
     ) -> str:
         """
         Create a new access token.
@@ -132,6 +150,9 @@ class JWTService(IJwtService):
             data: Dictionary containing claims to include in the token
             expires_delta: Optional ``timedelta`` override for token expiration
             expires_delta_minutes: Optional override for token expiration in minutes
+            device_info: Optional device information for HIPAA audit logging
+            ip_address: Optional IP address for security validation
+            geo_location: Optional location data for geo-fencing
 
         Returns:
             JWT access token as a string
@@ -144,8 +165,23 @@ class JWTService(IJwtService):
         # Ensure we're using the test value for testing
         if hasattr(self.settings, 'TESTING') and self.settings.TESTING and self.access_token_expire_minutes == 15:
             minutes = 30  # Use exactly 30 minutes for testing to match the test expectations
+        
+        # Add security context data if provided
+        enhanced_data = data.copy()
+        if device_info:
+            enhanced_data["device_id"] = device_info.get("device_id", str(uuid.uuid4()))
+            enhanced_data["device_type"] = device_info.get("device_type", "unknown")
             
-        return self._create_token(data=data, token_type=TokenType.ACCESS, expires_delta_minutes=minutes)
+        if ip_address:
+            # Store hash of IP address instead of actual IP (for privacy)
+            enhanced_data["ip_hash"] = self._hash_sensitive_data(ip_address)
+            
+        if geo_location:
+            # Create a hash of the location data (for privacy)
+            location_str = f"{geo_location.get('lat', '')},{geo_location.get('lon', '')}"
+            enhanced_data["location_hash"] = self._hash_sensitive_data(location_str)
+            
+        return self._create_token(data=enhanced_data, token_type=TokenType.ACCESS, expires_delta_minutes=minutes)
 
     def create_refresh_token(
         self,
@@ -157,6 +193,7 @@ class JWTService(IJwtService):
         parent_jti: str = None,
         expires_delta: timedelta | None = None,
         expires_delta_minutes: int | None = None,
+        device_info: dict[str, Any] = None,
     ) -> str:
         """
         Create a new refresh token.
@@ -169,6 +206,7 @@ class JWTService(IJwtService):
             parent_jti: JTI of the token that was used to create this one (for token lineage)
             expires_delta: Optional ``timedelta`` override for token expiration
             expires_delta_minutes: Optional override for token expiration in minutes
+            device_info: Optional device information for HIPAA audit logging
             
         Returns:
             JWT refresh token as a string
@@ -195,6 +233,11 @@ class JWTService(IJwtService):
         data["family_id"] = family_id
         if parent_jti:
             data["parent_jti"] = parent_jti
+            
+        # Add device info if provided (for HIPAA audit logging)
+        if device_info:
+            data["device_id"] = device_info.get("device_id", str(uuid.uuid4()))
+            data["device_type"] = device_info.get("device_type", "unknown")
             
         # Then calculate expiration
         if expires_delta is not None:
@@ -234,14 +277,14 @@ class JWTService(IJwtService):
 
         # Calculate expiration time
         expires_delta = timedelta(minutes=expires_delta_minutes)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         
         # For testing environments, normally use a fixed timestamp to avoid expiration issues
         # BUT, allow expires_delta_minutes to override for specific expiration tests.
         # Use fixed future date ONLY if expires_delta_minutes matches the default.
         if hasattr(self.settings, 'TESTING') and self.settings.TESTING and expires_delta_minutes == self.access_token_expire_minutes:
             # Use a future fixed timestamp ONLY for default-expiry test tokens
-            now = datetime(2099, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+            now = datetime(2099, 1, 1, 12, 0, 0, tzinfo=UTC)
             logger.debug(f"Using fixed future timestamp for token creation (TESTING=True, default expiry). Exp Mins: {expires_delta_minutes}")
         else:
             logger.debug(f"Using current time for token creation. TESTING={hasattr(self.settings, 'TESTING') and self.settings.TESTING}, Exp Mins: {expires_delta_minutes}, Default Exp: {self.access_token_expire_minutes}")
@@ -251,18 +294,22 @@ class JWTService(IJwtService):
         # Generate a unique token ID (jti) if not provided
         token_id = data.get("jti", str(uuid.uuid4()))
 
+        # Add a "not before" time slightly in the past to account for clock skew
+        nbf_time = int((now - timedelta(seconds=5)).timestamp())
+        
         # Prepare payload
         to_encode = {
             "sub": subject_str,
             "exp": int(expire_time.timestamp()),
             "iat": int(now.timestamp()),
+            "nbf": nbf_time,  # Not valid before this time (5 seconds ago)
             "jti": token_id,
             "iss": self.issuer,
             "aud": self.audience,
             "type": token_type,
             "scope": token_type,
             # Add other claims from input data, excluding reserved claims
-            **{k: v for k, v in data.items() if k not in ["sub", "exp", "iat", "jti", "iss", "aud", "type", "scope"]}
+            **{k: v for k, v in data.items() if k not in ["sub", "exp", "iat", "jti", "iss", "aud", "type", "scope", "nbf"]}
         }
 
         # Ensure role/roles consistency if present
@@ -274,8 +321,9 @@ class JWTService(IJwtService):
         try:
             # Ensure all payload values are serializable (e.g., convert UUIDs)
             serializable_payload = self._make_payload_serializable(to_encode)
-            encoded_token = jwt.encode(
-                serializable_payload, self.secret_key, algorithm=self.algorithm
+            encoded_token = jwt_encode(
+                serializable_payload, self.secret_key, algorithm=self.algorithm,
+                access_token=(token_type == TokenType.ACCESS)
             )
         except TypeError as e:
             logger.error(f"JWT Encoding Error: {e}. Payload: {serializable_payload}")
@@ -320,7 +368,7 @@ class JWTService(IJwtService):
             
             # First, decode token without verification to check type
             try:
-                unverified_payload = jwt.decode(
+                unverified_payload = jwt_decode(
                     token, 
                     options={"verify_signature": False},
                     key=self.secret_key
@@ -331,13 +379,14 @@ class JWTService(IJwtService):
                 token_type = TokenType.ACCESS
             
             # Perform full validation
-            payload = jwt.decode(
+            payload = jwt_decode(
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],
                 audience=self.audience,
                 issuer=self.issuer,
                 options=options,
+                access_token=(token_type == TokenType.ACCESS)
             )
             
             # Convert to TokenPayload model for validation and easier attribute access
@@ -486,7 +535,7 @@ class JWTService(IJwtService):
         """Check if a token (specifically its jti) is in the blacklist."""
         try:
             # Quick unverified decode just for JTI (less secure if key is compromised)
-            unverified_payload = jwt.decode(
+            unverified_payload = jwt_decode(
                 token, 
                 self.secret_key, # Provide the key even for unverified decode
                 options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
@@ -494,7 +543,7 @@ class JWTService(IJwtService):
             jti = unverified_payload.get("jti")
             if jti and jti in self._token_blacklist:
                 # Check if blacklist entry itself is expired (token expired anyway)
-                if self._token_blacklist[jti] > datetime.now(timezone.utc):
+                if self._token_blacklist[jti] > datetime.now(UTC):
                     return True
                 else:
                     # Clean up expired blacklist entry
@@ -513,7 +562,7 @@ class JWTService(IJwtService):
 
             if jti and exp:
                 # Store JTI with its original expiry time
-                expiry_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
+                expiry_datetime = datetime.fromtimestamp(exp, tz=UTC)
                 self._token_blacklist[jti] = expiry_datetime
                 logger.info(f"Token with JTI {jti} blacklisted until {expiry_datetime}.")
                 # Periodically clean the blacklist
@@ -528,7 +577,7 @@ class JWTService(IJwtService):
 
     def _clean_token_blacklist(self) -> None:
         """Removes expired entries from the token blacklist."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired_jtis = [
             jti for jti, expiry in self._token_blacklist.items() if expiry <= now
         ]
@@ -681,7 +730,7 @@ class JWTService(IJwtService):
             "body": {
                 "error": error_type,
                 "message": sanitized_message,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             },
             "headers": {
                 "WWW-Authenticate": "Bearer"
@@ -841,6 +890,19 @@ class JWTService(IJwtService):
         
         logger.info(f"Refreshed token pair for user {sub}, family {family_id}")
         return new_access_token, new_refresh_token
+
+    def _hash_sensitive_data(self, data: str) -> str:
+        """
+        Create a one-way hash of sensitive data.
+        
+        Args:
+            data: The sensitive data to hash
+            
+        Returns:
+            A hash of the data, safe for storage
+        """
+        salt = getattr(self.settings, 'HASH_SALT', 'clarity-digital-twin-salt')
+        return hashlib.sha256(f"{data}{salt}".encode()).hexdigest()
 
 def get_jwt_service() -> IJwtService:
     """
