@@ -52,7 +52,9 @@ def auth_headers() -> dict[str, str]:
     Returns:
         Dictionary with authentication headers
     """
-    return {"Authorization": "Bearer test_token"}
+    # Token format must have at least 3 segments (header.payload.signature)
+    mock_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfMTIzIiwicm9sZSI6IlBBVElFTlQiLCJyb2xlcyI6WyJQQVRJRU5UIl0sImV4cCI6OTk5OTk5OTk5OX0.thisisafakesignature"
+    return {"Authorization": f"Bearer {mock_token}"}
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -208,12 +210,12 @@ async def mentallama_test_client(
 # --- Test Functions (Updated to use mentallama_test_client) --- #
 
 @pytest.mark.asyncio
-async def test_health_check(mentallama_test_client: AsyncClient) -> None:
+async def test_health_check(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     """Tests the health check endpoint."""
-    response = await mentallama_test_client.get(f"{MENTALLAMA_API_PREFIX}/health")
+    response = await mentallama_test_client.get(f"{MENTALLAMA_API_PREFIX}/health", headers=auth_headers)
     assert response.status_code == 200
     # Check if the mocked service's healthy status is reflected
-    assert response.json() == {"status": "healthy", "service_status": True} 
+    assert response.json() == {"status": "healthy", "service_status": True}
 
 @pytest.mark.asyncio
 async def test_process_endpoint(mentallama_test_client: AsyncClient, auth_headers: dict[str, str]) -> None:
@@ -326,7 +328,7 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
         Tuple with AsyncClient and FastAPI app
     """
     # Create the FastAPI application with test settings
-    app = create_application()
+    app = create_application(skip_auth_middleware=True)  # Skip authentication middleware
     
     # Create an AsyncClient for testing
     async with AsyncClient(
