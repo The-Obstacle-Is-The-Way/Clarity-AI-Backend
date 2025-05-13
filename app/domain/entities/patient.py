@@ -98,6 +98,13 @@ class PatientContactInfoDescriptor:
 class Patient:
     """Core domain model for a patient."""
     
+    # PHI fields list - fields considered protected health information
+    phi_fields: set = field(default_factory=lambda: {
+        'name', 'first_name', 'last_name', 'date_of_birth', 'email', 'phone', 
+        'address', 'insurance_number', 'ssn', 'medical_record_number',
+        'emergency_contact', 'treatment_notes', 'medical_history'
+    }, init=False, repr=False)
+    
     # Required fields
     date_of_birth: Union[datetime, str]
     
@@ -153,6 +160,31 @@ class Patient:
         
         # Parse date fields
         self._parse_date_fields()
+    
+    def __getattribute__(self, name):
+        """Override to log access to PHI fields."""
+        # First get the phi_fields set to check if this is a PHI field
+        # We need to use object.__getattribute__ to avoid infinite recursion
+        if name != 'phi_fields' and name in object.__getattribute__(self, 'phi_fields'):
+            # Import here to avoid circular imports
+            try:
+                from app.core.utils.audit import audit_logger
+                # Log access to PHI field
+                patient_id = object.__getattribute__(self, 'id')
+                audit_logger.log_access(
+                    resource_id=str(patient_id) if patient_id else None,
+                    resource_type="Patient",
+                    field_name=name,
+                    action="field_access"
+                )
+            except ImportError:
+                # If audit_logger is not available, just log a warning
+                import logging
+                logging = logging.getLogger(__name__)
+                logging.warning(f"PHI field '{name}' accessed but audit_logger unavailable")
+                
+        # Return the attribute normally
+        return object.__getattribute__(self, name)
     
     def _process_contact_info(self, contact_info):
         """Process the contact_info parameter."""

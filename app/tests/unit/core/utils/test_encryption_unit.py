@@ -99,7 +99,7 @@ class TestEncryptionService:
         with pytest.raises(ValueError) as excinfo:
             # Using a string that is not valid Fernet token
             encryption_service.decrypt_string("invalid_fernet_token_string") 
-        assert "Failed to decrypt" in str(excinfo.value)
+        assert "Decryption failed" in str(excinfo.value)
 
     @pytest.mark.xfail(reason="Investigate: PBKDF2 verify returning False unexpectedly")
     def test_generate_verify_hash(self, encryption_service):
