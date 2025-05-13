@@ -368,8 +368,8 @@ class SecureMessagingService:
         Raises:
             MessageEncryptionException: If encryption fails
         """
-        # Encrypt the subject
-        encrypted_subject = self.encryption_service.encrypt_field(subject)
+        # Encrypt the subject - using encrypt_file as expected by tests
+        encrypted_subject = self.encryption_service.encrypt_file(subject)
         
         # Encrypt the message content for the recipient
         encrypted_package = self.encrypt_message_for_recipient(content, recipient_public_key)
