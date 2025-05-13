@@ -4,6 +4,13 @@ HIPAA-compliant audit logging utility.
 This module provides a centralized way to access the audit logger
 for HIPAA-compliant tracking of PHI access and modifications.
 It implements the requirements of HIPAA §164.312(b) - Audit controls.
+
+Key features:
+- Thread-local context for tracking current user and access reason
+- Decorators for auditing PHI access in both sync and async functions
+- Intelligent parameter extraction for accurate audit trails
+- Tamper-evident logging with HMAC signatures
+- Compliance with HIPAA audit requirements
 """
 
 import asyncio
@@ -102,6 +109,19 @@ def audit_phi_access(
     """
     Decorator for auditing PHI access in functions.
     
+    This decorator provides comprehensive audit logging for any function that
+    accesses Protected Health Information (PHI). It automatically extracts
+    entity IDs from various parameter patterns and creates a complete audit
+    trail required by HIPAA regulations.
+    
+    Usage example:
+        @audit_phi_access(resource_type="patient", action="view", phi_fields=["name", "dob"])
+        def get_patient_data(patient_id: str) -> Dict:
+            # Function implementation...
+    
+    The decorator will automatically detect that 'patient_id' is the entity ID
+    and include it in the audit trail.
+    
     Args:
         resource_type: Type of resource being accessed (e.g., "patient", "medical_record")
         action: Action being performed (e.g., "view", "update")
@@ -121,10 +141,24 @@ def audit_phi_access(
             user_id = kwargs.pop('audit_user_id', get_current_user_id())
             access_reason = kwargs.pop('audit_reason', get_current_access_reason() or default_reason)
             
-            # Get resource ID from kwargs or args if available
-            resource_id = kwargs.get('id') or kwargs.get('patient_id')
-            if resource_id is None and args and hasattr(args[0], 'id'):
-                resource_id = getattr(args[0], 'id')
+            # Get resource ID from kwargs or args based on function signature
+            resource_id = None
+            
+            # Look for resource ID in kwargs based on common parameter names
+            for key in ['id', 'patient_id', 'record_id', 'entity_id', f"{resource_type}_id"]:
+                if key in kwargs:
+                    resource_id = kwargs[key]
+                    break
+            
+            # If not found in kwargs, check the first positional argument
+            # (common pattern is function(resource_id, ...))
+            if resource_id is None and len(args) > 0:
+                # Check if the first arg is an object with an id
+                if hasattr(args[0], 'id'):
+                    resource_id = getattr(args[0], 'id')
+                # Otherwise assume the first arg itself is the ID (most common case)
+                elif not isinstance(args[0], (dict, list, tuple, set)):
+                    resource_id = args[0]
                 
             if not user_id:
                 logger.warning(f"PHI access without user ID: {resource_type}:{resource_id} {action}")
@@ -184,6 +218,19 @@ def audit_async_phi_access(
     """
     Decorator for auditing PHI access in async functions.
     
+    This decorator provides comprehensive audit logging for any async function that
+    accesses Protected Health Information (PHI). It automatically extracts
+    entity IDs from various parameter patterns and creates a complete audit
+    trail required by HIPAA regulations.
+    
+    Usage example:
+        @audit_async_phi_access(resource_type="medical_record", action="update")
+        async def update_medical_record(record_id: str, data: Dict) -> Dict:
+            # Async function implementation...
+    
+    The decorator will automatically detect that 'record_id' is the entity ID
+    and include it in the audit trail.
+    
     Args:
         resource_type: Type of resource being accessed (e.g., "patient", "medical_record")
         action: Action being performed (e.g., "view", "update")
@@ -203,10 +250,24 @@ def audit_async_phi_access(
             user_id = kwargs.pop('audit_user_id', get_current_user_id())
             access_reason = kwargs.pop('audit_reason', get_current_access_reason() or default_reason)
             
-            # Get resource ID from kwargs or args if available
-            resource_id = kwargs.get('id') or kwargs.get('patient_id')
-            if resource_id is None and args and hasattr(args[0], 'id'):
-                resource_id = getattr(args[0], 'id')
+            # Get resource ID from kwargs or args based on function signature
+            resource_id = None
+            
+            # Look for resource ID in kwargs based on common parameter names
+            for key in ['id', 'patient_id', 'record_id', 'entity_id', f"{resource_type}_id"]:
+                if key in kwargs:
+                    resource_id = kwargs[key]
+                    break
+            
+            # If not found in kwargs, check the first positional argument
+            # (common pattern is function(resource_id, ...))
+            if resource_id is None and len(args) > 0:
+                # Check if the first arg is an object with an id
+                if hasattr(args[0], 'id'):
+                    resource_id = getattr(args[0], 'id')
+                # Otherwise assume the first arg itself is the ID (most common case)
+                elif not isinstance(args[0], (dict, list, tuple, set)):
+                    resource_id = args[0]
                 
             if not user_id:
                 logger.warning(f"PHI access without user ID: {resource_type}:{resource_id} {action}")
