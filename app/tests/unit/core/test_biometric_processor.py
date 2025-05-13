@@ -263,8 +263,14 @@ class TestBiometricEventProcessor:
     def test_initialize(self):
         """Test initialization of processor."""
         processor = BiometricEventProcessor()
-        assert processor.rules == []
-        assert len(processor.observers) == 0
+        # In the actual implementation, rules is a dict, not a list
+        assert isinstance(processor.rules, dict)
+        assert len(processor.rules) == 0
+        # In the actual implementation, observers is a dict with priority keys
+        assert isinstance(processor.observers, dict)
+        # Check that each priority list is empty
+        for priority_list in processor.observers.values():
+            assert len(priority_list) == 0
 
     def test_add_rule(self):
         """Test adding rules to processor."""
@@ -300,8 +306,11 @@ class TestBiometricEventProcessor:
         processor.add_rule(rule2)
         
         assert len(processor.rules) == 2
-        assert rule1 in processor.rules
-        assert rule2 in processor.rules
+        # Check that rules are stored in the dictionary by rule_id
+        assert rule1.rule_id in processor.rules
+        assert rule2.rule_id in processor.rules
+        assert processor.rules[rule1.rule_id] == rule1
+        assert processor.rules[rule2.rule_id] == rule2
 
     def test_register_observer(self):
         """Test registering observers."""
@@ -416,7 +425,3 @@ class TestBiometricEventProcessor:
         
         # Verify observer was notified
         assert len(observer.notifications) == 1
-
-def test_migrated_placeholder():
-    """Placeholder test to be replaced with migrated tests."""
-    assert True
