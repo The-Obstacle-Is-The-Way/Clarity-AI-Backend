@@ -9,8 +9,8 @@ and process in a HIPAA-compliant manner.
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-# Skip these tests temporarily while fixing relationship issues
-pytest.skip("Skipping analytics endpoints tests while fixing SQLAlchemy relationship issues", allow_module_level=True)
+# Tests are now fixed - remove skip directive
+# pytest.skip("Skipping analytics endpoints tests while fixing SQLAlchemy relationship issues", allow_module_level=True)
 
 import json
 from datetime import datetime, timezone
@@ -22,7 +22,7 @@ import uuid
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import BackgroundTasks, status
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from app.app_factory import create_application
 from app.core.config.settings import Settings
@@ -187,21 +187,26 @@ async def client(
     test_settings: Settings,
     mock_process_event_use_case: MagicMock,
     mock_batch_process_use_case: MagicMock,
-    mock_user: MagicMock
+    mock_user: MagicMock,
+    mock_jwt_service: MagicMock,
+    auth_headers: dict
 ):
-    # Create application with disabled SQLAlchemy initialization
+    # Create application with disabled SQLAlchemy initialization and auth middleware
     with patch('sqlalchemy.orm.configure_mappers'):
-        app_instance = create_application(settings_override=test_settings)
-        # Override dependencies for the specific use cases on the app_instance
+        app_instance = create_application(
+            settings_override=test_settings,
+            skip_auth_middleware=True  # Skip authentication middleware for testing
+        )
+        
+        # Override dependencies for the specific use cases
         app_instance.dependency_overrides[get_process_analytics_event_use_case] = lambda: mock_process_event_use_case
         app_instance.dependency_overrides[get_batch_process_analytics_use_case] = lambda: mock_batch_process_use_case
         
         # Override the get_current_user dependency to return the mock_user directly
-        # This avoids hitting the actual token decoding and user_repo lookup in these unit tests.
         from app.presentation.api.dependencies.auth import get_current_user
         app_instance.dependency_overrides[get_current_user] = lambda: mock_user
         
-        # Create a custom client class that adds the required query parameters automatically
+        # Create a custom client class that adds the required query parameters
         class TestClientWithQueryParams(AsyncClient):
             async def post(self, url, **kwargs):
                 # Add query parameters needed for tests
@@ -212,12 +217,24 @@ async def client(
                 if "kwargs" not in kwargs["params"]:
                     kwargs["params"]["kwargs"] = "test"
                 
+                # Add auth headers if not present
+                if "headers" not in kwargs:
+                    kwargs["headers"] = auth_headers
+                
                 return await super().post(url, **kwargs)
+                
+            async def get(self, url, **kwargs):
+                # Add auth headers if not present
+                if "headers" not in kwargs:
+                    kwargs["headers"] = auth_headers
+                
+                return await super().get(url, **kwargs)
         
         # Use the custom client with the app
         async with TestClientWithQueryParams(
             app=app_instance, 
-            base_url="http://testserver"
+            base_url="http://testserver",
+            transport=ASGITransport(app=app_instance)  # Use ASGITransport explicitly
         ) as async_client:
             yield async_client
         

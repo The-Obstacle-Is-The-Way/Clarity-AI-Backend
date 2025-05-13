@@ -40,13 +40,13 @@ class AnalyticsEventModel(Base, TimestampMixin):
     processed_at = Column(DateTime, nullable=True, index=True)
     correlation_id = Column(String(100), nullable=True, index=True)
     
-    # Temporarily comment out this relationship to avoid mapper errors
-    # user = relationship(
-    #     "User", 
-    #     back_populates="analytics_events",
-    #     foreign_keys=[user_id],
-    #     primaryjoin="AnalyticsEventModel.user_id == User.id"
-    # )
+    # Properly configure the relationship with lazy loading
+    user = relationship(
+        "User", 
+        back_populates="analytics_events",
+        foreign_keys=[user_id],
+        lazy="selectin"
+    )
     
     # Useful indexes for analytics queries
     __table_args__ = (

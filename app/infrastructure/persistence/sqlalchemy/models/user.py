@@ -163,6 +163,15 @@ class User(Base, TimestampMixin, AuditMixin):
     #     cascade="all, delete-orphan"
     # )
     
+    # Add analytics_events relationship with proper configuration
+    analytics_events = relationship(
+        "AnalyticsEventModel", 
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="AnalyticsEventModel.user_id",
+        lazy="selectin"
+    )
+    
     # Audit logging
     access_logs = Column(JSON, nullable=True)  # Stores recent access logs
     

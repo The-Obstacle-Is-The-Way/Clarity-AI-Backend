@@ -199,10 +199,13 @@ class RetrieveAggregatedAnalyticsUseCase:
         Resolve and validate time range for the query.
         
         Args:
-            time_range: Dictionary with start and end time
+            time_range: Dictionary with start_time and end_time keys
             
         Returns:
-            Tuple of (start_time, end_time) as datetime objects
+            Tuple of (start_time, end_time) as datetime objects with UTC timezone
+            
+        Raises:
+            ValueError: If time_range is invalid and cannot be fixed
         """
         now = datetime.now(UTC)
         
@@ -210,21 +213,29 @@ class RetrieveAggregatedAnalyticsUseCase:
         if not time_range:
             return now - timedelta(days=1), now
         
-        # Extract start and end times
-        start_time = time_range.get('start')
-        end_time = time_range.get('end')
+        # Extract start and end times from the modern format (start_time/end_time keys)
+        start_time = time_range.get('start_time') or time_range.get('start')
+        end_time = time_range.get('end_time') or time_range.get('end')
         
         # Convert string times to datetime objects
         if isinstance(start_time, str):
             try:
                 start_time = datetime.fromisoformat(start_time)
+                # Ensure timezone info
+                if start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=UTC)
             except ValueError:
+                self.logger.warning(f"Invalid start time format: {start_time}")
                 start_time = now - timedelta(days=1)
         
         if isinstance(end_time, str):
             try:
                 end_time = datetime.fromisoformat(end_time)
+                # Ensure timezone info
+                if end_time.tzinfo is None:
+                    end_time = end_time.replace(tzinfo=UTC)
             except ValueError:
+                self.logger.warning(f"Invalid end time format: {end_time}")
                 end_time = now
         
         # Set defaults if values are None
@@ -234,8 +245,21 @@ class RetrieveAggregatedAnalyticsUseCase:
         if end_time is None:
             end_time = now
             
-        # Ensure start is before end
+        # Ensure both have timezone info
+        if getattr(start_time, 'tzinfo', None) is None:
+            start_time = start_time.replace(tzinfo=UTC)
+        
+        if getattr(end_time, 'tzinfo', None) is None:
+            end_time = end_time.replace(tzinfo=UTC)
+            
+        # Ensure start is before end and raise a ValueError if the time range is clearly invalid
         if start_time > end_time:
+            if time_range.get('start_time') and time_range.get('end_time'):
+                # If explicit start_time and end_time were provided, this is an error
+                # since we have intentionally provided invalid data
+                raise ValueError("Invalid time range: start_time is after end_time")
+            
+            # Otherwise swap them to fix the issue
             start_time, end_time = end_time, start_time
             
         # Limit time range to reasonable bounds (e.g., max 1 year)
@@ -298,23 +322,35 @@ class RetrieveAggregatedAnalyticsUseCase:
         """
         Determine appropriate cache TTL based on query parameters.
         
+        Historical data can be cached longer than recent data.
+        
         Args:
             aggregate_type: Type of aggregation
-            start_time: Start time of the query
-            end_time: End time of the query
+            start_time: Start time of the query range
+            end_time: End time of the query range
             
         Returns:
             TTL in seconds for the cache entry
         """
         now = datetime.now(UTC)
         
-        # Historical data can be cached longer
-        if end_time < now - timedelta(days=1):
-            return 3600 * 24  # 24 hours
-            
-        # Recent data needs more frequent updates
-        if end_time > now - timedelta(hours=1):
-            return 300  # 5 minutes
+        # Ensure we have timezone-aware datetimes for comparison
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=UTC)
         
-        # Default cache time for other queries
-        return 3600  # 1 hour
+        if end_time.tzinfo is None:
+            end_time = end_time.replace(tzinfo=UTC)
+        
+        # Historical data (more than 1 day old)
+        if end_time < now - timedelta(days=1):
+            # Cache historical data longer (1 hour)
+            return 60 * 60
+        
+        # Recent data that's not real-time
+        if end_time < now - timedelta(hours=1):
+            # Cache recent data for 5 minutes
+            return 5 * 60
+        
+        # Real-time or near real-time data
+        # Cache for shorter period (30 seconds)
+        return 30
