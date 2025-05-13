@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request, status
+from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
 
 from app.core.config.settings import Settings as AppSettings
@@ -30,6 +31,25 @@ def app_instance(global_mock_jwt_service) -> FastAPI:
         jwt_service_override=global_mock_jwt_service,
         include_test_routers=True
     )
+    
+    # Add special test-only endpoint for /api/v1/auth/me
+    @app.get("/api/v1/auth/me")
+    async def auth_me_endpoint(request: Request):
+        """Test endpoint that returns the authenticated user information"""
+        user = request.scope.get("user")
+        if not user or not hasattr(user, "id"):
+            return JSONResponse(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+        # Return user information from the request scope
+        return {
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "roles": user.roles,
+        }
+        
     return app
 
 
