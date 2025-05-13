@@ -267,8 +267,10 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
 async def client(test_app) -> AsyncGenerator[httpx.AsyncClient, None]:
     """Create an AsyncClient instance with properly configured test settings for authentication."""
     # Create a client that doesn't check for SSL certificates and follows redirects
+    from httpx._transports.asgi import ASGITransport
+    
     async with httpx.AsyncClient(
-        app=test_app, 
+        transport=ASGITransport(app=test_app),
         base_url="http://test",
         follow_redirects=True,
         verify=False

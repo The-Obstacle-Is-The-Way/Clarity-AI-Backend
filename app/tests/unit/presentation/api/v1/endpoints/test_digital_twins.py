@@ -112,13 +112,19 @@ def app(mock_digital_twin_service: AsyncMock, mock_current_user: User) -> FastAP
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncClient:  # Changed to async fixture and AsyncClient
     """Create an async test client for the FastAPI app."""
+    from httpx._transports.asgi import ASGITransport
+    
     # Define default headers with test JWT token
     headers = {
         "Authorization": f"Bearer {TEST_JWT_TOKEN}",
         "Content-Type": "application/json"
     }
     
-    async with AsyncClient(app=app, base_url="http://test", headers=headers) as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test", 
+        headers=headers
+    ) as ac:
         yield ac
 
 @pytest.fixture

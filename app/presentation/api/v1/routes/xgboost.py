@@ -301,7 +301,7 @@ async def predict_risk(
     await verify_provider_access(user, request.patient_id)
     
     # Check for PHI first, before any further processing
-    if _has_phi(request.dict()):
+    if _has_phi(request.model_dump()):
         logger.warning(f"PHI detected in prediction request for patient {request.patient_id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, MagicMock, patch
 from contextlib import asynccontextmanager
+from httpx._transports.asgi import ASGITransport
 
 from app.core.config.settings import Settings, get_settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
@@ -301,7 +302,10 @@ async def client_app_tuple_func_scoped(app_instance) -> AsyncGenerator[Tuple[Asy
     Yields:
         Tuple of (client, app)
     """
-    async with AsyncClient(app=app_instance, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app_instance),
+        base_url="http://testserver"
+    ) as client:
         yield client, app_instance
 
 

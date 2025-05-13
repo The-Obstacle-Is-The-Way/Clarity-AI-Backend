@@ -16,7 +16,7 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 from datetime import datetime, timezone, timedelta
 import uuid
@@ -422,7 +422,7 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
     
     # Create an AsyncClient for testing
     async with AsyncClient(
-        app=app,
+        transport=ASGITransport(app=app),
         base_url="http://test",
         headers={"Content-Type": "application/json"}
     ) as client:

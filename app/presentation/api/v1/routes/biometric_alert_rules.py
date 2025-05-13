@@ -6,7 +6,7 @@ Provides API endpoints for managing biometric alert rules.
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -126,7 +126,7 @@ async def create_alert_rule_from_template(
             )
         
         # Prepare overrides
-        custom_overrides = template_request.customization.dict() if template_request.customization else {}
+        custom_overrides = template_request.customization.model_dump() if template_request.customization else {}
         custom_overrides["provider_id"] = UUID(current_user.id) if current_user.id else None
         
         # Create rule from template
@@ -280,7 +280,7 @@ async def update_alert_rule(
     
     try:
         # Convert request data to service format
-        update_dict = rule_data.dict(exclude_unset=True)
+        update_dict = rule_data.model_dump(exclude_unset=True)
         
         # If there are biometric-related updates, format them as conditions
         if any(key in update_dict for key in ["biometric_type", "comparison_operator", "threshold_level"]):
@@ -332,7 +332,7 @@ async def update_alert_rule(
             created_by=str(updated_rule.provider_id) if updated_rule.provider_id else "unknown",
             updated_by=str(current_user.id),
             created_at=updated_rule.created_at,
-            last_updated=updated_rule.updated_at or datetime.utcnow(),
+            last_updated=updated_rule.updated_at or datetime.now(timezone.utc),
         )
     except HTTPException:
         raise

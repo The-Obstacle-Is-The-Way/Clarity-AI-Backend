@@ -630,7 +630,12 @@ async def test_app_with_db_session(
 @pytest_asyncio.fixture
 async def test_client_with_db_session(test_app_with_db_session: FastAPI) -> AsyncGenerator[AsyncClient, None]:  
     """Provides an AsyncClient instance configured with DB session factory"""
-    async with AsyncClient(app=test_app_with_db_session, base_url="http://test") as client:
+    from httpx._transports.asgi import ASGITransport
+    
+    async with AsyncClient(
+        transport=ASGITransport(app=test_app_with_db_session),
+        base_url="http://test"
+    ) as client:
         yield client
 
 @pytest_asyncio.fixture
@@ -680,6 +685,7 @@ async def authenticated_client(
         require_admin_role,
         require_clinician_role
     )
+    from httpx._transports.asgi import ASGITransport
     
     # Set up the authentication overrides using the patient role by default
     test_app_with_db_session.dependency_overrides[get_current_user] = lambda: mock_auth_dependency("PATIENT")
@@ -687,7 +693,7 @@ async def authenticated_client(
     
     # Create the client with the authenticated app
     async with AsyncClient(
-        app=test_app_with_db_session,
+        transport=ASGITransport(app=test_app_with_db_session),
         base_url="http://test"
     ) as client:
         logger.info("Created authenticated AsyncClient for testing protected endpoints")

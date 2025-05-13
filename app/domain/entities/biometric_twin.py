@@ -84,7 +84,7 @@ class BiometricDataPoint(BaseModel):
     
     def to_dict(self) -> dict[str, Any]:
         """Convert the data point to a dictionary, sanitizing PHI as needed."""
-        result = self.dict(exclude={"metadata"})
+        result = self.model_dump(exclude={"metadata"})
         
         # Include only safe metadata fields if present
         if self.metadata:

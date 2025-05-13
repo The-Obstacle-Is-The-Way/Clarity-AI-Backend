@@ -7,6 +7,7 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from httpx._transports.asgi import ASGITransport
 
 from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
 from app.presentation.api.dependencies.rate_limiter_deps import (
@@ -90,7 +91,10 @@ def app_with_rate_limited_routes(mock_limiter):
 @pytest.fixture
 async def client(app_with_rate_limited_routes):
     """Create a test client for the FastAPI app."""
-    async with AsyncClient(app=app_with_rate_limited_routes, base_url="http://testserver") as async_client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_rate_limited_routes),
+        base_url="http://testserver"
+    ) as async_client:
         yield async_client
 
 
