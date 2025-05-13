@@ -149,14 +149,15 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
 def authenticated_user() -> User:
     """Create a test user with authentication credentials."""
     return User(
-        id=uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"),
+        id=str(uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")),
         username="test_doctor",
         email="test.doctor@example.com", 
-        full_name="Test Doctor",
-        roles={UserRole.CLINICIAN},
-        account_status=UserStatus.ACTIVE,
-        password_hash="hashed_password_not_real",
-        created_at=datetime.now(timezone.utc),
+        first_name="Test",
+        last_name="Doctor",
+        roles=[UserRole.CLINICIAN.value],
+        is_active=True,
+        hashed_password="hashed_password_not_real",
+        created_at=datetime.now(timezone.utc)
     )
 
 
