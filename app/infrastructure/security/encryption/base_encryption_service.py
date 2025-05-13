@@ -322,10 +322,10 @@ class BaseEncryptionService:
             # No previous key or previous key also failed
             if isinstance(primary_error, InvalidToken):
                 logger.error("Invalid token for decryption")
-                raise ValueError("Failed to decrypt: Invalid token")
+                raise ValueError("Decryption failed: Invalid token")
             else:
                 logger.error("Invalid base64 encoding in encrypted value")
-                raise ValueError("Failed to decrypt: Invalid base64 encoding")
+                raise ValueError("Decryption failed: Invalid base64 encoding")
         except Exception as e:
             logger.error(f"Decryption failed: {str(e)}")
             raise ValueError(f"Decryption failed: {str(e)}")
@@ -410,7 +410,7 @@ class BaseEncryptionService:
         except Exception as e:
             # Log the error (without the sensitive data)
             logger.error(f"String decryption failed: {str(e)}")
-            raise ValueError(f"Failed to decrypt: {str(e)}")
+            raise ValueError(f"Decryption failed: {str(e)}")
 
     def encrypt_dict(self, data: dict, legacy_mode: bool = False) -> Optional[Union[Dict[str, Any], str]]:
         """
