@@ -330,16 +330,56 @@ class Patient:
                 'phone': self.phone
             }
         
-        # Handle exclusions
+        # Handle explicit exclusions
         if exclude:
             for field in exclude:
                 if field in data:
                     data.pop(field)
         
+        # Exclude PHI fields from serialization by default (HIPAA compliance)
+        # Users must explicitly ask for these fields if they want them
+        phi_fields_to_exclude = self.phi_fields - set(data.get('_phi_fields_to_include', []))
+        for field in phi_fields_to_exclude:
+            if field in data:
+                data[field] = "[REDACTED PHI]"
+        
+        # Remove internal fields
+        if '_phi_fields_to_include' in data:
+            data.pop('_phi_fields_to_include')
+        
         # Handle exclude_none
         if exclude_none:
             return {k: v for k, v in data.items() if v is not None}
             
+        return data
+    
+    def to_dict(self, include_phi: bool = False) -> dict:
+        """Convert to dictionary with optional PHI field inclusion."""
+        from dataclasses import asdict
+        
+        # Start with all data
+        data = asdict(self)
+        
+        # Remove special fields
+        if '_contact_info' in data:
+            data.pop('_contact_info')
+        
+        # Ensure contact_info is properly represented
+        if self.email is not None or self.phone is not None:
+            data['contact_info'] = {
+                'email': self.email,
+                'phone': self.phone
+            }
+        
+        # Remove phi_fields from the serialized data
+        data.pop('phi_fields', None)
+        
+        # If PHI should not be included, redact them
+        if not include_phi:
+            for field in self.phi_fields:
+                if field in data and data[field] is not None:
+                    data[field] = "[REDACTED PHI]"
+                    
         return data
     
     def __str__(self) -> str:

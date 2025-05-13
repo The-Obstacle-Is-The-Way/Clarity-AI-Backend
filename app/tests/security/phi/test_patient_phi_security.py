@@ -160,14 +160,51 @@ class TestPatientPHISecurity(BaseSecurityTest):
             logger.removeHandler(handler)
 
     def test_phi_field_access_restrictions(self):
+        """Test that accessing PHI fields creates audit log entries."""
         patient = self._create_sample_patient_with_phi()
-        # Skipping this test as is_restricted_context and field-level restrictions are not implemented in Patient
-        pytest.skip("Field-level PHI access restrictions not implemented in Patient model.")
+        
+        # Mock the audit_logger to verify it's called
+        with patch("app.core.utils.audit.audit_logger.log_access") as mock_audit_log:
+            # Access a series of PHI fields
+            phi_fields_to_test = ["name", "email", "phone", "insurance_number", "medical_record_number"]
+            
+            # Access each PHI field
+            for field in phi_fields_to_test:
+                if hasattr(patient, field):
+                    _ = getattr(patient, field)
+            
+            # Verify audit log was called for each PHI field access
+            assert mock_audit_log.call_count >= len([f for f in phi_fields_to_test if hasattr(patient, f)]), \
+                "Audit log should be called for each PHI field access"
+            
+            # Verify non-PHI field access doesn't trigger audit logging
+            mock_audit_log.reset_mock()
+            non_phi_fields = ["id", "active", "created_at", "updated_at"]
+            for field in non_phi_fields:
+                _ = getattr(patient, field)
+            assert mock_audit_log.call_count == 0, "Audit log should not be called for non-PHI fields"
 
     def test_encrypted_fields_not_serialized(self):
+        """Test that PHI fields are properly redacted in serialization."""
         patient = self._create_sample_patient_with_phi()
-        # Skipping this test as Patient does not have encrypted fields or to_dict method
-        pytest.skip("Encrypted field serialization not implemented in Patient model.")
+        
+        # Test default serialization (should redact PHI)
+        serialized = patient.to_dict(include_phi=False)
+        
+        # Verify PHI fields are redacted
+        assert serialized.get("email") == "[REDACTED PHI]"
+        assert serialized.get("name") == "[REDACTED PHI]"
+        
+        # Non-PHI fields should not be redacted
+        assert "id" in serialized
+        assert serialized.get("id") != "[REDACTED PHI]"
+        
+        # Test serialization with explicit PHI inclusion
+        serialized_with_phi = patient.to_dict(include_phi=True)
+        
+        # Verify PHI fields are included
+        assert serialized_with_phi.get("email") == patient.email
+        assert serialized_with_phi.get("name") == patient.name
 
     @patch('app.core.utils.logging.get_logger')
     def test_no_phi_in_logs(self, mock_get_logger):
