@@ -7,7 +7,7 @@ input validation, and secure communication.
 """
 
 import uuid
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 import logging
 
@@ -144,13 +144,16 @@ class TestAuthorization:
                     email = token_data.get("email", f"{username}@example.com")
                     
                 return User(
-                    id=accessing_user_id,
+                    id=str(accessing_user_id),
                     username=username,
                     email=email,
+                    first_name="Test",
+                    last_name="User", 
                     full_name=f"{username} Full Name",
                     roles=[UserRole.PATIENT],
                     account_status=UserStatus.ACTIVE,
-                    password_hash="hashed_password_example"
+                    password_hash="hashed_password_example",
+                    created_at=datetime.now(timezone.utc)
                 )
             return None
         mock_user_repo.get_by_id = mock_get_user_by_id
@@ -323,13 +326,16 @@ class TestAuthorization:
         async def mock_get_user_by_id_inner(*, user_id: uuid.UUID): # Renamed inner parameter
             if user_id == user_id_val:
                 return User(
-                    id=user_id_val, 
+                    id=str(user_id_val), 
                     username=token_user_data["username"], 
                     email=token_user_data["email"], 
+                    first_name="Test",
+                    last_name="User",
                     full_name=f"{token_user_data['username']} Full Name", 
                     roles=[user_role], 
                     account_status=UserStatus.ACTIVE,
-                    password_hash="hashed_password_example_generic"
+                    password_hash="hashed_password_example_generic",
+                    created_at=datetime.now(timezone.utc)
                 )
             return None
         mock_user_repo.get_by_id = mock_get_user_by_id_inner
