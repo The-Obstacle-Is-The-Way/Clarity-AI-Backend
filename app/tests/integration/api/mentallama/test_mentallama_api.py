@@ -31,7 +31,7 @@ from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.models.token_models import TokenPayload
 from app.domain.entities.user import User
 from app.domain.models.user import UserRole
-from app.presentation.api.dependencies.auth import get_current_user
+from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
 from app.presentation.api.dependencies.auth import get_jwt_service
 
@@ -199,8 +199,16 @@ async def mentallama_test_client(
             roles=[UserRole.PATIENT]
         )
     
+    # Override get_current_active_user to avoid account_status check
+    async def mock_get_current_active_user():
+        """Returns a mock active user for testing without checking account_status."""
+        return await mock_get_current_user()
+    
+    # Override both dependencies
     app.dependency_overrides[get_current_user] = mock_get_current_user
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode get_current_user dependency on app {id(app)}")
+    app.dependency_overrides[get_current_active_user] = mock_get_current_active_user
+    
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode get_current_user and get_current_active_user dependencies on app {id(app)}")
     
     yield client
     
