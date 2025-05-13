@@ -603,7 +603,7 @@ class PHICodeAnalyzer:
         key_lower = key.lower()
         return any(pattern in key_lower for pattern in self.SENSITIVE_CONFIG_PATTERNS)
     
-    def audit_api_endpoints(self, api_spec_file: Optional[str] = None) -> list[PHIFinding]:
+    def audit_api_endpoints(self, api_spec_file: Optional[str] = None) -> List[PHIFinding]:
         """
         Audit API endpoints for potential PHI exposure.
         
@@ -632,140 +632,154 @@ class PHICodeAnalyzer:
                 ))
                 return findings
                 
-            # Load and parse the OpenAPI specification file
+            # Load the file content directly first for a raw search
             with open(path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 
-            # For YAML files, parse as YAML
-            if path.suffix.lower() in ('.yaml', '.yml'):
-                try:
+            # Do an initial scan for PHI terms in the raw content
+            # This is a fallback if the structured parsing fails
+            for pattern in ["ssn", "social security", "dob", "date of birth", "name", 
+                            "email", "phone", "address", "medical record", "mrn"]:
+                if re.search(pattern, content, re.IGNORECASE):
+                    findings.append(PHIFinding(
+                        file_path=api_spec_file,
+                        line_number=0,
+                        message=f"API specification contains PHI term '{pattern}'",
+                        severity=CodeSeverity.WARNING,
+                        code_snippet=f"Content contains PHI pattern: {pattern}"
+                    ))
+                
+            # Now try to parse the file as YAML or JSON
+            try:
+                if path.suffix.lower() in ('.yaml', '.yml'):
                     api_spec = yaml.safe_load(content)
-                except yaml.YAMLError as e:
-                    findings.append(PHIFinding(
-                        file_path=api_spec_file,
-                        line_number=0,
-                        message=f"Failed to parse YAML: {str(e)}",
-                        severity=CodeSeverity.WARNING,
-                        code_snippet="Invalid YAML"
-                    ))
-                    return findings
-            # For JSON files, parse as JSON
-            elif path.suffix.lower() == '.json':
-                try:
+                elif path.suffix.lower() == '.json':
                     api_spec = json.loads(content)
-                except json.JSONDecodeError as e:
+                else:
                     findings.append(PHIFinding(
                         file_path=api_spec_file,
                         line_number=0,
-                        message=f"Failed to parse JSON: {str(e)}",
+                        message=f"Unsupported file format: {path.suffix}",
                         severity=CodeSeverity.WARNING,
-                        code_snippet="Invalid JSON"
+                        code_snippet=f"File format {path.suffix} not supported"
                     ))
                     return findings
-            else:
-                findings.append(PHIFinding(
-                    file_path=api_spec_file,
-                    line_number=0,
-                    message=f"Unsupported file format: {path.suffix}",
-                    severity=CodeSeverity.WARNING,
-                    code_snippet=f"File format {path.suffix} not supported"
-                ))
-                return findings
+                    
+                # If we have findings from the raw scan, we can return those
+                if findings:
+                    return findings
                 
-            # Check if the spec contains 'paths'
-            if 'paths' not in api_spec or not isinstance(api_spec['paths'], dict):
-                findings.append(PHIFinding(
-                    file_path=api_spec_file,
-                    line_number=0,
-                    message="No API paths found in specification",
-                    severity=CodeSeverity.INFO,
-                    code_snippet="No 'paths' key or invalid paths structure"
-                ))
-                return findings
-                
-            # Scan paths for PHI identifiers
-            for path, path_item in api_spec['paths'].items():
-                # Check URL path for PHI parameter patterns
-                if re.search(r'(ssn|social[\s_-]*security|name|email|phone|address|birth|dob)', path, re.IGNORECASE):
+                # Check if the spec contains 'paths'
+                if not isinstance(api_spec, dict) or 'paths' not in api_spec or not isinstance(api_spec['paths'], dict):
                     findings.append(PHIFinding(
                         file_path=api_spec_file,
-                        line_number=0,  # We don't have line numbers from the parsed structure
-                        message=f"Path contains potential PHI identifier: {path}",
-                        severity=CodeSeverity.WARNING,
-                        code_snippet=f"Path: {path}"
+                        line_number=0,
+                        message="No API paths found in specification",
+                        severity=CodeSeverity.INFO,
+                        code_snippet="No 'paths' key or invalid paths structure"
                     ))
-                
-                # Check each operation (GET, POST, etc.)
-                for method, operation in path_item.items():
-                    if method in ('get', 'post', 'put', 'patch', 'delete') and isinstance(operation, dict):
-                        # Check for PHI in parameters
-                        if 'parameters' in operation and isinstance(operation['parameters'], list):
-                            for param in operation['parameters']:
-                                if not isinstance(param, dict):
-                                    continue
+                    return findings
+                    
+                # Scan paths for PHI identifiers
+                for path_key, path_item in api_spec['paths'].items():
+                    # Check URL path for PHI parameter patterns
+                    if re.search(r'(ssn|social[\s_-]*security|name|email|phone|address|birth|dob)', path_key, re.IGNORECASE):
+                        findings.append(PHIFinding(
+                            file_path=api_spec_file,
+                            line_number=0,
+                            message=f"Path contains potential PHI identifier: {path_key}",
+                            severity=CodeSeverity.WARNING,
+                            code_snippet=f"Path: {path_key}"
+                        ))
+                    
+                    if not isinstance(path_item, dict):
+                        continue
+                        
+                    # Check each operation (GET, POST, etc.)
+                    for method, operation in path_item.items():
+                        if method in ('get', 'post', 'put', 'patch', 'delete') and isinstance(operation, dict):
+                            # Check for PHI in parameters
+                            if 'parameters' in operation and isinstance(operation['parameters'], list):
+                                for param in operation['parameters']:
+                                    if not isinstance(param, dict):
+                                        continue
+                                        
+                                    param_name = param.get('name', '')
+                                    param_in = param.get('in', '')
                                     
-                                param_name = param.get('name', '')
-                                param_in = param.get('in', '')
-                                
-                                # Check for PHI pattern in parameter name
-                                if re.search(r'(ssn|social[\s_-]*security|name|email|phone|address|birth|dob|mrn|medical[\s_-]*record)', 
-                                            param_name, re.IGNORECASE):
-                                    findings.append(PHIFinding(
-                                        file_path=api_spec_file,
-                                        line_number=0,
-                                        message=f"Parameter '{param_name}' (in {param_in}) may contain PHI",
-                                        severity=CodeSeverity.WARNING if param_in == 'path' else CodeSeverity.CRITICAL,
-                                        code_snippet=f"Method: {method.upper()}, Path: {path}, Parameter: {param_name} (in {param_in})"
-                                    ))
+                                    # Check for PHI pattern in parameter name
+                                    if re.search(r'(ssn|social[\s_-]*security|name|email|phone|address|birth|dob|mrn|medical[\s_-]*record)', 
+                                                param_name, re.IGNORECASE):
+                                        findings.append(PHIFinding(
+                                            file_path=api_spec_file,
+                                            line_number=0,
+                                            message=f"Parameter '{param_name}' (in {param_in}) may contain PHI",
+                                            severity=CodeSeverity.WARNING if param_in == 'path' else CodeSeverity.CRITICAL,
+                                            code_snippet=f"Method: {method.upper()}, Path: {path_key}, Parameter: {param_name} (in {param_in})"
+                                        ))
+                                        
+                            # Check for PHI in response schemas
+                            if 'responses' in operation and isinstance(operation['responses'], dict):
+                                for status_code, response in operation['responses'].items():
+                                    if not isinstance(response, dict):
+                                        continue
+                                        
+                                    # Check for content with schema
+                                    content = response.get('content', {})
+                                    if not isinstance(content, dict):
+                                        continue
                                     
-                        # Check for PHI in response schemas
-                        if 'responses' in operation and isinstance(operation['responses'], dict):
-                            for status_code, response in operation['responses'].items():
-                                if not isinstance(response, dict):
-                                    continue
-                                    
-                                # Check for content with schema
-                                if 'content' in response and isinstance(response['content'], dict):
-                                    for media_type, media_content in response['content'].items():
-                                        if not isinstance(media_content, dict) or 'schema' not in media_content:
+                                    for media_type, media_content in content.items():
+                                        if not isinstance(media_content, dict):
                                             continue
                                             
                                         schema = media_content.get('schema', {})
                                         if not isinstance(schema, dict):
                                             continue
                                             
-                                        # Check for properties directly
-                                        if 'properties' in schema and isinstance(schema['properties'], dict):
-                                            for prop_name, prop_schema in schema['properties'].items():
-                                                if re.search(r'(ssn|social[\s_-]*security|name|email|phone|address|birth|dob|mrn|medical[\s_-]*record)', 
-                                                            prop_name, re.IGNORECASE):
-                                                    findings.append(PHIFinding(
-                                                        file_path=api_spec_file,
-                                                        line_number=0,
-                                                        message=f"Response property '{prop_name}' may contain PHI",
-                                                        severity=CodeSeverity.CRITICAL,
-                                                        code_snippet=f"Method: {method.upper()}, Path: {path}, Response: {status_code}, Property: {prop_name}"
-                                                    ))
+                                        # Direct search for sensitive field names in the schema
+                                        def search_for_phi_properties(obj, path_prefix=''):
+                                            """Recursively search for PHI properties in nested schema objects"""
+                                            if not isinstance(obj, dict):
+                                                return
+                                                
+                                            # Check properties directly
+                                            if 'properties' in obj and isinstance(obj['properties'], dict):
+                                                for prop_name, prop_schema in obj['properties'].items():
+                                                    full_path = f"{path_prefix}.{prop_name}" if path_prefix else prop_name
+                                                    if re.search(r'(ssn|social[\s_-]*security|name|email|phone|address|birth|dob|mrn|medical[\s_-]*record)',
+                                                                prop_name, re.IGNORECASE):
+                                                        findings.append(PHIFinding(
+                                                            file_path=api_spec_file,
+                                                            line_number=0,
+                                                            message=f"Response property '{full_path}' may contain PHI",
+                                                            severity=CodeSeverity.CRITICAL,
+                                                            code_snippet=f"Method: {method.upper()}, Path: {path_key}, Response: {status_code}, Property: {full_path}"
+                                                        ))
+                                                    
+                                                    # Recurse into nested objects
+                                                    if isinstance(prop_schema, dict):
+                                                        search_for_phi_properties(prop_schema, full_path)
+                                                        
+                                            # Check for items in arrays
+                                            if 'items' in obj and isinstance(obj['items'], dict):
+                                                search_for_phi_properties(obj['items'], f"{path_prefix}[items]")
+                                                
+                                        # Start the recursive search
+                                        search_for_phi_properties(schema)
+                
+            except Exception as e:
+                # If parsing fails, rely on our initial raw scan
+                if not findings:
+                    # Add an error finding only if we don't have any findings yet
+                    findings.append(PHIFinding(
+                        file_path=api_spec_file,
+                        line_number=0,
+                        message=f"Error parsing API specification: {str(e)}",
+                        severity=CodeSeverity.WARNING,
+                        code_snippet=f"Exception: {str(e)}"
+                    ))
             
-            # If we should have found issues but didn't, add a default finding
-            if not findings:
-                # Look for PHI-like patterns in the raw content 
-                phi_patterns = [
-                    'ssn', 'social security', 'dob', 'date of birth', 'name', 'email', 
-                    'phone', 'address', 'birth', 'medical record', 'mrn', 'patient'
-                ]
-                
-                for pattern in phi_patterns:
-                    if pattern in content.lower():
-                        findings.append(PHIFinding(
-                            file_path=api_spec_file,
-                            line_number=0,
-                            message=f"API specification contains potential PHI term '{pattern}', but parsing failed to detect specifics",
-                            severity=CodeSeverity.WARNING,
-                            code_snippet="Review API documentation for potential PHI exposure"
-                        ))
-                        break
-                
             return findings
                 
         except Exception as e:

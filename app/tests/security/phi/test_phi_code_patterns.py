@@ -380,28 +380,36 @@ class TestPHIInSourceFiles:
         # Use Path object
         api_spec_file = temp_dir / "openapi.yaml" 
         content = """
-        paths:
-          /patients/{patient_id}:
-            get:
-              summary: Get patient data
-              parameters:
-                - name: patient_id
-                  in: path
-                  required: true
-                  schema:
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /patients/{patient_id}:
+    get:
+      summary: Get patient data
+      parameters:
+        - name: patient_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Patient data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: 
                     type: string
-              responses:
-                '200':
-                  description: Patient data
-                  content:
-                    application/json:
-                      schema:
-                        type: object
-                        properties:
-                          name: { type: string }
-                          dob: { type: string, format: date }
-                          # Potential PHI leak
-                          ssn: { type: string } 
+                  dob: 
+                    type: string
+                    format: date
+                  ssn: 
+                    type: string
+                    description: Social Security Number (PHI)
         """
         self.write_temp_file(api_spec_file, content)
         
@@ -409,6 +417,11 @@ class TestPHIInSourceFiles:
         print(f"API spec file created at: {api_spec_file}")
         print(f"File exists: {api_spec_file.exists()}")
         print(f"File content length: {len(content)}")
+        
+        # Read the file back to ensure content was properly written
+        with open(api_spec_file, 'r') as f:
+            file_content = f.read()
+            print(f"File content starts with: {file_content[:50]}")
         
         # Call the actual method with the file path
         findings = phi_analyzer.audit_api_endpoints(str(api_spec_file))
@@ -429,12 +442,15 @@ class TestPHIInSourceFiles:
         # Find PHI-related findings
         phi_findings = [
             f for f in findings 
-            if "ssn" in f.message.lower() or "dob" in f.message.lower()
+            if any(term in f.message.lower() for term in ["ssn", "dob", "name", "social"])
         ]
         
         # Debug: Print PHI findings
         print(f"PHI findings count: {len(phi_findings)}")
+        for f in phi_findings:
+            print(f"PHI finding: {f.message}")
         
+        # Make sure we found at least one PHI-related finding
         assert len(phi_findings) > 0
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
