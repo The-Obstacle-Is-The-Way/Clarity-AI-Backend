@@ -86,7 +86,6 @@ async def get_current_user(
     jwt_service: IJwtService = Depends(get_jwt_service),
     user_repo: IUserRepository = Depends(get_user_repository_dependency)
 ) -> DomainUser:
-    # MODIFIED: Restore original logging and docstring
     logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
     logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
     logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
@@ -94,10 +93,6 @@ async def get_current_user(
     Dependency to get the current user from a JWT token.
     Handles token validation, user retrieval, and role checks.
     """
-    # MODIFIED: Remove the mock return and uncomment original logic
-    # return DomainUser(...)
-
-    # Original logic restored below
     if token_credentials is None:
         logger.warning("get_current_user: No token credentials provided (token is None).")
         raise HTTPException(
@@ -157,11 +152,13 @@ async def get_current_user(
         user = await user_repo.get_user_by_id(user_id=user_id_from_token)
         
     except ValueError as e:
-        logger.error(f"get_current_user: Invalid user ID format in token: {payload.get('sub')}. Error: {e}")
+        subject_val = payload.sub if hasattr(payload, 'sub') else "unknown"
+        logger.error(f"get_current_user: Invalid user ID format in token: {subject_val}. Error: {e}")
         raise credentials_exception
 
     if user is None:
-        logger.warning(f"get_current_user: User not found for ID: {payload.get('sub')}")
+        subject_val = payload.sub if hasattr(payload, 'sub') else "unknown"
+        logger.warning(f"get_current_user: User not found for ID: {subject_val}")
         raise credentials_exception
     
     # --- DETAILED LOGGING BEFORE STATUS CHECK ---

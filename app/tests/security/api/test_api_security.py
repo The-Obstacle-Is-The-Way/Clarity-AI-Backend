@@ -564,11 +564,20 @@ async def test_access_patient_phi_data_success_provider(
     mock_user_repo = AsyncMock(spec=IUserRepository)
     async def mock_get_provider_user(*, user_id: uuid.UUID):
         if user_id == provider_user_id:
+            # Handle TokenPayload objects (which have attributes) or dictionaries (which have get method)
+            if hasattr(token_data, 'username'):
+                username = token_data.username
+                email = token_data.email if hasattr(token_data, 'email') else f"{username}@example.com"
+            else:
+                # Fallback for dictionaries or other types
+                username = token_data.get("username", f"phi_provider_user")
+                email = token_data.get("email", f"phi_provider@example.com")
+                
             return User(
                 id=provider_user_id, 
-                username="phi_provider_user", 
-                email="phi_provider@example.com", 
-                full_name="Dr. PHI Accessor", 
+                username=username, 
+                email=email, 
+                full_name=f"Dr. PHI Accessor", 
                 roles=[UserRole.CLINICIAN], 
                 account_status=UserStatus.ACTIVE,
                 password_hash="hashed_password_phi_provider"
@@ -661,11 +670,20 @@ async def test_access_patient_phi_data_patient_not_found(
     mock_user_repo = AsyncMock(spec=IUserRepository)
     async def mock_get_provider_user(*, user_id: uuid.UUID):
         if user_id == provider_user_id:
+            # Handle TokenPayload objects (which have attributes) or dictionaries (which have get method)
+            if hasattr(token_data, 'username'):
+                username = token_data.username
+                email = token_data.email if hasattr(token_data, 'email') else f"{username}@example.com"
+            else:
+                # Fallback for dictionaries or other types
+                username = token_data.get("username", f"phi_provider_user_for_not_found_test")
+                email = token_data.get("email", f"phi_provider_notfound@example.com")
+                
             return User(
                 id=provider_user_id, 
-                username="phi_provider_user_for_not_found_test", 
-                email="phi_provider_notfound@example.com", 
-                full_name="Dr. PHI Not Found Test", 
+                username=username, 
+                email=email, 
+                full_name=f"Dr. PHI Not Found Test", 
                 roles=[UserRole.CLINICIAN], 
                 account_status=UserStatus.ACTIVE,
                 password_hash="hashed_password_phi_provider_nf"
