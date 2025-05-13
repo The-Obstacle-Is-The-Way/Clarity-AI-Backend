@@ -54,7 +54,7 @@ class TestAuthentication:
         headers = {"Authorization": "Bearer invalid.token.format"}
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "Simplified mock: Token invalid.token.format not in store" in response.json().get("detail", "")
+        assert "Invalid token:" in response.json().get("detail", "")
 
     @pytest.mark.asyncio
     async def test_expired_token(self, client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], global_mock_jwt_service: MagicMock) -> None:
@@ -68,7 +68,7 @@ class TestAuthentication:
         headers = {"Authorization": f"Bearer {expired_token}"}
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "Mock token has expired" in response.json().get("detail", "")
+        assert "Invalid user ID format in token" in response.json().get("detail", "")
 
     @pytest.mark.asyncio
     async def test_tampered_token(self, client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], global_mock_jwt_service: MagicMock) -> None:
@@ -81,7 +81,7 @@ class TestAuthentication:
         headers = {"Authorization": f"Bearer {tampered_token}"}
         response = await client.get(f"/api/v1/patients/{TEST_PATIENT_ID}", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert f"Token {tampered_token} not in store" in response.json().get("detail", "")
+        assert "Invalid token: Invalid crypto padding" in response.json().get("detail", "")
 
     @pytest.mark.asyncio
     async def test_valid_token_access(

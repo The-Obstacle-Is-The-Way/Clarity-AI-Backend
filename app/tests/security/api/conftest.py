@@ -154,7 +154,7 @@ def authenticated_user() -> User:
         email="test.doctor@example.com", 
         first_name="Test",
         last_name="Doctor",
-        roles=[UserRole.CLINICIAN.value],
+        roles=[UserRole.CLINICIAN],  # Use UserRole enum directly, not the string value
         is_active=True,
         hashed_password="hashed_password_not_real",
         created_at=datetime.now(timezone.utc)
@@ -270,7 +270,7 @@ async def get_valid_auth_headers(auth_test_helper, authenticated_user) -> dict[s
         authenticated_user.id,
         authenticated_user.username,
         authenticated_user.email,
-        [role.value for role in authenticated_user.roles]
+        authenticated_user.roles  # Pass the roles directly, no need to extract values
     )
 
 
