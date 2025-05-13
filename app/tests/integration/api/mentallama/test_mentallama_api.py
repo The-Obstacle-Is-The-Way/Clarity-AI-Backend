@@ -330,6 +330,12 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
     # Create the FastAPI application with test settings
     app = create_application(skip_auth_middleware=True)  # Skip authentication middleware
     
+    # Add mock session factory to app.state to avoid database dependency errors
+    mock_session_factory = AsyncMock()
+    app.state.actual_session_factory = mock_session_factory
+    app.state.db_engine = MagicMock()
+    app.state.db_session = AsyncMock()
+    
     # Create an AsyncClient for testing
     async with AsyncClient(
         app=app,
