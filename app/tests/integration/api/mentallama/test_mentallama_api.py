@@ -29,11 +29,11 @@ from app.core.interfaces.services.authentication_service import IAuthenticationS
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.models.token_models import TokenPayload
-from app.domain.entities.user import UserEntity
-from app.domain.enums.user import UserRoleEnum
+from app.domain.entities.user import User
+from app.domain.models.user import UserRole
 from app.presentation.api.dependencies.auth import get_current_user
-from app.presentation.api.dependencies.ml import get_mentallama_service
-from app.presentation.api.dependencies.security import get_jwt_service
+from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
+from app.presentation.api.dependencies.auth import get_jwt_service
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ BASE_URL = "/api/v1/mentallama"
 
 # Configuration & Constants
 TEST_PROMPT = "This is a test prompt."
-TEST_USER_ID = "test_user_123"
+TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 TEST_MODEL = "test_model"
 MENTALLAMA_API_PREFIX = f"{Settings().API_V1_STR}/mentallama"
 
@@ -189,14 +189,14 @@ async def mentallama_test_client(
     # Override get_current_user dependency with a mock user
     async def mock_get_current_user():
         """Returns a mock user for testing."""
-        return UserEntity(
+        return User(
             id=TEST_USER_ID,
             username="testuser",
             email="test@example.com",
-            role=UserRoleEnum.PATIENT,
-            verified=True,
-            active=True,
-            roles=[UserRoleEnum.PATIENT]
+            role=UserRole.PATIENT.value,
+            is_active=True,
+            is_verified=True,
+            roles=[UserRole.PATIENT]
         )
     
     app.dependency_overrides[get_current_user] = mock_get_current_user
