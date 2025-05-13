@@ -55,7 +55,7 @@ class TestAppointment:
         reason = "Patient request"
         sample_appointment.cancel(reason)
         
-        assert sample_appointment.status == "CANCELED"
+        assert sample_appointment.status == "cancelled"
         assert sample_appointment.cancellation_reason == reason
 
 # Run with pytest -vx app/tests/unit/infrastructure/test_appointment_migrated.py
