@@ -427,11 +427,8 @@ class TestPatientEncryptionIntegration:
         # Test with a completely different key (simulated by creating a new service instance)
         # This requires that BaseEncryptionService can be instantiated with a different direct_key
         # Ensure TEST_OTHER_ENCRYPTION_KEY is defined in test settings or .env.test
-        other_key = getattr(settings, 'TEST_OTHER_ENCRYPTION_KEY', None)
-        if not other_key:
-            pytest.skip("TEST_OTHER_ENCRYPTION_KEY not configured, skipping wrong key test.")
-            return
-
+        other_key = "COMPLETELY_DIFFERENT_TEST_KEY_FOR_WRONG_KEY_TEST_12345"
+        
         other_service = self.BaseEncryptionService(direct_key=other_key)
         encrypted_with_main_key = service.encrypt("data for main key")
         

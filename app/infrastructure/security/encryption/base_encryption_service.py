@@ -766,4 +766,8 @@ def get_encryption_service() -> 'BaseEncryptionService':
         logger.warning("No encryption key found in settings. Using default test key.")
         key = "WnZr4u7x!A%D*G-KaPdSgVkYp3s6v9y$"
     
+    # Ensure salt is bytes if provided
+    if salt and not isinstance(salt, bytes):
+        salt = salt.encode('utf-8') if isinstance(salt, str) else bytes(salt)
+    
     return BaseEncryptionService(secret_key=key, salt=salt)
