@@ -246,7 +246,7 @@ class TestPatientEncryptionIntegration:
             "additional_notes_lve": "More notes here.",
             "contact_details_json": {"home_phone": "555-0001", "work_email": "work@enc.com"}, # Renamed for clarity, assuming it maps to a JSON field
             "preferences_json": {"communication": "encrypted_email", "theme": "dark_mode"}, # Renamed for clarity
-            "notes": "Encrypted notes here.",
+                "notes": "Encrypted notes here.",
             "custom_fields": {"custom_key": "encrypted_custom_value"},
             "is_active": True,
             "created_at": datetime.now(timezone.utc),

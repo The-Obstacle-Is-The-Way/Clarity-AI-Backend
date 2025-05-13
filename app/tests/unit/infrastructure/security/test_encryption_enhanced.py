@@ -225,7 +225,7 @@ class TestEnhancedEncryptionService:
         assert service_new.decrypt(encrypted_with_new) == test_data
         
         # Verify previous service can't decrypt data encrypted with new key
-        with pytest.raises(ValueError, match=r"Failed to decrypt: Invalid token"):
+        with pytest.raises(ValueError, match="Failed to decrypt: Invalid token"):
             service_prev.decrypt(encrypted_with_new)
 
 
