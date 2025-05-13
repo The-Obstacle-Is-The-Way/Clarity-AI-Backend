@@ -29,17 +29,15 @@ mock_user = DomainUser(
     id="test-user-id",
     email="test@example.com",
     username="testuser",
-    role=UserRole.PROVIDER,
-    roles=[UserRole.PROVIDER],
     full_name="Test User",
-    is_active=True,
+    password_hash="hashed_password_for_testing",
+    roles={UserRole.CLINICIAN},
     account_status=UserStatus.ACTIVE,
     created_at=datetime.now(),
-    updated_at=datetime.now(),
 )
 
 # Mock for get_current_user dependency
-async def mock_get_current_user():
+async def mock_get_current_user(*args, **kwargs):
     """Mock implementation of get_current_user dependency."""
     return mock_user
 
@@ -129,6 +127,10 @@ async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGene
         request.state.db_engine = app.state.db_engine
         request.state.settings = app.state.settings
         
+        # Add the required query parameters that the endpoint seems to be expecting
+        if "args" not in request.query_params:
+            request.scope["query_string"] += b"&args=&kwargs="
+        
         response = await call_next(request)
         return response
 
@@ -168,7 +170,7 @@ class TestXGBoostIntegration:
         # Prepare request data matching RiskPredictionRequest
         risk_request = {
             "patient_id": "patient-123",
-            "risk_type": "suicide_attempt", # Use valid RiskType enum value
+            "risk_type": "suicide_attempt",  # Valid value from RiskType enum
             "patient_data": {
                 "age": 40,
                 "prior_episodes": 2,
@@ -181,9 +183,21 @@ class TestXGBoostIntegration:
                 "severity_score": 7,
                 "medication_adherence": 0.8,
             },
+            "include_explainability": False,
+            "time_frame_days": 90,
+            "confidence_threshold": 0.7
         }
-        # Make API call to the correct path
-        response = await client.post("/api/v1/xgboost/risk-prediction", json=risk_request)
+        
+        # Make API call with required query parameters
+        response = await client.post(
+            "/api/v1/xgboost/risk-prediction",
+            json=risk_request,
+            params={"args": "", "kwargs": ""}  # Add these required query parameters
+        )
+        
+        # Print response details for debugging
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
 
         # Assertions
         assert response.status_code == 200
@@ -240,9 +254,17 @@ class TestXGBoostIntegration:
             },
             "timeframe_days": 90 # Use integer timeframe_days instead of time_frame dict
         }
-        # Use the correct path
-        response = await client.post("/api/v1/xgboost/outcome-prediction",
-                                     json=outcome_request)
+        
+        # Make API call with required query parameters
+        response = await client.post(
+            "/api/v1/xgboost/outcome-prediction",
+            json=outcome_request,
+            params={"args": "", "kwargs": ""}  # Add these required query parameters
+        )
+        
+        # Print response details for debugging
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
 
         assert response.status_code == 200
         response_data = response.json()
