@@ -409,43 +409,39 @@ class TestContactInfoEndToEnd:
     
     def test_real_encryption_decryption(self, test_encryption_key):
         """Test real encryption and decryption with actual service."""
-        # Skip if no encryption service available
-        try:
-            # Override settings for test
-            with patch('app.core.config.settings.get_settings') as mock_settings:
-                # Create a mock settings object
-                settings = MagicMock()
-                settings.PHI_ENCRYPTION_KEY = test_encryption_key
-                mock_settings.return_value = settings
-                
-                # Clear service cache
-                ContactInfo._encryption_service = None
-                
-                # Arrange
-                contact_info = ContactInfo(
-                    email="test@example.com",
-                    phone="555-123-4567"
-                )
-                
-                # Act: Encrypt
-                encrypted = contact_info.encrypt()
-                
-                # Assert encryption
-                assert encrypted._is_encrypted is True
-                assert encrypted.email != "test@example.com"
-                assert encrypted.email.startswith("v1:")
-                assert encrypted.phone != "555-123-4567"
-                assert encrypted.phone.startswith("v1:")
-                
-                # Act: Decrypt back
-                decrypted = encrypted.decrypt()
-                
-                # Assert decryption
-                assert decrypted._is_encrypted is False
-                assert decrypted.email == "test@example.com"
-                assert decrypted.phone == "555-123-4567"
-        except (ImportError, ValueError):
-            pytest.skip("Encryption service not available in this environment")
+        # Override settings for test
+        with patch('app.core.config.settings.get_settings') as mock_settings:
+            # Create a mock settings object
+            settings = MagicMock()
+            settings.PHI_ENCRYPTION_KEY = test_encryption_key
+            mock_settings.return_value = settings
+            
+            # Clear service cache
+            ContactInfo._encryption_service = None
+            
+            # Arrange
+            contact_info = ContactInfo(
+                email="test@example.com",
+                phone="555-123-4567"
+            )
+            
+            # Act: Encrypt
+            encrypted = contact_info.encrypt()
+            
+            # Assert encryption
+            assert encrypted._is_encrypted is True
+            assert encrypted.email != "test@example.com"
+            assert encrypted.email.startswith("v1:")
+            assert encrypted.phone != "555-123-4567"
+            assert encrypted.phone.startswith("v1:")
+            
+            # Act: Decrypt back
+            decrypted = encrypted.decrypt()
+            
+            # Assert decryption
+            assert decrypted._is_encrypted is False
+            assert decrypted.email == "test@example.com"
+            assert decrypted.phone == "555-123-4567"
 
 
 # Test integration with other classes using composition

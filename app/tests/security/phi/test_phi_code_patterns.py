@@ -421,9 +421,7 @@ class TestPHIInSourceFiles:
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")
     def test_audit_configuration(self, phi_analyzer: PHICodeAnalyzer, temp_dir: Path) -> None:
-        """Test auditing configuration files.
-           NOTE: Audit logic likely moved/changed.
-        """
+        """Test auditing configuration files."""
         # Use Path object
         config_file = temp_dir / "app.cfg"
         content = """
@@ -436,10 +434,23 @@ class TestPHIInSourceFiles:
         """
         self.write_temp_file(config_file, content)
         
-        # Assume audit logic exists elsewhere
-        # This test might need refactoring against PHIAuditor or similar
-        # result = phi_analyzer.audit_configuration(temp_dir)
+        # Call the audit_configuration method
+        result = phi_analyzer.audit_configuration(str(temp_dir))
         
-        # assert result["status"] == "completed"
-        # assert len(result["findings"]) >= 3 # Password, API key, SSN
-        pytest.skip("Audit logic moved/changed. Test needs refactoring.")
+        # Verify results
+        assert result["status"] == "completed"
+        assert result["summary"]["total_findings"] > 0 
+        assert result["summary"]["findings_by_severity"]["critical"] + result["summary"]["findings_by_severity"]["warning"] > 0
+        
+        # Check for specific patterns in the findings
+        password_findings = [
+            f for f in result["findings"] 
+            if "password" in f["message"].lower() or "password" in f["code_snippet"].lower()
+        ]
+        assert len(password_findings) > 0
+        
+        ssn_findings = [
+            f for f in result["findings"] 
+            if "ssn" in f["message"].lower() or "ssn" in f["code_snippet"].lower()
+        ]
+        assert len(ssn_findings) > 0
