@@ -20,6 +20,7 @@ from httpx import AsyncClient
 from fastapi import FastAPI
 from datetime import datetime, timezone, timedelta
 import uuid
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Application imports (Sorted)
 from app.app_factory import create_application
@@ -28,6 +29,11 @@ from app.core.interfaces.services.authentication_service import IAuthenticationS
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.models.token_models import TokenPayload
+from app.domain.entities.user import UserEntity
+from app.domain.enums.user import UserRoleEnum
+from app.presentation.api.dependencies.auth import get_current_user
+from app.presentation.api.dependencies.ml import get_mentallama_service
+from app.presentation.api.dependencies.security import get_jwt_service
 
 logger = logging.getLogger(__name__)
 
@@ -131,80 +137,76 @@ def global_mock_jwt_service() -> MagicMock:
     async def create_access_token_side_effect(data=None, expires_delta=None):
         return "test.jwt.token"
     
+    mock.create_access_token = AsyncMock(side_effect=create_access_token_side_effect)
+    
     # Mock token decoding function
     async def decode_token_side_effect(token, audience=None):
+        # Return a valid payload regardless of the token input
         return TokenPayload(
             sub=TEST_USER_ID,
             exp=int((datetime.now(timezone.utc) + timedelta(minutes=30)).timestamp()),
             iat=int(datetime.now(timezone.utc).timestamp()),
+            jti=str(uuid.uuid4()),
             role="PATIENT",
             roles=["PATIENT"],
-            jti=str(uuid.uuid4())
+            username="testuser", 
+            verified=True,
+            active=True
         )
     
-    # Set side effects for async methods
-    mock.create_access_token = AsyncMock(side_effect=create_access_token_side_effect)
     mock.decode_token = AsyncMock(side_effect=decode_token_side_effect)
     
     return mock
 
 
 # --- New Fixture for MentaLLaMA Test Client --- #
-@pytest_asyncio.fixture(scope="function")
+@pytest_asyncio.fixture
 async def mentallama_test_client(
-    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
-    mock_mentallama_service_instance: MagicMock,
-    global_mock_jwt_service: MagicMock,
-) -> AsyncGenerator[AsyncClient, None]:
-    """
-    Provides an AsyncClient configured for MentaLLaMA tests with necessary
-    dependencies mocked.
-    The FastAPI app instance used for overrides is derived from client_app_tuple_func_scoped.
-    """
-    client, app_from_fixture = client_app_tuple_func_scoped
-    logger.info(f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app_from_fixture)}")
-
-    actual_app_for_overrides = app_from_fixture
-    if not isinstance(app_from_fixture, FastAPI):
-        logger.warning(
-            f"MENTALLAMA_TEST_CLIENT: app_from_fixture is type {type(app_from_fixture)}, not FastAPI. "
-            f"Checking for an inner '.app' attribute."
-        )
-        if hasattr(app_from_fixture, "app") and isinstance(app_from_fixture.app, FastAPI):
-            actual_app_for_overrides = app_from_fixture.app
-            logger.info(
-                f"MENTALLAMA_TEST_CLIENT: Using inner app {type(actual_app_for_overrides)} for overrides."
-            )
-        else:
-            logger.error(
-                f"MENTALLAMA_TEST_CLIENT: app_from_fixture is {type(app_from_fixture)} and no suitable "
-                f"inner '.app' attribute found. Dependency overrides will likely fail."
-            )
+    client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], 
+    mock_mentallama_service_instance: AsyncMock,
+    global_mock_jwt_service: MagicMock
+) -> AsyncClient:
+    """Provides a test client with MentaLLaMA service dependency overridden."""
+    client, app = client_app_tuple_func_scoped
+    
+    # Log app type for debugging
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Received app_from_fixture of type: {type(app)}")
+    
+    if not isinstance(app, FastAPI):
+        logging.warning(f"MENTALLAMA_TEST_CLIENT: app_from_fixture is not FastAPI: {type(app)}. Trying to get FastAPI app from it.")
+        app = app.app  # Try to get the FastAPI app
     else:
-        logger.info(
-            f"MENTALLAMA_TEST_CLIENT: app_from_fixture is already FastAPI type: {type(app_from_fixture)}. "
-            f"Using it directly for overrides."
-        )
-
+        logging.info(f"MENTALLAMA_TEST_CLIENT: app_from_fixture is already FastAPI type: {type(app)}. Using it directly for overrides.")
+    
     # Override MentaLLaMA service
-    actual_app_for_overrides.dependency_overrides[MentaLLaMAInterface] = lambda: mock_mentallama_service_instance
-    logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(actual_app_for_overrides)}")
-
-    # ADDED: Override IJwtService with the global mock
-    actual_app_for_overrides.dependency_overrides[IJwtService] = lambda: global_mock_jwt_service
-    logger.info(f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(actual_app_for_overrides)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
-
-    yield client
-
-    # Teardown: Clear dependency overrides
-    try:
-        actual_app_for_overrides.dependency_overrides.clear()
-        logger.info(f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(actual_app_for_overrides)}")
-    except AttributeError:
-        logger.error(
-            f"MENTALLAMA_TEST_CLIENT: Failed to clear dependency_overrides. "
-            f"actual_app_for_overrides type: {type(actual_app_for_overrides)} did not have them."
+    app.dependency_overrides[get_mentallama_service] = lambda: mock_mentallama_service_instance
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode MentaLLaMAInterface on app {id(app)}")
+    
+    # Override JWT service
+    app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
+    
+    # Override get_current_user dependency with a mock user
+    async def mock_get_current_user():
+        """Returns a mock user for testing."""
+        return UserEntity(
+            id=TEST_USER_ID,
+            username="testuser",
+            email="test@example.com",
+            role=UserRoleEnum.PATIENT,
+            verified=True,
+            active=True,
+            roles=[UserRoleEnum.PATIENT]
         )
+    
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode get_current_user dependency on app {id(app)}")
+    
+    yield client
+    
+    # Clear dependency overrides after test
+    app.dependency_overrides.clear()
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Cleared dependency_overrides on app {id(app)}")
 
 
 # --- Test Functions (Updated to use mentallama_test_client) --- #
@@ -330,9 +332,24 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
     # Create the FastAPI application with test settings
     app = create_application(skip_auth_middleware=True)  # Skip authentication middleware
     
-    # Add mock session factory to app.state to avoid database dependency errors
-    mock_session_factory = AsyncMock()
-    app.state.actual_session_factory = mock_session_factory
+    # Create a proper mock session that can be used as an async context manager
+    mock_session = AsyncMock(spec=AsyncSession)
+    
+    # Create a session factory that returns the mock session
+    # This factory is NOT a coroutine, but returns a context manager immediately
+    # Use a class for proper async context manager behavior
+    class MockAsyncSessionContextManager:
+        async def __aenter__(self):
+            return mock_session
+        
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+    
+    def mock_async_session_factory():
+        return MockAsyncSessionContextManager()
+    
+    # Add to app.state to avoid database dependency errors
+    app.state.actual_session_factory = mock_async_session_factory
     app.state.db_engine = MagicMock()
     app.state.db_session = AsyncMock()
     
