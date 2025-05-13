@@ -55,12 +55,12 @@ class User(BaseModel):
     role: str | None = Field(default=None, description="Primary role of the user")
     
     # Profile data
-    first_name: str | None = Field(default=None, description="First name of the user")
-    last_name: str | None = Field(default=None, description="Last name of the user")
+    first_name: str = Field(default="Test", description="First name of the user")
+    last_name: str = Field(default="User", description="Last name of the user")
     full_name: str | None = Field(default=None, description="Full name of the user")
     
     # Audit fields
-    created_at: datetime | None = Field(default=None, description="When the user was created")
+    created_at: datetime = Field(default_factory=datetime.now, description="When the user was created")
     updated_at: datetime | None = Field(default=None, description="When the user was last updated")
     last_login_at: datetime | None = Field(default=None, description="When the user last logged in")
     

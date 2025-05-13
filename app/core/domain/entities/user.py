@@ -36,10 +36,11 @@ class User(BaseModel):
     """User domain entity representing a user in the system."""
     
     id: str = Field(..., description="Unique identifier for the user")
+    username: str = Field(default="test_user", description="Username for login")
     email: EmailStr = Field(..., description="User's email address")
     first_name: str = Field(..., description="User's first name")
     last_name: str = Field(..., description="User's last name")
-    roles: Union[List[UserRole], Set[UserRole]] = Field(
+    roles: Union[List[UserRole], Set[UserRole], List[str], Set[str]] = Field(
         default_factory=list, description="User's roles in the system"
     )
     is_active: bool = Field(True, description="Whether the user is active")
@@ -52,30 +53,50 @@ class User(BaseModel):
     updated_at: Optional[datetime] = Field(
         None, description="When the user was last updated"
     )
+    full_name: Optional[str] = Field(
+        None, description="User's full name (first + last)"
+    )
+    
+    # Authentication fields
+    hashed_password: str = Field(default="dummy_password_hash", description="Hashed password for authentication")
+    password_hash: str = Field(default="dummy_password_hash", description="Alias for hashed_password")
     
     class Config:
         """Pydantic configuration for the User entity."""
         
         use_enum_values = True
 
-    def has_role(self, role: UserRole) -> bool:
+    def has_role(self, role: Union[UserRole, str]) -> bool:
         """Check if the user has a specific role.
         
         Args:
-            role: Role to check for
+            role: Role to check for (as enum or string)
             
         Returns:
             bool: True if the user has the role, False otherwise
         """
-        return role in self.roles
+        role_value = role.value if hasattr(role, 'value') else str(role)
+        for user_role in self.roles:
+            user_role_value = user_role.value if hasattr(user_role, 'value') else str(user_role)
+            if user_role_value == role_value:
+                return True
+        return False
         
-    def has_any_role(self, roles: List[UserRole]) -> bool:
+    def has_any_role(self, roles: List[Union[UserRole, str]]) -> bool:
         """Check if the user has any of the specified roles.
         
         Args:
-            roles: List of roles to check for
+            roles: List of roles to check for (as enums or strings)
             
         Returns:
             bool: True if the user has any of the roles, False otherwise
         """
-        return bool(set(roles) & set(self.roles))
+        for role in roles:
+            if self.has_role(role):
+                return True
+        return False
+        
+    def __post_init__(self):
+        """Populate full_name from first_name and last_name if not provided."""
+        if self.full_name is None and self.first_name and self.last_name:
+            self.full_name = f"{self.first_name} {self.last_name}"

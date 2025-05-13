@@ -236,12 +236,13 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
     # Create a test user with provider role for authentication tests
     test_user = User(
         id="00000000-0000-0000-0000-000000000002", 
-        username="test_provider",
         email="test.provider@clarity.health",
-        full_name="Test Provider",
-        password_hash="$2b$12$FakePasswordHashForTestUse..",
+        first_name="Test",
+        last_name="Provider",
         roles={UserRole.CLINICIAN, UserRole.ADMIN},
-        account_status=UserStatus.ACTIVE
+        is_active=True,
+        status=UserStatus.ACTIVE,
+        created_at=datetime.now()
     )
     
     async def override_get_current_user() -> User:

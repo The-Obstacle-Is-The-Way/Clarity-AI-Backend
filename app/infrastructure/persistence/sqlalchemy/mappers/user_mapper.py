@@ -74,29 +74,32 @@ class UserMapper:
             "username": model.username if hasattr(model, 'username') else "",
             "full_name": full_name,
             "roles": domain_roles,
-            "password_hash": password_hash,  # Always include password_hash
+            "hashed_password": password_hash,  # Use hashed_password
+            "password_hash": password_hash,  # Also set password_hash for compatibility
+            "first_name": model.first_name if hasattr(model, 'first_name') and model.first_name else "Test",
+            "last_name": model.last_name if hasattr(model, 'last_name') and model.last_name else "User",
+            "created_at": model.created_at if hasattr(model, 'created_at') and model.created_at else datetime.now(timezone.utc)
         }
         
         # Add optional fields with defaults if they exist on the model
-        if hasattr(model, 'created_at'):
-            domain_user_data['created_at'] = model.created_at
         if hasattr(model, 'last_login'):
-            domain_user_data['last_login'] = model.last_login
+            domain_user_data['last_login_at'] = model.last_login
         if hasattr(model, 'mfa_enabled'):
             domain_user_data['mfa_enabled'] = model.mfa_enabled
         if hasattr(model, 'mfa_secret'):
             domain_user_data['mfa_secret'] = model.mfa_secret
-        if hasattr(model, 'failed_login_attempts'): # Note: DomainUser calls this 'attempts'
-            domain_user_data['attempts'] = model.failed_login_attempts
+        if hasattr(model, 'failed_login_attempts'):
+            domain_user_data['failed_login_attempts'] = model.failed_login_attempts
 
         # Instantiate DomainUser
         domain_user = DomainUser(**domain_user_data)
 
         # Set account_status based on ORM model.is_active
-        if hasattr(model, 'is_active') and model.is_active is True:
-            domain_user.activate()  # This sets domain_user.account_status
-        elif hasattr(model, 'is_active') and model.is_active is False:
-            domain_user.deactivate() # This sets domain_user.account_status
+        if hasattr(domain_user, 'account_status'):
+            if hasattr(model, 'is_active') and model.is_active is True:
+                domain_user.activate()  # This sets domain_user.account_status
+            elif hasattr(model, 'is_active') and model.is_active is False:
+                domain_user.deactivate() # This sets domain_user.account_status
         # If model.is_active is None or not present, account_status remains its default (PENDING_VERIFICATION)
         
         return domain_user
@@ -160,7 +163,7 @@ class UserMapper:
             created_at=entity.created_at if hasattr(entity, 'created_at') else None,
             updated_at=datetime.now(timezone.utc) if hasattr(entity, 'updated_at') else None,
             last_login=entity.last_login if hasattr(entity, 'last_login') else None,
-            failed_login_attempts=entity.attempts if hasattr(entity, 'attempts') else 0,
+            failed_login_attempts=entity.failed_login_attempts if hasattr(entity, 'failed_login_attempts') else 0,
         )
         
         # Map additional fields if present

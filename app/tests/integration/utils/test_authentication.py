@@ -8,6 +8,7 @@ in test environments, including direct authentication bypasses for integration t
 import logging
 from collections.abc import Awaitable, Callable
 import time
+from datetime import datetime
 
 import pytest
 from fastapi import FastAPI, Request, Response
@@ -99,12 +100,13 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                 # Get user model directly from test data
                 user = User(
                     id=token_payload["id"],
-                    username="test_provider",
                     email=token_payload["sub"],
-                    full_name="Test Provider",
-                    password_hash="$2b$12$FakePasswordHashForTestUse..",
+                    first_name="Test",
+                    last_name="Provider",
                     roles={user_role},
-                    account_status=UserStatus.ACTIVE,
+                    is_active=True,
+                    status=UserStatus.ACTIVE,
+                    created_at=datetime.now()
                 )
                 
                 # Attach user and credentials to the request

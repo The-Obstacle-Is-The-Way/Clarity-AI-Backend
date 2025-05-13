@@ -20,7 +20,6 @@ import traceback # ADDED
 
 # Core interfaces
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.services.jwt_service import IJwtService
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 # Domain entities for type hinting what user_repo returns
 from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus # Corrected, AuthenticatedUser is local, added UserStatus
@@ -248,6 +247,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path: {request.url.path} - Skipping authentication")
             request.scope["user"] = UnauthenticatedUser()
+            request.scope["auth"] = AuthCredentials(scopes=[])
             return await call_next(request)
         
         # Extract the token from the request
@@ -256,7 +256,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.debug("No authentication token provided")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Not authenticated"}
+                content={"detail": "Token required for authentication"}
             )
         
         try:
@@ -275,21 +275,21 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.warning(f"User not found: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Could not validate credentials"}
+                content={"detail": str(e)}
             )
             
         except TokenExpiredException:
             logger.warning("Token expired")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Token expired"}
+                content={"detail": "Token has expired"}
             )
             
         except InvalidTokenException as e:
             logger.warning(f"Invalid token: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Could not validate credentials"}
+                content={"detail": str(e)}
             )
             
         except AuthenticationException as e:

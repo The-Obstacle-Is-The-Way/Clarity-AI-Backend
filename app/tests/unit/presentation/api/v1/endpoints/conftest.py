@@ -52,12 +52,35 @@ def global_mock_jwt_service() -> MagicMock:
 def authenticated_user() -> User:
     """Create a test user with authentication credentials."""
     return User(
-        id=uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"),
+        id=str(uuid.UUID("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")),  # Convert UUID to string
         username="test_doctor",
         email="test.doctor@example.com", 
         full_name="Test Doctor",
+        first_name="Test",  # Add required field
+        last_name="Doctor",  # Add required field
         roles={UserRole.CLINICIAN},
-        account_status=UserStatus.ACTIVE,
-        password_hash="hashed_password_not_real",
+        status=UserStatus.ACTIVE,  # Using 'status' instead of 'account_status'
+        hashed_password="hashed_password_not_real",
         created_at=datetime.now(timezone.utc),
     ) 
+
+
+@pytest.fixture
+async def auth_headers(global_mock_jwt_service: MagicMock, authenticated_user: User) -> dict[str, str]:
+    """Provides headers with a test JWT token for authenticated requests."""
+    # Create a token using the global mock JWT service
+    # Handle roles correctly - convert to string values if they're enum objects
+    roles = []
+    for role in authenticated_user.roles:
+        role_value = role.value if hasattr(role, 'value') else str(role)
+        roles.append(role_value)
+    
+    token_data = {
+        "sub": str(authenticated_user.id),
+        "roles": roles,
+        "username": authenticated_user.username,
+        "email": authenticated_user.email,
+        "type": "access"
+    }
+    access_token = await global_mock_jwt_service.create_access_token(data=token_data)
+    return {"Authorization": f"Bearer {access_token}"} 

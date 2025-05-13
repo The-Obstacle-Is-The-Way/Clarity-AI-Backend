@@ -80,9 +80,15 @@ def mock_service() -> AsyncMock:
 async def auth_headers(global_mock_jwt_service: MagicMock, authenticated_user: DomainUser) -> dict[str, str]:
     """Provides headers with a test JWT token for authenticated requests."""
     # Create a token using the global mock JWT service
+    # Handle roles correctly - convert to string values if they're enum objects
+    roles = []
+    for role in authenticated_user.roles:
+        role_value = role.value if hasattr(role, 'value') else str(role)
+        roles.append(role_value)
+    
     token_data = {
         "sub": str(authenticated_user.id),
-        "roles": [role.value for role in authenticated_user.roles],
+        "roles": roles,
         "username": authenticated_user.username,
         "email": authenticated_user.email,
         "type": "access"

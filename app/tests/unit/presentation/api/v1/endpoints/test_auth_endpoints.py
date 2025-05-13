@@ -7,7 +7,8 @@ in isolation from the full application.
 
 import warnings
 from collections.abc import Callable
-from unittest.mock import AsyncMock
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
@@ -52,9 +53,9 @@ TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 TEST_INACTIVE_USER_ID = "00000000-0000-0000-0000-000000000002"
 
 
-@pytest.fixture(scope="session", autouse=True)
-@pytest.mark.asyncio
-async def setup_database() -> None:
+# Changed from session to function scope to fix ScopeMismatch error
+@pytest.fixture(scope="function")
+async def setup_database():
     """Create database tables before running tests."""
     # Create in-memory database for testing
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -89,42 +90,58 @@ def client(app: FastAPI) -> TestClient:
 
 
 @pytest.fixture
-def mock_auth_service() -> AsyncMock:
+def test_user() -> User:
+    """Create a consistent test user object."""
+    return User(
+        id=TEST_USER_ID,
+        username="testuser",
+        email="test@example.com",
+        first_name="Test",
+        last_name="User",
+        roles=[Role.PROVIDER.value],
+        is_active=True,
+        created_at=datetime.now()
+    )
+
+
+@pytest.fixture
+def mock_auth_service(test_user: User) -> AsyncMock:
     """Create a mock authentication service."""
-    mock = AsyncMock(spec=AuthenticationService) # Use spec for better mocking
+    mock = AsyncMock(spec=AuthenticationService)
     
     # Configure the authenticate_user method
     async def mock_authenticate(username: str, password: str) -> User | None:
         if username == "testuser" and password == "testpassword":
-            return User(
-                id=TEST_USER_ID,
-                username="testuser",
-                email="test@example.com",
-                roles=[Role.PROVIDER],
-                is_active=True
-            )
+            return test_user
         elif username == "inactive" and password == "testpassword":
             return User(
                 id=TEST_INACTIVE_USER_ID,
                 username="inactive",
                 email="inactive@example.com",
-                roles=[Role.PROVIDER],
-                is_active=False
+                first_name="Inactive",
+                last_name="User",
+                roles=[Role.PROVIDER.value],
+                is_active=False,
+                created_at=datetime.now()
             )
         return None
     
     mock.authenticate_user.side_effect = mock_authenticate
     
-    # Configure create_token_pair method (called by the login endpoint)
-    # It should return a dictionary with string tokens.
-    # AsyncMock handles the await for return_value.
+    # Configure create_token_pair method
     mock.create_token_pair.return_value = {
         "access_token": f"test_access_token_{TEST_USER_ID}",
         "refresh_token": f"test_refresh_token_{TEST_USER_ID}"
     }
 
-    # Configure the logout method (keep if needed for logout tests)
-    async def mock_logout(tokens: dict[str, str]) -> bool: # Use dict[str, str]
+    # Configure refresh_token method
+    mock.refresh_token.return_value = {
+        "access_token": f"new_access_token_{TEST_USER_ID}",
+        "refresh_token": f"new_refresh_token_{TEST_USER_ID}"
+    }
+
+    # Configure the logout method
+    async def mock_logout(tokens: list[str]) -> bool:
         return True
     
     mock.logout.side_effect = mock_logout
@@ -133,28 +150,24 @@ def mock_auth_service() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_user_repository() -> AsyncMock:
+def mock_user_repository(test_user: User) -> AsyncMock:
     """Create a mock user repository."""
-    # Create the mock without spec to avoid attribute errors
     mock = AsyncMock()
     
     # Configure the get_by_id method
     async def mock_get_by_id(user_id: str) -> User | None:
         if user_id == TEST_USER_ID:
-            return User(
-                id=TEST_USER_ID,
-                username="testuser",
-                email="test@example.com",
-                roles=[Role.PROVIDER],
-                is_active=True
-            )
+            return test_user
         elif user_id == TEST_INACTIVE_USER_ID:
             return User(
                 id=TEST_INACTIVE_USER_ID,
                 username="inactive",
                 email="inactive@example.com",
-                roles=[Role.PROVIDER],
-                is_active=False
+                first_name="Inactive",
+                last_name="User",
+                roles=[Role.PROVIDER.value],
+                is_active=False,
+                created_at=datetime.now()
             )
         return None
     
@@ -167,18 +180,24 @@ def mock_user_repository() -> AsyncMock:
                 id=TEST_USER_ID,
                 username="testuser",
                 email="test@example.com",
-                roles=[Role.PROVIDER],
+                first_name="Test",
+                last_name="User",
+                roles=[Role.PROVIDER.value],
                 is_active=True,
-                hashed_password="hashed_password"
+                hashed_password="hashed_password",
+                created_at=datetime.now()
             )
         elif username == "inactive":
             return User(
                 id=TEST_INACTIVE_USER_ID,
                 username="inactive",
                 email="inactive@example.com",
-                roles=[Role.PROVIDER],
+                first_name="Inactive",
+                last_name="User",
+                roles=[Role.PROVIDER.value],
                 is_active=False,
-                hashed_password="hashed_password"
+                hashed_password="hashed_password",
+                created_at=datetime.now()
             )
         return None
     
@@ -188,33 +207,37 @@ def mock_user_repository() -> AsyncMock:
 
 
 @pytest.fixture
+def mock_optional_user(test_user: User) -> dict:
+    """Mock the optional user dependency to return user data."""
+    return {
+        "sub": str(test_user.id),
+        "email": test_user.email,
+        "roles": test_user.roles,
+        "exp": int(datetime.now().timestamp()) + 3600,
+        "permissions": ["read:patient", "write:patient"]
+    }
+
+
+@pytest.fixture
 def mock_dependencies(
     app: FastAPI, 
     mock_auth_service: AsyncMock, 
-    mock_user_repository: AsyncMock
+    mock_user_repository: AsyncMock,
+    test_user: User,
+    mock_optional_user: dict
 ) -> None:
     """Override dependencies for the test app."""
     app.dependency_overrides[get_auth_service] = lambda: mock_auth_service
     app.dependency_overrides[get_user_repository] = lambda: mock_user_repository
-    
-    # Mock auth dependencies if needed for specific tests like get_current_user
-    test_user = User(
-        id=TEST_USER_ID, 
-        username="testuser", 
-        email="test@example.com", 
-        roles=[Role.PROVIDER], 
-        is_active=True
-    )
     app.dependency_overrides[get_current_user] = lambda: test_user
-    app.dependency_overrides[get_optional_user] = lambda: test_user 
+    app.dependency_overrides[get_optional_user] = lambda: mock_optional_user
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def event_loop():
     """Create an instance of the default event loop for each test case."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
-    # The loop should be closed at the end of the test
     loop.close()
 
 
@@ -223,30 +246,28 @@ def event_loop():
 async def test_login_success(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
-    mock_dependencies: Callable
+    mock_dependencies: None,
+    setup_database,
+    test_user: User
 ) -> None:
     """Test successful login."""
     # Arrange
-    login_data = {"username": "testuser", "password": "testpassword"}
+    login_data = {"username": "testuser", "password": "testpassword", "remember_me": False}
     
     # Act
     response = client.post("/api/v1/auth/login", json=login_data)
     
     # Assert
     assert response.status_code == status.HTTP_200_OK
-    mock_auth_service.authenticate_user.assert_called_once_with(
-        "testuser", "testpassword"
-    )
-    # Assert that token creation methods were called for the authenticated user
-    authenticated_user = await mock_auth_service.authenticate_user("testuser", "testpassword")
-    mock_auth_service.create_token_pair.assert_called_once_with(authenticated_user)
-
-    # Check response body (adjust based on actual endpoint response structure)
-    # Assuming the endpoint returns tokens directly
-    token_pair = await mock_auth_service.create_token_pair(authenticated_user)
+    mock_auth_service.authenticate_user.assert_called_once_with("testuser", "testpassword")
+    
+    # Check token creation was called - don't compare User objects directly due to datetime differences
+    mock_auth_service.create_token_pair.assert_called_once()
+    
+    # Check response structure
     assert response.json() == {
-        "access_token": token_pair["access_token"],
-        "refresh_token": token_pair["refresh_token"], 
+        "access_token": f"test_access_token_{TEST_USER_ID}",
+        "refresh_token": f"test_refresh_token_{TEST_USER_ID}",
         "token_type": "bearer",
         "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     }
@@ -256,98 +277,113 @@ async def test_login_success(
 async def test_login_invalid_credentials(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
-    mock_dependencies: Callable
+    mock_dependencies: None,
+    setup_database
 ) -> None:
     """Test login with invalid credentials."""
     # Arrange
-    login_data = {"username": "testuser", "password": "wrongpassword"}
+    login_data = {"username": "wronguser", "password": "wrongpass", "remember_me": False}
+    
+    # Configure mock to return None for invalid credentials
+    mock_auth_service.authenticate_user.return_value = None
     
     # Act
     response = client.post("/api/v1/auth/login", json=login_data)
     
     # Assert
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    mock_auth_service.authenticate_user.assert_called_once_with("wronguser", "wrongpass")
     assert "detail" in response.json()
-    assert response.json()["detail"] == "Invalid credentials" # Updated expected string
+    assert response.json()["detail"] == "Invalid credentials"
 
 
 @pytest.mark.asyncio
 async def test_login_inactive_account(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
-    mock_dependencies: Callable
+    mock_dependencies: None,
+    setup_database
 ) -> None:
     """Test login with an inactive account."""
     # Arrange
-    login_data = {"username": "inactive", "password": "testpassword"}
+    login_data = {"username": "inactive", "password": "testpassword", "remember_me": False}
     
     # Act
     response = client.post("/api/v1/auth/login", json=login_data)
     
     # Assert
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    mock_auth_service.authenticate_user.assert_called_once_with("inactive", "testpassword")
     assert "detail" in response.json()
     assert response.json()["detail"] == "Account is inactive"
 
 
-# Tests for refresh token endpoint
 @pytest.mark.asyncio
 async def test_refresh_token_success(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
-    mock_dependencies: Callable
+    mock_dependencies: None,
+    setup_database
 ) -> None:
     """Test successful token refresh."""
-    refresh_token = f"test_refresh_token_{TEST_USER_ID}"
-    headers = {"Authorization": f"Bearer {refresh_token}"} # Example: Header
-
-    # Act
-    response = client.post("/api/v1/auth/refresh", headers=headers)
-
-    # Assert
-    # NOTE: Expecting 401 because the underlying JWTService responsible 
-    # for validating the refresh token is not mocked in this test suite.
-    # A successful test would require mocking the JWTService dependency 
-    # specifically for this endpoint's flow.
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    # assert response.status_code == status.HTTP_200_OK # Original expectation
+    # Arrange
+    refresh_data = {"refresh_token": f"test_refresh_token_{TEST_USER_ID}"}
     
-    # Check response body for the new access token (cannot fully assert content without JWT mock)
-    # assert "access_token" in response.json()
-    # assert response.json().get("token_type") == "bearer"
+    # Act
+    response = client.post("/api/v1/auth/refresh", json=refresh_data)
+    
+    # Assert
+    assert response.status_code == status.HTTP_200_OK
+    mock_auth_service.refresh_token.assert_called_once_with(f"test_refresh_token_{TEST_USER_ID}")
+    
+    # Check response structure
+    response_data = response.json()
+    assert response_data["access_token"] == f"new_access_token_{TEST_USER_ID}"
+    assert response_data["refresh_token"] == f"new_refresh_token_{TEST_USER_ID}"
+    assert response_data["token_type"] == "bearer"
+    assert response_data["expires_in"] == settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
 
 @pytest.mark.asyncio
 async def test_refresh_token_invalid(
     client: TestClient, 
     mock_auth_service: AsyncMock, 
-    mock_dependencies: Callable
+    mock_dependencies: None,
+    setup_database
 ) -> None:
-    """Test refresh with invalid token."""
-    invalid_token = "invalid_refresh_token"
-    headers = {"Authorization": f"Bearer {invalid_token}"} # Example: Header
+    """Test refreshing with an invalid token."""
+    # Arrange
+    refresh_data = {"refresh_token": "invalid_refresh_token"}
     
-    response = client.post("/api/v1/auth/refresh", headers=headers)
+    # Configure the refresh_token method to raise an exception
+    mock_auth_service.refresh_token.side_effect = ValueError("Invalid refresh token")
     
-    # Expecting an error (e.g., 401 Unauthorized or 400 Bad Request)
-    assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_400_BAD_REQUEST]
+    # Act
+    response = client.post("/api/v1/auth/refresh", json=refresh_data)
+    
+    # Assert
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    mock_auth_service.refresh_token.assert_called_once_with("invalid_refresh_token")
+    assert "detail" in response.json()
+    assert "Invalid or expired refresh token" in response.json()["detail"]
 
 
-# Test for session info endpoint
 @pytest.mark.asyncio
 async def test_session_info(
     client: TestClient, 
-    mock_dependencies: Callable
+    mock_dependencies: None,
+    setup_database
 ) -> None:
-    """Test session info endpoint."""
-    # Need Authorization header with a valid token for get_current_user
-    # The mock_dependencies fixture already overrides get_current_user
-    # Let's use a dummy token, the actual value doesn't matter here because
-    # get_current_user is mocked.
-    headers = {"Authorization": "Bearer dummy_token"}
-
-    # Act - Assuming the endpoint is /users/me
-    response = client.get("/api/v1/auth/me", headers=headers)
-
+    """Test getting session info for an authenticated user."""
+    # Act
+    response = client.get("/api/v1/auth/session-info")
+    
     # Assert
     assert response.status_code == status.HTTP_200_OK
+    
+    # Check response content matches the expected structure
+    session_data = response.json()
+    assert session_data["authenticated"] is True
+    assert session_data["session_active"] is True
+    assert session_data["user_id"] == TEST_USER_ID
+    assert session_data["roles"] == [Role.PROVIDER.value]
