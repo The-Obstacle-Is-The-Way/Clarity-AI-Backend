@@ -81,9 +81,15 @@ class DigitalTwinStatusResponse(BaseModelConfig):
     """Response schema for digital twin status."""
     patient_id: str
     status: str  # "complete", "partial", "initializing", etc.
-    completeness: float = Field(..., ge=0, le=100, description="Percentage of completeness")
+    completeness: int = Field(..., ge=0, le=100, description="Percentage of completeness")
     components: Dict[str, ComponentStatus]
     last_checked: datetime
+
+    class Config:
+        json_encoders = {
+            # Format datetime fields as required by the tests
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class SymptomTrend(BaseModelConfig):
@@ -164,6 +170,12 @@ class PersonalizedInsightResponse(BaseModelConfig):
     biometric_correlation: BiometricCorrelations | None = None
     pharmacogenomics: PharmacogenomicsData | None = None
     integrated_recommendations: List[Recommendation] | None = None
+
+    class Config:
+        json_encoders = {
+            # Format datetime fields as required by the tests
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class AnalysisType(str, Enum):
