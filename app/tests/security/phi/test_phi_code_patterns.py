@@ -405,8 +405,22 @@ class TestPHIInSourceFiles:
         """
         self.write_temp_file(api_spec_file, content)
         
+        # Debug: Print file path and verification
+        print(f"API spec file created at: {api_spec_file}")
+        print(f"File exists: {api_spec_file.exists()}")
+        print(f"File content length: {len(content)}")
+        
         # Call the actual method with the file path
         findings = phi_analyzer.audit_api_endpoints(str(api_spec_file))
+        
+        # Debug: Print findings information
+        print(f"Findings type: {type(findings)}")
+        print(f"Findings length: {len(findings)}")
+        if findings:
+            for i, finding in enumerate(findings):
+                print(f"Finding {i+1}: {finding.message}")
+        else:
+            print("No findings detected!")
         
         # Verify results
         assert isinstance(findings, list)
@@ -417,6 +431,10 @@ class TestPHIInSourceFiles:
             f for f in findings 
             if "ssn" in f.message.lower() or "dob" in f.message.lower()
         ]
+        
+        # Debug: Print PHI findings
+        print(f"PHI findings count: {len(phi_findings)}")
+        
         assert len(phi_findings) > 0
 
     # @pytest.mark.skip(reason="Refactoring audit logic, PHICodeAnalyzer scope changed")

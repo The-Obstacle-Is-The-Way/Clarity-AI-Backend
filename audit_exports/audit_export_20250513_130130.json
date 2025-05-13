@@ -1,0 +1,62 @@
+[
+  {
+    "log_id": "ae729382-0bc7-493b-bf76-dc6278ccd280",
+    "timestamp": "2025-05-13T13:01:30.330708",
+    "user_id": "547dec72-3ce7-4198-90e2-f3a7a0c89f17",
+    "resource_type": "patient_record",
+    "resource_id": "84471cf3-cd4e-478e-821f-3c88af149a66",
+    "action": "view",
+    "reason": "treatment",
+    "ip_address": "127.0.0.1",
+    "additional_data": {},
+    "signature": "b3082d26cb53e4309f2b5099871fe5abb385025b146f1f31457ca7a921723c00"
+  },
+  {
+    "log_id": "6639f639-6e70-4be3-9b8a-774f87fcba00",
+    "timestamp": "2025-05-13T13:01:30.330747",
+    "user_id": "547dec72-3ce7-4198-90e2-f3a7a0c89f17",
+    "resource_type": "patient_record",
+    "resource_id": "84471cf3-cd4e-478e-821f-3c88af149a66",
+    "action": "view",
+    "reason": "treatment",
+    "ip_address": "127.0.0.1",
+    "additional_data": {},
+    "signature": "225a4dd5531ef3f9dc1a7622b2d4ba43580f176375b70d8e1c3802b8d637fbb9"
+  },
+  {
+    "log_id": "20fb36d6-b3a7-474b-a6a6-cb8fb5bd7250",
+    "timestamp": "2025-05-13T13:01:30.330773",
+    "user_id": "547dec72-3ce7-4198-90e2-f3a7a0c89f17",
+    "resource_type": "patient_record",
+    "resource_id": "84471cf3-cd4e-478e-821f-3c88af149a66",
+    "action": "view",
+    "reason": "treatment",
+    "ip_address": "127.0.0.1",
+    "additional_data": {},
+    "signature": "80b3059eb8d43c3b999e9a8092d9103c089839a10b531d79d27b7c6466666c32"
+  },
+  {
+    "log_id": "661223a7-7d06-4e78-8db7-a8f07feb8cf6",
+    "timestamp": "2025-05-13T13:01:30.330796",
+    "user_id": "547dec72-3ce7-4198-90e2-f3a7a0c89f17",
+    "resource_type": "patient_record",
+    "resource_id": "84471cf3-cd4e-478e-821f-3c88af149a66",
+    "action": "view",
+    "reason": "treatment",
+    "ip_address": "127.0.0.1",
+    "additional_data": {},
+    "signature": "c47d6350f03dd6c474af52329c57ee395174b7d1b15415932e09f323e98875b1"
+  },
+  {
+    "log_id": "883e5854-e7de-41d6-83f8-430e63bf2f2a",
+    "timestamp": "2025-05-13T13:01:30.330818",
+    "user_id": "547dec72-3ce7-4198-90e2-f3a7a0c89f17",
+    "resource_type": "patient_record",
+    "resource_id": "84471cf3-cd4e-478e-821f-3c88af149a66",
+    "action": "view",
+    "reason": "treatment",
+    "ip_address": "127.0.0.1",
+    "additional_data": {},
+    "signature": "0ff155a95cbec03d0a936936842ec43a37281097aa041f64a2c1670e4186fe7d"
+  }
+]
