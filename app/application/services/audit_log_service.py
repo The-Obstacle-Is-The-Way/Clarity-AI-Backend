@@ -203,6 +203,8 @@ class AuditLogService(IAuditLogger):
         reason: Optional[str] = None,
         request: Optional[Request] = None,
         request_context: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
     ) -> str:
         """
         Log PHI access event specifically.
@@ -217,6 +219,8 @@ class AuditLogService(IAuditLogger):
             reason: Business reason for accessing the PHI
             request: Optional FastAPI request object for extracting IP and headers
             request_context: Additional context from the request (location, device, etc.)
+            metadata: Additional metadata for the event
+            ip_address: IP address of the request, if known
             
         Returns:
             str: Unique identifier for the audit log entry
@@ -245,6 +249,29 @@ class AuditLogService(IAuditLogger):
         # Add request context if provided
         if request_context:
             details.update({"context": request_context})
+            
+        # Extract IP address from request if not provided directly
+        request_ip = None
+        if request and not ip_address:
+            request_ip = self._extract_ip_from_request(request)
+        
+        # Create a new audit log entry for anomaly detection
+        audit_log = AuditLog(
+            id=str(uuid.uuid4()),
+            timestamp=datetime.now(timezone.utc),
+            event_type=event_type,
+            actor_id=actor_id,
+            resource_type=resource_type,
+            resource_id=patient_id,
+            action=action,
+            status=status,
+            ip_address=ip_address or request_ip,
+            details=details
+        )
+        
+        # Check for anomalies before logging
+        if self._anomaly_detection_enabled and actor_id:
+            await self._check_for_anomalies(actor_id, audit_log)
         
         # Log the PHI access event
         return await self.log_event(
@@ -256,6 +283,7 @@ class AuditLogService(IAuditLogger):
             status=status,
             details=details,
             severity=AuditSeverity.HIGH,  # PHI access is always high severity
+            metadata=metadata,
             request=request
         )
     
