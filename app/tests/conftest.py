@@ -10,7 +10,7 @@ import sys
 import pytest
 import pytest_asyncio
 import logging
-from typing import Dict, Any, Generator, AsyncGenerator
+from typing import Dict, Any, Generator, AsyncGenerator, List, Union
 from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware

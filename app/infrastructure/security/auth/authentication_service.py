@@ -3,6 +3,7 @@ Service responsible for user authentication logic.
 """
 
 import uuid
+from typing import List, Union
 
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
