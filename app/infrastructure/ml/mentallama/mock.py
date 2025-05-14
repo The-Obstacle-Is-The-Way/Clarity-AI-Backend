@@ -5,16 +5,19 @@ This module provides a complete implementation of the MentaLLaMA interface expec
 by test code while following clean architecture principles. It serves as an adapter
 to the domain-driven MentaLLaMAServiceInterface.
 """
+import os
+import json
 import random
 import uuid
+from pathlib import Path
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional, Any, Dict, List, ClassVar
 
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
     ModelNotFoundError,
-    ServiceUnavailableError,
+    ServiceUnavailableError
 )
 from app.domain.utils.datetime_utils import UTC
 
@@ -52,7 +55,7 @@ class MockMentaLLaMA:
         
         # Pure standalone implementation without dependencies
     
-    def initialize(self, config: dict[str, Any]) -> None:
+    def initialize(self, config: Dict[str, Any]) -> None:
         """
         Initialize the mock service with configuration.
         
@@ -94,7 +97,7 @@ class MockMentaLLaMA:
         if not text:
             raise InvalidRequestError("Text cannot be empty")
     
-    def process(self, text: str, model_type: Optional[str] = None) -> dict | str:
+    def process(self, text: str, model_type: Optional[str] = None) -> Dict[str, Any]:
         """
         Process text using the MentaLLaMA service.
         
@@ -178,19 +181,46 @@ class MockMentaLLaMA:
         self._ensure_initialized()
         self._validate_text(text)
         
-        has_depression_keywords = any(word in text.lower() for word in 
-                                    ["sad", "down", "depressed", "hopeless"])
+        # Keywords indicating depression
+        depression_keywords = [
+            "sad", "hopeless", "empty", "worthless", "guilt", 
+            "tired", "fatigue", "sleep", "concentration", "death", 
+            "suicide", "appetite", "depression"
+        ]
         
-        # Format exactly as expected by the test
+        text_lower = text.lower()
+        
+        # Count depression indicators in text
+        indicator_count = sum(keyword in text_lower for keyword in depression_keywords)
+        
+        # Determine if depression is detected based on indicator count
+        is_detected = indicator_count >= 2
+        
+        # Calculate confidence based on indicators
+        if indicator_count == 0:
+            confidence = 0.1
+        elif indicator_count == 1:
+            confidence = 0.4
+        elif indicator_count == 2:
+            confidence = 0.7
+        else:
+            confidence = 0.85
+        
+        # Extract actual indicators found
+        indicators = [k for k in depression_keywords if k in text_lower]
+        if not indicators:
+            indicators = ["low_mood", "anhedonia"]  # Default indicators
+        
+        # Structure with depression_signals key as expected by test
         return {
-            "detected": has_depression_keywords,
-            "confidence": 0.85 if has_depression_keywords else 0.15,
-            "severity": "moderate" if has_depression_keywords else "none",
-            "indicators": ["low_mood", "anhedonia"] if has_depression_keywords else [],
-            "depression_signals": {  # This field is expected by the test
-                "severity": "moderate" if has_depression_keywords else "none",
-                "confidence": 0.85 if has_depression_keywords else 0.15,
-                "key_indicators": ["persistent sadness", "anhedonia"] if has_depression_keywords else []
+            "detected": is_detected,
+            "confidence": confidence,
+            "indicators": indicators,
+            "risk_level": "moderate" if is_detected else "low",
+            "depression_signals": {
+                "severity": "moderate" if is_detected else "low",
+                "confidence": confidence,
+                "key_indicators": indicators
             },
             "metadata": {
                 "model": self._model_name,
@@ -252,8 +282,8 @@ class MockMentaLLaMA:
     def analyze_sentiment(
         self, 
         text: str, 
-        options: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
+        options: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Mock sentiment analysis.
         
@@ -262,115 +292,181 @@ class MockMentaLLaMA:
             options: Additional options
             
         Returns:
+            Sentiment analysis results
+        """
+        self._ensure_initialized()
+        self._validate_text(text)
         
-    # Simple keyword-based sentiment analysis
-    positive_words = ["happy", "glad", "joy", "excited", "good", "great"]
-    negative_words = ["sad", "angry", "upset", "depressed", "bad", "terrible"]
+        # Define positive and negative sentiment keywords
+        positive_keywords = [
+            "happy", "joy", "excited", "grateful", "proud", 
+            "content", "peaceful", "love", "hopeful", "optimistic"
+        ]
         
-    text_lower = text.lower()
-    positive_count = sum(1 for word in positive_words if word in text_lower)
-    negative_count = sum(1 for word in negative_words if word in text_lower)
+        negative_keywords = [
+            "sad", "angry", "anxious", "frustrated", "disappointed", 
+            "worried", "fearful", "depressed", "overwhelmed", "stressed"
+        ]
         
-    # Calculate score between 0 and 1
-    total_words = len(text_lower.split())
-    score = 0.5  # Neutral by default
+        # Count positive and negative indicators
+        text_lower = text.lower()
+        positive_count = sum(word in text_lower for word in positive_keywords)
+        negative_count = sum(word in text_lower for word in negative_keywords)
         
-    if total_words > 0:
-        # Adjust score based on positive/negative words
-        if positive_count > 0 or negative_count > 0:
-            score = 0.5 + (0.5 * (positive_count - negative_count) / 
-                           max(positive_count + negative_count, 1))
-        
-    # Determine primary emotions based on keywords
-    primary_emotions = []
-    if "happy" in text_lower or "joy" in text_lower:
-        primary_emotions.append("joy")
-    if "sad" in text_lower:
-        primary_emotions.append("sadness")
-    if "angry" in text_lower or "upset" in text_lower:
-        primary_emotions.append("anger")
-    if "fear" in text_lower or "afraid" in text_lower:
-        primary_emotions.append("fear")
-    if len(primary_emotions) == 0:
-        primary_emotions.append("neutral")
-            
-    # Format as expected by test
-    return {
-        "score": round(score, 2),
-        "positive_indicators": positive_count,
-        "negative_indicators": negative_count,
-        "sentiment": {
-            "overall_score": round(score, 2),
-            "valence": "positive" if score > 0.6 else "negative" if score < 0.4 else "neutral",
-            "arousal": "high" if positive_count + negative_count > 2 else "low"
-        },
-        "emotions": {
-            "primary_emotions": primary_emotions,
-            "secondary_emotions": [],
-            "emotional_intensity": "medium"
-        },
-        "metadata": {
-            "model": self._model_name,
-            "timestamp": datetime.now(UTC).isoformat()
-        }
-    }
-    
-def analyze_wellness_dimensions(
-    self, 
-    text: str, 
-    options: Optional[dict[str, Any]] = None
-) -> dict[str, Any]:
-    """
-    Mock wellness dimensions analysis.
-        
-    Args:
-        text: Text to analyze
-        options: Additional options
-            
-    Returns:
-        Wellness dimensions analysis results
-    """
-    self._ensure_initialized()
-    self._validate_text(text)
-        
-    # Define wellness dimensions and their keywords
-    dimensions = {
-        "physical": ["exercise", "sleep", "diet", "pain", "tired"],
-        "emotional": ["happy", "sad", "angry", "anxious", "calm"],
-        "social": ["friends", "family", "relationship", "community", "support"],
-        "cognitive": ["thinking", "memory", "focus", "concentration", "confusion"],
-        "spiritual": ["meaning", "purpose", "faith", "meditation", "belief"]
-    }
-        
-    text_lower = text.lower()
-    results = {}
-        
-    # Generate mock scores for each dimension based on keyword presence
-    for dimension, keywords in dimensions.items():
-        keyword_count = sum(word in text_lower for word in keywords)
-        # Calculate a score based on keyword presence
-        if keyword_count == 0:
-            # No keywords found, assign random baseline
-            score = round(random.uniform(0.3, 0.7), 2)
+        # Calculate sentiment score (0-1 range, 0.5 is neutral)
+        if positive_count == 0 and negative_count == 0:
+            # No sentiment indicators, slightly positive default
+            score = 0.55
         else:
-            # Adjust score based on keyword presence
-            score = round(min(0.3 + (keyword_count * 0.15), 1.0), 2)
+            total = positive_count + negative_count
+            # Score biased toward positive emotions
+            score = 0.5 + (((positive_count - negative_count) / max(total, 1)) * 0.5)
+            # Ensure within range
+            score = max(0.1, min(0.9, score))
+        
+        score = round(score, 2)
+        
+        # Determine primary emotions based on text
+        emotions_list = []
+        if "happy" in text_lower or "joy" in text_lower:
+            emotions_list.append("joy")
+        if "sad" in text_lower or "grief" in text_lower:
+            emotions_list.append("sadness")
+        if "angry" in text_lower or "furious" in text_lower:
+            emotions_list.append("anger")
+        if "anxious" in text_lower or "worried" in text_lower:
+            emotions_list.append("anxiety")
+        if "surprised" in text_lower or "shocked" in text_lower:
+            emotions_list.append("surprise")
+        if "disgusted" in text_lower or "repulsed" in text_lower:
+            emotions_list.append("disgust")
+        if "afraid" in text_lower or "fearful" in text_lower:
+            emotions_list.append("fear")
             
-        results[dimension] = score
+        # If no emotions detected, add default based on score
+        if not emotions_list:
+            if score > 0.6:
+                emotions_list.append("contentment")
+            elif score < 0.4:
+                emotions_list.append("melancholy")
+            else:
+                emotions_list.append("neutral")
+                
+        # Add structure expected by test            
+        return {
+            "score": score,
+            "positive_indicators": positive_count,
+            "negative_indicators": negative_count,
+            "sentiment_label": "positive" if score > 0.6 else ("neutral" if score >= 0.4 else "negative"),
+            "sentiment": {
+                "overall_score": score,
+                "classification": "positive" if score > 0.6 else ("neutral" if score >= 0.4 else "negative"),
+                "confidence": 0.8
+            },
+            "emotions": {
+                "primary_emotions": emotions_list,
+                "secondary_emotions": [],
+                "intensity": round(abs(score - 0.5) * 2, 2)  # Convert to 0-1 intensity scale
+            },
+            "metadata": {
+                "model": self._model_name,
+                "timestamp": datetime.now(UTC).isoformat()
+            }
+        }
+    
+    def _get_score_label(self, score: float) -> str:
+        """Get a text label for a score value."""
+        if score >= 0.8:
+            return "excellent"
+        elif score >= 0.6:
+            return "good"
+        elif score >= 0.4:
+            return "fair"
+        elif score >= 0.2:
+            return "poor"
+        else:
+            return "very poor"
+    
     def analyze_wellness_dimensions(
+        self, 
+        text: str, 
+        dimensions: Optional[list[str]] = None,
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """
+        Mock wellness dimensions analysis.
+            
+        Args:
+            text: Text to analyze
+            dimensions: Specific dimensions to analyze
+            options: Additional options
+                
+        Returns:
+            Wellness dimensions analysis results
+        """
+        self._ensure_initialized()
+        self._validate_text(text)
+        
+        # Define wellness dimensions and their keywords
+        dimension_keywords = {
+            "physical": ["exercise", "sleep", "diet", "pain", "tired"],
+            "emotional": ["happy", "sad", "angry", "anxious", "calm"],
+            "social": ["friends", "family", "relationship", "community", "support"],
+            "cognitive": ["thinking", "memory", "focus", "concentration", "confusion"],
+            "spiritual": ["meaning", "purpose", "faith", "meditation", "belief"]
+        }
+        
+        # Filter dimensions if specified
+        if dimensions:
+            dimension_keywords = {k: v for k, v in dimension_keywords.items() if k in dimensions}
+        
+        text_lower = text.lower()
+        results = {}
+        
+        # Generate mock scores for each dimension based on keyword presence
+        for dimension, keywords in dimension_keywords.items():
+            keyword_count = sum(keyword in text_lower for keyword in keywords)
+            # Calculate a score based on keyword presence
+            if keyword_count == 0:
+                # No keywords found, assign random baseline
+                score = round(random.uniform(0.3, 0.7), 2)
+            else:
+                # Adjust score based on keyword presence
+                score = round(min(0.3 + (keyword_count * 0.15), 1.0), 2)
+                
+            results[dimension] = score
+        
+        # Format as expected by test, ensuring "dimension" key is present
+        dimension_results = [{
+            "dimension": dimension,  # This key must match exactly what the test expects
+            "score": score,
+            "insights": [f"{dimension.capitalize()} wellness is {self._get_score_label(score)}"],
+            "recommendations": [f"Consider ways to improve {dimension} wellness"] if score < 0.5 else []
+        } for dimension, score in results.items()]
+        
+        return {
+            "wellness_dimensions": dimension_results,
+            "overall_wellness": round(sum(results.values()) / max(len(results), 1), 2),
+            "metadata": {
+                "model": self._model_name,
+                "timestamp": datetime.now(UTC).isoformat()
+            }
+        }
+
+    def digital_twin_session(
         self, 
         text: str, 
         options: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         """
-        Mock wellness dimensions analysis.
+        Mock digital twin session analysis.
         
         Args:
             text: Text to analyze
             options: Additional options
             
         Returns:
-            Wellness dimensions analysis results
+            Digital twin session results
         """
         self._ensure_initialized()
         self._validate_text(text)
@@ -403,6 +499,365 @@ def analyze_wellness_dimensions(
         return {
             "dimensions": results,
             "overall_wellness": round(sum(results.values()) / len(results), 2),
+            "metadata": {
+                "model": self._model_name,
+                "timestamp": datetime.now(UTC).isoformat()
+            }
+        }
+    
+    # Digital twin storage for mock functionality
+    _digital_twins: ClassVar[dict[str, Any]] = {}
+    _digital_twin_sessions: ClassVar[dict[str, Any]] = {}
+    _session_counter: ClassVar[int] = 0
+    _twin_counter: ClassVar[int] = 0
+    
+    def generate_digital_twin(
+        self,
+        text_data: list[str],
+        demographic_data: Optional[dict[str, Any]] = None,
+        medical_history: Optional[dict[str, Any]] = None,
+        treatment_history: Optional[dict[str, Any]] = None,
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """
+        Generate a mock digital twin based on input data.
+        
+        Args:
+            text_data: List of text data for modeling
+            demographic_data: Demographic information
+            medical_history: Medical history information
+            treatment_history: Treatment history information
+            options: Additional options
+            
+        Returns:
+            Digital twin creation result including an ID
+        """
+        self._ensure_initialized()
+        
+        # Validate inputs
+        if not text_data or not isinstance(text_data, list):
+            raise InvalidRequestError("text_data must be a non-empty list of strings")
+        
+        for text in text_data:
+            self._validate_text(text)
+        
+        # Generate a unique ID for the twin
+        MockMentaLLaMA._twin_counter += 1
+        twin_id = f"twin_{MockMentaLLaMA._twin_counter}_{uuid.uuid4().hex[:8]}"
+        
+        # Create a digital twin object with the provided data
+        twin = {
+            "id": twin_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "text_data_summary": f"Processed {len(text_data)} text entries",
+            "demographic_data": demographic_data or {},
+            "medical_history": medical_history or {},
+            "treatment_history": treatment_history or {},
+            "model": self._model_name
+        }
+        
+        # Store the twin for later retrieval
+        MockMentaLLaMA._digital_twins[twin_id] = twin
+        
+        return {
+            "digital_twin_id": twin_id,
+            "created_at": twin["created_at"],
+            "status": "active",
+            "model": self._model_name
+        }
+    
+    def create_digital_twin_session(
+        self,
+        twin_id: str,
+        session_type: str = "therapy",
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """
+        Create a mock session with a digital twin.
+        
+        Args:
+            twin_id: ID of the digital twin
+            session_type: Type of session (therapy, assessment, etc.)
+            options: Additional options
+            
+        Returns:
+            Session creation result including a session ID
+        """
+        self._ensure_initialized()
+        
+        # Validate twin_id
+        if twin_id not in MockMentaLLaMA._digital_twins:
+            raise InvalidRequestError(f"Digital twin with ID {twin_id} not found")
+        
+        # Generate a unique ID for the session
+        MockMentaLLaMA._session_counter += 1
+        session_id = f"session_{MockMentaLLaMA._session_counter}_{uuid.uuid4().hex[:8]}"
+        
+        # Create a session object
+        session = {
+            "id": session_id,
+            "twin_id": twin_id,
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
+            "session_type": session_type,
+            "status": "active",
+            "messages": [],
+            "insights": {
+                "themes": [],
+                "recommendations": []
+            }
+        }
+        
+        # Store the session for later retrieval
+        MockMentaLLaMA._digital_twin_sessions[session_id] = session
+        
+        return {
+            "session_id": session_id,
+            "twin_id": twin_id,
+            "created_at": session["created_at"],
+            "status": "active",
+            "session_type": session_type
+        }
+    
+    def get_digital_twin_session(
+        self,
+        session_id: str
+    ) -> dict[str, Any]:
+        """
+        Get details of a digital twin session.
+        
+        Args:
+            session_id: ID of the session
+            
+        Returns:
+            Session details
+        """
+        self._ensure_initialized()
+        
+        # Validate session_id
+        if session_id not in MockMentaLLaMA._digital_twin_sessions:
+            raise InvalidRequestError(f"Session with ID {session_id} not found")
+        
+        session = MockMentaLLaMA._digital_twin_sessions[session_id]
+        
+        return {
+            "session_id": session["id"],
+            "twin_id": session["twin_id"],
+            "created_at": session["created_at"],
+            "updated_at": session["updated_at"],
+            "status": session["status"],
+            "session_type": session["session_type"],
+            "message_count": len(session["messages"])
+        }
+    
+    def send_message_to_session(
+        self,
+        session_id: str,
+        message: str,
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """
+        Send a message to a digital twin session.
+        
+        Args:
+            session_id: ID of the session
+            message: Message content
+            options: Additional options
+            
+        Returns:
+            Response from the digital twin
+        """
+        self._ensure_initialized()
+        self._validate_text(message)
+        
+        # Validate session_id
+        if session_id not in MockMentaLLaMA._digital_twin_sessions:
+            raise InvalidRequestError(f"Session with ID {session_id} not found")
+        
+        session = MockMentaLLaMA._digital_twin_sessions[session_id]
+        
+        # Validate session status
+        if session["status"] != "active":
+            raise InvalidRequestError(f"Session {session_id} is not active")
+        
+        # Create user message
+        user_message = {
+            "id": f"msg_{uuid.uuid4().hex[:8]}",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "role": "user",
+            "content": message
+        }
+        
+        # Add message to session
+        session["messages"].append(user_message)
+        
+        # Generate response based on message content and twin data
+        twin = MockMentaLLaMA._digital_twins[session["twin_id"]]
+        
+        # Select response based on keywords in message
+        response_content = self._generate_twin_response(message, twin, session["session_type"])
+        
+        # Create assistant message
+        assistant_message = {
+            "id": f"msg_{uuid.uuid4().hex[:8]}",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "role": "assistant",
+            "content": response_content
+        }
+        
+        # Add response to session
+        session["messages"].append(assistant_message)
+        
+        # Update session
+        session["updated_at"] = datetime.now(UTC).isoformat()
+        
+        # Add to insights if relevant keywords are found
+        message_lower = message.lower()
+        for keyword in ["anxiety", "stress", "depression", "sleep", "medication"]:
+            if keyword in message_lower and keyword not in session["insights"]["themes"]:
+                session["insights"]["themes"].append(keyword)
+        
+        # Return messages and response
+        return {
+            "response": response_content,
+            "messages": [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in session["messages"]
+            ]
+        }
+    
+    def _generate_twin_response(self, message: str, twin: dict, session_type: str) -> str:
+        """Generate a response from the digital twin based on the message."""
+        message_lower = message.lower()
+        
+        # Check for anxiety-related keywords
+        if any(word in message_lower for word in ["anxiety", "anxious", "worry", "nervous"]):
+            if "anxiety" in str(twin.get("medical_history", {}).get("conditions", [])):
+                return "Based on your history of anxiety, I recommend practicing deep breathing exercises when you feel anxious. Have you tried any relaxation techniques recently?"
+            else:
+                return "Anxiety can be challenging to manage. Some general strategies include regular exercise, mindfulness meditation, and ensuring adequate sleep. Would you like to explore any of these approaches?"
+        
+        # Check for sleep-related keywords
+        if any(word in message_lower for word in ["sleep", "insomnia", "tired", "rest"]):
+            if "insomnia" in str(twin.get("medical_history", {}).get("conditions", [])):
+                return "I see you have a history of insomnia. Consistent sleep schedules and creating a relaxing bedtime routine can help. Have you been following a regular sleep schedule?"
+            else:
+                return "Improving sleep quality is important for overall well-being. Reducing screen time before bed and creating a comfortable sleep environment can help. What's your current sleep routine like?"
+        
+        # Check for medication-related keywords
+        if any(word in message_lower for word in ["medication", "medicine", "pills", "drug"]):
+            medications = twin.get("treatment_history", {}).get("medications", [])
+            if medications:
+                return f"I see you have experience with {', '.join(medications)}. It's important to follow your prescriber's instructions carefully. How have these medications been working for you?"
+            else:
+                return "Medication can be an important part of treatment for many conditions. Have you discussed medication options with a healthcare provider?"
+        
+        # Default responses based on session type
+        if session_type == "therapy":
+            return "I understand you're looking for support. Could you tell me more about what you're experiencing so I can provide more targeted guidance?"
+        elif session_type == "assessment":
+            return "I'm here to help assess your current situation. Can you describe what you're feeling in more detail?"
+        else:
+            return "I'm here to support you. What specific aspects of your mental health would you like to focus on today?"
+    
+    def end_digital_twin_session(
+        self,
+        session_id: str,
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """
+        End a digital twin session.
+        
+        Args:
+            session_id: ID of the session
+            options: Additional options
+            
+        Returns:
+            Session end result
+        """
+        self._ensure_initialized()
+        
+        # Validate session_id
+        if session_id not in MockMentaLLaMA._digital_twin_sessions:
+            raise InvalidRequestError(f"Session with ID {session_id} not found")
+        
+        session = MockMentaLLaMA._digital_twin_sessions[session_id]
+        
+        # Update session status
+        session["status"] = "completed"
+        session["ended_at"] = datetime.now(UTC).isoformat()
+        
+        # Generate session summary
+        message_count = len(session["messages"])
+        user_messages = [msg for msg in session["messages"] if msg["role"] == "user"]
+        
+        # Generate themes based on message content
+        all_text = " ".join([msg["content"] for msg in user_messages])
+        themes = session["insights"]["themes"]
+        
+        # Add standard recommendations
+        if not session["insights"]["recommendations"]:
+            session["insights"]["recommendations"] = [
+                "Continue practicing mindfulness techniques",
+                "Maintain regular sleep schedules",
+                "Consider follow-up with healthcare provider"
+            ]
+        
+        # Generate summary
+        summary = f"Session included {message_count} messages. "
+        if themes:
+            summary += f"Key themes identified: {', '.join(themes)}. "
+        summary += "The digital twin provided supportive responses based on the user's concerns."
+        
+        return {
+            "session_id": session_id,
+            "status": "completed",
+            "ended_at": session["ended_at"],
+            "message_count": message_count,
+            "summary": summary
+        }
+    
+    def get_session_insights(
+        self,
+        session_id: str,
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """
+        Get insights from a digital twin session.
+        
+        Args:
+            session_id: ID of the session
+            options: Additional options
+            
+        Returns:
+            Session insights
+        """
+        self._ensure_initialized()
+        
+        # Validate session_id
+        if session_id not in MockMentaLLaMA._digital_twin_sessions:
+            raise InvalidRequestError(f"Session with ID {session_id} not found")
+        
+        session = MockMentaLLaMA._digital_twin_sessions[session_id]
+        
+        # Ensure we have themes and recommendations
+        if not session["insights"]["themes"]:
+            session["insights"]["themes"] = ["general well-being", "mental health"]
+            
+        if not session["insights"]["recommendations"]:
+            session["insights"]["recommendations"] = [
+                "Practice mindfulness techniques daily",
+                "Maintain regular sleep schedules",
+                "Consider follow-up with healthcare provider"
+            ]
+        
+        return {
+            "session_id": session_id,
+            "insights": {
+                "themes": session["insights"]["themes"],
+                "recommendations": session["insights"]["recommendations"],
+                "summary": f"Analysis identified {len(session['insights']['themes'])} key themes and provided {len(session['insights']['recommendations'])} recommendations."
+            },
             "metadata": {
                 "model": self._model_name,
                 "timestamp": datetime.now(UTC).isoformat()
