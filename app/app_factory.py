@@ -387,30 +387,31 @@ def create_application(
         )
         
     @app_instance.exception_handler(HTTPException)
-    async def fastapi_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
-        """
-        Handle FastAPI HTTP exceptions.
-        """
-        # Log the exception
-        logger.info(f"FastAPI HTTP Exception: {exc.status_code} - {exc.detail}")
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        # Default behavior or custom logic for HTTPExceptions
+        # This handler is usually specific to how you want to format HTTP error responses
+        # (e.g., adding custom headers, logging, etc.)
+        # For now, let Starlette's default or a simple JSON response handle it.
+        # logger.error(f"HTTP exception: {exc.status_code} - {exc.detail}", exc_info=False) # Log less verbosely for HTTP exceptions
         
-        # For 500 errors, always mask details regardless of environment
-        if exc.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-            response_data = {"detail": "An internal server error occurred."}
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=response_data,
-            )
+        # If you have custom JSON structure for errors, replicate it here
+        # Example: return JSONResponse(status_code=exc.status_code, content={"error_code": exc.status_code, "message": exc.detail})
         
-        # For other errors, return the original response
+        # Fallback to FastAPI's default handling if no custom logic is complex
+        # Or provide a very basic one, ensuring it's JSONResponse
+        if isinstance(exc.detail, str):
+            content = {"detail": exc.detail}
+        elif isinstance(exc.detail, dict):
+            content = exc.detail
+        else: # Fallback for other types of detail
+            content = {"detail": str(exc.detail)}
+
         return JSONResponse(
             status_code=exc.status_code,
-            content={"detail": exc.detail},
-            headers=getattr(exc, "headers", None),
+            content=content,
+            headers=getattr(exc, "headers", None) # Include headers if present in HTTPException
         )
-    
+
     @app_instance.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
@@ -443,27 +444,36 @@ def create_application(
         )
     
     @app_instance.exception_handler(Exception)
-    async def general_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
-        """
-        Global exception handler that hides internal error details.
-        
-        This is crucial for HIPAA compliance to prevent leaking PHI in error responses.
-        """
-        # Log the full exception details for debugging (server-side only)
-        error_location = f"{request.method} {request.url.path}"
-        logger.error(
-            f"Unhandled exception: {type(exc).__name__}: {str(exc)}"
-        )
-        
-        # Return a generic error message that doesn't leak any details
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An internal server error occurred."},
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        # Centralized logger for unhandled exceptions
+        # Using 'logger' defined at the module level of app_factory.py
+        logger.exception(
+            f"Unhandled server exception encountered: {type(exc).__name__} - {exc}. "
+            f"Request: {request.method} {request.url.path}"
         )
 
-    # Specifically handle ZeroDivisionError for the test endpoints
+        # Get settings from app state, fallback to global_settings if not on app state
+        # This ensures tests can override settings via app.state.settings
+        current_settings = getattr(request.app.state, 'settings', global_settings)
+
+        # Default detail message for 500 errors, ensuring no sensitive info is leaked.
+        detail_message = "Internal Server Error"
+
+        # Conditional detail based on DEBUG or ENVIRONMENT setting.
+        # BE CAUTIOUS: Exposing detailed errors to clients in production is a security risk.
+        # This is primarily for local development or controlled test environments.
+        if current_settings and current_settings.DEBUG:
+            # Even in debug, for a generic 500, it's often better to keep client response generic.
+            # The server logs (from logger.exception above) will have the full traceback.
+            # However, if specific tests rely on seeing some detail in DEBUG, this can be enabled.
+            # detail_message = f"{type(exc).__name__}: {str(exc)}" # Uncomment if detailed errors are desired in DEBUG responses
+            pass # Keep "Internal Server Error" as the default for client responses
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": detail_message},  # Always use the controlled detail_message
+        )
+
     @app_instance.exception_handler(ZeroDivisionError)
     async def zero_division_error_handler(
         request: Request, exc: ZeroDivisionError
