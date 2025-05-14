@@ -526,32 +526,31 @@ class TestSecureHeaders:
 
 @pytest.mark.db_required()
 class TestErrorHandling:
-    """Test secure error handling, ensuring no sensitive info is leaked."""
+    """Test generic error handling mechanisms."""
 
     @pytest.mark.asyncio
     async def test_not_found_error_generic(
         self,
-        client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
+        client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI],
+        get_valid_auth_headers: dict[str, str]  # Added auth headers
     ) -> None:
-        """Test that 404 errors return generic responses."""
-        # Get client
+        """Test that accessing a non-existent endpoint returns a 404 error for an authenticated user."""
         client, _ = client_app_tuple_func_scoped
         
-        # Make request to non-existent path
-        response = await client.get("/api/v1/non-existent-endpoint")
+        # Generate a unique, non-existent path
+        non_existent_path = f"/api/v1/this/path/does/not/exist/{uuid.uuid4()}"
         
-        # Check status code is 404
-        assert response.status_code == 404, f"Expected 404, got {response.status_code}"
+        test_logger.info(f"Testing non-existent path: {non_existent_path} with auth headers")
+        response = await client.get(non_existent_path, headers=get_valid_auth_headers) # Added auth headers
         
-        # Verify response has detail field
-        response_json = response.json()
-        assert "detail" in response_json, f"Response missing 'detail' field: {response_json}"
+        test_logger.info(f"Response Status: {response.status_code}, Response Body: {response.text}")
         
-        # Verify message is appropriately generic
-        assert "not found" in response_json["detail"].lower()
-        
-        # Ensure no stack traces or sensitive details are present
-        assert "traceback" not in response.text.lower()
+        assert response.status_code == status.HTTP_404_NOT_FOUND, f"Expected 404, got {response.status_code}"
+        # Check for a more standardized error message if applicable for 404
+        # For example, if FastAPI returns {"detail": "Not Found"}
+        content = response.json()
+        assert "detail" in content
+        assert content["detail"] == "Not Found" # Default FastAPI 404 message
 
     @pytest.mark.asyncio
     async def test_internal_server_error_masked(

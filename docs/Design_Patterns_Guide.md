@@ -10,38 +10,41 @@ The Clarity AI Backend implements advanced design patterns that collectively con
 
 The system implements a pure Clean Architecture variant with mathematically precise boundaries between layers:
 
-#### Implementation Examples
+#### Layered Architecture Implementation
 
 ```python
-# Domain layer (innermost) - pure business logic
+# Domain layer entity
 class Patient(Entity):
-    def __init__(self, id: UUID, name: str, medical_record_number: str):
-        self._id = id
-        self._name = name
-        self._medical_record_number = medical_record_number
+    def __init__(self, id: str, name: str, age: int):
+        self.id = id
+        self.name = name
+        self.age = age
 
-# Application layer - orchestrates domain objects
+# Application layer service
 class PatientService:
-    def __init__(self, patient_repository: IPatientRepository):
-        self._patient_repository = patient_repository
+    def __init__(self, repository: IPatientRepository):
+        self._repository = repository
 
-# Infrastructure layer - implements interfaces
+    async def get_patient(self, patient_id: str) -> Patient:
+        return await self._repository.get_by_id(patient_id)
+
+# Infrastructure layer repository
 class SQLAlchemyPatientRepository(IPatientRepository):
     def __init__(self, session_factory):
         self._session_factory = session_factory
 ```
 
-#### Architectural Gaps
+#### Layered Architecture Gaps
 
-- Some application services import directly from infrastructure rather than through interfaces
-- Certain domain models are misplaced in the infrastructure layer
-- Inconsistent layer boundary enforcement in ML service implementations
+- Domain layer contains some infrastructure concerns
+- Some services bypass the application layer
+- Inconsistent layering in the ML integration components
 
 ### 2. Ports and Adapters (Hexagonal Architecture)
 
 The system employs a ports and adapters pattern for external integrations:
 
-#### Implementation Examples
+#### Ports and Adapters Implementation
 
 ```python
 # Port (interface in domain layer)
@@ -56,7 +59,7 @@ class BedrockModelService(IExternalModelService):
         # Implementation using AWS Bedrock
 ```
 
-#### Architectural Gaps
+#### Ports and Adapters Gaps
 
 - Some adapters bypass ports and are called directly
 - Inconsistent port definitions across different integration points
@@ -68,7 +71,7 @@ class BedrockModelService(IExternalModelService):
 
 Used extensively to create complex objects while maintaining dependency inversion:
 
-#### Implementation Examples
+#### Factory Method Implementation
 
 ```python
 # Factory for repository instances
@@ -83,7 +86,7 @@ def get_patient_service(
     return PatientService(repository)
 ```
 
-#### Architectural Gaps
+#### Factory Method Gaps
 
 - Inconsistent factory implementation styles (functions vs. classes)
 - Some factories create concrete types rather than interfaces
@@ -93,7 +96,7 @@ def get_patient_service(
 
 Implemented for creating families of related objects:
 
-#### Implementation Examples
+#### Abstract Factory Implementation
 
 ```python
 class IRepositoryFactory(ABC):
@@ -116,7 +119,7 @@ class SQLAlchemyRepositoryFactory(IRepositoryFactory):
         return SQLAlchemyPatientRepository(self._session_factory)
 ```
 
-#### Architectural Gaps
+#### Abstract Factory Gaps
 
 - Incomplete implementation across all repository types
 - Inconsistent usage throughout the codebase
@@ -127,7 +130,7 @@ class SQLAlchemyRepositoryFactory(IRepositoryFactory):
 
 Used extensively for ML model integration:
 
-#### Implementation Examples
+#### Implementation
 
 ```python
 # Third-party model interface
@@ -140,16 +143,18 @@ class ThirdPartyModelAdapter(IModel):
     def __init__(self, third_party_model: ThirdPartyModel):
         self._model = third_party_model
     
-    async def predict(self, input_data: Dict[str, Any]) -> PredictionResult:
-        # Convert input data to numpy array
-        np_data = self._convert_input(input_data)
-        # Call the third-party model
-        raw_output = self._model.run_inference(np_data)
-        # Convert output to our format
+    def predict(self, data: Dict[str, Any]) -> ModelResult:
+        # Convert our data format to third-party format
+        input_data = self._convert_input(data)
+        
+        # Call third-party model
+        raw_output = self._model.run_inference(input_data)
+        
+        # Convert third-party output to our format
         return self._convert_output(raw_output)
 ```
 
-#### Architectural Gaps
+#### Adapter Pattern Gaps
 
 - Some adapters contain business logic that should be in domain services
 - Inconsistent error handling across adapters
@@ -158,7 +163,7 @@ class ThirdPartyModelAdapter(IModel):
 
 Used for building complex analytical pipelines:
 
-#### Implementation Examples
+#### Composite Pattern Implementation
 
 ```python
 class AnalysisComponent(ABC):
@@ -180,7 +185,7 @@ class CompositeAnalyzer(AnalysisComponent):
         return self._aggregate_results(results)
 ```
 
-#### Architectural Gaps
+#### Composite Pattern Gaps
 
 - Inconsistent implementation across different analytical domains
 - Some composite components violate the single responsibility principle
@@ -191,7 +196,7 @@ class CompositeAnalyzer(AnalysisComponent):
 
 Used extensively for implementing different algorithmic approaches:
 
-#### Implementation Examples
+#### Strategy Pattern Implementation
 
 ```python
 class AuthenticationStrategy(ABC):
@@ -213,7 +218,7 @@ class PasswordAuthStrategy(AuthenticationStrategy):
         return user
 ```
 
-#### Architectural Gaps
+#### Strategy Pattern Gaps
 
 - Some strategies have tight coupling to infrastructure concerns
 - Inconsistent strategy selection mechanisms
@@ -222,7 +227,7 @@ class PasswordAuthStrategy(AuthenticationStrategy):
 
 Implemented for event-driven architecture components:
 
-#### Implementation Examples
+#### Observer Pattern Implementation
 
 ```python
 class BiometricAlertSubject(ABC):
@@ -253,7 +258,7 @@ class BiometricAlertService(BiometricAlertSubject):
             observer.update(alert)
 ```
 
-#### Architectural Gaps
+#### Observer Pattern Gaps
 
 - Incomplete observer implementation for some event types
 - Potential thread safety issues in observer notification
@@ -264,7 +269,7 @@ class BiometricAlertService(BiometricAlertSubject):
 
 Used to maintain consistency boundaries in the domain model:
 
-#### Implementation Examples
+#### Implementation of ${PATTERN_NAME}
 
 ```python
 class Patient(AggregateRoot):
@@ -280,7 +285,7 @@ class Patient(AggregateRoot):
         self.register_domain_event(BiometricProfileAddedEvent(self.id, profile))
 ```
 
-#### Architectural Gaps
+#### Architectural Gaps in ${PATTERN_NAME}
 
 - Inconsistent aggregate boundary definitions
 - Some aggregates lack proper invariant enforcement
@@ -290,7 +295,7 @@ class Patient(AggregateRoot):
 
 Used for immutable domain concepts:
 
-#### Implementation Examples
+#### Implementation of ${PATTERN_NAME}
 
 ```python
 @dataclass(frozen=True)
@@ -305,7 +310,7 @@ class MedicationDosage:
             raise ValueError("Dosage unit is required")
 ```
 
-#### Architectural Gaps
+#### Architectural Gaps in ${PATTERN_NAME}
 
 - Inconsistent implementation (some use dataclasses, others use regular classes)
 - Value objects occasionally contain mutable attributes
