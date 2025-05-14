@@ -535,30 +535,48 @@ class TestErrorHandling:
         """Test that 500 errors are generic and mask internal details."""
         client, app = client_app_tuple_func_scoped
         
-        # Create a test endpoint that deliberately raises an error
-        test_endpoint_path = "/api/test-unique-error-endpoint-for-test"
+        # Generate a unique endpoint path to avoid collisions
+        unique_id = str(uuid.uuid4())[:8]
+        test_endpoint_path = f"/api/test-error-{unique_id}"
         
+        # Define a test endpoint that raises an error
         @app.get(test_endpoint_path)
         async def test_error_endpoint():
-            # Use a simple system error rather than creating a test-named error
+            # Simple runtime error that should be masked
             raise RuntimeError("This is a sensitive error detail that should be masked")
         
-        # Make the request to trigger the error with a short timeout
-        response = await client.get(test_endpoint_path, timeout=2.0)
-        
-        # Check the response status code
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        
-        # Verify error response structure
-        error_response = response.json()
-        assert "detail" in error_response
-        
-        # Check that error details are properly masked
-        # The error message should not contain the sensitive details
-        assert "sensitive error detail" not in error_response["detail"]
-        
-        # Verify the generic message is returned instead
-        assert "Internal server error" in error_response["detail"]
+        try:
+            # Make request with explicit timeout
+            response = await client.get(
+                test_endpoint_path, 
+                timeout=2.0,
+                follow_redirects=True
+            )
+            
+            # Check expected status code
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR, \
+                f"Expected 500 status, got {response.status_code}: {response.text}"
+            
+            # Check response content
+            error_data = response.json()
+            assert "detail" in error_data, f"Response missing 'detail' field: {error_data}"
+            
+            # Verify sensitive information is masked
+            error_message = error_data["detail"].lower()
+            assert "internal server error" in error_message, \
+                f"Expected generic error message, got: {error_message}"
+            assert "sensitive error detail" not in error_message, \
+                "Sensitive error details leaked in response"
+            
+            # Also check that no stack trace is exposed
+            assert "traceback" not in response.text.lower(), \
+                "Stack trace may be exposed in the response"
+            
+        except TimeoutError:
+            pytest.fail("Test timed out waiting for response")
+        except Exception as e:
+            # Handle any other exceptions
+            pytest.fail(f"Unexpected error in test: {str(e)}")
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
 

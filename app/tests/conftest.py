@@ -16,6 +16,9 @@ from httpx import AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
+# Import the create_application function
+from app.app_factory import create_application
+
 # Make the module available to be imported by tests
 sys.modules['pytest_asyncio'] = pytest_asyncio
 
@@ -132,7 +135,7 @@ async def with_disabled_audit_middleware(request, app_instance):
         app_instance.state.disable_audit_middleware = False
 
 @pytest.fixture(scope="function")
-async def client_app_tuple_func_scoped(app_settings) -> Generator[tuple[AsyncClient, FastAPI], None, None]:
+async def client_app_tuple_func_scoped(test_settings) -> Generator[tuple[AsyncClient, FastAPI], None, None]:
     """
     Provides a tuple of (AsyncClient, FastAPI) with function scope.
     
@@ -141,7 +144,7 @@ async def client_app_tuple_func_scoped(app_settings) -> Generator[tuple[AsyncCli
     """
     # Create application with explicit flags to disable middleware that might cause hangs
     app = create_application(
-        settings_override=app_settings, 
+        settings_override=test_settings, 
         include_test_routers=True,
         disable_audit_middleware=True,  # Explicitly disable audit middleware
         skip_auth_middleware=False      # Keep auth middleware for auth tests
@@ -153,10 +156,10 @@ async def client_app_tuple_func_scoped(app_settings) -> Generator[tuple[AsyncCli
     
     # Ensure session factory is properly set up for tests
     async_engine = create_async_engine(
-        app_settings.ASYNC_DATABASE_URL,
+        test_settings.ASYNC_DATABASE_URL,
         echo=False,
         # For SQLite, important to enable check_same_thread=False for tests
-        connect_args={"check_same_thread": False} if app_settings.ASYNC_DATABASE_URL.startswith("sqlite") else {}
+        connect_args={"check_same_thread": False} if test_settings.ASYNC_DATABASE_URL.startswith("sqlite") else {}
     )
     
     # Create an async session factory
@@ -172,7 +175,7 @@ async def client_app_tuple_func_scoped(app_settings) -> Generator[tuple[AsyncCli
     app.state.db_engine = async_engine
     
     # Create test tables if using SQLite in-memory
-    if app_settings.ASYNC_DATABASE_URL.startswith("sqlite"):
+    if test_settings.ASYNC_DATABASE_URL.startswith("sqlite"):
         from app.infrastructure.persistence.sqlalchemy.models.base import Base
         async with async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
