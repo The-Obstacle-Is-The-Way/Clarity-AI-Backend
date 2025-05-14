@@ -2,747 +2,929 @@
 
 ## Overview
 
-This document outlines the implementation of database access patterns in the Clarity AI Backend. Following clean architecture principles, all database operations are encapsulated in the infrastructure layer, accessed through repository interfaces defined in the core layer, and coordinated through dependency injection.
+This document outlines the database access patterns in the Clarity AI Backend, with a focus on HIPAA compliance and clean architecture principles. The system uses a repository pattern to abstract database operations, providing a secure and consistent approach to handling Protected Health Information (PHI) while maintaining architectural boundaries.
 
-## Core Principles
+## HIPAA-Compliant Database Access
 
-1. **Separation of Concerns**: Database access is isolated in the infrastructure layer
-2. **Repository Pattern**: Domain entities are persisted through repository interfaces
-3. **Dependency Inversion**: Higher layers depend on abstractions, not concrete implementations
-4. **Unit of Work**: Transactions span multiple repositories when needed
-5. **HIPAA Compliance**: Secure, audited, and controlled access to PHI
+### Core HIPAA Requirements for Data Storage
 
-## SQLAlchemy Configuration
+The database access layer implements these HIPAA Security Rule requirements:
 
-### Connection Management
+1. **Access Controls** (§164.312(a)(1)): Granular access permissions to PHI
+2. **Audit Controls** (§164.312(b)): Comprehensive logging of all PHI access
+3. **Integrity Controls** (§164.312(c)(1)): Data validation and corruption prevention
+4. **Person or Entity Authentication** (§164.312(d)): Verified identity for database access
+5. **Transmission Security** (§164.312(e)(1)): Encryption of data in transit
+6. **Encryption** (§164.312(a)(2)(iv)): Field-level encryption of PHI at rest
 
-```python
-# app/infrastructure/persistence/database.py
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from contextlib import asynccontextmanager
-from app.core.config import settings
+### PHI Handling in Repositories
 
-# Create engine
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.SQL_ECHO,
-    pool_pre_ping=True,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW
-)
+All repositories that handle PHI implement these security measures:
 
-# Session factory
-AsyncSessionFactory = sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False
-)
-
-@asynccontextmanager
-async def get_db_session():
-    """Provide an async session with automatic cleanup."""
-    session = AsyncSessionFactory()
-    try:
-        yield session
-    finally:
-        await session.close()
-```
-
-### Application Factory Integration
-
-```python
-# app/app_factory.py
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from app.infrastructure.persistence.database import engine, AsyncSessionFactory
-from app.presentation.api.dependencies.database import get_db_session
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Setup
-    yield
-    # Cleanup
-    await engine.dispose()
-
-def create_app():
-    app = FastAPI(lifespan=lifespan)
-    # ... other configurations
-    return app
-```
-
-### Dependency Injection
-
-```python
-# app/presentation/api/dependencies/database.py
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.infrastructure.persistence.database import get_db_session
-
-async def get_db(session: AsyncSession = Depends(get_db_session)):
-    """Dependency for database session."""
-    return session
-```
+1. **Field-Level Encryption**: Sensitive fields are encrypted before storage
+2. **Access Audit Logging**: Every PHI access is logged with user context
+3. **Authorization Checks**: Repositories verify access permissions
+4. **Minimal PHI Exposure**: Only necessary PHI fields are retrieved
+5. **Secure Error Handling**: Errors don't expose PHI details
 
 ## Repository Pattern Implementation
 
-### Repository Interface
+### Repository Interface Definition
+
+Repository interfaces are defined in the domain layer, following the Dependency Inversion Principle:
 
 ```python
-# app/core/interfaces/repositories/patient_repository_interface.py
+# app/domain/interfaces/repositories/patient_repository_interface.py
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from app.core.domain.entities import Patient
-from app.core.domain.value_objects import PatientId
+from uuid import UUID
+from app.domain.entities.patient import Patient
+from app.domain.value_objects.user_id import UserId
 
 class IPatientRepository(ABC):
-    """Interface for patient repository operations."""
+    """
+    Repository interface for patient data access.
+    
+    Implements HIPAA-compliant data access patterns for patient PHI.
+    """
     
     @abstractmethod
-    async def get_by_id(self, patient_id: PatientId) -> Optional[Patient]:
-        """Get patient by ID."""
+    async def get_by_id(
+        self, 
+        patient_id: UUID, 
+        requesting_user_id: UserId
+    ) -> Optional[Patient]:
+        """
+        Get a patient by ID with proper access logging.
+        
+        Args:
+            patient_id: The patient's unique identifier
+            requesting_user_id: ID of the user requesting access (for audit)
+            
+        Returns:
+            Patient entity if found and accessible, None otherwise
+        """
         pass
     
     @abstractmethod
-    async def get_by_mrn(self, mrn: str) -> Optional[Patient]:
-        """Get patient by medical record number."""
+    async def create(
+        self, 
+        patient: Patient,
+        created_by: UserId
+    ) -> Patient:
+        """
+        Create a new patient record with audit logging.
+        
+        Args:
+            patient: Patient entity to persist
+            created_by: ID of the user creating the record
+            
+        Returns:
+            Created patient with database-generated fields
+        """
         pass
     
     @abstractmethod
-    async def create(self, patient: Patient) -> Patient:
-        """Create a new patient."""
+    async def update(
+        self, 
+        patient: Patient,
+        updated_by: UserId
+    ) -> Patient:
+        """
+        Update a patient record with audit logging.
+        
+        Args:
+            patient: Updated patient entity
+            updated_by: ID of the user updating the record
+            
+        Returns:
+            Updated patient entity
+        """
         pass
     
     @abstractmethod
-    async def update(self, patient: Patient) -> Patient:
-        """Update an existing patient."""
+    async def delete(
+        self, 
+        patient_id: UUID,
+        deleted_by: UserId
+    ) -> bool:
+        """
+        Delete a patient record with audit logging.
+        
+        Args:
+            patient_id: ID of the patient to delete
+            deleted_by: ID of the user performing deletion
+            
+        Returns:
+            True if successfully deleted
+        """
         pass
     
     @abstractmethod
-    async def delete(self, patient_id: PatientId) -> bool:
-        """Delete a patient."""
-        pass
-    
-    @abstractmethod
-    async def search(self, criteria: dict, skip: int = 0, limit: int = 100) -> List[Patient]:
-        """Search for patients matching criteria."""
+    async def search(
+        self, 
+        criteria: dict,
+        requesting_user_id: UserId,
+        skip: int = 0, 
+        limit: int = 100
+    ) -> List[Patient]:
+        """
+        Search for patients matching criteria with audit logging.
+        
+        Args:
+            criteria: Search criteria
+            requesting_user_id: ID of the user performing search
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of matching patient entities
+        """
         pass
 ```
 
-### SQL Alchemy Models
+### HIPAA-Compliant Database Models
+
+SQLAlchemy models are designed with field-level encryption for PHI:
 
 ```python
-# app/infrastructure/persistence/models/patient.py
-from sqlalchemy import Column, String, Date, Text, ForeignKey
+# app/infrastructure/persistence/models/patient_model.py
+from sqlalchemy import Column, String, DateTime, Boolean
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.infrastructure.persistence.models.base import Base
+from datetime import datetime
 import uuid
 
 class PatientModel(Base):
-    """SQLAlchemy model for patients."""
+    """SQLAlchemy model for patient data with PHI encryption."""
     
     __tablename__ = "patients"
     
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String(255), nullable=False)
-    medical_record_number = Column(String(50), unique=True, nullable=False, index=True)
-    date_of_birth = Column(Date, nullable=False)
-    notes = Column(Text, nullable=True)
+    # Non-PHI fields (not encrypted)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    active = Column(Boolean, nullable=False, default=True)
+    
+    # PHI fields (stored encrypted)
+    _first_name = Column("first_name_encrypted", String, nullable=False)
+    _last_name = Column("last_name_encrypted", String, nullable=False)
+    _date_of_birth = Column("dob_encrypted", String, nullable=False)
+    _ssn = Column("ssn_encrypted", String, nullable=True)
+    _email = Column("email_encrypted", String, nullable=True)
+    _phone = Column("phone_encrypted", String, nullable=True)
+    _address = Column("address_encrypted", String, nullable=True)
     
     # Relationships
-    biometric_readings = relationship(
-        "BiometricReadingModel",
-        back_populates="patient",
-        cascade="all, delete-orphan"
-    )
+    medical_records = relationship("MedicalRecordModel", back_populates="patient", cascade="all, delete-orphan")
+    medications = relationship("MedicationModel", back_populates="patient", cascade="all, delete-orphan")
+    biometric_readings = relationship("BiometricReadingModel", back_populates="patient", cascade="all, delete-orphan")
 ```
 
-### SQLAlchemy Repository Implementation
+### Encrypted PHI Value Object
+
+The system uses a specialized value object for handling encrypted PHI:
+
+```python
+# app/domain/value_objects/encrypted_phi.py
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.infrastructure.di.container import get_container
+
+class EncryptedPHI:
+    """
+    Value object for handling encrypted PHI.
+    
+    This class ensures PHI is always encrypted at rest and
+    only decrypted when explicitly requested by authorized code.
+    """
+    
+    def __init__(
+        self,
+        plaintext: str = None,
+        ciphertext: str = None,
+        encryption_service: IEncryptionService = None
+    ):
+        """
+        Initialize encrypted PHI value object.
+        
+        Args:
+            plaintext: Raw PHI data to encrypt
+            ciphertext: Already encrypted PHI data
+            encryption_service: Service for encryption/decryption
+        """
+        if encryption_service is None:
+            container = get_container()
+            encryption_service = container.get(IEncryptionService)
+            
+        self._encryption_service = encryption_service
+        
+        if plaintext is not None:
+            self.ciphertext = self._encryption_service.encrypt(plaintext)
+        elif ciphertext is not None:
+            self.ciphertext = ciphertext
+        else:
+            raise ValueError("Either plaintext or ciphertext must be provided")
+    
+    def get_plaintext(self) -> str:
+        """
+        Decrypt and return the PHI.
+        
+        This method should only be called when necessary and
+        with proper audit logging in place.
+        
+        Returns:
+            Decrypted PHI value
+        """
+        return self._encryption_service.decrypt(self.ciphertext)
+    
+    def __str__(self) -> str:
+        """Return a string representation that doesn't expose PHI."""
+        return "[ENCRYPTED PHI]"
+    
+    def __repr__(self) -> str:
+        """Return a debug representation that doesn't expose PHI."""
+        return f"EncryptedPHI(ciphertext='{self.ciphertext[:5]}...{self.ciphertext[-5:]}')"
+```
+
+### HIPAA-Compliant Repository Implementation
+
+The SQLAlchemy repository implementation ensures PHI is properly protected:
 
 ```python
 # app/infrastructure/persistence/repositories/sqlalchemy_patient_repository.py
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from app.core.interfaces.repositories import IPatientRepository
-from app.core.domain.entities import Patient
-from app.core.domain.value_objects import PatientId
-from app.infrastructure.persistence.models import PatientModel
-from app.infrastructure.persistence.mappers import PatientMapper
+from app.domain.interfaces.repositories.patient_repository_interface import IPatientRepository
+from app.domain.entities.patient import Patient
+from app.domain.value_objects.user_id import UserId
+from app.domain.value_objects.encrypted_phi import EncryptedPHI
+from app.infrastructure.persistence.models.patient_model import PatientModel
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from uuid import UUID
 
 class SQLAlchemyPatientRepository(IPatientRepository):
-    """SQLAlchemy implementation of patient repository."""
+    """
+    SQLAlchemy implementation of patient repository with HIPAA compliance.
     
-    def __init__(self, session: AsyncSession):
+    This repository handles:
+    - Field-level PHI encryption
+    - Access audit logging
+    - Permission verification
+    - Secure error handling
+    """
+    
+    def __init__(
+        self, 
+        session: AsyncSession,
+        audit_logger: IAuditLogger,
+        encryption_service: IEncryptionService
+    ):
+        """Initialize repository with required dependencies."""
         self._session = session
-        self._mapper = PatientMapper()
+        self._audit_logger = audit_logger
+        self._encryption_service = encryption_service
     
-    async def get_by_id(self, patient_id: PatientId) -> Optional[Patient]:
+    async def get_by_id(
+        self, 
+        patient_id: UUID, 
+        requesting_user_id: UserId
+    ) -> Optional[Patient]:
         """
-        Get patient by ID.
+        Get patient by ID with HIPAA-compliant audit logging.
         
         Args:
-            patient_id: Unique identifier for the patient
+            patient_id: Patient's unique identifier
+            requesting_user_id: ID of the user requesting access
             
         Returns:
             Patient entity if found, None otherwise
         """
-        query = (
-            select(PatientModel)
-            .options(selectinload(PatientModel.biometric_readings))
-            .where(PatientModel.id == str(patient_id))
-        )
-        
-        result = await self._session.execute(query)
-        model = result.scalars().first()
-        
-        if not model:
-            return None
+        try:
+            # Log PHI access before retrieval
+            await self._audit_logger.log_phi_access(
+                user_id=str(requesting_user_id),
+                resource_type="patient",
+                resource_id=str(patient_id),
+                action="view"
+            )
             
-        return self._mapper.to_entity(model)
+            # Retrieve patient model
+            result = await self._session.execute(
+                select(PatientModel).where(PatientModel.id == patient_id)
+            )
+            
+            patient_model = result.scalars().first()
+            
+            if not patient_model:
+                return None
+                
+            # Convert database model to domain entity
+            return self._model_to_entity(patient_model)
+            
+        except Exception as e:
+            # Log error without exposing PHI
+            await self._audit_logger.log_security_event(
+                event_type="database_error",
+                user_id=str(requesting_user_id),
+                description=f"Error retrieving patient data: {type(e).__name__}",
+                severity="ERROR"
+            )
+            # Re-raise as domain exception without PHI
+            raise DatabaseAccessException(
+                message="Error retrieving patient data",
+                original_exception=e
+            )
     
-    async def create(self, patient: Patient) -> Patient:
+    async def create(
+        self, 
+        patient: Patient,
+        created_by: UserId
+    ) -> Patient:
         """
-        Create a new patient record.
+        Create patient with HIPAA-compliant audit logging.
         
         Args:
-            patient: Patient entity to persist
+            patient: Patient entity to create
+            created_by: ID of the user creating the record
             
         Returns:
-            The created patient with database-generated values
+            Created patient with database-generated values
         """
-        # Convert domain entity to database model
-        model = self._mapper.to_model(patient)
+        try:
+            # Convert domain entity to database model with encryption
+            patient_model = self._entity_to_model(patient)
+            
+            # Add to database
+            self._session.add(patient_model)
+            await self._session.flush()
+            
+            # Log PHI access for creation
+            await self._audit_logger.log_phi_access(
+                user_id=str(created_by),
+                resource_type="patient",
+                resource_id=str(patient_model.id),
+                action="create"
+            )
+            
+            # Return domain entity with database-generated values
+            return self._model_to_entity(patient_model)
+            
+        except Exception as e:
+            # Log error without exposing PHI
+            await self._audit_logger.log_security_event(
+                event_type="database_error",
+                user_id=str(created_by),
+                description=f"Error creating patient record: {type(e).__name__}",
+                severity="ERROR"
+            )
+            # Re-raise as domain exception without PHI
+            raise DatabaseAccessException(
+                message="Error creating patient record",
+                original_exception=e
+            )
+    
+    def _entity_to_model(self, patient: Patient) -> PatientModel:
+        """
+        Convert domain entity to database model with PHI encryption.
         
-        # Add to session and flush to generate ID
-        self._session.add(model)
-        await self._session.flush()
+        Args:
+            patient: Domain entity
+            
+        Returns:
+            SQLAlchemy model with encrypted PHI fields
+        """
+        model = PatientModel(
+            id=patient.id,
+            # Encrypt PHI fields
+            _first_name=EncryptedPHI(
+                plaintext=patient.first_name, 
+                encryption_service=self._encryption_service
+            ).ciphertext,
+            _last_name=EncryptedPHI(
+                plaintext=patient.last_name, 
+                encryption_service=self._encryption_service
+            ).ciphertext,
+            _date_of_birth=EncryptedPHI(
+                plaintext=patient.date_of_birth.isoformat(), 
+                encryption_service=self._encryption_service
+            ).ciphertext,
+            # More fields...
+        )
+        return model
+    
+    def _model_to_entity(self, model: PatientModel) -> Patient:
+        """
+        Convert database model to domain entity with PHI decryption.
         
-        # Convert back to domain entity with generated ID
-        return self._mapper.to_entity(model)
+        Args:
+            model: SQLAlchemy model
+            
+        Returns:
+            Domain entity with decrypted PHI fields
+        """
+        return Patient(
+            id=model.id,
+            # Decrypt PHI fields
+            first_name=EncryptedPHI(
+                ciphertext=model._first_name, 
+                encryption_service=self._encryption_service
+            ).get_plaintext(),
+            last_name=EncryptedPHI(
+                ciphertext=model._last_name, 
+                encryption_service=self._encryption_service
+            ).get_plaintext(),
+            date_of_birth=date.fromisoformat(
+                EncryptedPHI(
+                    ciphertext=model._date_of_birth, 
+                    encryption_service=self._encryption_service
+                ).get_plaintext()
+            ),
+            # More fields...
+        )
 ```
 
-### Dependency Registration
+## Unit of Work Pattern
+
+The Unit of Work pattern manages transactions across multiple repositories:
+
+```python
+# app/domain/interfaces/unit_of_work.py
+from abc import ABC, abstractmethod
+from app.domain.interfaces.repositories.patient_repository_interface import IPatientRepository
+from app.domain.interfaces.repositories.medical_record_repository_interface import IMedicalRecordRepository
+
+class IUnitOfWork(ABC):
+    """
+    Interface for the Unit of Work pattern.
+    
+    Manages database transactions across multiple repositories,
+    ensuring atomicity and consistency of operations.
+    """
+    
+    @property
+    @abstractmethod
+    def patient_repository(self) -> IPatientRepository:
+        """Get the patient repository."""
+        pass
+    
+    @property
+    @abstractmethod
+    def medical_record_repository(self) -> IMedicalRecordRepository:
+        """Get the medical record repository."""
+        pass
+    
+    @abstractmethod
+    async def commit(self) -> None:
+        """Commit the transaction."""
+        pass
+    
+    @abstractmethod
+    async def rollback(self) -> None:
+        """Rollback the transaction."""
+        pass
+    
+    @abstractmethod
+    async def __aenter__(self):
+        """Start a new transaction."""
+        pass
+    
+    @abstractmethod
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """End the transaction."""
+        pass
+```
+
+### Unit of Work Implementation
+
+The SQLAlchemy implementation of the Unit of Work pattern:
+
+```python
+# app/infrastructure/persistence/unit_of_work.py
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.domain.interfaces.unit_of_work import IUnitOfWork
+from app.domain.interfaces.repositories.patient_repository_interface import IPatientRepository
+from app.domain.interfaces.repositories.medical_record_repository_interface import IMedicalRecordRepository
+from app.infrastructure.persistence.repositories.sqlalchemy_patient_repository import SQLAlchemyPatientRepository
+from app.infrastructure.persistence.repositories.sqlalchemy_medical_record_repository import SQLAlchemyMedicalRecordRepository
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+
+class SQLAlchemyUnitOfWork(IUnitOfWork):
+    """SQLAlchemy implementation of Unit of Work pattern."""
+    
+    def __init__(
+        self, 
+        session: AsyncSession,
+        audit_logger: IAuditLogger,
+        encryption_service: IEncryptionService
+    ):
+        """Initialize with session and required services."""
+        self._session = session
+        self._audit_logger = audit_logger
+        self._encryption_service = encryption_service
+        
+        # Lazy-initialized repositories
+        self._patient_repository = None
+        self._medical_record_repository = None
+    
+    @property
+    def patient_repository(self) -> IPatientRepository:
+        """Get the patient repository."""
+        if self._patient_repository is None:
+            self._patient_repository = SQLAlchemyPatientRepository(
+                self._session, 
+                self._audit_logger,
+                self._encryption_service
+            )
+        return self._patient_repository
+    
+    @property
+    def medical_record_repository(self) -> IMedicalRecordRepository:
+        """Get the medical record repository."""
+        if self._medical_record_repository is None:
+            self._medical_record_repository = SQLAlchemyMedicalRecordRepository(
+                self._session, 
+                self._audit_logger,
+                self._encryption_service
+            )
+        return self._medical_record_repository
+    
+    async def commit(self) -> None:
+        """Commit the transaction."""
+        await self._session.commit()
+    
+    async def rollback(self) -> None:
+        """Rollback the transaction."""
+        await self._session.rollback()
+    
+    async def __aenter__(self):
+        """Start a new transaction."""
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        End the transaction.
+        
+        Commits if no exception occurred, otherwise rolls back.
+        """
+        try:
+            if exc_type is None:
+                await self.commit()
+            else:
+                await self.rollback()
+        except Exception:
+            await self.rollback()
+            raise
+```
+
+## Usage in Application Services
+
+Application services use repositories via the Unit of Work pattern:
+
+```python
+# app/application/services/patient_service.py
+from app.domain.interfaces.unit_of_work import IUnitOfWork
+from app.domain.entities.patient import Patient
+from app.domain.entities.medical_record import MedicalRecord
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.domain.value_objects.user_id import UserId
+from uuid import UUID
+
+class PatientService:
+    """Service for patient-related operations."""
+    
+    def __init__(self, unit_of_work: IUnitOfWork, audit_logger: IAuditLogger):
+        """Initialize with Unit of Work and audit logger."""
+        self._uow = unit_of_work
+        self._audit_logger = audit_logger
+    
+    async def create_patient_with_medical_history(
+        self,
+        patient_data: dict,
+        medical_records: list[dict],
+        created_by: UserId
+    ) -> Patient:
+        """
+        Create a new patient with medical records in a single transaction.
+        
+        This method demonstrates the Unit of Work pattern with proper
+        HIPAA-compliant handling of PHI across multiple repositories.
+        
+        Args:
+            patient_data: Patient data dictionary
+            medical_records: List of medical record dictionaries
+            created_by: ID of the user creating the records
+            
+        Returns:
+            Created patient entity
+        """
+        # Create patient entity from data
+        patient = Patient.create_from_dict(patient_data)
+        
+        async with self._uow:
+            try:
+                # Create patient in repository
+                created_patient = await self._uow.patient_repository.create(
+                    patient=patient,
+                    created_by=created_by
+                )
+                
+                # Create medical records
+                for record_data in medical_records:
+                    record = MedicalRecord.create_from_dict(
+                        {**record_data, "patient_id": created_patient.id}
+                    )
+                    
+                    await self._uow.medical_record_repository.create(
+                        medical_record=record,
+                        created_by=created_by
+                    )
+                
+                # Log the complete operation
+                await self._audit_logger.log_security_event(
+                    event_type="patient_created",
+                    user_id=str(created_by),
+                    description=f"Created patient with {len(medical_records)} medical records",
+                    severity="INFO"
+                )
+                
+                return created_patient
+                
+            except Exception as e:
+                # Log error without exposing PHI
+                await self._audit_logger.log_security_event(
+                    event_type="creation_error",
+                    user_id=str(created_by),
+                    description=f"Error creating patient with medical history: {type(e).__name__}",
+                    severity="ERROR"
+                )
+                # Re-raise with sanitized message
+                raise ApplicationError(
+                    message="Failed to create patient with medical history",
+                    code="PATIENT_CREATION_ERROR"
+                )
+```
+
+## Dependency Injection Setup
+
+The repositories and Unit of Work are configured via dependency injection:
 
 ```python
 # app/presentation/api/dependencies/repositories.py
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.interfaces.repositories import IPatientRepository
-from app.infrastructure.persistence.repositories import SQLAlchemyPatientRepository
 from app.presentation.api.dependencies.database import get_db
+from app.domain.interfaces.repositories.patient_repository_interface import IPatientRepository
+from app.infrastructure.persistence.repositories.sqlalchemy_patient_repository import SQLAlchemyPatientRepository
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.presentation.api.dependencies.services import get_audit_logger, get_encryption_service
 
 def get_patient_repository(
-    session: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    audit_logger: IAuditLogger = Depends(get_audit_logger),
+    encryption_service: IEncryptionService = Depends(get_encryption_service)
 ) -> IPatientRepository:
     """Dependency provider for patient repository."""
-    return SQLAlchemyPatientRepository(session)
+    return SQLAlchemyPatientRepository(db, audit_logger, encryption_service)
 ```
 
-## Unit of Work Pattern
-
-Used to manage database transactions across multiple repositories:
-
 ```python
-# app/core/interfaces/unit_of_work.py
-from abc import ABC, abstractmethod
-
-class IUnitOfWork(ABC):
-    """Interface for unit of work pattern."""
-    
-    @abstractmethod
-    async def __aenter__(self):
-        """Begin a new transaction."""
-        pass
-    
-    @abstractmethod
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """End the transaction (with rollback if exception)."""
-        pass
-    
-    @abstractmethod
-    async def commit(self):
-        """Commit the transaction."""
-        pass
-    
-    @abstractmethod
-    async def rollback(self):
-        """Rollback the transaction."""
-        pass
-```
-
-The SQLAlchemy implementation:
-
-```python
-# app/infrastructure/persistence/unit_of_work.py
+# app/presentation/api/dependencies/unit_of_work.py
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.interfaces.unit_of_work import IUnitOfWork
+from app.presentation.api.dependencies.database import get_db
+from app.domain.interfaces.unit_of_work import IUnitOfWork
+from app.infrastructure.persistence.unit_of_work import SQLAlchemyUnitOfWork
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
+from app.presentation.api.dependencies.services import get_audit_logger, get_encryption_service
 
-class SQLAlchemyUnitOfWork(IUnitOfWork):
-    """SQLAlchemy implementation of unit of work."""
-    
-    def __init__(self, session: AsyncSession):
-        self._session = session
-        self._transaction = None
-    
-    async def __aenter__(self):
-        """Begin a new transaction."""
-        self._transaction = await self._session.begin_nested()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """End the transaction (with rollback if exception)."""
-        if exc_type:
-            await self.rollback()
-        else:
-            await self.commit()
-    
-    async def commit(self):
-        """Commit the transaction."""
-        if self._transaction:
-            await self._transaction.commit()
-            self._transaction = None
-    
-    async def rollback(self):
-        """Rollback the transaction."""
-        if self._transaction:
-            await self._transaction.rollback()
-            self._transaction = None
+def get_unit_of_work(
+    db: AsyncSession = Depends(get_db),
+    audit_logger: IAuditLogger = Depends(get_audit_logger),
+    encryption_service: IEncryptionService = Depends(get_encryption_service)
+) -> IUnitOfWork:
+    """Dependency provider for Unit of Work."""
+    return SQLAlchemyUnitOfWork(db, audit_logger, encryption_service)
 ```
 
-## Entity-Model Mapping
+## Database Migration Strategy
 
-Bidirectional mapping between domain entities and database models:
-
-```python
-# app/infrastructure/persistence/mappers/patient_mapper.py
-from typing import Optional
-from app.core.domain.entities import Patient
-from app.core.domain.value_objects import PatientId
-from app.infrastructure.persistence.models import PatientModel
-from datetime import datetime
-
-class PatientMapper:
-    """Maps between Patient entity and PatientModel."""
-    
-    def to_entity(self, model: PatientModel) -> Patient:
-        """
-        Convert database model to domain entity.
-        
-        Args:
-            model: Database model
-            
-        Returns:
-            Domain entity
-        """
-        return Patient(
-            id=PatientId(model.id),
-            name=model.name,
-            medical_record_number=model.medical_record_number,
-            date_of_birth=model.date_of_birth,
-            notes=model.notes
-        )
-    
-    def to_model(self, entity: Patient) -> PatientModel:
-        """
-        Convert domain entity to database model.
-        
-        Args:
-            entity: Domain entity
-            
-        Returns:
-            Database model
-        """
-        return PatientModel(
-            id=str(entity.id) if entity.id else None,
-            name=entity.name,
-            medical_record_number=entity.medical_record_number,
-            date_of_birth=entity.date_of_birth,
-            notes=entity.notes
-        )
-```
-
-## Migrations with Alembic
+The system uses Alembic for database migrations:
 
 ```python
-# alembic/env.py
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+# migrations/env.py
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 from app.infrastructure.persistence.models.base import Base
-import os
-import sys
+from app.core.config import settings
 
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import all models to ensure they're registered with Base
-from app.infrastructure.persistence.models import *
-
-# Alembic configuration
-config = context.config
-
-# Set SQLAlchemy URL if not set in alembic.ini
-if not config.get_main_option("sqlalchemy.url"):
-    from app.core.config import settings
-    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-```
-
-## Query Building Patterns
-
-For complex queries, use builder pattern instead of raw SQL:
-
-```python
-# app/infrastructure/persistence/query_builders/patient_query_builder.py
-from sqlalchemy import select, func, and_, or_
-from sqlalchemy.sql.expression import Select
-from app.infrastructure.persistence.models import PatientModel, BiometricReadingModel
-
-class PatientQueryBuilder:
-    """Builder for complex patient queries."""
-    
-    def __init__(self):
-        self._query = select(PatientModel)
-        self._where_clauses = []
-    
-    def with_biometric_readings(self) -> 'PatientQueryBuilder':
-        """Include biometric readings in the query."""
-        from sqlalchemy.orm import selectinload
-        self._query = self._query.options(
-            selectinload(PatientModel.biometric_readings)
-        )
-        return self
-    
-    def with_name_like(self, name_fragment: str) -> 'PatientQueryBuilder':
-        """Filter patients by name similarity."""
-        self._where_clauses.append(
-            PatientModel.name.ilike(f"%{name_fragment}%")
-        )
-        return self
-    
-    def with_age_range(self, min_age: int, max_age: int) -> 'PatientQueryBuilder':
-        """Filter patients by age range."""
-        from datetime import date, timedelta
-        today = date.today()
-        min_date = date(today.year - max_age - 1, today.month, today.day)
-        max_date = date(today.year - min_age, today.month, today.day)
-        
-        self._where_clauses.append(
-            and_(
-                PatientModel.date_of_birth >= min_date,
-                PatientModel.date_of_birth <= max_date
-            )
-        )
-        return self
-    
-    def build(self) -> Select:
-        """Build the final query."""
-        if self._where_clauses:
-            self._query = self._query.where(and_(*self._where_clauses))
-        return self._query
-```
-
-## HIPAA-Compliant Data Access
-
-### Patient Data Access Control
-
-```python
-# app/infrastructure/persistence/repositories/sqlalchemy_patient_repository.py
-from app.core.interfaces.security import IAccessControlService
-from app.core.domain.errors import UnauthorizedAccessError
-
-class SQLAlchemyPatientRepository(IPatientRepository):
-    def __init__(
-        self,
-        session: AsyncSession,
-        access_control: IAccessControlService,
-        current_user_id: str
-    ):
-        self._session = session
-        self._mapper = PatientMapper()
-        self._access_control = access_control
-        self._current_user_id = current_user_id
-    
-    async def get_by_id(self, patient_id: PatientId) -> Optional[Patient]:
-        # Get patient from database
-        query = select(PatientModel).where(PatientModel.id == str(patient_id))
-        result = await self._session.execute(query)
-        model = result.scalars().first()
-        
-        if not model:
-            return None
-        
-        # Check if current user has access to this patient
-        has_access = await self._access_control.can_access_patient(
-            user_id=self._current_user_id,
-            patient_id=str(patient_id)
-        )
-        
-        if not has_access:
-            raise UnauthorizedAccessError(
-                f"User {self._current_user_id} does not have access to patient {patient_id}"
-            )
-        
-        return self._mapper.to_entity(model)
-```
-
-### Audit Logging for Database Operations
-
-```python
-# app/infrastructure/persistence/audit_logging.py
-from sqlalchemy import event
-from sqlalchemy.orm import Session
-from app.infrastructure.persistence.models import PatientModel, BiometricReadingModel
-from app.infrastructure.logging import audit_logger
-from app.core.security.context import get_current_user_id
-import json
-
-def setup_audit_listeners():
-    """Configure SQLAlchemy event listeners for audit logging."""
-    
-    @event.listens_for(PatientModel, 'after_update')
-    def log_patient_update(mapper, connection, target):
-        """Log updates to patient records."""
-        user_id = get_current_user_id()
-        audit_logger.log_phi_access(
-            user_id=user_id,
-            action="update",
-            resource_type="Patient",
-            resource_id=target.id
-        )
-    
-    @event.listens_for(PatientModel, 'after_delete')
-    def log_patient_delete(mapper, connection, target):
-        """Log deletion of patient records."""
-        user_id = get_current_user_id()
-        audit_logger.log_phi_access(
-            user_id=user_id,
-            action="delete",
-            resource_type="Patient",
-            resource_id=target.id
-        )
-```
-
-## Database Encryption for PHI
-
-```python
-# app/infrastructure/persistence/encryption.py
-from sqlalchemy import event, Column
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.types import TypeDecorator, String
-from app.core.security.encryption import encrypt, decrypt
-
-class EncryptedString(TypeDecorator):
-    """Custom SQLAlchemy type for encrypted string data."""
-    
-    impl = String
-    
-    def process_bind_param(self, value, dialect):
-        """Encrypt data before storage."""
-        if value is not None:
-            return encrypt(value)
-        return value
-    
-    def process_result_value(self, value, dialect):
-        """Decrypt data after retrieval."""
-        if value is not None:
-            return decrypt(value)
-        return value
-
-# Usage in models
-class PatientModel(Base):
-    # ...
-    medical_record_number = Column(EncryptedString(100), unique=True, nullable=False)
-    ssn = Column(EncryptedString(11), nullable=True)
-```
-
-## Connection Pooling and Performance
-
-Configuration settings for optimal database performance:
-
-```python
-# app/core/config.py
-from pydantic import Field, AnyUrl
-from pydantic_settings import BaseSettings
-
-class Settings(BaseSettings):
-    # Database settings
-    DATABASE_URL: AnyUrl = Field(..., env="DATABASE_URL")
-    DB_POOL_SIZE: int = Field(5, env="DB_POOL_SIZE")
-    DB_MAX_OVERFLOW: int = Field(10, env="DB_MAX_OVERFLOW")
-    DB_POOL_TIMEOUT: int = Field(30, env="DB_POOL_TIMEOUT")
-    DB_POOL_RECYCLE: int = Field(1800, env="DB_POOL_RECYCLE")  # 30 minutes
-    SQL_ECHO: bool = Field(False, env="SQL_ECHO")
-```
-
-## Error Handling
-
-Translating database errors to domain errors:
-
-```python
-# app/infrastructure/persistence/repositories/sqlalchemy_base_repository.py
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from app.core.domain.errors import (
-    DatabaseError,
-    UniqueConstraintError,
-    ForeignKeyError
+# Import all models to ensure they're included in migrations
+from app.infrastructure.persistence.models import (
+    patient_model,
+    medical_record_model,
+    medication_model,
+    biometric_reading_model,
+    user_model,
+    audit_log_model
 )
 
-class SQLAlchemyBaseRepository:
-    """Base class for SQLAlchemy repositories with common error handling."""
+# Configuration section
+config = context.config
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+target_metadata = Base.metadata
+
+# Define migration functions
+def run_migrations_offline():
+    """Run migrations in 'offline' mode."""
+    # ...implementation...
+
+def run_migrations_online():
+    """Run migrations in 'online' mode."""
+    # ...implementation...
+```
+
+## HIPAA Audit Logging
+
+All PHI access is logged through the audit system:
+
+```python
+# app/infrastructure/logging/audit_logger_service.py
+from datetime import datetime
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.domain.interfaces.repositories.audit_log_repository_interface import IAuditLogRepository
+from app.domain.entities.audit_log import AuditLog, AuditLogType, AuditLogSeverity
+from typing import Dict, Any, Optional
+
+class AuditLoggerService(IAuditLogger):
+    """Service for HIPAA-compliant audit logging."""
     
-    async def _handle_db_operation(self, operation):
+    def __init__(self, audit_log_repository: IAuditLogRepository):
+        """Initialize with audit log repository."""
+        self._audit_log_repository = audit_log_repository
+    
+    async def log_phi_access(
+        self,
+        user_id: str,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        reason: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
-        Execute database operation with error handling.
+        Log PHI access for HIPAA compliance.
         
         Args:
-            operation: Async callable that performs database operations
-            
-        Returns:
-            Result of the operation
-            
-        Raises:
-            Domain-specific errors translated from SQLAlchemy exceptions
+            user_id: ID of the user accessing PHI
+            resource_type: Type of resource being accessed
+            resource_id: ID of the resource being accessed
+            action: Action performed (view, create, update, delete)
+            reason: Reason for PHI access (optional)
+            metadata: Additional context (optional)
         """
-        try:
-            return await operation()
-        except IntegrityError as e:
-            # Check error details to determine specific constraint violation
-            error_msg = str(e)
-            if "unique constraint" in error_msg.lower():
-                raise UniqueConstraintError(
-                    "A record with this identifier already exists"
-                ) from e
-            elif "foreign key constraint" in error_msg.lower():
-                raise ForeignKeyError(
-                    "Referenced record does not exist"
-                ) from e
-            else:
-                raise DatabaseError(str(e)) from e
-        except SQLAlchemyError as e:
-            raise DatabaseError(str(e)) from e
+        audit_log = AuditLog(
+            timestamp=datetime.utcnow(),
+            type=AuditLogType.PHI_ACCESS,
+            user_id=user_id,
+            description=f"{action.upper()} operation on {resource_type} {resource_id}",
+            severity=AuditLogSeverity.INFO,
+            metadata={
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "action": action,
+                "reason": reason,
+                **(metadata or {})
+            }
+        )
+        
+        await self._audit_log_repository.create(audit_log)
 ```
 
-## Testing
+## HIPAA Compliance Testing
 
-### Test Database Configuration
-
-```python
-# app/tests/conftest.py
-import pytest
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from app.infrastructure.persistence.models.base import Base
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-@pytest.fixture(scope="session")
-async def test_engine():
-    """Create test engine with in-memory SQLite."""
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        echo=False,
-        future=True
-    )
-    
-    # Create all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    yield engine
-    
-    # Drop all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    
-    await engine.dispose()
-
-@pytest.fixture
-async def test_session(test_engine):
-    """Create test session with rollback after each test."""
-    async_session = sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autoflush=False
-    )
-    
-    async with async_session() as session:
-        async with session.begin():
-            yield session
-            await session.rollback()
-```
-
-### Repository Testing
+The database access layer includes HIPAA compliance tests:
 
 ```python
-# app/tests/integration/repositories/test_patient_repository.py
+# app/tests/infrastructure/repositories/test_patient_repository_hipaa.py
 import pytest
-from app.core.domain.entities import Patient
-from app.core.domain.value_objects import PatientId
-from app.infrastructure.persistence.repositories import SQLAlchemyPatientRepository
-
-@pytest.fixture
-def patient_data():
-    """Test patient data."""
-    return {
-        "name": "Test Patient",
-        "medical_record_number": "MRN123456",
-        "date_of_birth": "1990-01-01"
-    }
-
-@pytest.fixture
-def patient_entity(patient_data):
-    """Create test patient entity."""
-    return Patient(
-        id=None,  # Will be generated on create
-        **patient_data
-    )
+from unittest.mock import Mock, AsyncMock
+from uuid import uuid4
+from app.domain.entities.patient import Patient
+from app.infrastructure.persistence.repositories.sqlalchemy_patient_repository import SQLAlchemyPatientRepository
 
 @pytest.mark.asyncio
-async def test_create_patient(test_session, patient_entity):
-    # Arrange
-    repository = SQLAlchemyPatientRepository(test_session)
+async def test_patient_repository_logs_phi_access():
+    """Test that PHI access is logged when accessing patient data."""
+    # Setup
+    session_mock = AsyncMock()
+    session_mock.execute.return_value.scalars.return_value.first.return_value = Mock()
     
-    # Act
-    created_patient = await repository.create(patient_entity)
+    audit_logger_mock = AsyncMock()
+    encryption_service_mock = Mock()
     
-    # Assert
-    assert created_patient is not None
-    assert created_patient.id is not None
-    assert created_patient.name == patient_entity.name
-    assert created_patient.medical_record_number == patient_entity.medical_record_number
+    repo = SQLAlchemyPatientRepository(
+        session=session_mock,
+        audit_logger=audit_logger_mock,
+        encryption_service=encryption_service_mock
+    )
+    
+    # Execute
+    patient_id = uuid4()
+    user_id = uuid4()
+    await repo.get_by_id(patient_id, user_id)
+    
+    # Verify
+    audit_logger_mock.log_phi_access.assert_called_once()
+    call_args = audit_logger_mock.log_phi_access.call_args[1]
+    assert call_args["user_id"] == str(user_id)
+    assert call_args["resource_type"] == "patient"
+    assert call_args["resource_id"] == str(patient_id)
+    assert call_args["action"] == "view"
 ```
 
-## Current Implementation Status
+## Best Practices for HIPAA-Compliant Database Access
 
-### Strengths
+### 1. Encryption Management
 
-- Clean separation between domain entities and ORM models
-- Repository pattern consistently applied for all database access
-- Unit of Work pattern for transaction management
-- HIPAA-compliant audit logging of all PHI access
+- Always encrypt PHI fields before storage
+- Use the `EncryptedPHI` value object for consistent handling
+- Never store encryption keys in the database
+- Use key rotation for long-term security
 
-### Architectural Gaps
+### 2. Proper Audit Logging
 
-- Some repositories access models directly instead of using mappers
-- Inconsistent error handling across repositories
-- Query builders not yet implemented for all entities
-- Encryption needs to be applied to all PHI fields
+- Log all PHI access with user context
+- Include access reason when available
+- Log failed access attempts
+- Ensure audit logs are immutable
 
-### Performance Considerations
+### 3. Minimizing PHI Exposure
 
-- Connection pooling and timeout settings need tuning based on load testing
-- Consider implementing caching for frequently accessed data
-- Database indexes need optimization for common query patterns
-- Long-running transactions need monitoring and possible timeout
+- Only retrieve PHI fields when necessary
+- Use projections to limit fields returned
+- Implement "need to know" access control
+- Clear PHI from memory when no longer needed
 
-By following these patterns, the Clarity AI Backend maintains a clean, maintainable database access layer that properly encapsulates infrastructure concerns while enforcing security, compliance, and architectural boundaries.
+### 4. Secure Error Handling
+
+- Never include PHI in error messages
+- Use domain exceptions that sanitize details
+- Log original errors securely
+- Return generic errors to clients
+
+### 5. Transactions and Consistency
+
+- Use Unit of Work pattern for transactions
+- Ensure all or nothing operations with PHI
+- Implement proper rollback on errors
+- Verify data integrity after operations
+
+## Database Configuration for HIPAA Compliance
+
+```python
+# app/core/config/database_settings.py
+from pydantic import BaseSettings, PostgresDsn
+
+class DatabaseSettings(BaseSettings):
+    """Database configuration with HIPAA compliance settings."""
+    
+    # Connection settings
+    DATABASE_URL: PostgresDsn
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_TIMEOUT: int = 30
+    
+    # HIPAA-related settings
+    ENABLE_FIELD_ENCRYPTION: bool = True
+    AUDIT_ALL_PHI_ACCESS: bool = True
+    AUDIT_LOG_RETENTION_DAYS: int = 365  # 1 year retention for HIPAA
+    DATABASE_SSL_REQUIRED: bool = True  # Enforce SSL for data in transit
+    
+    # Connection pooling
+    DB_POOL_RECYCLE: int = 1800  # 30 minutes
+    
+    # Query settings
+    SQL_ECHO: bool = False  # Set to True for debugging only
+    
+    class Config:
+        """Pydantic config."""
+        env_prefix = "CLARITY_"
+        env_file = ".env"
+```
+
+## Conclusion
+
+The Clarity AI Backend implements a HIPAA-compliant database access layer through:
+
+1. **Repository Pattern**: Abstracting database operations behind domain interfaces
+2. **Field-Level Encryption**: Protecting PHI at rest with proper encryption
+3. **Comprehensive Audit Logging**: Tracking all PHI access for compliance
+4. **Unit of Work Pattern**: Maintaining transaction integrity across repositories
+5. **Clean Architecture**: Separating domain logic from database implementation details
+
+By following these patterns and practices, the system maintains HIPAA compliance while providing a clean, maintainable architecture for handling psychiatric data in a secure manner.

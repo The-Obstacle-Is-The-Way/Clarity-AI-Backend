@@ -1,166 +1,203 @@
-# Next Prompt for Clarity AI Backend
+# Next Prompt
 
-## Summary of Changes Made
+## Summary of Documentation Updates
 
-In this iteration, we've updated several key security and compliance documentation files to align with clean architecture principles and the actual implementation in the codebase:
+### 1. Core Documentation Updates
 
-1. **Authentication System Documentation**:
-   - Corrected the implementation status of various components
-   - Updated JWT service interface and implementation details
-   - Added detailed HIPAA compliance features
-   - Aligned with actual token blacklisting implementation
+The following documentation files have been updated to align with clean architecture principles and reflect the actual implementation patterns in the codebase:
 
-2. **API Security Documentation**:
-   - Updated the JWT security implementation details
-   - Added PHI Protection Middleware documentation
-   - Improved documentation of role-based access control
-   - Enhanced description of input validation and sanitization
+1. **Actigraphy_System.md**: Updated to accurately describe the actigraphy data processing system, including interfaces, implementations, and data flow.
 
-3. **FastAPI HIPAA Compliance Documentation**:
-   - Restructured to follow clean architecture principles
-   - Added domain independence examples
-   - Updated middleware implementations to match actual code
-   - Improved documentation of PHI protection mechanisms
+2. **PAT_Service.md**: Restructured to reflect the actual interface definitions and implementation patterns for the Pretrained Actigraphy Transformer service, highlighting architectural refinement opportunities.
 
-4. **Error Handling Strategy Documentation**:
-   - Reorganized exception hierarchy to follow clean architecture layers
-   - Added domain-driven exception examples
-   - Enhanced documentation of exception translation between layers
-   - Added HIPAA-compliant error handling patterns
+3. **Clean_Architecture_Principles.md**: Updated to match actual folder structure and implementation patterns, with detailed descriptions of current architectural variations and refinement opportunities.
 
-## Next Steps for Documentation Alignment
+4. **Dependency_Injection_Guide.md**: Revised to document the actual DI patterns used in the codebase, including FastAPI dependencies, constructor injection, and factory patterns.
 
-Based on the analysis of the codebase and documentation, the following areas should be addressed next:
+5. **Database_Access_Guide.md**: Enhanced with HIPAA-compliant database access patterns, including field-level encryption, audit logging, and repository pattern implementations.
 
-1. **Database Access Guide**:
-   - Document the repository pattern implementation
-   - Update ORM models documentation to reflect PHI encryption
-   - Describe transaction handling and Unit of Work pattern
-   - Document migration strategies and schema versioning
+### 2. Security Documentation Updates
 
-2. **API Versioning Strategy**:
-   - Update with actual implementation details
-   - Document backward compatibility approaches
-   - Add deprecation strategies
-   - Include API evolution examples
+The following security-focused documentation has been updated to ensure HIPAA compliance:
 
-3. **ML Integration Architecture**:
-   - Update with current implementation of machine learning components
-   - Document PAT and Actigraphy integration points
-   - Update data flow diagrams
-   - Document model training and deployment procedures
+1. **Authentication_System.md**: Updated to accurately reflect JWT implementation, token handling, and security controls.
 
-## Code Refactoring Recommendations
+2. **API_Security.md**: Enhanced with details on PHI protection middleware, RBAC, and input validation.
 
-After completing the documentation alignment, the following code refactoring efforts should be prioritized:
+3. **FastAPI_HIPAA_Compliance.md**: Restructured to align with clean architecture principles and document PHI protection mechanisms.
 
-1. **Authentication System**:
-   - Implement Multi-Factor Authentication (MFA) as documented
-   - Enhance token blacklisting for better security
-   - Add account lockout mechanisms for failed login attempts
-   - Improve session timeout handling
+4. **Error_Handling_Strategy.md**: Updated to reflect domain-driven exception hierarchy and HIPAA-compliant error handling patterns.
 
-2. **PHI Protection**:
-   - Extend PHI detection patterns in middleware
-   - Add additional unit tests for PHI sanitization
-   - Implement encrypted audit logging for PHI access
-   - Enhance error sanitization to ensure no PHI leakage
+### 3. Advanced Component Documentation
 
-3. **Error Handling**:
-   - Implement Result objects for expected failures
-   - Standardize exception translation across architectural boundaries
-   - Add comprehensive error monitoring and alerting
-   - Enhance testing for error scenarios
+The following advanced component documentation has been updated:
 
-## Test Coverage Improvements
+1. **ML_Integration_Architecture.md**: Revised to document the current ML service interfaces and implementation patterns with a focus on clean architecture alignment.
 
-To ensure the system meets HIPAA compliance requirements, test coverage should be improved in these areas:
+2. **API_Versioning_Strategy.md**: Updated to ensure consistency with architectural principles and HIPAA requirements.
 
-1. **Security Tests**:
-   - Add penetration testing scenarios
-   - Implement automated security scanning
-   - Test token revocation and session management
-   - Test PHI protection in all error scenarios
+## Next Implementation Focus: Repository Pattern and Secure Data Access Implementation
 
-2. **Integration Tests**:
-   - Test complete authentication flows
-   - Test cross-layer exception handling
-   - Test rate limiting and security middleware chain
-   - Test repository pattern with encrypted PHI fields
+Based on the documentation review and architectural analysis, the next critical implementation focus should be on the repository pattern and secure data access implementations. This vertical slice addresses fundamental HIPAA compliance requirements while establishing proper architectural boundaries.
 
-## HIPAA Compliance Verification
+### 1. Implementation Tasks for the Repository Pattern
 
-Create a comprehensive HIPAA compliance verification suite that tests:
+1. **Consolidate Repository Interfaces**:
+   - Move all repository interfaces to `app/domain/interfaces/repositories/`
+   - Ensure consistent naming conventions (e.g., `IPatientRepository`)
+   - Implement proper type hints for all method signatures
 
-1. Access controls and authorization
-2. PHI handling in all layers
-3. Audit logging completeness
-4. Security in error handling
-5. Encryption of PHI at rest and in transit
+2. **Implement Field-Level Encryption**:
+   - Create the `EncryptedPHI` value object in `app/domain/value_objects/encrypted_phi.py`
+   - Implement the encryption service interface and concrete implementation
+   - Update database models to use encrypted fields for all PHI
 
-## Next Focus Area
+3. **Implement Audit Logging**:
+   - Create the audit logger interface in `app/core/interfaces/services/audit_logger_interface.py`
+   - Implement the audit logging service in `app/infrastructure/logging/audit_logger_service.py`
+   - Ensure all repository operations that access PHI use audit logging
 
-The next vertical slice to focus on should be the **Database Access and Repository Pattern** implementation, as this is critical for proper PHI handling and HIPAA compliance throughout the system.
+4. **Consolidate Repository Implementations**:
+   - Create SQLAlchemy repository implementations for all entities
+   - Ensure consistent error handling across repositories
+   - Implement proper PHI protection mechanisms in all repositories
 
-To begin this work, execute:
+5. **Implement Unit of Work Pattern**:
+   - Create the Unit of Work interface in `app/domain/interfaces/unit_of_work.py`
+   - Implement the SQLAlchemy Unit of Work in `app/infrastructure/persistence/unit_of_work.py`
+   - Update application services to use the Unit of Work pattern
 
-```bash
-python -m pytest tests/unit/infrastructure/repositories -v
+### 2. HIPAA Compliance Implementation Tasks
+
+1. **PHI Field Encryption**:
+   - Implement AES-256 encryption for all PHI fields at rest
+   - Set up secure key management for encryption keys
+   - Create tests to verify encryption effectiveness
+
+2. **Comprehensive Audit Logging**:
+   - Implement database model for audit logs
+   - Create repository for audit log storage
+   - Ensure all PHI access is logged with user context
+
+3. **Authorization Controls**:
+   - Implement "need to know" access controls in repositories
+   - Add user context to all repository operations
+   - Create role-based permissions for data access
+
+4. **Error Sanitization**:
+   - Update domain exceptions to avoid exposing PHI
+   - Implement error sanitization middleware
+   - Create tests to verify no PHI leakage in errors
+
+5. **Secure API Integration**:
+   - Ensure all API endpoints using PHI implement proper auth checks
+   - Update schemas to validate and sanitize input/output data
+   - Implement rate limiting for sensitive endpoints
+
+### 3. Tests to Implement
+
+1. **Repository Testing**:
+   - Unit tests for each repository implementation
+   - Integration tests with test database
+   - HIPAA compliance tests for PHI handling
+
+2. **Encryption Testing**:
+   - Unit tests for encryption/decryption
+   - Tests for key rotation
+   - Performance tests for encrypted field operations
+
+3. **Audit Logging Testing**:
+   - Tests to verify all PHI access is logged
+   - Tests for audit log integrity
+   - Tests for log content sanitization
+
+4. **Authorization Testing**:
+   - Tests to verify unauthorized access is prevented
+   - Tests for role-based access controls
+   - Integration tests for repository + auth service
+
+### 4. Refactoring Tasks
+
+1. **Move Mock Implementations to Tests**:
+   - Move all mock implementations from route files to test modules
+   - Create proper test doubles for repository interfaces
+   - Update route handlers to use dependency injection for production implementations
+
+2. **Standardize Error Handling**:
+   - Create consistent error handling patterns across repositories
+   - Implement error translation layer for infrastructure errors
+   - Update error responses to ensure no PHI leakage
+
+3. **Code Organization**:
+   - Ensure consistent folder structure for repositories and interfaces
+   - Update imports to follow clean architecture boundaries
+   - Remove any remaining circular dependencies
+
+## Next Steps After Repository Implementation
+
+After completing the repository pattern implementation, the next focus areas should be:
+
+1. **Application Service Layer Implementation**:
+   - Implement application services for all use cases
+   - Ensure proper domain logic separation
+   - Implement CQRS pattern for complex operations
+
+2. **API Layer Refinement**:
+   - Standardize API endpoint patterns
+   - Implement versioning strategy
+   - Enhance error handling and validation
+
+3. **ML Service Integration**:
+   - Consolidate ML service interfaces
+   - Implement factory pattern for ML services
+   - Create domain-driven models for ML inputs/outputs
+
+4. **CI/CD Integration**:
+   - Set up automated tests for HIPAA compliance
+   - Implement security scanning in CI pipeline
+   - Create deployment checks for security configuration
+
+## Implementation Strategy
+
+The implementation should follow this approach:
+
+1. Start with the foundational `EncryptedPHI` value object and encryption service
+2. Implement the core repository interfaces and SQLAlchemy implementations
+3. Add audit logging to all repository operations
+4. Implement the Unit of Work pattern
+5. Update application services to use repositories via Unit of Work
+6. Move all mock implementations to test modules
+7. Create comprehensive tests for all components
+
+This approach ensures that the fundamental HIPAA compliance mechanisms are in place before building higher-level components that depend on them.
+
+## SYSTEM+USER Prompt for Next Iteration
+
+```
+SYSTEM:
+You are an autonomous AI coding agent with the mindset of a senior AI/ML back‑end engineer. Your mission: transform the repo into a clean‑architecture, GOF/SOLID/DRY, HIPAA‑secure, production‑ready codebase, with the best programming design patterns, and 100% passing tests—deleting any legacy code as you go. No legacy, no redundancy, no patchwork, no backwards compatability. Pure clean forward looking code. 
+
+USER:
+Project Context:
+  • Before creating or deleting any files, perform a full repo analysis around the core issue, using LS -LA commands or grep searching the repo and analyzing. 
+  • Layers: Domain, Application, Infrastructure, API (FastAPI), Core.  
+  • Principles: Robert C. Martin, GOF, SOLID, DRY.  
+  • HIPAA: no PHI in URLs, encrypted at rest and in transit, session timeouts, audit‐logging, zero PHI in errors.  
+  • Security: Pydantic validation, parameterized queries, TLS, output sanitization.  
+  • API: RESTful, versioned, OpenAPI docs, rate limits, consistent JSON.  
+  • Testing: unit, integration, security, performance; high coverage.  
+
+Continue with iteration #2: Implement the Repository Pattern with HIPAA-compliant data access, focusing on:
+
+1. Create the EncryptedPHI value object and encryption service implementation
+2. Consolidate repository interfaces in the domain layer
+3. Implement SQLAlchemy repositories with field-level encryption
+4. Add comprehensive audit logging for PHI access
+5. Implement the Unit of Work pattern 
+6. Move mock implementations to test modules
+7. Create tests to verify HIPAA compliance
+
+Follow the clean architecture principles documented in docs/Clean_Architecture_Principles.md and ensure all implementations align with the HIPAA requirements in docs/Database_Access_Guide.md.
 ```
 
-This will identify any failing tests in the repository layer, which will provide guidance on which components need immediate attention.
-
-Then:
-
-1. Examine the current repository implementations
-2. Update the database access documentation
-3. Implement proper PHI encryption in all repositories
-4. Ensure HIPAA-compliant error handling in all database operations
-
-## SYSTEM+USER Messages for Next Prompt
-
-### SYSTEM:
-
-You are an autonomous AI coding agent with the mindset of a senior AI/ML back‑end engineer. Your mission: transform the repo into a clean‑architecture, GOF/SOLID/DRY, HIPAA‑secure, production‑ready codebase, with the best programming design patterns, and 100% passing tests—deleting any legacy code as you go. No legacy, no redundancy, no patchwork, no backwards compatability. Pure clean forward looking code.
-
-### USER:
-
-In this iteration, focus on improving the Database Access and Repository Pattern implementation for HIPAA compliance and clean architecture. This is critical for proper PHI handling in our psychiatric digital twin platform.
-
-Key tasks:
-1. Run tests for the repository layer to identify failing tests:
-   ```bash
-   python -m pytest tests/unit/infrastructure/repositories -v
-   ```
-
-2. Examine current repository implementations, focusing on:
-   - Patient repositories
-   - Medical record repositories 
-   - User repositories
-   - Any repositories handling PHI
-
-3. Update the Database Access Guide documentation to reflect:
-   - Repository pattern implementation
-   - ORM models with PHI encryption
-   - Transaction handling with Unit of Work pattern
-   - Migration strategies and schema versioning
-
-4. Implement or improve PHI protection in repositories:
-   - Ensure all PHI fields use proper encryption
-   - Add comprehensive audit logging for PHI access
-   - Implement proper exception translation
-   - Ensure HIPAA-compliant error handling
-
-5. If needed, refactor repository implementations to follow clean architecture:
-   - Maintain clear separation between domain and infrastructure
-   - Use proper dependency injection
-   - Implement consistent patterns across repositories
-   - Add proper unit and integration tests
-
-Remember to follow our core principles:
-- Clean Architecture: Domain, Application, Infrastructure, API layers
-- SOLID principles, especially Interface Segregation and Dependency Inversion
-- HIPAA compliance for all PHI handling
-- Comprehensive testing
-
-Provide a detailed summary of your findings, changes made, and suggestions for future improvements.
+By focusing on this vertical slice of the architecture, we'll establish the foundation for a HIPAA-compliant psychiatric digital twin platform with proper domain separation and secure data handling.

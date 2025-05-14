@@ -2,274 +2,322 @@
 
 ## Overview
 
-The Clarity AI Backend implements a dependency injection (DI) system leveraging FastAPI's built-in capabilities to create a decoupled architecture for the psychiatric digital twin platform. This document details the DI implementation, which enables separation between architectural layers while maintaining consistent interfaces.
+The Clarity AI Backend implements a dependency injection (DI) system that leverages FastAPI's capabilities to create a decoupled architecture for the psychiatric digital twin platform. This document details the current DI implementation patterns, their strengths and limitations, and provides guidance for consistent usage.
 
-## Core Principles
+## Current Implementation Patterns
 
-Our dependency injection system follows these foundational principles:
+The codebase currently uses several dependency injection patterns:
 
-1. **Inversion of Control**: Components depend on abstractions (interfaces) rather than concrete implementations
-2. **FastAPI Dependency Injection**: Dependencies are provided using FastAPI's `Depends` function
-3. **Interface-Based Design**: Dependencies are defined through interfaces, abstract base classes, or protocols
-4. **Runtime Resolution**: FastAPI's dependency provider system handles runtime resolution of dependencies
-5. **Explicit Dependencies**: Dependencies are explicitly declared in function signatures
+### 1. FastAPI Dependency System
 
-## Dependency Injection in FastAPI
-
-### FastAPI Dependency System
-
-The Clarity AI Backend leverages FastAPI's dependency injection system:
+The primary dependency injection mechanism is FastAPI's built-in dependency system:
 
 ```python
 from fastapi import Depends, APIRouter
-from app.presentation.api.dependencies.auth import require_roles
-from app.core.domain.entities.user import UserRole
+from app.presentation.api.dependencies.auth import get_current_user
+from app.core.domain.entities.user import User
 
 router = APIRouter()
 
-@router.get("/protected-endpoint")
-async def protected_endpoint(
-    current_user = Depends(require_roles([UserRole.ADMIN]))
+@router.get("/patients")
+async def get_patients(
+    current_user: User = Depends(get_current_user),
+    patient_service: PatientService = Depends(get_patient_service)
 ):
-    return {"message": "You have access to this endpoint"}
+    """Get patients endpoint with injected dependencies."""
+    return await patient_service.get_patients_for_user(current_user.id)
 ```
 
-Key aspects of this implementation:
+This pattern provides:
+- Runtime resolution of dependencies
+- Automatic dependency caching
+- Support for dependency overrides in testing
+- Clear dependency declaration at usage sites
 
-1. Endpoints declare dependencies using the `Depends()` function
-2. Dependencies can enforce authentication and authorization (e.g., `require_roles`)
-3. Dependencies can be chained, with one dependency depending on another
+### 2. Service Provider Functions
 
-### Dependency Provider Functions
-
-The system uses provider functions that encapsulate the creation logic for dependencies:
+Service dependencies are typically provided through provider functions:
 
 ```python
-# Example from app/presentation/api/v1/routes/actigraphy.py
-async def get_pat_service(db: AsyncSession = Depends(get_db)) -> IPATService:
-    """Get the PAT service implementation."""
-    # In a production environment, this would use a factory pattern
-    return MockPATService()
+# app/presentation/api/dependencies/services.py
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.presentation.api.dependencies.database import get_db
+from app.core.interfaces.services import ActigraphyServiceInterface
+from app.application.services import ActigraphyService
+
+def get_actigraphy_service(
+    db: AsyncSession = Depends(get_db)
+) -> ActigraphyServiceInterface:
+    """Provide an instance of the actigraphy service."""
+    return ActigraphyService(db)
+```
+
+These provider functions:
+- Create and configure service instances
+- Handle dependency chaining
+- Return interface types for loose coupling
+- Can be overridden in tests
+
+### 3. Constructor-Based Injection
+
+Services and repositories use constructor-based injection to receive dependencies:
+
+```python
+# app/application/services/patient_service.py
+class PatientService:
+    """Service for patient-related operations."""
+    
+    def __init__(
+        self,
+        patient_repository: IPatientRepository,
+        audit_logger: IAuditLogger
+    ):
+        """Initialize with required dependencies."""
+        self.patient_repository = patient_repository
+        self.audit_logger = audit_logger
+        
+    async def get_patient(self, patient_id: str, requesting_user_id: str) -> Patient:
+        """Get patient by ID with proper audit logging."""
+        # Implementation using injected dependencies
 ```
 
 This approach:
-- Centralizes implementation selection
-- Enables substitution of implementations
-- Facilitates testing through dependency overrides
+- Makes dependencies explicit through constructor parameters
+- Facilitates unit testing through dependency mocking
+- Enables composition over inheritance
+- Adheres to the Dependency Inversion Principle
+
+### 4. Inline Mock Implementations
+
+Some routes contain inline mock implementations for testing and development:
+
+```python
+# app/presentation/api/v1/routes/actigraphy.py
+class MockPATService(IPATService):
+    """Mock implementation for development/testing."""
+    
+    async def analyze_actigraphy(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Mock implementation."""
+        return {"analysis_id": str(uuid.uuid4()), "result": "Mock result"}
+
+async def get_pat_service() -> IPATService:
+    """Provider for PAT service."""
+    # This would typically use a factory or repository pattern in production
+    return MockPATService()
+```
+
+This pattern:
+- Enables rapid development and testing
+- Violates separation of concerns (mixing test code with production)
+- Creates maintainability challenges
+- Should be replaced with proper test doubles in dedicated test modules
 
 ## Interface Patterns
 
-The codebase uses several patterns for defining interfaces:
+The codebase uses multiple interface patterns:
 
-### 1. Abstract Base Classes (ABC)
-
-```python
-# Example from app/core/interfaces/services/ml/pat_interface.py
-class PATInterface(ABC):
-    """Interface for psychiatric assessment tool services."""
-    
-    @abstractmethod
-    async def initialize(self) -> bool:
-        """Initialize the PAT service with required models and configurations."""
-        pass
-```
-
-### 2. Protocol Classes
+### 1. Runtime-Checkable Protocols
 
 ```python
-# Example from app/core/interfaces/services/actigraphy_service_interface.py
+from typing import Protocol, runtime_checkable
+
 @runtime_checkable
 class ActigraphyServiceInterface(Protocol):
-    """Interface for actigraphy data processing and analysis services."""
+    """Interface for actigraphy services."""
     
-    async def initialize(self) -> None:
-        """Initialize the actigraphy service."""
+    async def analyze_actigraphy(self, patient_id: str, readings: list) -> dict:
+        """Analyze actigraphy data."""
         ...
+```
+
+### 2. Abstract Base Classes
+
+```python
+from abc import ABC, abstractmethod
+
+class AuthServiceInterface(ABC):
+    """Interface for authentication services."""
+    
+    @abstractmethod
+    async def authenticate_user(self, username: str, password: str) -> User:
+        """Authenticate a user."""
+        pass
 ```
 
 ### 3. Simple Interface Classes
 
 ```python
-# Example from app/presentation/api/v1/routes/actigraphy.py
 class IPATService:
-    """Interface for PAT analysis service."""
+    """Interface for PAT service."""
     
-    async def analyze_actigraphy(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Analyze actigraphy data and return results."""
+    async def analyze(self, data: dict) -> dict:
+        """Analyze data."""
         pass
 ```
 
-## Database Session Dependencies
+## Best Practices for Dependency Injection
 
-Database access is provided through dependencies:
+To maintain clean architecture and consistency, follow these best practices:
+
+### 1. Use Interface Abstractions
+
+Always depend on interfaces, not concrete implementations:
 
 ```python
-# app/presentation/api/dependencies/database.py
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+# Good: Depends on abstraction
+def get_patient_service(
+    repo: IPatientRepository = Depends(get_patient_repository)
+) -> IPatientService:
+    return PatientService(repo)
 
-async def get_db() -> AsyncSession:
-    """Provide a database session."""
-    async with AsyncSessionLocal() as session:
-        yield session
+# Avoid: Direct instantiation of concrete types
+def get_patient_service_direct(
+    db: AsyncSession = Depends(get_db)
+) -> PatientService:
+    return PatientService(SQLAlchemyPatientRepository(db))
 ```
 
-This approach:
-- Ensures proper session lifecycle management
-- Centralizes database access
-- Enables transaction management
+### 2. Standardize Interface Locations
 
-## Authentication and Authorization Dependencies
+Place interfaces in the appropriate architectural layer:
 
-Security is implemented through dependency chains:
+- Domain repository interfaces: `app/domain/interfaces/repositories/`
+- Application service interfaces: `app/core/interfaces/services/`
+- Infrastructure interfaces: `app/core/interfaces/infrastructure/`
+
+### 3. Use Constructor Injection
+
+Prefer constructor injection for service dependencies:
 
 ```python
-# Example from app/presentation/api/dependencies/auth.py
-from fastapi import Depends, HTTPException, status
-from app.core.domain.entities.user import UserRole
+# Good: Constructor injection
+class DigitalTwinService:
+    def __init__(
+        self,
+        patient_repository: IPatientRepository,
+        biometric_repository: IBiometricRepository,
+        audit_logger: IAuditLogger
+    ):
+        self.patient_repository = patient_repository
+        self.biometric_repository = biometric_repository
+        self.audit_logger = audit_logger
+```
 
-def require_roles(allowed_roles: list[UserRole]):
-    """Dependency that requires the user to have specific roles."""
+### 4. Separate Test Implementations
+
+Move mock implementations to dedicated test modules:
+
+```python
+# app/tests/mocks/services/mock_pat_service.py
+class MockPATService(IPATService):
+    """Mock PAT service for testing."""
     
-    async def _require_roles(current_user = Depends(get_current_user)):
-        if not any(role in current_user.roles for role in allowed_roles):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions"
-            )
-        return current_user
-        
-    return _require_roles
+    async def analyze_actigraphy(self, data: dict) -> dict:
+        """Return mock analysis results."""
+        return {"result": "Mock result"}
 ```
 
-This creates:
-- Role-based access control
-- Consistent security enforcement
-- Clear security requirements in endpoint definitions
+### 5. Use Factories for Complex Services
+
+Implement factories for services with complex initialization:
+
+```python
+# app/infrastructure/factories/ml_service_factory.py
+class MLServiceFactory:
+    """Factory for creating ML service instances."""
+    
+    @staticmethod
+    def create_pat_service(config: dict) -> IPATService:
+        """Create a PAT service instance."""
+        service_type = config.get("pat_service_type", "aws")
+        
+        if service_type == "aws":
+            return AWSPATService(config)
+        elif service_type == "local":
+            return LocalPATService(config)
+        else:
+            raise ValueError(f"Unknown PAT service type: {service_type}")
+```
+
+## Dependency Resolution Flow
+
+The dependency resolution flow in the application follows this pattern:
+
+1. **HTTP Request** → FastAPI router
+2. **Endpoint Handler** → Declares dependencies via `Depends()`
+3. **Dependency Providers** → Create or retrieve dependencies
+4. **Constructor Injection** → Dependencies injected into service constructors
+5. **Interface Abstraction** → Services depend on interfaces
+6. **Concrete Implementations** → Infrastructure layer provides concrete implementations
 
 ## Testing with Dependency Injection
 
-The DI system facilitates testing by allowing dependencies to be easily replaced with mocks:
+The DI system enables effective testing through dependency overrides:
 
 ```python
-# Testing pattern
+# app/tests/api/test_patient_routes.py
 from fastapi.testclient import TestClient
-from app.presentation.api.dependencies.services import get_pat_service
+from unittest.mock import Mock
+from app.main import app
+from app.presentation.api.dependencies.services import get_patient_service
 
-# Create a mock service
-mock_pat_service = MockPATService()
+# Create mock service
+mock_patient_service = Mock()
+mock_patient_service.get_patients.return_value = [{"id": "1", "name": "Test Patient"}]
 
-# Override the dependency
-app.dependency_overrides[get_pat_service] = lambda: mock_pat_service
+# Override dependency
+app.dependency_overrides[get_patient_service] = lambda: mock_patient_service
 
-# Create test client
+# Test client
 client = TestClient(app)
 
-# Make test request
-response = client.post("/actigraphy/analyze", json=test_data)
+def test_get_patients():
+    """Test get patients endpoint."""
+    response = client.get("/api/v1/patients")
+    assert response.status_code == 200
+    assert len(response.json()) == 1
 ```
 
-This testing approach:
-- Isolates components for unit testing
-- Provides controlled test environments
-- Enables verification of component interactions
+## Implementation Variations and Refinement
 
-## Current Implementation Patterns
+The current codebase exhibits several inconsistencies in the DI approach:
 
-The Clarity AI Backend uses several dependency injection patterns:
+### Current Inconsistencies
 
-### 1. Simple Service Dependencies
+1. **Mixed Interface Definitions**:
+   - Some interfaces use Protocol, others use ABC
+   - Interface locations vary across the codebase
+   - Some interfaces are defined inline in routes
 
-```python
-# Direct dependency on a service
-@router.post("/analyze")
-async def analyze_data(
-    data: AnalysisRequest,
-    pat_service: IPATService = Depends(get_pat_service)
-):
-    return await pat_service.analyze(data)
-```
+2. **Direct vs. Provider Instantiation**:
+   - Some dependencies use provider functions
+   - Others use direct instantiation
+   - Some mix both approaches
 
-### 2. Authentication Dependencies
+3. **Mock Implementations in Production Code**:
+   - Some mock services exist in route files
+   - Others are properly isolated in test modules
 
-```python
-# Authentication and authorization dependency
-@router.get("/patient/{patient_id}")
-async def get_patient(
-    patient_id: str,
-    current_user = Depends(require_roles([UserRole.CLINICIAN, UserRole.ADMIN]))
-):
-    # Endpoint implementation
-```
+### Refinement Strategy
 
-### 3. Nested Dependencies
+To improve consistency, follow this refinement strategy:
 
-```python
-# Dependencies that depend on other dependencies
-async def get_patient_service(
-    db: AsyncSession = Depends(get_db),
-    auth_service = Depends(get_auth_service)
-) -> PatientService:
-    return PatientService(db, auth_service)
-```
+1. **Interface Consolidation**:
+   - Standardize on Protocol-based interfaces for runtime checking
+   - Move interfaces to the appropriate architectural layer
+   - Use consistent naming conventions (IServiceName)
 
-### 4. Optional Query Parameters
+2. **Provider Standardization**:
+   - Create consistent provider functions for all dependencies
+   - Implement proper factories for complex service creation
+   - Remove direct instantiation in favor of dependency injection
 
-```python
-# Optional query parameters as dependencies
-@router.get("/endpoint")
-async def endpoint(
-    service: Service = Depends(get_service),
-    optional_param: Optional[str] = Query(default=None)
-):
-    # Implementation
-```
-
-## Current Implementation Variations
-
-The current codebase exhibits several variations in the dependency injection approach:
-
-### 1. Mixed Interface Definitions
-
-- Some interfaces are defined using ABC
-- Others use Protocol
-- Some are simple classes with pass methods
-- Interface locations vary (core/interfaces, inline in routes)
-
-### 2. Mock Implementations in Routes
-
-```python
-# Example from actigraphy.py
-class MockPATService(IPATService):
-    """Temporary mock service for PAT analysis to make tests pass."""
-    
-    async def analyze_actigraphy(self, data: ActigraphyAnalysisRequest) -> dict[str, Any]:
-        """Mock implementation of actigraphy analysis."""
-        # Mock implementation
-```
-
-### 3. Inconsistent Dependency Resolution
-
-- Some dependencies return interface types
-- Others return concrete implementation types
-- Some services are injected directly, others via factories
-
-## Recommended Best Practices
-
-For future development and refactoring, we recommend these dependency injection best practices:
-
-1. **Consistent Interface Definitions**: Define all interfaces in the core/interfaces directory using a consistent pattern (Protocol or ABC)
-
-2. **Centralized Dependency Providers**: Place all dependency provider functions in the appropriate modules under app/presentation/api/dependencies/
-
-3. **Return Interface Types**: Ensure dependency providers return interface types, not concrete implementations
-
-4. **Move Mock Implementations to Tests**: Relocate mock implementations from route files to appropriate test modules
-
-5. **Factory Pattern for Complex Dependencies**: Use factory patterns for dependencies that require complex initialization
-
-6. **Consistent Error Handling**: Implement consistent error handling in dependency providers
+3. **Test Isolation**:
+   - Move all mock implementations to dedicated test modules
+   - Use dependency overrides for testing
+   - Implement proper test doubles (mocks, stubs, fakes)
 
 ## Conclusion
 
-The Clarity AI Backend's dependency injection system effectively leverages FastAPI's built-in capabilities to create a decoupled architecture. While there are some implementation variations that could be standardized, the current approach successfully enables component isolation, testing, and maintenance.
+The dependency injection system in the Clarity AI Backend provides a foundation for clean architecture by decoupling components through interfaces and dependency providers. By addressing the current implementation variations and following the best practices outlined in this guide, the codebase can achieve a more consistent and maintainable dependency injection approach while preserving the flexibility needed for effective testing and HIPAA-compliant implementation.
