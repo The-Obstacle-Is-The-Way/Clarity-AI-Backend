@@ -544,39 +544,37 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
     mock_service.token_store = {}
     mock_service.token_exp_store = {}
 
-    # Simplified and consistent token creation for testing
+    # Create simplified implementation functions for JWT service
     async def mock_create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-        to_encode = data.copy()
+        token_data = data.copy()
 
-        # Ensure standard claims for testing are present, using test_settings
-        if "iss" not in to_encode and test_settings.JWT_ISSUER:
-            to_encode["iss"] = test_settings.JWT_ISSUER
-        if "aud" not in to_encode and test_settings.JWT_AUDIENCE:
-            to_encode["aud"] = test_settings.JWT_AUDIENCE
+        # Add standard claims
+        if "iss" not in token_data and test_settings.JWT_ISSUER:
+            token_data["iss"] = test_settings.JWT_ISSUER
+        if "aud" not in token_data and test_settings.JWT_AUDIENCE:
+            token_data["aud"] = test_settings.JWT_AUDIENCE
         
-        # Standard time-based claims
+        # Set expiration
         now = datetime.now(timezone.utc)
         if expires_delta:
             expire = now + expires_delta
         else:
             expire = now + timedelta(minutes=test_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
-        to_encode.update({"exp": expire, "iat": now})
+        token_data.update({"exp": expire, "iat": now})
 
-        # Ensure 'sub' is present, as it's often critical
-        if "sub" not in to_encode:
-            if "user_id" in to_encode:
-                to_encode["sub"] = str(to_encode["user_id"])
+        # Ensure subject claim is present
+        if "sub" not in token_data:
+            if "user_id" in token_data:
+                token_data["sub"] = str(token_data["user_id"])
             else:
-                # Add a default sub if none provided, to prevent errors during encoding/decoding
-                # This helps ensure tokens are always minimally valid for encoding.
-                to_encode["sub"] = f"test-sub-{uuid.uuid4()}"
+                token_data["sub"] = f"test-sub-{uuid.uuid4()}"
         
-        # For testing, use a predictable token format
+        # Generate a test token with predictable format
         token = f"mock_access_token_{uuid.uuid4()}"
         
-        # Store token data for later verification
-        mock_service.token_store[token] = to_encode
+        # Store token data for verification
+        mock_service.token_store[token] = token_data
         mock_service.token_exp_store[token] = expire
         
         return token
