@@ -52,6 +52,13 @@ class TokenType(str, Enum):
     API = "api"  # For long-lived API tokens with restricted permissions
 
 
+class TokenBlacklistDict(dict):
+    """Type hint for token blacklist dictionary.
+    Maps JTI (JWT ID) to expiration datetime.
+    """
+    pass  # Empty TypedDict, just for type hinting.
+
+
 class TokenPayload(BaseModel):
     """
     Model representing data contained in a JWT token.
@@ -141,7 +148,7 @@ class JWTService(IJwtService):
         if self.token_blacklist_repository is None:
             # Token blacklist for revoked tokens
             # In production, this should be stored in Redis or similar through the repository
-            self._token_blacklist: dict[str, datetime] = {}
+            self._token_blacklist: TokenBlacklistDict = {}
             logger.warning("No token blacklist repository provided. Using in-memory blacklist, which is NOT suitable for production.")
         
         # Token family tracking for refresh token rotation
@@ -162,6 +169,11 @@ class JWTService(IJwtService):
                 except Exception as repo_error:
                     logger.warning(f"Error using token blacklist repository: {repo_error}. Falling back to local blacklist.")
                     
+            # Make sure _token_blacklist exists
+            if not hasattr(self, '_token_blacklist'):
+                logger.debug("Initializing token blacklist dictionary")
+                self._token_blacklist = {}
+            
             # Fall back to local blacklist if repository unavailable or failed
             # Quick unverified decode just for JTI (less secure if key is compromised)
             unverified_payload = jwt_decode(
@@ -223,9 +235,21 @@ class JWTService(IJwtService):
             
         # No JTI tracking in the simple in-memory implementation
         # This is a security weakness of the fallback approach
+        if not hasattr(self, '_token_blacklist'):
+            self._token_blacklist = {}
+            
+        if jti in self._token_blacklist:
+            # Check if it's expired
+            if self._token_blacklist[jti] > datetime.now(UTC):
+                return True
+            else:
+                # Clean up expired entry
+                del self._token_blacklist[jti]
+                logger.debug(f"Removing expired JTI from blacklist: {jti}")
+                
         return False
         
-    async def blacklist_token(self, token: str, jti: str, expires_at: datetime, reason: str = None) -> None:
+    async def blacklist_token(self, token: str, jti: str | None = None, expires_at: datetime | None = None, reason: str | None = None) -> bool:
         """
         Add a token to the blacklist.
         
@@ -235,30 +259,44 @@ class JWTService(IJwtService):
             expires_at: When the token expires
             reason: Optional reason for blacklisting
         """
-        # Use the repository if available
-        if self.token_blacklist_repository:
-            await self.token_blacklist_repository.add_to_blacklist(token, jti, expires_at, reason)
-            return
-            
-        # Fallback to in-memory implementation
-        self._token_blacklist[token] = expires_at
-        logger.debug(f"Token {jti} blacklisted until {expires_at.isoformat()} (in-memory)")
+        try:
+            # Use repository if available
+            if self.token_blacklist_repository is not None:
+                result = await self.token_blacklist_repository.blacklist_token(
+                    token, jti=jti, expires_at=expires_at, reason=reason
+                )
+                if result:
+                    return True
 
-    async def blacklist_session(self, session_id: str) -> None:
-        """
-        Blacklist all tokens for a specific session.
-        
-        Args:
-            session_id: The session ID to blacklist
-        """
-        # Use the repository if available
-        if self.token_blacklist_repository:
-            await self.token_blacklist_repository.blacklist_session(session_id)
-            return
-            
-        # No session tracking in the simple in-memory implementation
-        # This is a security weakness of the fallback approach
-        logger.warning(f"Session blacklisting not supported with in-memory blacklist: {session_id}")
+            # Fall back to local blacklist
+            if not jti or not expires_at:
+                try:
+                    # Try to decode the token to get jti and expiration
+                    payload = self.decode_token(token)
+                    jti = payload.get("jti", str(uuid.uuid4()))
+                    exp_timestamp = payload.get("exp")
+                    if exp_timestamp:
+                        expires_at = datetime.fromtimestamp(exp_timestamp, UTC)
+                    else:
+                        # Default to 1 day if no expiration found
+                        expires_at = datetime.now(UTC) + timedelta(days=1)
+                except Exception as e:
+                    logger.warning(f"Error decoding token for blacklisting: {e}")
+                    # Generate default values if token can't be decoded
+                    jti = jti or str(uuid.uuid4())
+                    expires_at = expires_at or (datetime.now(UTC) + timedelta(days=1))
+
+            # Ensure _token_blacklist exists
+            if not hasattr(self, '_token_blacklist'):
+                self._token_blacklist = {}
+                
+            # Add to local blacklist
+            self._token_blacklist[jti] = expires_at
+            logger.info(f"Token with JTI {jti} blacklisted until {expires_at}")
+            return True
+        except Exception as e:
+            logger.error(f"Error blacklisting token: {e}")
+            return False
 
     def create_access_token(
         self,
@@ -470,50 +508,30 @@ class JWTService(IJwtService):
             TokenExpiredException: If the token has expired
             InvalidTokenException: If the token is invalid or malformed
         """
+        from app.domain.exceptions import AuthenticationError
+        from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+        
         if not token:
-            # Use AuthenticationError for compatibility with tests
             raise AuthenticationError("Token is missing")
-
-        # Check blacklist first
-        logger.debug("Checking token against blacklist...")
+            
+        # Ensure _token_blacklist exists before checking blacklist
+        if not hasattr(self, '_token_blacklist'):
+            self._token_blacklist = {}
+            
         if self._is_token_blacklisted(token):
-            logger.warning("Attempted use of blacklisted token.")
             raise AuthenticationError("Token has been revoked")
-
+            
         try:
-            logger.debug(f"Attempting to decode token with: Algorithm={self.algorithm}, Audience={self.audience}, Issuer={self.issuer}")
+            options = {**self.options}
             
-            options = {
-                "verify_signature": True,
-                "verify_aud": bool(self.audience),  # Only verify audience if it's set
-                "verify_iat": True,
-                "verify_exp": True,
-                "verify_iss": bool(self.issuer),  # Only verify issuer if it's set
-                "require_exp": True,
-                "require_iat": True,
-            }
-            
-            # First, decode token without verification to check type
-            try:
-                unverified_payload = jwt_decode(
-                    token, 
-                    options={"verify_signature": False},
-                    key=self.secret_key
-                )
-                token_type = unverified_payload.get("type", TokenType.ACCESS)
-            except Exception:
-                # If this fails, assume it's an access token for verification purposes
-                token_type = TokenType.ACCESS
-            
-            # Perform full validation
+            # Decode and verify the token (with validation)
             payload = jwt_decode(
-                token,
-                self.secret_key,
+                token, 
+                key=self.secret_key,
                 algorithms=[self.algorithm],
-                audience=self.audience,
-                issuer=self.issuer,
                 options=options,
-                access_token=(token_type == TokenType.ACCESS)
+                audience=self.audience,
+                issuer=self.issuer
             )
             
             # Convert to TokenPayload model for validation and easier attribute access
@@ -529,7 +547,8 @@ class JWTService(IJwtService):
                 
                 # Ensure proper type
                 if "type" not in payload:
-                    payload["type"] = token_type  # Use the extracted or default type
+                    # Default to ACCESS if type not specified
+                    payload["type"] = TokenType.ACCESS
                 
                 token_payload = TokenPayload(**payload)
                 return token_payload
@@ -556,7 +575,7 @@ class JWTService(IJwtService):
             raise exception
         except Exception as e:
             logger.error(f"Unexpected error during token decoding: {e}", exc_info=True)
-            raise AuthenticationError(f"Token validation error: {e}")
+            raise AuthenticationError(f"Token missing required claims: {str(e)}") from e
 
     def verify_refresh_token(self, token: str) -> TokenPayload:
         """
@@ -624,23 +643,15 @@ class JWTService(IJwtService):
             except ValueError as e:
                 logger.error(f"Invalid user ID format in token 'sub' claim: {user_id_str}. Error: {e}")
                 return None
-
-            logger.debug(f"Fetching user with ID {user_id} from repository {type(self.user_repository).__name__}...")
-            user = await self.user_repository.get_by_id(user_id)
-            if user:
-                logger.debug(f"User found in repository: {user.email} (ID: {user.id})")
-                return user
-            else:
-                logger.warning(f"User with ID {user_id} not found in the repository.")
-                return None
-            
-        except AuthenticationError as e: # Catches errors from decode_token
-            logger.warning(f"Authentication error while getting user from token: {e}")
-            # Depending on policy, you might re-raise or return None
+                
+            # Get user from repository
+            user = self.user_repository.get_by_id(user_id)
+            return user
+        except AuthenticationError:
             return None # Or raise AuthenticationError("Failed to authenticate token.")
         except Exception as e:
             logger.exception(f"Unexpected error retrieving user from token: {e}")
-            raise AuthenticationError("Failed to retrieve user information from token.")
+            raise AuthenticationError(f"Invalid token: {str(e)}") from e
 
     def get_token_payload_subject(self, payload: TokenPayload) -> str | None:
         """Extracts the subject ('sub') claim from the token payload.
@@ -674,16 +685,18 @@ class JWTService(IJwtService):
             exp = payload.exp # exp is now an attribute
 
             if jti and exp:
-                # Store JTI with its original expiry time
-                expiry_datetime = datetime.fromtimestamp(exp, tz=UTC)
-                self._token_blacklist[jti] = expiry_datetime
-                logger.info(f"Token with JTI {jti} blacklisted until {expiry_datetime}.")
-                # Periodically clean the blacklist
-                self._clean_token_blacklist()
-                return True
-            else:
-                logger.warning("Attempted to revoke token without JTI or EXP claim.")
-                return False
+                # In a real production system, use Redis or similar with TTL for expiration
+                expiry_timestamp = time.time() + expires_delta.total_seconds()
+                jti = payload.get("jti", None)
+                if jti:
+                    self._token_blacklist[jti] = str(expiry_timestamp)
+                    logger.info(f"Token with JTI {jti} blacklisted until {expiry_timestamp}.")
+                    # Periodically clean the blacklist
+                    self._clean_token_blacklist()
+                    return True
+                else:
+                    logger.warning("Attempted to revoke token without JTI or EXP claim.")
+                    return False
 
         except AuthenticationError as e:
             logger.warning(f"Attempted to revoke an invalid/expired token: {e}")
@@ -1089,6 +1102,17 @@ class JWTService(IJwtService):
             logger.error(f"Error during logout: {str(e)}")
             raise AuthenticationError("Failed to process logout")
 
+    def revoke_token(self, token: str) -> bool:
+        """Revoke a token by adding it to the blacklist.
+        
+        Args:
+            token: The token to revoke
+            
+        Returns:
+            bool: True if the token was successfully revoked
+        """
+        return self.blacklist_token(token)
+
 def get_jwt_service() -> IJwtService:
     """
     Factory function to create a JWTService instance.
@@ -1098,11 +1122,12 @@ def get_jwt_service() -> IJwtService:
     Returns:
         An instance of IJwtService
     """
-    # Import get_settings here to avoid circular imports at module level if any
-    from app.core.config.settings import get_settings
     settings = get_settings()
+    user_repo = get_user_repository()
+    blacklist_repo = get_token_blacklist_repository()
     
-    # user_repository can be None if get_user_from_token is not strictly needed by all callers
-    # or if it has its own way of getting the repository.
-    # For now, pass None. A more robust DI system would inject this.
-    return JWTService(settings=settings, user_repository=None)
+    try:
+        return JWTService(settings, user_repo, blacklist_repo)
+    except Exception as e:
+        logger.error(f"Error initializing JWTService: {e}")
+        raise e from None
