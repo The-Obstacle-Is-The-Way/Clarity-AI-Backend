@@ -176,6 +176,10 @@ class Settings(BaseSettings):
                 os.makedirs(log_dir, exist_ok=True)
                 logger.info(f"Created logs directory: {log_dir}")
         
+        # Ensure DEBUG is set correctly based on environment
+        if self.ENVIRONMENT in ("production", "test"):
+            self.DEBUG = False
+        
         return self
 
 

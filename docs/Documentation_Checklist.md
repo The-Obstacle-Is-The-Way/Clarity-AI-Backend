@@ -73,7 +73,7 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 | [Biometric Alert Rules API](./Biometric_Alert_Rules_API.md) | ✅ Complete | Alert rules system documentation |
 | [ML Integration Architecture](./ML_Integration_Architecture.md) | ✅ Complete | ML model integration architecture |
 | [PAT Service](./PAT_Service.md) | ✅ Complete | Pretrained Actigraphy Transformer services |
-| Actigraphy System | ❌ Missing | Actigraphy data processing |
+| [Actigraphy System](./Actigraphy_System.md) | ✅ Complete | Actigraphy data processing |
 
 ### DevOps & Deployment
 
@@ -117,8 +117,8 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 ## Progress Tracking
 
 - Total documentation required: 40 documents
-- Currently complete: 18 documents (45%)
-- Required to complete: 22 documents (55%)
+- Currently complete: 19 documents (47.5%)
+- Required to complete: 21 documents (52.5%)
 
 ## Next Steps
 

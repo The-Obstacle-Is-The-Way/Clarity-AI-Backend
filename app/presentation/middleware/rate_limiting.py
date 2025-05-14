@@ -70,8 +70,11 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.limiter = limiter or get_rate_limiter()
         self.requests_per_minute = requests_per_minute
-        self.exclude_paths = exclude_paths or ["/health", "/metrics"]
+        # Always exclude test endpoints to prevent infinite recursion
+        default_exclude = ["/health", "/metrics", "/test-api", "/docs", "/redoc", "/openapi.json"]
+        self.exclude_paths = (exclude_paths or []) + default_exclude
         self.key_func = key_func or self._default_key_func
+        logger.info(f"Rate limiting middleware initialized with exclude paths: {self.exclude_paths}")
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -86,7 +89,8 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         """
         # Skip rate limiting for excluded paths
         path = request.url.path
-        if any(path.startswith(excluded) for excluded in self.exclude_paths):
+        if any(excluded in path for excluded in self.exclude_paths):
+            logger.debug(f"Skipping rate limiting for excluded path: {path}")
             return await call_next(request)
         
         # Get client identifier
@@ -111,25 +115,20 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                     f"at {request.url.path}"
                 )
                 
-                # Raise rate limit exception
-                raise RateLimitExceededError(
-                    detail=f"Rate limit exceeded. Limit: {self.requests_per_minute} per minute. Please try again later.",
-                    retry_after=reset_seconds
+                # Return rate limit exceeded response directly without raising exception
+                return Response(
+                    content=f"Rate limit exceeded. Limit: {self.requests_per_minute} per minute. Please try again later.",
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    headers={"Retry-After": str(reset_seconds)}
                 )
             
             # Proceed with request if within limits
             return await call_next(request)
         
-        except RateLimitExceededError as e:
-            # Return the rate limit exceeded response
-            return Response(
-                content=str(e.detail),
-                status_code=e.status_code,
-                headers=e.headers
-            )
         except Exception as e:
             # Log error but allow request to proceed in case of rate limiting failure
             logger.error(f"Rate limiting error: {str(e)}")
+            print(f"Warning: Using placeholder InMemoryRateLimiter for {client_id}. Allowing request.")
             return await call_next(request)
     
     def _default_key_func(self, request: Request) -> str:

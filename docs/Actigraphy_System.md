@@ -264,6 +264,7 @@ class ActigraphyAnalysisRequest(BaseModel):
     options: Optional[Dict[str, Any]] = None
 ```
 
+
 ### Analysis Response
 
 ```python
