@@ -1,3 +1,4 @@
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from uuid import UUID
@@ -7,12 +8,14 @@ from fastapi.security.utils import get_authorization_scheme_param
 from starlette.middleware.base import ASGIApp, BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.status import (
-    HTTP_401_UNAUTHORIZED, 
-    HTTP_403_FORBIDDEN, 
-    HTTP_500_INTERNAL_SERVER_ERROR
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 from app.core.domain.entities.user import UserStatus
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.domain.exceptions.auth_exceptions import (
     AuthenticationException,
     UserNotFoundException,
@@ -21,24 +24,17 @@ from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.domain.entities.auth import AuthenticatedUser, UnauthenticatedUser
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.repositories.sqla.user_repository import (
-    SQLAlchemyUserRepository,
-)
-from app.presentation.api.v1.models.auth import AuthCredentials
+from app.presentation.middleware.base import BaseMiddleware 
+from app.presentation.schemas.auth import AuthenticatedUser
 
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class AuthenticatedUserPydantic(AuthenticatedUser):
     pass 
 
 
-class AuthenticationMiddleware(BaseHTTPMiddleware):
+class AuthenticationMiddleware(BaseMiddleware):
     def __init__(
         self,
         app: ASGIApp,
@@ -139,7 +135,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                         return auth_user, scopes
                         
                     async with session_factory() as db_session:
-                        user_repository = SQLAlchemyUserRepository(db_session=db_session)
+                        user_repository = IUserRepository(db_session=db_session)
                         domain_user = await user_repository.get_user_by_id(user_id)
                 
                 except Exception as e: 
@@ -217,7 +213,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path: {request.url.path} - Skipping authentication")
-            request.scope["user"] = UnauthenticatedUser()
+            request.scope["user"] = AuthenticatedUser()
             request.scope["auth"] = AuthCredentials(scopes=[])
             return await call_next(request)
         
