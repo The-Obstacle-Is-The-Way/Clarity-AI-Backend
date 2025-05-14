@@ -13,7 +13,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.core.config import get_settings
+from app.core.config.settings import get_settings
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType
 
 # Initialize logger
