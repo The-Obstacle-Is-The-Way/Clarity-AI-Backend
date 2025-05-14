@@ -4,16 +4,22 @@ from uuid import UUID
 
 from fastapi import Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
-from starlette.middleware.base import ASGIApp 
+from starlette.middleware.base import ASGIApp, BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from starlette.status import (
+    HTTP_401_UNAUTHORIZED, 
+    HTTP_403_FORBIDDEN, 
+    HTTP_500_INTERNAL_SERVER_ERROR
+)
 
 from app.core.domain.entities.user import UserStatus
-from app.core.domain.exceptions.authentication import (
+from app.domain.exceptions.auth_exceptions import (
     AuthenticationException,
+    UserNotFoundException,
+)
+from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
-    UserNotFoundException,
 )
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface

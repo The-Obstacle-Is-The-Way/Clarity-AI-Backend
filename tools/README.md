@@ -1,103 +1,73 @@
-# Novamind Digital Twin Platform Tools
+# Clarity Digital Twin Platform Tools
 
-This directory contains tools for development, maintenance, and refactoring of the Novamind Digital Twin Platform codebase.
+This directory contains tools for development, maintenance, and security of the Clarity Digital Twin Platform codebase.
+
+## Directory Structure
+
+- `tools/maintenance/` - Code quality and maintenance tools
+- `tools/security/` - Security scanning and PHI audit tools
+- `tools/refactor/` - Code refactoring and structure tools
 
 ## Refactoring Tools
 
 ### Code Structure Refactoring (`refactor_code_structure.py`)
 
-This script refactors the codebase to follow clean architecture principles by:
+This tool refactors the codebase to follow clean architecture principles by organizing the codebase according to:
 
-1. Eliminating legacy code paths (especially `/refactored/` paths) 
-2. Moving files to their canonical locations
-3. Creating a proper directory structure according to clean architecture
-4. Updating import statements to reflect the new structure
-5. Removing empty directories
-
-#### Usage
-
-To see what changes would be made without actually making them:
+- Domain layer - Business entities and logic
+- Application layer - Use cases and service interfaces
+- Infrastructure layer - External services and repository implementations
+- API layer - FastAPI endpoints and schemas
+- Core - Cross-cutting concerns
 
 ```bash
-python refactor_code_structure.py --dry-run
+# Preview changes without applying
+python tools/refactor_code_structure.py --dry-run
+
+# Execute refactoring
+python tools/refactor_code_structure.py
 ```
 
-To execute the refactoring:
+## Security Tools
+
+### PHI Auditing (`security/phi_auditor_complete.py`)
+
+Scans the codebase for potential PHI leakage in logs and error messages to ensure HIPAA compliance.
 
 ```bash
-python refactor_code_structure.py
+# Run a comprehensive PHI audit
+python tools/security/phi_auditor_complete.py
+
+# Fix issues automatically
+python tools/security/complete_phi_audit_fixer.py
 ```
-
-#### Clean Architecture Structure
-
-The script reorganizes the codebase according to the following structure:
-
-```
-backend/
-├── app/
-│   ├── domain/                   # Domain layer - pure business logic
-│   │   ├── entities/             # Business entities and aggregates
-│   │   │   ├── auth/             # Authentication and authorization entities
-│   │   │   ├── digital_twin/     # Digital twin domain entities
-│   │   │   └── patient/          # Patient domain entities
-│   │   ├── exceptions/           # Domain-specific exceptions
-│   │   ├── events/               # Domain events
-│   │   ├── value_objects/        # Value objects used across entities
-│   │   └── repositories/         # Repository interfaces (contracts)
-│   ├── application/              # Application layer - use cases and services
-│   │   ├── interfaces/           # Service interfaces
-│   │   └── use_cases/            # Application-specific use cases
-│   ├── infrastructure/           # Infrastructure layer - external services
-│   │   ├── repositories/         # Repository implementations
-│   │   │   └── mongodb/          # MongoDB implementations
-│   │   ├── services/             # External service implementations
-│   │   │   └── trinity_stack/    # Trinity stack AI services
-│   │   └── security/             # Security implementations
-│   ├── api/                      # API layer - FastAPI endpoints
-│   │   └── v1/                   # API version 1
-│   │       ├── endpoints/        # API endpoints grouped by domain
-│   │       └── schemas/          # Pydantic schemas for request/response
-│   └── core/                     # Cross-cutting concerns
-└── tests/                        # Test suite
-    ├── unit/                     # Unit tests
-    ├── integration/              # Integration tests
-    └── e2e/                      # End-to-end tests
-```
-
-#### Post-Refactoring Steps
-
-After running the script:
-
-1. Run the test suite to verify all functionality works correctly
-2. Resolve any import errors that may have been missed by the script
-3. Review the refactored structure for any adjustments needed
-4. Run integration tests to verify the application works end-to-end
-5. Update documentation to reflect the new structure
-
-#### Implementation Details
-
-The refactoring script:
-
-- Identifies files in `/refactored/` paths
-- Determines the appropriate destination based on file type and content
-- Moves files to their new locations, preserving metadata
-- Creates necessary directories and `__init__.py` files
-- Updates import statements throughout the codebase
-- Cleans up empty directories
 
 ## Maintenance Tools
 
-Additional tools for maintaining the codebase are located in:
+Tools for maintaining the codebase including:
 
-- `tools/maintenance/`: Code quality and maintenance scripts
-- `tools/security/`: Security scanning and analysis tools
+- Configuration templates for testing
+- Code quality checks
+- Type verification
+
+## Clean Architecture Implementation
+
+All tools in this repository follow these principles:
+
+1. Separation of concerns between tools
+2. Proper error handling and logging
+3. Strong typing with Pydantic models
+4. HIPAA compliance enforcement
+5. Consistent naming conventions
+
+When using or contributing to these tools, please follow the established clean architecture principles found in the main codebase.
 
 ## Best Practices
 
-When writing new code:
+When writing new tools:
 
-1. Follow the established clean architecture
-2. Put files in the correct layers based on their responsibility
-3. No backward compatibility shims or adapters
-4. Ensure proper separation of concerns
-5. Write tests that verify the functionality works correctly
+1. Follow the established directory structure
+2. Use type hints consistently
+3. Add comprehensive error handling
+4. Include proper documentation
+5. Write tests to verify functionality

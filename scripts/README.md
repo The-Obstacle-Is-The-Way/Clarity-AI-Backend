@@ -1,116 +1,70 @@
 # Clarity AI Backend Scripts
 
-This directory contains utility scripts for the Clarity AI Backend project. These scripts are designed to help with development, testing, HIPAA compliance verification, and CI/CD processes.
-
-## Testing Scripts
-
-### `run_tests.py`
-
-A comprehensive test runner that executes tests in dependency order.
-
-```bash
-# Run all tests in order (standalone → venv → integration)
-./scripts/run_tests.py
-
-# Run only standalone tests
-./scripts/run_tests.py --skip-venv --skip-integration
-
-# Run specific test files
-./scripts/run_tests.py app/tests/standalone/test_enhanced_log_sanitizer.py
-
-# Continue running tests even if previous stages fail
-./scripts/run_tests.py --continue-on-failure
-
-# Show commands without executing them
-./scripts/run_tests.py --dry-run
-```
-
-### `ci_test_runner.sh`
-
-A shell script designed for CI/CD environments that runs all tests and generates reports.
-
-```bash
-# Run standalone and venv tests
-./scripts/ci_test_runner.sh
-
-# Run all tests including integration tests
-WITH_INTEGRATION=true ./scripts/ci_test_runner.sh
-
-# Continue even if tests fail
-CONTINUE_ON_FAILURE=true ./scripts/ci_test_runner.sh
-```
-
-## HIPAA Compliance Scripts
-
-### `hipaa_phi_audit.py` 
-
-Scans the codebase for potential PHI leakage in logs and error messages.
-
-```bash
-# Run a comprehensive PHI audit
-./scripts/hipaa_phi_audit.py
-
-# Generate a detailed report
-./scripts/hipaa_phi_audit.py --output-report reports/phi_audit_report.md
-
-# Check specific directories only
-./scripts/hipaa_phi_audit.py --directories app/presentation app/infrastructure
-```
-
-### `check_log_sanitization.py`
-
-Verifies that all logging statements properly use the log sanitizer.
-
-```bash
-# Check all logging statements in the codebase
-./scripts/check_log_sanitization.py
-
-# Fix issues automatically where possible
-./scripts/check_log_sanitization.py --auto-fix
-```
-
-## Utility Scripts
-
-### `fix_pat_mock.py`
-
-Applies fixes to the PAT mock service to address test failures.
-
-```bash
-./scripts/fix_pat_mock.py
-```
-
-### `create_test_classification.py`
-
-Generates a comprehensive report about test organization and dependencies.
-
-```bash
-# Generate markdown report (default)
-./scripts/create_test_classification.py
-
-# Generate JSON report
-./scripts/create_test_classification.py --format json
-
-# Specify output file name
-./scripts/create_test_classification.py --output my-test-report
-```
+This directory contains utility scripts for the Clarity AI Backend project. These scripts are organized to help with development, testing, deployment, and maintenance of the platform while ensuring HIPAA compliance.
 
 ## Directory Structure
 
-The scripts follow these conventions:
+- `scripts/core/` - Core scripts for running the application and tests
+- `scripts/db/` - Database management and migration scripts
+- `scripts/deploy/` - Deployment automation scripts
+- `scripts/test/` - Test runners and utilities
+- `scripts/utils/` - General utility scripts
 
-- Testing scripts are prefixed with `test_` or contain `test` in their name
-- CI/CD scripts are prefixed with `ci_`
-- HIPAA compliance scripts are prefixed with `hipaa_` or contain `phi` in their name
-- Utility scripts focus on a specific functionality
+## Core Scripts
+
+### Docker and Environment Scripts
+
+- `core/docker_entrypoint.py` - Entrypoint for Docker containers
+- `core/docker_test_runner.py` - Runs tests in Docker environment
+- `core/redis_validator.py` - Validates Redis configuration
+
+## Test Scripts
+
+- `test/run_all_tests.py` - Comprehensive test runner
+- `test/run_tests_by_level.py` - Runs tests organized by level (unit, integration, etc.)
+- `run_tests.sh` - Shell script to run tests in the correct order
+
+## Database Scripts
+
+- `db/fix_db_driver.py` - Utilities for database driver management
+
+## Deployment Scripts
+
+- `deploy/deploy_and_test.sh` - Automated deployment and testing
+
+## Utility Scripts
+
+- `utils/datetime_transformer.py` - Datetime transformation utilities
+- `verify_types.py` - Validates type hints across the codebase
+
+## Usage Examples
+
+### Running All Tests
+
+```bash
+# Run all tests in order
+./scripts/run_tests.sh
+
+# Run tests with specific options
+./scripts/test/run_all_tests.py --skip-integration
+```
+
+### Deployment
+
+```bash
+# Deploy and run automated tests
+./scripts/deploy/deploy_and_test.sh
+```
 
 ## Contributing
 
 When adding new scripts:
 
-1. Follow the naming conventions
-2. Add proper documentation
-3. Make scripts executable (`chmod +x script_name.py`)
-4. Update this README with usage instructions
+1. Place scripts in the appropriate directory based on functionality
+2. Follow clean code principles and add proper type hints
+3. Include documentation within the script
+4. Make scripts executable (`chmod +x script_name.py`)
+5. Update this README with usage instructions if necessary
 
 ## Running Scripts
 
