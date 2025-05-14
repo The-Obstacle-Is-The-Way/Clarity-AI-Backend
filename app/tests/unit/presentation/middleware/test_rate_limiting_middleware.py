@@ -241,18 +241,17 @@ class TestRateLimitingMiddleware:
         # Create a mock app
         app_mock = MagicMock()
         
-        # Create limiter mock
+        # Create a mock rate limiter
         limiter_mock = MagicMock()
         
-        # Initialize middleware with default values
+        # Initialize the middleware with default values
         middleware = RateLimitingMiddleware(app_mock, limiter=limiter_mock)
         
-        # Verify that default values are set correctly
+        # Verify the limiter is set correctly
         assert middleware.limiter == limiter_mock
         
-        # Verify default exclude paths
-        # Note: The actual default exclude paths in the implementation may change,
-        # update this test if the implementation changes
+        # Verify the default exclude paths include at least health and metrics
+        # Note: We don't check the exact list as it may change in implementation
         assert isinstance(middleware.exclude_paths, list)
         assert "/health" in middleware.exclude_paths
         assert "/metrics" in middleware.exclude_paths

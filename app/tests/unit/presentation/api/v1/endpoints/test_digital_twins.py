@@ -327,6 +327,7 @@ class TestDigitalTwinsEndpoints:
 
     @pytest.mark.asyncio
     async def test_get_comprehensive_insights_error(
+        self,
         digital_twins_client_app: tuple[AsyncClient, FastAPI],
         digital_twin_service_mock,
         monkeypatch
@@ -398,6 +399,7 @@ class TestDigitalTwinsEndpoints:
 
     @pytest.mark.asyncio
     async def test_analyze_clinical_text_service_error(
+        self,
         digital_twins_client_app: tuple[AsyncClient, FastAPI],
         digital_twin_service_mock,
         monkeypatch
