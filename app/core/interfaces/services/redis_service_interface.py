@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Protocol
 
+
 class IRedisService(Protocol):
     """
     Interface for a Redis service, defining common Redis operations.
