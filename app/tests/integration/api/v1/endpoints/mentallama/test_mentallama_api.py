@@ -26,7 +26,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.domain.entities.audit_log import AuditLog
 from app.core.interfaces.services.audit_logger_interface import AuditEventType, IAuditLogger, AuditSeverity
-from app.application.services.audit_log_service import AuditLogService, IAuditLogService
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger as IAuditLogService
+from app.application.services.audit_log_service import AuditLogService
 from app.presentation.api.dependencies.audit import get_audit_log_service
 from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
 
