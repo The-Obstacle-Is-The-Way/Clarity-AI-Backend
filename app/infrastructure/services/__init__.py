@@ -15,7 +15,7 @@ from app.infrastructure.services.redis import RedisService, create_redis_service
 from app.infrastructure.services.mocks import (
     MockDigitalTwinCoreService,
     MockEnhancedDigitalTwinCoreService,
-    MockMentalLLaMAService,
+    MockMentalLLaMAService,  # Note the capitalization: Mental not Menta
     MockPATService,
     MockXGBoostService
 )
