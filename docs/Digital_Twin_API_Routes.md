@@ -79,6 +79,7 @@ This endpoint retrieves the complete digital twin model for the authenticated us
 **Authorization**: Limited to the user's own digital twin  
 **Response**: Complete `DigitalTwinResponse` data structure  
 **Errors**:
+
 - 404: Digital twin not found for user
 - 500: Server error during retrieval
 
@@ -107,6 +108,7 @@ This endpoint checks the status and availability of different components within 
 **Parameters**: `patient_id` (UUID) - The patient's unique identifier  
 **Response**: Status of each digital twin component (e.g., psychological model, biometric data)  
 **Errors**:
+
 - 404: Patient or digital twin not found
 - 500: Server error during status check
 
@@ -135,6 +137,7 @@ This endpoint generates personalized insights for a patient by analyzing their d
 **Parameters**: `patient_id` (UUID) - The patient's unique identifier  
 **Response**: Comprehensive insights derived from digital twin analysis  
 **Errors**:
+
 - 404: Patient or digital twin not found
 - 500: Error during model execution or insight generation
 
@@ -162,10 +165,13 @@ This endpoint processes and analyzes clinical text against a patient's digital t
 **Authentication**: Requires authenticated user  
 **Authorization**: Requires appropriate clinical access to patient data  
 **Parameters**:
+
 - `patient_id` (UUID) - The patient's unique identifier
 - `request` (ClinicalTextAnalysisRequest) - Contains text to analyze and analysis type  
+
 **Response**: Analysis results contextualized with the patient's digital twin  
 **Errors**:
+
 - 404: Patient or digital twin not found
 - 500: Model execution error or general server error
 

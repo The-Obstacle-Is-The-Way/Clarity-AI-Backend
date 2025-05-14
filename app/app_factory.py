@@ -533,18 +533,21 @@ def create_application(
         are leaked to users. All internal errors (500) will show a generic error message
         instead of exposing internal implementation details or error messages.
         """
-        logger.error(f"Unhandled exception: {exc}")
+        # Log the original exception for internal debugging
+        logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
         logger.error(traceback.format_exc())
+        
         # Format compliant with RFC 7807: Problem Details for HTTP APIs
-        # This follows the standard for API error response formats
         response_data = {"detail": "An internal server error occurred."}
         
         # Preserve status code for expected exceptions, but mask exception details
         status_code = 500
         if isinstance(exc, HTTPException):
             status_code = exc.status_code
+            # For expected HTTP exceptions, we can keep the original message
             response_data = {"detail": exc.detail}
         
+        # Return a consistent, sanitized error response
         return JSONResponse(
             content=response_data,
             status_code=status_code
