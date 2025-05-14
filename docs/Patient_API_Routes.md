@@ -4,6 +4,28 @@
 
 The Patient API Routes are a foundational component of the Clarity AI Backend that provide access to patient data and operations. These routes represent the RESTful interface for patient management within the psychiatric digital twin platform, with a current focus on patient creation and retrieval operations, incorporating comprehensive HIPAA safeguards.
 
+## Implementation Status
+
+> ⚠️ **IMPORTANT**: There are significant discrepancies between this documentation and the actual implementation in the codebase:
+
+| Component | Documentation Status | Implementation Status | Notes |
+|-----------|---------------------|----------------------|-------|
+| GET /{patient_id} | ✅ Documented | ✅ Implemented | Using dependency injection to validate patient ID |
+| POST / (Create) | ✅ Documented | ✅ Implemented | Implementation matches documentation |
+| PUT /{patient_id} | ✅ Documented | ❌ Commented Out | Update operation is commented out in code |
+| DELETE /{patient_id} | ✅ Documented | ❌ Not Implemented | Delete operation doesn't exist in code |
+| GET / (List Patients) | ✅ Documented | ❌ Not Implemented | List operation doesn't exist in code |
+| GET /{patient_id}/timeline | ✅ Documented | ❌ Not Implemented | Timeline operation doesn't exist in code |
+| Schema Validation | ✅ Documented | ⚠️ Partial Mismatch | Schemas in code differ from documented schemas |
+| Security Features | ✅ Documented | ⚠️ Partially Implemented | Role-based access exists but audit logging is missing |
+
+### Current Implementation Gaps
+
+1. **Missing Endpoints**: Several documented endpoints (PUT, DELETE, LIST) are either commented out or not implemented
+2. **Schema Mismatch**: The actual schema implementation is much simpler than documented
+3. **Missing Audit Logging**: The comprehensive audit logging described is not implemented
+4. **Incomplete Service Implementation**: The service contains placeholder code and incomplete functionality
+
 ## Clean Architecture Context
 
 The Patient API Routes implement the presentation layer within the clean architecture framework:
@@ -13,9 +35,9 @@ The Patient API Routes implement the presentation layer within the clean archite
 3. **Schemas**: Validate input and output data using Pydantic models
 4. **Authentication**: Ensure proper authorization for PHI access
 
-## Route Definition
+## Actual Route Implementation
 
-The Patient API routes are defined in `app/presentation/api/v1/routes/patient.py`:
+The Patient API routes are defined in `app/presentation/api/v1/routes/patient.py` with the following implemented endpoints:
 
 ```python
 import logging
@@ -54,8 +76,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Routes
-
 @router.get(
     "/{patient_id}",
     response_model=PatientRead,
@@ -64,622 +84,180 @@ router = APIRouter()
     description="Retrieve detailed information about a specific patient using their UUID.",
     tags=["Patients"],
 )
-async def get_patient(
-    request: Request,
-    patient_id: UUID = Path(..., description="The ID of the patient to retrieve"),
-    current_user: dict = Depends(verify_has_role(["admin", "clinician"])),
-    patient_service: IPatientService = Depends(get_patient_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
+async def read_patient(
+    patient_domain_entity: Patient = Depends(get_validated_patient_id_for_read),
+    service: PatientService = Depends(get_patient_service)
+) -> PatientRead:
     """
-    List patients with pagination and optional filtering.
-    
-    Args:
-        request: FastAPI request object
-        pagination: Pagination parameters
-        search: Search parameters
-        current_user: Authenticated user with appropriate role
-        patient_service: Patient service
-        audit_logger: Audit logger
-        
-    Returns:
-        Paginated list of patients
+    Retrieve a patient by their ID.
+    The actual patient object is already fetched and authorized by the dependency.
     """
-    # Log PHI access
-    await audit_logger.log_phi_access(
-        resource_type="patient",
-        resource_id="multiple",
-        action="list",
-        user_id=current_user["id"],
-        reason="Clinical care",
-        source_ip=request.client.host,
-        details={"query_params": dict(request.query_params)}
-    )
-    
-    # Get patients from service
-    patients, total = await patient_service.list_patients(
-        skip=pagination.skip,
-        limit=pagination.limit,
-        search_term=search.search,
-        status=search.status,
-        min_age=search.min_age,
-        max_age=search.max_age
-    )
-    
-    # Return paginated response
-    return PatientListResponse(
-        items=patients,
-        total=total,
-        limit=pagination.limit,
-        offset=pagination.skip
-    )
+    logger.info(f"Endpoint read_patient: Returning data for patient {patient_domain_entity.id}")
+    return PatientRead.model_validate(patient_domain_entity)
 
 @router.post(
-    "",
-    response_model=PatientResponse,
-    status_code=201,
-    summary="Create patient",
+    "/",
+    response_model=PatientCreateResponse, 
+    status_code=status.HTTP_201_CREATED, 
+    summary="Create Patient",
     description="Create a new patient record."
 )
-async def create_patient(
-    request: Request,
-    patient_data: PatientCreateRequest,
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(verify_has_role(["admin", "clinician"])),
-    patient_service: IPatientService = Depends(get_patient_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """
-    Create a new patient.
-    
-    Args:
-        request: FastAPI request object
-        patient_data: Patient creation data
-        background_tasks: Background tasks for asynchronous processing
-        current_user: Authenticated user with appropriate role
-        patient_service: Patient service
-        audit_logger: Audit logger
-        
-    Returns:
-        Newly created patient
-    """
+async def create_patient_endpoint(
+    patient_data: PatientCreateRequest, 
+    service: PatientService = Depends(get_patient_service),
+    current_user: DomainUser = Depends(CurrentUserDep)
+) -> PatientCreateResponse: 
+    """Create a new patient."""
+    logger.info(f"User {current_user.id} attempting to create patient: {patient_data.first_name} {patient_data.last_name}")
     try:
-        # Create patient
-        patient = await patient_service.create_patient(
-            first_name=patient_data.first_name,
-            last_name=patient_data.last_name,
-            date_of_birth=patient_data.date_of_birth,
-            gender=patient_data.gender,
-            external_id=patient_data.external_id,
-            status=patient_data.status,
-            contact_info=patient_data.contact_info
-        )
-        
-        # Log PHI access
-        await audit_logger.log_phi_access(
-            resource_type="patient",
-            resource_id=str(patient.id),
-            action="create",
-            user_id=current_user["id"],
-            reason="Clinical care",
-            source_ip=request.client.host,
-            details={"patient_id": str(patient.id)}
-        )
-        
-        # Schedule background tasks (e.g., digital twin initialization)
-        background_tasks.add_task(
-            patient_service.initialize_patient_resources,
-            patient.id
-        )
-        
-        # Return created patient
-        return patient
-        
-    except ValueError as e:
-        # Handle validation or business rule errors
-        raise HTTPException(status_code=400, detail=str(e))
+        created_patient = await service.create_patient(patient_data, created_by_id=current_user.id)
+        return created_patient
     except Exception as e:
-        # Log unexpected errors
-        logger.error(f"Error creating patient: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error creating patient by user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while creating the patient."
+        ) from e
 
-@router.get(
-    "/{patient_id}",
-    response_model=PatientResponse,
-    summary="Get patient",
-    description="Get a single patient by ID."
-)
-async def get_patient(
-    request: Request,
-    patient_id: UUID = Path(..., description="The ID of the patient to retrieve"),
-    current_user: dict = Depends(verify_has_role(["admin", "clinician"])),
-    patient_service: IPatientService = Depends(get_patient_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """
-    Get a single patient by ID.
-    
-    Args:
-        request: FastAPI request object
-        patient_id: UUID of the patient to retrieve
-        current_user: Authenticated user with appropriate role
-        patient_service: Patient service
-        audit_logger: Audit logger
-        
-    Returns:
-        Patient details
-    """
-    # Get patient
-    patient = await patient_service.get_patient(patient_id)
-    
-    # Handle not found
-    if not patient:
-        raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
-    
-    # Log PHI access
-    await audit_logger.log_phi_access(
-        resource_type="patient",
-        resource_id=str(patient_id),
-        action="view",
-        user_id=current_user["id"],
-        reason="Clinical care",
-        source_ip=request.client.host,
-        details={"patient_id": str(patient_id)}
-    )
-    
-    return patient
-
-@router.put(
-    "/{patient_id}",
-    response_model=PatientResponse,
-    summary="Update patient",
-    description="Update an existing patient record."
-)
-async def update_patient(
-    request: Request,
-    patient_id: UUID = Path(..., description="The ID of the patient to update"),
-    patient_data: PatientUpdateRequest = None,
-    current_user: dict = Depends(verify_has_role(["admin", "clinician"])),
-    patient_service: IPatientService = Depends(get_patient_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """
-    Update a patient.
-    
-    Args:
-        request: FastAPI request object
-        patient_id: UUID of the patient to update
-        patient_data: Patient update data
-        current_user: Authenticated user with appropriate role
-        patient_service: Patient service
-        audit_logger: Audit logger
-        
-    Returns:
-        Updated patient
-    """
-    try:
-        # Check if patient exists
-        existing_patient = await patient_service.get_patient(patient_id)
-        if not existing_patient:
-            raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
-        
-        # Update patient
-        updated_patient = await patient_service.update_patient(
-            patient_id=patient_id,
-            update_data=patient_data.dict(exclude_unset=True)
-        )
-        
-        # Log PHI access
-        await audit_logger.log_phi_access(
-            resource_type="patient",
-            resource_id=str(patient_id),
-            action="update",
-            user_id=current_user["id"],
-            reason="Clinical care",
-            source_ip=request.client.host,
-            details={"patient_id": str(patient_id), "updated_fields": list(patient_data.dict(exclude_unset=True).keys())}
-        )
-        
-        return updated_patient
-        
-    except ValueError as e:
-        # Handle validation or business rule errors
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        # Log unexpected errors
-        logger.error(f"Error updating patient: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@router.delete(
-    "/{patient_id}",
-    status_code=204,
-    summary="Delete patient",
-    description="Delete a patient record (soft delete)."
-)
-async def delete_patient(
-    request: Request,
-    patient_id: UUID = Path(..., description="The ID of the patient to delete"),
-    current_user: dict = Depends(verify_has_role(["admin"])),
-    patient_service: IPatientService = Depends(get_patient_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """
-    Delete (soft delete) a patient.
-    
-    Args:
-        request: FastAPI request object
-        patient_id: UUID of the patient to delete
-        current_user: Authenticated user with admin role
-        patient_service: Patient service
-        audit_logger: Audit logger
-    """
-    # Check if patient exists
-    existing_patient = await patient_service.get_patient(patient_id)
-    if not existing_patient:
-        raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
-    
-    # Perform soft delete
-    await patient_service.delete_patient(patient_id)
-    
-    # Log PHI access
-    await audit_logger.log_phi_access(
-        resource_type="patient",
-        resource_id=str(patient_id),
-        action="delete",
-        user_id=current_user["id"],
-        reason="Administrative action",
-        source_ip=request.client.host,
-        details={"patient_id": str(patient_id)}
-    )
-    
-    # Return no content for successful deletion
-    return None
-
-@router.get(
-    "/{patient_id}/timeline",
-    response_model=Dict[str, Any],
-    summary="Get patient timeline",
-    description="Get a timeline of patient events and metrics."
-)
-async def get_patient_timeline(
-    request: Request,
-    patient_id: UUID = Path(..., description="The ID of the patient"),
-    start_date: Optional[datetime] = Query(None, description="Start date for timeline"),
-    end_date: Optional[datetime] = Query(None, description="End date for timeline"),
-    event_types: List[str] = Query(None, description="Types of events to include"),
-    current_user: dict = Depends(verify_has_role(["admin", "clinician"])),
-    patient_service: IPatientService = Depends(get_patient_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """
-    Get a patient's timeline of events and metrics.
-    
-    Args:
-        request: FastAPI request object
-        patient_id: UUID of the patient
-        start_date: Optional start date for filtering
-        end_date: Optional end date for filtering
-        event_types: Optional list of event types to include
-        current_user: Authenticated user with appropriate role
-        patient_service: Patient service
-        audit_logger: Audit logger
-        
-    Returns:
-        Timeline data for the patient
-    """
-    # Check if patient exists
-    existing_patient = await patient_service.get_patient(patient_id)
-    if not existing_patient:
-        raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
-    
-    # Get timeline
-    timeline = await patient_service.get_patient_timeline(
-        patient_id=patient_id,
-        start_date=start_date,
-        end_date=end_date,
-        event_types=event_types
-    )
-    
-    # Log PHI access
-    await audit_logger.log_phi_access(
-        resource_type="patient_timeline",
-        resource_id=str(patient_id),
-        action="view",
-        user_id=current_user["id"],
-        reason="Clinical care",
-        source_ip=request.client.host,
-        details={
-            "patient_id": str(patient_id),
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "event_types": event_types
-        }
-    )
-    
-    return timeline
+# Update operation is commented out in the actual code
+# @router.put(
+#     "/{patient_id}", 
+#     response_model=PatientRead, 
+#     name="patients:update_patient",
+#     summary="Update an existing patient"
+# )
 ```
 
-## Interface Schemas
+## Actual Schema Implementation
 
-The Patient API uses Pydantic models for request and response validation:
+The actual schema implementation is much simpler than documented:
 
 ```python
-# app/presentation/api/v1/schemas/patient.py
-from pydantic import BaseModel, Field, EmailStr, validator
-from typing import Dict, List, Optional, Any
+import uuid
 from datetime import date, datetime
-from uuid import UUID
-from enum import Enum
-
-class PatientStatus(str, Enum):
-    """Enumeration of possible patient statuses."""
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    ARCHIVED = "archived"
-
-class PatientGender(str, Enum):
-    """Enumeration of patient gender options."""
-    MALE = "male"
-    FEMALE = "female"
-    NON_BINARY = "non_binary"
-    OTHER = "other"
-    PREFER_NOT_TO_SAY = "prefer_not_to_say"
-
-class ContactInfo(BaseModel):
-    """Contact information for a patient."""
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    address: Optional[Dict[str, str]] = None
-    
-    class Config:
-        """Pydantic configuration."""
-        schema_extra = {
-            "example": {
-                "email": "patient@example.com",
-                "phone": "+1-555-555-5555",
-                "address": {
-                    "street": "123 Main St",
-                    "city": "Anytown",
-                    "state": "NY",
-                    "zip": "10001"
-                }
-            }
-        }
+from pydantic import BaseModel, Field, EmailStr, computed_field, ConfigDict
 
 class PatientBase(BaseModel):
-    """Base model for patient data."""
-    first_name: str = Field(..., min_length=1, max_length=100)
-    last_name: str = Field(..., min_length=1, max_length=100)
-    date_of_birth: date
-    gender: Optional[PatientGender] = None
-    status: PatientStatus = PatientStatus.ACTIVE
-    external_id: Optional[str] = None
-    
-    class Config:
-        """Pydantic configuration."""
-        schema_extra = {
-            "example": {
-                "first_name": "John",
-                "last_name": "Doe",
-                "date_of_birth": "1980-01-01",
-                "gender": "male",
-                "status": "active",
-                "external_id": "EXT12345"
-            }
-        }
-    
-    @validator('first_name', 'last_name')
-    def validate_name(cls, v):
-        """Validate name fields."""
-        # Remove any special characters that could be used for XSS or injection
-        v = v.strip()
-        return v
+    first_name: str = Field(..., description="Patient's first name")
+    last_name: str = Field(..., description="Patient's last name")
+    date_of_birth: date = Field(..., description="Patient's date of birth")
+    email: EmailStr | None = Field(None, description="Patient's email address")
+    phone_number: str | None = Field(None, description="Patient's phone number")
 
 class PatientCreateRequest(PatientBase):
-    """Model for patient creation requests."""
-    contact_info: Optional[ContactInfo] = None
+    # Fields specific to creation, if any. For now, inherits all from PatientBase.
+    pass
 
-class PatientUpdateRequest(BaseModel):
-    """Model for patient update requests."""
-    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    date_of_birth: Optional[date] = None
-    gender: Optional[PatientGender] = None
-    status: Optional[PatientStatus] = None
-    external_id: Optional[str] = None
-    contact_info: Optional[ContactInfo] = None
-    
-    class Config:
-        """Pydantic configuration."""
-        schema_extra = {
-            "example": {
-                "first_name": "Jane",
-                "status": "inactive"
-            }
+class PatientRead(PatientBase):
+    id: uuid.UUID = Field(..., description="Unique identifier for the patient")
+    created_at: datetime | None = Field(None, description="When the patient record was created")
+    updated_at: datetime | None = Field(None, description="When the patient record was last updated")
+    created_by: uuid.UUID | None = Field(None, description="ID of the user who created the patient record")
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
+    model_config = ConfigDict(from_attributes=True)
+
+# Create a specific response for patient creation
+class PatientCreateResponse(PatientRead):
+    """Response model for patient creation endpoint."""
+    created_at: datetime = Field(..., description="When the patient record was created")
+    updated_at: datetime = Field(..., description="When the patient record was last updated")
+    created_by: uuid.UUID = Field(..., description="ID of the user who created the patient record")
+```
+
+## Service Implementation 
+
+The current service implementation contains placeholder code and is incomplete:
+
+```python
+class PatientService:
+    """Placeholder for Patient Service logic."""
+    def __init__(self, repository: PatientRepository):
+        self.repo = repository
+
+    async def get_patient_by_id(self, patient_id: str) -> dict[str, str] | None:
+        """Retrieves a patient by ID.
+
+        Note: Authentication/Authorization context temporarily removed for basic tests.
+        Needs to be added back later.
+        """
+        logger.debug(f"Service: Fetching patient {patient_id}")
+        # Placeholder - replace with actual repository call and domain object handling
+        # patient = await self.repo.get_by_id(uuid.UUID(patient_id))
+        # if not patient:
+        #     return None
+        # return PatientRead.model_validate(patient).model_dump() # Example using Pydantic
+        if patient_id == "non-existent-patient": # Simple mock for not found
+             return None
+        return {"id": patient_id, "name": "Placeholder from Service"}
+
+    async def create_patient(self, patient_data: PatientCreateRequest) -> dict[str, str]:
+        """Creates a new patient.
+
+        Placeholder implementation.
+        """
+        logger.debug(f"Service: Creating patient with name {patient_data.name}")
+        # In a real scenario:
+        # 1. Map PatientCreateRequest to domain entity (e.g., Patient)
+        # 2. Add necessary fields (e.g., generate ID)
+        # 3. Call repository's add/create method
+        # 4. Map the created domain entity back to PatientRead/Response schema
+
+        # Placeholder response:
+        new_id = str(uuid.uuid4())
+        created_patient_dict = {
+            "id": new_id,
+            "name": patient_data.name
         }
-
-class PatientResponse(PatientBase):
-    """Model for patient responses."""
-    id: UUID
-    contact_info: Optional[ContactInfo] = None
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    
-    class Config:
-        """Pydantic configuration."""
-        orm_mode = True
-
-class PatientListResponse(BaseModel):
-    """Model for paginated patient list responses."""
-    items: List[PatientResponse]
-    total: int
-    limit: int
-    offset: int
-
-class PatientSearchParams(BaseModel):
-    """Parameters for patient search/filtering."""
-    search: Optional[str] = None
-    status: Optional[PatientStatus] = None
-    min_age: Optional[int] = Field(None, ge=0, le=120)
-    max_age: Optional[int] = Field(None, ge=0, le=120)
-    
-    @validator('max_age')
-    def validate_max_age(cls, v, values):
-        """Validate that max_age is greater than min_age if both are provided."""
-        if v is not None and 'min_age' in values and values['min_age'] is not None:
-            if v < values['min_age']:
-                raise ValueError('max_age must be greater than or equal to min_age')
-        return v
+        logger.info(f"Service: Simulated creation of patient {new_id}")
+        return created_patient_dict
 ```
 
-## Common Schemas
+## Implementation Roadmap
 
-Common schemas used across multiple routes:
+To address the current implementation gaps, the following tasks are needed:
 
-```python
-# app/presentation/api/v1/schemas/common.py
-from pydantic import BaseModel, Field
-from typing import Optional
+1. **Complete Service Implementation**
+   - Implement the PatientService with full functionality
+   - Replace placeholder code with actual repository calls
 
-class PaginationParams(BaseModel):
-    """Common pagination parameters."""
-    skip: int = Field(0, ge=0, description="Number of items to skip")
-    limit: int = Field(100, ge=1, le=1000, description="Maximum number of items to return")
-```
+2. **Add Missing Endpoints**
+   - Implement PUT endpoint for patient updates
+   - Implement DELETE endpoint for soft-deleting patients
+   - Implement GET endpoint for listing patients with filtering and pagination
 
-## Route Registration
+3. **Schema Alignment**
+   - Enhance schemas to match documented functionality
+   - Add missing schemas for filtering, sorting, and pagination
 
-The patient router is registered in the main API router:
-
-```python
-# app/presentation/api/v1/api_router.py (excerpt)
-from fastapi import APIRouter
-from app.presentation.api.v1.routes import (
-    auth,
-    patient,
-    digital_twin,
-    biometric_alert_rules,
-    # ... other routes
-)
-
-api_v1_router = APIRouter(prefix="/api/v1")
-
-# Include all route modules
-api_v1_router.include_router(auth.router, prefix="/auth")
-api_v1_router.include_router(patient.router)
-api_v1_router.include_router(digital_twin.router, prefix="/digital-twins")
-api_v1_router.include_router(biometric_alert_rules.router, prefix="/biometric-alert-rules")
-# ... other routers
-```
+4. **Security Enhancements**
+   - Implement comprehensive audit logging of PHI access
+   - Enhance authentication and authorization checks
 
 ## HIPAA Compliance
 
-The Patient API implements multiple HIPAA safeguards:
+The Patient API plans to implement multiple HIPAA safeguards, but several are not yet fully implemented:
 
-1. **Authentication**: All endpoints require valid authentication
-2. **Authorization**: Role-based access control for patient data
-3. **Audit Logging**: Comprehensive logging of all PHI access
-4. **Input Validation**: Strict validation of all patient data
-5. **Error Sanitization**: No PHI in error responses
+1. **Authentication**: ✅ All endpoints require valid authentication
+2. **Authorization**: ⚠️ Basic role-based access exists but needs enhancement
+3. **Audit Logging**: ❌ Comprehensive logging of PHI access is missing
+4. **Input Validation**: ✅ Basic validation exists via Pydantic models
+5. **Error Sanitization**: ⚠️ Limited error handling with potential for improvement
 
 ## Security Considerations
 
-Key security features of the Patient API:
+Current security features and needed enhancements:
 
-1. **Parameter Validation**: All parameters are validated using Pydantic models
-2. **Injection Prevention**: Name validators prevent XSS and injection attacks
-3. **Rate Limiting**: Endpoints are protected by the Rate Limiting Middleware
-4. **Error Handling**: Consistent, secure error responses with no PHI leakage
-5. **UUID Identifiers**: Non-sequential, non-predictable IDs prevent enumeration
-
-## Testing Approach
-
-The Patient API is tested through multiple test types:
-
-1. **Unit Tests**: Tests for route handler logic in isolation
-2. **Integration Tests**: Tests for the API with mocked dependencies
-3. **Security Tests**: Tests for security headers, authentication, and authorization
-4. **Performance Tests**: Tests for API performance under load
-
-Example test:
-
-```python
-# app/tests/unit/presentation/api/v1/endpoints/test_patient_endpoints.py
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
-from uuid import uuid4
-
-from app.presentation.api.v1.routes.patient import router
-from app.main import app
-
-@pytest.fixture
-def mock_patient_service():
-    """Create a mock patient service for testing."""
-    service = AsyncMock()
-    
-    # Mock get_patient to return a test patient
-    service.get_patient.return_value = {
-        "id": uuid4(),
-        "first_name": "Test",
-        "last_name": "Patient",
-        "date_of_birth": "1980-01-01",
-        "status": "active",
-        "created_at": "2023-01-01T00:00:00",
-        "updated_at": None
-    }
-    
-    return service
-
-@pytest.fixture
-def test_client(mock_patient_service):
-    """Create a test client with mocked dependencies."""
-    # Override dependencies
-    app.dependency_overrides[get_patient_service] = lambda: mock_patient_service
-    app.dependency_overrides[verify_has_role] = lambda roles: lambda: {"id": uuid4(), "role": "admin"}
-    app.dependency_overrides[get_audit_logger] = lambda: AsyncMock()
-    
-    # Create client
-    with TestClient(app) as client:
-        yield client
-    
-    # Clean up
-    app.dependency_overrides = {}
-
-def test_get_patient(test_client, mock_patient_service):
-    """Test getting a patient by ID."""
-    # Arrange
-    patient_id = uuid4()
-    
-    # Act
-    response = test_client.get(f"/api/v1/patients/{patient_id}")
-    
-    # Assert
-    assert response.status_code == 200
-    assert "id" in response.json()
-    mock_patient_service.get_patient.assert_called_once_with(patient_id)
-```
-
-## OpenAPI Documentation
-
-The Patient API is documented through FastAPI's automatic OpenAPI schema generation, including:
-
-1. **Endpoint Summaries**: Brief descriptions of each endpoint's purpose
-2. **Detailed Descriptions**: Comprehensive explanations of behavior
-3. **Request Schemas**: Expected input formats with examples
-4. **Response Schemas**: Expected output formats with status codes
-5. **Security Requirements**: Authentication requirements for each endpoint
-
-## Implementation Notes
-
-Key considerations when implementing the Patient API:
-
-1. **Connection Pooling**: Efficient database connections with connection pooling
-2. **Async Operations**: All endpoint handlers are asynchronous for high concurrency
-3. **Background Tasks**: Long-running operations use background tasks
-4. **Error Handling**: Comprehensive error handling with specific status codes
-5. **Request Tracing**: Integration with RequestID middleware for tracing
+1. **Parameter Validation**: ✅ Basic validation exists via Pydantic models
+2. **Injection Prevention**: ⚠️ Limited protection in current implementation
+3. **Rate Limiting**: ❓ Not verified in the current implementation
+4. **Error Handling**: ⚠️ Basic error handling exists but needs improvement
+5. **UUID Identifiers**: ✅ Using UUID identifiers for patients
 
 ## Conclusion
 
-The Patient API Routes represent a core component of the Clarity AI Backend, providing secure and compliant access to patient data. By following clean architecture principles and implementing comprehensive HIPAA safeguards, these routes ensure that patient data is protected while enabling the powerful capabilities of the psychiatric digital twin platform.
+The Patient API Routes currently provide basic functionality for patient creation and retrieval. Significant enhancements are needed to fully implement the documented functionality, especially regarding HIPAA compliance, comprehensive API operations, and security features. The current implementation represents a starting point that should be further developed to meet the requirements of a production-ready psychiatric digital twin platform.
