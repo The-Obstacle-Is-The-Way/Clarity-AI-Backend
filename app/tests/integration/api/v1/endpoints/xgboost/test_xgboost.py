@@ -295,14 +295,9 @@ async def test_predict_risk(xgboost_test_client):
     direct_payload = {
         "patient_id": test_patient_id,
         "risk_type": "suicide",  # Matches RiskType.SUICIDE.value
-        "patient_data": {
-            "age_at_intake": 30,
-            "gender_identity": "male",
-            "primary_language": "English"
-        },
         "clinical_data": {
-            "age": 30, # Example, can be same or different from age_at_intake
-            "gender": "male", # Example
+            "age": 30,
+            "gender": "male",
             "diagnosis": "general_anxiety_disorder",
             "previous_attempts": 0,
             "substance_abuse_history": False,
@@ -311,7 +306,7 @@ async def test_predict_risk(xgboost_test_client):
             "symptom_severity": 5,
         },
         "time_frame_days": 60,
-        "include_explainability": True # Changed to True to test this path
+        "include_explainability": True
     }
     
     # Mock the service call to return a successful response
