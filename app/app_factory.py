@@ -403,7 +403,7 @@ def create_application(
         rate_limiter = get_rate_limiter_service()
         app_instance.add_middleware(
             RateLimitingMiddleware,
-            rate_limiter=rate_limiter,
+            limiter=rate_limiter,
             default_limits=current_settings.DEFAULT_RATE_LIMITS
         )
         logger.info("Rate limiting middleware added.")

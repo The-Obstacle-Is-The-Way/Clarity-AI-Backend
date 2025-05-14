@@ -517,7 +517,7 @@ class AuditLogService(IAuditLogger):
         # Calculate new hash
         return hashlib.sha256(data.encode()).hexdigest()
     
-    async def _check_for_anomalies(self, user_id: str, log: AuditLog) -> None:
+    async def _check_for_anomalies(self, user_id: str, log: AuditLog) -> bool:
         """
         Check for suspicious activity patterns that may indicate security issues.
         
@@ -527,6 +527,9 @@ class AuditLogService(IAuditLogger):
         Args:
             user_id: ID of the user to check
             log: The current audit log entry
+            
+        Returns:
+            bool: True if any anomalies were detected
         """
         now = datetime.now(timezone.utc)
         anomalies_detected = []
@@ -602,5 +605,5 @@ class AuditLogService(IAuditLogger):
                     _skip_anomaly_check=True  # Prevent recursion
                 )
         
-        # Return if any anomalies were detected
+        # Return True if any anomalies were detected
         return len(anomalies_detected) > 0 

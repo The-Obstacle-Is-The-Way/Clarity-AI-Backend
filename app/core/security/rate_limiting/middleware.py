@@ -14,9 +14,11 @@ from .service import RateLimiterService
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     """Stub Middleware for rate limiting requests."""
 
-    def __init__(self, app, rate_limiter: RateLimiterService):
+    def __init__(self, app, rate_limiter=None, limiter=None):
         super().__init__(app)
-        self.rate_limiter = rate_limiter
+        # Accept either parameter name for backward compatibility
+        # Prioritize 'rate_limiter' if both are provided
+        self.rate_limiter = rate_limiter if rate_limiter is not None else limiter
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
