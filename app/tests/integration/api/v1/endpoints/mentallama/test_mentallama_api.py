@@ -41,6 +41,7 @@ from app.domain.models.user import UserRole
 from app.presentation.api.dependencies.auth import get_current_user, get_current_active_user
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
 from app.presentation.api.dependencies.auth import get_jwt_service
+from app.presentation.api.dependencies.audit import get_audit_log_service
 
 logger = logging.getLogger(__name__)
 
