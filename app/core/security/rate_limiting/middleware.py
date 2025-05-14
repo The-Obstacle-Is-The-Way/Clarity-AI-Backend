@@ -22,23 +22,38 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             app: The ASGI application
             rate_limiter: The rate limiter service (legacy parameter name)
             limiter: The rate limiter service (new parameter name)
-            default_limits: Default rate limits (ignored, used by the limiter directly)
-            **kwargs: Additional arguments (ignored)
+            default_limits: Default rate limits configuration (used in tests)
+            **kwargs: Additional keyword arguments for backward compatibility
         """
         super().__init__(app)
-        # Accept either parameter name for backward compatibility
-        # Prioritize 'rate_limiter' if both are provided
-        self.rate_limiter = rate_limiter if rate_limiter is not None else limiter
-
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        # Placeholder logic - Actual implementation would check rate limits
-        # identifier = request.client.host # Or based on user ID, API key, etc.
-        # if not await self.rate_limiter.is_allowed(identifier):
-        #     return Response("Too Many Requests", status_code=429)
-        response = await call_next(request)
-        return response
+        # Prior implementations used different parameter names; this handles both
+        # to maintain compatibility with existing code and tests
+        self.rate_limiter = rate_limiter or limiter
+        self.default_limits = default_limits
+        
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """
+        Process the request and apply rate limiting if configured.
+        
+        Args:
+            request: The incoming request
+            call_next: The next middleware or endpoint handler
+            
+        Returns:
+            Response: The HTTP response
+        """
+        if self.rate_limiter:
+            # Check if the request should be rate limited
+            can_proceed = await self.rate_limiter.check_rate_limit(request)
+            if not can_proceed:
+                return Response(
+                    content="Rate limit exceeded. Please try again later.",
+                    status_code=429,
+                    media_type="text/plain"
+                )
+        
+        # If no rate limiter or allowed by rate limiter, proceed with the request
+        return await call_next(request)
 
 # Ensure the class name matches what's expected by importers
 __all__ = ["RateLimitingMiddleware"]
