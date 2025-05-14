@@ -411,71 +411,132 @@ async function clinicalWorkflow() {
 
 ## Testing & Quality
 
-### Unit Tests
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); grid-gap: 10px;">
 
+<div style="padding: 5px;">
+
+### Unit Tests
 ```bash
-cd backend
 pytest app/tests/unit
 ```
+Targets isolated components with mock dependencies. 
+Covers domain logic and service behaviors.
+</div>
+
+<div style="padding: 5px;">
 
 ### Integration Tests
-
 ```bash
 docker-compose -f deployment/docker-compose.test.yml up -d
 pytest app/tests/integration
 ```
+Validates multi-component interactions with real dependencies.
+</div>
 
-### Lint & Type
+<div style="padding: 5px;">
 
+### Code Quality
 ```bash
 flake8 app
 black --check app
 isort --check-only --profile black app
+```
+Enforces PEP8 compliance and consistent formatting.
+</div>
+
+<div style="padding: 5px;">
+
+### Type Checking
+```bash
 mypy app
 ```
+Ensures static type safety throughout the codebase.
+Verifies correct interface implementation.
+</div>
 
-### Coverage
+</div>
 
+<details>
+<summary><b>🔎 Coverage & Security Tools</b> (click to expand)</summary>
+
+### Coverage Analysis
 ```bash
 pytest --cov=app
 ```
 
-## Security & Audits
+### Security Audits
+- **PHI Detection**: `python tools/security/run_phi_audit_only.py`
+- **Dependency Scan**: `python tools/security/bandit-runner.py`
+- **Security Reports**: See audited results in `reports/security/`
+</details>
 
-- PHI Audits: see `reports/` & `security-reports/`
+## Comprehensive Documentation
 
-### Run PHI Audit
+<div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
+
+Clarity AI includes extensive documentation that follows clean architecture layering:
+
+### Foundation Materials
+* [Project Structure Overview](./docs/Project_Structure_Overview.md) - Repository organization
+* [Clean Architecture Principles](./docs/Clean_Architecture_Principles.md) - Architectural foundation
+* [Design Patterns Guide](./docs/Design_Patterns_Guide.md) - GOF/SOLID implementations
+
+### Domain & Application Layer
+* [Domain Models & Entities](./docs/Domain_Models_Entities.md) - Core business concepts
+* [Value Objects Guide](./docs/Value_Objects_Guide.md) - Immutable value entities
+* [Application Services](./docs/Application_Services.md) - Use case orchestration
+
+### Infrastructure & API
+* [Database Access Guide](./docs/Database_Access_Guide.md) - Persistence implementation
+* [API Security](./docs/API_Security.md) - Authentication and authorization
+* [API Versioning Strategy](./docs/API_Versioning_Strategy.md) - API evolution approach
+
+### ML & Digital Twin
+* [ML Integration Architecture](./docs/ML_Integration_Architecture.md) - ML system design
+* [Digital Twin API Routes](./docs/Digital_Twin_API_Routes.md) - Digital twin endpoints
+* [PAT Service](./docs/PAT_Service.md) - Actigraphy analysis implementation
+
+</div>
+
+## Deployment & DevOps
+
+<details open>
+<summary><b>💻 Docker & Container Orchestration</b></summary>
 
 ```bash
-python tools/security/run_phi_audit_only.py
-```
-
-### Dependency Scans
-
-```bash
-python tools/security/bandit-runner.py
-```
-
-## Tools & Scripts
-
-- **Maintenance**: `tools/maintenance/` (refactor, migration helpers)
-- **Prompt Templates**: `prompt-templates/`
-- **Demo Scripts**: `demo/`
-- **Architecture Docs**: `docs/`
-
-## Docker & Deployment
-
-```bash
+# Development environment
 docker-compose -f deployment/docker-compose.yml up --build
+
+# Production deployment with metrics
+docker-compose -f deployment/docker-compose.prod.yml up -d
 ```
 
-Services: FastAPI API, Postgres, Redis, (optional) Traefik ingress.
+The containerized deployment includes:
+- FastAPI application server with auto-scaling
+- PostgreSQL database with automated backups
+- Redis for caching, session management, and rate limiting
+- Traefik for API gateway, TLS termination, and routing
+- Prometheus metrics and Grafana dashboards
+</details>
 
-For production CI/CD:
+<details>
+<summary><b>🛠️ CI/CD Pipeline</b> (click to expand)</summary>
 
-- One pipeline for lint/tests/security
-- One pipeline for build/push Docker & helm/k8s deploy
-- Health checks & auto‑migrations on startup
+The production CI/CD workflow follows modern DevOps practices:
+
+1. **Quality Pipeline**
+   - Static analysis (flake8, black, isort, mypy)
+   - Unit and integration tests with pytest
+   - Security scans (bandit, safety, phi-detection)
+   - Code coverage reporting (>85% required)
+
+2. **Deployment Pipeline**
+   - Container build and push to registry
+   - Kubernetes manifest generation
+   - Canary deployment with automated smoke tests
+   - Health checks & auto‑migrations on startup
+   - Rollback capability on failure detection
+</details>
 
 ## Configuration Reference
 
