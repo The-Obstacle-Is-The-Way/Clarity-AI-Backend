@@ -198,18 +198,24 @@ class TestAuditLogService:
             resource_type="patient",
             resource_id=TEST_PATIENT_ID,
             action="view",
-            ip_address="not_an_ip",  # Unusual IP that should trigger geographic anomaly
+            ip_address="not_an_ip",  # Unusual IP that should trigger an anomaly
+            details={}
         )
         
-        # Check for anomalies - should detect geographic anomaly
-        is_anomalous = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
-        assert is_anomalous is True
+        # Check for anomalies
+        anomaly_detected = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
         
-        # Verify that appropriate actions were taken
+        # Verify anomaly detection results
+        assert anomaly_detected, "Anomaly should be detected for suspicious IP"
+        
+        # Check that a security event was logged for the anomaly
         mock_repository.create_audit_log.assert_called_once()
-        # Check that "geographic" is in the details string
-        called_args = mock_repository.create_audit_log.call_args[0][0]
-        assert "geographic" in called_args.details
+        log_call = mock_repository.create_audit_log.call_args[0][0]
+        
+        # Verify log event properties
+        assert log_call.event_type == AuditEventType.SECURITY_EVENT
+        assert log_call.actor_id == TEST_USER_ID
+        assert 'geographic' in str(log_call.details), "Anomaly log should contain 'geographic' in details"
 
 
 @pytest.mark.asyncio
@@ -299,26 +305,38 @@ class TestAuditLogMiddleware:
         
         # CASE 2: Request with auth header but no user
         # --------------------------------------------
-        # Mock request with auth header
+        # Mock request without user but with auth header
         request = MagicMock(spec=Request)
         request.state = MagicMock(spec=object)  # No user attribute
-        request.headers = {"Authorization": "Bearer token"}
+        request.headers = {"Authorization": "Bearer some_token"}
         
-        # Extract user ID - should return token validation user ID
-        user_id = await middleware._extract_user_id(request)
+        # Mock JWT service to extract user ID from token
+        with patch("app.infrastructure.security.audit.middleware.get_jwt_service") as mock_get_jwt:
+            mock_jwt = AsyncMock()
+            mock_jwt.decode_token.return_value = {"sub": "jwt_user_id"}
+            mock_get_jwt.return_value = mock_jwt
+            
+            # Extract user ID
+            user_id = await middleware._extract_user_id(request)
+            
+            # Check that the correct user ID was extracted from the JWT
+            assert user_id == "jwt_user_id"
         
-        # In test environment, the middleware's token validation will use 'test_user'
-        assert user_id == "test_user"
-        
-        # CASE 3: Request with no user or auth header
-        # -------------------------------------------
-        # Mock request with no user or auth header
+        # CASE 3: Request without user or valid auth
+        # ------------------------------------------
+        # Mock request without user or valid auth header
         request = MagicMock(spec=Request)
         request.state = MagicMock(spec=object)  # No user attribute
         request.headers = {}  # No auth header
         
-        # Extract user ID - should return anonymous
-        user_id = await middleware._extract_user_id(request)
-        
-        # In test environment without auth header, should return 'anonymous'
-        assert user_id == "anonymous" 
+        # Mock settings to be in test mode
+        with patch("app.infrastructure.security.audit.middleware.get_settings") as mock_get_settings:
+            mock_settings = MagicMock()
+            mock_settings.ENVIRONMENT = "test"
+            mock_get_settings.return_value = mock_settings
+            
+            # Extract user ID
+            user_id = await middleware._extract_user_id(request)
+            
+            # In test mode, a default "test_user" ID should be returned
+            assert user_id == "test_user", "Expected test_user ID for request without user in test mode" 
