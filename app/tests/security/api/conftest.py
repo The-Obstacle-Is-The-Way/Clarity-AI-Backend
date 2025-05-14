@@ -15,7 +15,7 @@ from app.core.interfaces.services.jwt_service_interface import JWTServiceInterfa
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.infrastructure.security.jwt.jwt_service import TokenPayload
-from app.core.exceptions.security_exceptions import InvalidTokenException
+from app.domain.exceptions.token_exceptions import InvalidTokenException
 
 from app.app_factory import create_application
 
