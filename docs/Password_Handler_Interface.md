@@ -15,88 +15,93 @@ In a healthcare-focused digital twin platform with HIPAA requirements, secure pa
 
 ## Interface Definition
 
-The `IPasswordHandler` interface is defined in the core layer and serves as a contract for password operations:
+The `IPasswordHandler` interface is defined in the core layer (`app/core/interfaces/security/password_handler_interface.py`) and serves as a contract for password operations:
 
 ```python
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple, Optional
 
 class IPasswordHandler(ABC):
-    """
-    Interface for password management operations.
+    """Interface for password handling operations.
     
-    This interface defines the contract for secure password handling,
-    including hashing, verification, and policy enforcement.
+    This interface defines the contract that any password handler implementation
+    must follow. It provides methods for password hashing, verification, and 
+    strength validation to ensure security best practices across the application.
     """
     
     @abstractmethod
-    async def hash_password(self, password: str) -> str:
-        """
-        Hash a password using a secure algorithm with salt.
+    def hash_password(self, password: str) -> str:
+        """Hash a password securely.
         
         Args:
             password: The plain text password to hash
             
         Returns:
-            Secure hash of the password (including algorithm, salt, and hash parameters)
+            str: The securely hashed password
         """
         pass
     
     @abstractmethod
-    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """
-        Verify a password against its hash.
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash.
         
         Args:
             plain_password: The plain text password to verify
-            hashed_password: The hashed password to compare against
+            hashed_password: The hashed password to check against
             
         Returns:
-            True if the password matches, False otherwise
+            bool: True if the password matches, False otherwise
         """
         pass
     
     @abstractmethod
-    async def password_meets_requirements(self, password: str) -> Tuple[bool, Optional[Dict[str, str]]]:
+    def validate_password_strength(self, password: str) -> Tuple[bool, str]:
+        """Validate the strength of a password.
+        
+        Args:
+            password: The plain text password to validate
+            
+        Returns:
+            Tuple[bool, str]: A tuple containing:
+                - A boolean indicating if the password meets strength requirements
+                - A message describing the validation result or any failures
         """
-        Check if a password meets security requirements.
+        pass
+    
+    @abstractmethod
+    def get_password_strength_feedback(self, password: str) -> Dict[str, any]:
+        """Get detailed feedback on password strength.
+        
+        Args:
+            password: The password to analyze
+            
+        Returns:
+            Dict[str, any]: Detailed feedback containing strength score, 
+                            suggestions for improvement, and other metrics
+        """
+        pass
+    
+    @abstractmethod
+    def is_common_password(self, password: str) -> bool:
+        """Check if a password is in a list of commonly used/breached passwords.
         
         Args:
             password: The password to check
             
         Returns:
-            Tuple containing:
-              - Boolean indicating if password meets requirements
-              - Dictionary of validation errors (if any, None otherwise)
+            bool: True if the password is common/breached, False otherwise
         """
         pass
     
     @abstractmethod
-    async def needs_rehash(self, hashed_password: str) -> bool:
-        """
-        Check if a password hash needs to be upgraded.
-        
-        This method determines if the hash was created with outdated
-        algorithms or parameters and should be upgraded.
+    def generate_secure_password(self, length: int = 16) -> str:
+        """Generate a cryptographically secure random password.
         
         Args:
-            hashed_password: The existing password hash
+            length: The desired length of the password (default: 16)
             
         Returns:
-            True if the password should be rehashed with current parameters
-        """
-        pass
-    
-    @abstractmethod
-    async def generate_secure_password(self, length: int = 16) -> str:
-        """
-        Generate a cryptographically secure random password.
-        
-        Args:
-            length: Length of the password to generate
-            
-        Returns:
-            Secure random password meeting all requirements
+            str: A secure random password
         """
         pass
 ```
@@ -105,202 +110,105 @@ class IPasswordHandler(ABC):
 
 ### Standard Implementation
 
-The concrete implementation of `IPasswordHandler` uses modern cryptographic libraries:
+The concrete implementation of the password handling functionality is provided by `PasswordHandler` class in the infrastructure layer (`app/infrastructure/security/password/password_handler.py`). This implementation uses `passlib` with bcrypt for secure password hashing:
 
 ```python
-from app.core.interfaces.security.password_handler_interface import IPasswordHandler
-from app.core.config import Settings
-import bcrypt
-import re
-import secrets
-import string
-from typing import Dict, Optional, Tuple
+class PasswordHandler:
+    """
+    Handles password hashing and verification using passlib.
+    Allows configuration of hashing schemes and parameters.
+    """
 
-class PasswordHandler(IPasswordHandler):
-    """
-    Standard implementation of IPasswordHandler using bcrypt.
-    
-    This implementation enforces HIPAA-compliant password policies and
-    uses bcrypt for secure password hashing with automatic salt generation.
-    """
-    
-    def __init__(self, settings: Settings):
-        """
-        Initialize the password handler with application settings.
+    def __init__(self, schemes: list[str] | None = None, deprecated: str = "auto"):
+        """Initialize the PasswordHandler with specified schemes."""
+        settings = get_settings()
         
-        Args:
-            settings: Application settings containing password policy configuration
-        """
-        self._settings = settings
+        # Use schemes from settings if not provided, default to bcrypt if settings are missing
+        default_schemes = ["bcrypt"]
+        self.schemes = schemes or getattr(settings, 'PASSWORD_HASHING_SCHEMES', default_schemes)
+        self.deprecated = deprecated
         
-        # Define password policy parameters
-        self._min_length = settings.PASSWORD_MIN_LENGTH
-        self._require_uppercase = settings.PASSWORD_REQUIRE_UPPERCASE
-        self._require_lowercase = settings.PASSWORD_REQUIRE_LOWERCASE
-        self._require_digit = settings.PASSWORD_REQUIRE_DIGIT
-        self._require_special = settings.PASSWORD_REQUIRE_SPECIAL
-        self._max_attempts = settings.PASSWORD_MAX_ATTEMPTS
-        self._bcrypt_rounds = settings.PASSWORD_BCRYPT_ROUNDS
-        
-    async def hash_password(self, password: str) -> str:
-        """
-        Hash a password using bcrypt with secure parameters.
-        
-        Args:
-            password: The plain text password to hash
-            
-        Returns:
-            Secure hash of the password
-        """
-        # Encode password to bytes (bcrypt requirement)
-        password_bytes = password.encode('utf-8')
-        
-        # Generate salt with specified number of rounds
-        salt = bcrypt.gensalt(rounds=self._bcrypt_rounds)
-        
-        # Hash the password with the salt
-        hashed = bcrypt.hashpw(password_bytes, salt)
-        
-        # Return the hash as a string
-        return hashed.decode('utf-8')
-    
-    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """
-        Verify a password against its hash using bcrypt.
-        
-        Args:
-            plain_password: The plain text password to verify
-            hashed_password: The hashed password to compare against
-            
-        Returns:
-            True if the password matches, False otherwise
-        """
-        # Encode inputs to bytes (bcrypt requirement)
-        plain_password_bytes = plain_password.encode('utf-8')
-        hashed_password_bytes = hashed_password.encode('utf-8')
-        
-        # Use bcrypt's checkpw function for constant-time comparison
         try:
-            return bcrypt.checkpw(plain_password_bytes, hashed_password_bytes)
-        except (ValueError, TypeError):
-            # If hash is invalid format, verification fails
+            self.context = CryptContext(schemes=self.schemes, deprecated=self.deprecated)
+        except Exception as e:
+            # Fallback to default context if initialization fails
+            self.context = CryptContext(schemes=default_schemes, deprecated=deprecated)
+            self.schemes = default_schemes
+
+    def get_password_hash(self, password: str) -> str:
+        """Hashes a plain text password."""
+        try:
+            return self.context.hash(password)
+        except Exception as e:
+            raise ValueError("Password hashing failed.") from e
+
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verifies a plain text password against a hashed password."""
+        try:
+            return self.context.verify(plain_password, hashed_password)
+        except Exception as e:
             return False
+
+    def password_needs_rehash(self, hashed_password: str) -> bool:
+        """Check if a password hash needs to be upgraded."""
+        return self.context.needs_update(hashed_password)
+
+    def generate_secure_password(self, length: int = 16) -> str:
+        """Generate a cryptographically secure random password."""
+        # Implementation ensures minimum length, character variety, and proper randomization
+        # [Implementation details omitted for brevity]
+        return password_str
+
+    # Legacy aliases for backward compatibility
+    def hash_password(self, password: str) -> str:
+        """Alias for get_password_hash (retained for backwards‑compat)."""
+        return self.get_password_hash(password)
+
+    def check_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Alias for verify_password (retained for backwards‑compat)."""
+        return self.verify_password(plain_password, hashed_password)
+
+    def validate_password_strength(self, password: str) -> tuple[bool, str | None]:
+        """Validate password strength against HIPAA-compliant security requirements."""
+        # Implementation checks for:
+        # - Complexity (uppercase, lowercase, digits, special chars)
+        # - Minimum length (12 characters)
+        # - Common patterns
+        # - Repeating characters
+        # - Uses zxcvbn for additional strength assessment
+        # [Implementation details omitted for brevity]
+        return True, None
+
+    # Additional methods for password validation and improvement suggestions...
+```
+
+In addition, standalone utility functions are provided in `app/infrastructure/security/password/hashing.py`:
+
+```python
+# Define the password context using bcrypt
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plaintext password against a hashed password."""
+    # Handle None values gracefully
+    if plain_password is None or hashed_password is None:
+        return False
     
-    async def password_meets_requirements(self, password: str) -> Tuple[bool, Optional[Dict[str, str]]]:
-        """
-        Check if a password meets security requirements.
-        
-        Args:
-            password: The password to check
-            
-        Returns:
-            Tuple containing:
-              - Boolean indicating if password meets requirements
-              - Dictionary of validation errors (if any, None otherwise)
-        """
-        errors = {}
-        
-        # Check length
-        if len(password) < self._min_length:
-            errors["length"] = f"Password must be at least {self._min_length} characters"
-        
-        # Check for uppercase letters
-        if self._require_uppercase and not re.search(r'[A-Z]', password):
-            errors["uppercase"] = "Password must contain at least one uppercase letter"
-        
-        # Check for lowercase letters
-        if self._require_lowercase and not re.search(r'[a-z]', password):
-            errors["lowercase"] = "Password must contain at least one lowercase letter"
-        
-        # Check for digits
-        if self._require_digit and not re.search(r'\d', password):
-            errors["digit"] = "Password must contain at least one digit"
-        
-        # Check for special characters
-        if self._require_special and not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            errors["special"] = "Password must contain at least one special character"
-        
-        # Check for common passwords (simplified version - real implementation would use a larger dictionary)
-        common_passwords = ["password", "123456", "qwerty", "admin", "welcome"]
-        if password.lower() in common_passwords:
-            errors["common"] = "Password is too common and easily guessed"
-        
-        # Return result
-        if errors:
-            return (False, errors)
-        return (True, None)
-    
-    async def needs_rehash(self, hashed_password: str) -> bool:
-        """
-        Check if a password hash needs to be upgraded.
-        
-        Args:
-            hashed_password: The existing password hash
-            
-        Returns:
-            True if the password should be rehashed with current parameters
-        """
-        try:
-            # The bcrypt version is encoded in the hash string
-            # Extract the number of rounds from the hash
-            hashed_bytes = hashed_password.encode('utf-8')
-            current_rounds = int(hashed_bytes.split(b'$')[2])
-            
-            # If the hash uses fewer rounds than current setting, it needs rehash
-            return current_rounds < self._bcrypt_rounds
-        except (IndexError, ValueError):
-            # If we can't parse the hash, treat it as needing rehash
-            return True
-    
-    async def generate_secure_password(self, length: int = 16) -> str:
-        """
-        Generate a cryptographically secure random password.
-        
-        Args:
-            length: Length of the password to generate
-            
-        Returns:
-            Secure random password meeting all requirements
-        """
-        # Use at least the minimum length
-        final_length = max(length, self._min_length)
-        
-        # Define character sets
-        uppercase_chars = string.ascii_uppercase
-        lowercase_chars = string.ascii_lowercase
-        digit_chars = string.digits
-        special_chars = "!@#$%^&*(),.?\":{}|<>"
-        
-        # Ensure all requirements are met
-        password = [
-            secrets.choice(uppercase_chars),
-            secrets.choice(lowercase_chars),
-            secrets.choice(digit_chars),
-            secrets.choice(special_chars)
-        ]
-        
-        # Fill remaining length with random characters from all sets
-        all_chars = uppercase_chars + lowercase_chars + digit_chars + special_chars
-        for _ in range(final_length - 4):
-            password.append(secrets.choice(all_chars))
-        
-        # Shuffle the password characters
-        shuffled_password = list(password)
-        secrets.SystemRandom().shuffle(shuffled_password)
-        
-        return ''.join(shuffled_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
+
+def get_password_hash(password: str) -> str:
+    """Hash a plaintext password using passlib context (bcrypt)."""
+    return pwd_context.hash(password)
 ```
 
 ### Testing Implementation
 
-For testing purposes, a simplified implementation can be used:
+For testing purposes, a simplified implementation is used in test suites that provides deterministic behavior:
 
 ```python
-from app.core.interfaces.security.password_handler_interface import IPasswordHandler
-from typing import Dict, Optional, Tuple
-import string
-import secrets
-
 class MockPasswordHandler(IPasswordHandler):
     """
     Simplified password handler implementation for testing.
@@ -310,87 +218,25 @@ class MockPasswordHandler(IPasswordHandler):
     """
     
     def __init__(self, always_valid: bool = True):
-        """
-        Initialize the mock password handler.
-        
-        Args:
-            always_valid: Whether to always consider passwords valid
-        """
         self._always_valid = always_valid
     
-    async def hash_password(self, password: str) -> str:
-        """
-        Create a predictable 'hash' for testing.
-        
-        Args:
-            password: The plain text password to 'hash'
-            
-        Returns:
-            A predictable hash representation for testing
-        """
-        # Simple deterministic transformation for testing
+    def hash_password(self, password: str) -> str:
         return f"mocked_hash:{password}" 
     
-    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """
-        Verify a password predictably for testing.
-        
-        Args:
-            plain_password: The plain text password to verify
-            hashed_password: The hashed password to compare against
-            
-        Returns:
-            True if the mock conditions are met
-        """
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         if self._always_valid:
             return True
-            
-        # Simple verification for predictable test behavior
         expected = f"mocked_hash:{plain_password}"
         return hashed_password == expected
     
-    async def password_meets_requirements(self, password: str) -> Tuple[bool, Optional[Dict[str, str]]]:
-        """
-        Mock password requirements check.
-        
-        Args:
-            password: The password to check
-            
-        Returns:
-            Tuple with validation result based on initialization settings
-        """
+    def validate_password_strength(self, password: str) -> Tuple[bool, Optional[str]]:
         if self._always_valid:
             return True, None
-            
-        # Simple check for test behavior
         if len(password) < 8:
-            return False, {"length": "Password too short"}
-            
+            return False, "Password too short"
         return True, None
     
-    async def needs_rehash(self, hashed_password: str) -> bool:
-        """
-        Always returns False for testing purposes.
-        
-        Args:
-            hashed_password: The password hash to check
-            
-        Returns:
-            Always False in mock implementation
-        """
-        return False
-    
-    async def generate_secure_password(self, length: int = 16) -> str:
-        """
-        Generate a deterministic password for testing.
-        
-        Args:
-            length: Length of the password to generate
-            
-        Returns:
-            Deterministic test password
-        """
-        return "TestPassword123!"
+    # Mock implementations of other required methods...
 ```
 
 ## Clean Architecture Compliance
@@ -399,8 +245,8 @@ The Password Handler implementation adheres to Clean Architecture principles in 
 
 ### 1. Dependency Rule Compliance
 
-- **Core Definition**: The `IPasswordHandler` interface is defined in the core layer (`app.core.interfaces`).
-- **Implementation in Infrastructure**: Concrete implementations reside in the infrastructure layer.
+- **Core Definition**: The `IPasswordHandler` interface is defined in the core layer (`app/core/interfaces/security`).
+- **Implementation in Infrastructure**: Concrete implementations reside in the infrastructure layer (`app/infrastructure/security/password`).
 - **Direction of Dependencies**: The application layer depends on the interface, not on concrete implementations.
 
 ### 2. Separation of Concerns
@@ -427,7 +273,7 @@ The Password Handler implementation meets HIPAA security requirements in the fol
 
 - **Secure Algorithm**: Uses bcrypt, a cryptographically strong algorithm with automatic salting
 - **Password Complexity**: Enforces configurable complexity requirements:
-  - Minimum length (default: 12 characters)
+  - Minimum length (12 characters)
   - Mixed case (uppercase and lowercase letters)
   - Numeric and special characters
 - **Brute Force Protection**: Configurable hash rounds parameter to adjust computational cost
@@ -447,322 +293,70 @@ The Password Handler implementation meets HIPAA security requirements in the fol
 
 ### Current Status
 
-- ✅ Core interface defined and located in correct layer (`app.core.interfaces.security`)
-- ✅ Primary implementation using bcrypt complete
+- ✅ Core interface defined and located in correct layer (`app/core/interfaces/security`)
+- ⚠️ **Implementation Discrepancy**: The actual `PasswordHandler` class does not formally implement the `IPasswordHandler` interface, though it provides similar functionality
+- ✅ Primary implementation using bcrypt complete through `passlib`
 - ✅ Integration with user authentication service
-- ✅ Test implementation available
+- ✅ Test implementation available with dedicated test suite
 - ✅ HIPAA-compliant password policies enforced
+- ⚠️ **Dual Implementation**: Both a class-based implementation and standalone functions exist, potentially causing confusion
 
 ### Architectural Gaps
 
-- 🔄 Password policy configuration should be more clearly separated from general application settings
+- 🔄 The concrete implementation should implement the interface explicitly
+- 🔄 Consolidate the dual implementation (standalone functions vs. class-based)
 - 🔄 Consider implementing password history tracking to prevent reuse
 - 🔄 Add adaptive cost factor adjustment based on hardware capabilities
 - 🔄 Implement optional two-factor authentication support
 
-```python
-class MockPasswordHandler(IPasswordHandler):
-    """
-    Mock implementation of IPasswordHandler for testing.
-    
-    This implementation provides predictable behavior for testing
-    without actual cryptographic operations.
-    """
-    
-    async def hash_password(self, password: str) -> str:
-        """Simple mock hashing that isn't secure, for testing only."""
-        # Add a prefix to identify this as a mock hash
-        return f"MOCK_HASH:{password}"
-    
-    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Simple mock verification that isn't secure, for testing only."""
-        if hashed_password.startswith("MOCK_HASH:"):
-            # Extract original password from hash
-            original = hashed_password[len("MOCK_HASH:"):]
-            return original == plain_password
-        return False
-    
-    async def password_meets_requirements(self, password: str) -> Tuple[bool, Optional[Dict[str, str]]]:
-        """Simple requirements check for testing."""
-        if len(password) < 8:
-            return (False, {"length": "Password must be at least 8 characters"})
-        return (True, None)
-    
-    async def needs_rehash(self, hashed_password: str) -> bool:
-        """Always return False for testing."""
-        return False
-    
-    async def generate_secure_password(self, length: int = 16) -> str:
-        """Generate a deterministic password for testing."""
-        return "TestPassword123!"
-```
+### Method Alignment Issues
+
+- ⚠️ Interface method `get_password_strength_feedback` lacks a proper implementation
+- ⚠️ Interface method `is_common_password` is not fully implemented (current implementation only checks against a small hardcoded list)
+- ⚠️ Implementation provides methods not in the interface (`password_needs_rehash`, `check_password_breach`, `suggest_password_improvement`)
 
 ## Dependency Injection
 
-The Password Handler is provided through FastAPI's dependency injection system:
+The Password Handler can be provided through FastAPI's dependency injection system:
 
 ```python
 from fastapi import Depends
 from app.core.interfaces.security.password_handler_interface import IPasswordHandler
 from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.core.config import get_settings, Settings
+from app.core.config.settings import get_settings
 
-async def get_password_handler(
-    settings: Settings = Depends(get_settings)
-) -> IPasswordHandler:
+async def get_password_handler() -> PasswordHandler:
     """
     Dependency provider for Password Handler.
     
-    Args:
-        settings: Application settings
-    
     Returns:
-        IPasswordHandler implementation
+        PasswordHandler implementation
     """
-    return PasswordHandler(settings)
+    settings = get_settings()
+    return PasswordHandler()
 ```
 
 ## Usage in Authentication Flow
 
-The Password Handler is used throughout the authentication system:
-
-### User Registration
-
-```python
-@router.post("/register", response_model=UserResponse)
-async def register_user(
-    user_data: UserCreateRequest,
-    user_service: UserService = Depends(get_user_service),
-    password_handler: IPasswordHandler = Depends(get_password_handler),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """Register a new user with secure password handling."""
-    
-    # Validate password against security policy
-    meets_requirements, errors = await password_handler.password_meets_requirements(user_data.password)
-    
-    if not meets_requirements:
-        # Return detailed validation errors
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "Password does not meet security requirements", "errors": errors}
-        )
-    
-    # Hash the password
-    hashed_password = await password_handler.hash_password(user_data.password)
-    
-    # Create user with hashed password
-    try:
-        user = await user_service.create_user(
-            username=user_data.username,
-            email=user_data.email,
-            hashed_password=hashed_password,
-            role=user_data.role
-        )
-        
-        # Log the successful registration
-        await audit_logger.log_security_event(
-            "user_registered",
-            {"user_id": str(user.id), "username": user.username}
-        )
-        
-        return user
-        
-    except UserExistsError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User with this username or email already exists"
-        )
-```
-
-### User Authentication
-
-```python
-class UserService:
-    """Service for user management operations."""
-    
-    def __init__(
-        self,
-        user_repository: IUserRepository,
-        password_handler: IPasswordHandler,
-        audit_logger: IAuditLogger
-    ):
-        """Initialize the user service."""
-        self._user_repository = user_repository
-        self._password_handler = password_handler
-        self._audit_logger = audit_logger
-    
-    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        """
-        Authenticate a user with username/password.
-        
-        Args:
-            username: User's username or email
-            password: User's password
-            
-        Returns:
-            User object if authentication is successful, None otherwise
-        """
-        # Get user by username or email
-        user = await self._user_repository.get_by_username_or_email(username)
-        
-        if not user:
-            return None
-        
-        # Verify password
-        is_valid = await self._password_handler.verify_password(password, user.hashed_password)
-        
-        if not is_valid:
-            # Log failed login attempt
-            await self._audit_logger.log_security_event(
-                "login_failed",
-                {"user_id": str(user.id), "reason": "invalid_password"}
-            )
-            return None
-        
-        # Check if password hash needs to be upgraded
-        if await self._password_handler.needs_rehash(user.hashed_password):
-            # Generate new hash with current settings
-            new_hash = await self._password_handler.hash_password(password)
-            
-            # Update user's password hash
-            user.hashed_password = new_hash
-            await self._user_repository.update(user)
-            
-            # Log hash upgrade
-            await self._audit_logger.log_security_event(
-                "password_hash_upgraded",
-                {"user_id": str(user.id)}
-            )
-        
-        return user
-```
-
-### Password Reset
-
-```python
-@router.post("/reset-password")
-async def reset_password(
-    reset_data: PasswordResetRequest,
-    password_handler: IPasswordHandler = Depends(get_password_handler),
-    user_service: UserService = Depends(get_user_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """Reset user password using a reset token."""
-    
-    # Validate password against security policy
-    meets_requirements, errors = await password_handler.password_meets_requirements(reset_data.new_password)
-    
-    if not meets_requirements:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": "Password does not meet security requirements", "errors": errors}
-        )
-    
-    # Verify reset token and get user
-    try:
-        user = await user_service.verify_reset_token(reset_data.token)
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
-            )
-        
-        # Hash the new password
-        hashed_password = await password_handler.hash_password(reset_data.new_password)
-        
-        # Update the user's password
-        await user_service.update_password(user.id, hashed_password)
-        
-        # Log the password reset
-        await audit_logger.log_security_event(
-            "password_reset",
-            {"user_id": str(user.id)}
-        )
-        
-        return {"message": "Password has been reset successfully"}
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-```
-
-## HIPAA Compliance Considerations
-
-The Password Handler enforces HIPAA requirements for authentication:
-
-1. **Complex Passwords**: Enforces complexity requirements for password strength
-2. **Failed Attempts**: Supports tracking failed login attempts (through integration with authentication service)
-3. **Password Expiration**: Supports password expiration policies through the application service layer
-4. **Secure Hashing**: Uses industry-standard bcrypt algorithm with configurable work factor
-5. **Automatic Upgrades**: Identifies and upgrades password hashes when cryptographic standards change
+The Password Handler is used throughout the authentication system for user registration, authentication, and password management operations.
 
 ## Testing
 
-To test password handling capabilities:
+A comprehensive test suite exists in `app/tests/unit/infrastructure/security/test_password_handler.py` that verifies:
 
-```python
-import pytest
-from app.infrastructure.security.password.password_handler import PasswordHandler
-from app.core.config import Settings
-
-@pytest.fixture
-def password_handler():
-    """Provide a password handler for testing."""
-    test_settings = Settings(
-        PASSWORD_MIN_LENGTH=8,
-        PASSWORD_REQUIRE_UPPERCASE=True,
-        PASSWORD_REQUIRE_LOWERCASE=True,
-        PASSWORD_REQUIRE_DIGIT=True,
-        PASSWORD_REQUIRE_SPECIAL=True,
-        PASSWORD_BCRYPT_ROUNDS=4  # Lower rounds for faster tests
-    )
-    return PasswordHandler(test_settings)
-
-async def test_password_hashing(password_handler):
-    """Test that password hashing works correctly."""
-    password = "SecurePassword123!"
-    hashed = await password_handler.hash_password(password)
-    
-    # Hash should be different from original password
-    assert hashed != password
-    
-    # Verification should succeed
-    assert await password_handler.verify_password(password, hashed) is True
-    
-    # Verification with wrong password should fail
-    assert await password_handler.verify_password("WrongPassword", hashed) is False
-
-async def test_password_requirements(password_handler):
-    """Test password requirements checking."""
-    # Valid password
-    valid, errors = await password_handler.password_meets_requirements("SecurePassword123!")
-    assert valid is True
-    assert errors is None
-    
-    # Too short
-    valid, errors = await password_handler.password_meets_requirements("Short1!")
-    assert valid is False
-    assert "length" in errors
-    
-    # Missing uppercase
-    valid, errors = await password_handler.password_meets_requirements("lowercase123!")
-    assert valid is False
-    assert "uppercase" in errors
-```
+- Password hashing security
+- Password verification
+- Password strength validation
+- Secure random password generation
 
 ## Migration Strategy
 
-To implement the Password Handler interface:
+To align the implementation with the interface, the following steps are recommended:
 
-1. Define the interface in the core layer
-2. Create the bcrypt implementation in the infrastructure layer
-3. Update the user service to use the password handler
-4. Add password validation to registration and password reset flows
-5. Update authentication to include hash upgrading when needed
+1. Update the `PasswordHandler` class to explicitly implement the `IPasswordHandler` interface
+2. Consolidate the standalone hashing functions with the class implementation
+3. Complete implementation of all interface methods
+4. Standardize method naming and signature conventions between interface and implementation
 
 ## Security Considerations
 
@@ -773,7 +367,8 @@ The password handler implements several security best practices:
 3. **Timing Attacks**: Uses constant-time comparison for verification
 4. **Hash Upgrades**: Supports detecting and upgrading outdated hash algorithms
 5. **Secure Random Generation**: Uses cryptographically secure random generators
+6. **Advanced Strength Checking**: Uses zxcvbn for sophisticated password strength evaluation
 
 ## Conclusion
 
-The Password Handler Interface is a foundational security component for the Clarity AI Backend that ensures consistent and secure handling of passwords throughout the application. By following clean architecture principles and HIPAA requirements, this interface provides a robust foundation for user authentication while maintaining flexibility for future security enhancements.
+The Password Handler Interface is a foundational security component for the Clarity AI Backend that ensures consistent and secure handling of passwords throughout the application. While the current implementation provides strong security features, addressing the identified alignment gaps would improve architectural consistency and maintainability in accordance with clean architecture principles.
