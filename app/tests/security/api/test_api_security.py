@@ -535,38 +535,31 @@ class TestErrorHandling:
         """Test that 500 errors are generic and mask internal details."""
         client, app = client_app_tuple_func_scoped
         
-        # Access the app's exception handlers
-        exception_handlers = app.exception_handlers
-        generic_handler = exception_handlers.get(Exception)
+        # Create a new test endpoint that deliberately raises an exception
+        @app.get("/api/test-error-endpoint")
+        async def test_error_endpoint():
+            # Raise a deliberate error
+            raise ValueError("This is a sensitive error detail that should be masked")
         
-        # Create a mock request
-        request_id = str(uuid.uuid4())
-        mock_request = MagicMock()
-        mock_request.url = "http://testserver/api/v1/test-endpoint"
-        mock_request.method = "GET"
-        mock_request.state.request_id = request_id
+        # Send request to the endpoint that will trigger a 500 error
+        response = await client.get("/api/test-error-endpoint")
         
-        # Create a test exception with details that should be masked
-        test_exception = ValueError("This is a sensitive error detail that should be masked")
-        
-        # Call the exception handler directly 
-        response = await generic_handler(mock_request, test_exception)
-        
-        # Verify response is a JSON response with status 500
+        # Verify response is a 500 error
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         
         # Convert response content to python dict
-        response_data = json.loads(response.body.decode())
+        response_data = response.json()
         
         # Check for generic error message - no stack trace or sensitive details
         assert "detail" in response_data
         assert "internal server error" in response_data["detail"].lower() or "unexpected error" in response_data["detail"].lower()
         
-        # Verify an error ID is present for log correlation
-        assert "error_id" in response_data
+        # Verify an error ID is present for log correlation - this is the key assertion that's failing
+        assert "error_id" in response_data, f"Response should contain error_id for tracking. Response: {response_data}"
+        assert response_data["error_id"], "error_id should not be empty"
         
         # Ensure the response doesn't contain sensitive information
-        response_text = response.body.decode().lower()
+        response_text = response.text.lower()
         assert "sensitive error detail" not in response_text  # Original error message should be masked
         assert "traceback" not in response_text  # No stack traces
         assert "valueerror" not in response_text  # No exception class names
