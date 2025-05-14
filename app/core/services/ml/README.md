@@ -1,6 +1,6 @@
-# MentaLLaMA: HIPAA-Compliant Mental Health AI
+# MentaLLaMA: HIPAA-Compliant Psychiatric Analysis Service
 
-MentaLLaMA is a comprehensive, HIPAA-compliant mental health AI framework designed for luxury concierge psychiatry practices. This service provides clinical-grade AI capabilities while maintaining the highest standards of data security, privacy, and compliance.
+MentaLLaMA is a core component of the Clarity AI platform, providing HIPAA-compliant language model capabilities for sophisticated psychiatric analysis. This service integrates with the Digital Twin architecture while maintaining the highest standards of data security, privacy, and compliance.
 
 ## Overview
 
@@ -12,15 +12,15 @@ Key features:
 - Sentiment and emotional analysis
 - Wellness dimension evaluation
 - PHI (Protected Health Information) detection and redaction
-- Digital Patient Twin simulation
+- Digital Twin integration for comprehensive analysis
 
 ## Architecture
 
 MentaLLaMA follows Clean Architecture principles with clear separation of concerns:
 
-1. **Interface Layer**: Defines abstract interfaces for all ML services
-2. **Base Implementation**: Provides common functionality shared across providers
-3. **Provider-Specific Implementations**: Concrete implementations for each supported AI provider
+1. **Interface Layer**: Defines abstract interfaces in the domain layer
+2. **Application Services**: Orchestrates the use of ML capabilities
+3. **Infrastructure Implementation**: Concrete implementations for each supported AI provider 
 4. **Factory**: Creates appropriate service instances based on configuration
 
 ### Design Patterns
@@ -29,6 +29,7 @@ MentaLLaMA follows Clean Architecture principles with clear separation of concer
 - **Factory Method Pattern**: Centralized creation of service instances
 - **Template Method Pattern**: Common workflow with provider-specific steps
 - **Adapter Pattern**: Uniform interface over diverse AI provider APIs
+- **Repository Pattern**: Abstracts model and data storage details
 
 ## Components
 
@@ -57,6 +58,18 @@ MentaLLaMA follows Clean Architecture principles with clear separation of concer
 ### Factory
 
 - `MLServiceFactory`: Creates service instances based on configuration
+
+## HIPAA Compliance
+
+MentaLLaMA has been designed with HIPAA compliance as a core requirement:
+
+1. **PHI Detection**: Automatic detection and protection of Protected Health Information
+2. **Data Minimization**: Only necessary clinical information is processed
+3. **Secure Providers**: Integration with HIPAA-eligible cloud providers (BAA in place)
+4. **Access Controls**: All endpoints enforce authentication and authorization
+5. **Comprehensive Audit Logging**: All PHI access is logged with user context
+6. **No PHI in Errors**: Error messages are sanitized to prevent PHI leakage
+7. **No Data Retention**: Raw PHI is never stored by the service
 
 ## Configuration
 
@@ -129,25 +142,14 @@ async def detect_depression(
     # Implementation...
 ```
 
-## HIPAA Compliance
+## Digital Twin Integration
 
-MentaLLaMA has been designed with HIPAA compliance as a core requirement:
+MentaLLaMA integrates with the Digital Twin framework to:
 
-1. **PHI Detection**: Automatic detection of Protected Health Information
-2. **Data Minimization**: Only necessary clinical information is processed
-3. **Secure Providers**: Integration with HIPAA-eligible cloud providers (BAA in place)
-4. **Access Controls**: All endpoints enforce authentication and authorization
-5. **Audit Logging**: All operations are logged for compliance auditing
-6. **No Data Retention**: Raw PHI is never stored by the service
-
-## Digital Twin Capabilities
-
-The Digital Twin service allows for creating virtual patient models that can be used for:
-
-1. **Predictive Analysis**: Anticipate treatment outcomes
-2. **Scenario Testing**: Evaluate potential interventions
-3. **Personalization**: Tailor treatment plans to individual patients
-4. **Risk Assessment**: Identify potential risks over time
+1. **Enhance Twin State**: Provide natural language processing capabilities to the digital twin
+2. **Generate Insights**: Extract patterns from clinical texts and notes
+3. **Treatment Planning**: Support intervention planning based on clinical documentation
+4. **Risk Assessment**: Contribute to composite risk models using text-based indicators
 
 ## PHI Detection and Redaction
 
@@ -188,10 +190,13 @@ Comprehensive tests are provided:
 - Integration tests for API endpoints
 - Mock implementations for testing without external dependencies
 
-## Next Steps
+## Implementation Roadmap
 
-- Performance optimization for high-volume practices
-- Multi-modal support (text + audio/video)
-- Additional clinical assessment models
-- Enhanced Digital Twin capabilities
-- Support for additional provider-specific features
+The MentaLLaMA service follows this implementation roadmap:
+
+1. **Core Interface Definition**: Domain-layer interfaces
+2. **HIPAA Compliance Layer**: PHI protection mechanisms
+3. **Provider Implementation**: Concrete implementations for each provider
+4. **Digital Twin Integration**: Integration with the broader Digital Twin system
+5. **Performance Optimization**: Enhanced caching and efficiency mechanisms
+6. **Multi-Modal Support**: Future expansion to audio/video analysis
