@@ -257,13 +257,18 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         """Middleware to add security headers to responses."""
-        # Completely bypass middleware for test endpoints that might cause issues
-        if "/test-api/" in request.url.path:
-            # Simply pass through directly to the next middleware without any try/except
-            # This ensures proper exception propagation for test endpoints
-            return await call_next(request)
+        import logging
+        logger = logging.getLogger("security_headers_middleware")
         
-        # For all other endpoints, add security headers using a proper try/except
+        # Completely bypass middleware for test endpoints
+        if "/test-api/" in request.url.path:
+            try:
+                return await call_next(request)
+            except Exception as e:
+                logger.error(f"Exception in test endpoint (security headers): {str(e)}")
+                raise
+        
+        # For all other endpoints, add security headers
         try:
             response = await call_next(request)
             # Add security headers
@@ -274,9 +279,8 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
             response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
-            # Ensure exceptions are propagated to outer handlers
-            # This is critical for proper error handling tests
-            logger.error(f"Exception in security headers middleware: {str(e)}")
+            logger.error(f"Exception in add_security_headers: {str(e)}")
+            # Re-raise the exception to ensure it's properly handled
             raise
     
     return app
@@ -785,6 +789,10 @@ def middleware_patch(test_settings):
     from app.presentation.middleware.authentication import AuthenticationMiddleware
     import jwt
     from datetime import datetime, timezone
+    import logging
+    
+    # Define logger for the patched middleware
+    logger = logging.getLogger("auth_middleware_patch")
     
     # Store the original dispatch method
     original_dispatch = AuthenticationMiddleware.dispatch
@@ -817,31 +825,30 @@ def middleware_patch(test_settings):
         if not auth_header or not auth_header.startswith("Bearer "):
             return await call_next(request)
 
+        # Extract token from header
+        token = auth_header.replace("Bearer ", "")
+        
         try:
-            # Extract token from header
-            token = auth_header.replace("Bearer ", "")
             # Decode the token without verification for test purposes
             payload = jwt.decode(
                 token, 
                 options={"verify_signature": False, "verify_exp": False}
             )
             
-            # Set user in request state for downstream dependencies
+            # Set user attribute directly on request state
             request.state.user = payload
             
-            # Continue to next middleware/route handler
+            # Continue to the next middleware/route handler
             return await call_next(request)
         except Exception as e:
-            logger.error(f"Error in patched authentication: {str(e)}")
-            raise
+            logger.error(f"Error in patched auth middleware: {str(e)}")
+            # Let the regular authentication middleware handle any errors
+            return await original_dispatch(self, request, call_next)
     
-    # Apply the patch
+    # Patch the dispatch method
     AuthenticationMiddleware.dispatch = patched_dispatch
-    
-    # Yield to allow tests to run
     yield
-    
-    # Restore the original method
+    # Restore the original dispatch method
     AuthenticationMiddleware.dispatch = original_dispatch
 
 

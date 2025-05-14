@@ -16,7 +16,7 @@ import traceback
 
 # Third-Party Imports
 import sentry_sdk
-from fastapi import FastAPI, Request, HTTPException, status as http_status
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from redis.asyncio import ConnectionPool, Redis
@@ -310,34 +310,42 @@ def create_application(
     """
     logger.info("CREATE_APPLICATION_START: Entered create_application factory.")
     
-    # 1. Load settings (from override or from .env)
-    current_settings = settings_override or global_settings
+    # Initialize settings with environment-specific values
+    # This is a critical step for proper app configuration
+    if settings_override:
+        current_settings = settings_override
+    else:
+        current_settings = Settings()
+    
+    # Log which environment we're running in
     logger.info(f"CREATE_APPLICATION_SETTINGS_RESOLVED: Using environment: {current_settings.ENVIRONMENT}")
     
-    # 2. Configure logging based on settings
-    log_level = getattr(logging, current_settings.LOG_LEVEL.upper(), logging.INFO)
-    logging.basicConfig(level=log_level)
+    # Configure logging based on environment
+    config_logging(current_settings.LOG_LEVEL)
     logger.info(f"Logging configured with level: {current_settings.LOG_LEVEL}")
     
-    # Early Sentry initialization if needed for capturing application initialization issues
-    if current_settings.SENTRY_DSN:
-        try:
-            _initialize_sentry(current_settings)
-        except Exception as e:
-            logger.error(f"Failed early Sentry initialization: {e}", exc_info=True)
+    # Initialize Sentry for error tracking (if configured)
+    if hasattr(current_settings, "SENTRY_DSN") and current_settings.SENTRY_DSN:
+        # Initialize Sentry with environment-specific config
+        sentry_sdk.init(
+            dsn=current_settings.SENTRY_DSN,
+            environment=current_settings.ENVIRONMENT,
+            traces_sample_rate=0.2,
+        )
+        logger.info("Sentry initialized for error tracking.")
     else:
         logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
     
-    # 3. Create the FastAPI instance with appropriate metadata
+    # Create the FastAPI application with appropriate settings
     app_instance = FastAPI(
-        title=current_settings.API_TITLE,
-        description=current_settings.API_DESCRIPTION,
-        version=current_settings.API_VERSION,
+        title=current_settings.PROJECT_NAME,
+        description=f"{current_settings.PROJECT_NAME} API",
+        version="1.0.0",
+        # Explicitly disable debug mode for test environment to ensure proper error masking
+        debug=False if current_settings.ENVIRONMENT == "test" else current_settings.DEBUG,
+        # Docs URLs configuration
         docs_url="/docs" if current_settings.ENVIRONMENT != "production" else None,
         redoc_url="/redoc" if current_settings.ENVIRONMENT != "production" else None,
-        openapi_url="/openapi.json" if current_settings.ENVIRONMENT != "production" else None,
-        lifespan=lifespan,
-        debug=False
     )
     
     # 4. Add settings to app state for access throughout the application
@@ -506,7 +514,7 @@ def create_application(
         
         # Return a sanitized response without PHI but with enough detail for clients to fix the issue
         return JSONResponse(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={"detail": exc.errors(), "body": exc.body},
         )
     
@@ -540,17 +548,26 @@ def create_application(
         # Format compliant with RFC 7807: Problem Details for HTTP APIs
         response_data = {"detail": "An internal server error occurred."}
         
-        # Preserve status code for expected exceptions, but mask exception details
-        status_code = 500
+        # Determine appropriate status code based on exception type
         if isinstance(exc, HTTPException):
+            # If it's an HTTPException, use its status_code
             status_code = exc.status_code
-            # For expected HTTP exceptions, we can keep the original message
-            response_data = {"detail": exc.detail}
+            # For HTTP exceptions, include the original detail
+            # This is safe because HTTP exceptions are intentionally raised
+            response_data = {"detail": str(exc.detail)}
+        elif isinstance(exc, RequestValidationError):
+            # For validation errors, return 422 with details
+            status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            response_data = {"detail": exc.errors()}
+        else:
+            # For all other exceptions, use 500 and mask details
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            # response_data is already set to generic message
         
-        # Return a consistent, sanitized error response
+        # Return the sanitized response
         return JSONResponse(
-            content=response_data,
-            status_code=status_code
+            status_code=status_code,
+            content=response_data
         )
     
     # 13. Middleware to ensure essential app state is available to request handlers
