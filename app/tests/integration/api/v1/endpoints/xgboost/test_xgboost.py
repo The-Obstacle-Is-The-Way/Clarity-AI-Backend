@@ -295,6 +295,11 @@ async def test_predict_risk(xgboost_test_client):
     direct_payload = {
         "patient_id": test_patient_id,
         "risk_type": "suicide",  # Matches RiskType.SUICIDE.value
+        "patient_data": {
+            "age_at_intake": 30,
+            "gender_identity": "male",
+            "primary_language": "English"
+        },
         "clinical_data": {
             "age": 30,
             "gender": "male",
