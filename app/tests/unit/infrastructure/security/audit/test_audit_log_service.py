@@ -468,11 +468,11 @@ class TestAuditLogMiddleware:
         test_cases = [
             ("/api/v1/patients/patient123/phi", ("patients", "patient123")),
             ("/api/v1/medical-records/record-abc-456", ("medical-records", "record-abc-456")),
-            ("/api/v1/users/user789", ("users", "user789")), 
+            ("/api/v1/users/user789", ("users", "user789")),
             ("/api/v1/devices/dev_id_with_underscore/data", ("devices", "dev_id_with_underscore")),
             ("/api/v1/no_id_path", (None, None)), 
             ("/api/v1/patients/", ("patients", None)), # Common for POST to collection
-            ("/api/v1/consultations/consult-guid-goes-here/notes/note-sub-id", ("consultations", "consult-guid-goes-here")), # Deeper path
+            ("/api/v1/consultations/consult-guid-goes-here/notes/note-sub-id", ("consultations", "consult-guid-goes-here")),
         ]
         for path, expected in test_cases:
             resource_type, resource_id = middleware._extract_resource_info(path)

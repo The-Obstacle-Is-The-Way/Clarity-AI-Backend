@@ -269,6 +269,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         - /api/v1/users/user-xyz
         - /api/v1/users/
         - /api/v1/permissions
+        - /api/v1/devices/dev_id_with_underscore/data
         
         Args:
             path: The URL path
@@ -286,18 +287,19 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             resource_id = phi_match.group(2).rstrip("/") # ID is mandatory, rstrip just in case
             return resource_type, resource_id
             
-        # Priority 2: Match generic resource patterns like /api/vX/resource-type[/optional-id]
-        # Resource ID is optional (e.g., for listing resources at /api/v1/patients/).
-        # Allows hyphens in resource type and ID. Optionally matches a trailing slash.
-        # Matches the end of the string to avoid partial matches on longer paths.
-        generic_match = re.search(r"/api/v\d+/([\w-]+)(?:/([^/]*))?/?$", path)
+        # Priority 2: Match generic resource patterns like /api/vX/resource-type[/optional-id][/...anything_else...]
+        # Resource ID is optional. Captures the primary resource and its ID, ignoring further path segments.
+        # Allows hyphens in resource type and ID.
+        # Will match /api/v1/resource, /api/v1/resource/id, /api/v1/resource/id/sub-path
+        generic_match = re.search(r"/api/v\d+/([\w-]+)(?:/([^/]+))?(?:/.*)?/?$", path)
         if generic_match:
             resource_type = generic_match.group(1)
-            resource_id_match = generic_match.group(2)
+            resource_id_match = generic_match.group(2) # This is the optional ID part
+            
             resource_id = None
-            if resource_id_match:  # If group 2 (optional ID part) matched and is not empty
+            if resource_id_match:
                 resource_id = resource_id_match.rstrip("/")
-                if not resource_id: # If rstrip results in an empty string, treat as no ID
+                if not resource_id: # If rstrip results in an empty string (e.g. path was /api/v1/type//sub), treat as no ID
                     resource_id = None
             return resource_type, resource_id
             
