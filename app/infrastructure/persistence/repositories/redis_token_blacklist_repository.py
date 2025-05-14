@@ -13,7 +13,7 @@ import hashlib
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 from app.domain.exceptions.repository import RepositoryException
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.services.redis_cache_service import RedisCacheService
+from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 
 logger = get_logger(__name__)
 

@@ -10,13 +10,13 @@ import logging
 import logging.config
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Get log level from environment or default to INFO
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Base configuration that can be extended for different environments
-LOGGING_CONFIG_BASE: Dict[str, Any] = {
+LOGGING_CONFIG_BASE: dict[str, Any] = {
 
     "version": 1,
     "disable_existing_loggers": False,
@@ -48,7 +48,7 @@ LOGGING_CONFIG_BASE: Dict[str, Any] = {
             "level": LOG_LEVEL,
             "formatter": "detailed",
             "filters": ["phi_sanitizer"],
-            "filename": os.path.join(os.getenv("LOG_DIR", "logs"), "app.log"),
+            "filename": str(Path(os.getenv("LOG_DIR", "logs")) / "app.log"),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 10,
             "encoding": "utf8"
@@ -58,7 +58,7 @@ LOGGING_CONFIG_BASE: Dict[str, Any] = {
             "level": "ERROR",
             "formatter": "detailed",
             "filters": ["phi_sanitizer"],
-            "filename": os.path.join(os.getenv("LOG_DIR", "logs"), "error.log"),
+            "filename": str(Path(os.getenv("LOG_DIR", "logs")) / "error.log"),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 10,
             "encoding": "utf8"
@@ -102,11 +102,11 @@ LOGGING_CONFIG_BASE: Dict[str, Any] = {
 LOGGING_CONFIG = LOGGING_CONFIG_BASE.copy()
 
 # Ensure logs directory exists
-log_dir = Path(os.getcwd()) / "logs"
+log_dir = Path.cwd() / "logs"
 log_dir.mkdir(parents=True, exist_ok=True)
 
 
-def setup_logging(config: Dict[str, Any] | None = None) -> None:
+def setup_logging(config: dict[str, Any] | None = None) -> None:
     """
     Configure the logging system with the provided configuration or default.
     
