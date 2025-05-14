@@ -316,14 +316,41 @@ async def test_predict_risk(xgboost_test_client, risk_prediction_request_data):
     # Configure the mock to return our expected response
     mock_service.predict_risk_mock.return_value = expected_response
     
-    # Make the request
+    # Create test user and auth headers directly for this test
+    test_user = User(
+        id=str(uuid.uuid4()),
+        username="test_user",
+        email="test@example.com",
+        first_name="Test",
+        last_name="User",
+        full_name="Test User",
+        roles=[UserRole.CLINICIAN],
+        status=UserStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    
+    # Use the JWT service from the app to create a valid token
+    jwt_service = app.state.jwt_service
+    token_data = {
+        "sub": str(test_user.id),
+        "username": test_user.username,
+        "email": test_user.email,
+        "roles": [UserRole.CLINICIAN.value],
+        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=30)).timestamp())
+    }
+    access_token = jwt_service.create_access_token(token_data)
+    auth_headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Make the request with explicit auth headers
     response = await client.post(
         f"{app.state.settings.API_V1_STR}/xgboost/predict/risk",
         json=risk_prediction_request_data,
+        headers=auth_headers
     )
     
     # Check the response
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Got {response.status_code} with response: {response.text}"
     assert response.json() == expected_response
     
     # Verify the mock was called with correct arguments

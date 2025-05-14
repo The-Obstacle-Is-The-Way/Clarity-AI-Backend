@@ -66,6 +66,17 @@ async def client(test_settings: AppSettings, global_mock_jwt_service: MagicMock,
     # Override the authentication dependency directly - bypass JWT validation entirely
     app_instance.dependency_overrides[get_current_user] = lambda: authenticated_user
     
+    # Create a mock session factory and set it on app.state
+    mock_session_factory = AsyncMock()
+    app_instance.state.actual_session_factory = mock_session_factory
+    
+    # Create middleware to set actual_session_factory on request.state for every request
+    @app_instance.middleware("http")
+    async def set_session_factory_middleware(request, call_next):
+        # Set the session factory on request.state
+        request.state.actual_session_factory = app_instance.state.actual_session_factory
+        return await call_next(request)
+    
     async with lifespan_wrapper(app_instance): # MODIFIED: Wrap client in lifespan
         async with AsyncClient(transport=ASGITransport(app=app_instance), base_url="http://test") as async_client: # Use transport explicitly
             yield app_instance, async_client
