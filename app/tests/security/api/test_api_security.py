@@ -528,29 +528,24 @@ class TestErrorHandling:
         assert "traceback" not in response.text.lower()
 
     @pytest.mark.asyncio
-    async def test_internal_server_error_masked(
-        self,
-        client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
-    ):
-        """Test that 500 errors are generic and mask internal details."""
-        client, current_fastapi_app = client_app_tuple_func_scoped
-
-        # The endpoint /test-api/test/runtime-error is now configured in app_factory.py (via test_endpoints.py)
-        # when include_test_routers=True (which is typical for test app instances).
-        # This endpoint raises RuntimeError(\"This is a sensitive internal error detail that should be masked\").
+    async def test_internal_server_error_fixed(client_app_tuple_func_scoped):
+        """
+        Test that internal server errors do not expose sensitive information.
         
+        This is an alternative implementation that works around the middleware recursion issue.
+        """
+        client, _ = client_app_tuple_func_scoped
         response = await client.get("/test-api/test/runtime-error")
-            
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR, \
-               f"Expected 500, got {response.status_code}. Response: {response.text}"
-            
+        
+        # Check status code is 500
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        
+        # Check response has generic error message
         response_json = response.json()
         assert "detail" in response_json
-        # HIPAA: Ensure generic error message, no PHI or sensitive details
-        assert response_json["detail"] == "An internal server error occurred.", \
-               f"Expected generic error message, got: {response_json['detail']}"
-            
-        # Ensure the sensitive part of the original exception is not in the response
+        assert response_json["detail"] == "An internal server error occurred."
+        
+        # Ensure sensitive error details are not exposed
         assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
         assert "traceback" not in response.text.lower()
 
