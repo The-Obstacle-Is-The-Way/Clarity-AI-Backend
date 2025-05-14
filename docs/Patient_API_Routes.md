@@ -18,84 +18,41 @@ The Patient API Routes implement the presentation layer within the clean archite
 The Patient API routes are defined in `app/presentation/api/v1/routes/patient.py`:
 
 ```python
-"""
-Patient API Routes.
-
-This module defines the API endpoints for patient management, including:
-- Patient creation, retrieval, update, and deletion
-- Patient search and filtering
-- Patient relationship management
-"""
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, BackgroundTasks, Request
-from fastapi.security import OAuth2PasswordBearer
-from typing import List, Optional, Dict, Any
-from uuid import UUID
-from datetime import datetime
 import logging
+from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
+from typing import Optional
 
-from app.core.interfaces.services.patient_service_interface import IPatientService
 from app.application.services.patient_service import PatientService
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.core.interfaces.repositories.patient_repository_interface import IPatientRepository
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import SQLAlchemyPatientRepository
-from app.domain.entities.patient import Patient
-from app.presentation.api.v1.schemas.patient import (
-    PatientCreateRequest,
-    PatientUpdateRequest,
-    PatientResponse,
-    PatientListResponse,
-    PatientSearchParams
+from app.domain.repositories.patient_repository import PatientRepository
+from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
+    PatientRepository as SQLPatientRepoImpl,
 )
-from app.presentation.api.v1.schemas.common import PaginationParams
-from app.presentation.dependencies.auth import get_current_user, verify_has_role
-from app.presentation.dependencies.logging import get_audit_logger
-from app.presentation.dependencies.database import get_db_session
+from app.presentation.api.dependencies.database import get_db
+from app.presentation.api.dependencies.patient import get_patient_id as get_validated_patient_id_for_read
+from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser
+from app.presentation.api.schemas.patient import (
+    PatientRead,
+    PatientCreateRequest,
+    PatientCreateResponse,
+    # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
+)
+from app.core.domain.entities.patient import Patient
+from app.core.domain.entities.user import UserRole, UserStatus
 
-# Initialize logger
+# Dependency provider for PatientService
+def get_patient_service(
+    db_session: AsyncSession = Depends(get_db)
+) -> PatientService:
+    """Dependency provider for PatientService."""
+    repo = SQLPatientRepoImpl(db_session=db_session) 
+    return PatientService(repository=repo) 
+
 logger = logging.getLogger(__name__)
 
-# Create router
-router = APIRouter(
-    prefix="/patients",
-    tags=["patients"],
-    responses={
-        404: {"description": "Patient not found"},
-        403: {"description": "Permission denied"},
-        422: {"description": "Validation error"}
-    }
-)
-
-# Dependencies
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
-async def get_patient_repository(db_session = Depends(get_db_session)) -> IPatientRepository:
-    """
-    Dependency provider for patient repository.
-    
-    Args:
-        db_session: Database session
-        
-    Returns:
-        Patient repository implementation
-    """
-    return SQLAlchemyPatientRepository(db_session)
-
-async def get_patient_service(
-    repository: IPatientRepository = Depends(get_patient_repository),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-) -> IPatientService:
-    """
-    Dependency provider for patient service.
-    
-    Args:
-        repository: Patient repository
-        audit_logger: Audit logger for PHI access
-        
-    Returns:
-        Patient service implementation
-    """
-    return PatientService(repository, audit_logger)
+router = APIRouter()
 
 # Routes
 

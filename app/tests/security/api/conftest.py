@@ -260,7 +260,7 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
         # Completely bypass middleware for test endpoints that might cause issues
         if "/test-api/" in request.url.path:
             # Simply pass through directly to the next middleware without any try/except
-            # This avoids potential middleware chain issues with error handling
+            # This ensures proper exception propagation for test endpoints
             return await call_next(request)
         
         # For all other endpoints, add security headers using a proper try/except
@@ -274,8 +274,9 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
             response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
-            # Re-raise any exception without additional handling
-            # This ensures exceptions propagate properly
+            # Ensure exceptions are propagated to outer handlers
+            # This is critical for proper error handling tests
+            logger.error(f"Exception in security headers middleware: {str(e)}")
             raise
     
     return app
@@ -799,7 +800,13 @@ def middleware_patch(test_settings):
         
         # Completely bypass middleware for test-api endpoints that cause issues
         if "/test-api/" in path:
-            return await call_next(request)
+            try:
+                return await call_next(request)
+            except Exception as e:
+                # For test endpoints, still let exceptions propagate but log them
+                logger.error(f"Exception in test endpoint: {str(e)}")
+                # Re-raise to allow proper exception handling
+                raise
             
         # Don't patch for the login/public endpoints or when there's no token
         if any(public_path in path for public_path in ["/auth/login", "/docs", "/openapi.json", "/_debug"]):
@@ -810,52 +817,22 @@ def middleware_patch(test_settings):
         if not auth_header or not auth_header.startswith("Bearer "):
             return await call_next(request)
 
-        # First try to process the token
         try:
             # Extract token from header
             token = auth_header.replace("Bearer ", "")
             # Decode the token without verification for test purposes
             payload = jwt.decode(
                 token, 
-                self.jwt_secret, 
-                algorithms=[self.algorithm],
-                options={
-                    "verify_signature": True,
-                    "verify_aud": False,
-                    "verify_iss": False,
-                    "verify_exp": False
-                }
+                options={"verify_signature": False, "verify_exp": False}
             )
             
-            # Create a domain User object with all required fields
-            user = User(
-                id=str(payload.get("sub", "00000000-0000-0000-0000-000000000000")),
-                username=payload.get("username", "test_user"),
-                email=payload.get("email", "test@example.com"),
-                first_name=payload.get("first_name", "Test"),
-                last_name=payload.get("last_name", "User"), 
-                full_name=f"{payload.get('first_name', 'Test')} {payload.get('last_name', 'User')}",
-                roles=payload.get("roles", ["patient"]),
-                is_active=True,
-                status=UserStatus.ACTIVE,
-                password_hash="hashed_password_test",
-                created_at=datetime.fromtimestamp(payload.get("created_at", datetime.now(timezone.utc).timestamp()), timezone.utc)
-            )
+            # Set user in request state for downstream dependencies
+            request.state.user = payload
             
-            # Inject the user into the request scope
-            request.scope["user"] = user
-        except Exception as e:
-            # Log token processing errors but don't block the request
-            import logging
-            logging.warning(f"Test token authentication failed: {e}")
-        
-        # Then call the next middleware/endpoint regardless of token processing result
-        # This ensures the request continues even if token validation fails
-        try:
+            # Continue to next middleware/route handler
             return await call_next(request)
         except Exception as e:
-            # Important: We must re-raise all exceptions from downstream handlers
-            # This ensures error handling tests work correctly
+            logger.error(f"Error in patched authentication: {str(e)}")
             raise
     
     # Apply the patch

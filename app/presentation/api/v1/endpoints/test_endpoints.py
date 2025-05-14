@@ -83,13 +83,6 @@ async def force_runtime_error():
     This is used by security and error handling tests to ensure sensitive 
     error details are masked in responses.
     """
-    try:
-        # Deliberately raise an error with sensitive information
-        raise RuntimeError("This is a sensitive internal error detail that should be masked")
-    except Exception as e:
-        # Handle the error directly inside the endpoint to prevent middleware recursion
-        # This bypasses the middleware chain completely
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "An internal server error occurred."},
-        ) 
+    # Deliberately raise an error with sensitive information
+    # The global exception handler should mask this message
+    raise RuntimeError("This is a sensitive internal error detail that should be masked") 

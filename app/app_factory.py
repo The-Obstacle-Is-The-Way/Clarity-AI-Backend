@@ -336,7 +336,8 @@ def create_application(
         docs_url="/docs" if current_settings.ENVIRONMENT != "production" else None,
         redoc_url="/redoc" if current_settings.ENVIRONMENT != "production" else None,
         openapi_url="/openapi.json" if current_settings.ENVIRONMENT != "production" else None,
-        lifespan=lifespan
+        lifespan=lifespan,
+        debug=False
     )
     
     # 4. Add settings to app state for access throughout the application

@@ -556,7 +556,7 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_internal_server_error_fixed(
-        self, 
+        self,
         client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
     ):
         """

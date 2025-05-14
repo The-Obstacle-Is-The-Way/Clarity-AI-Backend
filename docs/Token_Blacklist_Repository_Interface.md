@@ -22,72 +22,96 @@ The `ITokenBlacklistRepository` interface is defined in the core layer and serve
 
 ```python
 from abc import ABC, abstractmethod
-from datetime import timedelta
+from datetime import datetime
 from typing import Optional
+
 
 class ITokenBlacklistRepository(ABC):
     """
-    Interface for managing blacklisted tokens.
+    Interface for token blacklist repository operations.
     
-    This repository provides operations to add tokens to a blacklist
-    and check if a token is blacklisted. It is a critical security
-    component to enforce token invalidation before natural expiration.
+    This interface encapsulates the functionality required for managing
+    blacklisted (revoked) tokens to ensure proper security controls
+    like session invalidation and logout.
     """
     
     @abstractmethod
-    async def add_to_blacklist(self, token_id: str, expiration: timedelta) -> None:
+    async def add_to_blacklist(
+        self,
+        token: str,
+        jti: str,
+        expires_at: datetime,
+        reason: Optional[str] = None
+    ) -> None:
         """
-        Add a token to the blacklist with an expiration time.
-        
-        The token should remain in the blacklist at least until its
-        original JWT expiration time to prevent its reuse.
+        Add a token to the blacklist.
         
         Args:
-            token_id: The unique identifier for the token (typically the jti claim)
-            expiration: How long the token should remain blacklisted
-                        (should match the token's remaining lifetime)
+            token: The token to blacklist (typically a hash of the token)
+            jti: JWT ID - unique identifier for the token
+            expires_at: When the token expires
+            reason: Reason for blacklisting
+            
+        Raises:
+            RepositoryError: If blacklisting fails
         """
         pass
     
     @abstractmethod
-    async def is_blacklisted(self, token_id: str) -> bool:
+    async def is_blacklisted(self, token: str) -> bool:
         """
         Check if a token is blacklisted.
         
         Args:
-            token_id: The unique identifier for the token (typically the jti claim)
+            token: The token to check (typically a hash of the token)
             
         Returns:
-            True if the token is blacklisted, False otherwise
+            True if blacklisted, False otherwise
+            
+        Raises:
+            RepositoryError: If check fails
         """
         pass
     
     @abstractmethod
-    async def remove_from_blacklist(self, token_id: str) -> bool:
+    async def is_jti_blacklisted(self, jti: str) -> bool:
         """
-        Remove a token from the blacklist.
-        
-        This method is primarily for administrative purposes and should
-        be used with extreme caution.
+        Check if a token with specific JWT ID is blacklisted.
         
         Args:
-            token_id: The unique identifier for the token
+            jti: JWT ID to check
             
         Returns:
-            True if the token was removed, False if it wasn't in the blacklist
+            True if blacklisted, False otherwise
+            
+        Raises:
+            RepositoryError: If check fails
         """
         pass
     
     @abstractmethod
-    async def cleanup_expired(self) -> int:
+    async def blacklist_session(self, session_id: str) -> None:
+        """
+        Blacklist all tokens for a specific session.
+        
+        Args:
+            session_id: The session ID to blacklist
+            
+        Raises:
+            RepositoryError: If blacklisting fails
+        """
+        pass
+    
+    @abstractmethod
+    async def remove_expired_entries(self) -> int:
         """
         Remove expired entries from the blacklist.
         
-        This is a maintenance method that can be run periodically
-        to clean up the blacklist storage.
-        
         Returns:
-            Number of expired entries removed
+            Number of entries removed
+            
+        Raises:
+            RepositoryError: If cleanup fails
         """
         pass
 ```
