@@ -290,7 +290,8 @@ def create_application(
     settings_override: Settings | None = None,
     include_test_routers: bool = False,
     jwt_service_override: JWTServiceInterface | None = None,
-    skip_auth_middleware: bool = False  # TEMPORARY DEBUG FLAG
+    skip_auth_middleware: bool = False,  # TEMPORARY DEBUG FLAG
+    disable_audit_middleware: bool = False  # Added parameter to disable audit middleware
 ) -> FastAPI:
     """
     Create and configure a FastAPI application instance.
@@ -300,6 +301,7 @@ def create_application(
         include_test_routers: Include test-only routes
         jwt_service_override: Override the JWT service (for testing)
         skip_auth_middleware: Skip adding authentication middleware (for debugging)
+        disable_audit_middleware: Explicitly disable audit logging middleware
         
     Returns:
         FastAPI: Configured FastAPI application instance
