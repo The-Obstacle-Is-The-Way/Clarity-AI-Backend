@@ -11,7 +11,7 @@ from typing import Dict, Any, List
 
 import pytest
 from fastapi import Request, Response
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch, call
 
 from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import (
@@ -189,36 +189,22 @@ class TestAuditLogService:
         audit_service._user_access_history = {}
         audit_service._suspicious_ips = set()
         
-        # Set up mocks for anomaly detection functions
-        check_for_anomalies_mock = AsyncMock(return_value=True)
-        audit_service._check_for_anomalies = check_for_anomalies_mock
+        # Set up mocks
+        original_log_event = audit_service.log_event
+        mock_log_event = AsyncMock(return_value="mocked-security-event-id")
+        audit_service.log_event = mock_log_event
         
-        log_security_event_mock = AsyncMock(return_value="security-event-id")
-        original_log_security_event = audit_service.log_security_event
-        audit_service.log_security_event = log_security_event_mock
-        
-        # Create a test log with a suspicious IP that will trigger detection
-        test_log = AuditLog(
-            id=str(uuid.uuid4()),
-            timestamp=datetime.now(timezone.utc),
-            event_type=AuditEventType.PHI_ACCESSED,
-            actor_id=TEST_USER_ID,
-            resource_type="patient",
-            resource_id=TEST_PATIENT_ID,
-            action="view",
-            ip_address="not_an_ip",  # This special value should trigger anomaly detection
-            status="success",
-            details={}
-        )
-        
-        # Create a test request with suspicious IP
+        # Create a test request with the special IP that triggers anomaly detection
         test_request = MagicMock()
-        test_request.client.host = "not_an_ip"  # Using the special trigger value
+        test_request.client.host = "not_an_ip"  # Special value that triggers anomaly detection
+        test_request.headers = {}
         
-        # Explicitly add this IP to suspicious IPs set to force anomaly detection
-        audit_service._suspicious_ips.add("not_an_ip")
+        # Create a spy to see if _check_for_anomalies is called
+        original_check_anomalies = audit_service._check_for_anomalies
+        check_anomalies_spy = AsyncMock(side_effect=original_check_anomalies)
+        audit_service._check_for_anomalies = check_anomalies_spy
         
-        # Call log_phi_access which should trigger anomaly detection
+        # Call log_phi_access with the test request
         await audit_service.log_phi_access(
             actor_id=TEST_USER_ID,
             patient_id=TEST_PATIENT_ID,
@@ -230,14 +216,21 @@ class TestAuditLogService:
             phi_fields=["name", "dob"]
         )
         
-        # Verify anomaly detection was triggered
-        assert check_for_anomalies_mock.called, "Anomaly detection check was not called"
+        # Verify _check_for_anomalies was called
+        assert check_anomalies_spy.called, "Anomaly detection check was not called"
         
-        # Verify security event was logged
-        assert log_security_event_mock.called, "Security event was not logged"
+        # The main test is that log_event should have been called with event_type=AuditEventType.SECURITY_EVENT
+        # Find the security event call - there should be at least one call after the initial PHI log
+        security_event_calls = [
+            call for call in mock_log_event.call_args_list
+            if call.kwargs.get("event_type") == AuditEventType.SECURITY_EVENT
+        ]
         
-        # Restore original functions
-        audit_service.log_security_event = original_log_security_event
+        assert security_event_calls, "No security event was logged when an anomaly was detected"
+        
+        # Restore original methods
+        audit_service.log_event = original_log_event
+        audit_service._check_for_anomalies = original_check_anomalies
 
 
 @pytest.mark.asyncio
