@@ -725,7 +725,7 @@ def jwt_service_patch():
             ) or (
                 "sub" in unverified_payload and "test" in unverified_payload.get("sub", "")
             ) or (
-                getattr(self, "_settings", None) and getattr(self._settings, "TESTING", False)
+                getattr(self, "settings", None) and getattr(self.settings, "TESTING", False)
             )
             
             if is_test_token:

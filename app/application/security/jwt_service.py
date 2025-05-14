@@ -9,7 +9,7 @@ import time
 import uuid
 import asyncio
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 import jwt
 from pydantic import BaseModel
@@ -253,7 +253,7 @@ class JWTService:
         except jwt.ExpiredSignatureError as e:
             self.audit_logger.log_security_event(
                 event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
-                description=f"{token_type.capitalize()} token validation failed: {str(e)}",
+                description=f"{token_type.capitalize()} token validation failed: {e!s}",
                 severity=AuditSeverity.MEDIUM,
                 metadata={"token_type": token_type, "error": str(e)}
             )
@@ -262,13 +262,13 @@ class JWTService:
         except jwt.InvalidTokenError as e:
             self.audit_logger.log_security_event(
                 event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
-                description=f"{token_type.capitalize()} token validation failed: {str(e)}",
+                description=f"{token_type.capitalize()} token validation failed: {e!s}",
                 severity=AuditSeverity.HIGH,
                 metadata={"token_type": token_type, "error": str(e)}
             )
             raise InvalidTokenException(f"{token_type.capitalize()} token is invalid.") from e
 
-    async def blacklist_token(self, token: str, user_id: Optional[str] = None):
+    async def blacklist_token(self, token: str, user_id: str | None = None) -> None:
         """
         Blacklist a token to prevent its future use.
         
@@ -319,7 +319,7 @@ class JWTService:
                 metadata={"error": str(e)}
             )
 
-    async def blacklist_session_tokens(self, session_id: str, user_id: Optional[str] = None):
+    async def blacklist_session_tokens(self, session_id: str, user_id: str | None = None) -> None:
         """
         Blacklist all tokens associated with a session.
         
