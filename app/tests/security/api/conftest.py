@@ -264,9 +264,12 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
         # Completely bypass middleware for test endpoints
         if "/test-api/" in request.url.path:
             try:
-                return await call_next(request)
+                logger.debug(f"Bypassing security headers for test endpoint: {request.url.path}")
+                response = await call_next(request)
+                return response
             except Exception as e:
-                logger.error(f"Exception in test endpoint (security headers): {str(e)}")
+                logger.error(f"Exception in test endpoint (security headers): {type(e).__name__}: {str(e)}")
+                # Re-raise without attempting to handle it to ensure proper error propagation
                 raise
         
         # For all other endpoints, add security headers
@@ -280,7 +283,7 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
             response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
-            logger.error(f"Exception in add_security_headers: {str(e)}")
+            logger.error(f"Exception in add_security_headers: {type(e).__name__}: {str(e)}")
             # Re-raise the exception to ensure it's properly handled
             raise
     
@@ -813,17 +816,21 @@ def middleware_patch(test_settings):
         if "/test-api/" in path:
             try:
                 logger.info(f"Bypassing authentication for test endpoint: {path}")
-                return await call_next(request)
+                response = await call_next(request)
+                return response
             except Exception as e:
-                logger.error(f"Exception in test endpoint: {str(e)}")
+                logger.error(f"Exception in test endpoint (auth middleware): {type(e).__name__}: {str(e)}")
                 # Re-raise to allow proper exception handling by the global handler
                 raise
         
-        # For non-test endpoints, continue with the regular middleware logic
-        # Implementation omitted for brevity
-        
-        # We'll let the original middleware handle the rest
-        return await original_dispatch(self, request, call_next)
+        # For non-test endpoints, continue with the original middleware logic
+        try:
+            response = await original_dispatch(self, request, call_next)
+            return response
+        except Exception as e:
+            logger.error(f"Exception in original dispatch: {type(e).__name__}: {str(e)}")
+            # Re-raise to allow proper exception handling by the global handler
+            raise
     
     # Apply the patch
     AuthenticationMiddleware.dispatch = patched_dispatch

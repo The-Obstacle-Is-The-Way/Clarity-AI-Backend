@@ -566,8 +566,9 @@ def create_application(
         elif is_test_endpoint and current_settings.ENVIRONMENT == "test":
             # For test endpoints in test environment, log sensitive details but still mask in response
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            logger.warning(f"Test endpoint error details (masked in response): {str(exc)}")
-            # response_data is already set to generic message
+            logger.warning(f"Test endpoint error details (masked in response): {type(exc).__name__}: {str(exc)}")
+            # Always use a generic error message for test endpoints to ensure masking works
+            response_data = {"detail": "An internal server error occurred."}
         else:
             # For all other exceptions, use 500 and mask details
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
