@@ -31,7 +31,7 @@ from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.tests.utils.test_audit_utils import disable_audit_middleware, replace_middleware_with_mock, disable_authentication_middleware
-from app.app_factory import create_application
+from app.factory import create_application
 from app.presentation.api.dependencies.auth import (
     verify_provider_access,
     get_current_user,

@@ -22,7 +22,7 @@ from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import BackgroundTasks, status
 from httpx import AsyncClient, ASGITransport
 
-from app.app_factory import create_application
+from app.factory import create_application
 from app.core.config.settings import Settings
 
 # Correctly import router and endpoint functions/models we need to test or mock
