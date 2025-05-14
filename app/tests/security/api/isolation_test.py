@@ -7,14 +7,17 @@ completely bypassing the middleware chain issues.
 import logging
 import pytest
 import asyncio
+import traceback
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger("isolation_test")
 
 def create_isolated_app():
     """Create a minimal application for testing error masking in isolation."""
+    # Create app with debug=False to prevent debug exception handling
     app = FastAPI(debug=False)
     
     @app.get("/test/runtime-error")
@@ -28,10 +31,32 @@ def create_isolated_app():
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="HTTP exception detail")
     
+    # Add exception handlers with priority
+    # Handle built-in HTTPException first
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        """Handle HTTP exceptions and mask sensitive information."""
+        logger.error(f"HTTP exception in isolation test: {exc.status_code} - {exc.detail}")
+        
+        # Return sanitized, masked response for 500 errors, pass through others
+        if exc.status_code == 500:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "An internal server error occurred."}
+            )
+        else:
+            # For non-500 errors, keep original status and detail
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": str(exc.detail)}
+            )
+    
+    # Handle all other exceptions
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         """Handle all exceptions and mask sensitive information."""
         logger.error(f"Exception in isolation test: {type(exc).__name__}: {str(exc)}")
+        logger.debug(traceback.format_exc())
         
         # Return sanitized, masked response
         return JSONResponse(

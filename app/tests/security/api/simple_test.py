@@ -1,70 +1,51 @@
-"""Simple direct test of the API endpoint to identify the hanging issue."""
+"""
+Simple, standalone test for error masking without middleware complexity.
+"""
 
-import asyncio
-import sys
-import logging
 import pytest
-from httpx import AsyncClient
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from httpx import AsyncClient
+from contextlib import asynccontextmanager
 
-# Configure detailed logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-logger = logging.getLogger("simple_test")
+# Create a minimal application without middleware
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic (if any)
+    yield
+    # Shutdown logic (if any)
 
-# Create a minimal FastAPI app with a test endpoint
-app = FastAPI(debug=False)
-
-@app.get("/test-error")
-async def test_runtime_error():
-    """Endpoint that deliberately raises a RuntimeError."""
-    logger.debug("Test endpoint called, raising error")
-    raise RuntimeError("Simple test error that should be masked")
-
-@app.exception_handler(RuntimeError)
-async def runtime_error_handler(request, exc):
-    """Custom exception handler for RuntimeError."""
-    logger.debug(f"Exception handler called for: {str(exc)}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An internal server error occurred."}
-    )
+def create_test_app():
+    app = FastAPI(lifespan=lifespan, debug=False)
+    
+    @app.get("/test/error")
+    async def test_error():
+        """Endpoint that raises a RuntimeError."""
+        raise RuntimeError("This is sensitive information that should be masked")
+    
+    @app.exception_handler(Exception)
+    async def handle_exception(request: Request, exc: Exception) -> JSONResponse:
+        """Generic exception handler that masks all errors."""
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "An internal server error occurred."}
+        )
+    
+    return app
 
 @pytest.mark.asyncio
-async def test_simple_error_endpoint():
-    """Test that a basic endpoint with error works correctly."""
-    logger.debug("Starting simple error endpoint test")
+async def test_error_masking_simple():
+    """Verify error masking works in a simple, isolated test."""
+    app = create_test_app()
     
-    # Create test client
+    # Set up test client
     async with AsyncClient(app=app, base_url="http://test") as client:
-        try:
-            # Set timeout to prevent test from hanging
-            logger.debug("Sending request to test endpoint")
-            response = await asyncio.wait_for(
-                client.get("/test-error"),
-                timeout=5.0
-            )
-            
-            logger.debug(f"Got response: {response.status_code}")
-            logger.debug(f"Response text: {response.text}")
-            
-            # Check basic error response
-            assert response.status_code == 500
-            response_json = response.json()
-            assert "detail" in response_json
-            assert response_json["detail"] == "An internal server error occurred."
-            logger.debug("Test passed successfully")
-            
-        except asyncio.TimeoutError:
-            logger.error("TEST TIMED OUT - The request is hanging!")
-            assert False, "Test timed out - request hanging"
-        except Exception as e:
-            logger.error(f"Test failed with: {type(e).__name__}: {e}")
-            raise
+        # Make request that will trigger a RuntimeError
+        response = await client.get("/test/error")
+        
+        # Verify the error was properly masked
+        assert response.status_code == 500, f"Expected 500, got {response.status_code}"
+        assert response.json() == {"detail": "An internal server error occurred."}
 
 if __name__ == "__main__":
     logger.debug("This script should be run through pytest, not directly")
