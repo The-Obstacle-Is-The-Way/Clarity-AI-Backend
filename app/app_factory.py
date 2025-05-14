@@ -406,12 +406,13 @@ def create_application(
             logger.warning(f"Failed to create real audit repository: {e}. Falling back to mock.")
             audit_repository = MockAuditLogRepository()
             
-        # Make sure the disable flag is explicitly set to False for non-test environments
-        app_instance.state.disable_audit_middleware = False
+        # Make sure the disable flag is explicitly set based on the parameter for non-test environments
+        app_instance.state.disable_audit_middleware = disable_audit_middleware
 
     # Create audit service with the repository and store on app state
     audit_service = AuditLogService(audit_repository)
     app_instance.state.audit_service = audit_service
+    app_instance.state.audit_logger = audit_service  # Add direct reference for middleware to use
 
     # Add middleware to app
     audit_skip_paths = [
@@ -421,20 +422,24 @@ def create_application(
         "/test-api", "/test-api/admin"
     ]
 
-    try:
-        audit_middleware = AuditLogMiddleware(
-            app=app_instance,
-            audit_logger=audit_service,
-            skip_paths=audit_skip_paths
-        )
-        app_instance.add_middleware(
-            lambda app: audit_middleware
-        )
-        logger.info(f"Audit Log middleware added with {len(audit_skip_paths)} skip paths")
-    except Exception as e:
-        logger.error(f"Failed to add audit middleware: {e}")
-        if is_test_environment:
-            logger.warning("Test environment detected - audit middleware initialization error will be ignored")
+    # Only add the middleware if not explicitly disabled
+    if not disable_audit_middleware and not app_instance.state.disable_audit_middleware:
+        try:
+            audit_middleware = AuditLogMiddleware(
+                app=app_instance,
+                audit_logger=audit_service,
+                skip_paths=audit_skip_paths
+            )
+            app_instance.add_middleware(
+                lambda app: audit_middleware
+            )
+            logger.info(f"Audit Log middleware added with {len(audit_skip_paths)} skip paths")
+        except Exception as e:
+            logger.error(f"Failed to add audit middleware: {e}")
+            if is_test_environment:
+                logger.warning("Test environment detected - audit middleware initialization error will be ignored")
+    else:
+        logger.info("Audit Log middleware DISABLED per request")
     
     # 8. Add Authentication middleware if not skipped (for protected routes)
     if not skip_auth_middleware:
