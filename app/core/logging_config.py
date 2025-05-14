@@ -6,14 +6,17 @@ It follows best practices for logging in a HIPAA-compliant application, ensuring
 no PHI is accidentally logged in plain text.
 """
 
+import logging
+import logging.config
 import os
-from typing import Any
+from pathlib import Path
+from typing import Any, Dict
 
 # Get log level from environment or default to INFO
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
-# Define a standard logging configuration dictionary
-LOGGING_CONFIG: dict[str, Any] = {
+# Base configuration that can be extended for different environments
+LOGGING_CONFIG_BASE: Dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -61,18 +64,24 @@ LOGGING_CONFIG: dict[str, Any] = {
         }
     },
     "loggers": {
-        "": {  # Root logger
-            "handlers": ["console"],
+        "root": {
             "level": LOG_LEVEL,
+            "handlers": ["console", "file_handler"],
+            "propagate": False
         },
         "app": {
-            "handlers": ["console"],
             "level": LOG_LEVEL,
+            "handlers": ["console", "file_handler"],
             "propagate": False
         },
         "uvicorn": {
-            "handlers": ["console"],
             "level": LOG_LEVEL,
+            "handlers": ["console", "file_handler"],
+            "propagate": False
+        },
+        "sqlalchemy.engine": {
+            "level": "WARNING",  # Set to INFO or DEBUG for SQL query logging
+            "handlers": ["console", "file_handler"],
             "propagate": False
         },
         "sqlalchemy": {
