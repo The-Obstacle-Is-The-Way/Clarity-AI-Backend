@@ -105,7 +105,8 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"detail": "Rate limit exceeded. Please try again later."}
+                content={"detail": "Rate limit exceeded. Please try again later."},
+                headers={"Retry-After": "30"}  # Add Retry-After header for 30 seconds
             )
         
         # Allow the request to continue
