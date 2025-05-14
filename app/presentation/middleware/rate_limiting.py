@@ -6,13 +6,14 @@ using the Clean Architecture rate limiting components.
 """
 
 import logging
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
 from app.infrastructure.security.rate_limiting.providers import get_rate_limiter
+from app.core.security.rate_limiting.limiter import RateLimiter
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -41,41 +42,32 @@ class RateLimitExceededError(HTTPException):
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     """
-    Middleware for global rate limiting.
+    Middleware for applying rate limiting to API requests.
     
-    This middleware applies rate limiting at the application level,
-    complementing the endpoint-specific rate limiting provided by dependencies.
-    It properly follows dependency inversion by depending on IRateLimiter.
+    Implements configurable rate limiting with path exclusions.
     """
-    
+
     def __init__(
         self,
-        app: FastAPI,
-        *,
-        limiter: Optional[IRateLimiter] = None,
-        requests_per_minute: int = 60,
-        exclude_paths: Optional[list[str]] = None,
-        key_func: Optional[Callable[[Request], str]] = None
+        app,
+        limiter: RateLimiter,
+        exclude_paths: Optional[List[str]] = None,
+        *args,
+        **kwargs
     ):
         """
-        Initialize rate limiting middleware.
+        Initialize middleware with rate limiter and exclusion paths.
         
         Args:
-            app: FastAPI application
+            app: The ASGI application
             limiter: Rate limiter implementation
-            requests_per_minute: Request limit per minute
-            exclude_paths: Paths to exclude from rate limiting
-            key_func: Function to extract client identifier from request
+            exclude_paths: List of URL paths to exclude from rate limiting
         """
-        super().__init__(app)
-        self.limiter = limiter or get_rate_limiter()
-        self.requests_per_minute = requests_per_minute
-        # Always exclude test endpoints to prevent infinite recursion
-        default_exclude = ["/health", "/metrics", "/test-api/", "/docs", "/redoc", "/openapi.json"]
-        self.exclude_paths = (exclude_paths or []) + default_exclude
-        self.key_func = key_func or self._default_key_func
+        super().__init__(app, *args, **kwargs)
+        self.limiter = limiter
+        self.exclude_paths = exclude_paths or ["/health", "/metrics"]
         logger.info(f"Rate limiting middleware initialized with exclude paths: {self.exclude_paths}")
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process request with rate limiting.
@@ -87,86 +79,39 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         Returns:
             HTTP response
         """
-        # Skip rate limiting for excluded paths - check exact match first for efficiency
+        # Skip rate limiting for excluded paths
         path = request.url.path
         
-        # FIXED: Improved path matching to avoid recursion issues with test paths
-        if any(excluded in path for excluded in self.exclude_paths):
+        # FIXED: Improved path matching for test endpoints
+        if any(excluded in path for excluded in self.exclude_paths) or path.startswith("/test-api/"):
             logger.debug(f"Skipping rate limiting for excluded path: {path}")
             try:
                 return await call_next(request)
             except Exception as e:
-                # Log but don't handle the exception - let it propagate for consistent error handling
-                logger.error(f"Exception in excluded path handler: {type(e).__name__}: {str(e)}")
+                # Log and re-raise the exception to be handled by the exception handlers
+                logger.error(f"Exception in excluded path (rate limiting middleware): {type(e).__name__}: {str(e)}")
                 raise
         
-        # Get client identifier
-        client_id = self.key_func(request)
+        # Get client IP
+        client_ip = request.client.host if request.client else "unknown"
         
-        # Configure rate limit
-        config = RateLimitConfig(
-            requests=self.requests_per_minute,
-            window_seconds=60,
-            scope_key="global"
-        )
+        # Check rate limit
+        allowed = await self.limiter.is_allowed(client_ip)
         
+        if not allowed:
+            # Rate limit exceeded
+            logger.warning(f"Rate limit exceeded for IP: {client_ip}, path: {path}")
+            # Return 429 Too Many Requests
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"detail": "Rate limit exceeded. Please try again later."}
+            )
+        
+        # Allow the request to continue
         try:
-            # Check and record rate limit
-            count, reset_seconds = await self.limiter.track_request(f"global:{client_id}", config)
-            
-            # Check if over limit
-            if count > self.requests_per_minute:
-                # Log rate limit event
-                logger.warning(
-                    f"Global rate limit exceeded: {client_id} ({count}/{self.requests_per_minute}) "
-                    f"at {request.url.path}"
-                )
-                
-                # Return rate limit exceeded response directly without raising exception
-                return Response(
-                    content=f"Rate limit exceeded. Limit: {self.requests_per_minute} per minute. Please try again later.",
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    headers={"Retry-After": str(reset_seconds)}
-                )
-            
-            # Proceed with request if within limits
-            try:
-                return await call_next(request)
-            except Exception as e:
-                # Log but don't handle the exception - let it propagate for consistent error handling
-                logger.error(f"Exception in rate-limited request: {type(e).__name__}: {str(e)}")
-                raise
-            
+            return await call_next(request)
         except Exception as e:
-            # Log error but allow request to proceed in case of rate limiting failure
-            logger.error(f"Rate limiting error: {str(e)}")
-            logger.warning(f"Using placeholder rate limiter for {client_id}. Allowing request.")
-            try:
-                return await call_next(request)
-            except Exception as inner_e:
-                # Log but don't handle the inner exception
-                logger.error(f"Exception after rate limiting error: {type(inner_e).__name__}: {str(inner_e)}")
-                raise
-    
-    def _default_key_func(self, request: Request) -> str:
-        """
-        Default function to extract client identifier from request.
-        
-        Args:
-            request: FastAPI request
-            
-        Returns:
-            Client identifier (usually IP address)
-        """
-        # Try to get real IP from X-Forwarded-For
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            # First address is the client, the rest are proxies
-            return forwarded_for.split(",")[0].strip()
-        
-        # Fallback to direct client
-        if request.client:
-            return request.client.host
-        
-        # If all else fails
-        return "unknown"
+            # Log and re-raise the exception to be handled by the exception handlers
+            logger.error(f"Exception in request (rate limiting middleware): {type(e).__name__}: {str(e)}")
+            raise

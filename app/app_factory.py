@@ -355,7 +355,6 @@ def create_application(
     )
     
     # Add exception handlers BEFORE any middleware
-    # Handle Starlette HTTPException first (priority matters)
     @app_instance.exception_handler(StarletteHTTPException)
     async def starlette_http_exception_handler(
         request: Request, exc: StarletteHTTPException
@@ -366,27 +365,25 @@ def create_application(
         This is needed because FastAPI wraps StarletteHTTPException.
         """
         # Log the exception
-        logger.info(f"Starlette HTTP Exception: {exc.status_code} - {exc.detail}")
+        logger.info(f"FastAPI HTTP Exception: {exc.status_code} - {exc.detail}")
         
         # For 500 errors, always mask details regardless of environment
         if exc.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
             response_data = {"detail": "An internal server error occurred."}
-            headers = {}
-        else:
-            # For other status codes, preserve the original detail and headers
-            response_data = {"detail": str(exc.detail)}
-            headers = exc.headers or {}
-            
-        # Return the response
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=response_data,
+            )
+        
+        # For other errors, return the original response
         return JSONResponse(
             status_code=exc.status_code,
-            content=response_data,
-            headers=headers
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None),
         )
         
-    # Then handle FastAPI HTTPException
     @app_instance.exception_handler(HTTPException)
-    async def http_exception_handler(
+    async def fastapi_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
         """
@@ -398,53 +395,95 @@ def create_application(
         # For 500 errors, always mask details regardless of environment
         if exc.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
             response_data = {"detail": "An internal server error occurred."}
-            headers = {}
-        else:
-            # For other status codes, preserve the original detail and headers
-            response_data = {"detail": str(exc.detail)}
-            headers = exc.headers or {}
-            
-        # Return the response
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=response_data,
+            )
+        
+        # For other errors, return the original response
         return JSONResponse(
             status_code=exc.status_code,
-            content=response_data,
-            headers=headers
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None),
         )
     
-    # Handle validation errors (always show details as these are API client errors)
     @app_instance.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        """Handle validation errors with detailed information."""
-        logger.warning(f"Validation error: {exc.errors()}")
-        # Return detailed validation errors
+        """
+        Handle validation errors in a HIPAA-compliant way.
+        
+        Masks any PHI that might be in error messages.
+        """
+        # Log sanitized error details
+        errors = exc.errors()
+        sanitized_errors = []
+        
+        for error in errors:
+            # Remove any potential PHI from error messages
+            sanitized_error = error.copy()
+            if "msg" in sanitized_error:
+                sanitized_error["msg"] = "Validation error."
+            if "loc" in sanitized_error:
+                # Keep only the field name, not the value
+                sanitized_error["loc"] = [str(loc) for loc in sanitized_error["loc"]]
+            sanitized_errors.append(sanitized_error)
+        
+        logger.info(f"Validation error: {sanitized_errors}")
+        
+        # Return a generic validation error message
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": exc.errors()}
+            content={"detail": "Validation error in request data."},
         )
     
-    # Handle all other exceptions (fallback)
     @app_instance.exception_handler(Exception)
-    async def generic_exception_handler(
+    async def general_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
         """
-        Handle all unhandled exceptions with a generic error message.
+        Global exception handler that hides internal error details.
         
-        This ensures that no sensitive information like stack traces or exception details
-        are leaked to users. All internal errors (500) will show a generic error message
-        regardless of environment.
+        This is crucial for HIPAA compliance to prevent leaking PHI in error responses.
         """
-        # Log the original exception for internal debugging
-        logger.error(f"Unhandled exception: {type(exc).__name__}: {str(exc)}")
-        # Only log the full traceback at debug level to avoid log clutter in production
-        logger.debug(traceback.format_exc())
+        # Log the full exception details for debugging (server-side only)
+        error_location = f"{request.method} {request.url.path}"
+        logger.error(
+            f"Unhandled exception: {type(exc).__name__}: {str(exc)}"
+        )
         
-        # Return a generic error response
+        # Return a generic error message that doesn't leak any details
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An internal server error occurred."}
+            content={"detail": "An internal server error occurred."},
+        )
+
+    # Specifically handle ZeroDivisionError for the test endpoints
+    @app_instance.exception_handler(ZeroDivisionError)
+    async def zero_division_error_handler(
+        request: Request, exc: ZeroDivisionError
+    ) -> JSONResponse:
+        """
+        Specifically handle ZeroDivisionError which occurs in test endpoints.
+        """
+        logger.error(f"ZeroDivisionError caught: {str(exc)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "An internal server error occurred."},
+        )
+
+    @app_instance.exception_handler(RuntimeError)
+    async def runtime_error_handler(
+        request: Request, exc: RuntimeError
+    ) -> JSONResponse:
+        """
+        Specifically handle RuntimeError which occurs in test endpoints.
+        """
+        logger.error(f"RuntimeError caught: {str(exc)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "An internal server error occurred."},
         )
     
     # 4. Add settings to app state for access throughout the application

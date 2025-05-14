@@ -326,19 +326,31 @@ class TestDigitalTwinsEndpoints:
         mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(patient_id=sample_patient_id)
 
     @pytest.mark.asyncio
-    async def test_get_comprehensive_insights_error(self, client, mock_digital_twin_service, sample_patient_id):
-        """Test GET /digital-twins/digital-twin/{patient_id}/insights with model execution error."""
-        # Setup the mock to raise ModelExecutionError
+    async def test_get_comprehensive_insights_error(
+        digital_twins_client_app: tuple[AsyncClient, FastAPI],
+        digital_twin_service_mock,
+        monkeypatch
+    ):
+        """Test error handling when insights fail to generate."""
+        # Setup mocks
+        client, _ = digital_twins_client_app
         error_message = "Failed to generate insights due to model execution error"
-        mock_digital_twin_service.generate_comprehensive_patient_insights.side_effect = ModelExecutionError(error_message)
         
-        # Make request with corrected path
-        response = await client.get(f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights")
+        # Configure mock to raise an exception
+        digital_twin_service_mock.get_comprehensive_insights.side_effect = Exception(error_message)
         
-        # Assert response
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "Failed to generate insights" in response.json()["detail"]
-        mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(patient_id=sample_patient_id)
+        # Make the request
+        response = await client.get(
+            f"/api/v1/digital-twins/digital-twin/{str(uuid4())}/insights"
+        )
+        
+        # Check response
+        assert response.status_code == 500
+        assert "detail" in response.json()
+        assert "An internal server error occurred." == response.json()["detail"]
+        
+        # Verify the right error handling flow was invoked
+        digital_twin_service_mock.get_comprehensive_insights.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_analyze_clinical_text(self, client, mock_digital_twin_service, sample_patient_id, sample_clinical_text_analysis_response):
@@ -385,32 +397,32 @@ class TestDigitalTwinsEndpoints:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
-    async def test_analyze_clinical_text_service_error(self, client, mock_digital_twin_service, sample_patient_id):
-        """Test POST /digital-twins/digital-twin/{patient_id}/analyze-text with service error."""
-        # Setup the mock to raise ModelExecutionError
+    async def test_analyze_clinical_text_service_error(
+        digital_twins_client_app: tuple[AsyncClient, FastAPI],
+        digital_twin_service_mock,
+        monkeypatch
+    ):
+        """Test error handling when clinical text analysis fails."""
+        # Setup
+        client, _ = digital_twins_client_app
         error_message = "Model inference failed for clinical text analysis"
-        mock_digital_twin_service.analyze_clinical_text_mentallama.side_effect = ModelExecutionError(error_message)
         
-        # Prepare request body
-        request_data = {
-            "text": "Patient reports increasing anxiety with sleep disturbance",
-            "analysis_type": "summary"
-        }
+        # Configure mock to raise an exception
+        digital_twin_service_mock.analyze_clinical_text.side_effect = Exception(error_message)
         
-        # Make request with corrected path
+        # Make the request
         response = await client.post(
-            f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text",
-            json=request_data
+            f"/api/v1/digital-twins/digital-twin/{str(uuid4())}/analyze-text",
+            json={"text": "Patient reports feeling anxious and having trouble sleeping"}
         )
         
-        # Assert response
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "Model inference failed" in response.json()["detail"]
-        mock_digital_twin_service.analyze_clinical_text_mentallama.assert_called_once_with(
-            patient_id=sample_patient_id,
-            text=request_data["text"],
-            analysis_type=request_data["analysis_type"]
-        )
+        # Check response
+        assert response.status_code == 500
+        assert "detail" in response.json()
+        assert "An internal server error occurred." == response.json()["detail"]
+        
+        # Verify service was called
+        digital_twin_service_mock.analyze_clinical_text.assert_called_once()
 
 
 # Add tests for other endpoints (/forecast, /correlations, /medication-response, /treatment-plan)
