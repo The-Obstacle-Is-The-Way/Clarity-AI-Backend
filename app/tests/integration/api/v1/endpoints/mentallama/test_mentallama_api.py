@@ -497,7 +497,12 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
         Tuple with AsyncClient and FastAPI app
     """
     # Create an in-memory SQLite database with proper async engine
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    # Add check_same_thread=False to prevent connection issues
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:", 
+        echo=False,
+        connect_args={"check_same_thread": False}
+    )
     
     # Create tables
     async with engine.begin() as conn:
@@ -509,29 +514,37 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
     # Create custom settings for test environment with rate limiting disabled
     custom_settings = Settings()
     custom_settings.RATE_LIMITING_ENABLED = False  # Critical: Disable rate limiting
+    custom_settings.ENVIRONMENT = "test"  # Ensure we're in test environment
+    custom_settings.POSTGRES_TEST_DB = "test_db"
     
     # Create the FastAPI application with test settings
     app = create_application(
         skip_auth_middleware=True,  # Skip authentication middleware for tests
         settings_override=custom_settings,  # Use our custom settings without rate limiting
-        include_test_routers=False  # Don't include test routers
+        include_test_routers=False,  # Don't include test routers
+        disable_audit_middleware=True  # Disable audit middleware explicitly
     )
     
     # Override app.state attributes with the properly configured session factory and engine
     app.state.db_engine = engine
     app.state.actual_session_factory = session_factory
     app.state.db_schema_created = True  # Indicate schema is already created
+    app.state.testing = True  # Mark app as being in testing mode
     
     # Create an AsyncClient for testing
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"Content-Type": "application/json"}
+        headers={"Content-Type": "application/json"},
+        timeout=10.0  # Set a timeout for requests
     ) as client:
         # Yield the client and app as a tuple for use in tests
         yield client, app
     
     # Clean up the database after the tests
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await engine.dispose()
+    except Exception as e:
+        logging.error(f"Error during database cleanup: {e}")
