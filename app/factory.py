@@ -295,7 +295,7 @@ def create_application(
         )
 
     # Logging Middleware (basic request/response logging)
-    app_instance.add_middleware(LoggingMiddleware)
+    app_instance.add_middleware(LoggingMiddleware, logger=logger)
     logger.info("LoggingMiddleware added.")
 
     # API Routers
