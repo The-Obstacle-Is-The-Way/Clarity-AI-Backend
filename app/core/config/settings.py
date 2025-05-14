@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     # Database Settings
     DATABASE_URL: str = "sqlite+aiosqlite:///./novamind.db"
     ASYNC_DATABASE_URL: str | None = None  # Will be set based on DATABASE_URL if None
+    DB_ECHO_LOG: bool = False  # Whether to echo SQL queries in logs
     
     # Logging Settings
     LOG_LEVEL: str = "INFO"
