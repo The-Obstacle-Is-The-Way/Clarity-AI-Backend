@@ -257,6 +257,17 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         """Middleware to add security headers to responses."""
+        # For test runtime error endpoints, we want to ensure we properly propagate the error
+        # but don't let the middleware handle the response
+        if "/test-api/test/runtime-error" in request.url.path:
+            response = await call_next(request)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Content-Security-Policy"] = "default-src 'self'"
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            return response
+        
         try:
             response = await call_next(request)
             # Add security headers
@@ -267,7 +278,7 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
             response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
-            # Ensure exceptions are propagated to outer handlers
+            # Ensure exceptions are properly propagated
             raise
     
     return app
@@ -796,6 +807,7 @@ def middleware_patch(test_settings):
         if not auth_header or not auth_header.startswith("Bearer "):
             return await call_next(request)
 
+        # First try to process the token
         try:
             # Extract token from header
             token = auth_header.replace("Bearer ", "")
@@ -829,19 +841,19 @@ def middleware_patch(test_settings):
             
             # Inject the user into the request scope
             request.scope["user"] = user
-            
-            # Let the request continue to the endpoint
-            return await call_next(request)
         except Exception as e:
+            # Log token processing errors but don't block the request
             import logging
             logging.warning(f"Test token authentication failed: {e}")
-            # For test authentication failures, still continue to the next middleware
-            # But for other exceptions from call_next, we need to re-raise
-            try:
-                return await call_next(request)
-            except Exception as inner_exc:
-                # Re-raise any exceptions from the endpoint or downstream middleware
-                raise
+        
+        # Then call the next middleware/endpoint regardless of token processing result
+        # This ensures the request continues even if token validation fails
+        try:
+            return await call_next(request)
+        except Exception as e:
+            # Important: We must re-raise all exceptions from downstream handlers
+            # This ensures error handling tests work correctly
+            raise
     
     # Apply the patch
     AuthenticationMiddleware.dispatch = patched_dispatch
