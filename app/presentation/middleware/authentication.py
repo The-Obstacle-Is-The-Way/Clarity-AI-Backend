@@ -281,14 +281,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         except TokenExpiredException:
             logger.warning("Token expired")
             return JSONResponse(
-                status_code=HTTP_401_UNAUTHORIZED,
+                status_code=HTTP_403_FORBIDDEN,
                 content={"detail": "Token has expired"}
             )
             
         except InvalidTokenException as e:
             logger.warning(f"Invalid token: {e}")
             return JSONResponse(
-                status_code=HTTP_401_UNAUTHORIZED,
+                status_code=HTTP_403_FORBIDDEN,
                 content={"detail": str(e)}
             )
             

@@ -1,6 +1,6 @@
-# Novamind Backend Scripts
+# Clarity AI Backend Scripts
 
-This directory contains utility scripts for the Novamind Backend project. These scripts are designed to help with development, testing, and CI/CD processes.
+This directory contains utility scripts for the Clarity AI Backend project. These scripts are designed to help with development, testing, HIPAA compliance verification, and CI/CD processes.
 
 ## Testing Scripts
 
@@ -40,6 +40,37 @@ WITH_INTEGRATION=true ./scripts/ci_test_runner.sh
 CONTINUE_ON_FAILURE=true ./scripts/ci_test_runner.sh
 ```
 
+## HIPAA Compliance Scripts
+
+### `hipaa_phi_audit.py` 
+
+Scans the codebase for potential PHI leakage in logs and error messages.
+
+```bash
+# Run a comprehensive PHI audit
+./scripts/hipaa_phi_audit.py
+
+# Generate a detailed report
+./scripts/hipaa_phi_audit.py --output-report reports/phi_audit_report.md
+
+# Check specific directories only
+./scripts/hipaa_phi_audit.py --directories app/presentation app/infrastructure
+```
+
+### `check_log_sanitization.py`
+
+Verifies that all logging statements properly use the log sanitizer.
+
+```bash
+# Check all logging statements in the codebase
+./scripts/check_log_sanitization.py
+
+# Fix issues automatically where possible
+./scripts/check_log_sanitization.py --auto-fix
+```
+
+## Utility Scripts
+
 ### `fix_pat_mock.py`
 
 Applies fixes to the PAT mock service to address test failures.
@@ -69,6 +100,7 @@ The scripts follow these conventions:
 
 - Testing scripts are prefixed with `test_` or contain `test` in their name
 - CI/CD scripts are prefixed with `ci_`
+- HIPAA compliance scripts are prefixed with `hipaa_` or contain `phi` in their name
 - Utility scripts focus on a specific functionality
 
 ## Contributing
@@ -112,5 +144,6 @@ chmod +x scripts/script_name.py
 If a script fails with import errors, ensure you're running from the project root:
 
 ```bash
-cd /path/to/Novamind-Backend-ONLY-TWINS/backend
+cd /path/to/Clarity-AI-Backend
 ./scripts/script_name.py
+```

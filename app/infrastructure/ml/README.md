@@ -1,6 +1,6 @@
-# NOVAMIND ML Microservices Architecture
+# Clarity AI ML Microservices Architecture
 
-This directory contains the implementation of the NOVAMIND ML Microservices architecture, which powers the Digital Twin functionality of the platform. The architecture follows Clean Architecture principles, ensuring a clear separation of concerns between the domain and infrastructure layers while maintaining HIPAA compliance.
+This directory contains the implementation of the Clarity AI ML Microservices architecture, which powers the Digital Twin functionality of the platform. The architecture follows Clean Architecture principles, ensuring a clear separation of concerns between the domain and infrastructure layers while maintaining HIPAA compliance.
 
 ## Architecture Overview
 
@@ -100,10 +100,22 @@ Key features:
 
 All microservices implement strict HIPAA compliance measures:
 
+- PHI is encrypted at rest and in transit
+- Field-level encryption for sensitive data
 - Patient data is sanitized before processing
 - No PHI is included in logs or external calls
-- All data is encrypted at rest and in transit
-- Access is restricted and audited
+- All PHI access is comprehensively logged 
+- Access is restricted based on role-based permissions
+- Error responses are sanitized to prevent PHI leakage
+
+## Clean Architecture Integration
+
+The ML services follow clean architecture principles:
+
+- **Domain Interfaces**: Core interfaces defined in the domain layer
+- **Application Services**: Orchestration at the application layer
+- **Infrastructure Implementation**: Concrete implementations in this directory
+- **Dependency Inversion**: High-level modules don't depend on low-level modules
 
 ## Error Handling
 
@@ -112,6 +124,7 @@ The architecture implements robust error handling:
 - Domain-specific exceptions for clear error communication
 - Graceful degradation when individual microservices fail
 - Comprehensive logging for troubleshooting
+- PHI-safe error messages that never expose protected information
 
 ## Usage Examples
 
@@ -177,4 +190,4 @@ When extending or modifying the ML Microservices architecture:
 
 ## License
 
-Proprietary - NOVAMIND, Inc. All rights reserved.
+Proprietary - Clarity AI, Inc. All rights reserved.
