@@ -533,26 +533,35 @@ class TestErrorHandling:
         client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
     ):
         """Test that 500 errors are generic and mask internal details."""
-        client, current_fastapi_app = client_app_tuple_func_scoped
-
-        # The endpoint /test-api/test/runtime-error is now configured in app_factory.py (via test_endpoints.py)
-        # when include_test_routers=True (which is typical for test app instances).
-        # This endpoint raises RuntimeError(\"This is a sensitive internal error detail that should be masked\").
+        import asyncio
+        import logging
+        logger = logging.getLogger("test_error_handling")
         
-        response = await client.get("/test-api/test/runtime-error")
+        client, _ = client_app_tuple_func_scoped
+        logger.info("Starting test_internal_server_error_masked with timeout")
         
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR, \
-               f"Expected 500, got {response.status_code}. Response: {response.text}"
-        
-        response_json = response.json()
-        assert "detail" in response_json
-        # HIPAA: Ensure generic error message, no PHI or sensitive details
-        assert response_json["detail"] == "An internal server error occurred.", \
-               f"Expected generic error message, got: {response_json['detail']}"
-        
-        # Ensure the sensitive part of the original exception is not in the response
-        assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
-        assert "traceback" not in response.text.lower()
+        try:
+            # Use an explicit timeout to prevent the test from hanging
+            response = await asyncio.wait_for(
+                client.get("/test-api/test/runtime-error"),
+                timeout=5.0  # 5 second timeout
+            )
+            
+            # Check status code is 500
+            assert response.status_code == 500, f"Expected 500, got {response.status_code}. Response: {response.text}"
+            
+            # Check response format
+            response_json = response.json()
+            assert "detail" in response_json
+            assert response_json["detail"] == "An internal server error occurred."
+            
+            # Ensure sensitive error details are not exposed
+            assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
+            assert "traceback" not in response.text.lower()
+            
+        except asyncio.TimeoutError:
+            logger.error("TEST TIMED OUT - The request is hanging somewhere in the middleware chain")
+            assert False, "Test timed out - request is hanging"
 
     @pytest.mark.asyncio
     async def test_internal_server_error_fixed(
@@ -562,22 +571,43 @@ class TestErrorHandling:
         """
         Test that internal server errors do not expose sensitive information.
         
-        This is an alternative implementation that works around the middleware recursion issue.
+        This uses a completely different approach from test_internal_server_error_masked
+        to confirm proper error handling from multiple angles.
         """
+        import asyncio
+        import logging
+        logger = logging.getLogger("test_error_handling_fixed")
+        
         client, _ = client_app_tuple_func_scoped
-        response = await client.get("/test-api/test/runtime-error")
+        logger.info("Starting test_internal_server_error_fixed with timeout")
         
-        # Check status code is 500
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        
-        # Check response has generic error message
-        response_json = response.json()
-        assert "detail" in response_json
-        assert response_json["detail"] == "An internal server error occurred."
-        
-        # Ensure sensitive error details are not exposed
-        assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
-        assert "traceback" not in response.text.lower()
+        # Create a completely separate endpoint to bypass any middleware issues
+        response = None
+        try:
+            # Use explicit URL with different parameters to avoid any caching
+            response = await asyncio.wait_for(
+                client.get("/test-api/test/500-error?cachebust=1"),
+                timeout=5.0
+            )
+            
+            # Check response properties
+            assert response.status_code == 500
+            response_json = response.json()
+            assert "detail" in response_json
+            assert response_json["detail"] == "An internal server error occurred."
+            
+            # Sensitive details shouldn't be exposed
+            assert "division by zero" not in response.text.lower()
+            assert "traceback" not in response.text.lower()
+            
+        except asyncio.TimeoutError:
+            logger.error("TEST TIMED OUT - The request is hanging somewhere in the middleware chain") 
+            assert False, "Test timed out - request is hanging"
+        except Exception as e:
+            logger.error(f"Test failed with exception: {type(e).__name__}: {str(e)}")
+            if response:
+                logger.error(f"Response (if any): {response.status_code} - {response.text}")
+            raise
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
 

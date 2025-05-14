@@ -18,13 +18,17 @@ router = APIRouter(
 
 
 @router.get("/500-error")
-async def force_500_error() -> Dict[str, Any]:
+async def force_500_error():
     """
-    Endpoint that deliberately raises a division by zero error.
-    Used to test 500 error handling and masking of stack traces.
+    Test endpoint that deliberately raises a ZeroDivisionError.
+    
+    This is an alternate error endpoint that raises a different exception
+    for testing error masking and handling.
     """
-    divisor = 0
-    return {"result": 1 / divisor}  # Will raise ZeroDivisionError
+    # Deliberately divide by zero to raise error
+    _ = 1 / 0  # ZeroDivisionError
+    # This line is never reached
+    return {"message": "This should never be returned"}
 
 
 @router.get("/404-error")

@@ -68,8 +68,8 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| Patient Management | ❌ Missing | Patient domain and API documentation |
-| Digital Twin System | ❌ Missing | Digital twin implementation details |
+| [Patient API Routes](./Patient_API_Routes.md) | ✅ Complete | Patient management API documentation |
+| [Digital Twin API Routes](./Digital_Twin_API_Routes.md) | ✅ Complete | Digital twin API and implementation details |
 | Biometric Alert Rules | ❌ Missing | Alert rules system documentation |
 | ML Integration | ❌ Missing | ML model integration architecture |
 | PAT Service | ❌ Missing | Psychiatric Analysis Tool services |
@@ -101,7 +101,7 @@ This checklist tracks the status of documentation coverage across the Clarity AI
    - Authentication system documentation
    - ✓ Repository interface standardization (Token Blacklist)
    - ✓ Middleware components documentation (Rate Limiting, Request ID)
-   - Missing API routes documentation (Patient, Digital Twin)
+   - ✓ API routes documentation (Patient, Digital Twin)
 
 2. **Medium Priority**
    - ML model integration documentation
@@ -117,8 +117,8 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 ## Progress Tracking
 
 - Total documentation required: 40 documents
-- Currently complete: 12 documents (30%)
-- Required to complete: 28 documents (70%)
+- Currently complete: 14 documents (35%)
+- Required to complete: 26 documents (65%)
 
 ## Next Steps
 

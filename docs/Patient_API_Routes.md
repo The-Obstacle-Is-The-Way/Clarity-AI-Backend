@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Patient API Routes are a foundational component of the Clarity AI Backend that provide access to patient data and operations. These routes represent the RESTful interface for patient management within the psychiatric digital twin platform, including creation, retrieval, update, and deletion of patient records, with comprehensive HIPAA safeguards.
+The Patient API Routes are a foundational component of the Clarity AI Backend that provide access to patient data and operations. These routes represent the RESTful interface for patient management within the psychiatric digital twin platform, with a current focus on patient creation and retrieval operations, incorporating comprehensive HIPAA safeguards.
 
 ## Clean Architecture Context
 
@@ -11,7 +11,7 @@ The Patient API Routes implement the presentation layer within the clean archite
 1. **Routes**: Define HTTP endpoints and handle request/response transformations
 2. **Dependencies**: Inject required services through FastAPI's dependency system
 3. **Schemas**: Validate input and output data using Pydantic models
-4. **Routers**: Group related endpoints into a cohesive API surface
+4. **Authentication**: Ensure proper authorization for PHI access
 
 ## Route Definition
 
