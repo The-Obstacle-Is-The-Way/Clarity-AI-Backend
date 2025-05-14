@@ -142,13 +142,16 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
     )
     
     # Override dependencies for testing
-    app = create_application(settings_override=settings, include_test_routers=True)
+    app = create_application(
+        settings_override=settings, 
+        include_test_routers=True,
+        disable_audit_middleware=True,  # Explicitly disable audit middleware
+        skip_auth_middleware=True       # Skip auth middleware for testing
+    )
     
-    # Explicitly disable audit middleware
-    disable_audit_middleware(app)
-    
-    # Explicitly disable authentication middleware
-    disable_authentication_middleware(app)
+    # Explicitly set testing and disable_audit_middleware flags
+    app.state.testing = True
+    app.state.disable_audit_middleware = True
     
     # Mock the XGBoost service dependency
     app.dependency_overrides[get_xgboost_service] = lambda: mock_xgboost_service
@@ -173,25 +176,12 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
     app.dependency_overrides[get_current_user] = mock_current_user
     app.dependency_overrides[verify_provider_access] = lambda: True
     
-    # Create valid auth headers for our test client
-    from app.infrastructure.security.jwt.jwt_service import JWTService
-    jwt_service = app.state.jwt_service
-    test_user = await mock_current_user()
-    token_data = {
-        "sub": test_user.id,
-        "username": test_user.username,
-        "email": test_user.email,
-        "roles": [UserRole.CLINICIAN.value],
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
-    }
-    test_token = jwt_service.create_access_token(token_data)  # Synchronous call - no await
-    auth_headers = {"Authorization": f"Bearer {test_token}"}
-    
-    # Create test client
+    # Create test client with minimal headers
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"Content-Type": "application/json", **auth_headers},
+        headers={"Content-Type": "application/json"},
+        timeout=3.0  # Add explicit client timeout
     ) as client:
         yield app, client
     
@@ -316,6 +306,7 @@ async def test_predict_risk(xgboost_test_client, risk_prediction_request_data):
     # Configure the mock to return our expected response
     mock_service.predict_risk_mock.return_value = expected_response
     
+    # Skip token validation and directly override the auth dependency
     # Create test user with valid timestamps
     test_user = User(
         id=str(uuid.uuid4()),
@@ -324,13 +315,13 @@ async def test_predict_risk(xgboost_test_client, risk_prediction_request_data):
         first_name="Test",
         last_name="User",
         full_name="Test User",
-        roles=[UserRole.CLINICIAN],
+        roles=["CLINICIAN"],  # Use string roles to avoid enum issues
         status=UserStatus.ACTIVE,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
     
-    # Skip token validation and directly override the auth dependency
+    # Override the auth dependency to use our test user
     app.dependency_overrides[get_current_user] = lambda: test_user
     
     # Make the request with modified timeout
