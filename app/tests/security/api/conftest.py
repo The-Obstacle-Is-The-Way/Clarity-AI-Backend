@@ -257,14 +257,18 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         """Middleware to add security headers to responses."""
-        response = await call_next(request)
-        # Add security headers
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        return response
+        try:
+            response = await call_next(request)
+            # Add security headers
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Content-Security-Policy"] = "default-src 'self'"
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            return response
+        except Exception as e:
+            # Ensure exceptions are propagated to outer handlers
+            raise
     
     return app
 
@@ -831,8 +835,13 @@ def middleware_patch(test_settings):
         except Exception as e:
             import logging
             logging.warning(f"Test token authentication failed: {e}")
-            # On error, continue to the real middleware
-            return await call_next(request)
+            # For test authentication failures, still continue to the next middleware
+            # But for other exceptions from call_next, we need to re-raise
+            try:
+                return await call_next(request)
+            except Exception as inner_exc:
+                # Re-raise any exceptions from the endpoint or downstream middleware
+                raise
     
     # Apply the patch
     AuthenticationMiddleware.dispatch = patched_dispatch
