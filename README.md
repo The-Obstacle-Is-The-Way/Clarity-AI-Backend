@@ -557,18 +557,43 @@ The production CI/CD workflow follows modern DevOps practices:
 | `RATE_LIMITING_ENABLED` | Enable in‑memory rate limiting (true/false) | `true` |
 | `PHI_SANITIZATION_ENABLED` | Enable PHI detection & sanitization (true/false) | `true` |
 
-## Contributing
+## Join the Revolution
 
-We love contributions! Please:
+<div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
 
-1. Fork & create a feature branch.
-2. Install hooks: `pre-commit install`.
-3. Adhere to linters (black, isort, flake8) and add tests.
-4. Open a clear PR referencing an issue.
+Clarity AI is transforming psychiatric care through computational precision and continuous monitoring. Our team combines expertise in psychiatry, machine learning, and secure healthcare systems to create a platform that provides unprecedented visibility into mental health states.
 
-See `CONTRIBUTING.md` for details.
+### For Developers & Technical Co-Founders
+
+We welcome contributions from visionary engineers and data scientists who want to redefine mental healthcare:
+
+1. **Fork & Branch**: Create a feature branch from `main`
+2. **Quality First**: Run `pre-commit install` to enable code quality hooks
+3. **Clean Implementation**: Follow our architectural principles and testing standards
+4. **Pull Request**: Submit PRs with clear descriptions referencing issues
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for comprehensive guidelines.
+
+### For Clinicians & Researchers
+
+We're actively seeking clinical collaborators to help refine our digital twin models and validate our approach in diverse patient populations.
+
+Email [research@clarity-ai.health](mailto:research@clarity-ai.health) to discuss potential collaborations.
+
+</div>
 
 ## License
 
+<div style="display: flex; align-items: center;">
+<div>
+
 This project is licensed under the Apache License 2.0.
-See `LICENSE` for the full terms.
+See [`LICENSE`](./LICENSE) for the full terms.
+
+</div>
+<div style="margin-left: auto;">
+
+![YC Backed](https://img.shields.io/badge/YC-Backed-orange?style=for-the-badge)
+
+</div>
+</div>
