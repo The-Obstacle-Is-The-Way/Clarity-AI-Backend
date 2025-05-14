@@ -23,6 +23,9 @@ from app.core.errors.security_exceptions import InvalidCredentialsError
 from app.core.interfaces.repositories.user_repository_interface import (
     IUserRepository,
 )
+from app.core.interfaces.repositories.token_blacklist_repository_interface import (
+    ITokenBlacklistRepository,
+)
 from app.core.interfaces.services.auth_service_interface import (
     AuthServiceInterface,
 )
@@ -39,6 +42,8 @@ from app.domain.exceptions import AuthenticationError, AuthorizationError # Corr
 from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from app.infrastructure.persistence.repositories.redis_token_blacklist_repository import RedisTokenBlacklistRepository
+from app.infrastructure.services.redis_cache_service import RedisCacheService
 
 # Initialize logger for this module - MODULE LEVEL
 logger = logging.getLogger(__name__)
@@ -76,9 +81,44 @@ def get_authentication_service(
     """Provides an instance of the Authentication Service."""
     return auth_service
 
-def get_jwt_service(settings: Settings = Depends(get_settings)) -> IJwtService:
-    """Provides an instance of the JWT Service."""
-    return JWTService(settings=settings)
+# --- Dependency for Redis Service ---
+def get_redis_service(settings: Settings = Depends(get_settings)) -> RedisCacheService:
+    """Get Redis cache service for token blacklisting."""
+    # These should come from settings in production
+    host = getattr(settings, 'REDIS_HOST', 'localhost')
+    port = getattr(settings, 'REDIS_PORT', 6379)
+    password = getattr(settings, 'REDIS_PASSWORD', None)
+    ssl = getattr(settings, 'REDIS_SSL', False)
+    
+    redis_service = RedisCacheService(
+        host=host,
+        port=port,
+        password=password,
+        ssl=ssl,
+        prefix="clarity:auth:"
+    )
+    
+    return redis_service
+
+# --- Dependency for Token Blacklist Repository ---
+def get_token_blacklist_repository(
+    redis_service: RedisCacheService = Depends(get_redis_service)
+) -> ITokenBlacklistRepository:
+    """Dependency function to get token blacklist repository."""
+    return RedisTokenBlacklistRepository(redis_service=redis_service)
+
+# --- Updated JWT Service Dependency --- 
+def get_jwt_service(
+    settings: Settings = Depends(get_settings),
+    user_repository: IUserRepository = Depends(get_db),
+    token_blacklist_repository: ITokenBlacklistRepository = Depends(get_token_blacklist_repository)
+) -> IJwtService:
+    """Dependency function to get JWTService instance conforming to IJwtService."""
+    return JWTService(
+        settings=settings,
+        user_repository=user_repository,
+        token_blacklist_repository=token_blacklist_repository
+    )
 
 async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
