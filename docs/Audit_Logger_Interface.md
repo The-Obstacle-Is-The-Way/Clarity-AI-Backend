@@ -15,183 +15,224 @@ In a psychiatric digital twin platform subject to HIPAA regulations, comprehensi
 
 ## Interface Definition
 
-The `IAuditLogger` interface is defined in the core layer:
+The `IAuditLogger` interface is defined in the core layer (`app/core/interfaces/services/audit_logger_interface.py`):
 
 ```python
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
-from uuid import UUID
+from enum import Enum, auto
+from typing import Any, Dict, Optional, Union, List
+
+class AuditEventType(str, Enum):
+    """Types of auditable events in the system."""
+    
+    # Authentication events
+    LOGIN = "login"
+    LOGOUT = "logout"
+    LOGIN_FAILED = "login_failed"
+    # [Other event types omitted for brevity]
+
+class AuditSeverity(str, Enum):
+    """Severity level of audit events."""
+    
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    INFO = "info"
 
 class IAuditLogger(ABC):
-    """
-    Interface for audit logging operations.
+    """Interface for audit logging services.
     
-    This interface defines methods for recording security events and
-    PHI access in compliance with HIPAA and security best practices.
+    This interface defines the contract that all audit logging implementations
+    must fulfill to ensure HIPAA compliance and proper security tracking.
     """
+    
+    @abstractmethod
+    async def log_event(
+        self,
+        event_type: AuditEventType,
+        actor_id: Optional[str] = None,
+        target_resource: Optional[str] = None,
+        target_id: Optional[str] = None,
+        action: Optional[str] = None,
+        status: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: Optional[Dict[str, Any]] = None,
+        timestamp: Optional[datetime] = None,
+        request: Optional[Any] = None,
+    ) -> str:
+        """Log an audit event in the system."""
+        pass
     
     @abstractmethod
     async def log_security_event(
         self,
-        event_type: str,
-        details: Dict[str, Any],
-        user_id: Optional[Union[str, UUID]] = None,
-        source_ip: Optional[str] = None
-    ) -> None:
-        """
-        Log a security-related event.
-        
-        Args:
-            event_type: Category of security event (e.g., 'login_attempt', 'permission_change')
-            details: Event-specific details (should not contain PHI)
-            user_id: ID of the user initiating the event (if authenticated)
-            source_ip: Source IP address of the request
-        """
+        description: str,
+        actor_id: Optional[str] = None,
+        status: Optional[str] = None,
+        severity: AuditSeverity = AuditSeverity.HIGH,
+        details: Optional[Dict[str, Any]] = None,
+        request: Optional[Any] = None,
+    ) -> str:
+        """Log a security-related event."""
         pass
     
     @abstractmethod
     async def log_phi_access(
         self,
+        actor_id: str,
+        patient_id: str,
         resource_type: str,
-        resource_id: Union[str, UUID],
         action: str,
-        user_id: Union[str, UUID],
+        status: str,
+        phi_fields: Optional[List[str]] = None,
         reason: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-        source_ip: Optional[str] = None
-    ) -> None:
-        """
-        Log access to Protected Health Information (PHI).
-        
-        Args:
-            resource_type: Type of resource containing PHI (e.g., 'patient', 'medical_record')
-            resource_id: Identifier of the specific resource
-            action: Action performed ('view', 'create', 'update', 'delete')
-            user_id: ID of the user accessing the PHI
-            reason: Clinical or operational reason for access
-            details: Additional context (should not contain PHI itself)
-            source_ip: Source IP address of the request
-        """
+        request: Optional[Any] = None,
+        request_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Log PHI access event specifically."""
         pass
     
     @abstractmethod
-    async def log_api_request(
+    async def get_audit_trail(
         self,
-        request_id: str,
-        method: str,
-        path: str,
-        status_code: int,
-        user_id: Optional[Union[str, UUID]] = None,
-        source_ip: Optional[str] = None,
-        duration_ms: Optional[float] = None
-    ) -> None:
-        """
-        Log an API request for audit purposes.
-        
-        Args:
-            request_id: Unique identifier for the request
-            method: HTTP method (GET, POST, etc.)
-            path: API endpoint path
-            status_code: HTTP response status code
-            user_id: ID of the authenticated user (if any)
-            source_ip: Source IP address of the request
-            duration_ms: Request processing duration in milliseconds
-        """
+        filters: Optional[Dict[str, Any]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Retrieve audit trail entries based on filters."""
+        pass
+    
+    @abstractmethod
+    async def export_audit_logs(
+        self,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        format: str = "json",
+        file_path: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Export audit logs to a file in the specified format."""
+        pass
+    
+    @abstractmethod
+    async def get_security_dashboard_data(
+        self,
+        days: int = 7
+    ) -> Dict[str, Any]:
+        """Get summary data for security dashboard."""
         pass
 ```
 
-## Known Implementations
+## Current Implementations
 
-This interface has several implementations in the codebase:
+The codebase contains several audit logger implementations, but there are significant discrepancies between the interface and the actual implementations:
 
-1. **DatabaseAuditLogger**: Primary implementation that stores audit records in a database
-2. **ConsoleAuditLogger**: Development implementation that logs to console
-3. **MultiAuditLogger**: Composite implementation that delegates to multiple loggers
-4. **MockAuditLogger**: Test implementation with event capture for assertions
+### 1. `AuditLogger` in `app/infrastructure/logging/audit_logger.py`
 
-## Usage Contexts
+This implementation provides basic logging functionality but does not fully implement the `IAuditLogger` interface. It offers:
 
-The Audit Logger is used throughout the system in several key contexts:
+- Class methods for logging transactions, PHI access, and security events
+- File-based logging with JSON formatting
+- Support for testing environments with fallbacks
 
-1. **Authentication flows**: Login attempts, password changes, etc.
-2. **PHI access**: Recording all views of patient data
-3. **API Middleware**: Automatic logging of all API requests
-4. **Administrative actions**: User creation, permission changes
-
-## Usage in API Middleware
-
-The Audit Logger is integrated into the middleware stack for comprehensive request logging:
+However, this implementation:
+- Is class-based with static methods rather than instance methods
+- Uses synchronous methods instead of async methods defined in the interface
+- Does not implement several required interface methods like `get_audit_trail`, `export_audit_logs`, and `get_security_dashboard_data`
+- Has a different method signature for `log_phi_access`
 
 ```python
-class AuditLogMiddleware(BaseHTTPMiddleware):
-    """Middleware for automatic audit logging of API requests."""
+class AuditLogger(IAuditLogger):  # Claims to implement IAuditLogger but doesn't fully
+    """
+    HIPAA-compliant audit logger for PHI operations.
+    """
     
-    def __init__(
-        self,
-        app: ASGIApp,
-        audit_logger: IAuditLogger
-    ):
-        super().__init__(app)
-        self._audit_logger = audit_logger
+    @classmethod
+    def setup(cls, log_dir: str | None = None) -> None:
+        """Set up the audit logger with appropriate handlers."""
+        # [Implementation details omitted]
     
-    async def dispatch(self, request: Request, call_next):
-        start_time = time.time()
-        request_id = request.state.request_id
-        
-        # Process the request
-        response = await call_next(request)
-        
-        # Calculate duration
-        duration_ms = (time.time() - start_time) * 1000
-        
-        # Get user ID if authenticated
-        user_id = getattr(request.state, "user", {}).get("id", None)
-        
-        # Log the API request
-        await self._audit_logger.log_api_request(
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            status_code=response.status_code,
-            user_id=user_id,
-            source_ip=request.client.host,
-            duration_ms=duration_ms
-        )
-        
-        return response
+    @classmethod
+    def log_transaction(cls, metadata: dict[str, Any]) -> None:
+        """Log a transaction for audit purposes."""
+        # [Implementation details omitted]
+    
+    @classmethod
+    def log_phi_access(cls, user_id: str, patient_id: str, action: str, details: dict[str, Any] | None = None) -> None:
+        """Log PHI access for audit purposes."""
+        # [Implementation details omitted]
+    
+    @classmethod
+    def log_security_event(cls, event_type: str, user_id: str | None = None, details: dict[str, Any] | None = None) -> None:
+        """Log a security event for audit purposes."""
+        # [Implementation details omitted]
 ```
+
+### 2. `AuditLogger` in `app/infrastructure/security/audit_logger.py`
+
+This implementation is more comprehensive but still does not fully implement the interface:
+
+- Provides tamper-evident logging with HMAC signatures and hash chains
+- Includes methods for log integrity verification
+- Supports searching and exporting logs
+- Has role-based access control for audit log access
+
+However, this implementation:
+- Uses different method signatures than the interface
+- Includes additional methods not in the interface
+- Some methods are sync instead of async
+
+### 3. `AuditLogMiddleware` in `app/infrastructure/security/audit/middleware.py`
+
+This middleware automatically logs PHI access via API requests:
+
+- Integrates with FastAPI middleware stack
+- Detects PHI access based on URL patterns
+- Records user ID, resource type, resource ID, and status
+- Handles errors gracefully to avoid blocking requests
 
 ## Dependency Injection
 
-The Audit Logger is provided through FastAPI's dependency injection system:
+A dependency injection provider exists, but the implementation may not match the interface fully:
 
 ```python
-from fastapi import Depends
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.infrastructure.logging.audit_logger import DatabaseAuditLogger
-from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
-from app.presentation.dependencies.database import get_session
-
-async def get_audit_logger(
-    session = Depends(get_session)
-) -> IAuditLogger:
+async def get_audit_logger() -> IAuditLogger:
     """
     Dependency provider for Audit Logger.
-    
-    Args:
-        session: Database session
     
     Returns:
         IAuditLogger implementation
     """
-    repository = AuditLogRepository(session)
-    return DatabaseAuditLogger(repository)
+    # Implementation may vary from what's documented
+    return AuditLogger()
 ```
 
-## Compliance Requirements
+## Implementation Status
 
-The Audit Logger implementation satisfies these HIPAA requirements:
+### Current Status
+
+- ✅ Core interface defined in the proper layer
+- ⚠️ **Implementation Discrepancy**: Multiple implementations exist with different approaches
+- ⚠️ **Interface Compliance**: Existing implementations do not fully comply with the interface
+- ✅ Core PHI logging functionality works through middleware
+- ⚠️ **Async/Sync Mismatch**: Interface defines async methods but some implementations use sync methods
+- ⚠️ **Method Signature Mismatch**: Implementations use different parameter names and types than interface
+
+### Architectural Gaps
+
+- 🔄 Standardize on a single implementation that fully implements the interface
+- 🔄 Align method signatures between interface and implementations
+- 🔄 Ensure all implementations use async methods as defined in the interface
+- 🔄 Complete missing interface methods in implementations
+
+## HIPAA Compliance Requirements
+
+The Audit Logger implementation needs to satisfy these HIPAA requirements:
 
 1. **§164.308(a)(1)(ii)(D)**: Information system activity review
 2. **§164.312(b)**: Audit controls to record and examine activity
@@ -199,10 +240,8 @@ The Audit Logger implementation satisfies these HIPAA requirements:
 4. **§164.312(c)(2)**: Mechanism to authenticate that data hasn't been altered
 5. **§164.316(b)(1)**: Records retention requirements
 
-## Future Extensions
+Current implementations partially address these requirements, but the inconsistencies between interface and implementation may create compliance gaps.
 
-The next version of this interface should consider:
+## Conclusion
 
-1. **Event Aggregation**: Methods for detecting patterns across events
-2. **Real-time Alerting**: Capabilities to trigger alerts on suspicious activity 
-3. **Exportable Formats**: Support for exporting audit logs in standard formats
+The Audit Logger Interface is a critical security component for HIPAA compliance. While the interface definition is comprehensive, the actual implementations show significant divergence from the interface. This creates potential security and compliance risks that should be addressed by aligning the implementations with the interface and consolidating the multiple approaches into a single, consistent implementation.
