@@ -320,7 +320,7 @@ def authenticated_provider_user() -> DomainUser:
         username="testprovider",
         full_name="Test Provider",
         hashed_password="fake_hash",
-        roles=[UserRole.PROVIDER],
+        roles=[UserRole.CLINICIAN],
         status=UserStatus.ACTIVE
     )
 
