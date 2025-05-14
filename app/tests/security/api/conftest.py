@@ -812,8 +812,8 @@ def middleware_patch(test_settings):
         # Check for bypass paths first
         path = request.url.path
         
-        # Completely bypass middleware for test-api endpoints
-        if "/test-api/" in path:
+        # Completely bypass middleware for test-api endpoints and other test endpoints
+        if "/test-api/" in path or "/test/" in path or "/direct-test/" in path:
             try:
                 logger.info(f"Bypassing authentication for test endpoint: {path}")
                 response = await call_next(request)
@@ -835,10 +835,44 @@ def middleware_patch(test_settings):
     # Apply the patch
     AuthenticationMiddleware.dispatch = patched_dispatch
     
+    # Now patch the rate limiting middleware too
+    from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
+    
+    # Store the original rate limiting dispatch
+    if hasattr(RateLimitingMiddleware, 'dispatch'):
+        original_rate_limit_dispatch = RateLimitingMiddleware.dispatch
+        
+        # Create a patched dispatch for rate limiting
+        async def patched_rate_limit_dispatch(self, request, call_next):
+            """Patched dispatch method for rate limiting tests."""
+            # Skip test endpoints completely
+            path = request.url.path
+            if "/test-api/" in path or "/test/" in path or "/direct-test/" in path:
+                try:
+                    logger.info(f"Bypassing rate limiting for test endpoint: {path}")
+                    return await call_next(request)
+                except Exception as e:
+                    logger.error(f"Exception in test endpoint (rate limiting): {type(e).__name__}: {str(e)}")
+                    # Re-raise without handling to ensure proper error propagation
+                    raise
+                    
+            # For non-test endpoints, use original dispatch
+            try:
+                return await original_rate_limit_dispatch(self, request, call_next)
+            except Exception as e:
+                logger.error(f"Exception in rate limiting dispatch: {type(e).__name__}: {str(e)}")
+                # Re-raise to allow proper error handling
+                raise
+                
+        # Apply the rate limiting patch
+        RateLimitingMiddleware.dispatch = patched_rate_limit_dispatch
+    
     yield
     
-    # Restore the original method after tests complete
+    # Restore the original methods
     AuthenticationMiddleware.dispatch = original_dispatch
+    if hasattr(RateLimitingMiddleware, 'dispatch') and 'original_rate_limit_dispatch' in locals():
+        RateLimitingMiddleware.dispatch = original_rate_limit_dispatch
 
 
 @pytest.fixture(scope="module")

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Clarity AI"
     PROJECT_DESCRIPTION: str = "Mental Health Digital Twin API"
     API_V1_STR: str = "/api/v1"
-    DEBUG: bool = Field(default=True, description="Debug mode flag")
+    DEBUG: bool = Field(default=False if (ENVIRONMENT == "test" or ENVIRONMENT == "test") else True, env="DEBUG")
     
     # Server Settings
     SERVER_HOST: str = "127.0.0.1"  # Default host for the server
