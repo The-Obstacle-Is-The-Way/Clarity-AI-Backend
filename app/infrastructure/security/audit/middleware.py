@@ -127,8 +127,9 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: The response from the next handler
         """
-        # Check if audit logging is disabled
+        # First, perform a fast check if audit logging is disabled
         if self._is_audit_disabled(request):
+            logger.debug("Audit logging disabled, skipping audit for this request")
             return await call_next(request)
             
         # Skip paths that shouldn't be audited
@@ -136,102 +137,97 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         method = request.method
         
         if self._should_skip(path):
+            logger.debug(f"Skipping audit for path: {path}")
             return await call_next(request)
+        
+        # Get the response first, audit logging should not block request processing
+        # especially in test environments
+        response = await call_next(request)
+        status_code = response.status_code
+        
+        # Additional check for disabling after the response is received
+        # (in case middleware configuration changed during request handling)
+        if self._is_audit_disabled(request):
+            return response
             
-        # Check if this path potentially accesses PHI
-        is_phi_path = self._is_phi_path(path)
-        
-        # Extract the user ID from the request
-        user_id = None
+        # Perform audit logging in a try-except block
         try:
-            user_id = await self._extract_user_id(request)
-        except Exception as e:
-            logger.warning(f"Failed to extract user ID from request: {e}")
-            if self.settings.ENVIRONMENT == "test":
-                logger.debug(f"Detailed error extracting user ID: {e}", exc_info=True)
+            # Check if this path potentially accesses PHI
+            is_phi_path = self._is_phi_path(path)
+            
+            # Extract the user ID from the request
             user_id = "unknown"
-        
-        # Extract request information for audit log
-        action = self.method_to_action.get(method, "access")
-        resource_type, resource_id = self._extract_resource_info(path)
-        
-        # Create request context for additional security information
-        request_context = None
-        try:
-            request_context = await self._create_request_context(request)
-        except Exception as e:
-            logger.warning(f"Failed to create request context: {e}")
-            if self.settings.ENVIRONMENT == "test":
-                logger.debug(f"Detailed error creating request context: {e}", exc_info=True)
-            request_context = {"error": str(e)}
-        
-        # Process the request and capture the response
-        response = None
-        status_code = 500
-        try:
-            response = await call_next(request)
-            status_code = response.status_code
-        except Exception as e:
-            logger.error(f"Unhandled exception in middleware chain: {e}")
-            status_code = 500
-            raise e
-        finally:
             try:
-                # Only proceed with logging if we have a valid response and user ID
-                if response and user_id and user_id != "unknown":
-                    # Log PHI access if this is a PHI path
-                    if is_phi_path:
-                        access_status = "success" if 200 <= status_code < 300 else "failure"
-                        
-                        try:
-                            await self.audit_logger.log_phi_access(
-                                actor_id=user_id,
-                                patient_id=resource_id or "unknown",
-                                resource_type=resource_type or "api_resource",
-                                action=action,
-                                status=access_status,
-                                reason="API request",
-                                request=request,
-                                request_context=request_context
-                            )
-                        except SQLAlchemyError as db_error:
-                            # Log error but don't fail the request
-                            logger.error(f"Failed to log PHI access due to database error: {db_error}")
-                            if self.settings.ENVIRONMENT == "test":
-                                logger.debug(f"Database error details: {db_error}", exc_info=True)
-                        except Exception as e:
-                            # Log any other unexpected errors
-                            logger.error(f"Failed to log PHI access: {e}")
-                            if self.settings.ENVIRONMENT == "test":
-                                logger.debug(f"Detailed error logging PHI access: {e}", exc_info=True)
-                    else:
-                        # For non-PHI paths, log API access
-                        try:
-                            await self.audit_logger.log_event(
-                                event_type=AuditEventType.API_REQUEST,
-                                actor_id=user_id,
-                                target_resource=resource_type,
-                                target_id=resource_id,
-                                action=action,
-                                status="success" if 200 <= status_code < 300 else "failure",
-                                details={"path": path, "method": method, "status_code": status_code},
-                                request=request
-                            )
-                        except SQLAlchemyError as db_error:
-                            # Log error but don't fail the request
-                            logger.error(f"Failed to log API request due to database error: {db_error}")
-                            if self.settings.ENVIRONMENT == "test":
-                                logger.debug(f"Database error details: {db_error}", exc_info=True)
-                        except Exception as e:
-                            # Log any other unexpected errors
-                            logger.error(f"Failed to log API request: {e}")
-                            if self.settings.ENVIRONMENT == "test":
-                                logger.debug(f"Detailed error logging API access: {e}", exc_info=True)
-            except Exception as outer_e:
-                # Catch-all for any errors in the logging logic to ensure response is always returned
-                logger.error(f"Unhandled exception in audit logging logic: {outer_e}")
-                if self.settings.ENVIRONMENT == "test":
-                    logger.debug(f"Detailed error in audit logging: {outer_e}", exc_info=True)
+                user_id = await self._extract_user_id(request)
+            except Exception as e:
+                logger.warning(f"Failed to extract user ID from request: {e}")
+                # Don't log detailed errors in production
+                if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
+                    logger.debug(f"Detailed error extracting user ID: {e}", exc_info=True)
+            
+            # Skip logging if we couldn't get a valid user ID
+            if user_id == "unknown" and self.settings.ENVIRONMENT == "test":
+                return response
+            
+            # Extract request information for audit log
+            action = self.method_to_action.get(method, "access")
+            resource_type, resource_id = self._extract_resource_info(path)
+            
+            # Create request context for additional security information
+            request_context = {}
+            try:
+                request_context = await self._create_request_context(request)
+            except Exception as e:
+                logger.warning(f"Failed to create request context: {e}")
+                # Don't log detailed errors in production
+                if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
+                    logger.debug(f"Detailed error creating request context: {e}", exc_info=True)
+            
+            # Log PHI access if this is a PHI path
+            if is_phi_path:
+                access_status = "success" if 200 <= status_code < 300 else "failure"
+                
+                try:
+                    await self.audit_logger.log_phi_access(
+                        actor_id=user_id,
+                        resource_type=resource_type or "api_resource",
+                        resource_id=resource_id or "unknown",
+                        action=action,
+                        metadata={"status": access_status, "path": path, "method": method},
+                        ip_address=request_context.get("ip_address"),
+                        details=f"API {method} request to {path}"
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    logger.error(f"Failed to log PHI access: {e}")
+                    # Don't log detailed errors in production
+                    if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
+                        logger.debug(f"Detailed error logging PHI access: {e}", exc_info=True)
+            else:
+                # For non-PHI paths, log API access
+                try:
+                    await self.audit_logger.log_event(
+                        event_type=AuditEventType.API_REQUEST,
+                        actor_id=user_id,
+                        resource_type=resource_type,
+                        resource_id=resource_id, 
+                        action=action,
+                        metadata={"status_code": status_code, "path": path, "method": method},
+                        ip_address=request_context.get("ip_address"),
+                        details=f"API {method} request to {path}"
+                    )
+                except Exception as e:
+                    # Log error but don't fail the request
+                    logger.error(f"Failed to log API request: {e}")
+                    # Don't log detailed errors in production
+                    if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
+                        logger.debug(f"Detailed error logging API access: {e}", exc_info=True)
+        except Exception as outer_e:
+            # Catch-all for any errors in the logging logic to ensure response is always returned
+            logger.error(f"Unhandled exception in audit logging logic: {outer_e}")
+            # Don't log detailed errors in production
+            if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
+                logger.debug(f"Detailed error in audit logging: {outer_e}", exc_info=True)
         
         return response
     
