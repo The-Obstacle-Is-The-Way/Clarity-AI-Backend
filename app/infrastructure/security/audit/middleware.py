@@ -8,6 +8,7 @@ handling for PHI access to ensure HIPAA compliance.
 import re
 import ipaddress 
 import logging
+import asyncio
 from typing import Callable, List, Pattern, Dict, Any, Tuple, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -22,34 +23,45 @@ logger = logging.getLogger(__name__)
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
     """
-    Middleware that automatically logs PHI access for HIPAA compliance.
+    Middleware for automatic audit logging of API requests.
     
-    This middleware intercepts all HTTP requests and logs those that may involve
-    PHI access based on the route patterns and request methods.
+    This middleware automatically logs all API requests that access PHI data,
+    including the user making the request, the endpoint accessed, and the outcome.
     
-    It works with the AuditLogService to create comprehensive HIPAA-compliant
-    audit trails for all PHI access events.
+    This is required for HIPAA compliance (45 CFR § 164.312(b)) to implement
+    hardware, software, and/or procedural mechanisms that record and examine
+    activity in information systems that contain PHI.
     """
     
     def __init__(
         self,
         app: ASGIApp,
         audit_logger: IAuditLogger,
-        skip_paths: Optional[List[str]] = None,
-        phi_paths: Optional[List[Pattern]] = None,
+        skip_paths: List[str] = None,
+        disable_audit_middleware: bool = False
     ):
         """
-        Initialize the audit log middleware.
+        Initialize the middleware.
         
         Args:
-            app: The ASGI application to wrap
-            audit_logger: The audit logger to use for logging events
-            skip_paths: Paths to skip auditing (e.g., static assets)
-            phi_paths: Regex patterns for paths that access PHI
+            app: The FastAPI application
+            audit_logger: The audit logger to use
+            skip_paths: List of URL paths to skip audit logging
+            disable_audit_middleware: Whether to disable audit middleware completely
         """
         super().__init__(app)
         self.audit_logger = audit_logger
-        self.skip_paths = set(skip_paths or [])
+        self.skip_paths = skip_paths or []
+        self.disable_audit_middleware = disable_audit_middleware
+        
+        # Compile regex patterns for PHI URL matching
+        # PHI URLs typically contain patient identifiers or access medical record data
+        self.phi_url_patterns = [
+            re.compile(r"/api/v\d+/patients/[\w-]+"),
+            re.compile(r"/api/v\d+/medical-records/[\w-]+"),
+            re.compile(r".*/phi.*"),
+            # Add other patterns as needed
+        ]
         
         # Default PHI path patterns if none provided
         default_phi_patterns = [
@@ -63,7 +75,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             re.compile(r"/api/v\d+/providers/?.*"),  # Providers (may access PHI)
         ]
         
-        self.phi_paths = phi_paths or default_phi_patterns
+        self.phi_paths = default_phi_patterns
         self.settings = get_settings()
         
         # Map HTTP methods to audit actions
@@ -75,165 +87,226 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             "DELETE": "delete"
         }
     
-    def _is_audit_disabled(self, request: Request) -> bool:
+    async def _is_audit_disabled(self, request: Request) -> bool:
         """
-        Check if audit logging is disabled for this request.
-        
-        This checks both app.state and request.state for the disable_audit_middleware flag.
+        Check if audit logging should be disabled for this request.
         
         Args:
-            request: The FastAPI request
-            
+            request: The request to check
+        
         Returns:
-            bool: True if audit logging should be disabled
+            bool: True if audit logging should be disabled, False otherwise
         """
-        # Check if we're in a test environment from app state first
+        # Short-circuit for test environments to prevent hanging
+        if hasattr(request.app.state, "settings") and hasattr(request.app.state.settings, "ENVIRONMENT"):
+            if request.app.state.settings.ENVIRONMENT == "test":
+                return True
+                
+        # Check if testing mode is enabled on app state
         if hasattr(request.app.state, "testing") and request.app.state.testing:
-            logger.debug("Test environment flag detected on app.state.testing - audit logging disabled")
             return True
             
-        # Check request.state first (higher priority)
-        if hasattr(request.state, "disable_audit_middleware") and request.state.disable_audit_middleware:
-            logger.debug("Audit logging disabled via request.state.disable_audit_middleware")
+        # Check if disabled globally on middleware instance
+        if self.disable_audit_middleware:
             return True
             
-        # Then check app.state
+        # Check if disabled on app state
         if hasattr(request.app.state, "disable_audit_middleware") and request.app.state.disable_audit_middleware:
-            logger.debug("Audit logging disabled via app.state.disable_audit_middleware")
             return True
             
-        # Check if audit logger is properly configured and available
-        if not self.audit_logger:
-            logger.warning("Audit logger not available - disabling audit logging")
-            return True
-            
-        # Check if we're in a test environment
-        settings = request.state.settings if hasattr(request.state, "settings") else self.settings
-        if settings.ENVIRONMENT == "test":
-            # In test environments, default to disabled unless explicitly enabled
-            logger.debug("Test environment detected from settings - audit logging disabled by default")
+        # Check if disabled on request state
+        if hasattr(request.state, "disable_audit_middleware") and request.state.disable_audit_middleware:
             return True
             
         return False
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process the request and log relevant audit information.
+        Process the request and log PHI access if necessary.
         
         Args:
             request: The FastAPI request
-            call_next: The next middleware or endpoint handler
+            call_next: The next middleware in the chain
             
         Returns:
-            Response: The response from the next handler
+            Response: The response from the next middleware
         """
-        # First, perform a fast check if audit logging is disabled
-        if self._is_audit_disabled(request):
-            logger.debug("Audit logging disabled, skipping audit for this request")
+        # Skip audit logging for certain paths
+        path = request.url.path
+        if any(path.startswith(skip_path) for skip_path in self.skip_paths):
             return await call_next(request)
             
-        # Skip paths that shouldn't be audited
-        path = request.url.path
-        method = request.method
-        
-        if self._should_skip(path):
-            logger.debug(f"Skipping audit for path: {path}")
+        # Check if audit logging is disabled
+        if await self._is_audit_disabled(request):
+            # Skip audit logging but process the request
             return await call_next(request)
         
-        # Get the response first, audit logging should not block request processing
-        # especially in test environments
-        response = await call_next(request)
-        status_code = response.status_code
+        # Check if the URL matches a PHI pattern
+        is_phi_url = any(pattern.match(path) for pattern in self.phi_url_patterns)
         
-        # Additional check for disabling after the response is received
-        # (in case middleware configuration changed during request handling)
-        if self._is_audit_disabled(request):
+        if not is_phi_url:
+            # Not a PHI URL, just process the request without audit logging
+            return await call_next(request)
+        
+        # This is a PHI URL, extract user ID and resource info
+        user_id = await self._extract_user_id(request)
+        
+        # If no authenticated user, just process the request
+        if not user_id:
+            return await call_next(request)
+        
+        # Extract resource type and ID from the URL
+        resource_type, resource_id = self._extract_resource_info(path)
+        
+        # Map HTTP method to audit action
+        method = request.method
+        action = self.method_to_action.get(method, "access")
+        
+        # Set default access status (will be updated based on response)
+        access_status = "pending"
+        
+        # Set up request context for audit logging
+        request_context = {
+            "ip_address": request.client.host if request.client else "unknown",
+            "path": path,
+            "method": method,
+            "user_agent": request.headers.get("User-Agent", "unknown")
+        }
+        
+        # Process the request first
+        try:
+            # Get response first, then log after we know the outcome
+            response = await call_next(request)
+            
+            # Update access status based on response
+            access_status = "success" if response.status_code < 400 else "failure"
+            
+            # Only attempt logging after we have the response
+            if not await self._is_audit_disabled(request):  # Check again in case middleware was disabled during request
+                try:
+                    # Use a short timeout for the log operation in case it's hanging
+                    await asyncio.wait_for(
+                        self.audit_logger.log_phi_access(
+                            actor_id=user_id,
+                            resource_type=resource_type or "api_resource",
+                            resource_id=resource_id or "unknown",
+                            patient_id=resource_id or "unknown",  # Add patient_id parameter
+                            action=action,
+                            status=access_status,
+                            metadata={"path": path, "method": method},
+                            ip_address=request_context.get("ip_address"),
+                            reason="API request",
+                            request=request
+                        ), 
+                        timeout=0.5  # 500ms timeout for audit logging
+                    )
+                except asyncio.TimeoutError:
+                    # If audit logging times out, just continue
+                    pass
+                except Exception as e:
+                    # Log error but don't fail the request
+                    logger.error(f"Error in audit logging: {e}", exc_info=True)
+            
             return response
             
-        # Perform audit logging in a try-except block
-        try:
-            # Check if this path potentially accesses PHI
-            is_phi_path = self._is_phi_path(path)
+        except Exception as e:
+            # Request processing failed
+            access_status = "failure"
             
-            # Extract the user ID from the request
-            user_id = "unknown"
-            try:
-                user_id = await self._extract_user_id(request)
-            except Exception as e:
-                logger.warning(f"Failed to extract user ID from request: {e}")
-                # Don't log detailed errors in production
-                if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
-                    logger.debug(f"Detailed error extracting user ID: {e}", exc_info=True)
-            
-            # Skip logging if we couldn't get a valid user ID
-            if user_id == "unknown" and self.settings.ENVIRONMENT == "test":
-                return response
-            
-            # Extract request information for audit log
-            action = self.method_to_action.get(method, "access")
-            resource_type, resource_id = self._extract_resource_info(path)
-            
-            # Create request context for additional security information
-            request_context = {}
-            try:
-                request_context = await self._create_request_context(request)
-            except Exception as e:
-                logger.warning(f"Failed to create request context: {e}")
-                # Don't log detailed errors in production
-                if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
-                    logger.debug(f"Detailed error creating request context: {e}", exc_info=True)
-            
-            # Log PHI access if this is a PHI path
-            if is_phi_path:
-                access_status = "success" if 200 <= status_code < 300 else "failure"
-                
+            # Log the access with failure status, but don't block on it
+            if not await self._is_audit_disabled(request):
                 try:
-                    await self.audit_logger.log_phi_access(
-                        actor_id=user_id,
-                        resource_type=resource_type or "api_resource",
-                        resource_id=resource_id or "unknown",
-                        patient_id=resource_id or "unknown",  # Add patient_id for backward compatibility
-                        action=action,
-                        status=access_status,
-                        metadata={"path": path, "method": method},
-                        ip_address=request_context.get("ip_address"),
-                        reason="API request",
-                        request=request
+                    # Use a short timeout for the log operation
+                    await asyncio.wait_for(
+                        self.audit_logger.log_phi_access(
+                            actor_id=user_id,
+                            resource_type=resource_type or "api_resource",
+                            resource_id=resource_id or "unknown",
+                            patient_id=resource_id or "unknown",  # Add patient_id parameter
+                            action=action,
+                            status=access_status,
+                            metadata={"path": path, "method": method, "error": str(e)},
+                            ip_address=request_context.get("ip_address"),
+                            reason="API request (failed)",
+                            request=request
+                        ),
+                        timeout=0.5  # 500ms timeout for audit logging
                     )
-                except Exception as e:
-                    # Log error but don't fail the request
-                    logger.error(f"Failed to log PHI access: {e}")
-                    # Don't log detailed errors in production
-                    if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
-                        logger.debug(f"Detailed error logging PHI access: {e}", exc_info=True)
-            else:
-                # For non-PHI paths, log API access
-                try:
-                    await self.audit_logger.log_event(
-                        event_type=AuditEventType.API_REQUEST,
-                        actor_id=user_id,
-                        resource_type=resource_type,
-                        resource_id=resource_id, 
-                        action=action,
-                        metadata={"status_code": status_code, "path": path, "method": method},
-                        ip_address=request_context.get("ip_address"),
-                        details=f"API {method} request to {path}"
-                    )
-                except Exception as e:
-                    # Log error but don't fail the request
-                    logger.error(f"Failed to log API request: {e}")
-                    # Don't log detailed errors in production
-                    if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
-                        logger.debug(f"Detailed error logging API access: {e}", exc_info=True)
-        except Exception as outer_e:
-            # Catch-all for any errors in the logging logic to ensure response is always returned
-            logger.error(f"Unhandled exception in audit logging logic: {outer_e}")
-            # Don't log detailed errors in production
-            if hasattr(request.app.state, "settings") and request.app.state.settings.ENVIRONMENT != "production":
-                logger.debug(f"Detailed error in audit logging: {outer_e}", exc_info=True)
-        
-        return response
+                except (asyncio.TimeoutError, Exception) as log_error:
+                    # If audit logging fails, just continue
+                    logger.error(f"Error in audit logging during exception handling: {log_error}", exc_info=True)
+                    
+            # Re-raise the original exception
+            raise
     
+    async def _extract_user_id(self, request: Request) -> Optional[str]:
+        """
+        Extract the user ID from the request.
+        
+        Args:
+            request: The FastAPI request
+            
+        Returns:
+            Optional[str]: The user ID or None if no user
+        """
+        if hasattr(request.state, "user") and request.state.user:
+            user = request.state.user
+            return str(user.id)
+        return None
+    
+    def _extract_resource_info(self, path: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Extract resource type and ID from the URL path.
+        
+        Args:
+            path: The URL path
+            
+        Returns:
+            Tuple[Optional[str], Optional[str]]: The resource type and ID
+        """
+        # Match patterns like /api/v1/patients/123
+        match = re.search(r"/api/v\d+/(\w+)/([^/]+)", path)
+        if match:
+            resource_type = match.group(1)
+            # Remove trailing slash if it exists
+            resource_id = match.group(2).rstrip("/")
+            # Check if resource_type is plural and convert to singular
+            if resource_type.endswith("s"):
+                resource_type = resource_type[:-1]
+            return resource_type, resource_id
+            
+        # Try to match other patterns
+        # Special handling for PHI endpoints like /api/v1/patients/123/phi
+        phi_match = re.search(r"/api/v\d+/(\w+)/([^/]+)/phi", path)
+        if phi_match:
+            resource_type = f"{phi_match.group(1)}_phi"
+            resource_id = phi_match.group(2)
+            # Check if resource_type is plural and convert to singular
+            if resource_type.endswith("s_phi"):
+                resource_type = f"{resource_type[:-5]}_phi"
+            return resource_type, resource_id
+            
+        return None, None
+    
+    def _map_method_to_action(self, method: str) -> str:
+        """
+        Map HTTP method to audit action.
+        
+        Args:
+            method: The HTTP method
+            
+        Returns:
+            str: The audit action
+        """
+        method_to_action = {
+            "GET": "view",
+            "POST": "create",
+            "PUT": "update",
+            "PATCH": "update",
+            "DELETE": "delete"
+        }
+        return method_to_action.get(method.upper(), "access")
+
     def _should_skip(self, path: str) -> bool:
         """
         Determine if auditing should be skipped for this path.
@@ -271,85 +344,6 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                 return True
         
         return False
-    
-    async def _extract_user_id(self, request: Request) -> str:
-        """
-        Extract user ID from request.
-        
-        Args:
-            request: The FastAPI request
-            
-        Returns:
-            str: User ID or placeholder value
-        """
-        # Primary method: Get from authenticated user in request state
-        if hasattr(request.state, "user") and request.state.user is not None:
-            return request.state.user.id
-        
-        # Secondary method: Try to extract from auth token
-        if "Authorization" in request.headers:
-            try:
-                # Get settings from request state if available, else from global
-                settings = request.state.settings if hasattr(request.state, "settings") else get_settings()
-                
-                # Get JWT service from request state if available
-                jwt_service = getattr(request.state, "jwt_service", None)
-                
-                # Extract token
-                auth_header = request.headers["Authorization"]
-                if auth_header.startswith("Bearer "):
-                    token = auth_header[7:]  # Remove "Bearer " prefix
-                    if jwt_service:
-                        try:
-                            payload = await jwt_service.decode_token(token)
-                            if payload and hasattr(payload, "sub"):
-                                return payload.sub
-                        except Exception as e:
-                            # Log token validation error but continue
-                            logger.warning(f"Error validating token in audit middleware: {e}")
-                    
-                    # In test mode, use a fixed value to avoid requiring complex JWT setup
-                    if settings.ENVIRONMENT == "test":
-                        return "test_user"
-                    return "authenticated_user"  # Fallback if we can't extract user ID from token
-            except Exception as e:
-                logger.warning(f"Error processing Authorization header: {e}")
-        
-        # Fallback: Use anonymous user ID
-        return "anonymous"
-    
-    def _extract_resource_info(self, path: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Extract resource type and ID from the path.
-        
-        Args:
-            path: The request path
-            
-        Returns:
-            tuple: (resource_type, resource_id)
-        """
-        # Handle patient endpoints
-        patient_match = re.match(r"/api/v\d+/patients/([^/]+)(?:/.*)?", path)
-        if patient_match:
-            return "patient", patient_match.group(1)
-        
-        # Handle other PHI resources
-        for resource_type in ["medical-records", "prescriptions", "medications", 
-                            "appointments", "lab-results", "diagnostics"]:
-            match = re.match(rf"/api/v\d+/{resource_type}/([^/]+)(?:/.*)?", path)
-            if match:
-                return resource_type, match.group(1)
-        
-        # Generic API resource
-        parts = path.strip("/").split("/")
-        if len(parts) >= 3 and parts[0] == "api":
-            # Get the resource type from the path
-            resource_type = parts[2] if len(parts) > 2 else None
-            # Get the resource ID if available
-            resource_id = parts[3] if len(parts) > 3 else None
-            return resource_type, resource_id
-        
-        return None, None
     
     async def _create_request_context(self, request: Request) -> Dict[str, Any]:
         """

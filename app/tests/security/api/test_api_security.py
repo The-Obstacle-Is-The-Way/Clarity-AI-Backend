@@ -536,41 +536,29 @@ class TestErrorHandling:
         client, app = client_app_tuple_func_scoped
         
         # Create a test endpoint that deliberately raises an error
-        # Use a special route path just for this test to avoid conflicts
-        @app.get("/api/test-error-masked")
+        test_endpoint_path = "/api/test-unique-error-endpoint-for-test"
+        
+        @app.get(test_endpoint_path)
         async def test_error_endpoint():
             # Use a simple system error rather than creating a test-named error
-            # that might be specifically filtered in error handlers
             raise RuntimeError("This is a sensitive error detail that should be masked")
         
-        # Set up expected status code and error message
-        expected_status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        expected_error_message = {"detail": "An internal server error occurred."}
+        # Make the request to trigger the error with a short timeout
+        response = await client.get(test_endpoint_path, timeout=2.0)
         
-        try:
-            # Make the request to trigger the error - may raise an exception due to middleware
-            response = await client.get("/api/test-error-masked")
-            
-            # If we get a response, check it
-            assert response.status_code == expected_status_code
-            assert response.json() == expected_error_message
-            
-            # Make sure sensitive details aren't leaked
-            response_text = response.text.lower()
-            assert "sensitive error detail" not in response_text
-            assert "traceback" not in response_text
-            assert "runtime" not in response_text
-        except RuntimeError as e:
-            # In some test environments, the middleware might re-raise the exception
-            # This is also acceptable for this test since we're verifying error masking
-            if "This is a sensitive error detail that should be masked" in str(e):
-                # We got the original error - this means our application code is being hit
-                # but the exception handler is configured to re-raise in test environments
-                # This is acceptable behavior for the test
-                print("Test environment re-raised the exception instead of returning 500. This is acceptable.")
-            else:
-                # If it's a different exception, fail the test
-                raise
+        # Check the response status code
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        
+        # Verify error response structure
+        error_response = response.json()
+        assert "detail" in error_response
+        
+        # Check that error details are properly masked
+        # The error message should not contain the sensitive details
+        assert "sensitive error detail" not in error_response["detail"]
+        
+        # Verify the generic message is returned instead
+        assert "Internal server error" in error_response["detail"]
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
 
