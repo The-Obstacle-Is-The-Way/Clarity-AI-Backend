@@ -6,6 +6,7 @@ This simplifies the creation and configuration of the Digital Twin system.
 from app.domain.services.digital_twin_core_service import DigitalTwinCoreService
 from app.infrastructure.repositories.mock_digital_twin_repository import MockDigitalTwinRepository
 from app.infrastructure.repositories.mock_patient_repository import MockPatientRepository
+# Canonical import locations that maintain clean architecture principles
 from app.infrastructure.services.mock_digital_twin_core_service import MockDigitalTwinCoreService
 from app.infrastructure.services.mock_mentalllama_service import MockMentalLLaMAService
 from app.infrastructure.services.mock_pat_service import MockPATService

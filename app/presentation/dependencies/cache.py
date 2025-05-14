@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException, status
 
 from app.application.interfaces.services.cache_service import CacheService
 from app.config.settings import Settings, get_settings
-from app.infrastructure.services.redis_cache_service import RedisCacheService
+from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)

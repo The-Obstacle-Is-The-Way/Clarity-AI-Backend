@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
 
-from app.infrastructure.services.redis_cache_service import RedisCacheService
+from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 
 
 @pytest.fixture(scope="function")
