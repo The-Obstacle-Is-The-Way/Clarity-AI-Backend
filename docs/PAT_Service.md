@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Pretrained Actigraphy Transformer (PAT) Service is a specialized machine learning component within the Clarity AI Backend that analyzes physical activity data (actigraphy) to derive psychiatric insights. This service represents a breakthrough approach in psychiatric assessment, using motion patterns captured by wearable devices to identify markers of mental health conditions, monitor treatment efficacy, and provide objective data for the digital twin.
+The Pretrained Actigraphy Transformer (PAT) Service is a specialized machine learning component within the Clarity AI Backend that analyzes patient data to derive psychiatric insights. This service represents a breakthrough approach in psychiatric assessment, using various data sources including actigraphy to identify markers of mental health conditions, monitor treatment efficacy, and provide objective data for the digital twin.
 
 ## Clean Architecture Implementation
 
@@ -15,212 +15,243 @@ The PAT Service exemplifies clean architecture principles through:
 
 ## Interface Definition
 
-The PAT Service interface is defined in `app/core/services/ml/pat/pat_interface.py`:
+The PAT Service interface is defined in `app/core/interfaces/services/ml/pat_interface.py`:
 
 ```python
-class PATInterface(abc.ABC):
-    """Interface for the PAT service.
-
-    This interface defines the contract that all PAT service implementations
-    must follow, providing methods for analyzing actigraphy data, generating
-    embeddings, and integrating with digital twin profiles.
+class PATInterface(ABC):
     """
-
-    @abc.abstractmethod
-    def initialize(self, config: dict[str, Any]) -> None:
-        """Initialize the PAT service with configuration."""
+    Interface for psychiatric assessment tool services.
+    
+    PAT services analyze patient data and provide clinical insights,
+    predictions, and digital twin modeling capabilities.
+    """
+    
+    @abstractmethod
+    async def initialize(self) -> bool:
+        """
+        Initialize the PAT service with required models and configurations.
+        
+        Returns:
+            True if initialization successful, False otherwise
+        """
         pass
-
-    @abc.abstractmethod
-    def analyze_actigraphy(
+    
+    @abstractmethod
+    async def analyze_patient(
+        self, 
+        patient_id: str, 
+        data: dict[str, Any],
+        include_risk_factors: bool = True,
+        include_recommendations: bool = True
+    ) -> dict[str, Any]:
+        """
+        Analyze patient data to extract clinical insights.
+        
+        Args:
+            patient_id: Patient identifier
+            data: Patient data for analysis
+            include_risk_factors: Whether to include risk factors in the analysis
+            include_recommendations: Whether to include treatment recommendations
+            
+        Returns:
+            Analysis results with clinical insights
+        """
+        pass
+    
+    @abstractmethod
+    async def predict_risk(
         self,
         patient_id: str,
-        readings: list[dict[str, Any]],
-        start_time: str,
-        end_time: str,
-        sampling_rate_hz: float,
-        device_info: dict[str, Any],
-        analysis_types: list[str],
-        **kwargs
+        risk_type: str,
+        timeframe_days: int,
+        data: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Analyze actigraphy data and return insights."""
+        """
+        Predict specific risk factors for a patient.
+        
+        Args:
+            patient_id: Patient identifier
+            risk_type: Type of risk to predict (e.g., "suicide", "hospitalization")
+            timeframe_days: Prediction timeframe in days
+            data: Additional data for prediction, if None uses stored patient data
+            
+        Returns:
+            Risk prediction results with confidence scores
+        """
         pass
-
-    @abc.abstractmethod
-    def get_actigraphy_embeddings(
+    
+    @abstractmethod
+    async def create_digital_twin(
+        self, 
+        patient: Patient,
+        include_features: list[str] = None
+    ) -> DigitalTwin:
+        """
+        Create a digital twin model for a patient.
+        
+        Args:
+            patient: Patient entity
+            include_features: Optional list of specific features to include
+            
+        Returns:
+            Digital twin entity representing the patient
+        """
+        pass
+    
+    @abstractmethod
+    async def update_digital_twin(
         self,
-        patient_id: str,
-        readings: list[dict[str, Any]],
-        start_time: str,
-        end_time: str,
-        sampling_rate_hz: float,
-        **kwargs
-    ) -> dict[str, Any]:
-        """Generate embeddings from actigraphy data."""
+        digital_twin_id: str,
+        new_data: dict[str, Any]
+    ) -> DigitalTwin:
+        """
+        Update an existing digital twin with new patient data.
+        
+        Args:
+            digital_twin_id: Digital twin identifier
+            new_data: New patient data to incorporate
+            
+        Returns:
+            Updated digital twin entity
+        """
         pass
-
-    @abc.abstractmethod
-    def get_model_info(self) -> dict[str, Any]:
-        """Get information about the PAT model."""
-        pass
-
-    @abc.abstractmethod
-    def detect_activity_patterns(
-        self,
-        patient_id: str,
-        readings: list[dict[str, Any]],
-        pattern_types: list[str],
-        **kwargs
-    ) -> dict[str, Any]:
-        """Detect specific activity patterns in actigraphy data."""
-        pass
-
-    @abc.abstractmethod
-    def compare_activity_periods(
-        self,
-        patient_id: str,
-        period_a: dict[str, Any],
-        period_b: dict[str, Any],
-        metrics: list[str],
-        **kwargs
-    ) -> dict[str, Any]:
-        """Compare two activity periods and identify changes."""
-        pass
-
-    @abc.abstractmethod
-    def predict_indicators(
-        self,
-        patient_id: str,
-        readings: list[dict[str, Any]],
-        indicators: list[str],
-        **kwargs
-    ) -> dict[str, Any]:
-        """Predict mental health indicators from actigraphy data."""
+    
+    @abstractmethod
+    async def get_model_info(self) -> dict[str, Any]:
+        """
+        Get information about the underlying models used by the PAT service.
+        
+        Returns:
+            Model information including version, training data, and capabilities
+        """
         pass
 ```
 
 ## Key Capabilities
 
-### Actigraphy Analysis
+### Patient Analysis
 
-The PAT Service processes raw accelerometer data from wearable devices to extract clinically relevant features:
+The PAT Service processes patient data to extract clinically relevant insights:
 
 ```python
-def analyze_actigraphy(
-    self,
-    patient_id: str,
-    readings: list[dict[str, Any]],
-    start_time: str,
-    end_time: str,
-    sampling_rate_hz: float,
-    device_info: dict[str, Any],
-    analysis_types: list[str],
-    **kwargs
+async def analyze_patient(
+    self, 
+    patient_id: str, 
+    data: dict[str, Any],
+    include_risk_factors: bool = True,
+    include_recommendations: bool = True
 ) -> dict[str, Any]:
 ```
 
-This method transforms raw motion data into psychiatric insights such as:
+This method transforms various data sources into psychiatric insights such as:
 
-- Sleep quality metrics
-- Activity level patterns
-- Diurnal variations
-- Behavioral rhythms
-- Movement characteristics
-- Energy expenditure
+- Mental state assessment
+- Behavioral pattern identification
+- Symptom analysis
+- Treatment response indicators
+- Functional status metrics
 
-### Embedding Generation
+### Risk Prediction
 
-The service can generate vector embeddings from actigraphy data for use in downstream machine learning tasks:
+The service can predict specific risk factors for patients:
 
 ```python
-def get_actigraphy_embeddings(
+async def predict_risk(
     self,
     patient_id: str,
-    readings: list[dict[str, Any]],
-    start_time: str,
-    end_time: str,
-    sampling_rate_hz: float,
-    **kwargs
+    risk_type: str,
+    timeframe_days: int,
+    data: dict[str, Any] | None = None
 ) -> dict[str, Any]:
 ```
 
-These embeddings represent a dimensional reduction of complex activity patterns, enabling:
+This method evaluates the likelihood of various psychiatric risks, such as:
 
-- Similarity comparisons between patients
-- Anomaly detection
+- Suicidal ideation or behavior
+- Hospital readmission
+- Treatment non-adherence
+- Symptom exacerbation
+- Crisis episodes
+
+### Digital Twin Creation
+
+The service can generate digital twin models that represent patients:
+
+```python
+async def create_digital_twin(
+    self, 
+    patient: Patient,
+    include_features: list[str] = None
+) -> DigitalTwin:
+```
+
+The digital twin represents a computational model of the patient that can be used for:
+
+- Treatment simulation
+- Outcome prediction
 - Longitudinal tracking
-- Integration with other modalities in the digital twin
+- Multimodal data integration
+- Personalized intervention planning
 
-### Pattern Detection
+### Digital Twin Updates
 
-The service can identify specific activity patterns that correlate with psychiatric states:
-
-```python
-def detect_activity_patterns(
-    self,
-    patient_id: str,
-    readings: list[dict[str, Any]],
-    pattern_types: list[str],
-    **kwargs
-) -> dict[str, Any]:
-```
-
-Pattern types may include:
-
-- Psychomotor agitation
-- Psychomotor retardation
-- Circadian dysregulation
-- Social withdrawal patterns
-- Manic activation
-- Depressive inactivity
-
-### Indicator Prediction
-
-The service can predict specific mental health indicators from actigraphy data:
+The service can update existing digital twins with new patient data:
 
 ```python
-def predict_indicators(
+async def update_digital_twin(
     self,
-    patient_id: str,
-    readings: list[dict[str, Any]],
-    indicators: list[str],
-    **kwargs
-) -> dict[str, Any]:
+    digital_twin_id: str,
+    new_data: dict[str, Any]
+) -> DigitalTwin:
 ```
 
-Examples of indicators include:
+This allows for:
 
-- Depression severity
-- Anxiety levels
-- Sleep disturbance
-- Treatment response
-- Relapse risk
-- Overall functional status
+- Real-time model evolution
+- Continuous learning from new observations
+- Adaptive prediction based on treatment response
+- Temporal pattern recognition
+- Change detection in patient status
+
+### Model Information
+
+The service provides metadata about its underlying models:
+
+```python
+async def get_model_info(self) -> dict[str, Any]:
+```
+
+This method returns information about:
+
+- Model versions and capabilities
+- Training data characteristics
+- Validation metrics
+- Feature importance
+- Model limitations and constraints
 
 ## Service Implementations
 
-### AWS Bedrock Implementation
+### Production Implementation
 
-The primary implementation uses AWS Bedrock for scalable, cloud-based processing:
+The primary implementation uses advanced machine learning models for analysis:
 
 ```python
-class BedrockPAT(PATInterface):
-    """AWS Bedrock-based implementation of the PAT service."""
+class ProductionPAT(PATInterface):
+    """Production implementation of the PAT service."""
     
     def __init__(self):
         self._initialized = False
-        self._bedrock_client = None
-        self._analysis_model_id = None
-        self._embedding_model_id = None
+        self._models = {}
         self._config = None
 ```
 
 Key features of this implementation:
 
-- Serverless architecture for elastic scaling
-- Managed infrastructure reducing operational overhead
-- Pay-per-use pricing model
-- Integration with AWS security features for HIPAA compliance
+- State-of-the-art ML models
+- Integration with clinical knowledge bases
+- Continuous model updates
+- Multi-dimensional data processing
+- HIPAA-compliant data handling
 
 ### Mock Implementation
 
@@ -234,173 +265,57 @@ class MockPAT(PATInterface):
         self._initialized = False
         self._config = None
         
-    def initialize(self, config: dict[str, Any]) -> None:
+    async def initialize(self) -> bool:
         """Initialize the mock PAT service."""
         self._initialized = True
-        self._config = config
+        return True
 ```
 
 This implementation returns deterministic, simulated results for unit testing and development without external dependencies.
 
 ## Integration with Digital Twin
 
-The PAT Service is tightly integrated with the Digital Twin system, providing objective behavioral data that complements subjective psychiatric assessments:
+The PAT Service is tightly integrated with the Digital Twin system, providing comprehensive psychiatric assessments that complement other data sources:
 
-```python
-def integrate_with_digital_twin(
-    self,
-    patient_id: str,
-    twin_id: str,
-    actigraphy_results: dict[str, Any],
-    integration_options: dict[str, Any],
-    **kwargs
-) -> dict[str, Any]:
-```
-
-This integration enables:
-
-1. **Multimodal Analysis**: Combining activity data with other clinical measures
-2. **Longitudinal Tracking**: Monitoring changes in activity patterns over time
-3. **Treatment Response**: Objective measurement of intervention effects
-4. **Relapse Prediction**: Early warning through activity pattern changes
+1. **Multimodal Integration**: Combines PAT insights with other data sources
+2. **Temporal Modeling**: Tracks changes in psychiatric state over time
+3. **Intervention Simulation**: Models potential outcomes of different treatments
+4. **Personalized Metrics**: Develops individualized baselines and trajectories
+5. **Feedback Loops**: Incorporates treatment response data into future predictions
 
 ## HIPAA Compliance
 
-The PAT Service implements several measures to ensure HIPAA compliance:
+The PAT Service implements strict security measures:
 
-1. **Data Anonymization**: Patient identifiers are separated from raw data
-2. **Audit Logging**: All data access is logged for compliance tracking
-3. **Encryption**: Data is encrypted both in transit and at rest
-4. **Access Control**: Service access is restricted to authorized components
+1. **Data Minimization**: Only necessary information is processed
+2. **Secure Processing**: All sensitive data is handled securely
+3. **Access Control**: Strict authentication and authorization
+4. **Audit Logging**: All PHI access is logged and monitored
+5. **Encryption**: Data encrypted at rest and in transit
 
-## Input Validation
+## Future Enhancements
 
-To ensure data quality and reliability, the service implements comprehensive validation:
+Planned enhancements for the PAT Service include:
 
-```python
-def _validate_readings(self, readings: list[dict[str, Any]], sampling_rate_hz: float) -> bool:
-    """
-    Validate actigraphy readings format and quality.
-    
-    Args:
-        readings: List of accelerometer readings
-        sampling_rate_hz: Expected sampling rate
-        
-    Returns:
-        True if valid, raises ValidationError otherwise
-    """
-```
+1. **Advanced NLP**: Integration of natural language processing for text analysis
+2. **Multimodal Learning**: Combined analysis of various data modalities
+3. **Federated Learning**: Privacy-preserving model training across institutions
+4. **Explainable AI**: More transparent reasoning for clinical insights
+5. **Real-time Processing**: Immediate analysis of incoming patient data
 
-Validation checks include:
+## Architectural Considerations
 
-- Data format correctness
-- Temporal consistency
-- Sampling rate verification
-- Signal quality assessment
-- Adherence to expected ranges
+The current PAT Service implementation follows clean architecture principles, but has opportunities for refinement:
 
-## Service Factory
-
-The PAT Service is instantiated using a factory pattern:
-
-```python
-class PATFactory:
-    """
-    Factory for creating PAT service instances.
-    
-    This factory creates the appropriate PAT service implementation
-    based on configuration, supporting dependency injection and
-    proper separation of concerns.
-    """
-    
-    @staticmethod
-    def create_service(config: dict[str, Any]) -> PATInterface:
-        """
-        Create a PAT service instance.
-        
-        Args:
-            config: Service configuration dictionary
-            
-        Returns:
-            Initialized PAT service instance
-            
-        Raises:
-            ValueError: If provider type is unknown
-        """
-        provider_type = config.get("provider_type", "mock")
-        
-        if provider_type == "bedrock":
-            service = BedrockPAT()
-        elif provider_type == "mock":
-            service = MockPAT()
-        else:
-            raise ValueError(f"Unknown PAT provider type: {provider_type}")
-        
-        service.initialize(config)
-        return service
-```
-
-## Error Handling
-
-The service implements robust error handling to maintain system reliability:
-
-```python
-class AnalysisError(Exception):
-    """Error during actigraphy analysis."""
-    pass
-
-class ValidationError(Exception):
-    """Error validating actigraphy data."""
-    pass
-
-class InitializationError(Exception):
-    """Error initializing PAT service."""
-    pass
-
-class EmbeddingError(Exception):
-    """Error generating embeddings."""
-    pass
-```
-
-These specialized exceptions enable precise error reporting and appropriate handling at higher levels.
-
-## Dependency Injection
-
-The PAT Service is integrated into the application through FastAPI's dependency injection system:
-
-```python
-def get_pat_service(
-    settings: Settings = Depends(get_settings),
-) -> PATInterface:
-    """
-    Dependency provider for PAT service.
-    
-    Returns:
-        Initialized PAT service instance
-    """
-    config = {
-        "provider_type": settings.PAT_PROVIDER_TYPE,
-        "aws_region": settings.AWS_REGION,
-        "analysis_model_id": settings.PAT_ANALYSIS_MODEL_ID,
-        "embedding_model_id": settings.PAT_EMBEDDING_MODEL_ID,
-        # Other configuration parameters
-    }
-    
-    return PATFactory.create_service(config)
-```
-
-## Scientific Background
-
-The PAT Service is based on established research showing that physical activity patterns correlate with psychiatric states:
-
-1. **Psychomotor Changes**: Depression and bipolar disorder manifest in altered movement patterns
-2. **Circadian Rhythms**: Disruptions in daily activity cycles correlate with mood disorders
-3. **Sleep Architecture**: Activity during sleep periods indicates sleep quality issues
-4. **Social Rhythms**: Changes in regular activity patterns often precede psychiatric decompensation
+1. **Interface Consolidation**: Ensure consistent interfaces across the system
+2. **Dependency Injection**: Standardize DI patterns for all service instances
+3. **Repository Pattern**: Improve data access through dedicated repositories
+4. **Domain Model Alignment**: Ensure full alignment with domain entities
+5. **Test Harness**: Develop comprehensive test suite for all implementations
 
 ## Related Components
 
-- **Actigraphy Data Collection**: Subsystem for gathering raw activity data
-- **Digital Twin Integration**: Services that incorporate PAT outputs into the digital twin
-- **Longitudinal Analysis**: Components for tracking changes over time
-- **Alert Generation**: Systems that create clinician alerts based on significant pattern changes
+- **Actigraphy System**: Provides specialized analysis of physical activity data
+- **Digital Twin System**: Integrates PAT insights into comprehensive patient models
+- **Alert Rules System**: Generates clinical alerts based on PAT predictions
+- **Treatment Recommendation System**: Uses PAT insights for intervention planning

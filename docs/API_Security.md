@@ -4,90 +4,90 @@
 
 This document outlines the security implementation for the Clarity AI Backend APIs, focusing on HIPAA compliance, authentication, authorization, rate limiting, and secure data handling. The API security architecture follows clean design principles to ensure proper separation of concerns while maintaining robust protection mechanisms.
 
-## Authentication System
+## JWT-Based Authentication
 
-### JWT-Based Authentication
+The Clarity AI Backend uses JSON Web Tokens (JWT) for stateless authentication with these key features:
 
-The Clarity AI Backend uses JSON Web Tokens (JWT) for stateless authentication:
+1. **Token Generation**: Secure tokens created with user context upon login
+2. **Payload Security**: Token payloads contain minimal, non-PHI identifiers 
+3. **Token Validation**: Every protected endpoint verifies token validity
+4. **Blacklisting**: Invalidated tokens are tracked for immediate access revocation
+5. **Automatic Expiration**: Short-lived tokens enforce session timeouts
+
+### JWT Service Interface
+
+The JWT service follows a clean architecture interface design:
 
 ```python
-# Core interface definition
-from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Dict, Any, Optional
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
+from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
+from app.domain.interfaces.token_repository import ITokenRepository
 
-class IJWTService(ABC):
-    """Interface for JWT token handling."""
+class JWTService:
+    """
+    Service for JWT token generation, validation, and management.
     
-    @abstractmethod
-    async def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[int] = None) -> str:
-        """
-        Create a new JWT access token.
+    This service adheres to HIPAA security requirements for authentication
+    and authorization, including:
+    - Secure token generation with appropriate expiration
+    - Token validation and verification
+    - Token blacklisting to enforce logout
+    - Audit logging of token-related activities
+    """
+
+    def __init__(
+        self,
+        token_repo: ITokenRepository,
+        blacklist_repo: ITokenBlacklistRepository,
+        audit_logger: IAuditLogger
+    ):
+        """Initialize the JWT service."""
         
-        Args:
-            data: Payload data to include in token
-            expires_delta: Optional custom expiration time in seconds
-            
-        Returns:
-            JWT token string
-        """
-        pass
-    
-    @abstractmethod
-    async def decode_token(self, token: str) -> Dict[str, Any]:
-        """
-        Decode and validate a JWT token.
+    def create_access_token(
+        self, 
+        user_id: str,
+        email: str,
+        role: str,
+        permissions: list[str],
+        session_id: str
+    ) -> tuple[str, int]:
+        """Create a new access token for a user."""
         
-        Args:
-            token: JWT token to decode
-            
-        Returns:
-            Token payload
-            
-        Raises:
-            JWTError: If token is invalid or expired
-        """
-        pass
-    
-    @abstractmethod
-    async def blacklist_token(self, token: str) -> None:
-        """
-        Add a token to the blacklist.
+    def create_refresh_token(
+        self, 
+        user_id: str,
+        email: str,
+        session_id: str
+    ) -> str:
+        """Create a new refresh token for a user."""
         
-        Args:
-            token: JWT token to blacklist
-        """
-        pass
-    
-    @abstractmethod
-    async def is_token_blacklisted(self, token: str) -> bool:
-        """
-        Check if a token is blacklisted.
+    def validate_token(self, token: str, token_type: str = "access") -> dict[str, Any]:
+        """Validate a JWT token and return its payload."""
         
-        Args:
-            token: JWT token to check
-            
-        Returns:
-            True if token is blacklisted
-        """
-        pass
+    async def blacklist_token(self, token: str, user_id: str | None = None) -> None:
+        """Add a token to the blacklist."""
+        
+    async def blacklist_session_tokens(self, session_id: str, user_id: str | None = None) -> None:
+        """Blacklist all tokens for a session."""
 ```
 
 ### Token Lifecycle Management
 
-1. **Token Generation**: JWT tokens are created upon successful authentication
-2. **Payload Security**: Tokens contain minimal user information with no PHI
-3. **Token Validation**: Every protected endpoint verifies token validity
-4. **Token Blacklisting**: Invalidated tokens are tracked in Redis
-5. **Automatic Expiration**: Short-lived tokens enforce session timeouts
+The token lifecycle is carefully managed to maintain security:
 
-## Authorization Framework
+1. **Token Creation**: Tokens contain unique JTI (JWT ID) and session binding
+2. **Short Expiration**: Access tokens expire in minutes, refresh tokens in days
+3. **Signature Verification**: Tokens are verified using HMAC-SHA256
+4. **Blacklist Check**: Tokens are checked against blacklist before each use
+5. **Audit Trail**: All token operations are logged for compliance
 
-### Role-Based Access Control (RBAC)
+## Role-Based Access Control (RBAC)
+
+The system implements a comprehensive role-based access control model:
 
 ```python
 from enum import Enum
-from typing import List
+from typing import List, Dict, Set
 
 class UserRole(str, Enum):
     """User roles for authorization."""
@@ -103,12 +103,12 @@ class RBACHandler:
     Maps roles to permissions and verifies user access rights.
     """
     
-    def __init__(self, role_permissions: Dict[UserRole, List[str]]):
+    def __init__(self, role_permissions: Dict[UserRole, Set[str]]):
         """
         Initialize with role-permission mappings.
         
         Args:
-            role_permissions: Dictionary mapping roles to permission lists
+            role_permissions: Dictionary mapping roles to permission sets
         """
         self._role_permissions = role_permissions
     
@@ -129,13 +129,16 @@ class RBACHandler:
         return required_permission in self._role_permissions[user_role]
 ```
 
-### Permission Decorators
+### Permission-Based Endpoint Protection
+
+Endpoints are protected using permission decorators:
 
 ```python
 from functools import wraps
 from fastapi import Depends, HTTPException, status
-from app.core.domain.entities import User
+from app.domain.entities.user import User
 from app.presentation.api.dependencies.auth import get_current_user
+from app.infrastructure.di.container import get_rbac_handler
 
 def requires_permission(permission: str):
     """
@@ -148,6 +151,7 @@ def requires_permission(permission: str):
         Dependency function checking permission
     """
     def permission_dependency(current_user: User = Depends(get_current_user)):
+        rbac_handler = get_rbac_handler()
         if not rbac_handler.has_permission(current_user.role, permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -159,13 +163,13 @@ def requires_permission(permission: str):
 
 ## API Rate Limiting
 
-### Rate Limiting Middleware
+The API implements rate limiting to prevent abuse and ensure availability:
 
 ```python
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.interfaces.services import IRateLimiterService
-from app.core.domain.errors import RateLimitExceededError
+from app.core.interfaces.services.rate_limiter_interface import IRateLimiterService
+from app.domain.exceptions.rate_limit_exceptions import RateLimitExceededException
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     """
@@ -215,7 +219,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             
             return response
             
-        except RateLimitExceededError as e:
+        except RateLimitExceededException as e:
             # Return rate limit exceeded response
             return Response(
                 content={"detail": "Rate limit exceeded"},
@@ -224,331 +228,201 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             )
 ```
 
-## HIPAA-Compliant Request and Response Handling
+## PHI Protection Middleware
 
-### Request Validation
-
-1. **Schema Validation**: All requests validated against Pydantic models
-2. **Input Sanitization**: Special characters and potential injection vectors filtered
-3. **Type Safety**: Strong typing enforced for all API inputs
-
-### PHI Protection
-
-1. **PHI Masking Middleware**: Automatically detects and masks PHI in logs and error messages
-2. **Request ID Tracking**: Unique identifiers for all requests without PHI
-3. **Data Minimization**: Only essential data transmitted in requests/responses
+The system includes specialized middleware to protect PHI in accordance with HIPAA:
 
 ```python
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-import re
-import uuid
-
-class PHIProtectionMiddleware(BaseHTTPMiddleware):
+class PHIMiddleware(BaseHTTPMiddleware):
     """
-    Middleware for protecting PHI in requests and responses.
+    Middleware to enforce HIPAA PHI handling requirements.
     
-    Automatically sanitizes PHI patterns in responses and logs.
+    This middleware:
+    1. Prevents PHI from appearing in URLs (query params, path params)
+    2. Logs all PHI access attempts for audit purposes
+    3. Ensures proper error handling for PHI-related operations
+    4. Sanitizes responses to prevent accidental PHI leakage
     """
     
-    def __init__(self, app):
-        """Initialize middleware."""
+    def __init__(
+        self, 
+        app: ASGIApp,
+        phi_patterns: list[Pattern] | None = None,
+        exempt_paths: set[str] | None = None
+    ):
+        """
+        Initialize PHI middleware with patterns to detect and paths to exempt.
+        
+        Args:
+            app: The ASGI application
+            phi_patterns: Regular expression patterns to detect PHI
+            exempt_paths: Paths exempt from PHI checks (e.g., auth endpoints)
+        """
         super().__init__(app)
-        
-        # Patterns to detect potential PHI
-        self._phi_patterns = [
-            r"\b\d{3}-\d{2}-\d{4}\b",  # SSN
-            r"\b\d{9}\b",  # 9-digit numeric identifiers
-            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
-            r"\b\(\d{3}\)\s*\d{3}[-. ]?\d{4}\b",  # Phone (xxx) xxx-xxxx
-            r"\b\d{3}[-. ]?\d{3}[-. ]?\d{4}\b",  # Phone xxx-xxx-xxxx
+        self.phi_patterns = phi_patterns or [
+            # Social Security Number patterns
+            re.compile(r"\b\d{3}[-]?\d{2}[-]?\d{4}\b"),
+            # Medical Record Number patterns (various formats)
+            re.compile(r"\bMRN[-:]?\d{6,10}\b", re.IGNORECASE),
+            # Email patterns
+            re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+            # Date of birth patterns
+            re.compile(r"\b(0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])[-/.](19|20)\d{2}\b"),
+            # Common patient identifiers
+            re.compile(r"\bPATIENT[-_]?ID[:=]?\d+\b", re.IGNORECASE),
         ]
-        self._phi_regex = re.compile("|".join(self._phi_patterns))
-    
-    async def dispatch(self, request: Request, call_next):
-        """Process the request with PHI protection."""
-        # Assign request ID for tracking without PHI
-        request.state.request_id = str(uuid.uuid4())
+        self.exempt_paths = exempt_paths or {
+            "/api/v1/auth/token",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        }
         
-        # Process the request
-        response = await call_next(request)
-        
-        # Check if response contains PHI and sanitize if needed
-        if response.headers.get("content-type") == "application/json":
-            content = await response.body()
-            content_str = content.decode("utf-8")
-            
-            # Sanitize PHI in response
-            sanitized = self._sanitize_phi(content_str)
-            
-            if sanitized != content_str:
-                # Create new response with sanitized content
-                return Response(
-                    content=sanitized,
-                    status_code=response.status_code,
-                    headers=dict(response.headers),
-                    media_type="application/json"
-                )
-        
-        return response
-    
-    def _sanitize_phi(self, content: str) -> str:
-        """Replace PHI with masked values."""
-        return self._phi_regex.sub("[REDACTED]", content)
+        # Get encryption service for HIPAA compliance
+        container = get_container()
+        try:
+            self.encryption_service = container.get(IEncryptionService)
+        except KeyError:
+            # Create encryption service if not available
+            self.encryption_service = BaseEncryptionService()
+            container.register(IEncryptionService, self.encryption_service)
 ```
 
-## Secure Headers Middleware
+### PHI Protection Features
+
+The PHI middleware provides several critical safeguards:
+
+1. **URL Pattern Detection**: Regexp patterns detect common PHI formats in URLs
+2. **Request Interception**: Blocks requests containing PHI in URLs
+3. **Response Sanitization**: Removes PHI from error messages and responses
+4. **Audit Logging**: Records all PHI access attempts for compliance
+5. **Path Exemptions**: Allows specific non-PHI paths to bypass checks
+
+## Request Validation
+
+### Pydantic Model Validation
+
+All request data is validated using Pydantic models to ensure data integrity:
 
 ```python
-from fastapi import FastAPI
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware that adds security headers to responses.
+class PatientCreate(BaseModel):
+    """Schema for creating a new patient."""
     
-    Implements recommended security headers for web applications.
-    """
+    first_name: str
+    last_name: str
+    date_of_birth: date
+    gender: str
+    email: EmailStr | None = None
+    phone: str | None = None
+    address: str | None = None
+    
+    @validator("date_of_birth")
+    def validate_birth_date(cls, v):
+        """Validate that birth date is not in the future."""
+        if v > date.today():
+            raise ValueError("Birth date cannot be in the future")
+        return v
+    
+    @validator("gender")
+    def validate_gender(cls, v):
+        """Validate gender field."""
+        allowed_values = ["male", "female", "other", "prefer_not_to_say"]
+        if v.lower() not in allowed_values:
+            raise ValueError(f"Gender must be one of: {', '.join(allowed_values)}")
+        return v.lower()
+```
+
+### Input Sanitization
+
+The system employs multiple layers of input sanitization:
+
+1. **Type Validation**: Ensure input data matches expected types
+2. **Value Constraints**: Apply business rules to validate input values
+3. **SQL Injection Prevention**: All database queries use parameterized queries
+4. **Cross-Site Scripting Protection**: HTML/JS content is escaped in responses
+5. **Special Character Filtering**: Potentially dangerous characters are escaped
+
+## Security Headers
+
+The API applies security headers to all responses via middleware:
+
+```python
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
     
     async def dispatch(self, request: Request, call_next):
-        """Add security headers to response."""
         response = await call_next(request)
         
         # Add security headers
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = "default-src 'self'"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["Pragma"] = "no-cache"
+        response.headers["Referrer-Policy"] = "no-referrer"
         
         return response
 ```
 
-## Request ID and Audit Trail
+## Audit Logging
+
+All security-relevant actions are logged for HIPAA compliance:
 
 ```python
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-import uuid
-from app.core.interfaces.services import IAuditLogger
-
-class RequestIdMiddleware(BaseHTTPMiddleware):
+class AuditLoggerService(IAuditLogger):
     """
-    Middleware for tracking requests with unique IDs.
+    Implementation of the audit logger interface.
     
-    Assigns a unique identifier to each request for tracking
-    without using PHI.
+    Logs security and PHI access events for HIPAA compliance.
     """
     
-    def __init__(self, app, audit_logger: IAuditLogger):
+    def __init__(self, log_repository: IAuditLogRepository):
+        """Initialize with log repository."""
+        self._log_repository = log_repository
+    
+    async def log_security_event(
+        self,
+        event_type: str,
+        user_id: str | None,
+        description: str,
+        severity: str = "INFO",
+        metadata: dict[str, Any] | None = None
+    ) -> None:
         """
-        Initialize middleware.
+        Log a security-related event.
         
         Args:
-            app: FastAPI application
-            audit_logger: Audit logging service
+            event_type: Type of security event
+            user_id: ID of the user who triggered the event
+            description: Human-readable description
+            severity: Event severity level
+            metadata: Additional event data
         """
-        super().__init__(app)
-        self._audit_logger = audit_logger
-    
-    async def dispatch(self, request: Request, call_next):
-        """Process the request with tracking ID."""
-        # Generate unique request ID
-        request_id = str(uuid.uuid4())
-        request.state.request_id = request_id
-        
-        # Add to response headers
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        
-        # Log the request (sanitized)
-        await self._audit_logger.log_api_request(
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            status_code=response.status_code,
-            user_id=getattr(request.state, "user_id", None),
-            duration_ms=getattr(request.state, "duration_ms", None)
+        # Create log entry
+        log_entry = AuditLogEntry(
+            timestamp=datetime.utcnow(),
+            event_type=event_type,
+            user_id=user_id,
+            description=description,
+            severity=severity,
+            metadata=metadata or {}
         )
         
-        return response
+        # Store log entry
+        await self._log_repository.create(log_entry)
 ```
 
-## Error Handling
+## HIPAA Compliance Summary
 
-```python
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
-from app.core.domain.errors import (
-    ApplicationError,
-    AuthenticationError,
-    AuthorizationError,
-    NotFoundError,
-    ValidationError,
-    RateLimitExceededError
-)
-from app.core.interfaces.services import IErrorSanitizer
+The API security implementation addresses the following HIPAA requirements:
 
-def configure_exception_handlers(app: FastAPI, error_sanitizer: IErrorSanitizer):
-    """
-    Configure global exception handlers.
-    
-    Args:
-        app: FastAPI application
-        error_sanitizer: Service for sanitizing errors
-    """
-    
-    @app.exception_handler(AuthenticationError)
-    async def auth_error_handler(request: Request, exc: AuthenticationError):
-        """Handle authentication errors."""
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"detail": "Authentication failed"}
-        )
-    
-    @app.exception_handler(AuthorizationError)
-    async def authorization_error_handler(request: Request, exc: AuthorizationError):
-        """Handle authorization errors."""
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": "Not authorized"}
-        )
-    
-    @app.exception_handler(ValidationError)
-    async def validation_error_handler(request: Request, exc: ValidationError):
-        """Handle validation errors."""
-        # Sanitize error messages to remove any PHI
-        sanitized_errors = error_sanitizer.sanitize_validation_errors(exc.errors)
-        
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": sanitized_errors}
-        )
-    
-    @app.exception_handler(NotFoundError)
-    async def not_found_error_handler(request: Request, exc: NotFoundError):
-        """Handle not found errors."""
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Resource not found"}
-        )
-    
-    @app.exception_handler(RateLimitExceededError)
-    async def rate_limit_error_handler(request: Request, exc: RateLimitExceededError):
-        """Handle rate limit errors."""
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Rate limit exceeded"}
-        )
-    
-    @app.exception_handler(Exception)
-    async def generic_error_handler(request: Request, exc: Exception):
-        """Handle all other errors."""
-        # Sanitize to remove any PHI from error message
-        safe_message = error_sanitizer.sanitize_error_message(str(exc))
-        
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Internal server error"}
-        )
-```
+1. **Access Controls**: Authentication, authorization, role-based permissions
+2. **Audit Controls**: Comprehensive logging of all PHI access and security events
+3. **Integrity Controls**: Data validation, checksums, encryption
+4. **Person or Entity Authentication**: Secure authentication with token blacklisting
+5. **Transmission Security**: TLS encryption, secure headers, token security
+6. **PHI Protection**: Middleware preventing PHI in URLs and responses
 
-## Implementation Status
-
-### Current Status
-
-- ✅ JWT authentication fully implemented
-- ✅ Role-based authorization system complete
-- ✅ Request validation with Pydantic models
-- ✅ Security headers middleware implemented
-- ✅ PHI protection in logs and responses
-- ✅ Rate limiting middleware
-- ✅ Request ID tracking
-
-### Architectural Gaps
-
-- 🔄 Token blacklisting needs Redis implementation
-- 🔄 Fine-grained permission system could be enhanced
-- 🔄 Additional PHI detection patterns needed
-
-## HIPAA Compliance Checklist
-
-| Security Requirement | Status | Implementation |
-|----------------------|--------|----------------|
-| Authentication (§164.312(d)) | ✅ | JWT tokens with proper validation |
-| Authorization (§164.312(a)(1)) | ✅ | Role-based access control |
-| Audit Controls (§164.312(b)) | ✅ | Request logging with sanitization |
-| Integrity (§164.312(c)(1)) | ✅ | Data validation, encryption |
-| Transmission Security (§164.312(e)(1)) | ✅ | TLS, secure headers |
-| Access Control (§164.312(a)(1)) | ✅ | User-based permissions |
-| Automatic Logoff (§164.312(a)(2)(iii)) | ✅ | Token expiration |
-| Unique User Identification (§164.312(a)(2)(i)) | ✅ | User authentication system |
-
-## Secure API Patterns
-
-### Protected Endpoint Pattern
-
-```python
-from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.domain.entities import User
-from app.presentation.api.dependencies.auth import get_current_user
-from app.presentation.api.dependencies.services import get_patient_service
-from app.core.interfaces.services import IPatientService
-from app.presentation.schemas.patient import PatientResponse
-
-router = APIRouter()
-
-@router.get(
-    "/patients/{patient_id}",
-    response_model=PatientResponse,
-    summary="Get patient details",
-    description="Retrieve detailed information about a specific patient"
-)
-async def get_patient(
-    patient_id: str,
-    current_user: User = Depends(get_current_user),
-    patient_service: IPatientService = Depends(get_patient_service)
-):
-    """
-    Retrieve patient information with proper authorization checks.
-    
-    This endpoint demonstrates the secure pattern for accessing PHI:
-    1. Authentication via JWT token
-    2. Authorization check for appropriate role
-    3. Audit logging of the access
-    4. Response validation and sanitization
-    """
-    # Check if user has permission to view this patient
-    if current_user.role != UserRole.ADMIN and current_user.id != patient_id:
-        # Check if clinician has relationship with patient
-        if current_user.role == UserRole.CLINICIAN:
-            has_access = await patient_service.clinician_has_access(
-                current_user.id, patient_id
-            )
-            if not has_access:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not authorized to access this patient"
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to access this patient"
-            )
-    
-    # Retrieve patient data
-    patient = await patient_service.get_by_id(patient_id)
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found"
-        )
-    
-    # Return validated response
-    return PatientResponse.from_domain_entity(patient)
-```
+By implementing these security measures in accordance with clean architecture principles, the Clarity AI Backend maintains a high level of security while preserving maintainability and adherence to domain boundaries.

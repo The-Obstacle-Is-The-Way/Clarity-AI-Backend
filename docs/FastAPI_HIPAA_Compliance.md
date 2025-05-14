@@ -1,140 +1,232 @@
 # HIPAA Compliance in FastAPI
 
-This document outlines how the Clarity AI Backend ensures HIPAA compliance throughout its FastAPI implementation. It covers the technical measures, code patterns, and architectural decisions made to protect Protected Health Information (PHI).
+This document outlines how the Clarity AI Backend ensures HIPAA compliance throughout its FastAPI implementation. It covers the technical measures, code patterns, and architectural decisions designed to protect Protected Health Information (PHI) within a clean architecture framework.
 
-## HIPAA Compliance Overview
+## Core HIPAA Requirements Implementation
 
-The Health Insurance Portability and Accountability Act (HIPAA) establishes national standards for protecting sensitive patient health information. As a digital twin platform for psychiatric care, Clarity AI handles substantial amounts of PHI and implements comprehensive safeguards.
+### Access Controls (§164.312(a)(1))
 
-## Key HIPAA Requirements Implemented
-
-### 1. Access Controls
-
-#### Technical Implementation
+Clarity AI implements a comprehensive multi-layer access control system:
 
 ```python
-# app/presentation/middleware/authentication.py
-class AuthenticationMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Extract and validate JWT token
-        token = self._extract_token(request)
-        if not token:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Not authenticated"}
-            )
+# app/presentation/api/dependencies/auth.py
+async def get_current_user(
+    token: str = Depends(get_token_from_header),
+    jwt_service: JWTService = Depends(get_jwt_service)
+) -> User:
+    """
+    Extracts and validates the current user from a JWT token.
+    
+    This dependency enforces authentication and provides user context
+    for all protected endpoints, ensuring PHI access is restricted
+    to authorized users.
+    """
+    try:
+        # Validate the token
+        payload = jwt_service.validate_token(token)
         
-        try:
-            # Decode and validate token
-            user_data = await self.jwt_service.decode_access_token(token)
+        # Extract user information from token
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise credentials_exception
             
-            # Set user in request state
-            request.state.user = User(**user_data)
-            
-            # Proceed with request
-            response = await call_next(request)
-            return response
-            
-        except JWTError:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Invalid authentication credentials"}
-            )
+        # Create user object with role and permissions
+        user = User(
+            id=user_id,
+            email=payload.get("email"),
+            role=payload.get("role"),
+            permissions=payload.get("permissions", [])
+        )
+        
+        return user
+    except Exception:
+        raise credentials_exception
 ```
 
 #### Role-Based Access Control
 
 ```python
-# app/presentation/dependencies/auth.py
-async def verify_has_role(
-    required_roles: List[str],
-    current_user: User = Depends(get_current_user)
-) -> User:
-    """Verify that the current user has at least one of the required roles."""
-    if not any(role in current_user.roles for role in required_roles):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"User does not have required role(s): {', '.join(required_roles)}"
-        )
-    return current_user
+# app/presentation/api/dependencies/permissions.py
+def require_permission(required_permission: str):
+    """
+    Creates a dependency that checks if the user has the required permission.
+    
+    Args:
+        required_permission: The permission required to access the endpoint
+        
+    Returns:
+        A dependency function that verifies the user has the required permission
+    """
+    def permission_dependency(
+        current_user: User = Depends(get_current_user),
+        rbac_service: RBACService = Depends(get_rbac_service)
+    ) -> User:
+        if not rbac_service.has_permission(current_user.role, required_permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions"
+            )
+        return current_user
+        
+    return permission_dependency
 
-# Usage in endpoints
-@router.get("/{patient_id}")
-async def get_patient(
+# Usage in routes
+@router.get(
+    "/patients/{patient_id}/records",
+    response_model=List[MedicalRecordResponse],
+    dependencies=[Depends(require_permission("view:medical_records"))]
+)
+async def get_patient_records(
     patient_id: UUID,
-    current_user: User = Depends(Depends(lambda: verify_has_role(["clinician", "admin"])))
-):
-    # Endpoint implementation...
+    current_user: User = Depends(get_current_user),
+    record_service: MedicalRecordService = Depends(get_medical_record_service)
+) -> List[MedicalRecordResponse]:
+    """Get a patient's medical records."""
+    # Implementation...
 ```
 
-### 2. Audit Controls
+### Audit Controls (§164.312(b))
 
 The system maintains comprehensive audit logs of all PHI access and modifications:
 
 ```python
-# app/infrastructure/security/audit/middleware.py
-class AuditLogMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        start_time = time.time()
+# app/core/interfaces/services/audit_logger_interface.py
+class IAuditLogger(ABC):
+    """
+    Interface for audit logging services.
+    
+    Defines methods for logging various security and PHI access events
+    to maintain a comprehensive audit trail for HIPAA compliance.
+    """
+    
+    @abstractmethod
+    async def log_security_event(
+        self,
+        event_type: AuditEventType,
+        user_id: str | None,
+        description: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        metadata: dict[str, Any] | None = None
+    ) -> None:
+        """
+        Log a security-related event.
         
-        # Create audit log entry
-        audit_entry = {
-            "request_id": request.state.request_id,
-            "timestamp": datetime.utcnow().isoformat(),
-            "method": request.method,
-            "path": request.url.path,
-            "user_id": getattr(request.state, "user", {}).get("id", "anonymous"),
-            "user_ip": request.client.host if request.client else None,
-            "status_code": None,
-            "duration_ms": None,
-            "resource_type": self._determine_resource_type(request.url.path),
-            "resource_id": self._extract_resource_id(request.url.path),
-            "action": self._determine_action(request.method, request.url.path)
-        }
+        Args:
+            event_type: Type of security event
+            user_id: ID of the user who triggered the event
+            description: Human-readable description
+            severity: Event severity level
+            metadata: Additional event data
+        """
+        pass
+    
+    @abstractmethod
+    async def log_phi_access(
+        self,
+        user_id: str,
+        resource_type: str,
+        resource_id: str,
+        action: str,
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None
+    ) -> None:
+        """
+        Log PHI access for compliance tracking.
         
-        try:
-            # Process the request
-            response = await call_next(request)
-            
-            # Update audit entry with response info
-            audit_entry["status_code"] = response.status_code
-            audit_entry["duration_ms"] = round((time.time() - start_time) * 1000, 2)
-            
-            # Write audit log asynchronously
-            background_tasks = BackgroundTasks()
-            background_tasks.add_task(self._write_audit_log, audit_entry)
-            response.background = background_tasks
-            
-            return response
-            
-        except Exception as e:
-            # Log error in audit trail
-            audit_entry["status_code"] = 500
-            audit_entry["error"] = str(e)
-            audit_entry["duration_ms"] = round((time.time() - start_time) * 1000, 2)
-            
-            # Write audit log
-            await self._write_audit_log(audit_entry)
-            
-            # Re-raise the exception
-            raise
+        Args:
+            user_id: ID of the user accessing PHI
+            resource_type: Type of resource being accessed
+            resource_id: ID of the resource being accessed
+            action: Action performed (view, create, update, delete)
+            reason: Optional reason for access
+            metadata: Additional context data
+        """
+        pass
 ```
 
-### 3. PHI Encryption
+#### Implementation in Services
+
+All application services that handle PHI use the audit logger:
+
+```python
+# app/application/services/patient_service.py
+class PatientService(IPatientService):
+    """
+    Service for patient-related operations.
+    
+    Ensures proper auditing of all PHI access.
+    """
+
+    def __init__(
+        self,
+        patient_repository: IPatientRepository,
+        audit_logger: IAuditLogger
+    ):
+        self.patient_repository = patient_repository
+        self.audit_logger = audit_logger
+    
+    async def get_patient(self, patient_id: UUID, user_id: str) -> Patient:
+        """
+        Retrieve a patient by ID.
+        
+        Args:
+            patient_id: ID of the patient to retrieve
+            user_id: ID of the user making the request
+            
+        Returns:
+            Patient information
+            
+        Raises:
+            EntityNotFoundError: If patient not found
+        """
+        patient = await self.patient_repository.get_by_id(patient_id)
+        
+        if not patient:
+            raise EntityNotFoundError(f"Patient with ID {patient_id} not found")
+        
+        # Log PHI access for audit trail
+        await self.audit_logger.log_phi_access(
+            user_id=user_id,
+            resource_type="patient",
+            resource_id=str(patient_id),
+            action="view",
+            metadata={"access_method": "get_patient"}
+        )
+        
+        return patient
+```
+
+### PHI Encryption (§164.312(a)(2)(iv))
 
 PHI is encrypted both at rest and in transit:
 
 #### Database Encryption
 
 ```python
-# app/domain/value_objects/encrypted_phi.py
-from app.infrastructure.security.encryption import get_encryption_service
-
+# app/core/value_objects/encrypted_phi.py
 class EncryptedPHI:
-    """Value object for encrypted PHI data."""
+    """
+    Value object for encrypted PHI data.
     
-    def __init__(self, plaintext: str = None, ciphertext: str = None):
-        self._encryption_service = get_encryption_service()
+    Handles encryption and decryption of sensitive protected health information,
+    ensuring data is never stored in plaintext and is properly secured at rest.
+    """
+    
+    def __init__(
+        self,
+        plaintext: str | None = None,
+        ciphertext: str | None = None,
+        encryption_service: IEncryptionService | None = None
+    ):
+        """
+        Initialize encrypted PHI value object.
+        
+        Args:
+            plaintext: Original unencrypted data
+            ciphertext: Pre-encrypted data
+            encryption_service: Service for encryption operations
+        """
+        self._encryption_service = encryption_service or get_encryption_service()
         
         if plaintext is not None:
             self.ciphertext = self._encryption_service.encrypt(plaintext)
@@ -143,9 +235,22 @@ class EncryptedPHI:
         else:
             raise ValueError("Either plaintext or ciphertext must be provided")
     
-    def get_decrypted(self) -> str:
-        """Decrypt and return the PHI."""
+    def get_plaintext(self) -> str:
+        """
+        Decrypt and return the PHI.
+        
+        Returns:
+            Decrypted plaintext PHI
+        """
         return self._encryption_service.decrypt(self.ciphertext)
+    
+    def __str__(self) -> str:
+        """Return a string representation that does not expose PHI."""
+        return "[ENCRYPTED PHI]"
+    
+    def __repr__(self) -> str:
+        """Return a debug representation that does not expose PHI."""
+        return f"EncryptedPHI(ciphertext='{self.ciphertext[:8]}...')"
 ```
 
 #### Usage in Models
@@ -153,381 +258,473 @@ class EncryptedPHI:
 ```python
 # app/infrastructure/persistence/sqlalchemy/models/patient.py
 class PatientModel(Base):
+    """SQLAlchemy model for patients with PHI encryption."""
+    
     __tablename__ = "patients"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    # Non-PHI fields stored normally
+    
+    # Non-PHI fields
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = Column(String, nullable=False)
     
-    # PHI fields stored encrypted
+    # PHI fields stored with encryption
     _first_name = Column("first_name_encrypted", String, nullable=False)
     _last_name = Column("last_name_encrypted", String, nullable=False)
     _date_of_birth = Column("date_of_birth_encrypted", String, nullable=False)
+    _email = Column("email_encrypted", String, nullable=True)
+    _phone = Column("phone_encrypted", String, nullable=True)
+    _address = Column("address_encrypted", String, nullable=True)
     
     @hybrid_property
     def first_name(self) -> str:
-        return EncryptedPHI(ciphertext=self._first_name).get_decrypted()
+        """Get decrypted first name."""
+        if not self._first_name:
+            return None
+        return EncryptedPHI(ciphertext=self._first_name).get_plaintext()
     
     @first_name.setter
     def first_name(self, value: str) -> None:
-        self._first_name = EncryptedPHI(plaintext=value).ciphertext
+        """Encrypt and store first name."""
+        if value is None:
+            self._first_name = None
+        else:
+            self._first_name = EncryptedPHI(plaintext=value).ciphertext
     
     # Similar for other PHI fields...
 ```
 
-### 4. Transmission Security
+### Transmission Security (§164.312(e)(1))
 
 All API communications are secured with TLS:
 
 ```python
-# main.py
-import uvicorn
-
-if __name__ == "__main__":
-    # In production, always use HTTPS
-    if settings.ENVIRONMENT == "production":
-        uvicorn.run(
-            "app.main:app",
-            host=settings.HOST,
-            port=settings.PORT,
-            ssl_keyfile=settings.SSL_KEYFILE,
-            ssl_certfile=settings.SSL_CERTFILE,
-            ssl_ca_certs=settings.SSL_CA_CERTS
-        )
-    else:
-        uvicorn.run(
-            "app.main:app",
-            host=settings.HOST,
-            port=settings.PORT
-        )
-```
-
-### 5. Integrity Controls
-
-Data integrity is ensured through validation and checksums:
-
-```python
-# app/presentation/api/v1/schemas/biometric.py
-class BiometricDataCreate(BaseModel):
-    patient_id: UUID
-    timestamp: datetime
-    data_type: str
-    value: float
-    unit: str
-    device_id: Optional[str] = None
-    
-    @validator("data_type")
-    def validate_data_type(cls, v):
-        allowed_types = ["heart_rate", "blood_pressure", "respiratory_rate", "temperature"]
-        if v not in allowed_types:
-            raise ValueError(f"Data type must be one of: {', '.join(allowed_types)}")
-        return v
-    
-    @validator("value")
-    def validate_value(cls, v, values):
-        if "data_type" in values:
-            # Apply type-specific validation
-            if values["data_type"] == "heart_rate" and (v < 30 or v > 220):
-                raise ValueError("Heart rate must be between 30 and 220")
-            # Add other validations...
-        return v
-```
-
-### 6. PHI Sanitization in Logs
-
-PHI is removed from logs using pattern matching:
-
-```python
-# app/presentation/middleware/logging.py
-class LoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Create sanitized request data
-        sanitized_headers = self._sanitize_headers(dict(request.headers))
-        sanitized_query_params = self._sanitize_data(dict(request.query_params))
-        
-        # Log the request with sanitized data
-        request_log = {
-            "request_id": request.state.request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "headers": sanitized_headers,
-            "query_params": sanitized_query_params
-        }
-        
-        # Log request body for POST/PUT/PATCH, but sanitize it
-        if request.method in ["POST", "PUT", "PATCH"]:
-            body = await request.body()
-            body_text = body.decode("utf-8")
-            
-            # Sanitize the body content
-            sanitized_body = self._sanitize_data(body_text)
-            request_log["body"] = sanitized_body
-        
-        # Log request data
-        logger.info(f"Request: {json.dumps(request_log)}")
-        
-        # Continue processing the request
-        response = await call_next(request)
-        
-        # Similar sanitization for response logging...
-        return response
-    
-    def _sanitize_data(self, data):
-        """Sanitize potential PHI from data."""
-        if isinstance(data, str):
-            # Sanitize patterns like SSNs, phone numbers, email addresses
-            data = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[REDACTED_SSN]", data)
-            data = re.sub(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", "[REDACTED_PHONE]", data)
-            data = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[REDACTED_EMAIL]", data)
-            
-            # Sanitize names, DOB, etc. by looking for known field names
-            data = re.sub(r'"(first_name|last_name|dob)":\s*"[^"]*"', r'"\1":"[REDACTED]"', data)
-            
-            return data
-        elif isinstance(data, dict):
-            # Recursively sanitize dictionary values
-            sanitized = {}
-            for key, value in data.items():
-                # Skip sanitizing authentication tokens
-                if key.lower() in ["authorization", "password", "token"]:
-                    sanitized[key] = "[REDACTED]"
-                # Identify and redact PHI fields
-                elif key.lower() in ["first_name", "last_name", "dob", "date_of_birth", "ssn", "address"]:
-                    sanitized[key] = "[REDACTED]"
-                else:
-                    sanitized[key] = self._sanitize_data(value)
-            return sanitized
-        elif isinstance(data, list):
-            # Recursively sanitize list items
-            return [self._sanitize_data(item) for item in data]
-        else:
-            return data
-```
-
-### 7. Error Handling to Prevent PHI Leakage
-
-Custom error handlers prevent PHI from appearing in error responses:
-
-```python
-# app/app_factory.py
-@app_instance.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
-    # Log the full, internal error for debugging
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
-    
-    # Generate a unique error reference for tracking
-    error_id = str(uuid4())
-    
-    # Return a sanitized error response with no PHI
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": "An unexpected error occurred",
-            "error_id": error_id,  # For correlating with logs
-        }
+# app/main.py
+def get_application() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    app = FastAPI(
+        title="Clarity AI Backend",
+        description="Psychiatric Digital Twin Platform API",
+        version="1.0.0",
+        docs_url="/api/docs" if settings.ENVIRONMENT != "production" else None,
+        redoc_url="/api/redoc" if settings.ENVIRONMENT != "production" else None,
     )
-```
-
-### 8. Session Management
-
-Automatic session timeout for security:
-
-```python
-# app/infrastructure/security/jwt/jwt_service.py
-class JWTService(JWTServiceInterface):
-    def __init__(self, settings: Settings):
-        self.secret_key = settings.JWT_SECRET_KEY
-        self.algorithm = settings.JWT_ALGORITHM
-        self.access_token_expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        self.refresh_token_expire_days = settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
-        self.issuer = settings.JWT_ISSUER
-        self.audience = settings.JWT_AUDIENCE
     
-    async def create_access_token(self, data: dict) -> str:
-        """Create a JWT access token with appropriate expiration."""
-        to_encode = data.copy()
-        
-        # Set expiration time
-        expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
-        
-        # Add claims
-        to_encode.update({
-            "exp": expire,
-            "iat": datetime.utcnow(),
-            "iss": self.issuer,
-            "aud": self.audience
-        })
-        
-        # Create signed token
-        encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        return encoded_jwt
+    # Add middleware
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
+    app.add_middleware(PHIMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(AuditMiddleware)
+    
+    # Add routers
+    app.include_router(api_router, prefix="/api")
+    
+    return app
 ```
 
-### 9. Emergency Access Procedure
-
-The system supports emergency access to PHI with special logging:
+### PHI Protection Middleware
 
 ```python
-# app/presentation/api/v1/routes/emergency.py
-@router.post("/emergency-access/{patient_id}")
-async def emergency_access(
+# app/presentation/middleware/phi_middleware.py
+class PHIMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to enforce HIPAA PHI handling requirements.
+    
+    This middleware:
+    1. Prevents PHI from appearing in URLs (query params, path params)
+    2. Logs all PHI access attempts for audit purposes
+    3. Ensures proper error handling for PHI-related operations
+    4. Sanitizes responses to prevent accidental PHI leakage
+    """
+    
+    def __init__(
+        self, 
+        app: ASGIApp,
+        phi_patterns: list[Pattern] | None = None,
+        exempt_paths: set[str] | None = None
+    ):
+        """
+        Initialize PHI middleware with patterns to detect and paths to exempt.
+        
+        Args:
+            app: The ASGI application
+            phi_patterns: Regular expression patterns to detect PHI
+            exempt_paths: Paths exempt from PHI checks (e.g., auth endpoints)
+        """
+        super().__init__(app)
+        self.phi_patterns = phi_patterns or [
+            # Social Security Number patterns
+            re.compile(r"\b\d{3}[-]?\d{2}[-]?\d{4}\b"),
+            # Medical Record Number patterns (various formats)
+            re.compile(r"\bMRN[-:]?\d{6,10}\b", re.IGNORECASE),
+            # Email patterns
+            re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+            # Date of birth patterns
+            re.compile(r"\b(0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])[-/.](19|20)\d{2}\b"),
+            # Common patient identifiers
+            re.compile(r"\bPATIENT[-_]?ID[:=]?\d+\b", re.IGNORECASE),
+        ]
+        self.exempt_paths = exempt_paths or {
+            "/api/v1/auth/token",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        }
+        
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """
+        Process the request and enforce PHI protections.
+        
+        Args:
+            request: The incoming request
+            call_next: The next middleware/endpoint handler
+            
+        Returns:
+            The processed response
+            
+        Raises:
+            HTTPException: If PHI is detected in prohibited locations
+        """
+        # Skip PHI checks for exempt paths
+        if any(request.url.path.startswith(path) for path in self.exempt_paths):
+            return await call_next(request)
+        
+        # Audit logging
+        start_time = time.time()
+        client_ip = request.client.host if request.client else "unknown"
+        
+        try:
+            # Check URL for PHI
+            self._check_url_for_phi(request)
+            
+            # Process request normally
+            response = await call_next(request)
+            
+            # Sanitize response if needed
+            response = await self._sanitize_response(response)
+            
+            # Log PHI access for audit purposes
+            phi_audit_logger.info(
+                f"PHI access: {request.method} {request.url.path} "
+                f"from {client_ip} - status: {response.status_code}"
+            )
+            
+            return response
+            
+        except PHIInUrlError:
+            # Log PHI attempt violation
+            phi_audit_logger.warning(
+                f"PHI detected in URL: {request.method} {request.url.path} "
+                f"from {client_ip} - blocked"
+            )
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "Protected health information (PHI) is not allowed in URLs"}
+            )
+```
+
+## Clean Architecture Implementation
+
+The HIPAA compliance features are implemented following clean architecture principles:
+
+### 1. Interface Segregation
+
+HIPAA-related interfaces are well-defined and follow single responsibility:
+
+```python
+# app/core/interfaces/services/encryption_service_interface.py
+class IEncryptionService(ABC):
+    """
+    Interface for encryption services.
+    
+    Handles encryption and decryption operations for PHI.
+    """
+    
+    @abstractmethod
+    def encrypt(self, plaintext: str) -> str:
+        """
+        Encrypt plaintext data.
+        
+        Args:
+            plaintext: Data to encrypt
+            
+        Returns:
+            Encrypted ciphertext
+        """
+        pass
+    
+    @abstractmethod
+    def decrypt(self, ciphertext: str) -> str:
+        """
+        Decrypt ciphertext data.
+        
+        Args:
+            ciphertext: Data to decrypt
+            
+        Returns:
+            Decrypted plaintext
+        """
+        pass
+```
+
+### 2. Dependency Inversion
+
+High-level policies depend on abstractions, not concrete implementations:
+
+```python
+# app/application/services/phi_service.py
+class PHIService(IPHIService):
+    """
+    Service for handling protected health information.
+    
+    Implements business rules for PHI access and management.
+    """
+    
+    def __init__(
+        self,
+        encryption_service: IEncryptionService,
+        audit_logger: IAuditLogger
+    ):
+        """
+        Initialize the PHI service.
+        
+        Args:
+            encryption_service: Service for encrypting/decrypting PHI
+            audit_logger: Service for logging PHI access
+        """
+        self.encryption_service = encryption_service
+        self.audit_logger = audit_logger
+```
+
+### 3. Domain Independence
+
+HIPAA compliance rules are part of the domain layer and don't depend on external frameworks:
+
+```python
+# app/domain/policies/hipaa_policy.py
+class HIPAAPolicy:
+    """
+    Domain service for HIPAA policy enforcement.
+    
+    Contains business rules for PHI handling independent of frameworks.
+    """
+    
+    @staticmethod
+    def validate_phi_access(
+        user_role: str,
+        resource_type: str,
+        access_type: str,
+        patient_id: UUID | None = None,
+        clinician_id: UUID | None = None
+    ) -> tuple[bool, str | None]:
+        """
+        Validate if a user can access PHI based on HIPAA rules.
+        
+        Args:
+            user_role: Role of the user requesting access
+            resource_type: Type of resource being accessed
+            access_type: Type of access (read, write, etc.)
+            patient_id: ID of the patient whose data is being accessed
+            clinician_id: ID of the clinician, if applicable
+            
+        Returns:
+            Tuple of (is_allowed, reason)
+        """
+        # Implementation of HIPAA access rules
+        # ...
+```
+
+## FastAPI-Specific HIPAA Features
+
+### 1. Secure Dependency Injection
+
+FastAPI's dependency injection system is used to enforce HIPAA compliance:
+
+```python
+# app/presentation/api/dependencies/hipaa.py
+def verify_hipaa_consent(
     patient_id: UUID,
-    reason: EmergencyAccessReason,
     current_user: User = Depends(get_current_user),
-    audit_service = Depends(get_audit_service)
-):
-    """Emergency access endpoint for authorized clinicians."""
+    consent_service: IConsentService = Depends(get_consent_service)
+) -> bool:
+    """
+    Verify that a valid HIPAA consent is in place for the patient.
     
-    # Record emergency access with detailed audit
-    await audit_service.record_emergency_access(
-        user_id=current_user.id,
-        patient_id=str(patient_id),
-        reason=reason.reason,
-        justification=reason.justification
+    Args:
+        patient_id: ID of the patient
+        current_user: Current authenticated user
+        consent_service: Service for checking consents
+        
+    Returns:
+        True if valid consent exists
+        
+    Raises:
+        HTTPException: If no valid consent exists
+    """
+    has_consent = await consent_service.verify_hipaa_consent(
+        patient_id=patient_id,
+        verified_by=current_user.id
     )
     
-    # Fetch patient data with elevated permissions
-    patient_data = await emergency_service.get_patient_data(patient_id)
+    if not has_consent:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No valid HIPAA consent found for this patient"
+        )
     
-    return patient_data
+    return True
 ```
 
-## HIPAA-Compliant API Design Patterns
+### 2. Response Models with PHI Protection
 
-### 1. Use UUIDs, Not Personal Identifiers
-
-```python
-# Good - Uses UUID
-@router.get("/patients/{patient_id}")
-async def get_patient(patient_id: UUID):
-    # Implementation...
-
-# Bad - Uses MRN or name
-@router.get("/patients/by-mrn/{medical_record_number}")  # Avoid this pattern
-async def get_patient_by_mrn(medical_record_number: str):
-    # Implementation...
-```
-
-### 2. Minimize PHI in Responses
+Response models ensure no unintended PHI disclosure:
 
 ```python
-# app/presentation/api/v1/schemas/patient.py
-class PatientPublicResponse(BaseModel):
-    """Public view with minimal PHI."""
+# app/presentation/api/schemas/patient.py
+class PatientResponse(BaseModel):
+    """
+    Schema for patient responses with PHI protection.
+    
+    Carefully controls which fields are exposed in API responses.
+    """
+    
     id: UUID
     status: str
     created_at: datetime
     
-class PatientDetailedResponse(BaseModel):
-    """Detailed view with PHI, requires proper authorization."""
-    id: UUID
+    # PHI fields
     first_name: str
     last_name: str
-    date_of_birth: datetime
-    status: str
-    created_at: datetime
-    # Other PHI fields...
-
-# Usage in endpoints
-@router.get("/patients", response_model=List[PatientPublicResponse])
-async def list_patients():
-    # Returns minimal PHI
-
-@router.get("/patients/{patient_id}", response_model=PatientDetailedResponse)
-async def get_patient_details(
-    patient_id: UUID,
-    current_user: User = Depends(verify_patient_access)
-):
-    # Returns full PHI with authorization check
+    date_of_birth: date
+    
+    # Optional PHI fields
+    email: EmailStr | None = None
+    phone: str | None = None
+    
+    class Config:
+        """Pydantic model configuration."""
+        schema_extra = {
+            "example": {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "status": "active",
+                "created_at": "2023-01-01T12:00:00Z",
+                "first_name": "John",
+                "last_name": "Doe",
+                "date_of_birth": "1980-01-01",
+                "email": "patient@example.com",
+                "phone": "+1 (555) 123-4567"
+            }
+        }
 ```
 
-### 3. Parameterized Database Queries
+### 3. Error Sanitization
+
+Error responses are sanitized to prevent PHI leakage:
 
 ```python
-# app/infrastructure/persistence/sqlalchemy/repositories/patient_repository.py
-async def search_patients(self, search_term: str) -> List[Patient]:
-    """Search patients using parameterized queries."""
-    search_pattern = f"%{search_term}%"
+# app/presentation/error_handlers.py
+def register_exception_handlers(app: FastAPI) -> None:
+    """Register FastAPI exception handlers for HIPAA-compliant errors."""
     
-    # Use parameterized queries, never string interpolation
-    result = await self._session.execute(
-        select(PatientModel).where(
-            or_(
-                PatientModel.first_name.like(search_pattern),
-                PatientModel.last_name.like(search_pattern)
-            )
+    @app.exception_handler(EntityNotFoundError)
+    async def entity_not_found_handler(request: Request, exc: EntityNotFoundError) -> JSONResponse:
+        """
+        Handle entity not found errors with PHI protection.
+        
+        Returns sanitized error messages that don't contain PHI.
+        """
+        # Sanitize error message to remove any PHI
+        original_message = str(exc)
+        sanitized_message = "Resource not found"
+        
+        # Log original error with proper PHI protection
+        logger.warning(f"EntityNotFoundError: {original_message}")
+        
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            content={"detail": sanitized_message}
         )
-    )
-    
-    patient_models = result.scalars().all()
-    return [Patient.from_orm(model) for model in patient_models]
 ```
 
-## HIPAA Compliance Testing
+## HIPAA Security Rule Matrix
 
-The codebase includes tests specifically for verifying HIPAA compliance:
+The Clarity AI Backend implements these HIPAA Security Rule requirements:
+
+| Rule | Section | Implementation |
+|------|---------|----------------|
+| Access Control | §164.312(a)(1) | JWT authentication, RBAC, permission-based access |
+| Audit Controls | §164.312(b) | Comprehensive audit logging of all PHI access |
+| Integrity | §164.312(c)(1) | Data validation, checksums, immutable audit logs |
+| Person or Entity Authentication | §164.312(d) | Secure password handling, token validation |
+| Transmission Security | §164.312(e)(1) | TLS encryption, secure headers, token security |
+| Encryption and Decryption | §164.312(a)(2)(iv) | Field-level PHI encryption, secure key management |
+| Emergency Access | §164.312(a)(2)(ii) | Emergency access procedures via admin override |
+| Automatic Logoff | §164.312(a)(2)(iii) | Token expiration, session timeouts |
+
+## HIPAA-Compliant API Routes
+
+The API routes implement these HIPAA safeguards:
 
 ```python
-# app/tests/security/test_phi_protection.py
-@pytest.mark.asyncio
-async def test_no_phi_in_error_responses(authenticated_client):
-    """Test that PHI is not leaked in error responses."""
-    # Attempt to cause an error with PHI in the request
-    payload = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "date_of_birth": "1980-01-01",
-        "invalid_field": "This should cause an error"
-    }
+# app/presentation/api/v1/routes/patients.py
+@router.get(
+    "/{patient_id}/medical-records",
+    response_model=List[MedicalRecordResponse],
+    summary="Get patient medical records",
+    description="Retrieve all medical records for a patient with proper HIPAA controls"
+)
+async def get_patient_medical_records(
+    patient_id: UUID,
+    current_user: User = Depends(get_current_user),
+    hipaa_consent: bool = Depends(verify_hipaa_consent),
+    record_service: IMedicalRecordService = Depends(get_medical_record_service),
+    audit_logger: IAuditLogger = Depends(get_audit_logger)
+) -> List[MedicalRecordResponse]:
+    """
+    Get all medical records for a patient.
     
-    response = await authenticated_client.post("/api/v1/patients/", json=payload)
-    
-    # Verify error response doesn't contain PHI
-    assert response.status_code == 422
-    error_content = response.json()
-    
-    # Ensure no PHI values appear in the error message
-    assert "John" not in json.dumps(error_content)
-    assert "Doe" not in json.dumps(error_content)
-    assert "1980-01-01" not in json.dumps(error_content)
-
-@pytest.mark.asyncio
-async def test_phi_encryption_at_rest(db_session):
-    """Test that PHI is encrypted in the database."""
-    # Create a patient with PHI
-    patient = PatientModel(
-        id=uuid4(),
-        first_name="Jane",
-        last_name="Smith",
-        date_of_birth=datetime(1990, 5, 15)
+    This endpoint enforces:
+    1. Authentication via current_user dependency
+    2. HIPAA consent verification
+    3. Audit logging of PHI access
+    4. Response data validation and sanitization
+    """
+    # Verify user has permission to access this patient's records
+    await verify_patient_access(
+        patient_id=patient_id,
+        user=current_user,
+        access_type="read"
     )
     
-    db_session.add(patient)
-    await db_session.commit()
-    
-    # Query the database directly to check raw data
-    result = await db_session.execute(
-        text("SELECT first_name_encrypted FROM patients WHERE id = :id"),
-        {"id": str(patient.id)}
+    # Log PHI access for audit trail
+    await audit_logger.log_phi_access(
+        user_id=current_user.id,
+        resource_type="medical_records",
+        resource_id=str(patient_id),
+        action="view_all",
+        reason="Clinical review"
     )
-    encrypted_first_name = result.scalar_one()
     
-    # Verify data is actually encrypted
-    assert "Jane" != encrypted_first_name
-    assert len(encrypted_first_name) > 0
+    # Retrieve records with required security checks
+    records = await record_service.get_patient_records(
+        patient_id=patient_id,
+        requesting_user_id=current_user.id
+    )
     
-    # Verify decryption works properly
-    assert patient.first_name == "Jane"
+    # Convert domain entities to response models (sanitizes data)
+    return [MedicalRecordResponse.from_entity(record) for record in records]
 ```
 
 ## Conclusion
 
-The Clarity AI Backend implements a comprehensive HIPAA compliance strategy through:
+The Clarity AI Backend implements comprehensive HIPAA compliance measures through a clean architecture approach that:
 
-1. **Technical Controls**: Authentication, encryption, TLS
-2. **Architectural Patterns**: Clean separation of concerns, proper abstraction
-3. **Code Practices**: Input validation, output sanitization, secure error handling
-4. **Audit Mechanisms**: Comprehensive logging of all PHI access
-5. **Testing Strategy**: Specific tests for HIPAA compliance requirements
+1. **Separates Concerns**: Interfaces define HIPAA requirements independent of implementations
+2. **Enforces Security**: Multiple layers of protection including authentication, authorization, encryption, and audit logging
+3. **Ensures PHI Protection**: Specialized middleware and patterns prevent accidental PHI disclosure
+4. **Maintains Auditability**: Comprehensive logging creates a complete audit trail for compliance
 
-This approach ensures that PHI is properly protected throughout the system, meeting both the letter and spirit of HIPAA regulations while maintaining application performance and developer productivity. 
+By designing HIPAA compliance into the foundation of the architecture, the system maintains both regulatory compliance and technical excellence. 

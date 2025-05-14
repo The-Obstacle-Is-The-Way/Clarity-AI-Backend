@@ -7,13 +7,13 @@ user session management and token invalidation.
 """
 
 import hashlib
-from datetime import datetime, timedelta, UTC
-from typing import Optional, Dict, Any
-
-from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
-from app.infrastructure.services.redis_cache_service import RedisCacheService
+from datetime import UTC, datetime, timedelta
+from app.core.interfaces.repositories.token_blacklist_repository_interface import (
+    ITokenBlacklistRepository,
+)
 from app.domain.exceptions.repository import RepositoryException
 from app.infrastructure.logging.logger import get_logger
+from app.infrastructure.services.redis_cache_service import RedisCacheService
 
 logger = get_logger(__name__)
 
@@ -60,7 +60,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         token: str,
         jti: str,
         expires_at: datetime,
-        reason: Optional[str] = None
+        reason: str | None = None
     ) -> None:
         """
         Add a token to the blacklist.
@@ -103,8 +103,8 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             
             logger.info(f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}")
         except Exception as e:
-            logger.error(f"Failed to blacklist token: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist token: {str(e)}")
+            logger.error(f"Failed to blacklist token: {e!s}")
+            raise RepositoryException(f"Failed to blacklist token: {e!s}") from e
     
     async def is_blacklisted(self, token: str) -> bool:
         """
@@ -125,7 +125,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             result = await self._redis.get(token_key)
             return result is not None
         except Exception as e:
-            logger.error(f"Failed to check token blacklist: {str(e)}")
+            logger.error(f"Failed to check token blacklist: {e!s}")
             # For security, assume token is blacklisted if check fails
             return True
     
@@ -147,7 +147,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             result = await self._redis.get(jti_key)
             return result is not None
         except Exception as e:
-            logger.error(f"Failed to check JTI blacklist: {str(e)}")
+            logger.error(f"Failed to check JTI blacklist: {e!s}")
             # For security, assume JTI is blacklisted if check fails
             return True
     
@@ -190,30 +190,28 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                     # Use a pipeline for atomic operations
                     if token:
                         token_key = f"{self._token_prefix}{token}"
-                        await self._redis.set(token_key, jti, ttl=int(timedelta(days=365).total_seconds()))
+                        await self._redis.set(
+                            token_key, jti, ttl=int(timedelta(days=365).total_seconds())
+                        )
                         
-                    await self._redis.set(jti_key, jti_data, ttl=int(timedelta(days=365).total_seconds()))
+                    await self._redis.set(
+                        jti_key, jti_data, ttl=int(timedelta(days=365).total_seconds())
+                    )
             
             logger.info(f"Blacklisted all tokens for session {session_id}")
         except Exception as e:
-            logger.error(f"Failed to blacklist session tokens: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist session tokens: {str(e)}")
+            logger.error(f"Failed to blacklist session tokens: {e!s}")
+            raise RepositoryException(f"Failed to blacklist session tokens: {e!s}") from e
     
     async def remove_expired_entries(self) -> int:
         """
         Remove expired entries from the blacklist.
         
-        Redis automatically removes expired keys through its TTL mechanism,
-        so this method primarily exists for interface compliance and to
-        handle any manual clean-up if needed.
+        For Redis, this is largely a no-op as Redis handles TTL automatically.
+        This method is implemented for interface compatibility.
         
         Returns:
-            Number of entries removed
-            
-        Raises:
-            RepositoryException: If cleanup fails
+            Number of entries removed (always 0 for this implementation).
         """
-        # Redis automatically handles expiration via TTL
-        # This method exists to comply with the interface
-        logger.debug("Redis handles TTL automatically, no explicit clean-up needed")
-        return 0 
+        logger.debug("Redis handles TTL automatically; remove_expired_entries is a no-op.")
+        return 0
