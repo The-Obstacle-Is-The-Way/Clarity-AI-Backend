@@ -1,8 +1,9 @@
 #!/bin/bash
 # Clarity AI Backend Test Runner
 # This script provides a unified interface for running tests with different configurations
+# following clean architecture principles and ensuring HIPAA compliance
 
-set -e
+set -eo pipefail # Exit on error, and on error in a pipeline
 
 # Default values
 TEST_TYPE="all"
@@ -11,6 +12,9 @@ COVERAGE=false
 FILTER=""
 FAILFAST=false
 TEST_PATTERN=""
+HIPAA_MODE=false
+PHI_AUDIT=false
+LOG_LEVEL="INFO"
 
 # Color definitions
 RED='\033[0;31m'
@@ -34,6 +38,9 @@ function show_help {
     echo "  -f, --filter FILTER   Filter tests by substring match"
     echo "  -p, --pattern PATTERN Filter tests by pytest pattern (e.g., 'test_*')"
     echo "  -x, --failfast        Stop on first failure"
+    echo "  --hipaa               Enable HIPAA compliance mode (extra security checks)"
+    echo "  --phi-audit           Run PHI audit after tests to check for data leakage"
+    echo "  --log LEVEL           Set log level (DEBUG|INFO|WARNING|ERROR) [default: INFO]"
     echo "  -h, --help            Show this help message"
     echo ""
     echo "Examples:"
@@ -41,6 +48,7 @@ function show_help {
     echo "  $0 --type integration --coverage   # Run integration tests with coverage report"
     echo "  $0 --filter patient                # Run tests with 'patient' in their name"
     echo "  $0 --pattern test_database*        # Run tests matching the pattern 'test_database*'"
+    echo "  $0 --hipaa --phi-audit             # Run with HIPAA compliance and PHI audit"
     echo ""
 }
 
@@ -75,6 +83,18 @@ while [[ $# -gt 0 ]]; do
         -x|--failfast)
             FAILFAST=true
             shift
+            ;;
+        --hipaa)
+            HIPAA_MODE=true
+            shift
+            ;;
+        --phi-audit)
+            PHI_AUDIT=true
+            shift
+            ;;
+        --log)
+            LOG_LEVEL="$2"
+            shift 2
             ;;
         -h|--help)
             show_help
@@ -112,6 +132,18 @@ case $TEST_TYPE in
         ;;
 esac
 
+# Validate LOG_LEVEL
+case $LOG_LEVEL in
+    "DEBUG"|"INFO"|"WARNING"|"ERROR")
+        # Valid log level
+        ;;
+    *)
+        echo -e "${RED}Invalid log level: $LOG_LEVEL${NC}"
+        echo -e "${YELLOW}Valid options are: DEBUG, INFO, WARNING, ERROR${NC}"
+        exit 1
+        ;;
+esac
+
 # Build the pytest command
 PYTEST_CMD="python -m pytest"
 
@@ -143,15 +175,48 @@ if [[ "$COVERAGE" = true ]]; then
     PYTEST_CMD="$PYTEST_CMD --cov=app --cov-report=term --cov-report=html"
 fi
 
+# Set environment variables for HIPAA mode
+if [[ "$HIPAA_MODE" = true ]]; then
+    export HIPAA_COMPLIANCE=1
+    export LOG_SANITIZATION=strict
+    export PHI_PROTECTION=enhanced
+    echo -e "${YELLOW}HIPAA compliance mode enabled${NC}"
+fi
+
+# Configure log level
+export LOG_LEVEL="$LOG_LEVEL"
+echo -e "${BLUE}Log level set to $LOG_LEVEL${NC}"
+
 # Print the command
 echo -e "${CYAN}Running command:${NC} $PYTEST_CMD"
 
 # Run the tests
 echo -e "${GREEN}Starting $TEST_TYPE tests...${NC}"
 eval $PYTEST_CMD
+TEST_RESULT=$?
 
-# Process the result
-if [[ $? -eq 0 ]]; then
+# Run PHI audit if requested
+if [[ "$PHI_AUDIT" = true ]]; then
+    echo -e "${YELLOW}Running PHI audit to check for potential data leakage...${NC}"
+    # Check if the phi_auditor tool exists
+    if [ -f "tools/security/phi_auditor_complete.py" ]; then
+        python tools/security/phi_auditor_complete.py
+        PHI_RESULT=$?
+        if [[ $PHI_RESULT -ne 0 ]]; then
+            echo -e "${RED}PHI audit failed! Potential data leakage detected.${NC}"
+            echo -e "${YELLOW}Review the audit results and fix any issues.${NC}"
+            TEST_RESULT=1
+        else
+            echo -e "${GREEN}PHI audit passed. No data leakage detected.${NC}"
+        fi
+    else
+        echo -e "${RED}PHI auditor not found at tools/security/phi_auditor_complete.py${NC}"
+        echo -e "${YELLOW}Skipping PHI audit.${NC}"
+    fi
+fi
+
+# Process the test result
+if [[ $TEST_RESULT -eq 0 ]]; then
     echo -e "${GREEN}All tests passed!${NC}"
     
     # If coverage report was generated, show the path
@@ -162,5 +227,13 @@ else
     echo -e "${RED}Some tests failed.${NC}"
     exit 1
 fi
+
+# Clean up environment variables
+if [[ "$HIPAA_MODE" = true ]]; then
+    unset HIPAA_COMPLIANCE
+    unset LOG_SANITIZATION
+    unset PHI_PROTECTION
+fi
+unset LOG_LEVEL
 
 exit 0 
