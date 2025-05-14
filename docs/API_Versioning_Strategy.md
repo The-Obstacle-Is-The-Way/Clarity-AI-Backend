@@ -454,3 +454,227 @@ For each major version change, a migration guide is provided to help clients tra
 ```
 
 By following this versioning strategy, the Clarity AI Backend maintains a proper balance between API evolution and stability, ensuring a reliable and predictable experience for API consumers while enabling the platform to grow and improve over time.
+
+## HIPAA Compliance Considerations for API Versioning
+
+API versioning presents unique HIPAA compliance challenges that must be addressed:
+
+### 1. PHI Consistency Across Versions
+
+As API versions evolve, consistency in handling Protected Health Information is critical:
+
+1. **Field Renaming**: When renaming fields containing PHI, both old and new versions must maintain encryption
+2. **Schema Evolution**: Changes to data structures must preserve PHI protection
+3. **Validation Rules**: All versions must enforce the same PHI validation standards
+4. **Documentation**: PHI handling must be clearly documented across versions
+
+```python
+# Example of maintaining PHI protection across versions
+@router.get(
+    "/{patient_id}/medical-records",
+    summary="Get patient medical records"
+)
+async def get_medical_records(
+    patient_id: str,
+    version: str = Depends(api_version_header),
+    auth_service: IAuthService = Depends(get_auth_service),
+    audit_logger: IAuditLogger = Depends(get_audit_logger)
+):
+    """Get medical records with version-specific formatting but consistent PHI protection."""
+    # Authentication and authorization (same across versions)
+    current_user = await auth_service.get_current_user()
+    await auth_service.verify_patient_access(current_user.id, patient_id)
+    
+    # Audit logging (same across versions)
+    await audit_logger.log_phi_access(
+        user_id=current_user.id,
+        resource_type="medical_records",
+        resource_id=patient_id,
+        action="view"
+    )
+    
+    # Get data (same core data across versions)
+    records = await medical_record_service.get_by_patient_id(patient_id)
+    
+    # Version-specific response formatting
+    if version == APIVersion.V2:
+        return [MedicalRecordResponseV2.from_entity(r) for r in records]
+    else:
+        return [MedicalRecordResponseV1.from_entity(r) for r in records]
+```
+
+### 2. Authorization Consistency
+
+Authorization must be consistently enforced across API versions:
+
+1. **Role-Based Access**: All versions must enforce the same access controls
+2. **Permission Checks**: New permissions in newer versions must degrade gracefully
+3. **Token Handling**: Authentication token verification must be consistent
+4. **Audit Trail**: All versions must maintain the same audit logging standards
+
+### 3. Error Response Security
+
+Error responses must be secure across all API versions:
+
+1. **Error Sanitization**: All versions must prevent PHI in error messages
+2. **Consistent Error Format**: Error response structure should maintain security across versions
+3. **Validation Errors**: Input validation errors must not echo sensitive data
+4. **Stack Traces**: No version should expose internal details in errors
+
+### 4. Deprecation and Sunset Planning
+
+When deprecating API versions, HIPAA compliance requires careful planning:
+
+1. **Data Migration**: Ensure PHI is properly migrated to newer versions
+2. **Access Continuity**: Maintain appropriate access controls during transitions
+3. **Audit Continuity**: Preserve audit logs from deprecated versions
+4. **Business Associate Agreements**: Update agreements to reflect API changes
+
+## Implementation Roadmap
+
+To address the architectural gaps in API versioning, the following implementation roadmap is proposed:
+
+### Phase 1: Automated Compatibility Testing (Next 2 Weeks)
+
+1. **Days 1-3: Test Framework**
+   - Implement testing framework for cross-version compatibility
+   - Create test scenarios for all endpoints across versions
+   - Develop PHI security tests for all endpoints
+
+2. **Days 4-7: Response Schema Tests**
+   - Implement tests to verify all response schemas
+   - Ensure PHI fields are consistently protected
+   - Validate proper error response formats
+
+3. **Days 8-10: Authorization Tests**
+   - Test role-based access across versions
+   - Validate consistent permission enforcement
+   - Verify audit logging across versions
+
+### Phase 2: Documentation Enhancement (Week 3-4)
+
+1. **Days 1-3: Version-Specific Documentation**
+   - Implement automated documentation generation for each version
+   - Create version comparison documentation
+   - Document PHI handling for each endpoint
+
+2. **Days 4-7: Migration Guides**
+   - Expand migration guides for all major resources
+   - Add code examples for common migration scenarios
+   - Create client libraries for simplified migration
+
+3. **Days 8-10: API Explorer**
+   - Implement interactive API explorer with version selection
+   - Add version-specific examples
+   - Include security best practices in documentation
+
+### Phase 3: Feature Flag System (Week 5-6)
+
+1. **Days 1-3: Enhanced Feature Flags**
+   - Implement comprehensive feature flag system
+   - Create admin interface for flag management
+   - Add per-client flag capabilities
+
+2. **Days 4-7: Feature Flag Testing**
+   - Create tests for all feature flag combinations
+   - Test degradation paths for disabled features
+   - Verify security with various flag configurations
+
+3. **Days 8-10: Feature Flag Documentation**
+   - Document all available feature flags
+   - Create guides for using feature flags in client applications
+   - Add feature flag status to API documentation
+
+## Best Practices for API Versioning
+
+To maintain a clean architecture and HIPAA compliance, follow these best practices:
+
+### 1. Interface Segregation
+
+Separate interface definitions by version:
+
+```python
+# app/core/interfaces/api/v1/patient_service_interface.py
+class IPatientServiceV1(Protocol):
+    """Interface for patient service in API v1."""
+    
+    async def get_patient(self, patient_id: str) -> PatientV1:
+        """Get patient by ID."""
+        ...
+
+# app/core/interfaces/api/v2/patient_service_interface.py
+class IPatientServiceV2(Protocol):
+    """Interface for patient service in API v2."""
+    
+    async def get_patient(self, patient_id: str) -> PatientV2:
+        """Get patient by ID with enhanced data."""
+        ...
+```
+
+### 2. Adapter Pattern for Version Compatibility
+
+Use adapters to transform between versions:
+
+```python
+class PatientV2Adapter:
+    """Adapter that converts PatientV1 to PatientV2."""
+    
+    @staticmethod
+    def adapt(patient_v1: PatientV1) -> PatientV2:
+        """Convert v1 patient to v2 format."""
+        return PatientV2(
+            id=patient_v1.id,
+            medical_record_number=patient_v1.medical_number,  # Field renamed
+            date_of_birth=format_iso_date(patient_v1.dob),  # Format changed
+            # Add new fields with defaults
+            status=PatientStatusV2.ACTIVE,
+            last_updated=datetime.now()
+        )
+```
+
+### 3. Dependency Injection for Version-Specific Services
+
+```python
+# app/presentation/api/dependencies/services.py
+def get_patient_service_v1() -> IPatientServiceV1:
+    """Get patient service for API v1."""
+    return PatientServiceV1()
+
+def get_patient_service_v2() -> IPatientServiceV2:
+    """Get patient service for API v2."""
+    return PatientServiceV2()
+```
+
+### 4. Consistent Error Handling Across Versions
+
+```python
+# app/presentation/api/error_handlers.py
+@app.exception_handler(PatientNotFoundException)
+def patient_not_found_handler(request: Request, exc: PatientNotFoundException):
+    """Handle patient not found errors consistently across versions."""
+    # Get API version from request
+    version = request.headers.get("X-API-Version", "1.0")
+    
+    if version >= "2.0":
+        # V2 uses Problem Details format
+        return JSONResponse(
+            status_code=404,
+            content={
+                "type": "https://api.clarity.ai/errors/not-found",
+                "title": "Resource Not Found",
+                "status": 404,
+                "detail": "The requested patient could not be found",
+                "instance": request.url.path
+            }
+        )
+    else:
+        # V1 uses simple error format
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Patient not found"}
+        )
+```
+
+## Conclusion
+
+The API Versioning Strategy for the Clarity AI Backend provides a comprehensive approach to evolving the API while maintaining backward compatibility and HIPAA compliance. By addressing the architectural gaps through the proposed implementation roadmap, the system will achieve a more robust and maintainable versioning system. This will enable the platform to evolve rapidly while providing a stable and secure interface for client applications working with sensitive psychiatric data.
