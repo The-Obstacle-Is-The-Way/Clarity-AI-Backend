@@ -2,27 +2,27 @@
 
 ## Overview
 
-The Pretrained Actigraphy Transformer (PAT) Service is a specialized machine learning component within the Clarity AI Backend that analyzes patient data to derive psychiatric insights. This service represents a breakthrough approach in psychiatric assessment, using various data sources including actigraphy to identify markers of mental health conditions, monitor treatment efficacy, and provide objective data for the digital twin.
+The Pretrained Actigraphy Transformer (PAT) Service is a specialized machine learning component within the Clarity AI Backend that analyzes patient actigraphy data to derive psychiatric insights. This service represents a breakthrough approach in psychiatric assessment, using movement patterns to identify markers of mental health conditions, monitor treatment efficacy, and provide objective behavioral data for the digital twin.
 
-## Clean Architecture Implementation
+## Current Implementation Status
 
-The PAT Service exemplifies clean architecture principles through:
+The PAT Service is currently implemented with two parallel interfaces:
 
-1. **Interface Segregation**: The interface defines clear, cohesive methods without unnecessary dependencies
-2. **Dependency Inversion**: Higher-level modules depend on the abstract interface, not concrete implementations
-3. **Single Responsibility**: Each method has a specific, well-defined purpose
-4. **Domain-Driven Design**: The interface represents a bounded context within psychiatric assessment
+1. **Core Layer Interface (PATInterface)**: Defined in `app/core/interfaces/services/ml/pat_interface.py`
+2. **Route-Level Interface (IPATService)**: Defined inline in `app/presentation/api/v1/routes/actigraphy.py`
 
-## Interface Definition
+This dual interface approach represents an architectural refinement opportunity in the clean architecture implementation.
 
-The PAT Service interface is defined in `app/core/interfaces/services/ml/pat_interface.py`:
+## Interface Definitions
+
+### Core Layer Interface
 
 ```python
 class PATInterface(ABC):
     """
-    Interface for psychiatric assessment tool services.
+    Interface for psychiatric assessment tool services that analyze actigraphy data.
     
-    PAT services analyze patient data and provide clinical insights,
+    PAT services analyze movement patterns and provide clinical insights,
     predictions, and digital twin modeling capabilities.
     """
     
@@ -37,21 +37,22 @@ class PATInterface(ABC):
         pass
     
     @abstractmethod
-    async def analyze_patient(
+    async def analyze_actigraphy(
         self, 
         patient_id: str, 
-        data: dict[str, Any],
-        include_risk_factors: bool = True,
-        include_recommendations: bool = True
-    ) -> dict[str, Any]:
+        readings: List[Dict[str, Any]], 
+        device_info: Optional[Dict[str, Any]] = None,
+        analysis_types: Optional[List[str]] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
         """
-        Analyze patient data to extract clinical insights.
+        Analyze actigraphy data to extract clinical insights.
         
         Args:
             patient_id: Patient identifier
-            data: Patient data for analysis
-            include_risk_factors: Whether to include risk factors in the analysis
-            include_recommendations: Whether to include treatment recommendations
+            readings: Actigraphy data readings
+            device_info: Information about the recording device
+            analysis_types: Types of analysis to perform
             
         Returns:
             Analysis results with clinical insights
@@ -59,65 +60,26 @@ class PATInterface(ABC):
         pass
     
     @abstractmethod
-    async def predict_risk(
-        self,
-        patient_id: str,
-        risk_type: str,
-        timeframe_days: int,
-        data: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def get_embeddings(
+        self, 
+        patient_id: str, 
+        readings: Optional[List[Dict[str, Any]]] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
         """
-        Predict specific risk factors for a patient.
+        Generate embeddings from actigraphy data for use in machine learning models.
         
         Args:
             patient_id: Patient identifier
-            risk_type: Type of risk to predict (e.g., "suicide", "hospitalization")
-            timeframe_days: Prediction timeframe in days
-            data: Additional data for prediction, if None uses stored patient data
+            readings: Actigraphy data readings
             
         Returns:
-            Risk prediction results with confidence scores
+            Vector embeddings and metadata
         """
         pass
     
     @abstractmethod
-    async def create_digital_twin(
-        self, 
-        patient: Patient,
-        include_features: list[str] = None
-    ) -> DigitalTwin:
-        """
-        Create a digital twin model for a patient.
-        
-        Args:
-            patient: Patient entity
-            include_features: Optional list of specific features to include
-            
-        Returns:
-            Digital twin entity representing the patient
-        """
-        pass
-    
-    @abstractmethod
-    async def update_digital_twin(
-        self,
-        digital_twin_id: str,
-        new_data: dict[str, Any]
-    ) -> DigitalTwin:
-        """
-        Update an existing digital twin with new patient data.
-        
-        Args:
-            digital_twin_id: Digital twin identifier
-            new_data: New patient data to incorporate
-            
-        Returns:
-            Updated digital twin entity
-        """
-        pass
-    
-    @abstractmethod
-    async def get_model_info(self) -> dict[str, Any]:
+    async def get_model_info(self) -> Dict[str, Any]:
         """
         Get information about the underlying models used by the PAT service.
         
@@ -127,195 +89,178 @@ class PATInterface(ABC):
         pass
 ```
 
-## Key Capabilities
-
-### Patient Analysis
-
-The PAT Service processes patient data to extract clinically relevant insights:
+### Route-Level Interface
 
 ```python
-async def analyze_patient(
-    self, 
-    patient_id: str, 
-    data: dict[str, Any],
-    include_risk_factors: bool = True,
-    include_recommendations: bool = True
-) -> dict[str, Any]:
-```
-
-This method transforms various data sources into psychiatric insights such as:
-
-- Mental state assessment
-- Behavioral pattern identification
-- Symptom analysis
-- Treatment response indicators
-- Functional status metrics
-
-### Risk Prediction
-
-The service can predict specific risk factors for patients:
-
-```python
-async def predict_risk(
-    self,
-    patient_id: str,
-    risk_type: str,
-    timeframe_days: int,
-    data: dict[str, Any] | None = None
-) -> dict[str, Any]:
-```
-
-This method evaluates the likelihood of various psychiatric risks, such as:
-
-- Suicidal ideation or behavior
-- Hospital readmission
-- Treatment non-adherence
-- Symptom exacerbation
-- Crisis episodes
-
-### Digital Twin Creation
-
-The service can generate digital twin models that represent patients:
-
-```python
-async def create_digital_twin(
-    self, 
-    patient: Patient,
-    include_features: list[str] = None
-) -> DigitalTwin:
-```
-
-The digital twin represents a computational model of the patient that can be used for:
-
-- Treatment simulation
-- Outcome prediction
-- Longitudinal tracking
-- Multimodal data integration
-- Personalized intervention planning
-
-### Digital Twin Updates
-
-The service can update existing digital twins with new patient data:
-
-```python
-async def update_digital_twin(
-    self,
-    digital_twin_id: str,
-    new_data: dict[str, Any]
-) -> DigitalTwin:
-```
-
-This allows for:
-
-- Real-time model evolution
-- Continuous learning from new observations
-- Adaptive prediction based on treatment response
-- Temporal pattern recognition
-- Change detection in patient status
-
-### Model Information
-
-The service provides metadata about its underlying models:
-
-```python
-async def get_model_info(self) -> dict[str, Any]:
-```
-
-This method returns information about:
-
-- Model versions and capabilities
-- Training data characteristics
-- Validation metrics
-- Feature importance
-- Model limitations and constraints
-
-## Service Implementations
-
-### Production Implementation
-
-The primary implementation uses advanced machine learning models for analysis:
-
-```python
-class ProductionPAT(PATInterface):
-    """Production implementation of the PAT service."""
+class IPATService:
+    """Interface for PAT analysis service."""
     
-    def __init__(self):
-        self._initialized = False
-        self._models = {}
-        self._config = None
+    async def analyze_actigraphy(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Analyze actigraphy data and return results."""
+        pass
+    
+    async def get_embeddings(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Generate embeddings from actigraphy data."""
+        pass
 ```
 
-Key features of this implementation:
+## Implementation Variations
 
-- State-of-the-art ML models
-- Integration with clinical knowledge bases
-- Continuous model updates
-- Multi-dimensional data processing
-- HIPAA-compliant data handling
+The current implementation of the PAT Service demonstrates several architectural patterns:
 
 ### Mock Implementation
 
-A mock implementation is provided for testing and development:
+A `MockPATService` implementation is provided directly in the routes file for development and testing:
 
 ```python
-class MockPAT(PATInterface):
-    """Mock implementation of the PAT service for testing."""
+class MockPATService(IPATService):
+    """Mock service for PAT analysis during development."""
     
-    def __init__(self):
-        self._initialized = False
-        self._config = None
-        
-    async def initialize(self) -> bool:
-        """Initialize the mock PAT service."""
-        self._initialized = True
-        return True
+    async def analyze_actigraphy(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Return mock analysis results for actigraphy data."""
+        return {
+            "analysis_id": str(uuid.uuid4()),
+            "patient_id": data.get("patient_id", ""),
+            "timestamp": datetime.now().isoformat(),
+            "analysis_types": data.get("analysis_types", []),
+            "results": {
+                "sleep_quality": "good",
+                "activity_level": "moderate",
+                "circadian_rhythm": "normal",
+                "risk_factors": [],
+                "confidence": 0.85
+            }
+        }
+    
+    async def get_embeddings(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Return mock embeddings for actigraphy data."""
+        return {
+            "patient_id": data.get("patient_id", ""),
+            "timestamp": datetime.now().isoformat(),
+            "embeddings": [random.random() for _ in range(128)],
+            "metadata": {
+                "model_version": "mock-1.0",
+                "dimensions": 128
+            }
+        }
 ```
 
-This implementation returns deterministic, simulated results for unit testing and development without external dependencies.
+### API Endpoints
+
+The PAT Service is exposed through FastAPI endpoints in the actigraphy routes:
+
+```python
+@router.post(
+    "/analyze", 
+    response_model=AnalyzeActigraphyResponse,
+    summary="Analyze actigraphy data"
+)
+async def analyze_actigraphy(
+    data: ActigraphyAnalysisRequest,
+    pat_service: IPATService = Depends(get_pat_service)
+) -> AnalyzeActigraphyResponse:
+    """
+    Analyze actigraphy data to extract relevant features and patterns.
+    
+    This endpoint processes raw movement data to identify:
+    - Sleep quality metrics
+    - Activity level patterns
+    - Circadian rhythm analysis
+    - Psychiatric symptom indicators
+    
+    The analysis results can be used to inform clinical decision-making
+    and contribute to the patient's digital twin model.
+    """
+    result = await pat_service.analyze_actigraphy(data.dict())
+    return AnalyzeActigraphyResponse(**result)
+```
+
+## HIPAA Compliance 
+
+The PAT Service implements HIPAA compliance measures to protect Protected Health Information (PHI):
+
+1. **PHI Minimization**: Service interfaces are designed to operate with anonymized patient identifiers
+2. **Secure Data Handling**: All PHI is properly encrypted in transit and at rest
+3. **Audit Logging**: PAT service operations involving PHI are logged for compliance
+4. **Access Control**: Service access is controlled through dependency injection and authentication
+5. **Error Sanitization**: Error handling prevents leakage of PHI in error messages
+
+```python
+# Example of HIPAA-compliant PAT service call with audit logging
+async def analyze_with_audit(
+    patient_id: str,
+    data: dict[str, Any],
+    user_id: str,
+    pat_service: PATInterface,
+    audit_logger: IAuditLogger
+) -> dict[str, Any]:
+    """Analyze actigraphy data with proper HIPAA audit logging."""
+    
+    # Log PHI access before analysis
+    await audit_logger.log_phi_access(
+        user_id=user_id,
+        resource_type="actigraphy_data",
+        resource_id=patient_id,
+        action="analyze",
+        reason="Clinical assessment"
+    )
+    
+    # Perform analysis
+    result = await pat_service.analyze_actigraphy(
+        patient_id=patient_id,
+        readings=data.get("readings", []),
+        analysis_types=data.get("analysis_types", [])
+    )
+    
+    return result
+```
+
+## Clinical Applications
+
+The PAT Service supports various clinical applications through specialized analysis types:
+
+1. **Mood Disorder Assessment**: Identifies patterns associated with depression and bipolar disorder
+2. **Sleep Analysis**: Quantifies sleep quality, duration, and disturbances
+3. **Treatment Response**: Tracks changes in activity patterns in response to interventions
+4. **Relapse Prediction**: Identifies early warning signs of symptom recurrence
+5. **Digital Phenotyping**: Characterizes behavioral signatures of psychiatric conditions
 
 ## Integration with Digital Twin
 
-The PAT Service is tightly integrated with the Digital Twin system, providing comprehensive psychiatric assessments that complement other data sources:
+The PAT Service integrates with the Digital Twin system to:
 
-1. **Multimodal Integration**: Combines PAT insights with other data sources
-2. **Temporal Modeling**: Tracks changes in psychiatric state over time
-3. **Intervention Simulation**: Models potential outcomes of different treatments
-4. **Personalized Metrics**: Develops individualized baselines and trajectories
-5. **Feedback Loops**: Incorporates treatment response data into future predictions
+1. **Update Twin State**: Provide behavioral state information to the digital twin
+2. **Generate Predictions**: Inform predictive models about expected behavioral trajectories
+3. **Treatment Planning**: Support intervention planning based on behavioral patterns
+4. **Risk Assessment**: Contribute to composite risk models that include behavioral data
 
-## HIPAA Compliance
+## Architectural Refinement Opportunities
 
-The PAT Service implements strict security measures:
+The current PAT Service implementation presents several opportunities for architectural improvement:
 
-1. **Data Minimization**: Only necessary information is processed
-2. **Secure Processing**: All sensitive data is handled securely
-3. **Access Control**: Strict authentication and authorization
-4. **Audit Logging**: All PHI access is logged and monitored
-5. **Encryption**: Data encrypted at rest and in transit
+1. **Interface Consolidation**: Unify the dual interfaces (PATInterface and IPATService) into a single core interface
+2. **Implementation Separation**: Move the mock implementation to a dedicated test module
+3. **Factory Implementation**: Create a proper factory for PAT service implementations
+4. **Dependency Injection**: Enhance dependency injection for the PAT service
+5. **Domain Model Integration**: Create domain-specific models for actigraphy data
 
-## Future Enhancements
+## Implementation Roadmap
 
-Planned enhancements for the PAT Service include:
+To address the architectural refinement opportunities, the following implementation roadmap is proposed:
 
-1. **Advanced NLP**: Integration of natural language processing for text analysis
-2. **Multimodal Learning**: Combined analysis of various data modalities
-3. **Federated Learning**: Privacy-preserving model training across institutions
-4. **Explainable AI**: More transparent reasoning for clinical insights
-5. **Real-time Processing**: Immediate analysis of incoming patient data
+1. **Phase 1: Interface Consolidation**
+   - Migrate to a unified interface in the core layer
+   - Update dependency injection to use the consolidated interface
+   - Ensure consistent method signatures across all implementations
 
-## Architectural Considerations
+2. **Phase 2: Clean Architecture Alignment**
+   - Move mock implementations to dedicated test modules
+   - Implement a factory pattern for service creation
+   - Create proper domain models for actigraphy data
 
-The current PAT Service implementation follows clean architecture principles, but has opportunities for refinement:
+3. **Phase 3: Enhanced Capabilities**
+   - Implement advanced machine learning models for psychiatric insight
+   - Add specialized analysis types for different conditions
+   - Create comprehensive domain events for integration with other components
 
-1. **Interface Consolidation**: Ensure consistent interfaces across the system
-2. **Dependency Injection**: Standardize DI patterns for all service instances
-3. **Repository Pattern**: Improve data access through dedicated repositories
-4. **Domain Model Alignment**: Ensure full alignment with domain entities
-5. **Test Harness**: Develop comprehensive test suite for all implementations
-
-## Related Components
-
-- **Actigraphy System**: Provides specialized analysis of physical activity data
-- **Digital Twin System**: Integrates PAT insights into comprehensive patient models
-- **Alert Rules System**: Generates clinical alerts based on PAT predictions
-- **Treatment Recommendation System**: Uses PAT insights for intervention planning
+By following this implementation roadmap, the PAT Service will achieve alignment with clean architecture principles while enhancing its psychiatric assessment capabilities for the digital twin platform.
