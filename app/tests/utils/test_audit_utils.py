@@ -146,7 +146,7 @@ def disable_authentication_middleware(app: FastAPI) -> None:
                     mock_user.id = "test-user-id-123"
                     mock_user.username = "test_user"
                     mock_user.email = "test@example.com"
-                    mock_user.roles = [UserRole.PROVIDER.value, UserRole.ADMIN.value]
+                    mock_user.roles = [UserRole.CLINICIAN.value, UserRole.ADMIN.value]
                     
                     request.scope["user"] = mock_user
                     # Store on request state as well for middleware that checks there
