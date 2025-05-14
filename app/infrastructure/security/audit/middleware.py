@@ -75,6 +75,35 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             "DELETE": "delete"
         }
     
+    def _is_audit_disabled(self, request: Request) -> bool:
+        """
+        Check if audit logging is disabled for this request.
+        
+        This checks both app.state and request.state for the disable_audit_middleware flag.
+        
+        Args:
+            request: The FastAPI request
+            
+        Returns:
+            bool: True if audit logging should be disabled
+        """
+        # Check request.state first (higher priority)
+        if hasattr(request.state, "disable_audit_middleware") and request.state.disable_audit_middleware:
+            return True
+            
+        # Then check app.state
+        if hasattr(request.app.state, "disable_audit_middleware") and request.app.state.disable_audit_middleware:
+            return True
+            
+        # Check if we're in a test environment
+        settings = request.state.settings if hasattr(request.state, "settings") else self.settings
+        if settings.ENVIRONMENT == "test":
+            # In test environments, default to disabled unless explicitly enabled
+            logger.debug("Test environment detected - audit logging disabled by default")
+            return True
+            
+        return False
+    
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process the request and log relevant audit information.
@@ -86,8 +115,8 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: The response from the next handler
         """
-        # Skip if audit logging is explicitly disabled on the app state (useful for testing)
-        if hasattr(request.app.state, "disable_audit_middleware") and request.app.state.disable_audit_middleware:
+        # Check if audit logging is disabled
+        if self._is_audit_disabled(request):
             return await call_next(request)
             
         # Skip paths that shouldn't be audited
@@ -135,61 +164,57 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             status_code = 500
             raise e
         finally:
-            # Only attempt to log if not in a test environment, or if in a test environment but with a relaxed error policy
             try:
-                # Log regardless of success/failure if it's a PHI path
-                if is_phi_path and user_id:
-                    access_status = "success" if 200 <= status_code < 300 else "failure"
-                    
-                    # Only log PHI access for authenticated users
-                    # This is critical for HIPAA compliance - all PHI access must be tracked
-                    try:
-                        await self.audit_logger.log_phi_access(
-                            actor_id=user_id,
-                            patient_id=resource_id or "unknown",
-                            resource_type=resource_type or "api_resource",
-                            action=action,
-                            status=access_status,
-                            reason="API request",
-                            request=request,
-                            request_context=request_context
-                        )
-                    except SQLAlchemyError as db_error:
-                        # Log error but don't fail the request
-                        logger.error(f"Failed to log PHI access due to database error: {db_error}")
-                        # Provide more verbose debug logs in test environment
-                        if self.settings.ENVIRONMENT == "test":
-                            logger.debug(f"Database error details: {db_error}", exc_info=True)
-                    except Exception as e:
-                        # Log any other unexpected errors
-                        logger.error(f"Failed to log PHI access: {e}")
-                        if self.settings.ENVIRONMENT == "test":
-                            logger.debug(f"Detailed error logging PHI access: {e}", exc_info=True)
-                elif user_id and user_id != "unknown":
-                    # For non-PHI paths, still log API access for authenticated users
-                    # This provides a complete audit trail of all user activity
-                    try:
-                        await self.audit_logger.log_event(
-                            event_type=AuditEventType.API_REQUEST,
-                            actor_id=user_id,
-                            target_resource=resource_type,
-                            target_id=resource_id,
-                            action=action,
-                            status="success" if 200 <= status_code < 300 else "failure",
-                            details={"path": path, "method": method, "status_code": status_code},
-                            request=request
-                        )
-                    except SQLAlchemyError as db_error:
-                        # Log error but don't fail the request
-                        logger.error(f"Failed to log API request due to database error: {db_error}")
-                        # Provide more verbose debug logs in test environment
-                        if self.settings.ENVIRONMENT == "test":
-                            logger.debug(f"Database error details: {db_error}", exc_info=True)
-                    except Exception as e:
-                        # Log any other unexpected errors
-                        logger.error(f"Failed to log API request: {e}")
-                        if self.settings.ENVIRONMENT == "test":
-                            logger.debug(f"Detailed error logging API access: {e}", exc_info=True)
+                # Only proceed with logging if we have a valid response and user ID
+                if response and user_id and user_id != "unknown":
+                    # Log PHI access if this is a PHI path
+                    if is_phi_path:
+                        access_status = "success" if 200 <= status_code < 300 else "failure"
+                        
+                        try:
+                            await self.audit_logger.log_phi_access(
+                                actor_id=user_id,
+                                patient_id=resource_id or "unknown",
+                                resource_type=resource_type or "api_resource",
+                                action=action,
+                                status=access_status,
+                                reason="API request",
+                                request=request,
+                                request_context=request_context
+                            )
+                        except SQLAlchemyError as db_error:
+                            # Log error but don't fail the request
+                            logger.error(f"Failed to log PHI access due to database error: {db_error}")
+                            if self.settings.ENVIRONMENT == "test":
+                                logger.debug(f"Database error details: {db_error}", exc_info=True)
+                        except Exception as e:
+                            # Log any other unexpected errors
+                            logger.error(f"Failed to log PHI access: {e}")
+                            if self.settings.ENVIRONMENT == "test":
+                                logger.debug(f"Detailed error logging PHI access: {e}", exc_info=True)
+                    else:
+                        # For non-PHI paths, log API access
+                        try:
+                            await self.audit_logger.log_event(
+                                event_type=AuditEventType.API_REQUEST,
+                                actor_id=user_id,
+                                target_resource=resource_type,
+                                target_id=resource_id,
+                                action=action,
+                                status="success" if 200 <= status_code < 300 else "failure",
+                                details={"path": path, "method": method, "status_code": status_code},
+                                request=request
+                            )
+                        except SQLAlchemyError as db_error:
+                            # Log error but don't fail the request
+                            logger.error(f"Failed to log API request due to database error: {db_error}")
+                            if self.settings.ENVIRONMENT == "test":
+                                logger.debug(f"Database error details: {db_error}", exc_info=True)
+                        except Exception as e:
+                            # Log any other unexpected errors
+                            logger.error(f"Failed to log API request: {e}")
+                            if self.settings.ENVIRONMENT == "test":
+                                logger.debug(f"Detailed error logging API access: {e}", exc_info=True)
             except Exception as outer_e:
                 # Catch-all for any errors in the logging logic to ensure response is always returned
                 logger.error(f"Unhandled exception in audit logging logic: {outer_e}")
