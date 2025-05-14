@@ -53,6 +53,7 @@ class BaseException(Exception):
 ```
 
 This design provides several key advantages:
+
 - **Structured Error Information**: All exceptions include a human-readable message, optional details, and an error code
 - **Consistent Interface**: Standardized approach to creating and handling exceptions
 - **Extensibility**: Easy to extend for domain-specific exceptions
@@ -141,7 +142,7 @@ Each architectural layer has appropriate exception types:
 
 1. **Domain Layer**: Business rule exceptions, entity validation errors
 2. **Application Layer**: Use case validation, coordination errors
-3. **Infrastructure Layer**: Database exceptions, external service errors 
+3. **Infrastructure Layer**: Database exceptions, external service errors
 4. **Presentation Layer**: Input validation, response formatting errors
 
 ### Dependency Rules

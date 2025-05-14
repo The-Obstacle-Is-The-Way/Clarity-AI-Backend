@@ -242,6 +242,7 @@ This endpoint retrieves actigraphy data for a specific patient within a date ran
 **Authorization**: Requires appropriate access to patient data  
 **Path Parameters**: `patient_id` - UUID of the patient  
 **Query Parameters**:
+
 - `start_date` - Beginning of the date range (ISO format)
 - `end_date` - End of the date range (ISO format)  
 **Response**: `ActigraphyDataResponse` containing the patient's actigraphy data
@@ -263,7 +264,6 @@ class ActigraphyAnalysisRequest(BaseModel):
     analysis_types: List[AnalysisType] = [AnalysisType.SLEEP_QUALITY, AnalysisType.ACTIVITY_LEVEL]
     options: Optional[Dict[str, Any]] = None
 ```
-
 
 ### Analysis Response
 
