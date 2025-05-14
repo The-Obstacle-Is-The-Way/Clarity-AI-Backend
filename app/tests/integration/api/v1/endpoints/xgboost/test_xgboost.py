@@ -163,7 +163,6 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
             first_name="Test",
             last_name="User",
             full_name="Test User",
-            role=UserRole.CLINICIAN,
             roles=[UserRole.CLINICIAN],
             status=UserStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
@@ -182,10 +181,10 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
         "sub": test_user.id,
         "username": test_user.username,
         "email": test_user.email,
-        "role": test_user.role.value,
+        "roles": [UserRole.CLINICIAN.value],
         "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
     }
-    test_token = await jwt_service.create_access_token(token_data)
+    test_token = jwt_service.create_access_token(token_data)
     auth_headers = {"Authorization": f"Bearer {test_token}"}
     
     # Create test client
