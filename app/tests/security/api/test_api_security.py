@@ -533,25 +533,53 @@ class TestErrorHandling:
         client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI]
     ):
         """Test that 500 errors are generic and mask internal details."""
-        client, _ = client_app_tuple_func_scoped
+        client, current_fastapi_app = client_app_tuple_func_scoped
+
+        # It's common for test-specific error-raising endpoints to be under a /test/ or /debug/ prefix
+        # Assuming a route like /api/v1/test/test-error is configured in test setups to raise an unhandled error.
+        # This endpoint should map to a handler that raises something like RuntimeError("Sensitive details").
+        # The goal is to ensure this "Sensitive details" message is not in the final HTTP response.
         
-        # Instead of dynamically creating a route, make a request that will trigger an error handler
-        # The built-in 404 handler should be safer to test with
-        response = await client.get("/api/nonexistent-route-to-test-error-handling")
+        # First, let's define and add a simple router that raises an error for testing purposes,
+        # if one isn't already globally available via "Test routers included."
+        # This ensures the test is self-contained in its setup for this specific check.
         
-        # Verify it's a 404 not found
-        assert response.status_code == 404
+        from fastapi import APIRouter, Request
+        test_error_router = APIRouter()
+
+        @test_error_router.get("/test-error-internal")
+        async def _test_error_endpoint_internal(request: Request):
+            raise RuntimeError("This is a sensitive internal error detail that should be masked")
+
+        # Temporarily add this router to the app for this test
+        # Note: This assumes 'current_fastapi_app' is the app from the fixture
+        original_routers = list(current_fastapi_app.router.routes) # Store original routes
+        current_fastapi_app.include_router(test_error_router, prefix="/api/v1/test-errors", tags=["test_errors"])
+
+        try:
+            response = await client.get("/api/v1/test-errors/test-error-internal")
+            
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            
+            response_json = response.json()
+            assert "detail" in response_json
+            # HIPAA: Ensure generic error message, no PHI or sensitive details
+            assert response_json["detail"] == "Internal Server Error", f"Expected generic error, got: {response_json['detail']}"
+            
+            # Ensure the sensitive part of the original exception is not in the response
+            assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
+            assert "traceback" not in response.text.lower()
+
+        finally:
+            # Clean up: remove the temporarily added router
+            # This is a bit complex as FastAPI doesn't have a direct 'remove_router'.
+            # A robust way is to re-initialize routes if critical, or ensure fixtures handle app isolation.
+            # For this edit, we'll revert to original routes. Simpler fixture management is better long-term.
+            current_fastapi_app.router.routes = original_routers
         
-        # Check that response doesn't contain sensitive information
-        error_data = response.json()
-        assert "detail" in error_data
-        assert "not found" in error_data["detail"].lower()
-        
-        # Ensure no stack traces are exposed
-        assert "traceback" not in response.text.lower()
-        
-        # Test passed successfully
-        return True
+        # Test passed successfully (original return True is not idiomatic for pytest)
+        # Pytest considers a test passed if no exceptions are raised or if expected exceptions are caught.
+        # No explicit return True is needed.
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
 
