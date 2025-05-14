@@ -23,14 +23,14 @@ from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 # Application-Specific Imports
 from app.core.config import Settings, get_settings as global_get_settings
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface as IJWTService
 from app.core.interfaces.services.redis_service_interface import IRedisService
 from app.core.logging_config import LOGGING_CONFIG
 from app.infrastructure.persistence.sqlalchemy.database import (
     AsyncSession, async_sessionmaker
 )
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
-from app.infrastructure.services.redis_service import RedisService
+from app.infrastructure.services.redis import RedisService
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
@@ -163,7 +163,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             fastapi_app.state.redis_service = None
 
         # --- State-Dependent Middleware Setup (Post-Resource Initialization) ---
-        jwt_service: JWTServiceInterface = get_jwt_service(current_settings)
+        jwt_service: IJWTService = get_jwt_service(current_settings)
         fastapi_app.add_middleware(
             AuthenticationMiddleware,
             jwt_service=jwt_service,
@@ -211,7 +211,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 def create_application(
     settings_override: Settings | None = None,
     include_test_routers: bool = False,
-    jwt_service_override: JWTServiceInterface | None = None,
+    jwt_service_override: IJWTService | None = None,
     skip_auth_middleware: bool = False,
     disable_audit_middleware: bool = False
 ) -> FastAPI:
