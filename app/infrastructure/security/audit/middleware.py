@@ -202,7 +202,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             # Don't try to decode the token here - just note that there was one
             # The actual user ID should be populated by auth middleware already
-            return "anonymous_authenticated"
+            return "authenticated_user"
         
         # Fall back to test user ID for testing
         if self.settings.TESTING:

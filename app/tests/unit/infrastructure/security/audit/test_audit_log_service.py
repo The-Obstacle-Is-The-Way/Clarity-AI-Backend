@@ -201,7 +201,10 @@ class TestAuditLogService:
             ip_address="not_an_ip",  # Invalid IP
             details={
                 "reason": "treatment",
-                "request_context": {"origin": "external"}
+                "request_context": {"origin": "external"},
+                "context": {
+                    "location": {"is_private": False}  # This will trigger a geographic anomaly
+                }
             }
         )
         
@@ -212,7 +215,10 @@ class TestAuditLogService:
         mock_repository._create.return_value = str(uuid.uuid4())
         
         # Simulate checking for anomalies
-        await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
+        result = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
+        
+        # Assert the method correctly detected an anomaly
+        assert result is True
         
         # Check if a security event was logged for the anomaly
         assert mock_repository._create.call_count >= 1
@@ -264,7 +270,7 @@ class TestAuditLogMiddleware:
         args, kwargs = mock_audit_logger.log_phi_access.call_args
         assert kwargs["actor_id"] == TEST_USER_ID
         assert kwargs["resource_type"] == "patient"
-        assert kwargs["resource_id"] == "123"
+        assert kwargs["patient_id"] == "123"
         assert kwargs["action"] == "view"
         assert kwargs["status"] == "success"
         
@@ -315,13 +321,18 @@ class TestAuditLogMiddleware:
         # Check that authenticated_user was returned as fallback
         assert user_id == "authenticated_user"
         
-        # Mock request without user or auth header
-        request = MagicMock(spec=Request)
-        request.state = MagicMock(spec=object)  # No user attribute
-        request.headers = {}
-        
-        # Extract user ID
-        user_id = await middleware._extract_user_id(request)
-        
-        # Check that None was returned
-        assert user_id is None 
+        # Mock the testing environment setting - current implementation returns test_user in testing mode
+        with patch('app.infrastructure.security.audit.middleware.get_settings') as mock_settings:
+            # Configure mock to return a settings object with TESTING=False
+            mock_settings.return_value.TESTING = False
+            
+            # Mock request without user or auth header
+            request = MagicMock(spec=Request)
+            request.state = MagicMock(spec=object)  # No user attribute
+            request.headers = {}
+            
+            # Extract user ID
+            user_id = await middleware._extract_user_id(request)
+            
+            # Check that None was returned
+            assert user_id is None 
