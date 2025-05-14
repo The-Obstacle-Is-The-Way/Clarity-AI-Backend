@@ -166,15 +166,27 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
     
     # Override the auth dependency
     app.dependency_overrides[get_current_user] = mock_current_user
-    
-    # Also override provider access verification
     app.dependency_overrides[verify_provider_access] = lambda: True
+    
+    # Create valid auth headers for our test client
+    from app.infrastructure.security.jwt.jwt_service import JWTService
+    jwt_service = app.state.jwt_service
+    test_user = await mock_current_user()
+    token_data = {
+        "sub": test_user.id,
+        "username": test_user.username,
+        "email": test_user.email,
+        "role": test_user.role.value,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30)
+    }
+    test_token = await jwt_service.create_access_token(token_data)
+    auth_headers = {"Authorization": f"Bearer {test_token}"}
     
     # Create test client
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **auth_headers},
     ) as client:
         yield app, client
     

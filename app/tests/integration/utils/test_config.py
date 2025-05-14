@@ -6,9 +6,10 @@ ensuring that JWT tokens and other security settings are consistent and valid.
 """
 
 import os
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from pydantic import SecretStr
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Standard test settings used across all test suites
 # These values MUST be consistent with what's used in fixture configurations
@@ -38,7 +39,7 @@ def get_test_settings_override() -> dict[str, Any]:
         "DATABASE_ENCRYPTION_ENABLED": True,
     }
 
-def setup_test_environment() -> None:
+def setup_test_environment_vars() -> None:
     """
     Configure test environment variables.
     
@@ -50,3 +51,26 @@ def setup_test_environment() -> None:
     os.environ["JWT_SECRET_KEY"] = TEST_SECRET_KEY
     os.environ["JWT_ALGORITHM"] = TEST_JWT_ALGORITHM
     os.environ["JWT_ISSUER"] = TEST_JWT_ISSUER
+
+async def setup_test_environment(settings) -> AsyncSession:
+    """
+    Set up a test environment and return a database session.
+    
+    Args:
+        settings: Application settings
+
+    Returns:
+        An AsyncSession for database operations
+    """
+    # First setup environment variables
+    setup_test_environment_vars()
+    
+    # Create a mock session - in a real implementation, this would initialize
+    # the test database and return an actual session
+    from unittest.mock import AsyncMock
+    mock_session = AsyncMock(spec=AsyncSession)
+    
+    # Configure the close method to be awaitable and do nothing
+    mock_session.close.return_value = None
+    
+    return mock_session

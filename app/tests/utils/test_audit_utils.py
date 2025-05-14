@@ -21,14 +21,134 @@ logger = logging.getLogger(__name__)
 
 def disable_audit_middleware(app: FastAPI) -> None:
     """
-    Disable the audit middleware for testing purposes.
+    Disable audit logging middleware in the application for testing.
     
     Args:
         app: The FastAPI application instance
     """
+    if not hasattr(app, "state"):
+        app.state = MagicMock()
+    
     app.state.disable_audit_middleware = True
-    logger.debug(f"Explicitly disabled audit middleware for app: {id(app)}")
+    logger.info("Audit middleware disabled for testing")
+    
+def mock_audit_log_service() -> IAuditLogger:
+    """
+    Create a mocked audit log service for testing.
+    
+    Returns:
+        A mocked audit logger service
+    """
+    mock_repo = MockAuditLogRepository()
+    return AuditLogService(repository=mock_repo)
 
+@asynccontextmanager
+async def disable_audit_middleware_context(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Context manager to temporarily disable audit middleware.
+    
+    Args:
+        app: The FastAPI application instance
+    
+    Yields:
+        None
+    """
+    original_value = getattr(app.state, "disable_audit_middleware", False)
+    app.state.disable_audit_middleware = True
+    logger.info("Audit middleware temporarily disabled")
+    
+    try:
+        yield
+    finally:
+        app.state.disable_audit_middleware = original_value
+        logger.info(f"Audit middleware restored to {'disabled' if original_value else 'enabled'}")
+
+def replace_middleware_with_mock(app: FastAPI, middleware_class: type, mock_middleware: BaseHTTPMiddleware = None) -> None:
+    """
+    Replace a middleware in the application with a mocked version.
+    
+    Args:
+        app: The FastAPI application instance
+        middleware_class: The class of middleware to replace
+        mock_middleware: Optional mock middleware to use as replacement
+    """
+    if not app.middleware_stack:
+        logger.warning("No middleware stack found in application")
+        return
+    
+    # Find the middleware in the stack
+    for i, middleware in enumerate(app.middleware_stack.app.middleware):
+        if isinstance(middleware, dict) and middleware.get("cls") == middleware_class:
+            if mock_middleware:
+                app.middleware_stack.app.middleware[i]["instance"] = mock_middleware
+            else:
+                # Create a pass-through mock middleware
+                async def mock_dispatch(request, call_next):
+                    return await call_next(request)
+                
+                mock = AsyncMock()
+                mock.dispatch = mock_dispatch
+                app.middleware_stack.app.middleware[i]["instance"] = mock
+            
+            logger.info(f"Replaced {middleware_class.__name__} middleware with mock")
+            return
+    
+    logger.warning(f"Middleware {middleware_class.__name__} not found in application middleware stack")
+
+def disable_authentication_middleware(app: FastAPI) -> None:
+    """
+    Disable authentication middleware in the application for testing.
+    
+    Args:
+        app: The FastAPI application instance
+    """
+    from app.presentation.middleware.authentication import AuthenticationMiddleware
+    
+    # Option 1: Try to find and bypass the middleware
+    if app.middleware_stack:
+        for i, middleware in enumerate(app.middleware_stack.app.middleware):
+            if isinstance(middleware, dict) and middleware.get("cls") == AuthenticationMiddleware:
+                # Create a pass-through mock for the dispatch method
+                async def mock_dispatch(request, call_next):
+                    # Set up an authenticated user context without actual verification
+                    from starlette.authentication import AuthCredentials
+                    from uuid import uuid4
+                    
+                    # Create a mock user with provider role
+                    from app.core.domain.entities.user import UserRole
+                    request.scope["auth"] = AuthCredentials(scopes=["provider"])
+                    
+                    # Create minimal user object with provider role
+                    request.scope["user"] = MagicMock(
+                        id=str(uuid4()),
+                        username="test_user",
+                        email="test@example.com",
+                        roles=[UserRole.PROVIDER.value],
+                        is_authenticated=True
+                    )
+                    
+                    # Continue with the request
+                    return await call_next(request)
+                
+                # Replace the dispatch method
+                original_dispatch = middleware["instance"].dispatch
+                middleware["instance"].dispatch = mock_dispatch
+                logger.info("Authentication middleware disabled for testing")
+                
+                # Store original for potential restoration
+                if not hasattr(app.state, "_original_auth_dispatch"):
+                    app.state._original_auth_dispatch = original_dispatch
+                
+                return
+                
+    logger.warning("Could not find AuthenticationMiddleware to disable")
+    
+    # Option 2: Flag for middleware to check
+    if not hasattr(app, "state"):
+        app.state = MagicMock()
+    
+    app.state.disable_auth_middleware = True
+    logger.info("Authentication middleware flagged as disabled")
 
 def enable_audit_middleware(app: FastAPI) -> None:
     """
@@ -112,42 +232,6 @@ def find_middleware_by_type(app: FastAPI, middleware_type: type) -> Optional[Bas
             return middleware
     return None
 
-
-def replace_middleware_with_mock(app: FastAPI, middleware_type: type, mock_middleware: Optional[Callable] = None) -> None:
-    """
-    Replace middleware of a specific type with a mock implementation.
-    
-    Args:
-        app: The FastAPI application instance
-        middleware_type: The type of middleware to replace
-        mock_middleware: Optional mock middleware to use instead
-    """
-    # Find the middleware
-    for i, middleware in enumerate(app.user_middleware):
-        cls = middleware.cls
-        if cls == middleware_type or issubclass(cls, middleware_type):
-            # Remove the middleware
-            app.user_middleware.pop(i)
-            
-            # Add mock middleware if provided
-            if mock_middleware:
-                app.add_middleware(mock_middleware)
-                
-            # Only replace the first occurrence
-            break
-
-class MockAuditLogMiddleware(BaseHTTPMiddleware):
-    """Mock implementation of AuditLogMiddleware for testing."""
-    
-    def __init__(self, app):
-        """Initialize with mocked methods."""
-        super().__init__(app)
-        self.dispatch = AsyncMock()
-        self.dispatch.return_value = None
-        
-    async def dispatch(self, request: Request, call_next: Callable):
-        """Mock dispatch implementation that just passes through."""
-        return await call_next(request)
 
 def create_test_request(app: FastAPI, path: str = "/", method: str = "GET", headers: dict = None) -> Request:
     """
