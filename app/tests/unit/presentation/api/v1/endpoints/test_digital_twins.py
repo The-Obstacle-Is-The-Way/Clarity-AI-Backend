@@ -42,7 +42,7 @@ from app.presentation.api.schemas.digital_twin import (
 from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
 
 # Add imports for create_application and Settings
-from app.app_factory import create_application
+from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings # Use alias
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 
@@ -367,7 +367,7 @@ class TestDigitalTwinsEndpoints:
         # Create a simple client to test with different settings
         from httpx import AsyncClient
         from fastapi.testclient import TestClient
-        from app.app_factory import create_application
+        from app.factory import create_application
         
         settings = client.base_url
         app_test = create_application(include_test_routers=False, skip_auth_middleware=True)
@@ -464,7 +464,7 @@ class TestDigitalTwinsEndpoints:
         # Create a simple client to test with different settings
         from httpx import AsyncClient
         from fastapi.testclient import TestClient
-        from app.app_factory import create_application
+        from app.factory import create_application
         
         settings = client.base_url
         app_test = create_application(include_test_routers=False, skip_auth_middleware=True)

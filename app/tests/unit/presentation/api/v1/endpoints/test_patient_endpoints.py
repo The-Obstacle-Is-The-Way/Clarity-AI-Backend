@@ -21,7 +21,7 @@ from app.application.services.patient_service import PatientService
 from app.presentation.api.v1.routes.patient import get_patient_service
 
 # Add imports for create_application and Settings
-from app.app_factory import create_application
+from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings # Use alias
 from app.presentation.api.schemas.patient import PatientCreateRequest, PatientRead, PatientCreateResponse # Import schemas
 from app.presentation.api.dependencies.auth import CurrentUserDep, get_current_user, get_jwt_service # FIXED: Import get_jwt_service from auth.py
