@@ -158,43 +158,70 @@ class JWTService(IJwtService):
         logger.info(f"JWT service initialized with algorithm {self.algorithm}")
 
     async def _is_token_blacklisted(self, token: str) -> bool:
-        """Check if a token (specifically its jti) is in the blacklist."""
+        """
+        Check if a token (specifically its jti) is in the blacklist.
+        
+        Args:
+            token: The JWT token to check
+            
+        Returns:
+            True if the token is blacklisted, False otherwise
+        """
         try:
             # Try with repository first if available
             if self.token_blacklist_repository is not None:
                 try:
-                    return await self.token_blacklist_repository.is_token_blacklisted(token)
+                    # Handle different interface methods that might be implemented
+                    if hasattr(self.token_blacklist_repository, 'is_blacklisted'):
+                        return await self.token_blacklist_repository.is_blacklisted(token)
+                    elif hasattr(self.token_blacklist_repository, 'is_token_blacklisted'):
+                        return await self.token_blacklist_repository.is_token_blacklisted(token)
+                    else:
+                        logger.warning("Token blacklist repository does not have expected methods")
                 except Exception as repo_error:
                     logger.warning(f"Error using token blacklist repository: {repo_error}. Falling back to local blacklist.")
-                    
+            
             # Make sure _token_blacklist exists
             if not hasattr(self, '_token_blacklist'):
                 logger.debug("Initializing token blacklist dictionary")
                 self._token_blacklist = {}
             
-            # Fall back to local blacklist if repository unavailable or failed
-            # Quick unverified decode just for JTI (less secure if key is compromised)
-            unverified_payload = jwt_decode(
-                token, 
-                self.secret_key, # Provide the key even for unverified decode
-                options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
-            )
-            jti = unverified_payload.get("jti")
-            
-            if jti and jti in self._token_blacklist:
-                # Check if blacklist entry itself is expired (token expired anyway)
-                if self._token_blacklist[jti] > datetime.now(UTC):
-                    return True
-                else:
-                    # Clean up expired blacklist entry
-                    del self._token_blacklist[jti]
-                    logger.debug(f"Removed expired blacklist entry for JTI: {jti}")
+            try:
+                # Fall back to local blacklist if repository unavailable or failed
+                # Quick unverified decode just for JTI (less secure if key is compromised)
+                unverified_payload = jwt_decode(
+                    token, 
+                    options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
+                )
+                jti = unverified_payload.get("jti")
+                
+                if jti and jti in self._token_blacklist:
+                    # Check if blacklist entry itself is expired
+                    expiry_time = self._token_blacklist[jti]
                     
+                    # Handle different expiry time formats
+                    if isinstance(expiry_time, (int, float)):
+                        expiry_time = datetime.fromtimestamp(expiry_time, UTC)
+                    elif isinstance(expiry_time, str):
+                        try:
+                            expiry_time = datetime.fromisoformat(expiry_time.replace('Z', '+00:00'))
+                        except ValueError:
+                            # Default to future date if we can't parse
+                            expiry_time = datetime.now(UTC) + timedelta(days=1)
+                    
+                    if expiry_time > datetime.now(UTC):
+                        return True
+                    else:
+                        # Clean up expired blacklist entry
+                        del self._token_blacklist[jti]
+                        logger.debug(f"Removed expired blacklist entry for JTI: {jti}")
+            except JWTError:
+                # If it doesn't even decode unverified, it's likely invalid anyway
+                logger.debug("Could not decode token to check blacklist - malformed token")
+                return False
+            
             # Periodically clean the blacklist to prevent memory leaks
             self._clean_token_blacklist()
-            return False
-        except JWTError:
-            # If it doesn't even decode unverified, it's invalid anyway
             return False
         except Exception as e:
             logger.warning(f"Error checking token blacklist: {e}")
@@ -210,11 +237,7 @@ class JWTService(IJwtService):
         Returns:
             True if the token is blacklisted, False otherwise
         """
-        # Use the repository if available
-        if self.token_blacklist_repository:
-            return await self.token_blacklist_repository.is_blacklisted(token)
-            
-        # Fallback to in-memory implementation
+        # Directly use internal implementation which handles repository fallback correctly
         return await self._is_token_blacklisted(token)
 
     async def is_jti_blacklisted(self, jti: str) -> bool:
@@ -270,9 +293,13 @@ class JWTService(IJwtService):
             if not jti or not expires_at:
                 try:
                     # Try to decode the token to get jti and expiration
-                    payload = self.decode_token(token)
-                    jti = payload.get("jti", str(uuid.uuid4()))
-                    exp_timestamp = payload.get("exp")
+                    # Use jwt_decode directly to avoid potential recursion with calling our own decode_token
+                    unverified_payload = jwt_decode(
+                        token, 
+                        options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
+                    )
+                    jti = unverified_payload.get("jti", str(uuid.uuid4()))
+                    exp_timestamp = unverified_payload.get("exp")
                     if exp_timestamp:
                         expires_at = datetime.fromtimestamp(exp_timestamp, UTC)
                     else:
@@ -516,11 +543,22 @@ class JWTService(IJwtService):
         if not hasattr(self, '_token_blacklist'):
             self._token_blacklist = {}
             
-        if self._is_token_blacklisted(token):
+        # Use await since _is_token_blacklisted is an async method
+        if await self._is_token_blacklisted(token):
             raise AuthenticationError("Token has been revoked")
             
         try:
-            options = {**self.options}
+            # Set default options if not defined
+            options = getattr(self, 'options', {
+                "verify_signature": True,
+                "verify_aud": self.audience is not None,
+                "verify_iss": self.issuer is not None,
+                "verify_exp": True,
+                "verify_nbf": True,
+                "verify_iat": True,
+                "verify_jti": True,
+                "leeway": 0
+            })
             
             # Decode and verify the token (with validation)
             payload = jwt_decode(
@@ -547,7 +585,14 @@ class JWTService(IJwtService):
                 if "type" not in payload:
                     # Default to ACCESS if type not specified
                     payload["type"] = TokenType.ACCESS
+                elif not isinstance(payload["type"], TokenType):
+                    # Convert string type to enum if needed
+                    try:
+                        payload["type"] = TokenType(payload["type"])
+                    except (ValueError, TypeError):
+                        payload["type"] = TokenType.ACCESS
                 
+                # Convert to our TokenPayload model for validation
                 token_payload = TokenPayload(**payload)
                 return token_payload
             except ValidationError as ve:
@@ -704,10 +749,28 @@ class JWTService(IJwtService):
 
     def _clean_token_blacklist(self) -> None:
         """Removes expired entries from the token blacklist."""
+        if not hasattr(self, '_token_blacklist') or not self._token_blacklist:
+            return
+            
         now = datetime.now(UTC)
-        expired_jtis = [
-            jti for jti, expiry in self._token_blacklist.items() if expiry <= now
-        ]
+        expired_jtis = []
+        
+        for jti, expiry in self._token_blacklist.items():
+            # Handle different expiry time formats
+            if isinstance(expiry, (int, float)):
+                expiry_time = datetime.fromtimestamp(expiry, UTC)
+            elif isinstance(expiry, str):
+                try:
+                    expiry_time = datetime.fromisoformat(expiry.replace('Z', '+00:00'))
+                except:
+                    # Skip if we can't parse the time
+                    continue
+            else:
+                expiry_time = expiry
+                
+            if expiry_time <= now:
+                expired_jtis.append(jti)
+        
         for jti in expired_jtis:
             try:
                 del self._token_blacklist[jti]
@@ -905,11 +968,14 @@ class JWTService(IJwtService):
 
     def _register_token_in_family(self, jti: str, family_id: str) -> None:
         """
-        Register a token in a token family for tracking refresh token lineage.
+        Register a token in its family for refresh token tracking.
+        
+        This allows detecting refresh token reuse - a critical security feature.
         
         Args:
             jti: Token's unique identifier
             family_id: Family identifier this token belongs to
+        """    family_id: Family identifier this token belongs to
         """
         jti_str = str(jti)
         family_id_str = str(family_id)
