@@ -446,16 +446,18 @@ class JWTService(IJwtService):
             logger.error(f"Error checking session blacklist: {e}")
             return False
 
-    async def revoke_token(self, token: str) -> bool:
+    async def logout(self, token: str) -> bool:
         """
-        Revoke a token by adding it to the blacklist.
+        Log out a user by revoking their token and associated session.
         
         Args:
             token: The JWT token to revoke
             
         Returns:
-            bool: True if the token was successfully revoked, False otherwise
+            bool: True if the logout was successful
         """
+        from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+        
         try:
             # Decode without verification to get claims
             unverified_payload = jwt_decode(
@@ -463,38 +465,47 @@ class JWTService(IJwtService):
                 options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
             )
             jti = unverified_payload.get("jti")
-            exp = unverified_payload.get("exp")
             
             if not jti:
-                logger.warning("Cannot revoke token: missing JTI claim")
+                logger.warning("Cannot logout: token has no JTI claim")
                 return False
                 
-            # Convert exp to datetime or default to 24 hours from now
+            # Get expiry time from token or default to 24 hours
+            exp = unverified_payload.get("exp")
             if exp:
                 expires_at = datetime.fromtimestamp(exp, UTC)
             else:
                 expires_at = datetime.now(UTC) + timedelta(days=1)
                 
             # Add to blacklist
-            await self.blacklist_token(
+            result = await self.blacklist_token(
                 token, 
-                str(jti), 
-                expires_at, 
-                "logout"
+                jti=jti, 
+                expires_at=expires_at, 
+                reason="logout"
             )
             
+            if not result:
+                logger.warning(f"Failed to blacklist token during logout")
+                return False
+                
             # If token has a session ID, blacklist the session too
             if unverified_payload.get("session_id"):
-                await self.blacklist_session(unverified_payload.get("session_id"))
+                session_id = unverified_payload.get("session_id")
+                await self.blacklist_session(session_id)
+                logger.info(f"Session {session_id} blacklisted during logout")
                 
+            # Log the logout operation for audit purposes (HIPAA compliance)    
             logger.info(f"User {unverified_payload.get('sub')} logged out, token {jti} blacklisted")
+            return True
             
         except (InvalidTokenException, TokenExpiredException) as e:
-            # If token is already invalid or expired, no need to blacklist
-            logger.info(f"Logout with already invalid token: {str(e)}")
+            # If token is already invalid or expired, consider logout successful
+            logger.warning(f"Attempted to revoke an invalid/expired token during logout: {e}")
+            return True  # Token can't be used anyway
         except Exception as e:
-            logger.error(f"Error during logout: {str(e)}")
-            raise AuthenticationError("Failed to process logout")
+            logger.error(f"Error during logout: {e}")
+            return False
 
     def revoke_token(self, token: str) -> bool:
         """Revoke a token by adding it to the blacklist.
