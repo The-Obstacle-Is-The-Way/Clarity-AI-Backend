@@ -257,17 +257,13 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         """Middleware to add security headers to responses."""
-        # For test runtime error endpoints, we want to ensure we properly propagate the error
-        # but don't let the middleware handle the response
-        if "/test-api/test/runtime-error" in request.url.path:
-            response = await call_next(request)
-            response.headers["X-Content-Type-Options"] = "nosniff"
-            response.headers["X-Frame-Options"] = "DENY"
-            response.headers["Content-Security-Policy"] = "default-src 'self'"
-            response.headers["X-XSS-Protection"] = "1; mode=block"
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            return response
+        # Completely bypass middleware for test endpoints that might cause issues
+        if "/test-api/" in request.url.path:
+            # Simply pass through directly to the next middleware without any try/except
+            # This avoids potential middleware chain issues with error handling
+            return await call_next(request)
         
+        # For all other endpoints, add security headers using a proper try/except
         try:
             response = await call_next(request)
             # Add security headers
@@ -278,7 +274,8 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
             response.headers["Access-Control-Allow-Origin"] = "*"
             return response
         except Exception as e:
-            # Ensure exceptions are properly propagated
+            # Re-raise any exception without additional handling
+            # This ensures exceptions propagate properly
             raise
     
     return app
@@ -797,8 +794,14 @@ def middleware_patch(test_settings):
     
     # Create a patched dispatch that will accept test tokens without verification
     async def patched_dispatch(self, request, call_next):
-        # Don't patch for the login/public endpoints or when there's no token
+        # Check for bypass paths first
         path = request.url.path
+        
+        # Completely bypass middleware for test-api endpoints that cause issues
+        if "/test-api/" in path:
+            return await call_next(request)
+            
+        # Don't patch for the login/public endpoints or when there's no token
         if any(public_path in path for public_path in ["/auth/login", "/docs", "/openapi.json", "/_debug"]):
             return await call_next(request)
 

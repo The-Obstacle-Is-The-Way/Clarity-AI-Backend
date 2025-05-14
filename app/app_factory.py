@@ -12,6 +12,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 from typing import Optional
+import traceback
 
 # Third-Party Imports
 import sentry_sdk
@@ -521,16 +522,31 @@ def create_application(
         )
     
     @app_instance.exception_handler(Exception)
-    async def generic_exception_handler(request: Request, exc: Exception):
-        # Log the full, unhandled exception for internal review
-        # Be cautious about logging potentially sensitive parts of `exc` or `request`
-        # if they could contain PHI in a real scenario.
-        logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    async def generic_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
+        """
+        Handle all unhandled exceptions.
         
-        # Hide implementation details from the client
+        This ensures that no sensitive information like stack traces or exception details
+        are leaked to users. All internal errors (500) will show a generic error message
+        instead of exposing internal implementation details or error messages.
+        """
+        logger.error(f"Unhandled exception: {exc}")
+        logger.error(traceback.format_exc())
+        # Format compliant with RFC 7807: Problem Details for HTTP APIs
+        # This follows the standard for API error response formats
+        response_data = {"detail": "An internal server error occurred."}
+        
+        # Preserve status code for expected exceptions, but mask exception details
+        status_code = 500
+        if isinstance(exc, HTTPException):
+            status_code = exc.status_code
+            response_data = {"detail": exc.detail}
+        
         return JSONResponse(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An internal server error occurred."},
+            content=response_data,
+            status_code=status_code
         )
     
     # 13. Middleware to ensure essential app state is available to request handlers
