@@ -87,19 +87,31 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         Returns:
             bool: True if audit logging should be disabled
         """
+        # Check if we're in a test environment from app state first
+        if hasattr(request.app.state, "testing") and request.app.state.testing:
+            logger.debug("Test environment flag detected on app.state.testing - audit logging disabled")
+            return True
+            
         # Check request.state first (higher priority)
         if hasattr(request.state, "disable_audit_middleware") and request.state.disable_audit_middleware:
+            logger.debug("Audit logging disabled via request.state.disable_audit_middleware")
             return True
             
         # Then check app.state
         if hasattr(request.app.state, "disable_audit_middleware") and request.app.state.disable_audit_middleware:
+            logger.debug("Audit logging disabled via app.state.disable_audit_middleware")
+            return True
+            
+        # Check if audit logger is properly configured and available
+        if not self.audit_logger:
+            logger.warning("Audit logger not available - disabling audit logging")
             return True
             
         # Check if we're in a test environment
         settings = request.state.settings if hasattr(request.state, "settings") else self.settings
         if settings.ENVIRONMENT == "test":
             # In test environments, default to disabled unless explicitly enabled
-            logger.debug("Test environment detected - audit logging disabled by default")
+            logger.debug("Test environment detected from settings - audit logging disabled by default")
             return True
             
         return False
