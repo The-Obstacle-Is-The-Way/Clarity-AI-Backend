@@ -154,7 +154,27 @@ def mock_get_user_by_id_side_effect_fixture(): # RENAMED and REFACTORED
     return get_user_by_id_side_effect
 
 @pytest.fixture
-def auth_middleware_fixture(app_fixture, mock_jwt_service_fixture):
+def mock_user_repository_fixture():
+    """Create a mock user repository class for dependency injection."""
+    mock_repo_class = MagicMock(spec=IUserRepository)
+    mock_repo_instance = MagicMock(spec=IUserRepository)
+    mock_repo_class.return_value = mock_repo_instance
+    mock_repo_instance.get_user_by_id = AsyncMock()
+    return mock_repo_class
+
+@pytest.fixture
+def mock_session_factory_fixture():
+    """Create a mock session factory that returns an AsyncSession."""
+    # Create the async iterator mock
+    mock_session_gen = AsyncMock()
+    mock_session = AsyncMock()
+    mock_session_gen.__anext__.return_value = mock_session
+    mock_session_factory = MagicMock()
+    mock_session_factory.return_value = mock_session_gen
+    return mock_session_factory
+
+@pytest.fixture
+def auth_middleware_fixture(app_fixture, mock_jwt_service_fixture, mock_user_repository_fixture, mock_session_factory_fixture):
     """Fixture to create AuthenticationMiddleware with mocked dependencies."""
     # Define some default public paths for the test middleware instance
     test_public_paths = {"/health", "/docs"}
@@ -163,8 +183,10 @@ def auth_middleware_fixture(app_fixture, mock_jwt_service_fixture):
     return AuthenticationMiddleware(
         app=app_fixture,
         jwt_service=mock_jwt_service_fixture,
+        user_repository=mock_user_repository_fixture,
+        session_factory=mock_session_factory_fixture,
         public_paths=test_public_paths,
-        public_path_regexes=test_public_path_regexes # ADDED, can be None or empty list
+        public_path_regexes=test_public_path_regexes
     )
 
 @pytest.fixture
