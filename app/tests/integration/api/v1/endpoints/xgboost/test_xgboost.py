@@ -30,7 +30,7 @@ from app.core.services.ml.xgboost.exceptions import (
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
 from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
-from app.tests.utils.test_audit_utils import disable_audit_middleware, replace_middleware_with_mock
+from app.tests.utils.test_audit_utils import disable_audit_middleware, replace_middleware_with_mock, disable_authentication_middleware
 from app.app_factory import create_application
 from app.presentation.api.dependencies.auth import (
     verify_provider_access,
@@ -146,6 +146,9 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
     
     # Explicitly disable audit middleware
     disable_audit_middleware(app)
+    
+    # Explicitly disable authentication middleware
+    disable_authentication_middleware(app)
     
     # Mock the XGBoost service dependency
     app.dependency_overrides[get_xgboost_service] = lambda: mock_xgboost_service
