@@ -4,6 +4,16 @@
 
 The Token Blacklist Repository Interface is a critical security component in the Clarity AI Backend that manages revoked authentication tokens. This document outlines the design, implementation, and usage patterns for the token blacklist system according to clean architecture principles.
 
+## Implementation Status
+
+> ⚠️ **IMPORTANT**: While this interface is fully defined in the core layer, the actual implementation is currently **missing** from the codebase. The JWT service references this functionality, but token blacklisting is not fully implemented, creating a security gap in the authentication system.
+
+**Required Actions:**
+1. Implement `RedisTokenBlacklistRepository` class
+2. Properly integrate it with the JWT service
+3. Enable the blacklisting functionality in logout operations
+4. Add appropriate dependency injection providers
+
 ## Purpose and Significance
 
 JWT tokens are stateless by nature, which creates a security challenge: once issued, they remain valid until expiration. The Token Blacklist provides a mechanism to forcibly invalidate tokens before their natural expiration in cases such as:
@@ -118,9 +128,9 @@ class ITokenBlacklistRepository(ABC):
 
 ## Implementation Classes
 
-### Redis Implementation
+### Redis Implementation (Proposed)
 
-The primary implementation leverages Redis for high-performance token blacklisting:
+The primary implementation should leverage Redis for high-performance token blacklisting:
 
 ```python
 from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
@@ -275,9 +285,9 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         return len(expired_keys)
 ```
 
-## Integration with JWT Service
+## Current JWT Service Integration Issues
 
-The Token Blacklist Repository is a critical dependency for the JWT Service, which handles token validation:
+The Token Blacklist Repository is referenced in the JWT Service, but with implementation issues:
 
 ```python
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
@@ -291,7 +301,7 @@ class JWTService(JWTServiceInterface):
     def __init__(
         self,
         settings: Settings,
-        token_blacklist_repository: ITokenBlacklistRepository,
+        token_blacklist_repository: ITokenBlacklistRepository,  # ← Missing implementation
         audit_logger: IAuditLogger
     ):
         """Initialize the JWT service."""
@@ -321,7 +331,7 @@ class JWTService(JWTServiceInterface):
                 options={"verify_signature": True}
             )
             
-            # Check if token is blacklisted
+            # Check if token is blacklisted - THIS IS NOT FUNCTIONAL
             token_id = payload.get("jti")
             if token_id and await self._blacklist.is_blacklisted(token_id):
                 await self._audit_logger.log_security_event(
@@ -338,60 +348,11 @@ class JWTService(JWTServiceInterface):
                 {"reason": str(e)}
             )
             raise JWTError(f"Invalid token: {str(e)}")
-    
-    async def blacklist_token(self, token: str) -> None:
-        """
-        Add a token to the blacklist.
-        
-        Args:
-            token: JWT token to blacklist
-            
-        Raises:
-            JWTError: If token cannot be decoded
-        """
-        try:
-            # Decode without verification to get claims
-            # (we want to blacklist even if the token signature is invalid)
-            payload = jwt.decode(
-                token,
-                options={"verify_signature": False}
-            )
-            
-            token_id = payload.get("jti")
-            if not token_id:
-                raise JWTError("Token does not have a JTI claim")
-            
-            # Calculate remaining lifetime for the token
-            exp = payload.get("exp")
-            if not exp:
-                # If no expiration, blacklist for maximum token lifetime
-                expiration = timedelta(minutes=self._settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-            else:
-                # Blacklist until the token would naturally expire
-                expiration_time = datetime.fromtimestamp(exp)
-                current_time = datetime.now()
-                
-                # If already expired, no need to blacklist
-                if expiration_time <= current_time:
-                    return
-                
-                expiration = expiration_time - current_time
-            
-            # Add to blacklist
-            await self._blacklist.add_to_blacklist(token_id, expiration)
-            
-            await self._audit_logger.log_security_event(
-                "token_blacklisted",
-                {"token_id": token_id}
-            )
-            
-        except Exception as e:
-            raise JWTError(f"Failed to blacklist token: {str(e)}")
 ```
 
-## Dependency Injection
+## Dependency Injection Required
 
-The Token Blacklist Repository is provided through FastAPI's dependency injection system:
+A proper dependency injection provider is needed:
 
 ```python
 from fastapi import Depends
@@ -415,81 +376,6 @@ async def get_token_blacklist_repository(
     return RedisTokenBlacklistRepository(redis_service)
 ```
 
-## Usage in Authentication Flow
-
-The Token Blacklist is instrumental in the user authentication flow:
-
-### Login Process
-
-```python
-@router.post("/login", response_model=TokenResponse)
-async def login(
-    credentials: UserCredentials,
-    jwt_service: JWTServiceInterface = Depends(get_jwt_service),
-    user_service: UserService = Depends(get_user_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """Login endpoint that issues JWT tokens."""
-    user = await user_service.authenticate_user(credentials.username, credentials.password)
-    
-    if not user:
-        await audit_logger.log_security_event(
-            "login_failed",
-            {"username": credentials.username, "reason": "invalid_credentials"}
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
-    
-    # Generate tokens
-    access_token = await jwt_service.create_access_token(data={"sub": user.id})
-    refresh_token = await jwt_service.create_refresh_token(data={"sub": user.id})
-    
-    await audit_logger.log_security_event(
-        "login_successful",
-        {"user_id": user.id}
-    )
-    
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
-    }
-```
-
-### Logout Process
-
-```python
-@router.post("/logout")
-async def logout(
-    token: str = Depends(get_token_from_authorization_header),
-    jwt_service: JWTServiceInterface = Depends(get_jwt_service),
-    audit_logger: IAuditLogger = Depends(get_audit_logger)
-):
-    """
-    Logout endpoint that blacklists the current token.
-    
-    This ensures the token cannot be used again, effectively
-    logging the user out of the current session.
-    """
-    try:
-        # Add current token to blacklist
-        await jwt_service.blacklist_token(token)
-        
-        return {"message": "Successfully logged out"}
-        
-    except JWTError as e:
-        await audit_logger.log_security_event(
-            "logout_failed",
-            {"reason": str(e)}
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-```
-
 ## HIPAA Compliance Considerations
 
 The Token Blacklist Repository is critical for HIPAA compliance:
@@ -499,71 +385,25 @@ The Token Blacklist Repository is critical for HIPAA compliance:
 3. **Audit Logging**: All token blacklisting events are logged for audit trails
 4. **Emergency Access**: Ability to immediately terminate all active sessions in case of a security incident
 
-## Performance Considerations
+## Implementation Plan
 
-For high-traffic applications, token blacklisting can become a performance bottleneck:
+To address the current implementation gap:
 
-1. **High-Speed Store**: Using Redis provides sub-millisecond lookup times
-2. **Sharding**: For very large deployments, consider sharding the blacklist by token ID
-3. **Cleanup Jobs**: Redis handles TTL expiration automatically, but other implementations may need periodic cleanup
-4. **Rate Limiting**: Protect blacklist operations with rate limiting to prevent DoS attacks
-
-## Testing
-
-To test the token blacklist functionality:
-
-```python
-import pytest
-from datetime import timedelta
-
-# Test fixture for the in-memory implementation
-@pytest.fixture
-def token_blacklist():
-    return InMemoryTokenBlacklistRepository()
-
-# Test adding and checking a blacklisted token
-async def test_blacklist_token(token_blacklist):
-    test_token_id = "test-token-123"
-    await token_blacklist.add_to_blacklist(test_token_id, timedelta(minutes=15))
-    
-    # Token should be blacklisted
-    assert await token_blacklist.is_blacklisted(test_token_id) is True
-    
-    # Unknown token should not be blacklisted
-    assert await token_blacklist.is_blacklisted("unknown-token") is False
-
-# Test token expiration
-async def test_token_expiration(token_blacklist):
-    test_token_id = "expires-quickly"
-    # Set a very short expiration
-    await token_blacklist.add_to_blacklist(test_token_id, timedelta(microseconds=1))
-    
-    # Wait for expiration
-    await asyncio.sleep(0.01)
-    
-    # Token should no longer be blacklisted
-    assert await token_blacklist.is_blacklisted(test_token_id) is False
-```
-
-## Migration Strategy
-
-To implement the Token Blacklist Repository:
-
-1. Define the interface in the core layer
-2. Implement the Redis version in the infrastructure layer
-3. Update the JWT service to use the blacklist
-4. Implement endpoints for token revocation (logout)
-5. Add audit logging for all blacklist operations
+1. Create the Redis implementation in `app/infrastructure/security/token/redis_token_blacklist_repository.py`
+2. Register the dependency provider in the appropriate module
+3. Ensure proper integration with the JWT service
+4. Enable token blacklisting in logout operations
+5. Add appropriate tests for the implementation
+6. Verify the security of revocation operations
 
 ## Security Implications
 
-The token blacklist is a critical security component with several implications:
+The absence of token blacklisting creates these security risks:
 
-1. **Blacklist Persistence**: Loss of the blacklist could allow revoked tokens to be reused
-2. **Denial of Service**: Attackers might attempt to overload the blacklist
-3. **Clock Synchronization**: Server time discrepancies could affect token validation
-4. **Storage Growth**: Without proper expiration, the blacklist can grow indefinitely
+1. **Inability to Revoke Access**: Once tokens are issued, they remain valid until expiration
+2. **HIPAA Non-Compliance**: Cannot enforce immediate session termination as required
+3. **Security Incident Response**: Limited ability to respond to compromise by revoking tokens
 
 ## Conclusion
 
-The Token Blacklist Repository interface is an essential security component for the Clarity AI psychiatric digital twin platform. It provides the foundation for secure session management, complies with HIPAA requirements for healthcare applications, and integrates seamlessly with the JWT authentication system. By implementing this interface according to clean architecture principles, the system maintains a high level of security, testability, and maintainability.
+The Token Blacklist Repository interface is well-defined but lacks implementation, creating a security gap in the authentication system. This should be addressed as a high priority to ensure proper security controls and HIPAA compliance in the Clarity AI psychiatric digital twin platform.
