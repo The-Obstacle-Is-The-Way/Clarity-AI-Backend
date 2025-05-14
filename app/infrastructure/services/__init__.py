@@ -15,7 +15,7 @@ from app.infrastructure.services.redis import RedisService, create_redis_service
 from app.infrastructure.services.mocks import (
     MockDigitalTwinCoreService,
     MockEnhancedDigitalTwinCoreService,
-    MockMentaLLaMAService,
+    MockMentalLLaMAService,
     MockPATService,
     MockXGBoostService
 )
@@ -32,7 +32,7 @@ __all__ = [
     # Mock services
     "MockDigitalTwinCoreService",
     "MockEnhancedDigitalTwinCoreService",
-    "MockMentaLLaMAService",
+    "MockMentalLLaMAService",
     "MockPATService",
     "MockXGBoostService"
 ]
