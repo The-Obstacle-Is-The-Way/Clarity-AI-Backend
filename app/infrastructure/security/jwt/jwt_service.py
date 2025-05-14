@@ -152,6 +152,38 @@ class JWTService(IJwtService):
         
         logger.info(f"JWT service initialized with algorithm {self.algorithm}")
 
+    async def _is_token_blacklisted(self, token: str) -> bool:
+        """Check if a token (specifically its jti) is in the blacklist."""
+        # Ensure _token_blacklist exists
+        if not hasattr(self, '_token_blacklist'):
+            logger.debug("Initializing token blacklist dictionary")
+            self._token_blacklist = {}
+            
+        try:
+            # Quick unverified decode just for JTI (less secure if key is compromised)
+            unverified_payload = jwt_decode(
+                token, 
+                self.secret_key, # Provide the key even for unverified decode
+                options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
+            )
+            jti = unverified_payload.get("jti")
+            if jti and jti in self._token_blacklist:
+                # Check if blacklist entry itself is expired (token expired anyway)
+                if self._token_blacklist[jti] > datetime.now(UTC):
+                    return True
+                else:
+                    # Clean up expired blacklist entry
+                    del self._token_blacklist[jti]
+                    logger.debug(f"Removed expired blacklist entry for JTI: {jti}")
+        except JWTError:
+            # If it doesn't even decode unverified, it's invalid anyway
+            return False
+        except Exception as e:
+            logger.warning(f"Error checking token blacklist: {e}")
+            return False
+            
+        return False
+
     async def is_token_blacklisted(self, token: str) -> bool:
         """
         Check if a token has been blacklisted.
@@ -167,16 +199,8 @@ class JWTService(IJwtService):
             return await self.token_blacklist_repository.is_blacklisted(token)
             
         # Fallback to in-memory implementation
-        if token in self._token_blacklist:
-            expiry = self._token_blacklist[token]
-            if expiry > datetime.now(UTC):
-                return True
-            else:
-                # Clean up expired token from in-memory blacklist
-                del self._token_blacklist[token]
-                
-        return False
-        
+        return await self._is_token_blacklisted(token)
+
     async def is_jti_blacklisted(self, jti: str) -> bool:
         """
         Check if a token JTI has been blacklisted.
@@ -626,33 +650,31 @@ class JWTService(IJwtService):
         if not sub:
             logger.warning("Subject ('sub') claim missing from token payload.")
             return None
-        return str(sub)
-
-    def _is_token_blacklisted(self, token: str) -> bool:
-        """Check if a token (specifically its jti) is in the blacklist."""
+        
         try:
-            # Quick unverified decode just for JTI (less secure if key is compromised)
-            unverified_payload = jwt_decode(
-                token, 
-                self.secret_key, # Provide the key even for unverified decode
-                options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
-            )
-            jti = unverified_payload.get("jti")
-            if jti and jti in self._token_blacklist:
-                # Check if blacklist entry itself is expired (token expired anyway)
-                if self._token_blacklist[jti] > datetime.now(UTC):
-                    return True
-                else:
-                    # Clean up expired blacklist entry
-                    del self._token_blacklist[jti]
-        except JWTError:
-            # If it doesn't even decode unverified, it's invalid anyway
-            return False
-        return False
+            logger.debug(f"Attempting to parse user ID string '{user_id_str}' to UUID.")
+            user_id = UUID(user_id_str)
+            logger.debug(f"User ID parsed successfully: {user_id}")
+        except ValueError as e:
+            logger.error(f"Invalid user ID format in token 'sub' claim: {user_id_str}. Error: {e}")
+            return None
 
-    async def revoke_token(self, token: str) -> None:
-        """Revokes a token by adding its JTI to the blacklist."""
-        try:
+        logger.debug(f"Fetching user with ID {user_id} from repository {type(self.user_repository).__name__}...")
+        user = await self.user_repository.get_by_id(user_id)
+        if user:
+            logger.debug(f"User found in repository: {user.email} (ID: {user.id})")
+            return user
+        else:
+            logger.warning(f"User with ID {user_id} not found in the repository.")
+            return None
+        
+    except AuthenticationError as e: # Catches errors from decode_token
+        logger.warning(f"Authentication error while getting user from token: {e}")
+        # Depending on policy, you might re-raise or return None
+        return None # Or raise AuthenticationError("Failed to authenticate token.")
+    except Exception as e:
+        logger.exception(f"Unexpected error retrieving user from token: {e}")
+        raise AuthenticationError("Failed to retrieve user information from token.")
             payload = self.decode_token(token) # No await needed anymore
             jti = payload.jti # jti is now an attribute
             exp = payload.exp # exp is now an attribute
