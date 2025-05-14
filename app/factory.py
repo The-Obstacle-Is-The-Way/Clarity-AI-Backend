@@ -6,10 +6,10 @@ with all necessary middleware, routers, and dependencies.
 """
 
 # Standard Library Imports
-import logging
-import logging.config
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import logging
+import logging.config
 
 # Third-Party Imports
 from fastapi import FastAPI, Request
@@ -47,7 +47,6 @@ def _initialize_sentry(current_settings: Settings) -> None:
             traces_sample_rate=current_settings.SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=current_settings.SENTRY_PROFILES_SAMPLE_RATE,
             release=f"{current_settings.PROJECT_NAME}@{current_settings.API_VERSION}",
-            attach_stacktrace=True,
         )
         logger.info("Sentry initialized.")
     else:
@@ -132,7 +131,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                     )
                     if current_settings.ENVIRONMENT == "test":
                         logger.warning(
-                            "LIFESPAN_REDIS_INIT_WARN: Test env; proceeding without Redis after ping fail."
+                            "LIFESPAN_REDIS_INIT_WARN: Test env; "
+                            "proceeding without Redis after ping fail."
                         )
                         fastapi_app.state.redis_service = None
                     else:
@@ -151,7 +151,8 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                     raise RuntimeError(f"Redis connection failed: {e}") from e
                 else:
                     logger.warning(
-                        "LIFESPAN_REDIS_INIT_WARN: Test env; proceeding without Redis connection."
+                        "LIFESPAN_REDIS_INIT_WARN: Test env; "
+                        "proceeding without Redis connection."
                     )
                     fastapi_app.state.redis_service = None
         else:
