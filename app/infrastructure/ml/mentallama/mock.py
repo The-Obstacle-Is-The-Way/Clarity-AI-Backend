@@ -13,12 +13,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Any, Dict, List, ClassVar
 
-from app.core.exceptions import (
-    InvalidConfigurationError,
-    InvalidRequestError,
-    ModelNotFoundError,
-    ServiceUnavailableError
-)
+from app.core.exceptions import InvalidConfigurationError, ModelNotFoundError, ServiceUnavailableError
+from app.core.exceptions.ml_exceptions import InvalidRequestError
 from app.domain.utils.datetime_utils import UTC
 
 

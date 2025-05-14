@@ -1,13 +1,14 @@
 """
-Mock implementation of the MentaLLaMA Service.
-Provides a redirection to the canonical implementation in the mocks package,
-following Clean Architecture principles with proper separation of concerns.
+Mock MentaLLaMA Service - Infrastructure Implementation
+
+This module implements a mock service for the MentaLLaMA API in the infrastructure
+layer, maintaining clean architecture principles.
 """
 
-# Re-export from the canonical implementation for backward compatibility
-from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import (
-    MockMentalLLaMAService,
-)
+from typing import Any, Dict, List, Optional
 
-# Export all relevant service classes to maintain a clean interface
+# Import the actual implementation from the canonical location
+from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import MockMentalLLaMAService
+
+# Re-export the service class
 __all__ = ["MockMentalLLaMAService"]
