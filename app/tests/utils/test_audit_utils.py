@@ -111,7 +111,7 @@ def disable_authentication_middleware(app: FastAPI) -> None:
     app.state.disable_auth_middleware = True
     logger.info("Authentication middleware flagged as disabled")
     
-    # Add public path for all routes to the middleware
+    # Add wildcard to public paths for the middleware
     if hasattr(app, "middleware_stack") and app.middleware_stack:
         for middleware in app.middleware_stack.app.middleware:
             if isinstance(middleware, dict) and middleware.get("cls") == AuthenticationMiddleware:
@@ -119,49 +119,47 @@ def disable_authentication_middleware(app: FastAPI) -> None:
                 if middleware_instance:
                     # Add a wildcard to public paths
                     middleware_instance.public_paths.add("/*")
-                    # Add a pattern that matches everything
+                    middleware_instance.public_paths.add("/api/*")
+                    
+                    # Add patterns that match everything
                     import re
                     middleware_instance.public_path_patterns.append(re.compile(".*"))
+                    middleware_instance.public_path_patterns.append(re.compile("^/api/.*$"))
                     logger.info("Added wildcard patterns to auth middleware public paths")
+                    
+                    # Replace dispatch method with a pass-through version
+                    original_dispatch = middleware_instance.dispatch
+                    
+                    async def mock_dispatch(request, call_next):
+                        # Add authentication data directly to request
+                        from app.core.domain.entities.user import UserRole
+                        from starlette.authentication import AuthCredentials, BaseUser
+                        
+                        # Create mock authenticated user
+                        mock_user = MagicMock()
+                        mock_user.is_authenticated = True
+                        mock_user.id = "test-user-id-123"
+                        mock_user.username = "test_user"
+                        mock_user.email = "test@example.com"
+                        mock_user.roles = [UserRole.CLINICIAN.value, UserRole.ADMIN.value]
+                        
+                        # Set authentication on request
+                        request.scope["auth"] = AuthCredentials(["authenticated", "clinician", "admin"])
+                        request.scope["user"] = mock_user
+                        
+                        # Also set on request.state for middleware that checks there
+                        if not hasattr(request, "state"):
+                            request.state = type('MockState', (), {})()
+                        
+                        request.state.user = mock_user
+                        request.state.authenticated = True
+                        
+                        return await call_next(request)
+                    
+                    # Replace the middleware dispatch method
+                    middleware_instance.dispatch = mock_dispatch
+                    logger.info("Authentication middleware dispatch method replaced with mock version")
                     break
-
-    # Option 2: Replace the middleware's dispatch method
-    if app.middleware_stack:
-        for middleware in app.middleware_stack.app.middleware:
-            if isinstance(middleware, dict) and middleware.get("cls") == AuthenticationMiddleware:
-                original_dispatch = middleware["instance"].dispatch
-                
-                # Create bypass dispatch method
-                async def bypass_auth_dispatch(request, call_next):
-                    # Set authentication flags directly
-                    from starlette.authentication import AuthCredentials
-                    from app.core.domain.entities.user import UserRole
-                    
-                    # Create a fake authenticated user context
-                    request.scope["auth"] = AuthCredentials(scopes=["provider"])
-                    
-                    # Mock user with admin role
-                    mock_user = MagicMock()
-                    mock_user.is_authenticated = True
-                    mock_user.id = "test-user-id-123"
-                    mock_user.username = "test_user"
-                    mock_user.email = "test@example.com"
-                    mock_user.roles = [UserRole.CLINICIAN.value, UserRole.ADMIN.value]
-                    
-                    request.scope["user"] = mock_user
-                    # Store on request state as well for middleware that checks there
-                    request.state.user = mock_user
-                    request.state.authenticated = True
-                    
-                    return await call_next(request)
-                
-                # Replace the middleware's dispatch method
-                middleware["instance"].dispatch = bypass_auth_dispatch
-                logger.info("Authentication middleware dispatch method replaced with bypass version")
-                
-                # Store original for restoration if needed
-                app.state._original_auth_dispatch = original_dispatch
-                break
 
 def enable_audit_middleware(app: FastAPI) -> None:
     """
