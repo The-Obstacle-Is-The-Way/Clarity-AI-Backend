@@ -8,6 +8,7 @@ to the interface defined in the core layer.
 
 import json
 import logging
+from collections.abc import Set as AbcSet
 from typing import Any, cast, Optional
 import redis.asyncio as redis_asyncio
 from redis.asyncio.client import Redis
@@ -196,7 +197,7 @@ class RedisService(IRedisService):
             logger.error(f"Redis sadd error for set '{name}': {str(e)}")
             return 0
     
-    async def smembers(self, name: str) -> set[str]:
+    async def smembers(self, name: str) -> AbcSet[str]:
         """
         Get all members of a set.
         
