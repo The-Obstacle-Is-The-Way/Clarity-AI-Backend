@@ -9,11 +9,13 @@ from fastapi import FastAPI, Depends, Request, status
 from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
 
-from app.core.config.settings import Settings as AppSettings
-from app.core.domain.entities.user import User, UserRole, UserStatus
+from app.core.config.settings import Settings
+from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
+from app.core.exceptions.security_exceptions import InvalidTokenException
 
 from app.app_factory import create_application
 
@@ -291,10 +293,10 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
 
 
 @pytest.fixture
-def authenticated_user() -> User:
+def authenticated_user() -> DomainUser:
     """Create a test user with authentication credentials."""
     user_id = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
-    return User(
+    return DomainUser(
         id=user_id,  # Use string directly, not UUID object
         username="test_doctor",
         email="test.doctor@example.com", 
@@ -503,9 +505,9 @@ async def client_app_tuple_func_scoped(app_instance) -> tuple[AsyncClient, FastA
 
 
 @pytest.fixture(scope="module")
-def test_settings() -> AppSettings:
+def test_settings() -> Settings:
     """Fixture for test settings."""
-    return AppSettings(
+    return Settings(
         ENV="test",
         TEST_MODE=True,
         DATABASE_URL="sqlite+aiosqlite:///:memory:",
@@ -870,7 +872,7 @@ class EnhancedAuthTestHelper:
         full_name: str = None,
         first_name: str = None,
         last_name: str = None
-    ) -> User:
+    ) -> DomainUser:
         """
         Create a test user with the specified role
         
@@ -884,7 +886,7 @@ class EnhancedAuthTestHelper:
             last_name: Optional last name (generated if None)
             
         Returns:
-            User: Test user with the specified role
+            DomainUser: Test user with the specified role
         """
         # Generate consistent user ID for the same role
         if user_id is None:
@@ -915,7 +917,7 @@ class EnhancedAuthTestHelper:
             last_name = role_name.title()
             
         # Create the user
-        user = User(
+        user = DomainUser(
             id=user_id,
             username=username,
             email=email,
@@ -957,7 +959,7 @@ class EnhancedAuthTestHelper:
         """
         # Extract user ID and info if a User instance was provided
         user_id = None
-        if isinstance(user_or_id, User):
+        if isinstance(user_or_id, DomainUser):
             user = user_or_id
             user_id = user.id
             if username is None:
@@ -1010,7 +1012,7 @@ class EnhancedAuthTestHelper:
             Dict of headers with Authorization
         """
         # Handle different types of input
-        if isinstance(user_or_role, User):
+        if isinstance(user_or_role, DomainUser):
             # Use the provided User instance
             user = user_or_role
         elif isinstance(user_or_role, UserRole):
