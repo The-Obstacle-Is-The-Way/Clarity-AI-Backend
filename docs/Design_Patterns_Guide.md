@@ -44,7 +44,7 @@ class SQLAlchemyPatientRepository(IPatientRepository):
 
 The system employs a ports and adapters pattern for external integrations:
 
-#### Ports and Adapters Implementation
+#### Hexagonal Architecture Implementation
 
 ```python
 # Port (interface in domain layer)
@@ -59,7 +59,7 @@ class BedrockModelService(IExternalModelService):
         # Implementation using AWS Bedrock
 ```
 
-#### Ports and Adapters Gaps
+#### Hexagonal Architecture Gaps
 
 - Some adapters bypass ports and are called directly
 - Inconsistent port definitions across different integration points
@@ -269,7 +269,7 @@ class BiometricAlertService(BiometricAlertSubject):
 
 Used to maintain consistency boundaries in the domain model:
 
-#### Implementation of ${PATTERN_NAME}
+#### Aggregate Roots Implementation
 
 ```python
 class Patient(AggregateRoot):
@@ -285,7 +285,7 @@ class Patient(AggregateRoot):
         self.register_domain_event(BiometricProfileAddedEvent(self.id, profile))
 ```
 
-#### Architectural Gaps in ${PATTERN_NAME}
+#### Aggregate Roots Gaps
 
 - Inconsistent aggregate boundary definitions
 - Some aggregates lack proper invariant enforcement
