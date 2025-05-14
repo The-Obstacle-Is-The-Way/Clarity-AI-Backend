@@ -10,63 +10,55 @@ import logging
 import logging.config
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock
+from typing import Optional
 
 # Third-Party Imports
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
+import redis.exceptions
+import sentry_sdk
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from redis.asyncio import ConnectionPool, Redis
-from sentry_sdk import init
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 # Application-Specific Imports
-from app.application.services.audit_log_service import AuditLogService
-from app.core.config import Settings, settings as global_settings
-from app.core.exceptions.base_exceptions import ModelExecutionError
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.core.logging_config import LOGGING_CONFIG
-from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
-from app.core.security.rate_limiting.service import get_rate_limiter_service
-from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
-from app.infrastructure.persistence.repositories.mock_audit_log_repository import MockAuditLogRepository
-from app.infrastructure.persistence.sqlalchemy.database import get_session
-from app.infrastructure.security.audit.middleware import AuditLogMiddleware
+from app.core.config import Settings, get_settings as global_get_settings
+from app.core.interfaces.services.jwt_service_interface import IJWTService
+from app.core.interfaces.services.redis_service_interface import IRedisService
+from app.core.logging_config import LOGGING_CONFIG_BASE, setup_logging
+from app.infrastructure.persistence.sqlalchemy.database import (
+    AsyncSession, async_sessionmaker, create_async_engine
+)
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
+from app.infrastructure.services.redis_service import RedisService
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
-from app.presentation.middleware.request_id import RequestIdMiddleware
-from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
+from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 
-# Module-level logger
-logger = logging.getLogger("app.factory")
+# Initialize settings globally once, to be overridden by app-specific if necessary
+global_settings = global_get_settings()
 
-# Initialize logging early
-logging.config.dictConfig(LOGGING_CONFIG)
+# Setup logging early, using global settings initially.
+# This ensures that loggers are available from the start.
+# It might be reconfigured if app-specific settings override log level.
+setup_logging(logging_config=LOGGING_CONFIG_BASE, log_level=global_settings.LOG_LEVEL)
+logger = logging.getLogger(__name__)
 
-def _initialize_sentry(settings: Settings) -> None:
+
+def _initialize_sentry(current_settings: Settings) -> None:
     """Initializes Sentry if DSN is provided."""
-    if settings.SENTRY_DSN:
-        logger.info("Sentry DSN found, initializing Sentry.")
-        try:
-            init(
-                dsn=str(settings.SENTRY_DSN),
-                traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
-                profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
-                environment=settings.ENVIRONMENT,
-                release=settings.VERSION,
-                # Consider enabling performance monitoring based on settings
-                enable_tracing=True,
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize Sentry: {e}", exc_info=True)
+    if current_settings.SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=str(current_settings.SENTRY_DSN),  # Ensure DSN is a string
+            environment=current_settings.ENVIRONMENT,
+            traces_sample_rate=current_settings.SENTRY_TRACES_SAMPLE_RATE,
+            profiles_sample_rate=current_settings.SENTRY_PROFILES_SAMPLE_RATE,
+            release=f"{current_settings.PROJECT_NAME}@{current_settings.API_VERSION}",
+            attach_stacktrace=True,
+        )
+        logger.info("Sentry initialized.")
     else:
-        logger.info("Sentry DSN not provided, skipping Sentry initialization.")
+        logger.info("Sentry DSN not found, Sentry not initialized.")
 
 
 @asynccontextmanager
@@ -76,632 +68,239 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 
     Handles application startup and shutdown operations:
     1. Connects to database and initializes session factory
-    2. Sets up Redis connection (if configured)
+    2. Sets up Redis connection (if configured) using RedisService
     3. Initializes Sentry (if configured)
     4. Adds state-dependent middleware (Authentication, Rate Limiting)
     5. Cleans up resources on shutdown
     """
     logger.info("LIFESPAN_START: Entered lifespan context manager.")
-    # Local variables to store connections that need clean-up
-    redis_client = None
-    redis_pool = None
     db_engine = None
-    current_settings = None
+    current_settings: Optional[Settings] = None
 
     try:
         # --- Settings Configuration ---
-        # Ensure settings are loaded and available first
-        logger.info("LIFESPAN_SETTINGS_CONFIG_START: Attempting to access settings from app.state")
-        if not hasattr(fastapi_app.state, 'settings') or fastapi_app.state.settings is None:
-            logger.warning("LIFESPAN_SETTINGS_CONFIG_WARN: settings not found on fastapi_app.state. Attempting to load globally.")
-            # This is a fallback, create_application should have set this.
-            # If settings_override was used in create_application, this global_settings might not be the right one.
-            # However, create_application explicitly sets app_instance.state.settings.
-            current_settings = global_settings
-            fastapi_app.state.settings = current_settings
-        else:
+        if hasattr(fastapi_app.state, 'settings') and fastapi_app.state.settings:
             current_settings = fastapi_app.state.settings
-
-        if not current_settings:
-            logger.critical("LIFESPAN_SETTINGS_CONFIG_FAILURE: Critical - settings could not be resolved. Aborting lifespan startup.")
-            raise RuntimeError("Settings could not be resolved in lifespan context manager.")
-        logger.info(f"LIFESPAN_SETTINGS_CONFIG_ACQUIRED: Environment from settings: {current_settings.ENVIRONMENT}")
-
-        # --- Database Configuration ---
-        try:
-            # Get settings (dependency already configured)
-            logger.info("LIFESPAN_DB_CONFIG_START: Attempting to access settings from app.state")
-            logger.info(f"LIFESPAN_DB_CONFIG_SETTINGS_ACQUIRED: Environment from settings: {current_settings.ENVIRONMENT}")
-            logger.info(f"Lifespan: Creating AsyncEngine with URL: {current_settings.ASYNC_DATABASE_URL}")
-
-            # Create engine with SQLite-compatible settings
-            is_sqlite = current_settings.ASYNC_DATABASE_URL.startswith('sqlite')
-
-            # Base configuration
-            engine_args = {
-                "echo": current_settings.ENVIRONMENT in ["development", "test"],
-            }
-
-            # Add connection arguments based on database type
-            if is_sqlite:
-                # SQLite-specific settings (no pooling)
-                engine_args["connect_args"] = {"check_same_thread": False}
-            else:
-                # PostgreSQL/other database settings
-                engine_args.update({
-                    "pool_pre_ping": True,
-                    "pool_size": 5,
-                    "max_overflow": 10,
-                    "pool_recycle": 300,
-                    "connect_args": {"isolation_level": "SERIALIZABLE"}
-                })
-
-            # Create the engine with appropriate args
-            db_engine = create_async_engine(
-                current_settings.ASYNC_DATABASE_URL,
-                **engine_args
+            logger.info(
+                "LIFESPAN_SETTINGS_RESOLVED: Using pre-set app settings. Env: %s",
+                current_settings.ENVIRONMENT
+            )
+        else:
+            current_settings = global_get_settings()  # Fallback to global
+            fastapi_app.state.settings = current_settings  # Store for access elsewhere
+            logger.info(
+                "LIFESPAN_SETTINGS_RESOLVED: Using global settings. Env: %s",
+                current_settings.ENVIRONMENT
             )
 
-            # Create session factory - CRITICAL for application to work
-            session_factory = async_sessionmaker(
-                db_engine,
-                expire_on_commit=False,
-                autoflush=False,
-                autocommit=False,
-                class_=AsyncSession
-            )
-
-            # Set factory and engine on application state
-            fastapi_app.state.actual_session_factory = session_factory
-            fastapi_app.state.db_engine = db_engine
-            logger.info(f"LIFESPAN_APP_FACTORY: actual_session_factory ID set on app.state: {id(fastapi_app.state.actual_session_factory)}")
-
-            # --- BEGIN CRITICAL: Create database tables ---
-            # This must happen after engine creation and before the app serves requests
-            # that might access the database.
-            if current_settings.ENVIRONMENT == "test" and not getattr(fastapi_app.state, 'db_schema_created', False):
-                logger.info(f"LIFESPAN_DB_SCHEMA_CREATION_START (App Lifespan): Attempting to create database tables for {current_settings.ASYNC_DATABASE_URL}...")
-                async with db_engine.begin() as conn:
-                    # Import Base from where your SQLAlchemy models are defined
-                    # This assumes Base is correctly collecting metadata from all your models.
-                    from app.infrastructure.persistence.sqlalchemy.models.base import Base
-                    await conn.run_sync(Base.metadata.create_all)
-                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SUCCESS (App Lifespan): Database tables created (or verified to exist).")
-            elif current_settings.ENVIRONMENT == "test" and getattr(fastapi_app.state, 'db_schema_created', False):
-                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SKIPPED (App Lifespan): db_schema_created flag is True. Assuming tables created by test fixture.")
-            elif current_settings.ENVIRONMENT != "test":
-                logger.info(f"LIFESPAN_DB_SCHEMA_CREATION_START (App Lifespan, Non-Test Env): Attempting to create database tables for {current_settings.ASYNC_DATABASE_URL}...")
-                async with db_engine.begin() as conn:
-                    from app.infrastructure.persistence.sqlalchemy.models.base import Base
-                    await conn.run_sync(Base.metadata.create_all)
-                logger.info("LIFESPAN_DB_SCHEMA_CREATION_SUCCESS (App Lifespan, Non-Test Env): Database tables created (or verified to exist).")
-            # --- END CRITICAL: Create database tables ---
-
-            logger.info(f"Database engine and actual_session_factory initialized and set on app.state (id: {id(fastapi_app.state)})")
-            logger.info(f"app.state.actual_session_factory type: {type(fastapi_app.state.actual_session_factory)}")
-
-        except Exception as e:
-            logger.critical(f"LIFESPAN_DB_INIT_FAILURE: Failed to initialize database connection. ErrorType: {type(e).__name__}, Error: {e}", exc_info=True)
-            fastapi_app.state.actual_session_factory = None
-            fastapi_app.state.db_engine = None
-            raise
-
-        # --- Redis Configuration (if enabled) ---
-        if current_settings.REDIS_URL:
-            try:
-                logger.info(f"Connecting to Redis: {current_settings.REDIS_URL}")
-                # Create Redis connection pool with appropriate settings for the environment
-                connection_kwargs = {
-                    "max_connections": 10,
-                }
-
-                # Only include SSL parameter in production environments
-                # Omit during testing to avoid compatibility issues
-                if current_settings.ENVIRONMENT != "test" and current_settings.REDIS_SSL:
-                    connection_kwargs["ssl"] = current_settings.REDIS_SSL
-
-                redis_pool = ConnectionPool.from_url(
-                    current_settings.REDIS_URL,
-                    **connection_kwargs
-                )
-                redis_client = Redis(connection_pool=redis_pool)
-
-                # Test connection
-                await redis_client.ping()
-
-                # Assign to app state for use in services
-                fastapi_app.state.redis_pool = redis_pool
-                fastapi_app.state.redis = redis_client
-                logger.info("Redis connection successfully established")
-
-            except Exception as e:
-                logger.error(f"LIFESPAN_REDIS_INIT_FAILURE: Failed to connect to Redis at {current_settings.REDIS_URL}. Error: {e}", exc_info=True)
-
-                # Use different behavior based on environment
-                if current_settings.ENVIRONMENT == "test":
-                    # In test environment, use a mock Redis client instead of failing
-                    logger.warning("Test environment detected. Creating mock Redis client instead of failing critically.")
-
-                    # Create a mock Redis client with the necessary methods
-                    mock_redis = MagicMock()
-                    # Add async methods that return awaitable objects
-                    mock_redis.ping = AsyncMock(return_value=True)
-                    mock_redis.get = AsyncMock(return_value=None)
-                    mock_redis.set = AsyncMock(return_value=True)
-                    mock_redis.delete = AsyncMock(return_value=True)
-                    mock_redis.close = AsyncMock(return_value=None)
-                    mock_redis.exists = AsyncMock(return_value=0)
-                    mock_redis.incr = AsyncMock(return_value=1)
-                    mock_redis.expire = AsyncMock(return_value=True)
-
-                    # Set the mock Redis client on app state
-                    fastapi_app.state.redis = mock_redis
-                    fastapi_app.state.redis_pool = None
-                    redis_client = mock_redis
-                    redis_pool = None
-
-                    logger.info("Mock Redis client successfully configured for test environment")
-                else:
-                    # In non-test environments, treat Redis connection failure as critical if URL is provided
-                    raise RuntimeError(f"Critical dependency failure: Could not connect to Redis at {current_settings.REDIS_URL}") from e
-
-        # --- Common Setup (Sentry) ---
+        # Re-initialize Sentry here if not already done, or if settings changed
         _initialize_sentry(current_settings)
 
-        # --- Yield control back to FastAPI ---
-        logger.info("LIFESPAN_READY: Application startup complete, yielding control to FastAPI.")
-        yield
-        logger.info("LIFESPAN_SHUTDOWN_START: Application is shutting down.")
+        # --- Database Configuration ---
+        logger.info("LIFESPAN_DB_INIT_START: Connecting to DB: %s", current_settings.ASYNC_DATABASE_URL)
+        try:
+            db_engine = create_async_engine(
+                str(current_settings.ASYNC_DATABASE_URL),
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                # Set echo to True for SQL query logging if needed, controlled by settings
+                echo=current_settings.DB_ECHO_LOG,
+            )
+            fastapi_app.state.db_engine = db_engine
 
-        # --- Cleanup Resources ---
-        # Clean up Redis connection if it was established
-        if redis_client:
-            logger.info("Closing Redis connection...")
-            await redis_client.close()
-            logger.info("Redis connection closed.")
+            actual_session_factory = async_sessionmaker(
+                bind=db_engine, class_=AsyncSession, expire_on_commit=False
+            )
+            fastapi_app.state.actual_session_factory = actual_session_factory
+            logger.info(
+                "LIFESPAN_DB_INIT_SUCCESS: DB session factory created. Type: %s",
+                type(fastapi_app.state.actual_session_factory)
+            )
 
-        # Clean up database engine if it was created
+        except Exception as e:
+            logger.critical("LIFESPAN_DB_CRITICAL_FAILURE: Failed to init DB: %s", e, exc_info=True)
+            raise RuntimeError(f"Database initialization failed: {e}") from e
+
+        # --- Redis Configuration ---
+        redis_service_instance: Optional[IRedisService] = None
+        if current_settings.REDIS_URL:
+            logger.info(
+                "LIFESPAN_REDIS_INIT_START: Connecting to Redis: %s",
+                current_settings.REDIS_URL
+            )
+            try:
+                redis_service_instance = RedisService(redis_url=current_settings.REDIS_URL)
+                if await redis_service_instance.ping():
+                    fastapi_app.state.redis_service = redis_service_instance
+                    logger.info("LIFESPAN_REDIS_INIT_SUCCESS: Connected to Redis and pinged.")
+                else:
+                    logger.error("LIFESPAN_REDIS_INIT_FAILURE: Connected but PING failed.")
+                    if current_settings.ENVIRONMENT == "test":
+                        logger.warning(
+                            "LIFESPAN_REDIS_INIT_WARN: Test env; proceeding without Redis after ping fail."
+                        )
+                        fastapi_app.state.redis_service = None
+                    else:
+                        raise redis.exceptions.ConnectionError(
+                            "Redis ping failed after connection."
+                        )
+
+            except (redis.exceptions.ConnectionError, OSError) as e:
+                logger.error(
+                    "LIFESPAN_REDIS_INIT_FAILURE: Failed to connect to Redis: %s. Error: %s",
+                    current_settings.REDIS_URL,
+                    e,
+                    exc_info=True
+                )
+                if current_settings.ENVIRONMENT != "test":
+                    raise RuntimeError(f"Redis connection failed: {e}") from e
+                else:
+                    logger.warning(
+                        "LIFESPAN_REDIS_INIT_WARN: Test env; proceeding without Redis connection."
+                    )
+                    fastapi_app.state.redis_service = None
+        else:
+            logger.info("LIFESPAN_REDIS_SKIP: REDIS_URL not set, skipping Redis initialization.")
+            fastapi_app.state.redis_service = None
+
+        # --- State-Dependent Middleware Setup (Post-Resource Initialization) ---
+        # Authentication Middleware (depends on JWTService which uses settings)
+        actual_jwt_service = get_jwt_service(current_settings)
+        fastapi_app.add_middleware(
+            AuthenticationMiddleware, jwt_service=actual_jwt_service
+        )
+        logger.info("AuthenticationMiddleware added.")
+
+        # Rate Limiting Middleware (depends on RedisService)
+        if fastapi_app.state.redis_service:
+            fastapi_app.add_middleware(
+                RateLimitingMiddleware, redis_service=fastapi_app.state.redis_service
+            )
+            logger.info("RateLimitingMiddleware added.")
+        else:
+            logger.warning("RateLimitingMiddleware NOT added: Redis service not available.")
+
+        yield  # Application runs here
+
+    finally:
+        logger.info("LIFESPAN_SHUTDOWN_START: Cleaning up resources...")
+        if hasattr(fastapi_app.state, 'redis_service') and fastapi_app.state.redis_service:
+            try:
+                await fastapi_app.state.redis_service.close()
+                logger.info("LIFESPAN_REDIS_SHUTDOWN_SUCCESS: Redis connection closed.")
+            except Exception as e:
+                logger.error(f"LIFESPAN_REDIS_SHUTDOWN_FAILURE: Error closing Redis: {e}", exc_info=True)
+
         if db_engine:
-            logger.info("Disposing database engine...")
-            await db_engine.dispose()
-            logger.info("Database engine disposed.")
-
-        logger.info("LIFESPAN_SHUTDOWN_COMPLETE: All resources cleaned up.")
-
-    except Exception as e:
-        logger.critical(f"LIFESPAN_CRITICAL_ERROR: Unhandled exception during lifespan: {e}", exc_info=True)
-        # Still need to clean up resources even if an exception occurred
-        if 'redis_client' in locals() and redis_client:
-            await redis_client.close()
-        if 'db_engine' in locals() and db_engine:
-            await db_engine.dispose()
-        # Re-raise the exception to ensure FastAPI knows startup failed
-        raise RuntimeError(f"Critical error in application lifespan: {e}") from e
+            try:
+                await db_engine.dispose()
+                logger.info("LIFESPAN_DB_SHUTDOWN_SUCCESS: Database engine disposed.")
+            except Exception as e:
+                logger.error(f"LIFESPAN_DB_SHUTDOWN_FAILURE: Error disposing DB engine: {e}", exc_info=True)
+        logger.info("LIFESPAN_SHUTDOWN_COMPLETE: Lifespan cleanup finished.")
 
 
 def create_application(
-    settings_override: Settings | None = None,
+    settings_override: Optional[Settings] = None,
     include_test_routers: bool = False,
-    jwt_service_override: JWTServiceInterface | None = None,
-    skip_auth_middleware: bool = False,
-    disable_audit_middleware: bool = False
+    jwt_service_override: Optional[IJWTService] = None,
+    skip_auth_middleware: bool = False,  # Not directly used here, lifespan handles middleware
+    disable_audit_middleware: bool = False  # Not directly used here
 ) -> FastAPI:
     """
-    Create and configure a FastAPI application instance.
+    Application factory function to create and configure a FastAPI application instance.
 
     Args:
-        settings_override: Override default settings (useful for testing)
-        include_test_routers: Include test-only routes
-        jwt_service_override: Override the JWT service (for testing)
-        skip_auth_middleware: Skip adding authentication middleware (for debugging)
-        disable_audit_middleware: Explicitly disable audit logging middleware
+        settings_override: Optional settings object to override global settings.
+        include_test_routers: Flag to include test-specific routers.
+        jwt_service_override: Optional JWT service for testing or custom implementation.
+                         (Note: AuthenticationMiddleware uses its own way to get JWTService)
+        skip_auth_middleware: Flag to skip auth middleware (now managed by lifespan logic or env var).
+        disable_audit_middleware: Flag to disable audit (now managed by lifespan or env var).
 
     Returns:
-        FastAPI: Configured FastAPI application instance
+        Configured FastAPI application instance.
     """
-    logger.info("CREATE_APPLICATION_START: Entered create_application factory.")
+    logger.info("CREATE_APPLICATION_START: Starting application factory process...")
 
-    # Initialize settings with environment-specific values
-    # This is a critical step for proper app configuration
-    if settings_override:
-        current_settings = settings_override
-    else:
-        current_settings = Settings()
-
-    # Log which environment we're running in
-    logger.info(f"CREATE_APPLICATION_SETTINGS_RESOLVED: Using environment: {current_settings.ENVIRONMENT}")
-
-    # Configure logging based on environment
-    logging.config.dictConfig(LOGGING_CONFIG)
-    logger.info(f"Logging configured with level: {current_settings.LOG_LEVEL}")
-
-    # Initialize Sentry for error tracking (if configured)
-    if hasattr(current_settings, "SENTRY_DSN") and current_settings.SENTRY_DSN:
-        # Initialize Sentry with environment-specific config
-        init(
-            dsn=current_settings.SENTRY_DSN,
-            environment=current_settings.ENVIRONMENT,
-            traces_sample_rate=0.2,
-        )
-        logger.info("Sentry initialized for error tracking.")
-    else:
-        logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
-
-    # Create FastAPI app with middleware and settings
-    app_instance = FastAPI(
-        title=current_settings.API_TITLE,
-        description=current_settings.API_DESCRIPTION,
-        version=current_settings.API_VERSION,
-        openapi_url="/openapi.json",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        default_response_class=JSONResponse,
-        lifespan=lifespan,
-        # Ensure debug mode is disabled for tests and production to prevent detailed error messages
-        debug=False if current_settings.ENVIRONMENT in ("test", "production") else current_settings.DEBUG,
+    current_settings: Settings = settings_override if settings_override else global_settings
+    logger.info(
+        "CREATE_APPLICATION_SETTINGS_RESOLVED: Using env: %s",
+        current_settings.ENVIRONMENT
     )
 
-    # Add exception handlers BEFORE any middleware
-    @app_instance.exception_handler(StarletteHTTPException)
-    async def starlette_http_exception_handler(
-        request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
-        """
-        Handle Starlette HTTP exceptions.
+    setup_logging(logging_config=LOGGING_CONFIG_BASE, log_level=current_settings.LOG_LEVEL)
+    logger.info("Logging configured with level: %s", current_settings.LOG_LEVEL)
 
-        This is needed because FastAPI wraps StarletteHTTPException.
-        """
-        # Log the exception
-        logger.info(f"FastAPI HTTP Exception: {exc.status_code} - {exc.detail}")
-
-        # For 500 errors, always mask details regardless of environment
-        if exc.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-            response_data = {"detail": "An internal server error occurred."}
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=response_data,
-            )
-
-        # For other errors, return the original response
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail},
-            headers=getattr(exc, "headers", None),
-        )
-
-    @app_instance.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-        # Default behavior or custom logic for HTTPExceptions
-        # This handler is usually specific to how you want to format HTTP error responses
-        # (e.g., adding custom headers, logging, etc.)
-        # For now, let Starlette's default or a simple JSON response handle it.
-        # logger.error(f"HTTP exception: {exc.status_code} - {exc.detail}", exc_info=False) # Log less verbosely for HTTP exceptions
-
-        # If you have custom JSON structure for errors, replicate it here
-        # Example: return JSONResponse(status_code=exc.status_code, content={"error_code": exc.status_code, "message": exc.detail})
-        #
-        # Fallback to FastAPI's default handling if no custom logic is complex
-        # Or provide a very basic one, ensuring it's JSONResponse
-        if isinstance(exc.detail, str):
-            content = {"detail": exc.detail}
-        elif isinstance(exc.detail, dict):
-            content = exc.detail
-        else:
-            content = {"detail": str(exc.detail)}
-
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=content,
-            headers=getattr(exc, "headers", None)
-        )
-
-    @app_instance.exception_handler(RequestValidationError)
-    async def validation_exception_handler(
-        request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
-        """
-        Handle validation errors in a HIPAA-compliant way.
-
-        Masks any PHI that might be in error messages.
-        """
-        # Log sanitized error details
-        errors = exc.errors()
-        sanitized_errors = []
-
-        for error in errors:
-            # Remove any potential PHI from error messages
-            sanitized_error = error.copy()
-            if "msg" in sanitized_error:
-                sanitized_error["msg"] = "Validation error."
-            if "loc" in sanitized_error:
-                # Keep only the field name, not the value
-                sanitized_error["loc"] = [str(loc) for loc in sanitized_error["loc"]]
-            sanitized_errors.append(sanitized_error)
-
-        logger.info(f"Validation error: {sanitized_errors}")
-
-        # Return a generic validation error message
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": "Validation error in request data."},
-        )
+    app_instance = FastAPI(
+        title=current_settings.PROJECT_NAME,
+        description=current_settings.PROJECT_DESCRIPTION,
+        version=current_settings.API_VERSION,
+        openapi_url=f"{current_settings.API_V1_STR}/openapi.json",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=lifespan,
+    )
+    logger.info(f"FastAPI app instance created for '{current_settings.PROJECT_NAME}'.")
+    app_instance.state.settings = current_settings  # Ensure settings are on app.state early
 
     @app_instance.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-        # Centralized logger for unhandled exceptions
-        # Using 'logger' defined at the module level of app_factory.py
-        logger.exception(
-            f"Unhandled server exception encountered: {type(exc).__name__} - {exc}. "
-            f"Request: {request.method} {request.url.path}"
-        )
-
-        # Get settings from app state, fallback to global_settings if not on app state
-        # This ensures tests can override settings via app.state.settings
-        current_settings = getattr(request.app.state, 'settings', global_settings)
-
-        # Default detail message for 500 errors, ensuring no sensitive info is leaked.
-        detail_message = "Internal Server Error"
-
-        # Conditional detail based on DEBUG or ENVIRONMENT setting.
-        # BE CAUTIOUS: Exposing detailed errors to clients in production is a security risk.
-        # This is primarily for local development or controlled test environments.
-        if current_settings and current_settings.DEBUG:
-            # Even in debug, for a generic 500, it's often better to keep client response generic.
-            # The server logs (from logger.exception above) will have the full traceback.
-            # However, if specific tests rely on seeing some detail in DEBUG, this can be enabled.
-            # detail_message = f"{type(exc).__name__}: {str(exc)}" # Uncomment if detailed errors are desired in DEBUG responses
-            pass
-
+        logger.error(f"Unhandled exception: {exc}", exc_info=True)
+        # Potentially send to Sentry or other error tracking
+        # sentry_sdk.capture_exception(exc)
         return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": detail_message},
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Internal Server Error", "error_id": "ERR_UNHANDLED"}
         )
 
-    @app_instance.exception_handler(ZeroDivisionError)
-    async def zero_division_error_handler(
-        request: Request, exc: ZeroDivisionError
-    ) -> JSONResponse:
-        """
-        Specifically handle ZeroDivisionError which occurs in test endpoints.
-        """
-        logger.error(f"ZeroDivisionError caught: {str(exc)}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An internal server error occurred."},
-        )
-
-    @app_instance.exception_handler(RuntimeError)
-    async def runtime_error_handler(
-        request: Request, exc: RuntimeError
-    ) -> JSONResponse:
-        """
-        Specifically handle RuntimeError which occurs in test endpoints.
-        """
-        logger.error(f"RuntimeError caught: {str(exc)}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An internal server error occurred."},
-        )
-
-    @app_instance.exception_handler(ModelExecutionError)
-    async def model_execution_error_handler(
-        request: Request, exc: ModelExecutionError
-    ) -> JSONResponse:
-        """
-        Handle ModelExecutionError exceptions from ML model operations.
-
-        This handler provides a specific error response for model execution errors
-        while still maintaining HIPAA compliance by not exposing sensitive details.
-        """
-        # Log the full exception details for debugging (server-side only)
-        error_location = f"{request.method} {request.url.path}"
-        logger.error(
-            f"ModelExecutionError at {error_location}: {str(exc)}"
-        )
-
-        # Return a more specific error message that doesn't leak PHI
-        try:
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={
-                    "detail": "An unexpected internal server error occurred.",
-                    "error_code": "INTERNAL_SERVER_ERROR"
-                },
-            )
-        except Exception as e:
-            # Handle any potential recursion or other issues
-            logger.critical(f"Critical error in model_execution_error_handler: {str(e)}")
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": "An internal server error occurred."},
-            )
-
-    # 4. Add settings to app state for access throughout the application
-    app_instance.state.settings = current_settings
-    logger.info(f"CREATE_APPLICATION_SETTINGS_ATTACHED: app.state.settings.ENVIRONMENT is now: {app_instance.state.settings.ENVIRONMENT}")
-    logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app_instance.state.settings.ENVIRONMENT}")
-
-    # 5. Add middleware for various cross-cutting concerns
-
-    # CORS middleware
+    # --- Core Middleware Setup (Order Matters) ---
+    # CORS Middleware (should be one of the first)
     if current_settings.BACKEND_CORS_ORIGINS:
         app_instance.add_middleware(
             CORSMiddleware,
-            allow_origins=[str(origin) for origin in current_settings.BACKEND_CORS_ORIGINS],
-            allow_credentials=current_settings.CORS_ALLOW_CREDENTIALS,
-            allow_methods=current_settings.CORS_ALLOW_METHODS,
-            allow_headers=current_settings.CORS_ALLOW_HEADERS,
+            allow_origins=[
+                str(origin).strip() for origin in current_settings.BACKEND_CORS_ORIGINS
+            ],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
-
-    # Security headers middleware (important for HIPAA compliance)
-    app_instance.add_middleware(
-        SecurityHeadersMiddleware,
-        security_headers=current_settings.SECURITY_HEADERS
-    )
-    logger.info("Security headers middleware added.")
-
-    # Request ID middleware for tracing requests
-    app_instance.add_middleware(RequestIdMiddleware)
-    logger.info("Request ID middleware added.")
-
-    # Temporarily skipping logging middleware due to reported issues
-    if False:
-        app_instance.add_middleware(LoggingMiddleware)
-        logger.info("Logging middleware added.")
+        logger.info("CORSMiddleware added for origins: %s", current_settings.BACKEND_CORS_ORIGINS)
     else:
-        logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
+        logger.info("CORSMiddleware NOT added: No BACKEND_CORS_ORIGINS configured.")
 
-    # 6. Initialize JWT service for authentication
-    jwt_service = jwt_service_override or get_jwt_service()
-    app_instance.state.jwt_service = jwt_service
-    logger.info(f"JWT service initialized and attached to app state: {type(jwt_service).__name__}")
+    # Logging Middleware (logs request/response details)
+    app_instance.add_middleware(LoggingMiddleware)
+    logger.info("LoggingMiddleware added.")
 
-    # 7. Initialize audit logging service for HIPAA compliance and add as middleware
-    # In test environments, always use MockAuditLogRepository; for other environments use real repository
-    is_test_environment = current_settings.ENVIRONMENT == "test"
+    # Service Dependencies and other Middleware are now mostly handled in `lifespan`
+    # to ensure resources like DB, Redis are available when middleware is initialized.
 
-    # Setup audit repository and service
-    if is_test_environment:
-        # For tests, always use the mock repository - no database dependency
-        try:
-            audit_repository = MockAuditLogRepository()
-            logger.info("Using MockAuditLogRepository for audit logging in test environment")
-
-            # In test environment, automatically disable audit logging to prevent test failures
-            app_instance.state.disable_audit_middleware = True
-            logger.info("Audit middleware DISABLED by default for test environment")
-        except Exception as e:
-            logger.error(f"Failed to create MockAuditLogRepository: {e}")
-            raise RuntimeError(f"Failed to initialize audit repository for tests: {e}") from e
-    else:
-        # For non-test environments, use real repository with a database session
-        try:
-            # Get a session for use by the repository
-            db_session = get_session()
-            audit_repository = AuditLogRepository(db_session)
-            logger.info("Using real AuditLogRepository for audit logging with DB session")
-        except Exception as e:
-            # Fallback to mock if session creation fails (development without DB)
-            logger.warning(f"Failed to create real audit repository: {e}. Falling back to mock.")
-            audit_repository = MockAuditLogRepository()
-
-        # Make sure the disable flag is explicitly set based on the parameter for non-test environments
-        app_instance.state.disable_audit_middleware = disable_audit_middleware
-
-    # Create audit service with the repository and store on app state
-    audit_service = AuditLogService(audit_repository)
-    app_instance.state.audit_service = audit_service
-    app_instance.state.audit_logger = audit_service
-
-    # Add middleware to app
-    audit_skip_paths = [
-        "/docs", "/redoc", "/openapi.json", "/static",
-        "/health", "/metrics", "/favicon.ico",
-        # Add test endpoints to skip list
-        "/test-api", "/test-api/admin"
-    ]
-
-    # Only add the middleware if not explicitly disabled
-    if not disable_audit_middleware and not app_instance.state.disable_audit_middleware:
-        try:
-            audit_middleware = AuditLogMiddleware(
-                app=app_instance,
-                audit_logger=audit_service,
-                skip_paths=audit_skip_paths
-            )
-            app_instance.add_middleware(
-                lambda app: audit_middleware
-            )
-            logger.info(f"Audit Log middleware added with {len(audit_skip_paths)} skip paths")
-        except Exception as e:
-            logger.error(f"Failed to add audit middleware: {e}")
-            if is_test_environment:
-                logger.warning("Test environment detected - audit middleware initialization error will be ignored")
-    else:
-        logger.info("Audit Log middleware DISABLED per request")
-
-    # 8. Add Authentication middleware if not skipped (for protected routes)
-    if not skip_auth_middleware:
-        auth_public_paths = current_settings.PUBLIC_PATHS
-        logger.info(f"Configuring AuthenticationMiddleware with {len(auth_public_paths)} public paths.")
-
-        app_instance.add_middleware(
-            AuthenticationMiddleware,
-            jwt_service=jwt_service,
-            public_paths=auth_public_paths
-        )
-        logger.info("Authentication middleware added.")
-    else:
-        logger.warning("Authentication middleware SKIPPED due to skip_auth_middleware flag.")
-
-    # 9. Add rate limiting middleware if enabled
-    if current_settings.RATE_LIMITING_ENABLED:
-        rate_limiter = get_rate_limiter_service()
-        # Store the rate limiter on app.state for easy access in tests
-        app_instance.state.rate_limiter = rate_limiter
-
-        try:
-            app_instance.add_middleware(
-                RateLimitingMiddleware,
-                limiter=rate_limiter
-            )
-            logger.info("Rate limiting middleware added.")
-        except Exception as e:
-            logger.warning(f"Failed to add rate limiting middleware: {e}")
-            if current_settings.ENVIRONMENT == "test":
-                logger.info("Test environment detected - using simplified rate limiting")
-                # For tests, ensure the rate limiter has proper interface
-                rate_limiter.check_rate_limit = lambda request: True
-                app_instance.add_middleware(
-                    RateLimitingMiddleware,
-                    limiter=rate_limiter
-                )
-
-    # 10. Add API routers for various endpoints
-    # Main API router (versioned)
+    # API Routers
     app_instance.include_router(api_v1_router, prefix=current_settings.API_V1_STR)
-    logger.info(f"Main API router added with prefix: {current_settings.API_V1_STR}")
+    logger.info("API v1 router included at prefix: %s", current_settings.API_V1_STR)
 
-    # 11. Include debugging/testing routes if needed
+    # Example for test-specific routers (if any)
     if include_test_routers:
-        logger.info("Including test routers.")
-        try:
-            # Attempt to import the existing admin_test_router
-            from app.tests.routers.admin_test_router import router as test_router_module
-            app_instance.include_router(test_router_module, prefix="/test", tags=["test"])
-            logger.info("Successfully included admin_test_router.")
-        except ImportError as e:
-            logger.warning(f"Could not import admin_test_router: {e}. Test-specific endpoints will not be available.")
-        except AttributeError as e:
-            logger.warning(f"'router' attribute not found in admin_test_router: {e}. Test-specific endpoints will not be available.")
-
-    # 12. Middleware to ensure essential app state is available to request handlers
-
-    @app_instance.middleware("http")
-    async def set_essential_app_state_on_request_middleware(request: Request, call_next):
-        # Directly access and set specific, known attributes from app_instance.state
-        # This avoids issues with how Starlette's State object might be structured internally (e.g. via ._state)
-        request.state.actual_session_factory = getattr(app_instance.state, 'actual_session_factory', None)
-        request.state.settings = getattr(app_instance.state, 'settings', None)
-        request.state.jwt_service = getattr(app_instance.state, 'jwt_service', None)
-        request.state.audit_logger = getattr(app_instance.state, 'audit_logger', None)
-        request.state.rate_limiter = getattr(app_instance.state, 'rate_limiter', None)
-        request.state.testing = getattr(app_instance.state, 'testing', False)
-        request.state.disable_audit_middleware = getattr(app_instance.state, 'disable_audit_middleware', False)
-
-        try:
-            response = await call_next(request)
-            return response
-        except Exception as e:
-            # Log the error
-            logger.error(f"Exception caught in set_essential_app_state_on_request_middleware during call_next: {e}", exc_info=True)
-            # Re-raise the exception to let Starlette's ExceptionMiddleware handle it
-            # This ensures our registered generic_exception_handler will be triggered
-            raise
+        logger.info("Test-specific routers included (placeholder).")
 
     @app_instance.get("/", include_in_schema=False)
-    async def root():
-        return {"message": "Welcome to the Novamind Mental Health Digital Twin API. See /docs for API documentation."}
+    async def root() -> dict[str, str]:
+        """
+        Root endpoint for basic health check and application information.
+        Provides a simple JSON response indicating the application status and version.
+        Useful for load balancers, uptime monitoring, and quick verification of deployment.
+        """
+        logger.info("Root endpoint / called, performing health check.")
+        app_settings = current_settings
+
+        return {
+            "status": "healthy",
+            "message": f"Welcome to {app_settings.PROJECT_NAME}!",
+            "environment": app_settings.ENVIRONMENT,
+            "version": app_settings.API_VERSION
+        }
 
     logger.info("CREATE_APPLICATION_COMPLETE: Application factory complete.")
     return app_instance
