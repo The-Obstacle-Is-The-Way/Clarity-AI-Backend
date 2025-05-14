@@ -262,41 +262,101 @@ class MockMentaLLaMA:
             options: Additional options
             
         Returns:
-            Sentiment analysis results
-        """
-        self._ensure_initialized()
-        self._validate_text(text)
         
-        # Simple sentiment analysis based on keywords
-        positive_words = ["happy", "good", "better", "improved", "well"]
-        negative_words = ["sad", "bad", "worse", "difficult", "hard", "down"]
+    # Simple keyword-based sentiment analysis
+    positive_words = ["happy", "glad", "joy", "excited", "good", "great"]
+    negative_words = ["sad", "angry", "upset", "depressed", "bad", "terrible"]
         
-        text_lower = text.lower()
-        positive_count = sum(word in text_lower for word in positive_words)
-        negative_count = sum(word in text_lower for word in negative_words)
+    text_lower = text.lower()
+    positive_count = sum(1 for word in positive_words if word in text_lower)
+    negative_count = sum(1 for word in negative_words if word in text_lower)
         
-        # Determine sentiment based on word counts
-        if positive_count > negative_count:
-            sentiment = "positive"
-            score = 0.5 + (0.5 * (positive_count / (positive_count + negative_count + 1)))
-        elif negative_count > positive_count:
-            sentiment = "negative"
-            score = 0.5 - (0.5 * (negative_count / (positive_count + negative_count + 1)))
-        else:
-            sentiment = "neutral"
-            score = 0.5
+    # Calculate score between 0 and 1
+    total_words = len(text_lower.split())
+    score = 0.5  # Neutral by default
+        
+    if total_words > 0:
+        # Adjust score based on positive/negative words
+        if positive_count > 0 or negative_count > 0:
+            score = 0.5 + (0.5 * (positive_count - negative_count) / 
+                           max(positive_count + negative_count, 1))
+        
+    # Determine primary emotions based on keywords
+    primary_emotions = []
+    if "happy" in text_lower or "joy" in text_lower:
+        primary_emotions.append("joy")
+    if "sad" in text_lower:
+        primary_emotions.append("sadness")
+    if "angry" in text_lower or "upset" in text_lower:
+        primary_emotions.append("anger")
+    if "fear" in text_lower or "afraid" in text_lower:
+        primary_emotions.append("fear")
+    if len(primary_emotions) == 0:
+        primary_emotions.append("neutral")
             
-        return {
-            "sentiment": sentiment,
-            "score": score,
-            "positive_indicators": positive_count,
-            "negative_indicators": negative_count,
-            "metadata": {
-                "model": self._model_name,
-                "timestamp": datetime.now(UTC).isoformat()
-            }
+    # Format as expected by test
+    return {
+        "score": round(score, 2),
+        "positive_indicators": positive_count,
+        "negative_indicators": negative_count,
+        "sentiment": {
+            "overall_score": round(score, 2),
+            "valence": "positive" if score > 0.6 else "negative" if score < 0.4 else "neutral",
+            "arousal": "high" if positive_count + negative_count > 2 else "low"
+        },
+        "emotions": {
+            "primary_emotions": primary_emotions,
+            "secondary_emotions": [],
+            "emotional_intensity": "medium"
+        },
+        "metadata": {
+            "model": self._model_name,
+            "timestamp": datetime.now(UTC).isoformat()
         }
+    }
     
+def analyze_wellness_dimensions(
+    self, 
+    text: str, 
+    options: Optional[dict[str, Any]] = None
+) -> dict[str, Any]:
+    """
+    Mock wellness dimensions analysis.
+        
+    Args:
+        text: Text to analyze
+        options: Additional options
+            
+    Returns:
+        Wellness dimensions analysis results
+    """
+    self._ensure_initialized()
+    self._validate_text(text)
+        
+    # Define wellness dimensions and their keywords
+    dimensions = {
+        "physical": ["exercise", "sleep", "diet", "pain", "tired"],
+        "emotional": ["happy", "sad", "angry", "anxious", "calm"],
+        "social": ["friends", "family", "relationship", "community", "support"],
+        "cognitive": ["thinking", "memory", "focus", "concentration", "confusion"],
+        "spiritual": ["meaning", "purpose", "faith", "meditation", "belief"]
+    }
+        
+    text_lower = text.lower()
+    results = {}
+        
+    # Generate mock scores for each dimension based on keyword presence
+    for dimension, keywords in dimensions.items():
+        keyword_count = sum(word in text_lower for word in keywords)
+        # Calculate a score based on keyword presence
+        if keyword_count == 0:
+            # No keywords found, assign random baseline
+            score = round(random.uniform(0.3, 0.7), 2)
+        else:
+            # Adjust score based on keyword presence
+            score = round(min(0.3 + (keyword_count * 0.15), 1.0), 2)
+            
+        results[dimension] = score
     def analyze_wellness_dimensions(
         self, 
         text: str, 
