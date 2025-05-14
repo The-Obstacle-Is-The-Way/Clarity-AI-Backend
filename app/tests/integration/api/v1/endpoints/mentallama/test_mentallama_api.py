@@ -26,9 +26,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.domain.entities.audit_log import AuditLog
 from app.core.interfaces.services.audit_logger_interface import AuditEventType, IAuditLogger, AuditSeverity
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger as IAuditLogService
 from app.application.services.audit_log_service import AuditLogService
-from app.presentation.api.dependencies.audit import get_audit_log_service
 from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
 
 # Application imports (Sorted)
@@ -59,8 +57,8 @@ TEST_MODEL = "test_model"
 MENTALLAMA_API_PREFIX = f"{Settings().API_V1_STR}/mentallama"
 
 # Create a mock audit logger that doesn't use the database
-class MockAuditLogService(IAuditLogService):
-    """Mock implementation of IAuditLogService for testing that doesn't access the database."""
+class MockAuditLogService(IAuditLogger):
+    """Mock implementation of IAuditLogger for testing that doesn't access the database."""
     
     async def log_event(self, event_type: AuditEventType, actor_id: str, 
                        resource_type: Optional[str] = None, resource_id: Optional[str] = None,
