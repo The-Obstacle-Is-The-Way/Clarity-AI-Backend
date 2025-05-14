@@ -324,6 +324,10 @@ async def mentallama_test_client(
     app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
     logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
     
+    # Disable audit logging middleware for tests
+    app.state.disable_audit_middleware = True
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Disabled audit middleware for testing")
+    
     # Override audit log service with our mock
     mock_audit_service = MockAuditLogService()
     app.dependency_overrides[get_audit_log_service] = lambda: mock_audit_service

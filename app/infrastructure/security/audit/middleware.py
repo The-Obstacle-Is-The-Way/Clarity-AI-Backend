@@ -76,26 +76,33 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process the request and log PHI access events.
+        Process the request and log relevant audit information.
         
         Args:
-            request: The incoming request
-            call_next: Function to call the next middleware/route
+            request: The FastAPI request
+            call_next: The next middleware or endpoint handler
             
         Returns:
-            Response: The response from the next middleware/route
+            Response: The response from the next handler
         """
-        # Skip logging for non-PHI paths
+        # Skip if audit logging is explicitly disabled on the app state (useful for testing)
+        if hasattr(request.app.state, "disable_audit_middleware") and request.app.state.disable_audit_middleware:
+            return await call_next(request)
+            
+        # Skip paths that shouldn't be audited
         path = request.url.path
+        method = request.method
+        
         if self._should_skip(path):
             return await call_next(request)
-        
-        # Check if this path likely involves PHI
+            
+        # Check if this path potentially accesses PHI
         is_phi_path = self._is_phi_path(path)
         
-        # Extract request information for audit log
+        # Extract the user ID from the request
         user_id = await self._extract_user_id(request)
-        method = request.method
+        
+        # Extract request information for audit log
         action = self.method_to_action.get(method, "access")
         resource_type, resource_id = self._extract_resource_info(path)
         

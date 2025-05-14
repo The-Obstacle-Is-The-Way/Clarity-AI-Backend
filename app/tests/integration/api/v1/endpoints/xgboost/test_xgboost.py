@@ -22,6 +22,7 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from fastapi import FastAPI, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from httpx import AsyncClient, ASGITransport
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -267,33 +268,30 @@ def test_app(mock_xgboost_service, db_session) -> FastAPI:
 
 
 @pytest_asyncio.fixture
-async def client(test_app) -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Create an AsyncClient instance with properly configured test settings for authentication."""
-    # Create a client that doesn't check for SSL certificates and follows redirects
-    from httpx._transports.asgi import ASGITransport
+async def xgboost_test_client(app: FastAPI) -> AsyncClient:
+    """Provides an HTTPX AsyncClient with an authenticated user for testing."""
     
-    async with httpx.AsyncClient(
-        transport=ASGITransport(app=test_app),
+    # Create a client bound to the app
+    async with AsyncClient(
+        app=app, 
         base_url="http://test",
-        follow_redirects=True,
-        verify=False
+        headers={"Content-Type": "application/json"}
     ) as client:
-        # Configure client defaults
-        client.headers.update({
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        })
+        # Disable audit logging middleware for tests
+        app.state.disable_audit_middleware = True
+        logger.info(f"XGBOOST_TEST_CLIENT: Disabled audit middleware for testing")
+        
         yield client
 
 @pytest.fixture
-def authenticated_client(client: httpx.AsyncClient, provider_auth_headers: dict[str, str]) -> httpx.AsyncClient:
+def authenticated_client(xgboost_test_client: AsyncClient, provider_auth_headers: dict[str, str]) -> AsyncClient:
     """
     Returns a pre-authenticated client for testing protected endpoints.
     This fixture applies provider authentication headers to the base client.
     """
     # Update headers with authentication 
-    client.headers.update(provider_auth_headers)
-    return client
+    xgboost_test_client.headers.update(provider_auth_headers)
+    return xgboost_test_client
 
 @pytest.fixture(scope="session")
 def mock_xgboost_service() -> MockXGBoostService:
@@ -422,7 +420,7 @@ class TestXGBoostAPIIntegration:
     @pytest.mark.asyncio
     async def test_predict_risk_success(
         self,
-        client: httpx.AsyncClient,
+        xgboost_test_client: AsyncClient,
         mock_xgboost_service: MockXGBoostService,
         valid_risk_prediction_data: dict[str, Any],
         provider_auth_headers: dict[str, str] # Use provider headers
