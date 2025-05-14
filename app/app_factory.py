@@ -16,6 +16,7 @@ import traceback
 import asyncio
 from datetime import datetime
 from typing import Any, Dict
+import time
 
 # Third-Party Imports
 import sentry_sdk
@@ -29,6 +30,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy import Engine
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 # Application-Specific Imports
 from app.core.config import Settings, settings as global_settings
@@ -50,6 +53,7 @@ from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.application.services.audit_log_service import AuditLogService
 from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
 from app.infrastructure.persistence.repositories.mock_audit_log_repository import MockAuditLogRepository
+from app.core.exceptions.base_exceptions import ModelExecutionError, ResourceNotFoundError
 
 # Import the session functions from the new database module
 from app.infrastructure.persistence.sqlalchemy.database import get_session, get_session_from_state
@@ -484,6 +488,31 @@ def create_application(
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},
+        )
+    
+    @app_instance.exception_handler(ModelExecutionError)
+    async def model_execution_error_handler(
+        request: Request, exc: ModelExecutionError
+    ) -> JSONResponse:
+        """
+        Handle ModelExecutionError exceptions from ML model operations.
+        
+        This handler provides a specific error response for model execution errors
+        while still maintaining HIPAA compliance by not exposing sensitive details.
+        """
+        # Log the full exception details for debugging (server-side only)
+        error_location = f"{request.method} {request.url.path}"
+        logger.error(
+            f"ModelExecutionError at {error_location}: {str(exc)}"
+        )
+        
+        # Return a more specific error message that doesn't leak PHI
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "detail": "An unexpected internal server error occurred.",
+                "error_code": "INTERNAL_SERVER_ERROR"
+            },
         )
     
     # 4. Add settings to app state for access throughout the application
