@@ -1,6 +1,0 @@
-app/tests/standalone/core/test_mock_digital_twin.py
-app/tests/standalone/core/test_biometric_event_processor.py
-app/tests/standalone/core/test_standalone_biometric_processor.py
-app/tests/standalone/infrastructure/test_appointment.py
-app/tests/standalone/domain/test_patient.py
-app/tests/standalone/domain/test_digital_twin.py

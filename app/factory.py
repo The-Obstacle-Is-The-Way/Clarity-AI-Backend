@@ -628,8 +628,7 @@ def create_application(
         app_instance.add_middleware(
             AuthenticationMiddleware,
             jwt_service=jwt_service,
-            public_paths=auth_public_paths,
-            public_path_regexes=current_settings.PUBLIC_PATH_REGEXES
+            public_paths=auth_public_paths
         )
         logger.info("Authentication middleware added.")
     else:

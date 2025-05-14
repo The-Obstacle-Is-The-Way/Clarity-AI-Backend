@@ -5,14 +5,16 @@ This module provides configuration settings for the application, including
 security settings, database connection, and other environment-specific values.
 """
 
+# Standard Library Imports
 import logging
 import os
 import secrets
 from pathlib import Path
-
-from pydantic import ConfigDict, Field, field_validator, model_validator
-from pydantic_settings import BaseSettings
 from typing import Self
+
+# Third-Party Imports
+from pydantic import ConfigDict, Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,7 @@ class Settings(BaseSettings):
     UVICORN_WORKERS: int = 4  # Number of worker processes for production
     
     # Security Settings
-    JWT_SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
+    JWT_SECRET_KEY: SecretStr = Field(default_factory=lambda: secrets.token_urlsafe(64))
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -58,9 +60,6 @@ class Settings(BaseSettings):
         "/api/v1/auth/register", # Assuming registration is public
         "/api/v1/status/health", # Health checks are often public
         # Add other known public paths here
-    ])
-    PUBLIC_PATH_REGEXES: list[str] = Field(default_factory=lambda: [
-        r"^(/api/v1/status/health|/openapi.json|/docs|/redoc|/api/v1/auth/(login|refresh|register)).*$"
     ])
     
     # CORS Settings
@@ -171,9 +170,9 @@ class Settings(BaseSettings):
         
         # Ensure logs directory exists
         if self.AUDIT_LOG_FILE:
-            log_dir = os.path.dirname(self.AUDIT_LOG_FILE)
-            if log_dir and not os.path.isdir(log_dir):
-                os.makedirs(log_dir, exist_ok=True)
+            log_dir = Path(self.AUDIT_LOG_FILE).parent
+            if log_dir and not Path(log_dir).is_dir():
+                Path(log_dir).mkdir(parents=True, exist_ok=True)
                 logger.info(f"Created logs directory: {log_dir}")
         
         # Ensure DEBUG is set correctly based on environment
