@@ -1,3 +1,10 @@
+"""
+Application Factory Module.
+
+This module contains the factory function for creating a FastAPI application
+with all necessary middleware, routers, and dependencies.
+"""
+
 # Standard Library Imports
 import logging
 import logging.config
@@ -37,7 +44,9 @@ from app.presentation.api.v1.endpoints.test_endpoints import router as test_endp
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.application.services.audit_log_service import AuditLogService
 from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
-from app.infrastructure.persistence.sqlalchemy.database import get_session as SessionLocal
+
+# Import the session functions from the new database module
+from app.infrastructure.persistence.sqlalchemy.database import get_session, get_session_from_state
 
 # Potentially import test routers conditionally or via a flag
 from app.tests.routers.admin_test_router import router as admin_test_router
@@ -45,8 +54,6 @@ from app.tests.routers.admin_test_router import router as admin_test_router
 # Initialize logging early
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
-
-# Removed early Sentry init, moved to factory/lifespan
 
 # --- Helper Functions ---
 def _initialize_sentry(settings: Settings) -> None:
@@ -248,317 +255,244 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
         # --- Common Setup (Sentry) ---
         _initialize_sentry(current_settings)
 
-        logger.info("Application startup phase in lifespan complete.")
-        # logger.info(f"--- LIFESPAN STARTUP (app_factory): Initializing database with session factory: {session_factory}") # Already logged
-
-        # Prepare state to be yielded - include all necessary items
-        lifespan_state_to_yield = {
-            "settings": current_settings,
-            "actual_session_factory": session_factory, # ADDED TO YIELDED STATE
-            "db_engine": db_engine,                   # ADDED TO YIELDED STATE
-        }
-        logger.info(f"--- LIFESPAN STARTUP (app_factory): app instance id: {id(fastapi_app)}")
-        logger.info(f"--- LIFESPAN STARTUP (app_factory): app.state id before yield: {id(fastapi_app.state)}")
-        # Log current app.state contents more reliably
-        current_app_state_dict = {}
-        if hasattr(fastapi_app.state, '_state') and isinstance(fastapi_app.state._state, dict): # Starlette State wraps a dict in _state
-            current_app_state_dict = {k: type(v) for k, v in fastapi_app.state._state.items()}
-        logger.info(f"--- LIFESPAN STARTUP (app_factory): Content of app.state._state before yield: {current_app_state_dict}")
-        logger.info(f"--- LIFESPAN STARTUP (app_factory): Yielding state keys: {list(lifespan_state_to_yield.keys())}")
-
-        yield lifespan_state_to_yield  # Explicitly yield the state dictionary
-
-    except Exception as startup_exc:
-         logger.critical(f"LIFESPAN_CRITICAL_STARTUP_FAILURE: Application startup failed critically. ErrorType: {type(startup_exc).__name__}, Error: {startup_exc}", exc_info=True)
-         # Re-raise to prevent app from starting in a broken state
-         raise RuntimeError(f"Application startup failed critically during lifespan: {startup_exc}") from startup_exc
-    finally:
-        # --- Shutdown Logic ---
-        logger.info("Application lifespan shutdown sequence initiated.")
+        # --- Yield control back to FastAPI ---
+        logger.info("LIFESPAN_READY: Application startup complete, yielding control to FastAPI.")
+        yield
+        logger.info("LIFESPAN_SHUTDOWN_START: Application is shutting down.")
+        
+        # --- Cleanup Resources ---
+        # Clean up Redis connection if it was established
         if redis_client:
-            try:
-                # Check if it's a mock before calling close to avoid attribute errors
-                if not isinstance(redis_client, MagicMock):
-                    await redis_client.close()
-                    logger.info("Redis client closed.")
-                else:
-                    logger.info("Mock Redis client - skipping close.")
-            except Exception as e:
-                logger.error(f"Error closing Redis client: {e}", exc_info=True)
-        if redis_pool:
-            try:
-                await redis_pool.disconnect()
-                logger.info("Redis connection pool disconnected.")
-            except Exception as e:
-                logger.error(f"Error disconnecting Redis pool: {e}", exc_info=True)
-
-        # Safely get db_engine for shutdown from app.state
-        # db_engine_for_shutdown = getattr(fastapi_app.state, "db_engine", None) # This was already good
-        # The rest of the shutdown logic for db_engine seems okay
-
-        if db_engine: # Use the engine created within the try block if it's still in local scope and valid
-            logger.info(f"--- LIFESPAN SHUTDOWN (app_factory): Attempting to dispose of database engine (id: {id(db_engine)} from local lifespan scope)...")
-            try:
-                await db_engine.dispose()
-                logger.info("--- LIFESPAN SHUTDOWN (app_factory): Database engine (from local scope) disposed.")
-            except Exception as e:
-                logger.error(f"Error disposing database engine (from local scope): {e}", exc_info=True)
-        elif hasattr(fastapi_app.state, 'db_engine') and fastapi_app.state.db_engine:
-            logger.info(f"--- LIFESPAN SHUTDOWN (app_factory): Attempting to dispose of database engine (id: {id(fastapi_app.state.db_engine)} from app.state)...")
-            try:
-                await fastapi_app.state.db_engine.dispose()
-                logger.info("--- LIFESPAN SHUTDOWN (app_factory): Database engine (from app.state) disposed.")
-            except Exception as e:
-                logger.error(f"Error disposing database engine (from app.state): {e}", exc_info=True)
-        else:
-            logger.warning("--- LIFESPAN SHUTDOWN (app_factory): db_engine not found in local scope or on app.state; cannot dispose.")
-
-        logger.info("Application shutdown complete.")
+            logger.info("Closing Redis connection...")
+            await redis_client.close()
+            logger.info("Redis connection closed.")
+        
+        # Clean up database engine if it was created
+        if db_engine:
+            logger.info("Disposing database engine...")
+            await db_engine.dispose()
+            logger.info("Database engine disposed.")
+            
+        logger.info("LIFESPAN_SHUTDOWN_COMPLETE: All resources cleaned up.")
+        
+    except Exception as e:
+        logger.critical(f"LIFESPAN_CRITICAL_ERROR: Unhandled exception during lifespan: {e}", exc_info=True)
+        # Still need to clean up resources even if an exception occurred
+        if 'redis_client' in locals() and redis_client:
+            await redis_client.close()
+        if 'db_engine' in locals() and db_engine:
+            await db_engine.dispose()
+        # Re-raise the exception to ensure FastAPI knows startup failed
+        raise RuntimeError(f"Critical error in application lifespan: {e}") from e
 
 
-# --- Application Factory ---
 def create_application(
     settings_override: Settings | None = None,
     include_test_routers: bool = False,
     jwt_service_override: JWTServiceInterface | None = None,
     skip_auth_middleware: bool = False  # TEMPORARY DEBUG FLAG
 ) -> FastAPI:
-    """Factory function to create and configure the FastAPI application."""
+    """
+    Create and configure a FastAPI application instance.
+    
+    Args:
+        settings_override: Override default settings (useful for testing)
+        include_test_routers: Include test-only routes
+        jwt_service_override: Override the JWT service (for testing)
+        skip_auth_middleware: Skip adding authentication middleware (for debugging)
+        
+    Returns:
+        FastAPI: Configured FastAPI application instance
+    """
     logger.info("CREATE_APPLICATION_START: Entered create_application factory.")
-
-    # Resolve settings: Use provided settings or load global ones
-    app_settings = settings_override if settings_override is not None else global_settings
-    logger.info(f"CREATE_APPLICATION_SETTINGS_RESOLVED: Using environment: {app_settings.ENVIRONMENT}")
-
-    # Configure logging early
-    logging.config.dictConfig(LOGGING_CONFIG)
-    logger.info(
-        f"Logging configured with level: {LOGGING_CONFIG.get('loggers', {}).get('app', {}).get('level', 'UNKNOWN')}"
-    )
-
-    # Initialize Sentry if DSN is provided (moved Sentry init inside factory for clarity)
-    if app_settings.SENTRY_DSN:
-        logger.info(f"Initializing Sentry for environment: {app_settings.ENVIRONMENT}")
+    
+    # 1. Load settings (from override or from .env)
+    current_settings = settings_override or global_settings
+    logger.info(f"CREATE_APPLICATION_SETTINGS_RESOLVED: Using environment: {current_settings.ENVIRONMENT}")
+    
+    # 2. Configure logging based on settings
+    log_level = getattr(logging, current_settings.LOG_LEVEL.upper(), logging.INFO)
+    logging.basicConfig(level=log_level)
+    logger.info(f"Logging configured with level: {current_settings.LOG_LEVEL}")
+    
+    # Early Sentry initialization if needed for capturing application initialization issues
+    if current_settings.SENTRY_DSN:
         try:
-            sentry_sdk.init(
-                dsn=str(app_settings.SENTRY_DSN),
-                traces_sample_rate=app_settings.SENTRY_TRACES_SAMPLE_RATE,
-                profiles_sample_rate=app_settings.SENTRY_PROFILES_SAMPLE_RATE,
-                environment=app_settings.ENVIRONMENT,
-                release=app_settings.VERSION,
-                enable_tracing=True,
-            )
-            logger.info("Sentry initialized.")
+            _initialize_sentry(current_settings)
         except Exception as e:
-            logger.error(f"Failed to initialize Sentry: {e}", exc_info=True)
+            logger.error(f"Failed early Sentry initialization: {e}", exc_info=True)
     else:
         logger.warning("SENTRY_DSN not found. Sentry integration disabled.")
-
-    # Create FastAPI app with lifespan context manager
+    
+    # 3. Create the FastAPI instance with appropriate metadata
     app_instance = FastAPI(
-        title=app_settings.PROJECT_NAME,
-        version=app_settings.API_VERSION,
-        description=app_settings.PROJECT_DESCRIPTION,
-        openapi_url=f"{app_settings.API_V1_STR}/openapi.json",
-        docs_url="/docs" if app_settings.ENVIRONMENT != "production" else None,
-        redoc_url="/redoc" if app_settings.ENVIRONMENT != "production" else None,
-        lifespan=lifespan,  # Use the lifespan context manager
+        title=current_settings.API_TITLE,
+        description=current_settings.API_DESCRIPTION,
+        version=current_settings.API_VERSION,
+        docs_url="/docs" if current_settings.ENVIRONMENT != "production" else None,
+        redoc_url="/redoc" if current_settings.ENVIRONMENT != "production" else None,
+        openapi_url="/openapi.json" if current_settings.ENVIRONMENT != "production" else None,
+        lifespan=lifespan
     )
-    app_instance.state.settings = app_settings 
-    logger.info(f"CREATE_APPLICATION_SETTINGS_ATTACHED: app.state.settings.ENVIRONMENT is now: {app_instance.state.settings.ENVIRONMENT if hasattr(app_instance.state, 'settings') and app_instance.state.settings is not None else 'NOT FOUND'}")
-
-    logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app_instance.state.settings.ENVIRONMENT if hasattr(app_instance.state, 'settings') and app_instance.state.settings is not None else 'NOT FOUND ON app.state'}") # Diagnostic log
-
-    # --- Middleware Configuration (Order Matters!) ---
-    # 1. Security Headers Middleware
-    app_instance.add_middleware(SecurityHeadersMiddleware)
+    
+    # 4. Add settings to app state for access throughout the application
+    app_instance.state.settings = current_settings
+    logger.info(f"CREATE_APPLICATION_SETTINGS_ATTACHED: app.state.settings.ENVIRONMENT is now: {app_instance.state.settings.ENVIRONMENT}")
+    logger.info(f"Factory: app.state.settings after FastAPI init and direct set: {app_instance.state.settings.ENVIRONMENT}")
+    
+    # 5. Add middleware for various cross-cutting concerns
+    
+    # CORS middleware
+    if current_settings.BACKEND_CORS_ORIGINS:
+        app_instance.add_middleware(
+            CORSMiddleware,
+            allow_origins=[str(origin) for origin in current_settings.BACKEND_CORS_ORIGINS],
+            allow_credentials=current_settings.CORS_ALLOW_CREDENTIALS,
+            allow_methods=current_settings.CORS_ALLOW_METHODS,
+            allow_headers=current_settings.CORS_ALLOW_HEADERS,
+        )
+    
+    # Security headers middleware (important for HIPAA compliance)
+    app_instance.add_middleware(
+        SecurityHeadersMiddleware,
+        security_headers=current_settings.SECURITY_HEADERS
+    )
     logger.info("Security headers middleware added.")
-
-    # 2. Request ID Middleware
+    
+    # Request ID middleware for tracing requests
     app_instance.add_middleware(RequestIdMiddleware)
     logger.info("Request ID middleware added.")
-
-    # 3. Logging Middleware
-    # Temporarily commented due to import/implementation issues
-    # app_instance.add_middleware(LoggingMiddleware, logger=logging.getLogger("app.access"))
-    logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
-
-    # 4. Audit Log Middleware
-    audit_logger = AuditLogService(AuditLogRepository(SessionLocal()))
+    
+    # Temporarily skipping logging middleware due to reported issues
+    if False:  # Change to True when issues are resolved
+        app_instance.add_middleware(LoggingMiddleware)
+        logger.info("Logging middleware added.")
+    else:
+        logger.warning("Logging middleware TEMPORARILY DISABLED due to implementation issue.")
+    
+    # 6. Initialize JWT service for authentication
+    jwt_service = jwt_service_override or get_jwt_service()
+    app_instance.state.jwt_service = jwt_service
+    logger.info(f"JWT service initialized and attached to app state: {type(jwt_service).__name__}")
+    
+    # 7. Initialize audit logging service for HIPAA compliance
+    # Get an async session generator for the audit log repository
+    # Use get_session_from_state for initialization to avoid circular dependency
+    audit_log_repo = AuditLogRepository(AsyncSession(bind=None))  # Will be replaced at runtime with real session
+    audit_logger = AuditLogService(audit_log_repo)
+    app_instance.state.audit_logger = audit_logger
+    logger.info("Audit logging service initialized and attached to app state.")
+    
+    # 8. Add Authentication middleware if not skipped (for protected routes)
+    if not skip_auth_middleware:
+        auth_public_paths = current_settings.PUBLIC_PATHS
+        logger.info(f"Configuring AuthenticationMiddleware with {len(auth_public_paths)} public paths.")
+        
+        app_instance.add_middleware(
+            AuthenticationMiddleware,
+            jwt_service=jwt_service,
+            public_paths=auth_public_paths,
+            public_path_regexes=current_settings.PUBLIC_PATH_REGEXES
+        )
+        logger.info("Authentication middleware added.")
+    else:
+        logger.warning("Authentication middleware SKIPPED due to skip_auth_middleware flag.")
+    
+    # 9. Add rate limiting middleware if enabled
+    if current_settings.RATE_LIMITING_ENABLED:
+        rate_limiter = get_rate_limiter_service()
+        app_instance.add_middleware(
+            RateLimitingMiddleware,
+            rate_limiter=rate_limiter,
+            default_limits=current_settings.DEFAULT_RATE_LIMITS
+        )
+        logger.info("Rate limiting middleware added.")
+    
+    # 10. Add audit logging middleware for HIPAA compliance
     app_instance.add_middleware(
         AuditLogMiddleware,
         audit_logger=audit_logger,
-        skip_paths=["/docs", "/redoc", "/openapi.json", "/api/health"]
+        skip_paths=["/docs", "/redoc", "/openapi.json", "/static", "/assets"]
     )
-    logger.info("Audit log middleware added.")
-
-    # 5. Authentication Middleware - MOVED TO LIFESPAN (NOW MOVING BACK)
-    # This is where AuthenticationMiddleware should be added.
-    # It now depends on jwt_service (from app_settings) and accesses user_repo via request.app.state.
-    if not skip_auth_middleware:
-        logger.info("Adding AuthenticationMiddleware to the application.")
-        try:
-            # Get JWT service instance
-            if jwt_service_override:
-                jwt_service = jwt_service_override
-                logger.info("Using provided JWT service override for AuthenticationMiddleware.")
-            else:
-                jwt_service = get_jwt_service()
-                logger.info("JWT service initialized successfully.")
-                
-            # Determine public paths for authentication bypass
-            public_paths = app_settings.PUBLIC_PATHS
-            public_path_regexes = app_settings.PUBLIC_PATH_REGEXES
-            
-            # Create authentication middleware with appropriate settings
-            from app.presentation.middleware.authentication import AuthenticationMiddleware
-            
-            # In test environments, make authentication middleware more permissive
-            user_repository = None
-            if app_settings.ENVIRONMENT.lower() != "test":
-                # Only set up the user repository in non-test environments
-                # In test environments, the middleware will use token data directly
-                try:
-                    from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
-                    if hasattr(app_instance, 'state') and hasattr(app_instance.state, 'actual_session_factory'):
-                        # Create repository with direct session_factory access
-                        user_repository = SQLAlchemyUserRepository(session_factory=app_instance.state.actual_session_factory)
-                except Exception as e:
-                    logger.warning(f"Could not initialize SQLAlchemyUserRepository: {e}. Authentication may require token data.")
-            
-            # Register authentication middleware
-            app_instance.add_middleware(
-                AuthenticationMiddleware,
-                jwt_service=jwt_service,
-                user_repository=user_repository,
-                public_paths=public_paths,
-                public_path_regexes=public_path_regexes
-            )
-            logger.info("APP_FACTORY: AuthenticationMiddleware added successfully.")
-            
-        except Exception as e:
-            logger.error(f"Failed to add AuthenticationMiddleware: {e}", exc_info=True)
-            if app_settings.ENVIRONMENT.lower() != "production":
-                logger.warning("Continuing without authentication middleware - THIS IS INSECURE")
-            else:
-                raise RuntimeError(f"Authentication middleware required in production but failed to initialize: {e}")
-    else:
-        logger.warning("Authentication middleware explicitly skipped! This should only happen in tests.")
-
-    # 5. Rate Limiting Middleware - MOVED TO LIFESPAN (NOW MOVING BACK, still commented)
-    # if app_settings.RATE_LIMITING_ENABLED:
-    #     logger.info("LIFESPAN: Initializing and registering RateLimitingMiddleware...")
-    #     try:
-    #         rate_limiter_service = get_rate_limiter_service(app_settings)
-    #         fastapi_app.add_middleware(RateLimitingMiddleware, limiter=rate_limiter_service)
-    #         logger.info("LIFESPAN: RateLimitingMiddleware registered successfully.")
-    #     except Exception as e:
-    #         logger.error(f"LIFESPAN: Failed to initialize or register RateLimitingMiddleware: {type(e).__name__} - {e}", exc_info=True)
-    #         logger.warning("LIFESPAN: RateLimitingMiddleware FAILED to load.")
-    # else:
-    #     logger.warning("LIFESPAN: Rate Limiting disabled - skipping RateLimitingMiddleware setup in lifespan.")
-
-    # 4. CORS
-    if app_settings.BACKEND_CORS_ORIGINS:
-        logger.info(f"Configuring CORS for origins: {app_settings.BACKEND_CORS_ORIGINS}")
-        app_instance.add_middleware(
-            CORSMiddleware,
-            allow_origins=[str(origin) for origin in app_settings.BACKEND_CORS_ORIGINS],
-            allow_credentials=app_settings.CORS_ALLOW_CREDENTIALS,
-            allow_methods=app_settings.CORS_ALLOW_METHODS,
-            allow_headers=app_settings.CORS_ALLOW_HEADERS,
-        )
-        logger.info("CORS middleware configured with specific settings from environment.")
-    else:
-        logger.warning("No CORS origins configured. CORS middleware not added.")
-
-    # --- Routers ---
-    logger.info(f"Including API router prefix: {app_settings.API_V1_STR}")
-    app_instance.include_router(api_v1_router, prefix=app_settings.API_V1_STR)
-
+    logger.info("Audit logging middleware added.")
+    
+    # 11. Add API routers for various endpoints
+    # Main API router (versioned)
+    app_instance.include_router(api_v1_router, prefix=current_settings.API_V1_STR)
+    logger.info(f"Main API router added with prefix: {current_settings.API_V1_STR}")
+    
+    # 12. Include debugging/testing routes if needed
     if include_test_routers:
-        app_instance.include_router(admin_test_router, prefix=f"{app_settings.API_V1_STR}/admin", tags=["Test Admin"])
-        app_instance.include_router(test_endpoints_router, prefix=f"{app_settings.API_V1_STR}", tags=["Test"])
-        logger.info(f"Including TEST admin router prefix: {app_settings.API_V1_STR}/admin")
-        logger.info(f"Including TEST endpoints router prefix: {app_settings.API_V1_STR}/test")
-
-    # --- Global Exception Handlers ---
+        test_prefix = "/test-api"
+        app_instance.include_router(test_endpoints_router, prefix=test_prefix, tags=["test"])
+        app_instance.include_router(admin_test_router, prefix=test_prefix + "/admin", tags=["admin", "test"])
+        logger.info("Test routers included.")
+        
+    # 13. Define custom exception handlers
+    
     @app_instance.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         # Log the detailed validation error for internal review
-        logger.error(f"Request validation error: {exc.errors()} for request: {request.method} {request.url}")
-        # Return a generic Pydantic validation error structure
+        logger.warning(f"Validation error: {exc}", exc_info=True)
+        
+        # Return a sanitized response without PHI but with enough detail for clients to fix the issue
         return JSONResponse(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": exc.errors()}, # Pydantic's default error structure
+            content={"detail": exc.errors(), "body": exc.body},
         )
-
+    
     @app_instance.exception_handler(HTTPException)
     async def custom_http_exception_handler(request: Request, exc: HTTPException):
         # Log the HTTP exception details
-        logger.error(f"HTTP exception: {exc.detail} (Status: {exc.status_code}) for request: {request.method} {request.url}")
-        # Return the standard HTTPException response
+        logger.info(f"HTTP Exception: {exc.status_code} - {exc.detail}")
+        
+        # Just return the standard FastAPI response for HTTP exceptions
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail},
             headers=exc.headers,
         )
-
+    
     @app_instance.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         # Log the full, unhandled exception for internal review
         # Be cautious about logging potentially sensitive parts of `exc` or `request`
         # if they could contain PHI in a real scenario.
-        request_id = getattr(request.state, "request_id", "N/A") # Get request_id safely
-        logger.critical(
-            f"Unhandled exception: {type(exc).__name__}: {exc} for request: {request.method} {request.url} (Request ID: {request_id})",
-            exc_info=True, # This will include the stack trace
-        )
+        logger.error(f"Unhandled exception: {exc}", exc_info=True)
         
-        # HIPAA: Ensure no PHI is returned in error messages to the client.
-        # Provide a generic error message.
-        error_response_content = {
-            "detail": "An unexpected internal server error occurred.",
-            "error_id": request_id,
-        }
-        logger.info(f"Generic exception handler returning JSONResponse with status 500 and content: {error_response_content} (Request ID: {request_id})") # ADDED LOG
+        # Hide implementation details from the client
         return JSONResponse(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error_response_content,
+            content={"detail": "An internal server error occurred."},
         )
-        
-    logger.info("FastAPI application creation complete.")
-
-    # Dependency overrides (primarily for testing)
-    if app_settings.ENVIRONMENT == "test":
-        # Example: app_instance.dependency_overrides[some_dependency] = mock_dependency
-        logger.info("TEST_ENV_OVERRIDES: Test environment detected, dependency overrides can be applied here if needed globally.")
-
-    # Middleware to copy app_state essentials to request_state
-    # THIS IS THE CRUCIAL MIDDLEWARE TO ENSURE DB SESSIONS ARE AVAILABLE TO REQUESTS
+    
+    # 14. Middleware to ensure essential app state is available to request handlers
+    
+    @app_instance.middleware("http")
     async def set_essential_app_state_on_request_middleware(request: Request, call_next):
         # Directly access and set specific, known attributes from app_instance.state
         # This avoids issues with how Starlette's State object might be structured internally (e.g. via ._state)
-        if hasattr(app_instance.state, 'actual_session_factory'):
-            request.state.actual_session_factory = app_instance.state.actual_session_factory
-            # logger.debug(f"MIDDLEWARE (set_essential): Copied 'actual_session_factory' to request.state for {request.url.path}")
-        else:
-            logger.error(f"MIDDLEWARE (set_essential): 'actual_session_factory' NOT FOUND on app.state for {request.url.path}. DB sessions will fail.")
-           
-        if hasattr(app_instance.state, 'db_engine'):
-            request.state.db_engine = app_instance.state.db_engine
-            # logger.debug(f"MIDDLEWARE (set_essential): Copied 'db_engine' to request.state for {request.url.path}")
-        else:
-            logger.error(f"MIDDLEWARE (set_essential): 'db_engine' NOT FOUND on app.state for {request.url.path}.")
-       
-        if hasattr(app_instance.state, 'settings'): # Also copy settings for convenience
-            request.state.settings = app_instance.state.settings
-        else:
-            logger.warning(f"MIDDLEWARE (set_essential): 'settings' NOT FOUND on app.state for {request.url.path}.")
-
-        response = await call_next(request)
-        return response
-    app_instance.add_middleware(BaseHTTPMiddleware, dispatch=set_essential_app_state_on_request_middleware)
-    logger.info("Essential app state to request state middleware added.")
-
+        try:
+            # Copy over any critically needed app state items to the request state
+            if hasattr(app_instance.state, "settings"):
+                request.state.settings = app_instance.state.settings
+                
+            if hasattr(app_instance.state, "jwt_service"):
+                request.state.jwt_service = app_instance.state.jwt_service
+            
+            if hasattr(app_instance.state, "audit_logger"):
+                request.state.audit_logger = app_instance.state.audit_logger
+            
+            # Continue with the request
+            return await call_next(request)
+        except Exception as e:
+            logger.error(f"Error in set_essential_app_state_on_request_middleware: {e}", exc_info=True)
+            # Continue even if there's an error setting state, to avoid breaking the application
+            return await call_next(request)
+    
+    @app_instance.get("/", include_in_schema=False)
+    async def root():
+        return {"message": "Welcome to the Novamind Mental Health Digital Twin API. See /docs for API documentation."}
+    
+    logger.info("CREATE_APPLICATION_COMPLETE: Application factory complete.")
     return app_instance

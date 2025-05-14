@@ -7,6 +7,7 @@ to responses, helping to protect against common web vulnerabilities.
 
 import logging
 from collections.abc import Callable
+from typing import Dict, Optional
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -22,15 +23,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     security against XSS, clickjacking, and other web vulnerabilities.
     """
     
-    def __init__(self, app):
+    def __init__(self, app, security_headers: Optional[Dict[str, str]] = None):
         """
         Initialize the security headers middleware.
         
         Args:
             app: The FastAPI application
+            security_headers: Optional dictionary of security headers to use instead of defaults
         """
         super().__init__(app)
-        # Default security headers used for all responses
+        # Default security headers used for all responses if not overridden
         self.default_headers = {
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
@@ -41,6 +43,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Cache-Control": "no-store, max-age=0",
             "Pragma": "no-cache"
         }
+        
+        # If custom headers are provided, use those instead
+        self.headers = security_headers if security_headers is not None else self.default_headers
         
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -57,7 +62,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         
         # Add security headers to response
-        for header_name, header_value in self.default_headers.items():
+        for header_name, header_value in self.headers.items():
             response.headers[header_name] = header_value
             
         return response
