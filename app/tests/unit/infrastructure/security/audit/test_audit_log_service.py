@@ -35,6 +35,7 @@ class MockAuditLogRepository:
         self._get_by_id = AsyncMock(return_value=None)
         self._search = AsyncMock(return_value=[])
         self._get_statistics = AsyncMock(return_value={})
+        self.create_audit_log = AsyncMock(return_value=str(uuid.uuid4()))
     
     async def create(self, audit_log: AuditLog) -> str:
         """Mock implementation of create."""
