@@ -257,6 +257,7 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
         """Middleware to add security headers to responses."""
+        # Import logging inside the function to ensure it's always defined
         import logging
         logger = logging.getLogger("security_headers_middleware")
         
@@ -803,6 +804,10 @@ def middleware_patch(test_settings):
     
     # Create a patched dispatch that will accept test tokens without verification
     async def patched_dispatch(self, request, call_next):
+        # Import logging and create logger inside the function to ensure it's available
+        import logging
+        logger = logging.getLogger("auth_middleware_patch")
+        
         # Check for bypass paths first
         path = request.url.path
         

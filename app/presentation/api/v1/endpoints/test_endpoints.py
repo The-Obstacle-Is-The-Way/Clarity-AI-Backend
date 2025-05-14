@@ -79,14 +79,25 @@ async def force_validation_error() -> Dict[str, Any]:
     )
 
 
+@router.get("/hello")
+async def test_hello():
+    """Simple hello endpoint for tests."""
+    return {"message": "Hello from test API"}
+
+
+@router.get("/error")
+async def test_error():
+    """Test endpoint that raises an HTTP exception."""
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test error")
+
+
 @router.get("/runtime-error")
-async def force_runtime_error():
-    """
-    Test endpoint that deliberately raises a RuntimeError.
-    
-    This is used by security and error handling tests to ensure sensitive 
-    error details are masked in responses.
-    """
-    # Deliberately raise an error with sensitive information
-    # The global exception handler should mask this message
-    raise RuntimeError("This is a sensitive internal error detail that should be masked") 
+async def test_runtime_error():
+    """Test endpoint that raises a RuntimeError with sensitive information that should be masked."""
+    raise RuntimeError("This is a sensitive internal error detail that should be masked")
+
+
+@router.get("/value-error")
+async def test_value_error():
+    """Test endpoint that raises a ValueError."""
+    raise ValueError("This is a test ValueError") 

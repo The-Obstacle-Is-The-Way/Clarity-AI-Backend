@@ -321,7 +321,7 @@ def create_application(
     logger.info(f"CREATE_APPLICATION_SETTINGS_RESOLVED: Using environment: {current_settings.ENVIRONMENT}")
     
     # Configure logging based on environment
-    config_logging(current_settings.LOG_LEVEL)
+    logging.config.dictConfig(LOGGING_CONFIG)
     logger.info(f"Logging configured with level: {current_settings.LOG_LEVEL}")
     
     # Initialize Sentry for error tracking (if configured)
