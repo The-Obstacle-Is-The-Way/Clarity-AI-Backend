@@ -6,11 +6,11 @@ The service analyzes clinical text to extract structured insights using
 natural language processing.
 """
 
-# Import directly to provide backward compatibility
-from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import MockMentalLLaMAService
+# Import directly for backward compatibility
+from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA
 
-# Export the service class explicitly
-__all__ = ["MockMentalLLaMAService"]
+# Define the class alias for service compatibility
+MockMentalLLaMAService = MockMentaLLaMA
 
-# Make the service directly available in this module for imports
-MockMentalLLaMAService = MockMentalLLaMAService
+# Export both names for backward compatibility
+__all__ = ["MockMentaLLaMA", "MockMentalLLaMAService"]

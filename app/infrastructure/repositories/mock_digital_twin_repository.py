@@ -1,207 +1,244 @@
 """
-Mock implementation of DigitalTwinRepository for testing.
-Uses in-memory storage rather than actual database.
+Mock Digital Twin Repository - Test Implementation
+
+This module provides a mock implementation of the Digital Twin repository
+for testing purposes. It follows clean architecture principles.
 """
-from datetime import datetime
+
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
-from app.domain.entities.digital_twin import DigitalTwinState
-from app.domain.entities.digital_twin_enums import ClinicalSignificance  # Corrected import path
-from app.domain.repositories.digital_twin_repository import DigitalTwinRepository
+from app.core.interfaces.repositories.digital_twin_repository_interface import IDigitalTwinRepository
 
 
-class MockDigitalTwinRepository(DigitalTwinRepository):
+class MockDigitalTwinRepository(IDigitalTwinRepository):
     """
-    Mock implementation of DigitalTwinRepository using in-memory storage.
-    Suitable for testing and development without a database dependency.
+    Mock implementation of the Digital Twin repository interface.
+    Used for testing and development without requiring external dependencies.
     """
-    
+
     def __init__(self):
-        """Initialize the mock repository with empty storage."""
-        self._storage: dict[UUID, list[DigitalTwinState]] = {}
+        """Initialize the mock repository with in-memory storage."""
+        self._digital_twins = {}
+        self._sessions = {}
     
-    async def get_by_id(self, digital_twin_id: UUID) -> DigitalTwinState | None:
+    async def create_digital_twin(self, twin_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Retrieve a Digital Twin state by its ID.
+        Create a new digital twin.
         
         Args:
-            digital_twin_id: The ID of the Digital Twin state
+            twin_data: Data for the digital twin
             
         Returns:
-            The Digital Twin state if found, None otherwise
+            The created digital twin with ID
         """
-        for patient_states in self._storage.values():
-            for state in patient_states:
-                if hasattr(state, 'id') and state.id == digital_twin_id:
-                    return state
-        return None
+        twin_id = str(uuid4())
+        
+        # Create the digital twin with an ID
+        digital_twin = {
+            "id": twin_id,
+            **twin_data,
+            "created_at": "2025-05-14T15:00:00Z",
+            "updated_at": "2025-05-14T15:00:00Z",
+            "status": "active",
+            "version": "1.0.0"
+        }
+        
+        # Store in memory
+        self._digital_twins[twin_id] = digital_twin
+        
+        return digital_twin
     
-    async def get_latest_for_patient(self, patient_id: UUID) -> DigitalTwinState | None:
+    async def get_digital_twin(self, twin_id: Union[str, UUID]) -> Optional[Dict[str, Any]]:
         """
-        Retrieve the latest Digital Twin state for a patient.
+        Get a digital twin by ID.
         
         Args:
-            patient_id: The ID of the patient
+            twin_id: Digital twin ID
             
         Returns:
-            The latest Digital Twin state if found, None otherwise
+            Digital twin data if found, None otherwise
         """
-        # Return the most recently saved state (append order)
-        if patient_id not in self._storage or not self._storage[patient_id]:
+        twin_id_str = str(twin_id)
+        return self._digital_twins.get(twin_id_str)
+    
+    async def update_digital_twin(self, twin_id: Union[str, UUID], twin_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Update a digital twin.
+        
+        Args:
+            twin_id: Digital twin ID
+            twin_data: Updated data
+            
+        Returns:
+            Updated digital twin if found, None otherwise
+        """
+        twin_id_str = str(twin_id)
+        
+        if twin_id_str not in self._digital_twins:
             return None
-        return self._storage[patient_id][-1]
+        
+        # Update the digital twin
+        digital_twin = self._digital_twins[twin_id_str]
+        digital_twin.update(twin_data)
+        digital_twin["updated_at"] = "2025-05-14T15:05:00Z"
+        
+        return digital_twin
     
-    async def get_history_for_patient(
-        self, 
-        patient_id: UUID, 
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        limit: int = 100
-    ) -> list[DigitalTwinState]:
+    async def delete_digital_twin(self, twin_id: Union[str, UUID]) -> bool:
         """
-        Retrieve historical Digital Twin states for a patient.
+        Delete a digital twin.
         
         Args:
-            patient_id: The ID of the patient
-            start_date: Optional start date for filtering
-            end_date: Optional end date for filtering
-            limit: Maximum number of records to return
+            twin_id: Digital twin ID
             
         Returns:
-            List of Digital Twin states ordered by timestamp (newest first)
+            True if deleted, False if not found
         """
-        if patient_id not in self._storage:
-            return []
+        twin_id_str = str(twin_id)
         
-        # Apply date filters if provided
-        filtered_states = self._storage[patient_id]
+        if twin_id_str not in self._digital_twins:
+            return False
         
-        if start_date:
-            filtered_states = [
-                state for state in filtered_states
-                if state.timestamp >= start_date
-            ]
+        # Remove from storage
+        del self._digital_twins[twin_id_str]
         
-        if end_date:
-            filtered_states = [
-                state for state in filtered_states
-                if state.timestamp <= end_date
-            ]
-        
-        # Sort by timestamp (newest first) and apply limit
-        sorted_states = sorted(
-            filtered_states,
-            key=lambda state: state.timestamp,
-            reverse=True
-        )
-        
-        return sorted_states[:limit]
+        return True
     
-    async def save(self, digital_twin_state: DigitalTwinState) -> DigitalTwinState:
+    async def list_digital_twins(self, user_id: Optional[Union[str, UUID]] = None) -> List[Dict[str, Any]]:
         """
-        Save a Digital Twin state.
+        List all digital twins, optionally filtered by user ID.
         
         Args:
-            digital_twin_state: The Digital Twin state to save
+            user_id: Optional user ID to filter by
             
         Returns:
-            The saved Digital Twin state with any updates (e.g., generated IDs)
+            List of digital twins
         """
-        patient_id = digital_twin_state.patient_id
+        if user_id is None:
+            return list(self._digital_twins.values())
         
-        # Initialize patient storage if it doesn't exist
-        if patient_id not in self._storage:
-            self._storage[patient_id] = []
+        user_id_str = str(user_id)
         
-        # Store a copy of the state to prevent external modification
-        state_copy = digital_twin_state  # In a real impl, we'd deep copy
-        
-        # Add ID if not provided
-        if not hasattr(state_copy, 'id'):
-            # In a real implementation, we'd use proper attribute setting
-            # This is just for the mock
-            state_copy.id = uuid4()
-        
-        self._storage[patient_id].append(state_copy)
-        return state_copy
+        # Filter by user ID
+        return [
+            twin for twin in self._digital_twins.values()
+            if twin.get("user_id") == user_id_str
+        ]
     
-    # Alias for non-enhanced tests
-    async def get_latest_state(self, patient_id: UUID) -> DigitalTwinState | None:
+    async def create_session(self, twin_id: Union[str, UUID], session_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Retrieve the latest Digital Twin state for a patient (alias for get_latest_for_patient).
-        """
-        return await self.get_latest_for_patient(patient_id)
-    
-    async def find_by_clinical_significance(
-        self,
-        significance_level: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-        limit: int = 100
-    ) -> list[tuple[UUID, DigitalTwinState]]:
-        """
-        Find Digital Twin states with specified clinical significance.
+        Create a new session for a digital twin.
         
         Args:
-            significance_level: The clinical significance level to search for
-            start_date: Optional start date for filtering
-            end_date: Optional end date for filtering
-            limit: Maximum number of records to return
+            twin_id: Digital twin ID
+            session_data: Session data
             
         Returns:
-            List of tuples containing patient ID and Digital Twin state
+            Created session with ID
         """
-        results = []
+        twin_id_str = str(twin_id)
         
-        # Convert string to enum value
-        try:
-            sig_level = ClinicalSignificance(significance_level.lower())
-        except ValueError:
-            return []
+        if twin_id_str not in self._digital_twins:
+            raise ValueError(f"Digital twin with ID {twin_id_str} not found")
         
-        # Search all patients
-        for patient_id, states in self._storage.items():
-            for state in states:
-                # Apply date filters
-                if start_date and state.timestamp < start_date:
-                    continue
-                if end_date and state.timestamp > end_date:
-                    continue
-                
-                # Check for insights with matching significance
-                matching_insights = [
-                    insight for insight in state.clinical_insights
-                    if insight.clinical_significance == sig_level
-                ]
-                
-                if matching_insights:
-                    results.append((patient_id, state))
-                    
-                    # Break early if we've reached the limit
-                    if len(results) >= limit:
-                        return results
+        session_id = str(uuid4())
         
-        return results
+        # Create the session
+        session = {
+            "id": session_id,
+            "twin_id": twin_id_str,
+            "created_at": "2025-05-14T15:00:00Z",
+            "updated_at": "2025-05-14T15:00:00Z",
+            "status": "active",
+            **session_data,
+            "messages": []
+        }
+        
+        # Store in memory
+        self._sessions[session_id] = session
+        
+        return session
     
-    # Implement abstract interface methods for compatibility
-    async def get_by_patient_id(self, patient_id: UUID) -> DigitalTwinState | None:  # type: ignore
-        """Alias for retrieving the latest Digital Twin state by patient ID."""
-        return await self.get_latest_for_patient(patient_id)
-
-    async def create(self, twin: DigitalTwinState) -> DigitalTwinState:
-        """Create a new Digital Twin state (alias for save)."""
-        return await self.save(twin)
-
-    async def update(self, twin: DigitalTwinState) -> DigitalTwinState | None:
-        """Update an existing Digital Twin state (alias for save)."""
-        return await self.save(twin)
-
-    async def delete(self, twin_id: UUID) -> bool:
-        """Delete a Digital Twin state by its ID."""
-        removed = False
-        for patient_id, states in list(self._storage.items()):
-            filtered = [s for s in states if not (hasattr(s, 'id') and s.id == twin_id)]
-            if len(filtered) < len(states):
-                self._storage[patient_id] = filtered
-                removed = True
-        return removed
+    async def get_session(self, session_id: Union[str, UUID]) -> Optional[Dict[str, Any]]:
+        """
+        Get a session by ID.
+        
+        Args:
+            session_id: Session ID
+            
+        Returns:
+            Session data if found, None otherwise
+        """
+        session_id_str = str(session_id)
+        return self._sessions.get(session_id_str)
+    
+    async def update_session(self, session_id: Union[str, UUID], session_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Update a session.
+        
+        Args:
+            session_id: Session ID
+            session_data: Updated data
+            
+        Returns:
+            Updated session if found, None otherwise
+        """
+        session_id_str = str(session_id)
+        
+        if session_id_str not in self._sessions:
+            return None
+        
+        # Update the session
+        session = self._sessions[session_id_str]
+        session.update(session_data)
+        session["updated_at"] = "2025-05-14T15:05:00Z"
+        
+        return session
+    
+    async def add_message_to_session(self, session_id: Union[str, UUID], message: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Add a message to a session.
+        
+        Args:
+            session_id: Session ID
+            message: Message data
+            
+        Returns:
+            Updated session with the new message
+        """
+        session_id_str = str(session_id)
+        
+        if session_id_str not in self._sessions:
+            raise ValueError(f"Session with ID {session_id_str} not found")
+        
+        # Get the session
+        session = self._sessions[session_id_str]
+        
+        # Add message to session
+        session["messages"].append(message)
+        session["updated_at"] = "2025-05-14T15:05:00Z"
+        
+        return session
+    
+    async def end_session(self, session_id: Union[str, UUID]) -> Optional[Dict[str, Any]]:
+        """
+        End a session.
+        
+        Args:
+            session_id: Session ID
+            
+        Returns:
+            Updated session if found, None otherwise
+        """
+        session_id_str = str(session_id)
+        
+        if session_id_str not in self._sessions:
+            return None
+        
+        # End the session
+        session = self._sessions[session_id_str]
+        session["status"] = "ended"
+        session["ended_at"] = "2025-05-14T15:10:00Z"
+        
+        return session
