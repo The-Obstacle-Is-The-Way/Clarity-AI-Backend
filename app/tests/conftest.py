@@ -14,6 +14,7 @@ from typing import Dict, Any, Generator, AsyncGenerator
 from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 # Make the module available to be imported by tests
 sys.modules['pytest_asyncio'] = pytest_asyncio
@@ -129,5 +130,63 @@ async def with_disabled_audit_middleware(request, app_instance):
     # Restore state if needed
     if hasattr(app_instance, 'state'):
         app_instance.state.disable_audit_middleware = False
+
+@pytest.fixture(scope="function")
+async def client_app_tuple_func_scoped(app_settings) -> Generator[tuple[AsyncClient, FastAPI], None, None]:
+    """
+    Provides a tuple of (AsyncClient, FastAPI) with function scope.
+    
+    This fixture is more efficient for tests that need both the client and app instance,
+    as it avoids creating them separately.
+    """
+    # Create application with explicit flags to disable middleware that might cause hangs
+    app = create_application(
+        settings_override=app_settings, 
+        include_test_routers=True,
+        disable_audit_middleware=True,  # Explicitly disable audit middleware
+        skip_auth_middleware=False      # Keep auth middleware for auth tests
+    )
+    
+    # Explicitly mark as test mode
+    app.state.testing = True
+    app.state.disable_audit_middleware = True
+    
+    # Ensure session factory is properly set up for tests
+    async_engine = create_async_engine(
+        app_settings.ASYNC_DATABASE_URL,
+        echo=False,
+        # For SQLite, important to enable check_same_thread=False for tests
+        connect_args={"check_same_thread": False} if app_settings.ASYNC_DATABASE_URL.startswith("sqlite") else {}
+    )
+    
+    # Create an async session factory
+    async_session_factory = async_sessionmaker(
+        bind=async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False
+    )
+    
+    # Set session factory on app state
+    app.state.actual_session_factory = async_session_factory
+    app.state.db_engine = async_engine
+    
+    # Create test tables if using SQLite in-memory
+    if app_settings.ASYNC_DATABASE_URL.startswith("sqlite"):
+        from app.infrastructure.persistence.sqlalchemy.models.base import Base
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        app.state.db_schema_created = True
+    
+    # Create test client with non-default timeout
+    async with AsyncClient(
+        app=app,
+        base_url="http://test",
+        timeout=3.0  # Add global timeout for all requests
+    ) as client:
+        yield client, app
+    
+    # Clean up resources
+    await async_engine.dispose()
 
 # Setup other global fixtures if needed
