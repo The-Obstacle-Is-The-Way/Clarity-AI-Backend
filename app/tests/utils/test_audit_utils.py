@@ -6,14 +6,16 @@ audit logging, allowing it to be disabled or mocked during tests.
 """
 
 from typing import AsyncGenerator, Optional, Union, Callable
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager, contextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
+from unittest.mock import AsyncMock, MagicMock
 
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.infrastructure.persistence.repositories.mock_audit_log_repository import MockAuditLogRepository
 from app.application.services.audit_log_service import AuditLogService
+from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -132,4 +134,62 @@ def replace_middleware_with_mock(app: FastAPI, middleware_type: type, mock_middl
                 app.add_middleware(mock_middleware)
                 
             # Only replace the first occurrence
-            break 
+            break
+
+class MockAuditLogMiddleware(BaseHTTPMiddleware):
+    """Mock implementation of AuditLogMiddleware for testing."""
+    
+    def __init__(self, app):
+        """Initialize with mocked methods."""
+        super().__init__(app)
+        self.dispatch = AsyncMock()
+        self.dispatch.return_value = None
+        
+    async def dispatch(self, request: Request, call_next: Callable):
+        """Mock dispatch implementation that just passes through."""
+        return await call_next(request)
+
+def create_test_request(app: FastAPI, path: str = "/", method: str = "GET", headers: dict = None) -> Request:
+    """
+    Create a mock Request object for testing.
+    
+    Args:
+        app: The FastAPI application
+        path: URL path
+        method: HTTP method
+        headers: Request headers
+        
+    Returns:
+        Request: A mock Request object
+    """
+    # Create minimal scope for request
+    scope = {
+        "type": "http",
+        "app": app,
+        "path": path,
+        "method": method,
+        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()],
+        "client": ("127.0.0.1", 8000),
+        "path_params": {},
+        "query_string": b"",
+        "url": f"http://testserver{path}",
+        "session": {}
+    }
+    
+    # Create request
+    request = Request(scope)
+    
+    # Set disable flag directly on request.state
+    setattr(request.state, "disable_audit_middleware", True)
+    
+    # Copy app state values to request state
+    if hasattr(app.state, "settings"):
+        setattr(request.state, "settings", app.state.settings)
+    
+    if hasattr(app.state, "jwt_service"):
+        setattr(request.state, "jwt_service", app.state.jwt_service)
+    
+    # Add mock user if needed
+    setattr(request.state, "user", MagicMock(id="test_user_id"))
+    
+    return request 

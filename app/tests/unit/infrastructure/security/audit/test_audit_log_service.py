@@ -238,11 +238,20 @@ class TestAuditLogMiddleware:
     @pytest.fixture
     def middleware(self, mock_audit_logger):
         """Fixture for middleware."""
-        return AuditLogMiddleware(
-            app=MagicMock(),
+        app = MagicMock()
+        app.state.disable_audit_middleware = False  # Explicitly enable for tests
+        
+        middleware = AuditLogMiddleware(
+            app=app,
             audit_logger=mock_audit_logger,
             skip_paths=["/docs", "/redoc", "/openapi.json", "/api/health"]
         )
+        
+        # Override _is_audit_disabled to ensure audit logging is enabled for tests
+        original_is_audit_disabled = middleware._is_audit_disabled
+        middleware._is_audit_disabled = MagicMock(return_value=False)
+        
+        return middleware
     
     async def test_dispatch_phi_path(self, middleware, mock_audit_logger):
         """Test middleware dispatches for PHI paths."""
@@ -251,6 +260,15 @@ class TestAuditLogMiddleware:
         request.url.path = "/api/v1/patients/123"
         request.method = "GET"
         request.state.user = MagicMock(id=TEST_USER_ID)
+        request.state.disable_audit_middleware = False  # Explicitly enable audit for this test
+        request.app.state.disable_audit_middleware = False  # Explicitly enable audit at app level
+        
+        # Add app settings for environment detection
+        from app.core.config.settings import Settings
+        mock_settings = MagicMock(spec=Settings)
+        mock_settings.ENVIRONMENT = "development"  # Not test environment
+        request.state.settings = mock_settings
+        request.app.state.settings = mock_settings
         
         # Mock call_next function
         response = MagicMock(spec=Response)
