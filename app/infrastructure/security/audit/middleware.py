@@ -193,7 +193,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                             patient_id=resource_id or "unknown",  # Add patient_id parameter
                             action=action,
                             status=access_status,
-                            metadata={"path": path, "method": method},
+                            metadata={"path": path, "method": method, "user_agent": request_context.get("user_agent", "unknown")},
                             ip_address=request_context.get("ip_address"),
                             reason="API request",
                             request=request
@@ -225,7 +225,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                             patient_id=resource_id or "unknown",  # Add patient_id parameter
                             action=action,
                             status=access_status,
-                            metadata={"path": path, "method": method, "error": str(e)},
+                            metadata={"path": path, "method": method, "error": str(e), "user_agent": request_context.get("user_agent", "unknown")},
                             ip_address=request_context.get("ip_address"),
                             reason="API request (failed)",
                             request=request
@@ -249,14 +249,26 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         Returns:
             Optional[str]: The user ID or None if no user
         """
-        if hasattr(request.state, "user") and request.state.user:
-            user = request.state.user
-            return str(user.id)
+        try:
+            if hasattr(request.state, "user") and request.state.user:
+                user = request.state.user
+                # Safely get 'id' attribute and convert to string
+                user_id_val = getattr(user, "id", None)
+                return str(user_id_val) if user_id_val is not None else None
+        except AttributeError: # Should ideally not be hit if getattr is used, but good for safety
+            logger.warning("Attempted to access 'id' on user object without it or user object not as expected in AuditLogMiddleware._extract_user_id")
+            pass # Fall through to return None
         return None
     
     def _extract_resource_info(self, path: str) -> Tuple[Optional[str], Optional[str]]:
         """
         Extract resource type and ID from the URL path.
+        Handles paths like:
+        - /api/v1/patients/123/phi
+        - /api/v1/medical-records/record-abc/phi
+        - /api/v1/users/user-xyz
+        - /api/v1/users/
+        - /api/v1/permissions
         
         Args:
             path: The URL path
@@ -264,28 +276,32 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         Returns:
             Tuple[Optional[str], Optional[str]]: The resource type and ID
         """
-        # Match patterns like /api/v1/patients/123
-        match = re.search(r"/api/v\d+/(\w+)/([^/]+)", path)
-        if match:
-            resource_type = match.group(1)
-            # Remove trailing slash if it exists
-            resource_id = match.group(2).rstrip("/")
-            # Check if resource_type is plural and convert to singular
-            if resource_type.endswith("s"):
-                resource_type = resource_type[:-1]
-            return resource_type, resource_id
-            
-        # Try to match other patterns
-        # Special handling for PHI endpoints like /api/v1/patients/123/phi
-        phi_match = re.search(r"/api/v\d+/(\w+)/([^/]+)/phi", path)
+        
+        # Priority 1: Match specific PHI access patterns like /api/vX/resource-type/resource-id/phi
+        # Resource ID is considered mandatory for specific PHI access paths.
+        # Allows hyphens in resource type and ID. Optionally matches a trailing slash.
+        phi_match = re.search(r"/api/v\d+/([\w-]+)/([^/]+)/phi/?$", path)
         if phi_match:
-            resource_type = f"{phi_match.group(1)}_phi"
-            resource_id = phi_match.group(2)
-            # Check if resource_type is plural and convert to singular
-            if resource_type.endswith("s_phi"):
-                resource_type = f"{resource_type[:-5]}_phi"
+            resource_type = phi_match.group(1)
+            resource_id = phi_match.group(2).rstrip("/") # ID is mandatory, rstrip just in case
             return resource_type, resource_id
             
+        # Priority 2: Match generic resource patterns like /api/vX/resource-type[/optional-id]
+        # Resource ID is optional (e.g., for listing resources at /api/v1/patients/).
+        # Allows hyphens in resource type and ID. Optionally matches a trailing slash.
+        # Matches the end of the string to avoid partial matches on longer paths.
+        generic_match = re.search(r"/api/v\d+/([\w-]+)(?:/([^/]*))?/?$", path)
+        if generic_match:
+            resource_type = generic_match.group(1)
+            resource_id_match = generic_match.group(2)
+            resource_id = None
+            if resource_id_match:  # If group 2 (optional ID part) matched and is not empty
+                resource_id = resource_id_match.rstrip("/")
+                if not resource_id: # If rstrip results in an empty string, treat as no ID
+                    resource_id = None
+            return resource_type, resource_id
+            
+        # Fallback: if no pattern matched, return None for both
         return None, None
     
     def _map_method_to_action(self, method: str) -> str:

@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional
 import pytest
 from fastapi import Request, Response
 from unittest.mock import MagicMock, AsyncMock, patch, call
+import asyncio # Added for asyncio.TimeoutError in new tests
 
 from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import (
@@ -251,156 +252,229 @@ class TestAuditLogMiddleware:
         # Ensure app.state and necessary sub-attributes exist for middleware initialization and checks
         app.state = MagicMock()
         app.state.settings = MagicMock()
-        app.state.settings.ENVIRONMENT = "not_test" # Default to not_test unless overridden by a specific test
+        # Default to a non-test environment for the fixture, tests can override request.app.state if needed
+        app.state.settings.ENVIRONMENT = "production" 
         app.state.testing = False
         app.state.disable_audit_middleware = False
 
         return AuditLogMiddleware(
             app=app,
             audit_logger=mock_audit_logger,
-            skip_paths=["/skip_this"] # Add a distinct skip_path for testing skip logic
+            skip_paths=["/skip_this_path"] # Use a more specific skip_path for clarity
         )
 
-    def _prepare_request_mock(self, path: str, method: str, user_id: Optional[str] = TEST_USER_ID) -> MagicMock:
+    def _prepare_request_mock(self, path: str, method: str, user_id: Optional[str] = TEST_USER_ID, env: str = "production", testing_flag: bool = False, disable_audit_flag: bool = False) -> MagicMock:
+        """Helper to create a comprehensively mocked Request object."""
         request = MagicMock(spec=Request)
+        
+        # Mock URL object and its path attribute
         request.url = MagicMock()
         request.url.path = path
+        
         request.method = method
         request.headers = {"User-Agent": "TestAgent/1.0"}
+        
+        # Mock client object and its host attribute
         request.client = MagicMock()
         request.client.host = "127.0.0.1"
         
-        # Mock app and app.state on the request object itself
+        # Mock app and app.state on the request object itself, as accessed by _is_audit_disabled
         request.app = MagicMock()
         request.app.state = MagicMock()
         request.app.state.settings = MagicMock()
-        request.app.state.settings.ENVIRONMENT = "not_test" 
-        request.app.state.testing = False
-        request.app.state.disable_audit_middleware = False
+        request.app.state.settings.ENVIRONMENT = env
+        request.app.state.testing = testing_flag
+        request.app.state.disable_audit_middleware = disable_audit_flag # For app-level disabling
         
-        request.state = MagicMock() # Ensure request.state exists
+        # Mock request.state and current_user for user extraction
+        # AuditLogMiddleware._extract_user_id expects request.state.user
+        request.state = MagicMock() 
         if user_id:
-            request.state.current_user = {"id": user_id, "username": f"user_{user_id}"}
+            # Simulate structure expected by _extract_user_id: request.state.user with an 'id' attribute
+            user_details_mock = MagicMock(id=user_id) # Ensure 'id' attribute holds the direct string value
+            # If AuditLogMiddleware._extract_user_id or other parts access more attributes of request.state.user,
+            # they should be added here, e.g., user_details_mock.username = f"user_{user_id}"
+            request.state.user = user_details_mock
         else:
-            request.state.current_user = None
+            request.state.user = None # Correctly set to None if no user_id provided
+        
+        # For request-level disabling, if used by _is_audit_disabled
+        request.state.disable_audit_middleware = False # Default to not disabled at request level
+
         return request
 
     @patch.object(AuditLogMiddleware, '_is_audit_disabled', new_callable=AsyncMock)
-    async def test_dispatch_phi_path(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
+    async def test_dispatch_phi_path_logs_when_enabled(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
         """Test that PHI access is logged for PHI paths when audit is enabled."""
-        mock_is_disabled_method.return_value = False # Ensure audit is NOT disabled
+        mock_is_disabled_method.return_value = False # Ensure audit is NOT disabled by the mock
 
         request = self._prepare_request_mock(path="/api/v1/patients/123/phi", method="GET")
-        call_next = AsyncMock(return_value=Response(status_code=200, content="Success"))
+        # Ensure the specific request mock doesn't accidentally disable audit via its own app.state properties
+        request.app.state.settings.ENVIRONMENT = "production" # Explicitly non-test for this test
+        request.app.state.testing = False
+        request.app.state.disable_audit_middleware = False
 
-        response = await middleware.dispatch(request, call_next)
+
+        call_next_response = Response(status_code=200, content="Successful PHI access")
+        call_next = AsyncMock(return_value=call_next_response)
+
+        # Patch _extract_resource_info for predictable output in this unit test
+        with patch.object(middleware, '_extract_resource_info', return_value=("patients", "123")) as mock_extract_resource:
+            response = await middleware.dispatch(request, call_next)
         
-        assert response.status_code == 200
+        assert response == call_next_response
         call_next.assert_called_once_with(request)
-        mock_audit_logger.log_phi_access.assert_called_once()
+        mock_extract_resource.assert_called_once_with("/api/v1/patients/123/phi")
         
+        # Verify _is_audit_disabled was called (and returned False as per mock)
+        # It's called twice in the current middleware.dispatch logic
+        assert mock_is_disabled_method.call_count == 2
+        mock_is_disabled_method.assert_has_calls([call(request), call(request)])
+        
+        mock_audit_logger.log_phi_access.assert_called_once()
         args, kwargs = mock_audit_logger.log_phi_access.call_args
+        
         assert kwargs["actor_id"] == TEST_USER_ID
         assert kwargs["resource_type"] == "patients"
         assert kwargs["resource_id"] == "123"
-        assert kwargs["action"] == "view"
-        assert kwargs["status"] == "success"
+        assert kwargs["patient_id"] == "123" # Assuming patient_id is derived from resource_id here
+        assert kwargs["action"] == "view" # GET maps to view
+        assert kwargs["status"] == "success" # Based on 200 OK from call_next
         assert kwargs["metadata"]["path"] == "/api/v1/patients/123/phi"
         assert kwargs["metadata"]["method"] == "GET"
         assert kwargs["ip_address"] == "127.0.0.1"
+        assert "TestAgent/1.0" in kwargs["metadata"]["user_agent"]
 
     @patch.object(AuditLogMiddleware, '_is_audit_disabled', new_callable=AsyncMock)
-    async def test_audit_disabled_bypasses_logging(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
-        """Test that if audit is disabled, PHI path processing is skipped for logging."""
-        mock_is_disabled_method.return_value = True # Simulate audit being disabled
+    async def test_audit_disabled_bypasses_logging_for_phi_path(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
+        """Test that if audit is disabled (by mock), PHI path processing skips logging."""
+        mock_is_disabled_method.return_value = True # Simulate _is_audit_disabled returning True
 
-        request = self._prepare_request_mock(path="/api/v1/patients/789/phi", method="GET")
-        call_next = AsyncMock(return_value=Response(status_code=200, content="Disabled audit success"))
+        request = self._prepare_request_mock(path="/api/v1/patients/789/phi", method="POST")
+        call_next_response = Response(status_code=201, content="Created PHI entity")
+        call_next = AsyncMock(return_value=call_next_response)
 
         response = await middleware.dispatch(request, call_next)
 
-        assert response.status_code == 200
+        assert response == call_next_response
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_not_called()
+        mock_is_disabled_method.assert_called_once_with(request) # Ensure our mock was the reason
+
+    @patch.object(AuditLogMiddleware, '_is_audit_disabled', new_callable=AsyncMock)
+    async def test_non_phi_path_skipped_even_if_audit_enabled(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
+        """Test non-PHI paths are skipped, even if _is_audit_disabled would allow logging."""
+        mock_is_disabled_method.return_value = False # Audit is notionally enabled by this mock
+
+        request = self._prepare_request_mock(path="/api/v1/health-check", method="GET")
+         # Ensure the specific request mock doesn't accidentally disable audit via its own app.state properties
+        request.app.state.settings.ENVIRONMENT = "production"
+        request.app.state.testing = False
+        request.app.state.disable_audit_middleware = False
+
+        call_next_response = Response(status_code=200, content="Health OK")
+        call_next = AsyncMock(return_value=call_next_response)
+
+        response = await middleware.dispatch(request, call_next)
+
+        assert response == call_next_response
+        call_next.assert_called_once_with(request)
+        mock_audit_logger.log_phi_access.assert_not_called()
+        
+        # _is_audit_disabled might be called before the PHI path check,
+        # so we assert it was called. The crucial part is no logging for non-PHI.
         mock_is_disabled_method.assert_called_once_with(request)
 
 
     @patch.object(AuditLogMiddleware, '_is_audit_disabled', new_callable=AsyncMock)
-    async def test_skip_non_phi_path(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
-        """Test that non-PHI paths are skipped for logging, even if audit is enabled."""
-        mock_is_disabled_method.return_value = False # Audit is enabled
+    async def test_path_in_skip_list_is_skipped_early(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
+        """Test that paths in skip_paths list are skipped before _is_audit_disabled or PHI checks."""
+        # mock_is_disabled_method is present due to decorator, but should not be called.
+        # We don't set its return_value as it's irrelevant if code path is correct.
 
-        request = self._prepare_request_mock(path="/api/v1/health", method="GET")
-        call_next = AsyncMock(return_value=Response(status_code=200, content="Health OK"))
-
-        response = await middleware.dispatch(request, call_next)
-
-        assert response.status_code == 200
-        call_next.assert_called_once_with(request)
-        mock_audit_logger.log_phi_access.assert_not_called()
-        # _is_audit_disabled might still be called depending on implementation order,
-        # but the key is no logging for non-PHI.
-
-    @patch.object(AuditLogMiddleware, '_is_audit_disabled', new_callable=AsyncMock)
-    async def test_skip_path_in_skip_list(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
-        """Test that paths in the explicit skip_paths list are skipped before PHI checks."""
-        mock_is_disabled_method.return_value = False # Audit is enabled
-
-        request = self._prepare_request_mock(path="/skip_this/subpath", method="GET")
-        call_next = AsyncMock(return_value=Response(status_code=200, content="Skipped path success"))
+        request = self._prepare_request_mock(path="/skip_this_path/some/subresource", method="GET")
+        call_next_response = Response(status_code=200, content="Skipped via skip_paths")
+        call_next = AsyncMock(return_value=call_next_response)
         
         response = await middleware.dispatch(request, call_next)
 
-        assert response.status_code == 200
+        assert response == call_next_response
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_not_called()
-        # _is_audit_disabled should not be called if path is skipped early
-        mock_is_disabled_method.assert_not_called()
-
+        mock_is_disabled_method.assert_not_called() # Crucial: skip_paths check should be first
 
     @patch.object(AuditLogMiddleware, '_is_audit_disabled', new_callable=AsyncMock)
-    async def test_logging_failure_does_not_break_request(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
-        """Test that if audit_logger.log_phi_access fails, the main request still completes."""
+    async def test_logging_failure_does_not_break_request_flow(self, mock_is_disabled_method: AsyncMock, middleware: AuditLogMiddleware, mock_audit_logger: MagicMock):
+        """Test that if audit_logger.log_phi_access raises an exception, the main request still completes."""
         mock_is_disabled_method.return_value = False # Audit is enabled
 
-        request = self._prepare_request_mock(path="/api/v1/patients/logfail/phi", method="POST")
-        call_next = AsyncMock(return_value=Response(status_code=201, content="Created"))
+        request = self._prepare_request_mock(path="/api/v1/patients/logfailure-case/phi", method="PUT")
+        call_next_response = Response(status_code=202, content="Accepted")
+        call_next = AsyncMock(return_value=call_next_response)
 
-        mock_audit_logger.log_phi_access.side_effect = Exception("Simulated logging database error")
+        # Simulate the logger itself failing
+        mock_audit_logger.log_phi_access.side_effect = asyncio.TimeoutError("Simulated logging database timeout")
 
-        response = await middleware.dispatch(request, call_next)
+        with patch.object(middleware, '_extract_resource_info', return_value=("patients", "logfailure-case")):
+            response = await middleware.dispatch(request, call_next)
 
-        assert response.status_code == 201 # Original request should succeed
+        assert response == call_next_response # Original request should succeed despite logging error
         call_next.assert_called_once_with(request)
         mock_audit_logger.log_phi_access.assert_called_once() # Logger was attempted
 
-    # ... (keep other tests like _extract_user_id, _extract_resource_info as they were, if they don't involve _is_audit_disabled directly)
+    async def test_extract_user_id_from_valid_request_state(self, middleware: AuditLogMiddleware):
+        """Test _extract_user_id successfully gets user ID from request.state.user.id."""
+        user_id_val = str(uuid.uuid4())
+        # _prepare_request_mock now correctly sets request.state.user with an object having an 'id' attribute
+        request = self._prepare_request_mock(path="/any", method="GET", user_id=user_id_val)
+        
+        extracted_user_id = await middleware._extract_user_id(request)
+        assert extracted_user_id == user_id_val
 
-    async def test_extract_user_id_success(self, middleware: AuditLogMiddleware):
-        """Test extracting user ID from request.state.current_user."""
-        request = self._prepare_request_mock(path="/any", method="GET", user_id="test_user_123")
-        user_id = await middleware._extract_user_id(request)
-        assert user_id == "test_user_123"
+    async def test_extract_user_id_when_no_current_user(self, middleware: AuditLogMiddleware):
+        """Test _extract_user_id returns None if request.state.user is None."""
+        request = self._prepare_request_mock(path="/any", method="GET", user_id=None) # user_id=None sets request.state.user to None
+        extracted_user_id = await middleware._extract_user_id(request)
+        assert extracted_user_id is None
 
-    async def test_extract_user_id_missing(self, middleware: AuditLogMiddleware):
-        """Test extracting user ID when current_user is not on request.state."""
-        request = self._prepare_request_mock(path="/any", method="GET", user_id=None)
-        # Simulate current_user not being set
-        del request.state.current_user
-        user_id = await middleware._extract_user_id(request)
-        assert user_id is None
+    async def test_extract_user_id_when_current_user_has_no_id(self, middleware: AuditLogMiddleware):
+        """Test _extract_user_id returns None if request.state.user object lacks an 'id' attribute."""
+        # _prepare_request_mock with user_id will create a mock with .id
+        # To test this case, we need to manually create a mock without .id
+        request = self._prepare_request_mock(path="/any", method="GET", user_id=None) # Start with no user
+        user_without_id_mock = MagicMock()
+        # del user_without_id_mock.id # Ensure 'id' is not present or getattr will create a new mock for it.
+                                  # Instead, use spec to limit attributes
+        user_without_id_mock = MagicMock(spec=[]) # An object with no attributes defined by spec
+        request.state.user = user_without_id_mock
+        
+        extracted_user_id = await middleware._extract_user_id(request)
+        assert extracted_user_id is None # getattr on user_without_id_mock for 'id' will return None (or raise if spec strict)
+        
+    async def test_extract_user_id_when_request_state_missing_user_attr(self, middleware: AuditLogMiddleware):
+        """Test _extract_user_id returns None if request.state has no 'user' attribute."""
+        request = self._prepare_request_mock(path="/any", method="GET", user_id=None) # Creates request.state
+        # Explicitly delete the 'user' attribute from request.state
+        if hasattr(request.state, "user"):
+            delattr(request.state, "user") 
+            
+        extracted_user_id = await middleware._extract_user_id(request)
+        assert extracted_user_id is None
 
-    def test_extract_resource_info(self, middleware: AuditLogMiddleware):
-        """Test extracting resource type and ID from path."""
+    def test_extract_resource_info_various_paths(self, middleware: AuditLogMiddleware):
+        """Test _extract_resource_info correctly parses various PHI-like and other paths."""
+        # Note: The AuditLogMiddleware's default phi_url_patterns might influence this.
+        # These tests assume the generic extraction logic based on typical REST patterns.
         test_cases = [
             ("/api/v1/patients/patient123/phi", ("patients", "patient123")),
-            ("/api/v1/medical-records/record456", ("medical-records", "record456")),
-            ("/api/v1/users/user789", ("users", "user789")), # Assuming generic resource extraction
-            ("/api/v1/patients/patient-uuid-val-with-dashes/resource", ("patients", "patient-uuid-val-with-dashes")),
-            ("/api/v1/fixedpath", (None, None)), # No dynamic ID part
-            ("/api/v1/patients/", ("patients", None)), # ID might be in payload for POST
+            ("/api/v1/medical-records/record-abc-456", ("medical-records", "record-abc-456")),
+            ("/api/v1/users/user789", ("users", "user789")), 
+            ("/api/v1/devices/dev_id_with_underscore/data", ("devices", "dev_id_with_underscore")),
+            ("/api/v1/no_id_path", (None, None)), 
+            ("/api/v1/patients/", ("patients", None)), # Common for POST to collection
+            ("/api/v1/consultations/consult-guid-goes-here/notes/note-sub-id", ("consultations", "consult-guid-goes-here")), # Deeper path
         ]
         for path, expected in test_cases:
             resource_type, resource_id = middleware._extract_resource_info(path)
-            assert resource_type == expected[0]
-            assert resource_id == expected[1] 
+            assert resource_type == expected[0], f"Path: {path}"
+            assert resource_id == expected[1], f"Path: {path}" 
