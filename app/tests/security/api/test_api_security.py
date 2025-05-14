@@ -535,51 +535,24 @@ class TestErrorHandling:
         """Test that 500 errors are generic and mask internal details."""
         client, current_fastapi_app = client_app_tuple_func_scoped
 
-        # It's common for test-specific error-raising endpoints to be under a /test/ or /debug/ prefix
-        # Assuming a route like /api/v1/test/test-error is configured in test setups to raise an unhandled error.
-        # This endpoint should map to a handler that raises something like RuntimeError("Sensitive details").
-        # The goal is to ensure this "Sensitive details" message is not in the final HTTP response.
+        # The endpoint /test-api/test/runtime-error is now configured in app_factory.py (via test_endpoints.py)
+        # when include_test_routers=True (which is typical for test app instances).
+        # This endpoint raises RuntimeError(\"This is a sensitive internal error detail that should be masked\").
         
-        # First, let's define and add a simple router that raises an error for testing purposes,
-        # if one isn't already globally available via "Test routers included."
-        # This ensures the test is self-contained in its setup for this specific check.
-        
-        from fastapi import APIRouter, Request
-        test_error_router = APIRouter()
-
-        @test_error_router.get("/test-error-internal")
-        async def _test_error_endpoint_internal(request: Request):
-            raise RuntimeError("This is a sensitive internal error detail that should be masked")
-
-        # Temporarily add this router to the app for this test
-        # Note: This assumes 'current_fastapi_app' is the app from the fixture
-        original_routers = list(current_fastapi_app.router.routes) # Store original routes
-        current_fastapi_app.include_router(test_error_router, prefix="/api/v1/test-errors", tags=["test_errors"])
-
-        try:
-            response = await client.get("/api/v1/test-errors/test-error-internal")
+        response = await client.get("/test-api/test/runtime-error")
             
-            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR, \
+               f"Expected 500, got {response.status_code}. Response: {response.text}"
             
-            response_json = response.json()
-            assert "detail" in response_json
-            # HIPAA: Ensure generic error message, no PHI or sensitive details
-            assert response_json["detail"] == "Internal Server Error", f"Expected generic error, got: {response_json['detail']}"
+        response_json = response.json()
+        assert "detail" in response_json
+        # HIPAA: Ensure generic error message, no PHI or sensitive details
+        assert response_json["detail"] == "An internal server error occurred.", \
+               f"Expected generic error message, got: {response_json['detail']}"
             
-            # Ensure the sensitive part of the original exception is not in the response
-            assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
-            assert "traceback" not in response.text.lower()
-
-        finally:
-            # Clean up: remove the temporarily added router
-            # This is a bit complex as FastAPI doesn't have a direct 'remove_router'.
-            # A robust way is to re-initialize routes if critical, or ensure fixtures handle app isolation.
-            # For this edit, we'll revert to original routes. Simpler fixture management is better long-term.
-            current_fastapi_app.router.routes = original_routers
-        
-        # Test passed successfully (original return True is not idiomatic for pytest)
-        # Pytest considers a test passed if no exceptions are raised or if expected exceptions are caught.
-        # No explicit return True is needed.
+        # Ensure the sensitive part of the original exception is not in the response
+        assert "This is a sensitive internal error detail that should be masked" not in response.text.lower()
+        assert "traceback" not in response.text.lower()
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
 

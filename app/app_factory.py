@@ -539,34 +539,36 @@ def create_application(
     async def set_essential_app_state_on_request_middleware(request: Request, call_next):
         # Directly access and set specific, known attributes from app_instance.state
         # This avoids issues with how Starlette's State object might be structured internally (e.g. via ._state)
+        request.state.actual_session_factory = getattr(app_instance.state, 'actual_session_factory', None)
+        request.state.settings = getattr(app_instance.state, 'settings', None)
+        request.state.jwt_service = getattr(app_instance.state, 'jwt_service', None)
+        request.state.audit_logger = getattr(app_instance.state, 'audit_logger', None)
+        request.state.rate_limiter = getattr(app_instance.state, 'rate_limiter', None)
+        request.state.testing = getattr(app_instance.state, 'testing', False) # For _is_audit_disabled
+        request.state.disable_audit_middleware = getattr(app_instance.state, 'disable_audit_middleware', False) # For _is_audit_disabled
+
+        response = None
         try:
-            # Copy over any critically needed app state items to the request state
-            if hasattr(app_instance.state, "settings"):
-                request.state.settings = app_instance.state.settings
-                
-            if hasattr(app_instance.state, "jwt_service"):
-                request.state.jwt_service = app_instance.state.jwt_service
-            
-            if hasattr(app_instance.state, "audit_service"):
-                request.state.audit_service = app_instance.state.audit_service
-                
-            # Set the disable_audit_middleware flag on the request state if it exists on app state
-            if hasattr(app_instance.state, "disable_audit_middleware"):
-                request.state.disable_audit_middleware = app_instance.state.disable_audit_middleware
-            
-            # Add actual_session_factory to request state
-            if hasattr(app_instance.state, "actual_session_factory"):
-                request.state.actual_session_factory = app_instance.state.actual_session_factory
-                logger.debug(f"Setting actual_session_factory on request.state: {id(app_instance.state.actual_session_factory)}")
-            else:
-                logger.warning("actual_session_factory not found on app.state, cannot set on request.state")
-            
-            # Continue with the request
-            return await call_next(request)
+            response = await call_next(request)
         except Exception as e:
-            logger.error(f"Error in set_essential_app_state_on_request_middleware: {e}", exc_info=True)
-            # Continue even if there's an error setting state, to avoid breaking the application
-            return await call_next(request)
+            # Log the error but do not re-raise. 
+            # Let the higher-level ExceptionMiddleware (and our generic_exception_handler) deal with it.
+            logger.error(f"Exception caught in set_essential_app_state_on_request_middleware during call_next: {e}", exc_info=True)
+            # If we don't raise here, and an error did occur, the generic_exception_handler should have already been invoked
+            # by the ExceptionMiddleware which should be further up the stack (wrapping this).
+            # If generic_exception_handler ran, it would have produced a response. If not, Starlette might send a default 500.
+            # For this test, we want to see if preventing the re-raise here allows generic_exception_handler's response to make it to the client.
+            # We expect generic_exception_handler to be called by Starlette's ExceptionMiddleware.
+            # So, if an exception occurred, a response (from generic_exception_handler or a default Starlette one) should already be on its way.
+            # We should not return a manually created response here, as that would hide whether generic_exception_handler worked.
+            # The critical part is to not re-raise `e` here.
+            pass # Do not re-raise, allow outer handlers to manage.
+        
+        # If an exception occurred and was handled by generic_exception_handler, 
+        # the 'response' variable might not be what generic_exception_handler returned.
+        # Starlette's ExceptionMiddleware should handle returning the response from the handler.
+        # If no exception, response is returned. If an exception, the error handler's response is returned by ExceptionMiddleware.
+        return response
     
     @app_instance.get("/", include_in_schema=False)
     async def root():

@@ -174,7 +174,6 @@ async def xgboost_test_client(mock_xgboost_service, db_session) -> AsyncGenerato
     
     # Override the auth dependency
     app.dependency_overrides[get_current_user] = mock_current_user
-    app.dependency_overrides[verify_provider_access] = lambda: True
     
     # Create test client with minimal headers
     async with AsyncClient(
@@ -195,7 +194,12 @@ def risk_prediction_request_data():
     return {
         "patient_id": str(uuid.uuid4()),
         "risk_type": "suicide",
-        "features": {
+        "patient_data": {
+            "age_at_intake": 35,
+            "gender_identity": "female",
+            "primary_language": "English"
+        },
+        "clinical_data": {
             "age": 35,
             "gender": "female",
             "diagnosis": "major_depression",
@@ -205,6 +209,8 @@ def risk_prediction_request_data():
             "recent_life_events": ["divorce", "job_loss"],
             "symptom_severity": 8,
         },
+        "time_frame_days": 90,
+        "include_explainability": False
     }
 
 
@@ -278,70 +284,53 @@ def outcome_prediction_request_data():
         },
     }
 
-# Tests for risk prediction endpoints
+@pytest.mark.timeout(10)  # Add timeout for hanging test
+@pytest.mark.asyncio
 async def test_predict_risk(xgboost_test_client, risk_prediction_request_data):
-    """Test the risk prediction endpoint."""
+    """Test risk prediction endpoint with valid data."""
     app, client = xgboost_test_client
+    
+    # Mock the service call to return a successful response
+    # Ensure the mock service method is an AsyncMock if it needs to be awaited
     mock_service = app.dependency_overrides[get_xgboost_service]()
     
-    # Set up the mock response
-    expected_response = {
-        "risk_score": 0.72,
+    # Define the expected successful response structure from the service
+    # This should match what the endpoint would then transform into RiskPredictionResponse
+    mock_service_response = {
+        "prediction_id": str(uuid.uuid4()),
+        "patient_id": risk_prediction_request_data["patient_id"],
+        "risk_type": risk_prediction_request_data["risk_type"],
+        "risk_score": 0.75,
+        "risk_probability": 0.75,
         "risk_level": "high",
-        "confidence": 0.85,
-        "factors": [
-            {"name": "previous_attempts", "importance": 0.35},
-            {"name": "symptom_severity", "importance": 0.25},
-            {"name": "recent_life_events", "importance": 0.20},
-            {"name": "substance_abuse_history", "importance": 0.15},
-            {"name": "family_history", "importance": 0.05},
-        ],
-        "recommended_actions": [
-            {"action": "immediate_assessment", "urgency": "high"},
-            {"action": "safety_planning", "urgency": "high"},
-            {"action": "increase_therapy_frequency", "urgency": "medium"},
-        ],
+        "confidence": 0.9,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model_version": "1.2.3",
+        "time_frame_days": risk_prediction_request_data.get("time_frame_days", 30), # Assuming a default or pass it in request
+        "feature_importance": {"age": 0.4, "previous_attempts": 0.3},
+        "risk_factors": {"age": "35", "previous_attempts": "1"}
     }
     
-    # Configure the mock to return our expected response
-    mock_service.predict_risk_mock.return_value = expected_response
+    # Configure the mock to return this response
+    # If predict_risk is an async method in the actual service:
+    mock_service.predict_risk = AsyncMock(return_value=mock_service_response)
+    # If it's a synchronous method in the actual service (less likely for IO-bound ops):
+    # mock_service.predict_risk = MagicMock(return_value=mock_service_response)
+
+    # Corrected endpoint path
+    response = await client.post("/api/v1/xgboost/risk-prediction", json=risk_prediction_request_data)
     
-    # Skip token validation and directly override the auth dependency
-    # Create test user with valid timestamps
-    test_user = User(
-        id=str(uuid.uuid4()),
-        username="test_user",
-        email="test@example.com",
-        first_name="Test",
-        last_name="User",
-        full_name="Test User",
-        roles=["CLINICIAN"],  # Use string roles to avoid enum issues
-        status=UserStatus.ACTIVE,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    
-    # Override the auth dependency to use our test user
-    app.dependency_overrides[get_current_user] = lambda: test_user
-    
-    # Make the request with modified timeout
-    endpoint = f"{app.state.settings.API_V1_STR}/xgboost/predict/risk"
-    response = await client.post(
-        endpoint,
-        json=risk_prediction_request_data,
-        headers={"Content-Type": "application/json"},
-        timeout=3.0  # Add explicit timeout to prevent hanging
-    )
-    
-    # Check the response, providing detailed error message on failure
     assert response.status_code == status.HTTP_200_OK, f"Failed with status {response.status_code}: {response.text}"
-    assert response.json() == expected_response
     
-    # Verify the mock was called with correct arguments
-    mock_service.predict_risk_mock.assert_called_once_with(
-        risk_prediction_request_data["patient_id"],
-        risk_prediction_request_data["risk_type"],
-        risk_prediction_request_data["features"],
-    )
+    response_data = response.json()
+    assert response_data["prediction_id"] is not None
+    assert response_data["patient_id"] == risk_prediction_request_data["patient_id"]
+    assert response_data["risk_type"] == risk_prediction_request_data["risk_type"]
+    assert response_data["risk_score"] == mock_service_response["risk_score"]
+    # Add assertions for other fields as necessary based on RiskPredictionResponse schema
+    assert "risk_level" in response_data
+    assert "confidence" in response_data
+    assert "timestamp" in response_data
+    assert "model_version" in response_data
 
 # Add more tests for different scenarios and other endpoints

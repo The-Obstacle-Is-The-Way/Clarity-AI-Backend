@@ -71,4 +71,13 @@ async def force_validation_error() -> Dict[str, Any]:
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="Test validation error"
-    ) 
+    )
+
+
+@router.get("/runtime-error")
+async def force_runtime_error() -> Dict[str, Any]:
+    """
+    Endpoint that deliberately raises a generic RuntimeError.
+    Used to test that internal details of such errors are masked.
+    """
+    raise RuntimeError("This is a sensitive internal error detail that should be masked") 
