@@ -52,12 +52,9 @@ class TokenType(str, Enum):
     API = "api"  # For long-lived API tokens with restricted permissions
 
 
-class TokenBlacklistDict(dict):
-    """Type hint for token blacklist dictionary.
-    Maps JTI (JWT ID) to expiration datetime.
-    """
-    pass  # Empty TypedDict, just for type hinting.
-
+# Type definition for token blacklist dictionary
+# Maps JTI (JWT ID) to expiration datetime
+TokenBlacklistDict = dict[str, Union[datetime, float, str]]
 
 class TokenPayload(BaseModel):
     """
@@ -145,10 +142,11 @@ class JWTService(IJwtService):
 
         # If no token blacklist repository is provided, use an in-memory fallback
         # This is NOT suitable for production, but prevents errors in development/testing
+        # Token blacklist for revoked tokens
+        # In production, this should be stored in Redis or similar through the repository
+        self._token_blacklist: TokenBlacklistDict = {}
+        
         if self.token_blacklist_repository is None:
-            # Token blacklist for revoked tokens
-            # In production, this should be stored in Redis or similar through the repository
-            self._token_blacklist: TokenBlacklistDict = {}
             logger.warning("No token blacklist repository provided. Using in-memory blacklist, which is NOT suitable for production.")
         
         # Token family tracking for refresh token rotation
@@ -675,28 +673,27 @@ class JWTService(IJwtService):
             logger.error(f"Error extracting subject from token payload: {e}")
             return None
     
-    async def blacklist_token(self, token: str) -> bool:
+    def blacklist_token(self, token: str) -> bool:
         """Add a token to the blacklist to prevent its further use.
-        Returns True if token was successfully blacklisted.
-        """
         try:
-            payload = self.decode_token(token) # No await needed anymore
-            jti = payload.jti # jti is now an attribute
-            exp = payload.exp # exp is now an attribute
+            import time
+            # Decode without verification (just to extract claims)
+            # We just need the JTI and expiration time
+            payload = jwt_decode(token, options={"verify_signature": False})
+            jti = payload.get("jti")
+            exp = payload.get("exp") # Get expiration time
 
             if jti and exp:
-                # In a real production system, use Redis or similar with TTL for expiration
-                expiry_timestamp = time.time() + expires_delta.total_seconds()
-                jti = payload.get("jti", None)
-                if jti:
-                    self._token_blacklist[jti] = str(expiry_timestamp)
-                    logger.info(f"Token with JTI {jti} blacklisted until {expiry_timestamp}.")
-                    # Periodically clean the blacklist
-                    self._clean_token_blacklist()
-                    return True
-                else:
-                    logger.warning("Attempted to revoke token without JTI or EXP claim.")
-                    return False
+                # Store JTI with its original expiry time
+                expiry_time = float(exp)
+                self._token_blacklist[jti] = str(expiry_time)
+                logger.info(f"Token with JTI {jti} blacklisted until {expiry_time}.")
+                # Periodically clean the blacklist
+                self._clean_token_blacklist()
+                return True
+            else:
+                logger.warning("Attempted to revoke token without JTI or EXP claim.")
+                return False
 
         except AuthenticationError as e:
             logger.warning(f"Attempted to revoke an invalid/expired token: {e}")
