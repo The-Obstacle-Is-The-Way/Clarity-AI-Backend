@@ -11,7 +11,7 @@ import logging
 import re
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 
 # Import from the new clean architecture
 from app.core.domain.entities.user import User
@@ -276,7 +276,7 @@ async def predict_risk(
     request: RiskPredictionRequest,
     xgboost_service: XGBoostDep,
     user: ProviderAccessDep,
-    kwargs: dict = Query(None, include_in_schema=False),
+    kwargs: dict = Body(None, include_in_schema=False),
 ) -> RiskPredictionResponse:
     """
     Generate risk predictions for psychiatric outcomes.
