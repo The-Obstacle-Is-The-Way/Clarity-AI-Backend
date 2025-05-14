@@ -25,7 +25,7 @@ from faker import Faker
 from fastapi import FastAPI, status
 from httpx import ASGITransport, AsyncClient
 
-from app.app_factory import create_application
+from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings
 from app.domain.models.user import UserRole, User
 
@@ -205,76 +205,6 @@ def mock_current_user() -> User:
         first_name="Test",
         last_name="Admin User"
     )
-
-@pytest.fixture(scope="function")
-def mock_alert_service() -> MagicMock:
-    return create_autospec(AlertServiceInterface, instance=True)
-
-@pytest_asyncio.fixture(scope="function")
-@pytest.mark.asyncio
-async def test_app(
-    test_settings: AppSettings,
-    # Changed to global_mock_jwt_service to match conftest.py more clearly if needed later
-    # though this test_app uses its own parameter `mock_jwt_service` for overrides.
-    global_mock_jwt_service: MagicMock,
-    mock_auth_service: MagicMock,
-    mock_alert_service: MagicMock,
-    mock_biometric_alert_repository: AsyncMock,
-    mock_biometric_rule_repository: AsyncMock,
-    mock_template_repository: AsyncMock,
-    mock_biometric_event_processor: AsyncMock,
-    mock_current_user: User,
-    authenticated_provider_user: DomainUser,
-) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
-    """
-    Creates a test application with specific dependency overrides:
-    
-    1. JWT Service: Provides a mock that returns pre-configured tokens
-    2. Alert Service: For alert endpoint testing
-    3. Alert Repository: For alert data persistence mocking
-    4. Rule Repository: For rule data persistence mocking
-    5. Template Repository: For alert template data access mocking
-    6. Event Processor: For biometric data processing mocking
-    7. Current User: For authentication testing
-    """
-    
-    # Create the application with test settings
-    app = create_application()
-    
-    # Override dependencies
-    app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
-    app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
-    app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
-    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
-    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
-    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
-    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
-    
-    # Mock the current user dependency to return our provider user
-    app.dependency_overrides[get_current_user] = lambda: authenticated_provider_user
-    
-    # Create a test client
-    transport = ASGITransport(app=app)
-    client = AsyncClient(transport=transport, base_url="http://testserver")
-    
-    # Start the application lifecycle for testing
-    async with LifespanManager(app):
-        try:
-            # Yield both the app and client for use in tests
-            yield app, client
-        finally:
-            # Clear dependency overrides
-            app.dependency_overrides.clear()
-            logger.info("Cleared dependency overrides after test")
-            
-            # Reset DI container if used
-            reset_container()
-            logger.info("Reset DI container after test")
-
-@pytest.fixture
-async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
-    app, client_instance = test_app # Renamed to avoid conflict with client module
-    return client_instance
 
 @pytest.fixture
 def sample_patient_id() -> uuid.UUID:
@@ -707,3 +637,69 @@ class TestBiometricAlertsEndpoints:
         assert invalid_id not in str(resp_json['detail'])
         # URL in error should be obfuscated or not included
         assert invalid_id not in str(resp_json)
+
+@pytest_asyncio.fixture(scope="function")
+@pytest.mark.asyncio
+async def test_app(
+    test_settings: AppSettings,
+    # Changed to global_mock_jwt_service to match conftest.py more clearly if needed later
+    # though this test_app uses its own parameter `mock_jwt_service` for overrides.
+    global_mock_jwt_service: MagicMock,
+    mock_auth_service: MagicMock,
+    mock_alert_service: MagicMock,
+    mock_biometric_alert_repository: AsyncMock,
+    mock_biometric_rule_repository: AsyncMock,
+    mock_template_repository: AsyncMock,
+    mock_biometric_event_processor: AsyncMock,
+    mock_current_user: User,
+    authenticated_provider_user: DomainUser,
+) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
+    """
+    Creates a test application with specific dependency overrides:
+    
+    1. JWT Service: Provides a mock that returns pre-configured tokens
+    2. Alert Service: For alert endpoint testing
+    3. Alert Repository: For alert data persistence mocking
+    4. Rule Repository: For rule data persistence mocking
+    5. Template Repository: For alert template data access mocking
+    6. Event Processor: For biometric data processing mocking
+    7. Current User: For authentication testing
+    """
+    
+    # Create the application with test settings
+    app = create_application()
+    
+    # Override dependencies
+    app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
+    app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
+    app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
+    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
+    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
+    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
+    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
+    
+    # Mock the current user dependency to return our provider user
+    app.dependency_overrides[get_current_user] = lambda: authenticated_provider_user
+    
+    # Create a test client
+    transport = ASGITransport(app=app)
+    client = AsyncClient(transport=transport, base_url="http://testserver")
+    
+    # Start the application lifecycle for testing
+    async with LifespanManager(app):
+        try:
+            # Yield both the app and client for use in tests
+            yield app, client
+        finally:
+            # Clear dependency overrides
+            app.dependency_overrides.clear()
+            logger.info("Cleared dependency overrides after test")
+            
+            # Reset DI container if used
+            reset_container()
+            logger.info("Reset DI container after test")
+
+@pytest.fixture
+async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
+    app, client_instance = test_app # Renamed to avoid conflict with client module
+    return client_instance
