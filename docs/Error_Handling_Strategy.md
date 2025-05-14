@@ -157,6 +157,7 @@ Exceptions flow from inner to outer layers, respecting the dependency rule:
 ### Centralized Definition
 
 All core exceptions are defined in the `app/core/exceptions/base_exceptions.py` module, ensuring:
+
 - Consistent error types across the application
 - Single source of truth for exception handling
 - Easier maintenance and extension
@@ -193,6 +194,7 @@ except Exception as e:
 ```
 
 This pattern ensures:
+
 - Known exceptions are mapped to appropriate responses
 - Unexpected exceptions are caught, logged, and translated to generic errors
 - PHI is never exposed in error messages
