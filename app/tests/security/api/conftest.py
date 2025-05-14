@@ -17,14 +17,14 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from httpx import ASGITransport, AsyncClient
-from jose import JWTError, jwt as jose_jwt
+from jose import jwt as jose_jwt  # Use jose for JWT operations in tests
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config.settings import Settings
-from app.core.domain.entities.user import User, UserRole, UserStatus
-from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import User as CoreDomainUser
+from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
@@ -33,7 +33,9 @@ from app.domain.exceptions.token_exceptions import (
     TokenExpiredException,
 )
 from app.factory import create_application
-from app.infrastructure.security.jwt.jwt_service import TokenPayload
+# Custom token payload imports
+from app.infrastructure.security.jwt.jwt_service import TokenBlacklistDict, TokenPayload, TokenType
+from app.infrastructure.security.jwt.jwt_service import TokenBlacklistDict
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
 
@@ -592,7 +594,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         return token
     
     # Decode token implementation
-    async def mock_decode_token(token: str) -> dict:
+    async def mock_decode_token(token: str) -> dict[str, Any]:
         # Check if token exists in our store
         if token not in mock_service.token_store:
             raise InvalidTokenException("Token not found in store")
@@ -604,7 +606,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         return mock_service.token_store[token]
     
     # Generate tokens for user implementation
-    async def mock_generate_tokens_for_user(user: User) -> dict[str, str]:
+    async def get_test_auth_headers(user: User) -> dict[str, str]:
         user_data = {
             "sub": str(user.id),
             "username": user.username,
@@ -647,12 +649,12 @@ def global_mock_jwt_service() -> JWTServiceInterface:
             raise InvalidTokenException(f"Invalid refresh token: {str(e)}") from e
     
     # Verify token implementation - needs to be async to match interface
-    async def mock_verify_token(token: str) -> bool:
+    async def mock_verify_token(token: str) -> dict[str, Any]:
         try:
-            await mock_decode_token(token)
-            return True
+            payload = await mock_decode_token(token)
+            return payload
         except (InvalidTokenException, TokenExpiredException):
-            return False
+            return None
     
     # Get token expiration implementation
     async def mock_get_token_expiration(token: str) -> datetime | None:
@@ -669,7 +671,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
     mock_service.create_access_token = AsyncMock(side_effect=mock_create_access_token)
     mock_service.create_refresh_token = AsyncMock(side_effect=mock_create_refresh_token) 
     mock_service.decode_token = AsyncMock(side_effect=mock_decode_token)
-    mock_service.generate_tokens_for_user = AsyncMock(side_effect=mock_generate_tokens_for_user)
+    mock_service.get_tokens_for_user = AsyncMock(side_effect=get_test_auth_headers)
     mock_service.refresh_access_token = AsyncMock(side_effect=mock_refresh_access_token)
     mock_service.verify_token = AsyncMock(side_effect=mock_verify_token)
     mock_service.get_token_expiration = AsyncMock(side_effect=mock_get_token_expiration)
@@ -683,28 +685,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
     return mock_service
 
 
-@pytest.fixture(scope="function")
-async def get_valid_auth_headers(
-    global_mock_jwt_service: JWTServiceInterface, 
-    authenticated_user: DomainUser,
-    test_settings: Settings # Added to ensure it's available, though global_mock_jwt_service now uses it internally
-) -> dict[str, str]:
-    user_data_for_token = {
-        # global_mock_jwt_service.create_access_token will now add iss, aud, exp, iat, and ensure sub
-        "user_id": str(authenticated_user.id), 
-        "username": authenticated_user.username,
-        "roles": [role.value for role in authenticated_user.roles],
-        "scopes": ["openid", "profile", "email"],
-        "first_name": authenticated_user.first_name, # Add more fields if TokenPayload expects them from source
-        "last_name": authenticated_user.last_name,
-        "email": authenticated_user.email,
-    }
-    # If 'sub' is critical and different from user_id, set it explicitly here:
-    # user_data_for_token["sub"] = str(authenticated_user.id) 
-    # otherwise, create_access_token will derive sub from user_id or use a default.
-
-    token = await global_mock_jwt_service.create_access_token(data=user_data_for_token)
-    return {"Authorization": f"Bearer {token}"}
+# This fixture is already defined above, so it's removed to prevent redefinition
 
 
 @pytest.fixture(scope="module")
@@ -725,7 +706,7 @@ def jwt_service_patch():
     # Dummy key for test tokens
     test_secret_key = "test_secret_key_for_testing_only"
     
-    def patched_decode_token(self, token: str) -> TokenPayload:
+    def patched_decode_token(self, token: str) -> dict[str, Any]:
         """
         Patched version of decode_token that accepts test tokens without verification.
         For non-test tokens, falls back to the original implementation.
@@ -793,16 +774,18 @@ def jwt_service_patch():
                 return TokenPayload(
                     sub=unverified_payload.get("sub"),
                     roles=unverified_payload.get("roles", []),
-                    exp=unverified_payload.get("exp"),
-                    iat=unverified_payload.get("iat"),
-                    jti=unverified_payload.get("jti"),
+                    exp=unverified_payload.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600),
+                    iat=unverified_payload.get("iat", int(datetime.now(timezone.utc).timestamp())),
+                    jti=unverified_payload.get("jti", str(uuid.uuid4())),
                     iss=unverified_payload.get("iss", "test-issuer"),
                     aud=unverified_payload.get("aud", "test-audience"),
                     type=token_type_enum,
-                    # Optional fields
-                    username=unverified_payload.get("username", ""),
+                    # Map username to name if it exists
+                    name=unverified_payload.get("username", "") or unverified_payload.get("name", ""),
                     email=unverified_payload.get("email", ""),
-                    permissions=unverified_payload.get("permissions", None)
+                    permissions=unverified_payload.get("permissions", []),
+                    # Add user_id to match the sub field
+                    user_id=unverified_payload.get("sub")
                 )
         except Exception as e:
             logger.warning(f"Error in patched decode_token: {e}", exc_info=True)
@@ -910,7 +893,7 @@ def middleware_patch(test_settings):
 
 
 @pytest.fixture(scope="module")
-def auth_patches(jwt_service_patch, middleware_patch):
+def auth_patches(jwt_service_patch: Any, middleware_patch: Any) -> None:
     """
     Combined fixture that applies both JWT service and middleware patches.
     
@@ -942,12 +925,12 @@ class EnhancedAuthTestHelper:
     def create_test_user(
         self, 
         role: UserRole, 
-        user_id: uuid.UUID = None,
-        username: str = None,
-        email: str = None,
-        full_name: str = None,
-        first_name: str = None,
-        last_name: str = None
+        user_id: Optional[uuid.UUID] = None,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        full_name: Optional[str] = None,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None
     ) -> DomainUser:
         """
         Create a test user with the specified role
@@ -1014,12 +997,12 @@ class EnhancedAuthTestHelper:
     
     async def create_token(
         self, 
-        user_or_id,
-        roles=None, 
-        username=None, 
-        email=None, 
-        expires_delta=None
-    ):
+        user_or_id: Union[DomainUser, UUID, str],
+        roles: Optional[List[UserRole]] = None, 
+        username: Optional[str] = None, 
+        email: Optional[str] = None, 
+        expires_delta: Optional[timedelta] = None
+    ) -> str:
         """
         Create a test JWT token for a user
         
