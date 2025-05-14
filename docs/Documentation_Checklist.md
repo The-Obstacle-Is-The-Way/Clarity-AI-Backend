@@ -57,8 +57,8 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 | Document | Status | Description |
 |----------|--------|-------------|
 | [API Security](./API_Security.md) | ✅ Complete | Authentication, authorization, and security middleware |
-| API Versioning Strategy | ❌ Missing | Approach to API versioning |
-| Schema Validation | ❌ Missing | Input/output validation with Pydantic |
+| [API Versioning Strategy](./API_Versioning_Strategy.md) | ✅ Complete | Approach to API versioning |
+| [Schema Validation](./Schema_Validation.md) | ✅ Complete | Input/output validation with Pydantic |
 | [Authentication System](./Authentication_System.md) | ✅ Complete | Authentication process and security components |
 | Authorization System | ❌ Missing | Role-based access control implementation |
 | Middleware Stack | ❌ Missing | Middleware components and configuration |
