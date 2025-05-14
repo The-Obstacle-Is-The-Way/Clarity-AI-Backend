@@ -4,26 +4,27 @@ XGBoost ML Service Factory.
 
 import logging
 from functools import lru_cache
+from typing import Any, Dict, Type, cast
 
 from app.core.services.ml.xgboost.interface import XGBoostInterface
 
 # Import all available implementations
 from app.core.services.ml.xgboost.service import XGBoostService
 
-# Import the mock implementation for testing
-from app.infrastructure.services.mock_xgboost_service_v2 import MockXGBoostService
+# We'll use lazy imports to avoid circular dependencies
+# The mock implementation is loaded dynamically when needed
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 # Registry of available implementations
-_registry = {
+_registry: Dict[str, Type[XGBoostInterface]] = {
     "aws": XGBoostService,  # Default AWS implementation
-    "mock": MockXGBoostService,  # Mock implementation for testing
+    # Mock will be loaded dynamically to avoid circular imports
 }
 
 # Cache to avoid creating multiple instances unnecessarily
-_instances = {}
+_instances: Dict[str, XGBoostInterface] = {}
 
 def get_xgboost_service() -> XGBoostInterface:
     """
@@ -39,7 +40,7 @@ def get_xgboost_service() -> XGBoostInterface:
 @lru_cache(maxsize=8)  # Cache instances to improve performance
 def create_xgboost_service(
     implementation_name: str = "mock", 
-    **kwargs
+    **kwargs: Any
 ) -> XGBoostInterface:
     """
     Create an XGBoost service instance based on implementation name.
@@ -59,8 +60,13 @@ def create_xgboost_service(
         logger.warning(f"Unknown XGBoost implementation '{implementation_name}'. Using 'mock' instead.")
         implementation_name = "mock"
     
-    # Get implementation class
-    implementation_class = _registry[implementation_name]
+    # Get the implementation class
+    if implementation_name == "mock":
+        # Lazy import to avoid circular dependencies
+        from app.infrastructure.services.mocks.mock_xgboost_service import MockXGBoostService
+        implementation_class = MockXGBoostService
+    else:
+        implementation_class = _registry[implementation_name]
     
     # Create and return instance
     logger.info(f"Creating XGBoost service instance using '{implementation_name}' implementation")

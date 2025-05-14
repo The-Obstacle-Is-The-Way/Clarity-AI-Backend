@@ -8,7 +8,7 @@ to the interface defined in the core layer.
 
 import json
 import logging
-from typing import Any, List, Dict, Optional, TypeVar, Union, Set
+from typing import Any, Set, Dict, List, Union, Optional, cast
 import redis.asyncio as redis_asyncio
 from redis.asyncio.client import Redis
 from redis.asyncio.connection import ConnectionPool
