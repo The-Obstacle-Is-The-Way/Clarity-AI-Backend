@@ -171,7 +171,7 @@ async def verify_provider_access(
 ) -> User:
     """Verify that the user has provider-level access (Clinician, Admin, Provider)."""
     # Normalise for case-insensitive membership tests
-    allowed_roles = {role.value.upper() for role in (UserRole.CLINICIAN, UserRole.ADMIN, UserRole.PROVIDER)}
+    allowed_roles = {role.value.upper() for role in (UserRole.CLINICIAN, UserRole.ADMIN, UserRole.CLINICIAN)}
 
     primary_role = (current_user.role or "").upper()
     roles_set = {str(r).upper() for r in (current_user.roles or [])}
