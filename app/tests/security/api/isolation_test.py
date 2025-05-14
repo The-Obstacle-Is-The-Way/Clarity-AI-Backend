@@ -31,6 +31,18 @@ def create_isolated_app():
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="HTTP exception detail")
     
+    # Add specific handlers for different exception types
+    @app.exception_handler(RuntimeError)
+    async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
+        """Handle RuntimeError and mask sensitive information."""
+        logger.error(f"RuntimeError in isolation test: {exc}")
+        
+        # Return sanitized, masked response
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "An internal server error occurred."}
+        )
+    
     # Add exception handlers with priority
     # Handle built-in HTTPException first
     @app.exception_handler(StarletteHTTPException)
@@ -73,8 +85,9 @@ async def test_error_masking_isolation():
     app = create_isolated_app()
     
     # Create client with direct transport to the app
+    transport = ASGITransport(app=app)
     async with AsyncClient(
-        transport=ASGITransport(app=app),
+        transport=transport,
         base_url="http://testserver"
     ) as client:
         # Test runtime error masking
@@ -94,8 +107,9 @@ async def test_http_error_masking_isolation():
     """Test HTTP error masking in isolation."""
     app = create_isolated_app()
     
+    transport = ASGITransport(app=app)
     async with AsyncClient(
-        transport=ASGITransport(app=app),
+        transport=transport,
         base_url="http://testserver"
     ) as client:
         # Test HTTP error
