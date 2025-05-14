@@ -71,19 +71,19 @@ class MockXGBoostService:
             return await self.predict_outcome(patient_id, features, kwargs.get("timeframe_days", 0), clinical_data=kwargs.get("clinical_data", {}), treatment_plan=kwargs.get("treatment_plan", {}))
         raise ValueError(f"Unknown model type: {model_type}")
     
-    async def predict_risk(self, patient_id, risk_type, features):
+    async def predict_risk(self, patient_id, risk_type, features, **kwargs):
         """Mock risk prediction."""
-        return await self.predict_risk_mock(patient_id, risk_type, features)
+        return await self.predict_risk_mock(patient_id, risk_type, features, **kwargs)
     
-    async def predict_treatment_response(self, patient_id, treatment_id, treatment_plan, features):
+    async def predict_treatment_response(self, patient_id, treatment_id, treatment_plan, features, **kwargs):
         """Mock treatment response prediction."""
-        return await self.predict_treatment_response_mock(patient_id, treatment_id, treatment_plan, features)
+        return await self.predict_treatment_response_mock(patient_id, treatment_id, treatment_plan, features, **kwargs)
     
-    async def predict_outcome(self, patient_id, features, timeframe_days, clinical_data=None, treatment_plan=None):
+    async def predict_outcome(self, patient_id, features, timeframe_days, clinical_data=None, treatment_plan=None, **kwargs):
         """Mock outcome prediction."""
-        return await self.predict_outcome_mock(patient_id, features, timeframe_days, clinical_data=clinical_data, treatment_plan=treatment_plan)
+        return await self.predict_outcome_mock(patient_id, features, timeframe_days, clinical_data=clinical_data, treatment_plan=treatment_plan, **kwargs)
     
-    async def get_feature_importance(self, model_id, model_type=None):
+    async def get_feature_importance(self, model_id, model_type=None, **kwargs):
         """Mock feature importance retrieval."""
         return await self.get_feature_importance_mock(model_id, model_type)
     
@@ -286,51 +286,69 @@ def outcome_prediction_request_data():
 
 @pytest.mark.timeout(10)  # Add timeout for hanging test
 @pytest.mark.asyncio
-async def test_predict_risk(xgboost_test_client, risk_prediction_request_data):
+async def test_predict_risk(xgboost_test_client):
     """Test risk prediction endpoint with valid data."""
     app, client = xgboost_test_client
     
-    # Mock the service call to return a successful response
-    # Ensure the mock service method is an AsyncMock if it needs to be awaited
-    mock_service = app.dependency_overrides[get_xgboost_service]()
-    
-    # Define the expected successful response structure from the service
-    # This should match what the endpoint would then transform into RiskPredictionResponse
-    mock_service_response = {
-        "prediction_id": str(uuid.uuid4()),
-        "patient_id": risk_prediction_request_data["patient_id"],
-        "risk_type": risk_prediction_request_data["risk_type"],
-        "risk_score": 0.75,
-        "risk_probability": 0.75,
-        "risk_level": "high",
-        "confidence": 0.9,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "model_version": "1.2.3",
-        "time_frame_days": risk_prediction_request_data.get("time_frame_days", 30), # Assuming a default or pass it in request
-        "feature_importance": {"age": 0.4, "previous_attempts": 0.3},
-        "risk_factors": {"age": "35", "previous_attempts": "1"}
+    # Define the payload directly in the test for isolation
+    test_patient_id = str(uuid.uuid4())
+    direct_payload = {
+        "patient_id": test_patient_id,
+        "risk_type": "suicide",  # Matches RiskType.SUICIDE.value
+        "patient_data": {
+            "age_at_intake": 30,
+            "gender_identity": "male",
+            "primary_language": "English"
+        },
+        "clinical_data": {
+            "age": 30, # Example, can be same or different from age_at_intake
+            "gender": "male", # Example
+            "diagnosis": "general_anxiety_disorder",
+            "previous_attempts": 0,
+            "substance_abuse_history": False,
+            "family_history": False,
+            "recent_life_events": ["new_job"],
+            "symptom_severity": 5,
+        },
+        "time_frame_days": 60,
+        "include_explainability": True # Changed to True to test this path
     }
     
-    # Configure the mock to return this response
-    # If predict_risk is an async method in the actual service:
+    # Mock the service call to return a successful response
+    mock_service = app.dependency_overrides[get_xgboost_service]()
+    
+    mock_service_response = {
+        "prediction_id": str(uuid.uuid4()),
+        "patient_id": test_patient_id,
+        "risk_type": direct_payload["risk_type"],
+        "risk_score": 0.65,
+        "risk_probability": 0.65,
+        "risk_level": "moderate",
+        "confidence": 0.85,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model_version": "1.2.4",
+        "time_frame_days": direct_payload["time_frame_days"],
+        "feature_importance": {"symptom_severity": 0.5, "recent_life_events": 0.2},
+        "risk_factors": {"symptom_severity": "5", "recent_life_events": "new_job"}
+    }
+    
     mock_service.predict_risk = AsyncMock(return_value=mock_service_response)
-    # If it's a synchronous method in the actual service (less likely for IO-bound ops):
-    # mock_service.predict_risk = MagicMock(return_value=mock_service_response)
 
-    # Corrected endpoint path
-    response = await client.post("/api/v1/xgboost/risk-prediction", json=risk_prediction_request_data)
+    response = await client.post("/api/v1/xgboost/risk-prediction", json=direct_payload)
     
     assert response.status_code == status.HTTP_200_OK, f"Failed with status {response.status_code}: {response.text}"
     
     response_data = response.json()
     assert response_data["prediction_id"] is not None
-    assert response_data["patient_id"] == risk_prediction_request_data["patient_id"]
-    assert response_data["risk_type"] == risk_prediction_request_data["risk_type"]
+    assert response_data["patient_id"] == test_patient_id
+    assert response_data["risk_type"] == direct_payload["risk_type"]
     assert response_data["risk_score"] == mock_service_response["risk_score"]
-    # Add assertions for other fields as necessary based on RiskPredictionResponse schema
-    assert "risk_level" in response_data
-    assert "confidence" in response_data
+    assert response_data["risk_level"] == mock_service_response["risk_level"]
+    assert response_data["confidence"] == mock_service_response["confidence"]
     assert "timestamp" in response_data
-    assert "model_version" in response_data
+    assert response_data["model_version"] == mock_service_response["model_version"]
+    assert response_data["time_frame_days"] == direct_payload["time_frame_days"]
+    # Based on include_explainability=True, feature_importance should be present
+    assert response_data["feature_importance"] == mock_service_response["feature_importance"]
 
 # Add more tests for different scenarios and other endpoints
