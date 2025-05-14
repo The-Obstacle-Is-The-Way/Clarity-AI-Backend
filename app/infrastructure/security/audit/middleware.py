@@ -1,25 +1,23 @@
 """
-HIPAA Audit Logging Middleware.
+HIPAA-compliant audit logging middleware.
 
-This middleware automatically captures PHI access events for HIPAA compliance.
-It logs all API requests that access PHI and ensures a complete audit trail
-as required by HIPAA regulations.
+This middleware provides comprehensive audit logging for API calls, with special
+handling for PHI access to ensure HIPAA compliance.
 """
 
-import ipaddress
-import json
 import re
-import socket
-from typing import Callable, Dict, List, Optional, Set, Pattern, Tuple, Any
-
+import ipaddress 
+import logging
+from typing import Callable, List, Pattern, Dict, Any, Tuple, Optional
 from fastapi import Request, Response
-from fastapi.routing import APIRoute
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.core.config.settings import get_settings
+from app.core.config import get_settings
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType
 
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
     """
