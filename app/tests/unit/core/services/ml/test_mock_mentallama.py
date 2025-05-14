@@ -196,9 +196,8 @@ class TestMockMentaLLaMA:
     def test_digital_twin_session_workflow(self) -> None:
         """Test the complete digital twin session workflow from creation to insights."""
         # Create a digital twin
-        patient_id = f"test-patient-{random.randint(1000, 9999)}"
+        # Use consistent text data
         twin_result = self.service.generate_digital_twin(
-            patient_id=patient_id,
             text_data=[self.sample_text],
             demographic_data={"age": 35, "gender": "female"},
             medical_history={"conditions": ["anxiety", "insomnia"]},

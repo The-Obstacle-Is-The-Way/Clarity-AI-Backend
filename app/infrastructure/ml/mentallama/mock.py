@@ -5,13 +5,14 @@ This module provides a complete implementation of the MentaLLaMA interface expec
 by test code while following clean architecture principles. It serves as an adapter
 to the domain-driven MentaLLaMAServiceInterface.
 """
-import os
-import json
 import random
 import uuid
-from pathlib import Path
 from datetime import datetime
-from typing import Optional, Any, Dict, List, ClassVar
+from typing import Any, ClassVar, Optional
+from zoneinfo import ZoneInfo
+
+# Define UTC timezone
+UTC = ZoneInfo("UTC")
 
 from app.core.exceptions import InvalidConfigurationError, ModelNotFoundError, ServiceUnavailableError
 from app.core.exceptions.ml_exceptions import InvalidRequestError
@@ -47,11 +48,11 @@ class MockMentaLLaMA:
         self._model_name = model_name
         self._temperature = temperature
         self._initialized = False
-        self._mock_responses = {}
+        self._mock_responses: dict[str, Any] = {}
         
         # Pure standalone implementation without dependencies
     
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the mock service with configuration.
         
@@ -68,7 +69,7 @@ class MockMentaLLaMA:
                 raise InvalidConfigurationError("mock_responses must be a dictionary")
                 
             # Store configuration
-            self._mock_responses = mock_responses
+            self._mock_responses = mock_responses or {}
             self._initialized = True
         except Exception as e:
             raise InvalidConfigurationError(f"Failed to initialize MentaLLaMA mock: {str(e)}")
@@ -93,7 +94,7 @@ class MockMentaLLaMA:
         if not text:
             raise InvalidRequestError("Text cannot be empty")
     
-    def process(self, text: str, model_type: Optional[str] = None) -> Dict[str, Any]:
+    def process(self, text: str, model_type: Optional[str] = None) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA service.
         
@@ -218,6 +219,10 @@ class MockMentaLLaMA:
                 "confidence": confidence,
                 "key_indicators": indicators
             },
+            "recommendations": {
+                "suggested_assessments": ["PHQ-9", "Beck Depression Inventory"] if is_detected else ["Routine screening"],
+                "follow_up": "Within 1 week" if is_detected else "Routine"
+            },
             "metadata": {
                 "model": self._model_name,
                 "timestamp": datetime.now(UTC).isoformat()
@@ -278,8 +283,8 @@ class MockMentaLLaMA:
     def analyze_sentiment(
         self, 
         text: str, 
-        options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        options: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """
         Mock sentiment analysis.
         
@@ -347,6 +352,26 @@ class MockMentaLLaMA:
                 emotions_list.append("melancholy")
             else:
                 emotions_list.append("neutral")
+        
+        # Create emotional themes based on detected emotions
+        emotional_themes = []
+        if "joy" in emotions_list:
+            emotional_themes.append("Positive outlook")
+        if "sadness" in emotions_list:
+            emotional_themes.append("Signs of depression")
+        if "anger" in emotions_list:
+            emotional_themes.append("Frustration with circumstances")
+        if "anxiety" in emotions_list:
+            emotional_themes.append("Worry about future events")
+            
+        # If no specific themes, add generic ones based on sentiment
+        if not emotional_themes:
+            if score > 0.6:
+                emotional_themes.append("Generally positive outlook")
+            elif score < 0.4:
+                emotional_themes.append("Generally negative perspective")
+            else:
+                emotional_themes.append("Balanced emotional state")
                 
         # Add structure expected by test            
         return {
@@ -363,6 +388,11 @@ class MockMentaLLaMA:
                 "primary_emotions": emotions_list,
                 "secondary_emotions": [],
                 "intensity": round(abs(score - 0.5) * 2, 2)  # Convert to 0-1 intensity scale
+            },
+            "analysis": {
+                "emotional_themes": emotional_themes,
+                "patterns": ["Consistent emotional pattern"],
+                "trajectory": "stable"
             },
             "metadata": {
                 "model": self._model_name,
@@ -440,9 +470,45 @@ class MockMentaLLaMA:
             "recommendations": [f"Consider ways to improve {dimension} wellness"] if score < 0.5 else []
         } for dimension, score in results.items()]
         
+        # Generate overall insights based on dimension scores
+        poor_dimensions = [d["dimension"] for d in dimension_results if d["score"] < 0.4]
+        good_dimensions = [d["dimension"] for d in dimension_results if d["score"] > 0.7]
+        
+        insights = []
+        if poor_dimensions:
+            for dim in poor_dimensions:
+                insights.append(f"{str(dim).capitalize()} wellness is poor")
+        if good_dimensions:
+            for dim in good_dimensions:
+                insights.append(f"{str(dim).capitalize()} wellness is excellent")
+        if not insights:
+            insights.append("Overall wellness is balanced")
+        
+        # Generate recommendations based on poor dimensions
+        recommendations = []
+        for dim in poor_dimensions:
+            if dim == "physical":
+                recommendations.append("Consider increasing physical activity")
+            elif dim == "emotional":
+                recommendations.append("Practice mindfulness for emotional balance")
+            elif dim == "social":
+                recommendations.append("Work on building social connections")
+            elif dim == "cognitive":
+                recommendations.append("Engage in cognitive exercises")
+            elif dim == "spiritual":
+                recommendations.append("Explore practices that bring meaning")
+        if not recommendations:
+            recommendations.append("Maintain current wellness practices")
+        
         return {
             "wellness_dimensions": dimension_results,
             "overall_wellness": round(sum(results.values()) / max(len(results), 1), 2),
+            "analysis": {
+                "insights": insights,
+                "recommendations": recommendations,
+                "overall_assessment": "Overall wellness needs attention" if poor_dimensions else "Overall wellness is good"
+            },
+            "recommendations": recommendations,
             "metadata": {
                 "model": self._model_name,
                 "timestamp": datetime.now(UTC).isoformat()
@@ -509,11 +575,12 @@ class MockMentaLLaMA:
     
     def generate_digital_twin(
         self,
-        text_data: list[str],
+        text_data: Optional[list[str]] = None,
         demographic_data: Optional[dict[str, Any]] = None,
         medical_history: Optional[dict[str, Any]] = None,
         treatment_history: Optional[dict[str, Any]] = None,
-        options: Optional[dict[str, Any]] = None
+        options: Optional[dict[str, Any]] = None,
+        patient_id: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Generate a mock digital twin based on input data.
@@ -531,11 +598,19 @@ class MockMentaLLaMA:
         self._ensure_initialized()
         
         # Validate inputs
-        if not text_data or not isinstance(text_data, list):
-            raise InvalidRequestError("text_data must be a non-empty list of strings")
-        
-        for text in text_data:
-            self._validate_text(text)
+        if text_data is not None:
+            if not isinstance(text_data, list):
+                raise InvalidRequestError("text_data must be a list of strings")
+            
+            for text in text_data:
+                self._validate_text(text)
+        else:
+            # Create default text data if none provided
+            text_data = ["Default patient text data"]
+            
+        # Use provided patient_id or generate a new one
+        if patient_id is None:
+            patient_id = str(uuid.uuid4())
         
         # Generate a unique ID for the twin
         MockMentaLLaMA._twin_counter += 1

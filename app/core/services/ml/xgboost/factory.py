@@ -4,7 +4,7 @@ XGBoost ML Service Factory.
 
 import logging
 from functools import lru_cache
-from typing import Any, Dict, Type, cast
+from typing import cast
 
 from app.core.services.ml.xgboost.interface import XGBoostInterface
 
@@ -18,13 +18,13 @@ from app.core.services.ml.xgboost.service import XGBoostService
 logger = logging.getLogger(__name__)
 
 # Registry of available implementations
-_registry: Dict[str, Type[XGBoostInterface]] = {
-    "aws": XGBoostService,  # Default AWS implementation
+_registry: dict[str, type[XGBoostInterface]] = {
+    "aws": XGBoostService,  # Default AWS implementation is a subclass of XGBoostInterface
     # Mock will be loaded dynamically to avoid circular imports
 }
 
 # Cache to avoid creating multiple instances unnecessarily
-_instances: Dict[str, XGBoostInterface] = {}
+_instances: dict[str, XGBoostInterface] = {}
 
 def get_xgboost_service() -> XGBoostInterface:
     """
@@ -40,7 +40,7 @@ def get_xgboost_service() -> XGBoostInterface:
 @lru_cache(maxsize=8)  # Cache instances to improve performance
 def create_xgboost_service(
     implementation_name: str = "mock", 
-    **kwargs: Any
+    **kwargs: dict  # More specific than Any, for service configuration parameters
 ) -> XGBoostInterface:
     """
     Create an XGBoost service instance based on implementation name.
@@ -57,14 +57,16 @@ def create_xgboost_service(
     """
     # Get implementation class from registry
     if implementation_name not in _registry:
-        logger.warning(f"Unknown XGBoost implementation '{implementation_name}'. Using 'mock' instead.")
+        logger.warning(
+            f"Unknown XGBoost implementation '{implementation_name}'. Using 'mock' instead."
+        )
         implementation_name = "mock"
     
     # Get the implementation class
     if implementation_name == "mock":
         # Lazy import to avoid circular dependencies
         from app.infrastructure.services.mocks.mock_xgboost_service import MockXGBoostService
-        implementation_class = MockXGBoostService
+        implementation_class = cast(type[XGBoostInterface], MockXGBoostService)
     else:
         implementation_class = _registry[implementation_name]
     

@@ -1,7 +1,6 @@
-import time
-import logging
 import json
-import typing
+import logging
+import time
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -22,9 +21,9 @@ SAFE_HEADERS_ALLOWLIST = {
 class LoggingMiddleware(BaseHTTPMiddleware):
     """Middleware for logging requests and responses in a HIPAA-compliant manner."""
 
-    def __init__(self, app: ASGIApp, logger: logging.Logger) -> None:
+    def __init__(self, app: ASGIApp, logger: logging.Logger | None = None) -> None:
         super().__init__(app)
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint

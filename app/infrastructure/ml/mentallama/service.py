@@ -10,7 +10,7 @@ natural language processing.
 from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA
 
 # Define the class alias for service compatibility
-MockMentalLLaMAService = MockMentaLLaMA
+MockMentaLLaMAService = MockMentaLLaMA
 
 # Export both names for backward compatibility
-__all__ = ["MockMentaLLaMA", "MockMentalLLaMAService"]
+__all__ = ["MockMentaLLaMA", "MockMentaLLaMAService"]
