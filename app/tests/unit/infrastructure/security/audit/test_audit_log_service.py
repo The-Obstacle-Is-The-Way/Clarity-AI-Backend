@@ -194,8 +194,8 @@ class TestAuditLogService:
         audit_service._check_for_anomalies = check_for_anomalies_mock
         
         log_security_event_mock = AsyncMock(return_value="security-event-id")
-        original_log_security_event = audit_service._log_security_event
-        audit_service._log_security_event = log_security_event_mock
+        original_log_security_event = audit_service.log_security_event
+        audit_service.log_security_event = log_security_event_mock
         
         # Create a test log with a suspicious IP that will trigger detection
         test_log = AuditLog(
@@ -237,7 +237,7 @@ class TestAuditLogService:
         assert log_security_event_mock.called, "Security event was not logged"
         
         # Restore original functions
-        audit_service._log_security_event = original_log_security_event
+        audit_service.log_security_event = original_log_security_event
 
 
 @pytest.mark.asyncio
