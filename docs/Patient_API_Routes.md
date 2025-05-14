@@ -57,15 +57,16 @@ router = APIRouter()
 # Routes
 
 @router.get(
-    "",
-    response_model=PatientListResponse,
-    summary="List patients",
-    description="Get a paginated list of patients with optional filtering."
+    "/{patient_id}",
+    response_model=PatientRead,
+    name="patients:read_patient",
+    summary="Get a specific patient by ID",
+    description="Retrieve detailed information about a specific patient using their UUID.",
+    tags=["Patients"],
 )
-async def list_patients(
+async def get_patient(
     request: Request,
-    pagination: PaginationParams = Depends(),
-    search: PatientSearchParams = Depends(),
+    patient_id: UUID = Path(..., description="The ID of the patient to retrieve"),
     current_user: dict = Depends(verify_has_role(["admin", "clinician"])),
     patient_service: IPatientService = Depends(get_patient_service),
     audit_logger: IAuditLogger = Depends(get_audit_logger)
