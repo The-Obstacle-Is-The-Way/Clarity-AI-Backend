@@ -5,10 +5,7 @@ insight extraction, and digital twin modeling. It follows clean architecture pri
 with clear separation between interfaces and implementations.
 """
 
-# Export the primary service interfaces
-from app.infrastructure.ml.mentallama.service import (
-    MockMentaLLaMA,
-    MockMentalLLaMAService
-)
+# Export the service interfaces directly
+from app.infrastructure.ml.mentallama.mock import MockMentaLLaMA
 
-__all__ = ["MockMentaLLaMA", "MockMentalLLaMAService"]
+__all__ = ["MockMentaLLaMA"]
