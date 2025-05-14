@@ -329,12 +329,13 @@ async def test_predict_risk(xgboost_test_client):
         "model_version": "1.2.4",
         "time_frame_days": direct_payload["time_frame_days"],
         "feature_importance": {"symptom_severity": 0.5, "recent_life_events": 0.2},
-        "risk_factors": {"symptom_severity": "5", "recent_life_events": "new_job"}
+        "risk_factors": {"symptom_severity": 5, "recent_life_events": 1}
     }
     
     mock_service.predict_risk = AsyncMock(return_value=mock_service_response)
 
-    response = await client.post("/api/v1/xgboost/risk-prediction", json=direct_payload)
+    # Add the kwargs parameter to the URL as a query parameter, since it's required
+    response = await client.post("/api/v1/xgboost/risk-prediction?kwargs={}", json=direct_payload)
     
     assert response.status_code == status.HTTP_200_OK, f"Failed with status {response.status_code}: {response.text}"
     
