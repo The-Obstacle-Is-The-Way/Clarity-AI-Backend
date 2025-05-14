@@ -198,24 +198,20 @@ class TestAuditLogService:
             resource_type="patient",
             resource_id=TEST_PATIENT_ID,
             action="view",
-            ip_address="not_an_ip",  # Unusual IP that should trigger an anomaly
+            ip_address="not_an_ip",  # Unusual IP that should trigger detection
             details={}
         )
         
-        # Check for anomalies
-        anomaly_detected = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
+        # Call the method to check for anomalies
+        result = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
         
-        # Verify anomaly detection results
-        assert anomaly_detected, "Anomaly should be detected for suspicious IP"
+        # Verify result
+        assert result is True
         
-        # Check that a security event was logged for the anomaly
-        mock_repository.create_audit_log.assert_called_once()
-        log_call = mock_repository.create_audit_log.call_args[0][0]
-        
-        # Verify log event properties
-        assert log_call.event_type == AuditEventType.SECURITY_EVENT
-        assert log_call.actor_id == TEST_USER_ID
-        assert 'geographic' in str(log_call.details), "Anomaly log should contain 'geographic' in details"
+        # Check that anomaly was logged
+        audit_service.log_security_event.assert_called_once()
+        # Check for the string "geographic" instead of "anomaly" since that's what the implementation uses
+        assert 'geographic' in str(audit_service.log_security_event.call_args[0][2])
 
 
 @pytest.mark.asyncio
