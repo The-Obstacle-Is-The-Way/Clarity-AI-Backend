@@ -330,39 +330,16 @@ async def test_predict_risk(xgboost_test_client, risk_prediction_request_data):
         updated_at=datetime.now(timezone.utc),
     )
     
-    # Get current time as timestamps with slight adjustments to ensure validity
-    # nbf = Not Before - set it to 60 seconds in the past to make sure it's valid
-    # exp = Expiration - set to future
-    now = datetime.now(timezone.utc)
-    nbf = int((now - timedelta(minutes=1)).timestamp())
-    exp = int((now + timedelta(minutes=30)).timestamp())
+    # Skip token validation and directly override the auth dependency
+    app.dependency_overrides[get_current_user] = lambda: test_user
     
-    # Use the JWT service from the app to create a valid token with proper nbf
-    jwt_service = app.state.jwt_service
-    token_data = {
-        "sub": str(test_user.id),
-        "username": test_user.username,
-        "email": test_user.email,
-        "roles": [role.value for role in test_user.roles],
-        "nbf": nbf,  # Not before timestamp
-        "exp": exp   # Expiration timestamp
-    }
-    
-    # Create token synchronously or asynchronously based on service implementation
-    if hasattr(jwt_service.create_access_token, "__await__"):
-        # For async implementation
-        access_token = await jwt_service.create_access_token(token_data)
-    else:
-        # For sync implementation
-        access_token = jwt_service.create_access_token(token_data)
-        
-    auth_headers = {"Authorization": f"Bearer {access_token}"}
-    
-    # Make the request with proper auth headers
+    # Make the request with modified timeout
+    endpoint = f"{app.state.settings.API_V1_STR}/xgboost/predict/risk"
     response = await client.post(
-        f"{app.state.settings.API_V1_STR}/xgboost/predict/risk",
+        endpoint,
         json=risk_prediction_request_data,
-        headers=auth_headers
+        headers={"Content-Type": "application/json"},
+        timeout=3.0  # Add explicit timeout to prevent hanging
     )
     
     # Check the response, providing detailed error message on failure

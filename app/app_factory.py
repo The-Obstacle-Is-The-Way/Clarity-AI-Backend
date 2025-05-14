@@ -11,6 +11,7 @@ import logging.config
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
+from typing import Optional
 
 # Third-Party Imports
 import sentry_sdk
@@ -287,11 +288,11 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_application(
-    settings_override: Settings | None = None,
+    settings_override: Optional[Settings] = None,
     include_test_routers: bool = False,
     jwt_service_override: JWTServiceInterface | None = None,
-    skip_auth_middleware: bool = False,  # TEMPORARY DEBUG FLAG
-    disable_audit_middleware: bool = False  # Added parameter to disable audit middleware
+    skip_auth_middleware: bool = False,
+    disable_audit_middleware: bool = False
 ) -> FastAPI:
     """
     Create and configure a FastAPI application instance.
