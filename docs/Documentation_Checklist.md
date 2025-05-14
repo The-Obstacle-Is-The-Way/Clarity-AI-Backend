@@ -23,24 +23,24 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 | [Dependency Injection Guide](./Dependency_Injection_Guide.md) | ✅ Complete | Comprehensive guide to the DI system |
 | [Error Handling Strategy](./Error_Handling_Strategy.md) | ✅ Complete | System-wide approach to error handling |
 | [Project Structure Overview](./Project_Structure_Overview.md) | ✅ Complete | Directory structure and organization rationale |
-| Design Patterns Guide | ❌ Missing | GOF/SOLID patterns used in the codebase |
+| [Design Patterns Guide](./Design_Patterns_Guide.md) | ✅ Complete | GOF/SOLID patterns used in the codebase |
 
 ### Domain Layer Documentation
 
 | Document | Status | Description |
 |----------|--------|-------------|
 | [Domain Models & Entities](./Domain_Models_Entities.md) | ✅ Complete | Documentation of core domain entities |
-| Value Objects Guide | ❌ Missing | Value objects and immutable data structures |
-| Domain Service Interfaces | ❌ Missing | Core domain service interfaces |
+| [Value Objects Guide](./Value_Objects_Guide.md) | ✅ Complete | Value objects and immutable data structures |
+| [Domain Service Interfaces](./Domain_Service_Interfaces.md) | ✅ Complete | Core domain service interfaces |
 | [Token Blacklist Repository Interface](./Token_Blacklist_Repository_Interface.md) | ✅ Partial | Standards for repository interfaces and token blacklist implementation |
 
 ### Application Layer Documentation
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| Use Case Implementation | ❌ Missing | Structure and implementation of use cases |
-| DTOs & Data Mapping | ❌ Missing | Data Transfer Objects and mapping strategies |
-| Application Services | ❌ Missing | Application service patterns and responsibilities |
+| [Use Case Implementation](./Use_Case_Implementation.md) | ✅ Complete | Structure and implementation of use cases |
+| [DTOs & Data Mapping](./DTOs_And_Data_Mapping.md) | ✅ Complete | Data Transfer Objects and mapping strategies |
+| [Application Services](./Application_Services.md) | ✅ Complete | Application service patterns and responsibilities |
 
 ### Infrastructure Layer Documentation
 

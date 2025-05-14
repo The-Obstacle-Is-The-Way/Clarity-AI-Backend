@@ -330,7 +330,6 @@ class TestDigitalTwinsEndpoints:
         self,
         client: AsyncClient,
         mock_digital_twin_service: AsyncMock,
-        monkeypatch, # monkeypatch is not used, consider removing if not needed later
         sample_patient_id: UUID
     ):
         """Test error handling for comprehensive insights generation."""
@@ -340,11 +339,12 @@ class TestDigitalTwinsEndpoints:
 
         response = await client.get(insights_url)
 
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR # Changed from 503
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         content = response.json()
         assert "detail" in content
-        # Default FastAPI 500 message if not debug mode and no generic handler for BaseException
-        assert content["detail"] == "Internal Server Error" # More generic for unhandled 500
+        # Match the general_exception_handler's output
+        assert content["detail"] == "An unexpected internal server error occurred."
+        assert content.get("error_code") == "INTERNAL_SERVER_ERROR"
         
         mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(
             patient_id=sample_patient_id
@@ -399,35 +399,31 @@ class TestDigitalTwinsEndpoints:
         self,
         client: AsyncClient,
         mock_digital_twin_service: AsyncMock,
-        monkeypatch, # monkeypatch is not used, consider removing if not needed later
         sample_patient_id: UUID
     ):
         """Test error handling when MentaLLaMA service fails for clinical text analysis."""
-        # Payload must be valid for the request schema to pass Pydantic validation
-        # so that the service is actually called and can raise ModelExecutionError.
-        # Assuming 'analysis_type' is part of the schema, possibly optional or with default.
-        # The success case test_analyze_clinical_text includes it.
         valid_payload_for_service_call = {
             "text": "Patient reports feeling anxious.",
-            "analysis_type": "summary" # Added to ensure payload is valid
+            "analysis_type": "summary"
         }
         
         mock_digital_twin_service.analyze_clinical_text_mentallama.side_effect = ModelExecutionError("MentaLLaMA service error")
 
         analysis_url = f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text"
         
-        response = await client.post(analysis_url, json=valid_payload_for_service_call) # Use valid payload
+        response = await client.post(analysis_url, json=valid_payload_for_service_call)
 
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR # Changed from 503
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         content = response.json()
         assert "detail" in content
-        # Default FastAPI 500 message
-        assert content["detail"] == "Internal Server Error" # More generic for unhandled 500
+        # Match the general_exception_handler's output
+        assert content["detail"] == "An unexpected internal server error occurred."
+        assert content.get("error_code") == "INTERNAL_SERVER_ERROR"
         
         mock_digital_twin_service.analyze_clinical_text_mentallama.assert_called_once_with(
             patient_id=sample_patient_id, 
-            text=valid_payload_for_service_call["text"], # Changed from text_content to text
-            analysis_type=valid_payload_for_service_call["analysis_type"] # Added analysis_type
+            text=valid_payload_for_service_call["text"],
+            analysis_type=valid_payload_for_service_call["analysis_type"]
         )
 
 
