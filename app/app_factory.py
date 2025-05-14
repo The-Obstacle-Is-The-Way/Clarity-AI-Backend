@@ -507,13 +507,21 @@ def create_application(
         )
         
         # Return a more specific error message that doesn't leak PHI
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "detail": "An unexpected internal server error occurred.",
-                "error_code": "INTERNAL_SERVER_ERROR"
-            },
-        )
+        try:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "detail": "An unexpected internal server error occurred.",
+                    "error_code": "INTERNAL_SERVER_ERROR"
+                },
+            )
+        except Exception as e:
+            # Handle any potential recursion or other issues
+            logger.critical(f"Critical error in model_execution_error_handler: {str(e)}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "An internal server error occurred."},
+            )
     
     # 4. Add settings to app state for access throughout the application
     app_instance.state.settings = current_settings
