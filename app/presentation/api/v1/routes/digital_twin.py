@@ -118,10 +118,14 @@ async def get_comprehensive_insights(
     except ModelExecutionError as e:
         # Convert ModelExecutionError to HTTP 500 with standardized error response
         logger.error(f"Model execution error in insights generation: {str(e)}")
-        raise HTTPException(
+        # Return a structured JSON response with both detail and error_code fields
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected internal server error occurred.",
-            headers={"X-Error-Code": "INTERNAL_SERVER_ERROR"}
+            content={
+                "detail": "An unexpected internal server error occurred.",
+                "error_code": "INTERNAL_SERVER_ERROR"
+            }
         )
     except Exception as e:
         logger.error(f"Error generating insights: {str(e)}")
@@ -161,10 +165,14 @@ async def analyze_clinical_text(
     except ModelExecutionError as e:
         # Convert ModelExecutionError to HTTP 500 with standardized error response
         logger.error(f"Model execution error in text analysis: {str(e)}")
-        raise HTTPException(
+        # Return a structured JSON response with both detail and error_code fields
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected internal server error occurred.",
-            headers={"X-Error-Code": "INTERNAL_SERVER_ERROR"}
+            content={
+                "detail": "An unexpected internal server error occurred.",
+                "error_code": "INTERNAL_SERVER_ERROR"
+            }
         )
     except Exception as e:
         logger.error(f"Error analyzing clinical text: {str(e)}")
