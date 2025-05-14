@@ -12,21 +12,21 @@ from httpx import AsyncClient, ASGITransport
 from app.core.config.settings import Settings as AppSettings
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.app_factory import create_application
-
-# Import repository interfaces for dependency injection
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
+
+from app.app_factory import create_application
 
 # Import dependencies that need to be mocked
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
 
 # Import entity models needed for endpoints
-from app.core.domain.entities.patient import Patient as CorePatient
 
-from jose import jwt
+from jose import jwt as jose_jwt, JWTError
+import logging
 
+logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="function")
 def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, middleware_patch) -> FastAPI:
@@ -358,7 +358,7 @@ class AuthTestHelper:
         }
         
         # Encode and cache token
-        token = jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
+        token = jose_jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
         self._tokens[user_id] = token
         return token
     
@@ -516,168 +516,124 @@ def test_settings() -> AppSettings:
 
 
 @pytest.fixture(scope="module")
-def global_mock_jwt_service(test_settings) -> MagicMock:
-    """Create a module-scoped mock JWT service that can be used across tests."""
+def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
     mock_service = MagicMock(spec=JWTServiceInterface)
-    
-    # Import the TokenPayload class and TokenType enum to match the expected return type
-    from app.infrastructure.security.jwt.jwt_service import TokenPayload, TokenType
-    
-    # Mock tokens storage to simulate token validation
-    token_store = {}
-    token_exp_store = {}
-    # Use the same secret key that the app will use for verification
-    secret_key = test_settings.JWT_SECRET_KEY
-    algorithm = test_settings.JWT_ALGORITHM
-    
-    # Expose token_store and token_exp_store as attributes of the mock
-    mock_service.token_store = token_store
-    mock_service.token_exp_store = token_exp_store
-    
-    # Set up async methods
-    mock_create_token = AsyncMock()
-    async def mock_create_access_token(data: dict, expires_delta: timedelta = None):
-        # Create a real token using jose library
-        expires = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+
+    # Simplified and consistent token creation for testing
+    async def mock_create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         to_encode = data.copy()
+
+        # Ensure standard claims for testing are present, using test_settings
+        if "iss" not in to_encode and test_settings.JWT_ISSUER:
+            to_encode["iss"] = test_settings.JWT_ISSUER
+        if "aud" not in to_encode and test_settings.JWT_AUDIENCE:
+            to_encode["aud"] = test_settings.JWT_AUDIENCE
         
-        # Make sure required fields are present
-        if "sub" not in to_encode and "user_id" in to_encode:
-            to_encode["sub"] = to_encode["user_id"]
+        # Standard time-based claims
+        now = datetime.now(timezone.utc)
+        if expires_delta:
+            expire = now + expires_delta
+        else:
+            expire = now + timedelta(minutes=test_settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
-        # Ensure first and last name exist for User model validation
-        if "first_name" not in to_encode:
-            to_encode["first_name"] = "Test"
-        if "last_name" not in to_encode:
-            to_encode["last_name"] = "User"
-        if "created_at" not in to_encode:
-            to_encode["created_at"] = int(datetime.now(timezone.utc).timestamp())
-        
-        # Ensure required JWT fields 
-        to_encode.update({
-            "exp": int(expires.timestamp()),
-            "iat": int(datetime.now(timezone.utc).timestamp()),
-            "jti": str(uuid.uuid4()),
-            "iss": "test-issuer",
-            "aud": "test-audience",
-            "type": TokenType.ACCESS.value
-        })
-        
-        # Convert lists of enums to string values
-        if "roles" in to_encode and to_encode["roles"]:
-            # Convert enum values to strings if needed
-            to_encode["roles"] = [
-                role.value if hasattr(role, "value") else role 
-                for role in to_encode["roles"]
-            ]
-            
-        # Convert UUID to string
-        for key, value in to_encode.items():
-            if isinstance(value, uuid.UUID):
-                to_encode[key] = str(value)
-                
-        # Create token
-        token = jwt.encode(to_encode, secret_key, algorithm=algorithm)
-        
-        # Store for validation
-        token_store[token] = to_encode
-        token_exp_store[token] = expires
-        return token
-    
-    mock_create_token.side_effect = mock_create_access_token
-    mock_service.create_access_token = mock_create_token
-    
-    mock_decode = AsyncMock()
-    async def mock_decode_token(token: str):
-        if token not in token_store:
-            raise ValueError(f"Simplified mock: Token {token} not in store")
-        if datetime.now(timezone.utc) > token_exp_store.get(token, datetime.max.replace(tzinfo=timezone.utc)):
-            raise ValueError("Mock token has expired")
-            
-        # Actually decode the token using jose
+        to_encode.update({"exp": expire, "iat": now})
+
+        # Ensure 'sub' is present, as it's often critical
+        if "sub" not in to_encode:
+            if "user_id" in to_encode:
+                to_encode["sub"] = str(to_encode["user_id"])
+            else:
+                # Add a default sub if none provided, to prevent errors during encoding/decoding
+                # This helps ensure tokens are always minimally valid for encoding.
+                to_encode["sub"] = f"test-sub-{uuid.uuid4()}" 
+
+        # Use key and algorithm from test_settings for consistency
+        # This ensures tokens created by the mock are compatible with settings potentially
+        # used by a real service instance if fallback occurs or if settings are shared.
+        encoded_jwt = jose_jwt.encode(
+            to_encode, 
+            key=test_settings.JWT_SECRET_KEY.get_secret_value(), 
+            algorithm=test_settings.JWT_ALGORITHM
+        )
+        logger.debug(f"global_mock_jwt_service: Created token with payload: {to_encode}")
+        return encoded_jwt
+
+    async def mock_decode_token(token: str) -> TokenPayload:
+        # This mock decode can be simple or replicate parts of the patched logic if needed for direct tests on the mock.
+        # For middleware tests, the actual JWTService (patched) will be doing the decode.
         try:
-            payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-            token_type = payload.get("type", TokenType.ACCESS.value)
-            if isinstance(token_type, str):
-                token_type = TokenType.ACCESS if token_type.lower() == "access" else TokenType.REFRESH
-                
-            return TokenPayload(
-                sub=payload.get("sub", ""),
-                roles=payload.get("roles", []),
-                username=payload.get("username", ""),
-                email=payload.get("email", ""),
-                exp=payload.get("exp", int(datetime.now(timezone.utc).timestamp()) + 3600),
-                iat=payload.get("iat", int(datetime.now(timezone.utc).timestamp())),
-                jti=payload.get("jti", str(uuid.uuid4())),
-                iss=payload.get("iss", "test-issuer"),
-                aud=payload.get("aud", "test-audience"),
-                type=token_type,
-                permissions=payload.get("permissions", None)
-            )
-        except Exception as e:
-            # Fallback to the data from our store
-            data = token_store[token]
-            token_type = data.get("type", TokenType.ACCESS.value)
-            if isinstance(token_type, str):
-                token_type = TokenType.ACCESS if token_type.lower() == "access" else TokenType.REFRESH
-                
-            return TokenPayload(
-                sub=data.get("sub", ""),
-                roles=data.get("roles", []),
-                username=data.get("username", ""),
-                email=data.get("email", ""),
-                exp=int(token_exp_store[token].timestamp()),
-                iat=int(datetime.now(timezone.utc).timestamp()),
-                jti=data.get("jti", str(uuid.uuid4())),
-                iss=data.get("iss", "test-issuer"),
-                aud=data.get("aud", "test-audience"),
-                type=token_type,
-                permissions=data.get("permissions", None)
-            )
-    
-    mock_decode.side_effect = mock_decode_token
-    mock_service.decode_token = mock_decode
-    
-    mock_verify = AsyncMock()
-    async def mock_verify_token(token: str):
-        try:
-            # Directly decode the token using the test secret
-            jwt.decode(
+            payload = jose_jwt.decode(
                 token, 
-                secret_key, 
-                algorithms=[algorithm],
-                options={
-                    "verify_signature": True,
-                    "verify_aud": False,
-                    "verify_iss": False
-                }
+                key=test_settings.JWT_SECRET_KEY.get_secret_value(), 
+                algorithms=[test_settings.JWT_ALGORITHM],
+                audience=test_settings.JWT_AUDIENCE, # Optional: align with what patched decode might expect or how tokens are made
+                issuer=test_settings.JWT_ISSUER
             )
-            # If decoding is successful, check if token is in our store and not expired
-            if token not in token_store:
-                return False
-            
-            # Check token expiration
-            if datetime.now(timezone.utc) > token_exp_store.get(token, datetime.max.replace(tzinfo=timezone.utc)):
-                return False
-            
-            return True
-        except Exception as e:
-            # Log error but don't expose it
-            import logging
-            logging.warning(f"Token verification failed: {e}")
-            return False
+            # Minimal transformation to TokenPayload, real service does more
+            return TokenPayload(
+                sub=payload.get("sub"),
+                user_id=payload.get("user_id", payload.get("sub")),
+                username=payload.get("username"),
+                roles=payload.get("roles", []),
+                scopes=payload.get("scopes", []),
+                exp=payload.get("exp"),
+                iat=payload.get("iat"),
+                jti=payload.get("jti"),
+                iss=payload.get("iss"),
+                aud=payload.get("aud")
+            )
+        except JWTError as e:
+            logger.error(f"global_mock_jwt_service.mock_decode_token failed: {e}")
+            raise InvalidTokenException(str(e))
+
+    mock_service.create_access_token = AsyncMock(side_effect=mock_create_access_token)
+    # Provide a basic mock for decode_token if it's ever called directly on global_mock_jwt_service.
+    # Note: The primary decoding under test happens via the patched JWTService instance used by the middleware.
+    mock_service.decode_token = AsyncMock(side_effect=mock_decode_token) 
+
+    # Mock for is_token_blacklisted - default to False for tests unless specified
+    async def mock_is_token_blacklisted(token: str) -> bool:
+        return False # Default behavior: token is not blacklisted
+    mock_service.is_token_blacklisted = AsyncMock(side_effect=mock_is_token_blacklisted)
     
-    mock_verify.side_effect = mock_verify_token
-    mock_service.verify_token = mock_verify
-    
-    yield mock_service 
+    # Mock for verify_token - can rely on decode or be simpler
+    async def mock_verify_token(token: str) -> TokenPayload:
+        # Similar to decode, this is for direct calls to the mock. Patched service handles middleware flow.
+        return await mock_decode_token(token)
+    mock_service.verify_token = AsyncMock(side_effect=mock_verify_token)
+
+    return mock_service
+
+
+@pytest.fixture(scope="function")
+async def get_valid_auth_headers(
+    global_mock_jwt_service: JWTServiceInterface, 
+    authenticated_user: DomainUser,
+    test_settings: Settings # Added to ensure it's available, though global_mock_jwt_service now uses it internally
+) -> dict[str, str]:
+    user_data_for_token = {
+        # global_mock_jwt_service.create_access_token will now add iss, aud, exp, iat, and ensure sub
+        "user_id": str(authenticated_user.id), 
+        "username": authenticated_user.username,
+        "roles": [role.value for role in authenticated_user.roles],
+        "scopes": ["openid", "profile", "email"],
+        "first_name": authenticated_user.first_name, # Add more fields if TokenPayload expects them from source
+        "last_name": authenticated_user.last_name,
+        "email": authenticated_user.email,
+    }
+    # If 'sub' is critical and different from user_id, set it explicitly here:
+    # user_data_for_token["sub"] = str(authenticated_user.id) 
+    # otherwise, create_access_token will derive sub from user_id or use a default.
+
+    token = await global_mock_jwt_service.create_access_token(data=user_data_for_token)
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture(scope="module")
 def jwt_service_patch():
     """Patch the JWT service to accept test tokens without verification in test environment."""
     from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload, TokenType
-    from jose import jwt
+    from jose import jwt as jose_jwt
     import logging
     from datetime import datetime, timezone
     import uuid
@@ -704,7 +660,7 @@ def jwt_service_patch():
         try:
             # Try to decode without verification to check if it's a test token
             try:
-                unverified_payload = jwt.decode(
+                unverified_payload = jose_jwt.decode(
                     token, 
                     key=test_secret_key,  # Any key will do for unverified
                     options={
@@ -791,7 +747,7 @@ def middleware_patch(test_settings):
     """Patch the authentication middleware to use test tokens."""
     from starlette.middleware.base import BaseHTTPMiddleware
     from app.presentation.middleware.authentication import AuthenticationMiddleware
-    import jwt
+    import jwt as jose_jwt
     from datetime import datetime, timezone
     import logging
     import traceback
@@ -1010,7 +966,7 @@ class EnhancedAuthTestHelper:
                 email = user.email
             if roles is None and hasattr(user, 'roles'):
                 # Convert roles from UserRole enum to strings
-                roles = [role.value if hasattr(role, 'value') else str(role) for role in user.roles]
+                roles = [role.value if hasattr(role, 'value') else role for role in user.roles]
         else:
             user_id = user_or_id
         
@@ -1037,7 +993,7 @@ class EnhancedAuthTestHelper:
         }
         
         # Encode and cache token
-        token = jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
+        token = jose_jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
         self._tokens[user_id] = token
         return token
     
