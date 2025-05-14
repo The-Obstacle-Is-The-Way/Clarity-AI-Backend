@@ -16,7 +16,8 @@ A digital twin is a computational representation of a patient's mental health st
 This system aims to bridge the critical gap in psychiatric care by providing objective, quantitative measurements and predictions where traditional assessments rely heavily on subjective self-reporting and infrequent clinical observations.
 
 ![Conceptual diagram of a Digital Twin for Health (DT4H), showing the connection between physical entity data and digital twin applications.](./images/digital-twin-for-health.png)
-*Fig. 1: Digital twin for health (DT4H) envisioned. From: [Katsoulakis, E., Wang, Q., Wu, H. et al. Digital twins for health: a scoping review. npj Digit. Med. 7, 77 (2024).](https://www.nature.com/articles/s41746-024-01073-0)*
+*Fig. 1: Digital twin for health (DT4H) envisioned. 
+From: [Katsoulakis, E., Wang, Q., Wu, H. et al. Digital twins for health: a scoping review. npj Digit. Med. 7, 77 (2024).](https://www.nature.com/articles/s41746-024-01073-0)*
 
 ## Technical Architecture
 
