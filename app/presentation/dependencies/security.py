@@ -6,7 +6,7 @@ from app.core.interfaces.repositories.token_blacklist_repository_interface impor
 from app.infrastructure.security.token.redis_token_blacklist_repository import (
     RedisTokenBlacklistRepository,
 )
-from app.infrastructure.services.redis_cache_service import RedisCacheService
+from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 from app.presentation.dependencies.cache import get_cache_service
 from app.infrastructure.logging.logger import get_logger
 

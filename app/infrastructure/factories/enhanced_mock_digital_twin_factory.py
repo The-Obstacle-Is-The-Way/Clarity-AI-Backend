@@ -11,8 +11,10 @@ from app.domain.services.enhanced_digital_twin_core_service import EnhancedDigit
 from app.domain.services.enhanced_mentalllama_service import EnhancedMentalLLaMAService
 from app.domain.services.enhanced_pat_service import EnhancedPATService
 from app.domain.services.enhanced_xgboost_service import EnhancedXGBoostService
+# Import from canonical location using clean architecture principles
 from app.infrastructure.services.mock_enhanced_digital_twin_core_service import (
     MockEnhancedDigitalTwinCoreService,
+    MockEnhancedDigitalTwinNeurotransmitterService,
 )
 
 # These would be imported once implemented

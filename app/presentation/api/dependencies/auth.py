@@ -43,7 +43,7 @@ from app.core.interfaces.services.jwt_service import IJwtService
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
 from app.infrastructure.persistence.repositories.redis_token_blacklist_repository import RedisTokenBlacklistRepository
-from app.infrastructure.services.redis_cache_service import RedisCacheService
+from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 
 # Initialize logger for this module - MODULE LEVEL
 logger = logging.getLogger(__name__)
