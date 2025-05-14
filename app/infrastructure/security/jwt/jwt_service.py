@@ -154,12 +154,15 @@ class JWTService(IJwtService):
 
     async def _is_token_blacklisted(self, token: str) -> bool:
         """Check if a token (specifically its jti) is in the blacklist."""
-        # Ensure _token_blacklist exists
-        if not hasattr(self, '_token_blacklist'):
-            logger.debug("Initializing token blacklist dictionary")
-            self._token_blacklist = {}
-            
         try:
+            # Try with repository first if available
+            if self.token_blacklist_repository is not None:
+                try:
+                    return await self.token_blacklist_repository.is_token_blacklisted(token)
+                except Exception as repo_error:
+                    logger.warning(f"Error using token blacklist repository: {repo_error}. Falling back to local blacklist.")
+                    
+            # Fall back to local blacklist if repository unavailable or failed
             # Quick unverified decode just for JTI (less secure if key is compromised)
             unverified_payload = jwt_decode(
                 token, 
@@ -167,6 +170,7 @@ class JWTService(IJwtService):
                 options={"verify_signature": False, "verify_aud": False, "verify_iss": False, "verify_exp": False}
             )
             jti = unverified_payload.get("jti")
+            
             if jti and jti in self._token_blacklist:
                 # Check if blacklist entry itself is expired (token expired anyway)
                 if self._token_blacklist[jti] > datetime.now(UTC):
@@ -175,14 +179,16 @@ class JWTService(IJwtService):
                     # Clean up expired blacklist entry
                     del self._token_blacklist[jti]
                     logger.debug(f"Removed expired blacklist entry for JTI: {jti}")
+                    
+            # Periodically clean the blacklist to prevent memory leaks
+            self._clean_token_blacklist()
+            return False
         except JWTError:
             # If it doesn't even decode unverified, it's invalid anyway
             return False
         except Exception as e:
             logger.warning(f"Error checking token blacklist: {e}")
             return False
-            
-        return False
 
     async def is_token_blacklisted(self, token: str) -> bool:
         """
@@ -640,41 +646,29 @@ class JWTService(IJwtService):
         """Extracts the subject ('sub') claim from the token payload.
         Returns None if the subject is missing or invalid.
         """
-        if not isinstance(payload, TokenPayload):
-             # Handle cases where payload might not be a TokenPayload object yet
-             # This might occur if called before full validation in decode_token
-             sub = payload.get("sub")
-        else:
-             sub = payload.sub # Access via attribute
-
-        if not sub:
-            logger.warning("Subject ('sub') claim missing from token payload.")
-            return None
-        
         try:
-            logger.debug(f"Attempting to parse user ID string '{user_id_str}' to UUID.")
-            user_id = UUID(user_id_str)
-            logger.debug(f"User ID parsed successfully: {user_id}")
-        except ValueError as e:
-            logger.error(f"Invalid user ID format in token 'sub' claim: {user_id_str}. Error: {e}")
-            return None
+            if not isinstance(payload, TokenPayload):
+                # Handle cases where payload might not be a TokenPayload object yet
+                # This might occur if called before full validation in decode_token
+                sub = payload.get("sub")
+            else:
+                sub = payload.sub # Access via attribute
 
-        logger.debug(f"Fetching user with ID {user_id} from repository {type(self.user_repository).__name__}...")
-        user = await self.user_repository.get_by_id(user_id)
-        if user:
-            logger.debug(f"User found in repository: {user.email} (ID: {user.id})")
-            return user
-        else:
-            logger.warning(f"User with ID {user_id} not found in the repository.")
+            if not sub:
+                logger.warning("Subject ('sub') claim missing from token payload.")
+                return None
+            
+            # Return the subject claim directly since it should already be a string
+            return sub
+        except Exception as e:
+            logger.error(f"Error extracting subject from token payload: {e}")
             return None
-        
-    except AuthenticationError as e: # Catches errors from decode_token
-        logger.warning(f"Authentication error while getting user from token: {e}")
-        # Depending on policy, you might re-raise or return None
-        return None # Or raise AuthenticationError("Failed to authenticate token.")
-    except Exception as e:
-        logger.exception(f"Unexpected error retrieving user from token: {e}")
-        raise AuthenticationError("Failed to retrieve user information from token.")
+    
+    async def blacklist_token(self, token: str) -> bool:
+        """Add a token to the blacklist to prevent its further use.
+        Returns True if token was successfully blacklisted.
+        """
+        try:
             payload = self.decode_token(token) # No await needed anymore
             jti = payload.jti # jti is now an attribute
             exp = payload.exp # exp is now an attribute
@@ -686,13 +680,17 @@ class JWTService(IJwtService):
                 logger.info(f"Token with JTI {jti} blacklisted until {expiry_datetime}.")
                 # Periodically clean the blacklist
                 self._clean_token_blacklist()
+                return True
             else:
                 logger.warning("Attempted to revoke token without JTI or EXP claim.")
+                return False
 
         except AuthenticationError as e:
             logger.warning(f"Attempted to revoke an invalid/expired token: {e}")
+            return False
         except Exception as e:
             logger.error(f"Unexpected error during token revocation: {e}")
+            return False
 
     def _clean_token_blacklist(self) -> None:
         """Removes expired entries from the token blacklist."""
