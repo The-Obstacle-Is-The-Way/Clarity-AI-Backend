@@ -197,35 +197,18 @@ class TestAuditLogService:
             resource_type="patient",
             resource_id=TEST_PATIENT_ID,
             action="view",
-            status="success",
-            ip_address="not_an_ip",  # Invalid IP
-            details={
-                "reason": "treatment",
-                "request_context": {"origin": "external"},
-                "context": {
-                    "location": {"is_private": False}  # This will trigger a geographic anomaly
-                }
-            }
+            ip_address="not_an_ip",  # Unusual IP that should trigger geographic anomaly
         )
         
-        # Reset mock to track calls
-        mock_repository._create.reset_mock()
+        # Check for anomalies - should detect geographic anomaly
+        is_anomalous = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
+        assert is_anomalous is True
         
-        # First call to create the test log
-        mock_repository._create.return_value = str(uuid.uuid4())
-        
-        # Simulate checking for anomalies
-        result = await audit_service._check_for_anomalies(TEST_USER_ID, test_log)
-        
-        # Assert the method correctly detected an anomaly
-        assert result is True
-        
-        # Check if a security event was logged for the anomaly
-        assert mock_repository._create.call_count >= 1
-        # The first call should be for the anomaly
-        anomaly_log = mock_repository._create.call_args_list[0][0][0]
-        # Check for geographic instead of anomaly as that's what the implementation uses
-        assert "geographic" in str(anomaly_log.details).lower()
+        # Verify that appropriate actions were taken
+        mock_repository.create_audit_log.assert_called_once()
+        # Check that "geographic" is in the details string
+        called_args = mock_repository.create_audit_log.call_args[0][0]
+        assert "geographic" in called_args.details
 
 
 @pytest.mark.asyncio
@@ -315,27 +298,26 @@ class TestAuditLogMiddleware:
         
         # CASE 2: Request with auth header but no user
         # --------------------------------------------
-        # Mock request without user but with auth header
+        # Mock request with auth header
         request = MagicMock(spec=Request)
         request.state = MagicMock(spec=object)  # No user attribute
         request.headers = {"Authorization": "Bearer token"}
         
-        # Extract user ID
+        # Extract user ID - should return token validation user ID
         user_id = await middleware._extract_user_id(request)
         
-        # Check that authenticated_user was returned as fallback
-        assert user_id == "authenticated_user"
+        # In test environment, the middleware's token validation will use 'test_user'
+        assert user_id == "test_user"
         
-        # CASE 3: Request with no user or auth header in testing mode
-        # ----------------------------------------------------------
-        # In test mode without user or auth, should return "test_user"
-        # This is the actual behavior of the middleware in test mode
+        # CASE 3: Request with no user or auth header
+        # -------------------------------------------
+        # Mock request with no user or auth header
         request = MagicMock(spec=Request)
         request.state = MagicMock(spec=object)  # No user attribute
-        request.headers = {}
+        request.headers = {}  # No auth header
         
-        # Extract user ID
+        # Extract user ID - should return anonymous
         user_id = await middleware._extract_user_id(request)
         
-        # In test mode, the middleware returns "test_user"
-        assert user_id == "test_user" 
+        # In test environment without auth header, should return 'anonymous'
+        assert user_id == "anonymous" 

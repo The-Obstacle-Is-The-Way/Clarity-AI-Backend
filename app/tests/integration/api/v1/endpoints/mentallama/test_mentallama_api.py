@@ -27,6 +27,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.domain.entities.audit_log import AuditLog, AuditEventType
 from app.application.services.audit_log_service import AuditLogService, IAuditLogService
 from app.presentation.api.dependencies.audit import get_audit_log_service
+from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
 
 # Application imports (Sorted)
 from app.app_factory import create_application
@@ -285,6 +286,14 @@ async def mentallama_test_client(
     app.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
     logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode IJwtService on app {id(app)} with global_mock_jwt_service ID: {id(global_mock_jwt_service)}")
     
+    # Override audit log service with our mock
+    mock_audit_service = MockAuditLogService()
+    app.dependency_overrides[get_audit_log_service] = lambda: mock_audit_service
+    logging.info(f"MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService")
+    
+    # Set the mock audit logger on app.state to use in middleware
+    app.state.audit_logger = mock_audit_service
+    
     # Override get_current_user dependency with a mock user
     async def mock_get_current_user():
         """Returns a mock user for testing."""
@@ -457,19 +466,21 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
     # Create a real session factory with a real engine
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     
-    # Custom settings for test with rate limiting and audit disabled
+    # Create custom settings for test environment with rate limiting disabled
     custom_settings = Settings()
-    custom_settings.RATE_LIMITING_ENABLED = False  # Disable rate limiting
+    custom_settings.RATE_LIMITING_ENABLED = False  # Critical: Disable rate limiting
     
-    # Create the FastAPI application with custom settings
+    # Create the FastAPI application with test settings
     app = create_application(
-        skip_auth_middleware=True,  # Skip authentication middleware
-        settings_override=custom_settings  # Use our custom settings
+        skip_auth_middleware=True,  # Skip authentication middleware for tests
+        settings_override=custom_settings,  # Use our custom settings without rate limiting
+        include_test_routers=False  # Don't include test routers
     )
     
     # Override app.state attributes with the properly configured session factory and engine
     app.state.db_engine = engine
     app.state.actual_session_factory = session_factory
+    app.state.db_schema_created = True  # Indicate schema is already created
     
     # Create an AsyncClient for testing
     async with AsyncClient(

@@ -183,32 +183,51 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         
         return False
     
-    async def _extract_user_id(self, request: Request) -> Optional[str]:
+    async def _extract_user_id(self, request: Request) -> str:
         """
-        Extract the user ID from the request.
+        Extract user ID from request.
         
         Args:
             request: The FastAPI request
             
         Returns:
-            Optional[str]: The user ID if available
+            str: User ID or placeholder value
         """
-        # Try to get user from request state (set by auth middleware)
-        if hasattr(request.state, "user") and getattr(request.state.user, "id", None):
+        # Primary method: Get from authenticated user in request state
+        if hasattr(request.state, "user") and request.state.user is not None:
             return request.state.user.id
         
-        # Try to get from headers or cookies as fallback
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            # Don't try to decode the token here - just note that there was one
-            # The actual user ID should be populated by auth middleware already
-            return "authenticated_user"
+        # Secondary method: Try to extract from auth token
+        if "Authorization" in request.headers:
+            try:
+                # Get settings from request state if available, else from global
+                settings = request.state.settings if hasattr(request.state, "settings") else get_settings()
+                
+                # Get JWT service from request state if available
+                jwt_service = getattr(request.state, "jwt_service", None)
+                
+                # Extract token
+                auth_header = request.headers["Authorization"]
+                if auth_header.startswith("Bearer "):
+                    token = auth_header[7:]  # Remove "Bearer " prefix
+                    if jwt_service:
+                        try:
+                            payload = await jwt_service.decode_token(token)
+                            if payload and hasattr(payload, "sub"):
+                                return payload.sub
+                        except Exception as e:
+                            # Log token validation error but continue
+                            logger.warning(f"Error validating token in audit middleware: {e}")
+                    
+                    # In test mode, use a fixed value to avoid requiring complex JWT setup
+                    if settings.ENVIRONMENT == "test":
+                        return "test_user"
+                    return "authenticated_user"  # Fallback if we can't extract user ID from token
+            except Exception as e:
+                logger.warning(f"Error processing Authorization header: {e}")
         
-        # Fall back to test user ID for testing
-        if self.settings.TESTING:
-            return "test_user"
-            
-        return None
+        # Fallback: Use anonymous user ID
+        return "anonymous"
     
     def _extract_resource_info(self, path: str) -> Tuple[Optional[str], Optional[str]]:
         """

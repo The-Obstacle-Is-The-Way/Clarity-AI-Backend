@@ -30,11 +30,10 @@ from app.core.config.settings import get_settings
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.core.logging_config import LOGGING_CONFIG
 from app.core.security.rate_limiting.service import get_rate_limiter_service
-from app.infrastructure.database.session import create_db_engine_and_session
+from app.core.security.rate_limiting.middleware import RateLimitingMiddleware  # Use the core implementation
 import app.infrastructure.persistence.sqlalchemy.models  # noqa: F401 # Ensure models register first
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.logging import LoggingMiddleware
-from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
 from app.presentation.middleware.request_id import RequestIdMiddleware
 from app.presentation.middleware.security_headers import SecurityHeadersMiddleware
 from app.presentation.middleware.authentication import AuthenticationMiddleware
