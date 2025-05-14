@@ -1,5 +1,32 @@
 """Test fixtures for security API tests."""
 
+import asyncio
+import json
+import re
+import traceback
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import AsyncGenerator, Dict, List, Optional, Union, Any, cast
+from uuid import UUID
+
+import jwt
+import pytest
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+from app.core.config.settings import Settings
+from app.core.domain.entities.user import User
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
+from app.domain.exceptions.token_exceptions import InvalidTokenException
+
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -8,14 +35,6 @@ import pytest
 from fastapi import FastAPI, Depends, Request, status
 from fastapi.responses import JSONResponse
 from httpx import AsyncClient, ASGITransport
-
-from app.core.config.settings import Settings
-from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.infrastructure.security.jwt.jwt_service import TokenPayload
-from app.domain.exceptions.token_exceptions import InvalidTokenException
 
 from app.factory import create_application
 
@@ -520,6 +539,10 @@ def test_settings() -> Settings:
 @pytest.fixture(scope="module")
 def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
     mock_service = MagicMock(spec=JWTServiceInterface)
+    
+    # Add token store for tests that need it
+    mock_service.token_store = {}
+    mock_service.token_exp_store = {}
 
     # Simplified and consistent token creation for testing
     async def mock_create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -547,7 +570,96 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
             else:
                 # Add a default sub if none provided, to prevent errors during encoding/decoding
                 # This helps ensure tokens are always minimally valid for encoding.
-                to_encode["sub"] = f"test-sub-{uuid.uuid4()}" 
+                to_encode["sub"] = f"test-sub-{uuid.uuid4()}"
+        
+        # For testing, use a predictable token format
+        token = f"mock_access_token_{uuid.uuid4()}"
+        
+        # Store token data for later verification
+        mock_service.token_store[token] = to_encode
+        mock_service.token_exp_store[token] = expire
+        
+        return token
+    
+    # Create refresh token implementation
+    async def mock_create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
+        # Similar to access token but with longer expiry
+        to_encode = data.copy()
+        now = datetime.now(timezone.utc)
+        if expires_delta:
+            expire = now + expires_delta
+        else:
+            expire = now + timedelta(days=test_settings.REFRESH_TOKEN_EXPIRE_DAYS)
+            
+        to_encode.update({"exp": expire, "iat": now, "token_type": "refresh"})
+        
+        # For testing, use a predictable token format
+        token = f"mock_refresh_token_{uuid.uuid4()}"
+        mock_service.token_store[token] = to_encode
+        mock_service.token_exp_store[token] = expire
+        
+        return token
+    
+    # Decode token implementation
+    def mock_decode_token(token: str) -> dict:
+        # Check if token exists in our store
+        if token not in mock_service.token_store:
+            raise InvalidTokenException("Token not found in store")
+            
+        # Check if token is expired
+        if mock_service.token_exp_store[token] < datetime.now(timezone.utc):
+            raise TokenExpiredException("Token has expired")
+            
+        return mock_service.token_store[token]
+    
+    # Generate tokens for user implementation
+    async def mock_generate_tokens_for_user(user: User) -> dict[str, str]:
+        user_data = {
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "roles": user.roles if hasattr(user, 'roles') else []
+        }
+        
+        access_token = await mock_create_access_token(user_data)
+        refresh_token = await mock_create_refresh_token(user_data)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token
+        }
+    
+    # Refresh access token implementation
+    async def mock_refresh_access_token(refresh_token: str) -> str:
+        # Verify the refresh token
+        try:
+            token_data = mock_decode_token(refresh_token)
+            # Check if it's a refresh token
+            if token_data.get("token_type") != "refresh":
+                raise InvalidTokenException("Not a refresh token")
+                
+            # Create a new access token
+            # Remove the token_type claim as it's specific to refresh tokens
+            token_data_copy = token_data.copy()
+            token_data_copy.pop("token_type", None)
+            
+            return await mock_create_access_token(token_data_copy)
+        except Exception as e:
+            raise InvalidTokenException(f"Invalid refresh token: {str(e)}") from e
+    
+    # Verify token implementation
+    def mock_verify_token(token: str) -> bool:
+        try:
+            mock_decode_token(token)
+            return True
+        except (InvalidTokenException, TokenExpiredException):
+            return False
+    
+    # Get token expiration implementation
+    def mock_get_token_expiration(token: str) -> datetime | None:
+        if token in mock_service.token_exp_store:
+            return mock_service.token_exp_store[token]
+        return None
 
         # Use key and algorithm from test_settings for consistency
         # This ensures tokens created by the mock are compatible with settings potentially

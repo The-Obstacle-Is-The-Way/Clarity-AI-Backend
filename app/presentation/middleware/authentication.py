@@ -119,7 +119,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             
             # Get user repository instance
             user_repository = self.user_repository(session)
-            domain_user = await user_repository.get_user_by_id(user_id)
+            domain_user = await user_repository.get_by_id(user_id)
             
             if not domain_user:
                 logger.warning(f"User with ID {user_id} not found in database")
