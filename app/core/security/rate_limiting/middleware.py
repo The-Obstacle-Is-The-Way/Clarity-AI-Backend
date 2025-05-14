@@ -14,7 +14,17 @@ from .service import RateLimiterService
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     """Stub Middleware for rate limiting requests."""
 
-    def __init__(self, app, rate_limiter=None, limiter=None):
+    def __init__(self, app, rate_limiter=None, limiter=None, default_limits=None, **kwargs):
+        """
+        Initialize the rate limiting middleware.
+        
+        Args:
+            app: The ASGI application
+            rate_limiter: The rate limiter service (legacy parameter name)
+            limiter: The rate limiter service (new parameter name)
+            default_limits: Default rate limits (ignored, used by the limiter directly)
+            **kwargs: Additional arguments (ignored)
+        """
         super().__init__(app)
         # Accept either parameter name for backward compatibility
         # Prioritize 'rate_limiter' if both are provided

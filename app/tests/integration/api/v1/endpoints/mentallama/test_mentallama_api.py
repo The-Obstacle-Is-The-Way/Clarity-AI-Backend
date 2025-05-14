@@ -8,6 +8,7 @@ clean architecture principles with precise, mathematically elegant implementatio
 import logging
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
+from typing import Optional
 
 import asyncio
 import pytest
@@ -21,6 +22,11 @@ from fastapi import FastAPI
 from datetime import datetime, timezone, timedelta
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.domain.entities.audit_log import AuditLog, AuditEventType
+from app.application.services.audit_log_service import AuditLogService, IAuditLogService
+from app.presentation.api.dependencies.audit import get_audit_log_service
 
 # Application imports (Sorted)
 from app.app_factory import create_application
@@ -48,6 +54,50 @@ TEST_PROMPT = "This is a test prompt."
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 TEST_MODEL = "test_model"
 MENTALLAMA_API_PREFIX = f"{Settings().API_V1_STR}/mentallama"
+
+# Create a mock audit logger that doesn't use the database
+class MockAuditLogService(IAuditLogService):
+    """Mock implementation of IAuditLogService for testing that doesn't access the database."""
+    
+    async def log_event(self, event_type: AuditEventType, actor_id: str, 
+                       resource_type: Optional[str] = None, resource_id: Optional[str] = None,
+                       action: Optional[str] = None, metadata: Optional[dict] = None, 
+                       ip_address: Optional[str] = None, details: Optional[str] = None) -> str:
+        """Log an event without using the database."""
+        return str(uuid.uuid4())
+        
+    async def log_phi_access(self, actor_id: str, resource_type: str, resource_id: str,
+                           action: str, metadata: Optional[dict] = None,
+                           ip_address: Optional[str] = None, details: Optional[str] = None) -> str:
+        """Log PHI access without using the database."""
+        return str(uuid.uuid4())
+        
+    async def log_security_event(self, event_type: AuditEventType, actor_id: str,
+                               details: str, metadata: Optional[dict] = None,
+                               ip_address: Optional[str] = None) -> str:
+        """Log security event without using the database."""
+        return str(uuid.uuid4())
+        
+    async def log_admin_action(self, actor_id: str, action: str, 
+                              resource_type: Optional[str] = None, resource_id: Optional[str] = None,
+                              metadata: Optional[dict] = None, details: Optional[str] = None) -> str:
+        """Log admin action without using the database."""
+        return str(uuid.uuid4())
+        
+    async def log_login(self, user_id: str, success: bool, ip_address: Optional[str] = None, 
+                       details: Optional[str] = None) -> str:
+        """Log login event without using the database."""
+        return str(uuid.uuid4())
+        
+    async def log_logout(self, user_id: str, ip_address: Optional[str] = None) -> str:
+        """Log logout event without using the database."""
+        return str(uuid.uuid4())
+        
+    async def log_system_event(self, event_type: str, details: str, 
+                             component: Optional[str] = None, 
+                             metadata: Optional[dict] = None) -> str:
+        """Log system event without using the database."""
+        return str(uuid.uuid4())
 
 
 @pytest.fixture
@@ -391,34 +441,35 @@ async def test_service_unavailable(mentallama_test_client: AsyncClient, mock_men
 @pytest_asyncio.fixture(scope="function")
 async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     """
-    Provides a tuple of (AsyncClient, FastAPI) for testing.
+    Provides a tuple of (AsyncClient, FastAPI) for testing with proper database engine setup
+    and middleware skipping.
     
     Returns:
         Tuple with AsyncClient and FastAPI app
     """
-    # Create the FastAPI application with test settings
-    app = create_application(skip_auth_middleware=True)  # Skip authentication middleware
+    # Create an in-memory SQLite database with proper async engine
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
     
-    # Create a proper mock session that can be used as an async context manager
-    mock_session = AsyncMock(spec=AsyncSession)
+    # Create tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     
-    # Create a session factory that returns the mock session
-    # This factory is NOT a coroutine, but returns a context manager immediately
-    # Use a class for proper async context manager behavior
-    class MockAsyncSessionContextManager:
-        async def __aenter__(self):
-            return mock_session
-        
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
+    # Create a real session factory with a real engine
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
     
-    def mock_async_session_factory():
-        return MockAsyncSessionContextManager()
+    # Custom settings for test with rate limiting and audit disabled
+    custom_settings = Settings()
+    custom_settings.RATE_LIMITING_ENABLED = False  # Disable rate limiting
     
-    # Add to app.state to avoid database dependency errors
-    app.state.actual_session_factory = mock_async_session_factory
-    app.state.db_engine = MagicMock()
-    app.state.db_session = AsyncMock()
+    # Create the FastAPI application with custom settings
+    app = create_application(
+        skip_auth_middleware=True,  # Skip authentication middleware
+        settings_override=custom_settings  # Use our custom settings
+    )
+    
+    # Override app.state attributes with the properly configured session factory and engine
+    app.state.db_engine = engine
+    app.state.actual_session_factory = session_factory
     
     # Create an AsyncClient for testing
     async with AsyncClient(
@@ -428,3 +479,8 @@ async def client_app_tuple_func_scoped() -> AsyncGenerator[tuple[AsyncClient, Fa
     ) as client:
         # Yield the client and app as a tuple for use in tests
         yield client, app
+    
+    # Clean up the database after the tests
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
