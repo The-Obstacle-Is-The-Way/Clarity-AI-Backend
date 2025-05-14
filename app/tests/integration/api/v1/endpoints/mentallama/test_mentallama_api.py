@@ -13,10 +13,7 @@ from typing import Optional, Dict, Any, List
 import asyncio
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
+from app.tests.utils.asyncio_helpers import run_with_timeout, run_with_timeout_asyncio
 from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 from datetime import datetime, timezone, timedelta
@@ -46,6 +43,7 @@ from app.presentation.api.dependencies.auth import get_jwt_service
 def get_audit_log_service():
     return MockAuditLogService()
 
+# Initialize logger
 logger = logging.getLogger(__name__)
 
 # Setup logging
