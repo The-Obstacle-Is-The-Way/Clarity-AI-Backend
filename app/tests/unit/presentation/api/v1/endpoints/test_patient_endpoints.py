@@ -6,6 +6,10 @@ from fastapi import status, FastAPI, HTTPException, APIRouter, Depends
 from httpx import AsyncClient, Response, ASGITransport
 import uuid
 from datetime import date, datetime, timezone
+import logging
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # Add imports for managing lifespan explicitly
 import asyncio

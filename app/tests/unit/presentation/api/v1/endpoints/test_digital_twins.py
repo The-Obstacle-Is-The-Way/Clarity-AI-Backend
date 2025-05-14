@@ -8,6 +8,10 @@ the MentaLLaMA integration for clinical text processing.
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
+import logging
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # Third-Party Imports
 from fastapi import FastAPI, status, HTTPException

@@ -6,18 +6,16 @@ ensuring that they correctly handle events, validate data,
 and process in a HIPAA-compliant manner.
 """
 
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-
-# Tests are now fixed - remove skip directive
-# pytest.skip("Skipping analytics endpoints tests while fixing SQLAlchemy relationship issues", allow_module_level=True)
-
 import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, Mock, patch, ANY
 import inspect
 import asyncio
 import uuid
+import logging
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout

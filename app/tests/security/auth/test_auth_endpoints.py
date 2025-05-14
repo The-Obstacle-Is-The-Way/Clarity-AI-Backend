@@ -8,10 +8,14 @@ from unittest.mock import AsyncMock
 
 import asyncio
 import pytest
+import logging
 from app.tests.utils.asyncio_helpers import run_with_timeout
 from httpx import AsyncClient
 from fastapi import FastAPI
 import uuid
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # ADDED Imports for Pydantic models and exceptions for mocking
 from app.presentation.api.schemas.auth import TokenResponseSchema, SessionInfoResponseSchema
