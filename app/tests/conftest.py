@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 # Import the create_application function
-from app.app_factory import create_application
+from app.factory import create_application
 
 # Make the module available to be imported by tests
 sys.modules['pytest_asyncio'] = pytest_asyncio
