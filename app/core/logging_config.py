@@ -17,6 +17,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Base configuration that can be extended for different environments
 LOGGING_CONFIG_BASE: Dict[str, Any] = {
+
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
@@ -97,14 +98,31 @@ LOGGING_CONFIG_BASE: Dict[str, Any] = {
     }
 }
 
-# Only add file handlers if LOG_DIR is specified or logs directory exists
-log_dir = os.getenv("LOG_DIR", "logs")
-if not os.path.exists(log_dir):
-    try:
-        os.makedirs(log_dir, exist_ok=True)
-        # Add file handlers to all loggers if we can create the log directory
-        for logger_name in LOGGING_CONFIG["loggers"]:
-            LOGGING_CONFIG["loggers"][logger_name]["handlers"].extend(["file_handler", "error_file_handler"])
-    except OSError:
-        # If we can't create log directory, just use console logging
-        pass
+# Create a concrete logging configuration by copying the base config
+LOGGING_CONFIG = LOGGING_CONFIG_BASE.copy()
+
+# Ensure logs directory exists
+log_dir = Path(os.getcwd()) / "logs"
+log_dir.mkdir(parents=True, exist_ok=True)
+
+
+def setup_logging(config: Dict[str, Any] | None = None) -> None:
+    """
+    Configure the logging system with the provided configuration or default.
+    
+    Args:
+        config: Optional logging configuration dictionary to use instead of the default
+    """
+    if config is None:
+        config = LOGGING_CONFIG
+    
+    # Create logs directory if it doesn't exist
+    file_path = config["handlers"]["file_handler"]["filename"]
+    log_dir = Path(file_path).parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Apply the configuration
+    logging.config.dictConfig(config)
+    
+    logger = logging.getLogger(__name__)
+    logger.debug("Logging configured successfully")
