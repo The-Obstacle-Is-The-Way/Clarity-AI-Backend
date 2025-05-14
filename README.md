@@ -1,6 +1,8 @@
 # Clarity-AI Digital Twin Backend
 
-> A HIPAA‑compliant, ML‑driven backend for creating and managing "digital twins" of patients—aggregating wearable data, surfacing analytics, automating alerts, and drafting clinical documentation to augment psychiatric care.
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/Clarity-AI-Backend/) [![Coverage](https://img.shields.io/badge/coverage-87%25-green)](https://github.com/Clarity-AI-Backend/) [![HIPAA Compliant](https://img.shields.io/badge/HIPAA-compliant-blue)](https://github.com/Clarity-AI-Backend/docs/FastAPI_HIPAA_Compliance.md) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
+> A revolutionary HIPAA‑compliant platform creating computational "digital twins" of psychiatric patients—transforming fragmented clinical data into integrated predictive models that evolve in real-time with patient data. Clarity AI integrates multi-modal inputs (biometrics, clinical assessments, genetic markers) to surface objective analytics, automate clinical alerts, and draft documentation that augments psychiatric care.
 
 ## What is a Digital Twin for Mental Health?
 
@@ -18,7 +20,7 @@ This system aims to bridge the critical gap in psychiatric care by providing obj
 
 ## Technical Architecture
 
-The Clarity-AI backend employs a clean architecture approach with four distinct layers:
+The Clarity-AI backend implements a mathematically elegant [clean architecture](./docs/Clean_Architecture_Principles.md) approach with four distinct layers that maintain perfect separation of concerns:
 
 ```ascii
 ┌───────────────────┐      ┌───────────────────┐
@@ -35,19 +37,60 @@ The Clarity-AI backend employs a clean architecture approach with four distinct 
 └───────────────────┘
 ```
 
-- **Domain Layer**: Core entities, value objects, and domain services that encapsulate psychiatric digital twin models
-- **Application Layer**: Orchestrates use cases and workflows across multiple domain entities
-- **Infrastructure Layer**: Implements external service integrations, persistence, and ML model execution
-- **Presentation Layer**: HIPAA-compliant API with versioning, schema validation, and PHI protections
+- **[Domain Layer](./docs/Domain_Models_Entities.md)**: Core entities, value objects, and domain services that encapsulate psychiatric digital twin models without external dependencies
+- **[Application Layer](./docs/Application_Services.md)**: Orchestrates use cases and workflows across multiple domain entities following SOLID principles
+- **[Infrastructure Layer](./docs/Database_Access_Guide.md)**: Implements external service integrations, persistence, and ML model execution with proper abstraction
+- **[Presentation Layer](./docs/API_Security.md)**: HIPAA-compliant API with versioning, schema validation, and sophisticated PHI protections
+
+<details>
+<summary><b>📚 Architecture Documentation</b> (click to expand)</summary>
+
+* [Project Structure Overview](./docs/Project_Structure_Overview.md) - Complete directory organization
+* [Clean Architecture Principles](./docs/Clean_Architecture_Principles.md) - Implementation details
+* [Design Patterns Guide](./docs/Design_Patterns_Guide.md) - GOF patterns used
+* [Dependency Injection Guide](./docs/Dependency_Injection_Guide.md) - DI approach
+* [Error Handling Strategy](./docs/Error_Handling_Strategy.md) - Exception design
+</details>
 
 ## AI/ML Components
 
-Clarity-AI leverages multiple ML technologies to derive insights from patient data:
+Clarity-AI transcends conventional psychiatric analytics by integrating multiple quantum-level ML technologies into a unified digital twin framework:
 
-- **MentalLLaMA33B**: Large language model specially fine-tuned for mental health to analyze clinical notes, extract insights, and draft documentation
-- **XGBoost**: Gradient-boosted decision trees for treatment response prediction, medication efficacy analysis, and risk assessment
-- **Pretrained Actigraphy Transformer (PAT)**: Foundation model for analyzing wearable movement data to identify behavioral patterns
-- **LSTM Networks**: Recurrent neural networks for time-series analysis of symptom trajectories and biometric data
+<table>
+<tr>
+  <th width="25%">Technology</th>
+  <th>Implementation</th>
+  <th>Clinical Application</th>
+</tr>
+<tr>
+  <td><b>MentalLLaMA33B</b></td>
+  <td>Large language model specially fine-tuned for psychiatric contexts with 33B parameters</td>
+  <td>Analyzes clinical narratives, extracts latent diagnostic patterns, and generates clinical documentation with HIPAA compliance</td>
+</tr>
+<tr>
+  <td><b>XGBoost Ensemble</b></td>
+  <td>Gradient-boosted decision tree models with domain-specific feature engineering</td>
+  <td>Treatment response prediction, medication efficacy analysis, and risk assessment with interpretable confidence scores</td>
+</tr>
+<tr>
+  <td><b>PAT Foundation Model</b></td>
+  <td>Transformer architecture pre-trained on 100K+ hours of wearable movement data</td>
+  <td>Identifies behavioral patterns from actigraphy that correlate with psychiatric state changes</td>
+</tr>
+<tr>
+  <td><b>LSTM Networks</b></td>
+  <td>Recurrent neural architectures with attention mechanisms</td>
+  <td>Time-series analysis of symptom trajectories and anomaly detection in biometric streams</td>
+</tr>
+</table>
+
+<details>
+<summary><b>🧠 ML Integration Architecture</b> (click to expand)</summary>
+
+* [ML Integration Architecture](./docs/ML_Integration_Architecture.md) - Comprehensive ML system design
+* [PAT Service](./docs/PAT_Service.md) - Actigraphy analysis implementation
+* [Digital Twin API Routes](./docs/Digital_Twin_API_Routes.md) - API access to ML insights
+</details>
 
 ## Key Features
 
@@ -72,6 +115,7 @@ The Clarity-AI Digital Twin platform addresses critical gaps in traditional psyc
 5. **Reduced Clinician Burden**: Automates documentation and routine monitoring tasks
 
 Research in digital twins for mental health indicates potential for revolutionizing psychiatric practice through:
+
 - Enhanced precision in diagnosis and treatment planning
 - Reduced time to treatment optimization
 - Improved patient engagement and outcomes

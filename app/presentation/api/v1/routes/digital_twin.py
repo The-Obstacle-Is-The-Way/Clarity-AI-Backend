@@ -115,11 +115,9 @@ async def get_comprehensive_insights(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Patient or digital twin not found: {str(e)}"
         )
-    except ModelExecutionError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate insights: {str(e)}"
-        )
+    except ModelExecutionError:
+        # Don't catch and re-raise ModelExecutionError - let the global handler deal with it
+        raise
     except Exception as e:
         logger.error(f"Error generating insights: {str(e)}")
         raise HTTPException(
@@ -155,11 +153,9 @@ async def analyze_clinical_text(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Patient or digital twin not found: {str(e)}"
         )
-    except ModelExecutionError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Model inference failed: {str(e)}"
-        )
+    except ModelExecutionError:
+        # Don't catch and re-raise ModelExecutionError - let the global handler deal with it
+        raise
     except Exception as e:
         logger.error(f"Error analyzing clinical text: {str(e)}")
         raise HTTPException(

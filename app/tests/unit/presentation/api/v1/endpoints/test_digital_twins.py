@@ -19,6 +19,8 @@ from httpx import AsyncClient
 import asyncio
 import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout
+import signal
+import functools
 
 # First-Party Imports (Organized)
 # Assuming base exceptions are in core.exceptions.base_exceptions
@@ -264,6 +266,29 @@ def sample_clinical_text_analysis_response():
         }
     }
 
+# Create a timeout decorator to prevent hanging
+def timeout_handler(signum, frame):
+    raise TimeoutError("Test execution timed out")
+
+def with_timeout(seconds=5):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Set the timeout handler
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(seconds)
+            try:
+                result = await func(*args, **kwargs)
+                # Cancel the alarm if the function completes normally
+                signal.alarm(0)
+                return result
+            except Exception as e:
+                # Cancel the alarm if an exception is raised
+                signal.alarm(0)
+                raise e
+        return wrapper
+    return decorator
+
 # Tests
 class TestDigitalTwinsEndpoints:
     """Tests for the digital twin endpoints."""
@@ -337,14 +362,25 @@ class TestDigitalTwinsEndpoints:
 
         insights_url = f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/insights"
 
-        response = await client.get(insights_url)
+        # Wrap the potentially hanging operation with a timeout
+        try:
+            # Use asyncio.wait_for to enforce a timeout
+            response = await asyncio.wait_for(
+                client.get(insights_url),
+                timeout=5.0  # 5 second timeout
+            )
 
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        content = response.json()
-        assert "detail" in content
-        # Match the general_exception_handler's output
-        assert content["detail"] == "An unexpected internal server error occurred."
-        assert content.get("error_code") == "INTERNAL_SERVER_ERROR"
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            content = response.json()
+            assert "detail" in content
+            # Match the general_exception_handler's output
+            assert content["detail"] == "An unexpected internal server error occurred."
+            assert content.get("error_code") == "INTERNAL_SERVER_ERROR"
+            
+        except asyncio.TimeoutError:
+            pytest.fail("Test timed out - the API call did not complete within the expected time")
+        except Exception as e:
+            pytest.fail(f"Test failed with unexpected exception: {str(e)}")
         
         mock_digital_twin_service.generate_comprehensive_patient_insights.assert_called_once_with(
             patient_id=sample_patient_id
@@ -411,14 +447,25 @@ class TestDigitalTwinsEndpoints:
 
         analysis_url = f"/api/v1/digital-twins/digital-twin/{sample_patient_id}/analyze-text"
         
-        response = await client.post(analysis_url, json=valid_payload_for_service_call)
+        # Wrap the potentially hanging operation with a timeout
+        try:
+            # Use asyncio.wait_for to enforce a timeout
+            response = await asyncio.wait_for(
+                client.post(analysis_url, json=valid_payload_for_service_call),
+                timeout=5.0  # 5 second timeout
+            )
 
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        content = response.json()
-        assert "detail" in content
-        # Match the general_exception_handler's output
-        assert content["detail"] == "An unexpected internal server error occurred."
-        assert content.get("error_code") == "INTERNAL_SERVER_ERROR"
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            content = response.json()
+            assert "detail" in content
+            # Match the general_exception_handler's output
+            assert content["detail"] == "An unexpected internal server error occurred."
+            assert content.get("error_code") == "INTERNAL_SERVER_ERROR"
+            
+        except asyncio.TimeoutError:
+            pytest.fail("Test timed out - the API call did not complete within the expected time")
+        except Exception as e:
+            pytest.fail(f"Test failed with unexpected exception: {str(e)}")
         
         mock_digital_twin_service.analyze_clinical_text_mentallama.assert_called_once_with(
             patient_id=sample_patient_id, 
