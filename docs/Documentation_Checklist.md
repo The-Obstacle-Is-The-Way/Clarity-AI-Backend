@@ -20,7 +20,7 @@ This checklist tracks the status of documentation coverage across the Clarity AI
 | Document | Status | Description |
 |----------|--------|-------------|
 | [Clean Architecture Principles](./Clean_Architecture_Principles.md) | ✅ Complete | Detailed explanation of how clean architecture is implemented |
-| Dependency Injection Guide | ❌ Missing | Comprehensive guide to the DI system |
+| [Dependency Injection Guide](./Dependency_Injection_Guide.md) | ✅ Complete | Comprehensive guide to the DI system |
 | [Error Handling Strategy](./Error_Handling_Strategy.md) | ✅ Complete | System-wide approach to error handling |
 | [Project Structure Overview](./Project_Structure_Overview.md) | ✅ Complete | Directory structure and organization rationale |
 | Design Patterns Guide | ❌ Missing | GOF/SOLID patterns used in the codebase |
