@@ -9,6 +9,8 @@ following Clean Architecture principles with proper separation of concerns.
 from app.infrastructure.services.mocks.mock_enhanced_digital_twin_core_service import (
     MockEnhancedDigitalTwinCoreService
 )
+
+# Re-export the neurotransmitter service implementation following clean architecture
 from app.infrastructure.services.mocks.mock_enhanced_digital_twin_neurotransmitter_service import (
     MockEnhancedDigitalTwinNeurotransmitterService
 )
