@@ -27,7 +27,7 @@ from app.application.services.audit_log_service import AuditLogService
 from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
 
 # Application imports (Sorted)
-from app.app_factory import create_application
+from app.factory import create_application
 from app.core.config import Settings
 from app.core.interfaces.services.authentication_service import IAuthenticationService
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -226,7 +226,7 @@ async def mock_mentallama_service_instance() -> AsyncMock:
     return mock
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_auth_service() -> MagicMock:
     """Provides a mock JWTService dependency override,
     simplifying token verification for tests.

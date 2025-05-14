@@ -17,7 +17,7 @@ from app.core.interfaces.repositories.patient_repository import IPatientReposito
 from app.infrastructure.security.jwt.jwt_service import TokenPayload
 from app.domain.exceptions.token_exceptions import InvalidTokenException
 
-from app.app_factory import create_application
+from app.factory import create_application
 
 # Import dependencies that need to be mocked
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
