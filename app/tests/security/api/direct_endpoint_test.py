@@ -4,10 +4,12 @@ import asyncio
 import sys
 import logging
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.routing import APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException
 from httpx import AsyncClient, ASGITransport
 
 # Configure detailed logging
@@ -40,9 +42,21 @@ def create_test_app():
     async def global_exception_handler(request: Request, exc: Exception):
         """Global exception handler to mask error details."""
         logger.debug(f"Global exception handler called for: {type(exc).__name__}: {str(exc)}")
+        
+        # Determine appropriate status code
+        if isinstance(exc, HTTPException):
+            status_code = exc.status_code
+            detail = str(exc.detail)
+        elif isinstance(exc, RequestValidationError):
+            status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            detail = str(exc.errors())
+        else:
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            detail = "An internal server error occurred."
+            
         return JSONResponse(
-            status_code=500,
-            content={"detail": "An internal server error occurred."}
+            status_code=status_code,
+            content={"detail": detail}
         )
     
     return app
