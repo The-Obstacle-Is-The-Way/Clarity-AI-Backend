@@ -2,22 +2,74 @@
 
 ## Overview
 
-The Actigraphy System is a specialized component of the Clarity AI Backend that collects, processes, and analyzes physical activity data from wearable devices to derive psychiatric insights and contribute to the digital twin representation. This system transforms objective movement patterns into clinically relevant markers for psychiatric assessment, treatment monitoring, and predictive analytics.
+The Actigraphy System is a revolutionary component of the Clarity AI Backend that transcends conventional activity monitoring by transforming raw physical movement data into quantum-precise psychiatric insights. At its core, this system leverages multi-dimensional activity patterns to construct a mathematical representation of behavioral states that serve as fundamental building blocks for the psychiatric digital twin platform.
 
-## Clean Architecture Implementation
+## Current Architectural Implementation
 
-The Actigraphy System implements clean architecture principles through:
+The Actigraphy System demonstrates a hybrid architectural approach that combines Clean Architecture aspirations with pragmatic implementation patterns. The current implementation exhibits these characteristics:
 
-1. **Interface Segregation**: Services are defined through focused interfaces with cohesive methods
-2. **Dependency Inversion**: Business logic depends on abstractions, enabling flexible implementations
-3. **Single Responsibility**: Each component has a clearly defined purpose within the system
-4. **Separation of Concerns**: Data collection, analysis, and interpretation are handled by distinct components
+1. **Interface Duality**: Two parallel interface definitions exist - `PATInterface` in the core layer and `IPATService` in the presentation layer
+2. **Partial Dependency Inversion**: Some components depend on abstractions while others use concrete implementations directly
+3. **Mock Implementation in Production Code**: `MockPATService` implementation exists directly in route files rather than in a testing layer
+4. **AWS Service Abstraction**: Advanced dependency inversion for AWS services via `AWSServiceFactory`
+
+### Architectural Vision vs. Current Reality
+
+While the architectural vision follows a mathematically pure Clean Architecture implementation, the current codebase exhibits implementation pragmatism with areas requiring architectural refinement.
 
 ## System Components
 
+### Interface Definitions
+
+Two parallel interface definitions exist for the Actigraphy subsystem, with differing levels of method detail:
+
+#### Core Layer Interface (`app/core/services/ml/pat/pat_interface.py`)
+
+```python
+class PATInterface(abc.ABC):
+    """Interface for the PAT service."""
+    
+    @abc.abstractmethod
+    def initialize(self, config: dict[str, Any]) -> None: ...
+    
+    @abc.abstractmethod
+    def analyze_actigraphy(
+        self,
+        patient_id: str,
+        readings: list[dict[str, Any]],
+        start_time: str,
+        end_time: str,
+        sampling_rate_hz: float,
+        device_info: dict[str, Any],
+        analysis_types: list[str],
+        **kwargs
+    ) -> dict[str, Any]: ...
+    
+    @abc.abstractmethod
+    def get_actigraphy_embeddings(...) -> dict[str, Any]: ...
+    
+    @abc.abstractmethod
+    def get_analysis_by_id(self, analysis_id: str) -> dict[str, Any]: ...
+```
+
+#### Presentation Layer Interface (inline in `app/presentation/api/v1/routes/actigraphy.py`)
+
+```python
+class IPATService:
+    """Interface for PAT analysis service."""
+    
+    async def analyze_actigraphy(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Analyze actigraphy data and return results."""
+        pass
+    
+    async def get_embeddings(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Generate embeddings from actigraphy data."""
+        pass
+```
+
 ### API Routes
 
-The Actigraphy API routes are defined in `app/presentation/api/v1/routes/actigraphy.py`:
+The actual API routes are defined in `app/presentation/api/v1/routes/actigraphy.py`:
 
 ```python
 """API Routes for Actigraphy Data.
@@ -374,6 +426,22 @@ The Actigraphy System implements robust security measures:
 2. **Access Control**: Data access is restricted based on role
 3. **Audit Logging**: All data access is logged for compliance
 4. **Data Minimization**: Only necessary information is collected and processed
+
+## Architectural Gaps and Refinement Opportunities
+
+### Current Architectural Issues
+
+1. **Interface Duplication**: Two parallel interfaces (`PATInterface` and `IPATService`) with different method signatures and locations
+2. **Layer Violations**: Interfaces defined in presentation layer instead of core layer
+3. **Testing Code in Production**: Mock implementation in route files rather than segregated in test layers
+4. **Inconsistent Dependency Injection**: Some components use proper DI, others create dependencies directly
+
+### Implementation Roadmap for Architectural Purity
+
+1. **Interface Consolidation**: Migrate to a single `IPAT` interface in the core layer
+2. **Remove Presentation Layer Mocks**: Move all mock implementations to the test layer
+3. **Factory Pattern Implementation**: Create proper factory for actigraphy service implementations
+4. **Schema Alignment**: Ensure consistent data structures between interface and implementations
 
 ## Integration with Digital Twin
 

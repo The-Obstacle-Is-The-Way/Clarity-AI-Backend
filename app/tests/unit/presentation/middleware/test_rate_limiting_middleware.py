@@ -66,8 +66,7 @@ def test_app(mock_limiter):
     # Create and add the middleware
     app.add_middleware(
         RateLimitingMiddleware, 
-        limiter=mock_limiter, 
-        requests_per_minute=10,
+        limiter=mock_limiter,
         exclude_paths=["/health", "/metrics"]
     )
     
@@ -154,7 +153,7 @@ class TestRateLimitingMiddleware:
         app.add_middleware(
             RateLimitingMiddleware, 
             limiter=mock_limiter,
-            requests_per_minute=10  # Default for all paths
+            exclude_paths=["/health", "/metrics"]
         )
         
         # Make request
@@ -224,7 +223,7 @@ class TestRateLimitingMiddleware:
         app.add_middleware(
             RateLimitingMiddleware, 
             limiter=ExceptionRaisingMock(),
-            requests_per_minute=10
+            exclude_paths=["/health", "/metrics"]
         )
         
         # Create test client
