@@ -22,6 +22,7 @@ import sentry_sdk
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from redis.asyncio import ConnectionPool, Redis
 from redis.exceptions import RedisError
 from sqlalchemy.exc import SQLAlchemyError
