@@ -1,23 +1,23 @@
 from uuid import UUID
-from typing import Optional, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from app.core.domain.entities.user import User
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.infrastructure.models.sqla.user import User as UserModel # Assuming your SQLAlchemy model is here
+from app.infrastructure.models.sqla.user import User as UserModel
 
 
 class SQLAlchemyUserRepository(IUserRepository):
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def get_user_by_id(self, user_id: UUID) -> Optional[User]: # Matching middleware usage
+    async def get_user_by_id(self, user_id: UUID) -> User | None: # Matching middleware usage
         """Retrieve a user by their unique ID."""
         # Placeholder implementation - replace with actual SQLAlchemy query
         # For example:
-        # result = await self.db_session.execute(select(UserModel).where(UserModel.id == user_id))
+        # result = await self.db_session.execute(
+        #     select(UserModel).where(UserModel.id == user_id)
+        # )
         # model_instance = result.scalar_one_or_none()
         # if model_instance:
         #     return User(
@@ -29,19 +29,26 @@ class SQLAlchemyUserRepository(IUserRepository):
         #         # ... other fields ...
         #     )
         # return None
-        print(f"SQLAlchemyUserRepository.get_user_by_id called with {user_id}. Placeholder implementation.")
+        print(
+            f"SQLAlchemyUserRepository.get_user_by_id called with {user_id}. "
+            f"Placeholder implementation."
+        )
         return None # Placeholder
 
     async def get_by_id(self, user_id: str | UUID) -> User | None:
         """Retrieve a user by their unique ID (Interface compliant)."""
         if isinstance(user_id, str):
-            user_id = UUID(user_id)
+            try:
+                user_id = UUID(user_id)
+            except ValueError:
+                # Handle invalid UUID string format if necessary, e.g., log and return None
+                return None
         return await self.get_user_by_id(user_id) # Delegate for now
 
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         raise NotImplementedError
 
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         raise NotImplementedError
 
     async def create(self, user: User) -> User:
@@ -53,7 +60,7 @@ class SQLAlchemyUserRepository(IUserRepository):
     async def delete(self, user_id: str | UUID) -> bool:
         raise NotImplementedError
 
-    async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
+    async def list_all(self, skip: int = 0, limit: int = 100) -> list[User]:
         raise NotImplementedError
 
     async def count(self) -> int:
