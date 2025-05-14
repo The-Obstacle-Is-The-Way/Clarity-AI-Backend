@@ -295,7 +295,7 @@ class Patient(AggregateRoot):
 
 Used for immutable domain concepts:
 
-#### Implementation of ${PATTERN_NAME}
+#### Value Objects Implementation
 
 ```python
 @dataclass(frozen=True)
@@ -310,7 +310,7 @@ class MedicationDosage:
             raise ValueError("Dosage unit is required")
 ```
 
-#### Architectural Gaps in ${PATTERN_NAME}
+#### Value Objects Gaps
 
 - Inconsistent implementation (some use dataclasses, others use regular classes)
 - Value objects occasionally contain mutable attributes

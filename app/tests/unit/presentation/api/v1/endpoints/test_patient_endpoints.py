@@ -290,19 +290,33 @@ async def test_create_patient_validation_error(
         service: PatientService = Depends(lambda: AsyncMock(spec=PatientService)),
         user: DomainUser = Depends(lambda: authenticated_user)
     ) -> PatientCreateResponse:
-        # This endpoint uses Pydantic validation from FastAPI
-        # We won't actually call the service since validation should fail
+        # This endpoint uses Pydantic validation from FastAPI.
+        # If Pydantic validation fails (as expected in this test case
+        # when an invalid payload is sent), FastAPI returns a 422 error,
+        # and this endpoint handler code should NOT be executed.
+        #
+        # If this handler IS executed, it means Pydantic validation
+        # unexpectedly passed for the invalid payload. The outer test assertions
+        # (checking for a 422 response) would then fail.
+        #
+        # Previously, an `assert False` was here. It's removed to ensure the test
+        # fails based on the HTTP response status code if validation passes unexpectedly,
+        # rather than an internal assertion error that might obscure the actual HTTP interaction.
+
+        # Return a dummy response that would be clearly identifiable if this path is taken.
+        # This indicates that Pydantic validation passed when it should have failed.
+        # The outer test checks for a 422, so if it gets this 201, it will fail correctly.
+        logger.warning("test_validation_endpoint was unexpectedly entered. Pydantic validation might not have failed as expected.")
         return PatientCreateResponse(
             id=uuid.uuid4(),
-            first_name=patient_data.first_name,
-            last_name=patient_data.last_name,
-            date_of_birth=patient_data.date_of_birth,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            first_name="UNEXPECTED_VALIDATION_PASS",
+            last_name="UNEXPECTED_VALIDATION_PASS",
+            date_of_birth=date(1900,1,1),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
             created_by=user.id
         )
-    
-    # Add the test route to the app
+
     app_instance.include_router(test_router)
     
     # Setup invalid patient payload - missing last_name which is required

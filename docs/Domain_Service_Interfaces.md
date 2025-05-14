@@ -52,12 +52,14 @@ class IPasswordHandler(ABC):
         raise NotImplementedError
 ```
 
-**Current Implementation Status**: 
+**Current Implementation Status**:
+
 - Interface defined in `app/core/interfaces/security/password_handler_interface.py`
 - Primary implementation: `PasswordHandler` in `app/infrastructure/security/password_handler.py`
 - Uses Passlib with bcrypt for secure password handling
 
 **Architectural Violations**:
+
 - Some services bypass the interface and use the concrete implementation directly
 - Dependency injection inconsistently applied in security-related endpoints
 
@@ -120,11 +122,13 @@ class IAuditLogger(ABC):
 ```
 
 **Current Implementation Status**:
+
 - Interface defined in `app/core/interfaces/services/audit_logger_interface.py`
 - Primary implementation: `AuditLogger` in `app/infrastructure/logging/audit_logger.py`
 - Used by authentication, PHI access services, and API endpoints
 
 **Architectural Violations**:
+
 - JWTService directly imports concrete AuditLogger rather than depending on interface
 - Inconsistent logging of PHI access across the codebase
 
@@ -175,11 +179,13 @@ class ITokenBlacklistRepository(ABC):
 ```
 
 **Current Implementation Status**:
+
 - Interface missing, required for JWTService implementation
 - Referenced but commented out in `app/application/security/jwt_service.py`
 - Primary implementation needs to be created in infrastructure layer
 
 **Architectural Violations**:
+
 - Interface definition missing from core/interfaces
 - Implementation missing from infrastructure layer
 - JWT service has commented-out blacklisting logic due to missing component
@@ -248,11 +254,13 @@ class ITokenRepository(ABC):
 ```
 
 **Current Implementation Status**:
+
 - Interface defined in `app/domain/interfaces/token_repository.py`
 - Should be moved to `app/core/interfaces/repositories/token_repository_interface.py`
 - Primary implementation: `SQLAlchemyTokenRepository`
 
 **Architectural Violations**:
+
 - Interface defined in incorrect layer (domain instead of core)
 - Implementation may have direct dependencies on infrastructure
 
@@ -355,6 +363,7 @@ class IUserRepository(ABC):
 ```
 
 **Current Implementation Status**:
+
 - Duplicated in `app/core/interfaces/repositories/user_repository_interface.py` and `app/core/interfaces/repositories/user_repository.py`
 - Primary implementation: `SQLAlchemyUserRepository`
 
@@ -479,11 +488,13 @@ class IRedisService(ABC):
 ```
 
 **Current Implementation Status**:
+
 - Interface defined in `app/core/interfaces/services/redis_service_interface.py`
 - Primary implementation: `RedisService` in infrastructure layer
 - Redis client stored directly in app state rather than through interface
 
 **Architectural Violations**:
+
 - Direct access to `app.state.redis` throughout codebase rather than through interface
 - Missing dependency injection in services that use Redis
 
@@ -571,6 +582,7 @@ class IModelService(ABC):
 ```
 
 **Current Implementation Status**:
+
 - Interface missing, needs to be defined in core layer
 - `InferenceResult` entity missing from domain layer
 - `ModelInfo` defined in infrastructure instead of domain layer
