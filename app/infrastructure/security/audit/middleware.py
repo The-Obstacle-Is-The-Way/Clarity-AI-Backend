@@ -192,10 +192,13 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
                         actor_id=user_id,
                         resource_type=resource_type or "api_resource",
                         resource_id=resource_id or "unknown",
+                        patient_id=resource_id or "unknown",  # Add patient_id for backward compatibility
                         action=action,
-                        metadata={"status": access_status, "path": path, "method": method},
+                        status=access_status,
+                        metadata={"path": path, "method": method},
                         ip_address=request_context.get("ip_address"),
-                        details=f"API {method} request to {path}"
+                        reason="API request",
+                        request=request
                     )
                 except Exception as e:
                     # Log error but don't fail the request
