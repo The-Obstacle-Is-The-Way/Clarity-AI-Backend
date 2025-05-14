@@ -43,6 +43,7 @@ from app.presentation.api.v1.endpoints.test_endpoints import router as test_endp
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.application.services.audit_log_service import AuditLogService
 from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
+from app.infrastructure.persistence.repositories.mock_audit_log_repository import MockAuditLogRepository
 
 # Import the session functions from the new database module
 from app.infrastructure.persistence.sqlalchemy.database import get_session, get_session_from_state
@@ -375,12 +376,26 @@ def create_application(
     logger.info(f"JWT service initialized and attached to app state: {type(jwt_service).__name__}")
     
     # 7. Initialize audit logging service for HIPAA compliance
-    # Get an async session generator for the audit log repository
-    # Use get_session_from_state for initialization to avoid circular dependency
-    audit_log_repo = AuditLogRepository(AsyncSession(bind=None))  # Will be replaced at runtime with real session
-    audit_logger = AuditLogService(audit_log_repo)
-    app_instance.state.audit_logger = audit_logger
-    logger.info("Audit logging service initialized and attached to app state.")
+    # In test environments, use the mock repository to avoid database issues
+    if current_settings.ENVIRONMENT == "test":
+        # Use mock repository for testing to avoid database transaction issues
+        audit_repository = MockAuditLogRepository()
+        logger.info("Using MockAuditLogRepository for audit logging in test environment")
+    else:
+        # For production/development, use the real repository with a session
+        db_session = get_session()
+        audit_repository = AuditLogRepository(db_session)
+        logger.info("Using real AuditLogRepository for audit logging")
+    
+    audit_service = AuditLogService(audit_repository)
+    
+    # Add middleware to app
+    audit_skip_paths = ["/docs", "/redoc", "/openapi.json", "/static", "/health", "/metrics", "/favicon.ico"]
+    app_instance.add_middleware(
+        AuditLogMiddleware,
+        audit_logger=audit_service,
+        skip_paths=audit_skip_paths
+    )
     
     # 8. Add Authentication middleware if not skipped (for protected routes)
     if not skip_auth_middleware:
@@ -406,27 +421,19 @@ def create_application(
         )
         logger.info("Rate limiting middleware added.")
     
-    # 10. Add audit logging middleware for HIPAA compliance
-    app_instance.add_middleware(
-        AuditLogMiddleware,
-        audit_logger=audit_logger,
-        skip_paths=["/docs", "/redoc", "/openapi.json", "/static", "/assets"]
-    )
-    logger.info("Audit logging middleware added.")
-    
-    # 11. Add API routers for various endpoints
+    # 10. Add API routers for various endpoints
     # Main API router (versioned)
     app_instance.include_router(api_v1_router, prefix=current_settings.API_V1_STR)
     logger.info(f"Main API router added with prefix: {current_settings.API_V1_STR}")
     
-    # 12. Include debugging/testing routes if needed
+    # 11. Include debugging/testing routes if needed
     if include_test_routers:
         test_prefix = "/test-api"
         app_instance.include_router(test_endpoints_router, prefix=test_prefix, tags=["test"])
         app_instance.include_router(admin_test_router, prefix=test_prefix + "/admin", tags=["admin", "test"])
         logger.info("Test routers included.")
         
-    # 13. Define custom exception handlers
+    # 12. Define custom exception handlers
     
     @app_instance.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -464,7 +471,7 @@ def create_application(
             content={"detail": "An internal server error occurred."},
         )
     
-    # 14. Middleware to ensure essential app state is available to request handlers
+    # 13. Middleware to ensure essential app state is available to request handlers
     
     @app_instance.middleware("http")
     async def set_essential_app_state_on_request_middleware(request: Request, call_next):

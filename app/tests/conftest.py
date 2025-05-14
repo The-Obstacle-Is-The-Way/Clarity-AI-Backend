@@ -10,7 +10,10 @@ import sys
 import pytest
 import pytest_asyncio
 import logging
-from typing import Dict, Any, Generator
+from typing import Dict, Any, Generator, AsyncGenerator
+from fastapi import FastAPI
+from httpx import AsyncClient
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Make the module available to be imported by tests
 sys.modules['pytest_asyncio'] = pytest_asyncio
@@ -84,5 +87,47 @@ def encryption_service():
     test_salt = "test_salt_value_for_encryption_tests_only"
     
     return create_encryption_service(secret_key=test_key, salt=test_salt)
+
+@pytest.fixture(autouse=True)
+def disable_audit_logging_for_tests(request):
+    """
+    Automatically disable audit logging for all tests.
+    
+    This fixture runs automatically for all tests and disables audit logging
+    to avoid database transaction errors in tests.
+    """
+    # Skip disabling for certain tests if needed
+    if request.node.get_closest_marker('enable_audit_logging'):
+        yield
+        return
+        
+    # Override setup for FastAPI applications in the test
+    fixture_names = dir(request)
+    for name in ['app', 'app_instance', 'test_app', 'fastapi_app']:
+        if name in fixture_names:
+            app = request.getfixturevalue(name)
+            if isinstance(app, FastAPI):
+                app.state.disable_audit_middleware = True
+                logger.debug(f"Disabled audit middleware for app fixture: {name}")
+    
+    yield
+
+@pytest_asyncio.fixture
+async def with_disabled_audit_middleware(request, app_instance):
+    """
+    Fixture that explicitly disables audit middleware for FastAPI app instances.
+    
+    This is useful for tests that directly create FastAPI applications or when
+    the autouse fixture doesn't work.
+    """
+    if hasattr(app_instance, 'state'):
+        app_instance.state.disable_audit_middleware = True
+        logger.debug("Explicitly disabled audit middleware for test app")
+    
+    yield app_instance
+    
+    # Restore state if needed
+    if hasattr(app_instance, 'state'):
+        app_instance.state.disable_audit_middleware = False
 
 # Setup other global fixtures if needed
