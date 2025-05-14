@@ -1,12 +1,14 @@
-"""MentaLLaMA service package for mental health text analysis."""
+"""MentaLLaMA service package for mental health text analysis.
 
-"""Module re-exports the canonical mock implementation from mocks package.
-
-This follows clean architecture principles by centralizing mocks in a single location
-while maintaining a logical import structure for consumers of this module.
+This module provides advanced NLP capabilities for psychiatric note analysis,
+insight extraction, and digital twin modeling. It follows clean architecture principles
+with clear separation between interfaces and implementations.
 """
 
-# Import the canonical implementation from the mocks package
-from app.infrastructure.services.mocks.mock_mentalllama_service import MockMentalLLaMAService
+# Export the primary service interfaces
+from app.infrastructure.ml.mentallama.service import (
+    MockMentaLLaMA,
+    MockMentalLLaMAService
+)
 
-__all__ = ["MockMentalLLaMAService"]
+__all__ = ["MockMentaLLaMA", "MockMentalLLaMAService"]

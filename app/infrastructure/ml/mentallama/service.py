@@ -1,17 +1,16 @@
 """
-MentaLLaMA Service Module.
+MentaLLaMA Service Module
 
-This module provides the MentaLLaMA service implementation following
-clean architecture principles with proper separation of concerns.
+This module exports interfaces and implementations for the MentaLLaMA service.
+The service analyzes clinical text to extract structured insights using
+natural language processing.
 """
 
-# Import the actual implementation from within this package
-from app.infrastructure.ml.mentallama.mock_service import MockMentaLLaMA
+# Import the canonical implementation from the mocks package
+from app.infrastructure.ml.mentallama.mocks.mock_mentalllama_service import MockMentalLLaMAService
 
-# Import and re-export the actual implementation for backward compatibility
-from app.infrastructure.services.mocks.mock_mentalllama_service import (
-    MockMentalLLaMAService,
-)
+# Define MockMentaLLaMA as an alias for backward compatibility
+MockMentaLLaMA = MockMentalLLaMAService
 
-# Export all relevant service classes
-__all__ = ["MockMentaLLaMA", "MockMentalLLaMAService"]
+# Export the service for backward compatibility
+__all__ = ["MockMentalLLaMAService"]
