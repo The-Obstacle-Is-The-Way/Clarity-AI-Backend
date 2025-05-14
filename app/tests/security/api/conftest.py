@@ -2,50 +2,40 @@
 
 import asyncio
 import json
+import logging
 import re
 import traceback
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import AsyncGenerator, Dict, List, Optional, Union, Any, cast
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union, cast
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import jwt
 import pytest
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
+from httpx import ASGITransport, AsyncClient
+from jose import JWTError, jwt as jose_jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config.settings import Settings
-from app.core.domain.entities.user import User
+from app.core.domain.entities.user import User, UserRole, UserStatus
+from app.core.domain.entities.user import User as DomainUser
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.infrastructure.security.jwt.jwt_service import TokenPayload
-from app.domain.exceptions.token_exceptions import InvalidTokenException
-
-import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
-from fastapi import FastAPI, Depends, Request, status
-from fastapi.responses import JSONResponse
-from httpx import AsyncClient, ASGITransport
-
+from app.domain.exceptions.token_exceptions import (
+    InvalidTokenException,
+    TokenExpiredException,
+)
 from app.factory import create_application
-
-# Import dependencies that need to be mocked
+from app.infrastructure.security.jwt.jwt_service import TokenPayload
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
-
-# Import entity models needed for endpoints
-
-from jose import jwt as jose_jwt, JWTError
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -536,22 +526,25 @@ def test_settings() -> Settings:
     )
 
 
-@pytest.fixture(scope="module")
-def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
+@pytest.fixture(scope="session")
+def global_mock_jwt_service() -> JWTServiceInterface:
+    """Create a global mock JWT service for all tests."""
+    # Create a proper mock that implements all the methods needed
     mock_service = MagicMock(spec=JWTServiceInterface)
     
-    # Add token store for tests that need it
+    # Create token storage for the mock service
     mock_service.token_store = {}
     mock_service.token_exp_store = {}
+    mock_service._token_blacklist = {}  
 
     # Create simplified implementation functions for JWT service
     async def mock_create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         token_data = data.copy()
 
         # Add standard claims
-        if "iss" not in token_data and test_settings.JWT_ISSUER:
+        if "iss" not in token_data and hasattr(test_settings, 'JWT_ISSUER'):
             token_data["iss"] = test_settings.JWT_ISSUER
-        if "aud" not in token_data and test_settings.JWT_AUDIENCE:
+        if "aud" not in token_data and hasattr(test_settings, 'JWT_AUDIENCE'):
             token_data["aud"] = test_settings.JWT_AUDIENCE
         
         # Set expiration
@@ -573,7 +566,7 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
         # Generate a test token with predictable format
         token = f"mock_access_token_{uuid.uuid4()}"
         
-        # Store token data for verification
+        # Store token data for verification - this is key for the token_store issue
         mock_service.token_store[token] = token_data
         mock_service.token_exp_store[token] = expire
         
@@ -599,13 +592,13 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
         return token
     
     # Decode token implementation
-    def mock_decode_token(token: str) -> dict:
+    async def mock_decode_token(token: str) -> dict:
         # Check if token exists in our store
         if token not in mock_service.token_store:
             raise InvalidTokenException("Token not found in store")
             
         # Check if token is expired
-        if mock_service.token_exp_store[token] < datetime.now(timezone.utc):
+        if token in mock_service.token_exp_store and mock_service.token_exp_store[token] < datetime.now(timezone.utc):
             raise TokenExpiredException("Token has expired")
             
         return mock_service.token_store[token]
@@ -615,9 +608,17 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
         user_data = {
             "sub": str(user.id),
             "username": user.username,
-            "email": user.email,
-            "roles": user.roles if hasattr(user, 'roles') else []
+            "email": user.email
         }
+        
+        # Add roles from user object if available
+        if hasattr(user, 'roles'):
+            if isinstance(user.roles, list) or isinstance(user.roles, set):
+                user_data["roles"] = [r.value if hasattr(r, 'value') else r for r in user.roles]
+            else:
+                user_data["roles"] = [user.roles]
+        else:
+            user_data["roles"] = []
         
         access_token = await mock_create_access_token(user_data)
         refresh_token = await mock_create_refresh_token(user_data)
@@ -631,7 +632,7 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
     async def mock_refresh_access_token(refresh_token: str) -> str:
         # Verify the refresh token
         try:
-            token_data = mock_decode_token(refresh_token)
+            token_data = await mock_decode_token(refresh_token)
             # Check if it's a refresh token
             if token_data.get("token_type") != "refresh":
                 raise InvalidTokenException("Not a refresh token")
@@ -645,75 +646,40 @@ def global_mock_jwt_service(test_settings: Settings) -> JWTServiceInterface:
         except Exception as e:
             raise InvalidTokenException(f"Invalid refresh token: {str(e)}") from e
     
-    # Verify token implementation
-    def mock_verify_token(token: str) -> bool:
+    # Verify token implementation - needs to be async to match interface
+    async def mock_verify_token(token: str) -> bool:
         try:
-            mock_decode_token(token)
+            await mock_decode_token(token)
             return True
         except (InvalidTokenException, TokenExpiredException):
             return False
     
     # Get token expiration implementation
-    def mock_get_token_expiration(token: str) -> datetime | None:
+    async def mock_get_token_expiration(token: str) -> datetime | None:
         if token in mock_service.token_exp_store:
             return mock_service.token_exp_store[token]
         return None
-
-        # Use key and algorithm from test_settings for consistency
-        # This ensures tokens created by the mock are compatible with settings potentially
-        # used by a real service instance if fallback occurs or if settings are shared.
-        encoded_jwt = jose_jwt.encode(
-            to_encode, 
-            key=test_settings.JWT_SECRET_KEY.get_secret_value(), 
-            algorithm=test_settings.JWT_ALGORITHM
-        )
-        logger.debug(f"global_mock_jwt_service: Created token with payload: {to_encode}")
-        return encoded_jwt
-
-    async def mock_decode_token(token: str) -> TokenPayload:
-        # This mock decode can be simple or replicate parts of the patched logic if needed for direct tests on the mock.
-        # For middleware tests, the actual JWTService (patched) will be doing the decode.
-        try:
-            payload = jose_jwt.decode(
-                token, 
-                key=test_settings.JWT_SECRET_KEY.get_secret_value(), 
-                algorithms=[test_settings.JWT_ALGORITHM],
-                audience=test_settings.JWT_AUDIENCE, # Optional: align with what patched decode might expect or how tokens are made
-                issuer=test_settings.JWT_ISSUER
-            )
-            # Minimal transformation to TokenPayload, real service does more
-            return TokenPayload(
-                sub=payload.get("sub"),
-                user_id=payload.get("user_id", payload.get("sub")),
-                username=payload.get("username"),
-                roles=payload.get("roles", []),
-                scopes=payload.get("scopes", []),
-                exp=payload.get("exp"),
-                iat=payload.get("iat"),
-                jti=payload.get("jti"),
-                iss=payload.get("iss"),
-                aud=payload.get("aud")
-            )
-        except JWTError as e:
-            logger.error(f"global_mock_jwt_service.mock_decode_token failed: {e}")
-            raise InvalidTokenException(str(e))
-
+    
+    # Clear issued tokens implementation
+    async def mock_clear_issued_tokens() -> None:
+        mock_service.token_store.clear()
+        mock_service.token_exp_store.clear()
+    
+    # Attach all the mock implementations to the mock service
     mock_service.create_access_token = AsyncMock(side_effect=mock_create_access_token)
-    # Provide a basic mock for decode_token if it's ever called directly on global_mock_jwt_service.
-    # Note: The primary decoding under test happens via the patched JWTService instance used by the middleware.
-    mock_service.decode_token = AsyncMock(side_effect=mock_decode_token) 
+    mock_service.create_refresh_token = AsyncMock(side_effect=mock_create_refresh_token) 
+    mock_service.decode_token = AsyncMock(side_effect=mock_decode_token)
+    mock_service.generate_tokens_for_user = AsyncMock(side_effect=mock_generate_tokens_for_user)
+    mock_service.refresh_access_token = AsyncMock(side_effect=mock_refresh_access_token)
+    mock_service.verify_token = AsyncMock(side_effect=mock_verify_token)
+    mock_service.get_token_expiration = AsyncMock(side_effect=mock_get_token_expiration)
+    mock_service.clear_issued_tokens = AsyncMock(side_effect=mock_clear_issued_tokens)
 
     # Mock for is_token_blacklisted - default to False for tests unless specified
     async def mock_is_token_blacklisted(token: str) -> bool:
         return False # Default behavior: token is not blacklisted
     mock_service.is_token_blacklisted = AsyncMock(side_effect=mock_is_token_blacklisted)
     
-    # Mock for verify_token - can rely on decode or be simpler
-    async def mock_verify_token(token: str) -> TokenPayload:
-        # Similar to decode, this is for direct calls to the mock. Patched service handles middleware flow.
-        return await mock_decode_token(token)
-    mock_service.verify_token = AsyncMock(side_effect=mock_verify_token)
-
     return mock_service
 
 
