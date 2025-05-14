@@ -7,25 +7,27 @@ following HIPAA compliance requirements for secure authentication and authorizat
 
 import time
 import uuid
+import asyncio
 from datetime import timedelta
-from typing import Any
+from typing import Any, Optional
 
 import jwt
 from pydantic import BaseModel
 
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger, AuditEventType, AuditSeverity
+from app.core.interfaces.services.audit_logger_interface import (
+    IAuditLogger, AuditEventType, AuditSeverity
+)
+from app.core.interfaces.repositories.token_blacklist_repository_interface import (
+    ITokenBlacklistRepository
+)
 from app.core.config import Settings
-from app.core.utils.date_utils import utcnow, as_utc
+from app.core.utils.date_utils import utcnow
 from app.domain.exceptions.auth_exceptions import (
     InvalidTokenException,
     TokenBlacklistedException,
     TokenExpiredException,
 )
-# from app.domain.interfaces.repositories.token_blacklist_repository import (
-#     ITokenBlacklistRepository, # TODO: Define this interface in core
-#     ITokenRepository,
-# )
-from app.domain.interfaces.token_repository import ITokenRepository # TODO: Move this to core
+from app.domain.interfaces.token_repository import ITokenRepository
 
 
 class TokenPayload(BaseModel):
@@ -40,6 +42,7 @@ class TokenPayload(BaseModel):
     email: str  # User email
     role: str  # User role
     permissions: list[str]  # User permissions
+    token_type: str  # Token type
 
 
 class JWTService:
@@ -57,7 +60,7 @@ class JWTService:
     def __init__(
         self,
         token_repo: ITokenRepository,
-        # blacklist_repo: ITokenBlacklistRepository, # TODO: Add back when defined and injected
+        blacklist_repo: ITokenBlacklistRepository,
         audit_logger: IAuditLogger
     ):
         """
@@ -65,11 +68,11 @@ class JWTService:
         
         Args:
             token_repo: Repository for managing tokens
-            # blacklist_repo: Repository for managing blacklisted tokens
+            blacklist_repo: Repository for managing blacklisted tokens
             audit_logger: Service for audit logging
         """
         self.token_repo = token_repo
-        # self.blacklist_repo = blacklist_repo # TODO: Add back when defined and injected
+        self.blacklist_repo = blacklist_repo
         self.audit_logger = audit_logger
         self.algorithm = "HS256"  # HMAC with SHA-256
         
@@ -214,50 +217,58 @@ class JWTService:
             TokenBlacklistedException: If the token is blacklisted
         """
         try:
-            # Check if token is blacklisted
-            # if self.token_blacklist_repository.is_blacklisted(token):
-            #     self.audit_logger.log_security_event(
-            #         event_type="BLACKLISTED_TOKEN_USED",
-            #         description="Attempt to use blacklisted token",
-            #         metadata={"token_type": token_type}
-            #     )
-            #     raise TokenBlacklistedException("Token has been revoked")
-            
-            # Decode token
             payload = jwt.decode(
-                token,
-                self.settings.jwt_secret_key,
+                token, 
+                self.settings.jwt_secret_key, 
                 algorithms=[self.algorithm]
             )
-            
-            # Validate token type for refresh tokens
-            if token_type == "refresh" and payload.get("token_type") != "refresh":
-                raise InvalidTokenException("Invalid token type")
-                
+            token_payload = TokenPayload(**payload)
+
+            # Check if token is blacklisted using JTI
+            jti = token_payload.jti
+            if asyncio.run(self.blacklist_repo.is_jti_blacklisted(jti)):
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                    user_id=token_payload.user_id,
+                    description=f"{token_type.capitalize()} token validation failed: token is blacklisted",
+                    severity=AuditSeverity.HIGH,
+                    metadata={"jti": jti, "token_type": token_type}
+                )
+                raise TokenBlacklistedException(f"{token_type.capitalize()} token is blacklisted.")
+
+            # Verify expiration
+            if token_payload.exp < time.time():
+                self.audit_logger.log_security_event(
+                    event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                    user_id=token_payload.user_id,
+                    description=f"{token_type.capitalize()} token validation failed: token has expired",
+                    severity=AuditSeverity.HIGH,
+                    metadata={"jti": jti, "token_type": token_type}
+                )
+                raise TokenExpiredException(f"{token_type.capitalize()} token has expired.")
+
             # Return payload
-            return payload
+            return token_payload.dict()
             
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
             self.audit_logger.log_security_event(
-                event_type="EXPIRED_TOKEN_USED",
-                description=f"Attempt to use expired {token_type} token",
-                metadata={
-                    "token_type": token_type,
-                }
+                event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                description=f"{token_type.capitalize()} token validation failed: {str(e)}",
+                severity=AuditSeverity.MEDIUM,
+                metadata={"token_type": token_type, "error": str(e)}
             )
-            raise TokenExpiredException("Token has expired")
-            
-        except jwt.InvalidTokenError:
+            raise TokenExpiredException(f"{token_type.capitalize()} token has expired.") from e
+
+        except jwt.InvalidTokenError as e:
             self.audit_logger.log_security_event(
-                event_type="INVALID_TOKEN_USED",
-                description=f"Attempt to use invalid {token_type} token",
-                metadata={
-                    "token_type": token_type,
-                }
+                event_type=AuditEventType.TOKEN_VALIDATION_FAILURE,
+                description=f"{token_type.capitalize()} token validation failed: {str(e)}",
+                severity=AuditSeverity.HIGH,
+                metadata={"token_type": token_type, "error": str(e)}
             )
-            raise InvalidTokenException("Invalid token")
-    
-    def blacklist_token(self, token: str, user_id: str | None = None) -> None:
+            raise InvalidTokenException(f"{token_type.capitalize()} token is invalid.") from e
+
+    async def blacklist_token(self, token: str, user_id: Optional[str] = None):
         """
         Blacklist a token to prevent its future use.
         
@@ -284,33 +295,31 @@ class JWTService:
             session_id = token_data.get("session_id", "unknown")
             
             # Blacklist the token
-            # self.blacklist_repo.add_to_blacklist(token, token_id)
+            self.blacklist_repo.add_to_blacklist(token, token_id)
             
             # Log the blacklisting
             self.audit_logger.log_security_event(
-                event_type="TOKEN_BLACKLISTED",
+                event_type=AuditEventType.TOKEN_BLACKLISTED,
                 user_id=user_id,
-                description=f"Token blacklisted",
-                metadata={
-                    "token_id": token_id,
-                    "session_id": session_id,
-                    "token_type": token_data.get("token_type", "access")
-                }
+                description="Token blacklisted successfully",
+                severity=AuditSeverity.INFO,
+                metadata={"jti": token_id, "session_id": session_id}
             )
             
         except Exception as e:
             # If we can't decode, still try to blacklist the raw token
-            # self.blacklist_repo.add_to_blacklist(token)
+            self.blacklist_repo.add_to_blacklist(token)
             
             # Log the issue
             self.audit_logger.log_security_event(
-                event_type="TOKEN_BLACKLIST_ERROR",
-                user_id=user_id or "unknown",
-                description=f"Error blacklisting token: {str(e)}",
-                metadata={}
+                event_type=AuditEventType.TOKEN_BLACKLIST_FAILURE,
+                user_id=user_id if user_id else "unknown",
+                description="Failed to blacklist token due to decoding or other error",
+                severity=AuditSeverity.WARNING,
+                metadata={"error": str(e)}
             )
-    
-    def blacklist_session_tokens(self, session_id: str, user_id: str = None) -> None:
+
+    async def blacklist_session_tokens(self, session_id: str, user_id: Optional[str] = None):
         """
         Blacklist all tokens associated with a session.
         
@@ -328,12 +337,11 @@ class JWTService:
         
         # Log the session blacklisting
         self.audit_logger.log_security_event(
-            event_type="SESSION_BLACKLISTED",
-            user_id=user_id or "unknown",
-            description=f"All tokens for session blacklisted",
-            metadata={
-                "session_id": session_id
-            }
+            event_type=AuditEventType.SESSION_TOKENS_BLACKLISTED,
+            user_id=user_id if user_id else "unknown",
+            description="All tokens for session blacklisted successfully",
+            severity=AuditSeverity.INFO,
+            metadata={"session_id": session_id}
         )
 
     @property
