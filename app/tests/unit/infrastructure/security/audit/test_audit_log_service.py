@@ -241,31 +241,39 @@ class TestAuditLogMiddleware:
             skip_paths=["/docs", "/redoc", "/openapi.json", "/api/health"]
         )
         
-        # Override _is_audit_disabled to ensure audit logging is enabled for tests
-        original_is_audit_disabled = middleware._is_audit_disabled
-        middleware._is_audit_disabled = MagicMock(return_value=False)
+        # Use MagicMock to ensure _is_audit_disabled returns a predictable value
+        mock_is_audit_disabled = MagicMock(return_value=False)
+        middleware._is_audit_disabled = mock_is_audit_disabled
         
         return middleware
     
     async def test_dispatch_phi_path(self, middleware, mock_audit_logger):
         """Test middleware dispatches for PHI paths."""
+        # Reset call count on the mock
+        mock_audit_logger.log_phi_access.reset_mock()
+        
         # Mock request and response
-        request = MagicMock(spec=Request)
+        request = MagicMock()
         request.url.path = "/api/v1/patients/123"
         request.method = "GET"
         request.state.user = MagicMock(id=TEST_USER_ID)
         request.state.disable_audit_middleware = False  # Explicitly enable audit for this test
-        request.app.state.disable_audit_middleware = False  # Explicitly enable audit at app level
+        
+        # Ensure all app state attributes needed by the middleware exist
+        app_state = MagicMock()
+        app_state.disable_audit_middleware = False
         
         # Add app settings for environment detection
         from app.core.config.settings import Settings
         mock_settings = MagicMock(spec=Settings)
         mock_settings.ENVIRONMENT = "development"  # Not test environment
-        request.state.settings = mock_settings
-        request.app.state.settings = mock_settings
+        app_state.settings = mock_settings
+        
+        request.app = MagicMock()
+        request.app.state = app_state
         
         # Mock call_next function
-        response = MagicMock(spec=Response)
+        response = MagicMock()
         response.status_code = 200
         call_next = AsyncMock(return_value=response)
         
