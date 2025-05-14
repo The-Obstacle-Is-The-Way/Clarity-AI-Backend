@@ -163,7 +163,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             fastapi_app.state.redis_service = None
 
         # --- State-Dependent Middleware Setup (Post-Resource Initialization) ---
-        jwt_service: IJWTService = get_jwt_service(current_settings)
+        jwt_service: JWTServiceInterface = get_jwt_service(current_settings)
         fastapi_app.add_middleware(
             AuthenticationMiddleware,
             jwt_service=jwt_service,
