@@ -4,6 +4,24 @@
 
 The Authentication System is a foundational security component of the Clarity AI Backend, providing secure identity management and access control for the psychiatric digital twin platform. It implements robust token-based authentication with refresh capabilities while adhering to HIPAA security requirements for protected health information (PHI).
 
+## Implementation Status
+
+> ⚠️ **IMPORTANT**: There are several discrepancies between this documentation and the actual implementation in the codebase:
+
+| Component | Documentation Status | Implementation Status | Notes |
+|-----------|---------------------|----------------------|-------|
+| AuthServiceInterface | ✅ Documented | ✅ Implemented | Located in app/core/interfaces/services/auth_service_interface.py |
+| JWT Service | ✅ Documented | ⚠️ Partially Implemented | Implementation exists in app/application/security/jwt_service.py but with commented-out blacklisting functionality |
+| Token Blacklist | ✅ Documented | ❌ Not Implemented | Interface exists but implementation is missing; token blacklisting functionality is commented out |
+| Password Handler | ✅ Documented | ✅ Implemented | Located in app/infrastructure/security/password/password_handler.py |
+| Multi-Factor Authentication | ✅ Documented | ❌ Not Implemented | Documented but not implemented in the codebase |
+
+### Current Security Gaps
+
+1. **Token Revocation**: Without token blacklisting, tokens cannot be revoked before expiration, creating a security vulnerability when users log out
+2. **HIPAA Compliance Issues**: Session termination and immediate access revocation are not fully implemented as required by HIPAA
+3. **Audit Trail**: While the audit logging interface exists, it may not be capturing all required authentication events
+
 ## Clean Architecture Context
 
 The Authentication System exemplifies clean architecture principles through:
@@ -66,122 +84,101 @@ class AuthServiceInterface(ABC):
         """
 ```
 
-### JWT Service Interface
+### JWT Service Implementation
 
-The `IJwtService` handles token generation, validation, and blacklisting:
+The actual JWTService implementation in the codebase (app/application/security/jwt_service.py) differs from the documented interface:
 
 ```python
-class IJwtService(ABC):
+class JWTService:
     """
-    Interface for JWT (JSON Web Token) service operations.
+    Service for JWT token generation, validation, and management.
     
-    This interface encapsulates the functionality required for:
-    - Creating access and refresh tokens
-    - Verifying and decoding tokens
-    - Managing token blacklisting
-    - Token identity operations
+    This service adheres to HIPAA security requirements for authentication
+    and authorization, including:
+    - Secure token generation with appropriate expiration
+    - Token validation and verification
+    - Token blacklisting to enforce logout (INCOMPLETE)
+    - Audit logging of token-related activities
     """
+
+    def __init__(
+        self,
+        token_repo: ITokenRepository,
+        # blacklist_repo: ITokenBlacklistRepository, # TODO: Add back when defined and injected
+        audit_logger: IAuditLogger
+    ):
+        """Initialize the JWT service."""
+        self.token_repo = token_repo
+        # self.blacklist_repo = blacklist_repo # TODO: Add back when defined and injected
+        self.audit_logger = audit_logger
+        self.algorithm = "HS256"  # HMAC with SHA-256
+        
+    def create_access_token(
+        self, 
+        user_id: str,
+        email: str,
+        role: str,
+        permissions: list[str],
+        session_id: str
+    ) -> tuple[str, int]:
+        """Create a new access token for a user."""
+        # ... implementation details ...
     
-    @abstractmethod
-    async def create_access_token(self, user_id: Union[str, UUID], additional_data: Optional[Dict] = None) -> str:
-        """
-        Create a short-lived access token.
-        """
-        
-    @abstractmethod
-    async def create_refresh_token(self, user_id: Union[str, UUID]) -> str:
-        """
-        Create a long-lived refresh token.
-        """
-        
-    @abstractmethod
-    async def decode_token(self, token: str) -> Dict[str, Any]:
-        """
-        Decode and validate a token.
-        """
-        
-    @abstractmethod
-    async def blacklist_token(self, token: str, reason: Optional[str] = None) -> None:
-        """
-        Add a token to the blacklist to prevent its future use.
-        """
-        
-    @abstractmethod
-    async def is_token_blacklisted(self, token: str) -> bool:
-        """
-        Check if a token is in the blacklist.
-        """
+    def validate_token(self, token: str, token_type: str = "access") -> dict[str, Any]:
+        """Validate a JWT token and return its payload."""
+        try:
+            # Check if token is blacklisted - COMMENTED OUT IN ACTUAL CODE
+            # if self.token_blacklist_repository.is_blacklisted(token):
+            #     self.audit_logger.log_security_event(...)
+            #     raise TokenBlacklistedException("Token has been revoked")
+            
+            # Decode token
+            payload = jwt.decode(...)
+            
+            # ... other validation logic ...
 ```
 
-### Token Blacklist Repository Interface
+### Token Blacklist Repository Status
 
-The `ITokenBlacklistRepository` manages the storage and retrieval of blacklisted tokens:
+The `ITokenBlacklistRepository` interface is defined but no implementation exists in the codebase. The JWT service contains commented-out code that should use this repository, indicating the token blacklisting functionality is incomplete.
 
+Comments in the JWT service file confirm this issue:
 ```python
-class ITokenBlacklistRepository(ABC):
-    """
-    Interface for token blacklist repository operations.
-    
-    This interface encapsulates the functionality required for managing
-    blacklisted (revoked) tokens to ensure proper security controls
-    like session invalidation and logout.
-    """
-    
-    @abstractmethod
-    async def add_to_blacklist(self, token: str, jti: str, expires_at: datetime, reason: Optional[str] = None) -> None:
-        """
-        Add a token to the blacklist.
-        """
-        
-    @abstractmethod
-    async def is_blacklisted(self, token: str) -> bool:
-        """
-        Check if a token is blacklisted.
-        """
-        
-    @abstractmethod
-    async def is_jti_blacklisted(self, jti: str) -> bool:
-        """
-        Check if a token with specific JWT ID is blacklisted.
-        """
+# from app.domain.interfaces.repositories.token_blacklist_repository import (
+#     ITokenBlacklistRepository, # TODO: Define this interface in core
+#     ITokenRepository,
+# )
 ```
 
-### Password Handler Interface
+### Password Handler Implementation
 
-The `IPasswordHandler` provides secure password operations:
+The `PasswordHandler` class is implemented and functional, providing secure password operations:
 
 ```python
-class IPasswordHandler(ABC):
+class PasswordHandler:
     """
-    Interface for password handling operations.
+    Implementation of the password handler interface.
     
-    This interface encapsulates the functionality required for secure
-    password operations including hashing, verification, and validation
-    according to HIPAA security requirements.
+    Handles password hashing, verification, and security requirement checking
+    using industry-standard algorithms and HIPAA-compliant security practices.
     """
     
-    @abstractmethod
-    async def hash_password(self, password: str) -> str:
-        """
-        Hash a password securely.
-        """
-        
-    @abstractmethod
-    async def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """
-        Verify a password against its hash.
-        """
-        
-    @abstractmethod
-    async def check_password_requirements(self, password: str) -> Tuple[bool, Optional[str]]:
-        """
-        Check if a password meets security requirements.
-        """
+    def hash_password(self, password: str) -> str:
+        """Hash a password using bcrypt."""
+        return pwd_context.hash(password)
+    
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash."""
+        return pwd_context.verify(plain_password, hashed_password)
+    
+    def check_password_requirements(self, password: str) -> Tuple[bool, Optional[str]]:
+        """Check if a password meets security requirements."""
+        # ... implementation details ...
 ```
 
 ## Authentication Flow
 
-The authentication system implements token-based authentication with the following flow:
+The intended authentication flow is:
 
 1. **User Registration**:
    - User submits registration credentials
@@ -197,7 +194,8 @@ The authentication system implements token-based authentication with the followi
 
 3. **Authenticated Requests**:
    - Client includes access token in Authorization header
-   - System validates token signature, expiration, and blacklist status
+   - System validates token signature and expiration
+   - ⚠️ Blacklist status check is NOT implemented
    - If valid, request is processed with user context
    - If invalid, 401 Unauthorized response is returned
 
@@ -208,9 +206,9 @@ The authentication system implements token-based authentication with the followi
    - New token is returned to client
 
 5. **User Logout**:
-   - Client submits logout request with tokens
-   - Tokens are added to blacklist
-   - Client destroys local token copies
+   - ⚠️ While endpoint exists, token blacklisting is NOT implemented
+   - Tokens are NOT added to blacklist
+   - Client must destroy local token copies, but server-side revocation is missing
 
 ## API Routes
 
@@ -229,15 +227,6 @@ async def login(
     """
 ```
 
-This endpoint authenticates a user with username/email and password, returning JWT tokens on successful authentication.
-
-**Request Body**: `LoginRequestSchema` containing credentials  
-**Response**: `TokenResponseSchema` with access_token, refresh_token, and token_type  
-**Errors**:
-
-- 401: Invalid credentials or disabled account
-- 500: Internal server error during authentication
-
 ### Token Refresh
 
 ```python
@@ -250,15 +239,6 @@ async def refresh_token(
     Refresh an access token using a valid refresh token.
     """
 ```
-
-This endpoint issues a new access token when provided with a valid refresh token.
-
-**Request Body**: `RefreshTokenRequestSchema` containing refresh_token  
-**Response**: `TokenResponseSchema` with new access_token  
-**Errors**:
-
-- 401: Invalid or expired refresh token
-- 500: Internal server error during token refresh
 
 ### User Registration
 
@@ -273,16 +253,6 @@ async def register(
     """
 ```
 
-This endpoint registers a new user in the system after validating their information.
-
-**Request Body**: `UserRegistrationRequestSchema` with user details  
-**Response**: `UserRegistrationResponseSchema` with created user information  
-**Errors**:
-
-- 409: User already exists with provided email
-- 400: Invalid registration data (e.g., weak password)
-- 500: Internal server error during registration
-
 ### Logout
 
 ```python
@@ -293,79 +263,64 @@ async def logout(
 ) -> None:
     """
     Logs out the current user by invalidating tokens/session.
+    
+    ⚠️ WARNING: Due to missing token blacklisting implementation,
+    this endpoint does not actually invalidate tokens!
     """
 ```
-
-This endpoint invalidates the user's current tokens, effectively logging them out.
-
-**Response**: 204 No Content on successful logout  
-**Errors**:
-
-- 500: Error during logout operation
-
-### Session Information
-
-```python
-@router.get("/session-info", response_model=SessionInfoResponseSchema)
-async def get_session_info(
-    auth_service: AuthServiceInterface = Depends(get_auth_service)
-) -> SessionInfoResponseSchema:
-    """
-    Provides information about the current user's session.
-    """
-```
-
-This endpoint returns information about the current user's authenticated session.
-
-**Response**: `SessionInfoResponseSchema` with session details  
-**Errors**:
-
-- 500: Error retrieving session information
 
 ## Security Considerations
 
 ### HIPAA Compliance
 
-The Authentication System implements multiple security measures to ensure HIPAA compliance:
+The Authentication System has several gaps in HIPAA compliance:
 
 1. **Password Security**:
-   - Passwords are hashed using strong algorithms (bcrypt/Argon2)
-   - Password requirements enforce complexity and prevent common passwords
-   - Regular password rotation can be enforced through expiry policies
+   - ✅ Passwords are hashed using strong algorithms
+   - ✅ Password requirements enforce complexity
+   - ❌ Password rotation policies not implemented
 
 2. **Token Security**:
-   - Access tokens are short-lived (typically 15-60 minutes)
-   - Refresh tokens are secured and can be revoked
-   - Token validation prevents tampering and ensures integrity
+   - ✅ Access tokens are short-lived
+   - ❌ Refresh tokens cannot be revoked (blacklisting not implemented)
+   - ✅ Token validation prevents tampering and ensures integrity
 
 3. **Session Management**:
-   - Sessions can be forcibly terminated for security incidents
-   - Inactivity timeouts automatically end idle sessions
-   - Session metadata is tracked for audit purposes
+   - ❌ Sessions cannot be forcibly terminated (blacklisting not implemented)
+   - ❌ Inactivity timeouts not fully implemented
+   - ⚠️ Session tracking exists but revocation is limited
 
 4. **Audit Trail**:
-   - All authentication events are logged with timestamps
-   - Failed authentication attempts are monitored for potential attacks
-   - Session creation and termination events are recorded
+   - ✅ Interface for audit logging exists
+   - ⚠️ Not all authentication events may be properly logged
+   - ⚠️ Failed authentication monitoring needs validation
 
 ### Multi-Factor Authentication
 
-The system supports multi-factor authentication as an additional security layer:
+Despite being documented, multi-factor authentication is not implemented:
 
-1. **TOTP Implementation**:
-   - Time-based One-Time Password generation and validation
-   - Compatible with standard authenticator apps (Google Authenticator, etc.)
-   - Fallback mechanisms for device loss
+1. **TOTP Implementation**: ❌ Not implemented
+2. **MFA Enrollment**: ❌ Not implemented 
+3. **Risk-Based Authentication**: ❌ Not implemented
 
-2. **MFA Enrollment**:
-   - Self-service MFA enrollment process
-   - QR code generation for easy setup
-   - Recovery codes for emergency access
+## Implementation Roadmap
 
-3. **Risk-Based Authentication**:
-   - Optional escalation to MFA based on risk factors
-   - Unusual access patterns can trigger additional verification
-   - Administrative policies can enforce MFA for sensitive operations
+To address the authentication system gaps, the following changes are needed:
+
+1. **Token Blacklisting**:
+   - Implement `RedisTokenBlacklistRepository` class
+   - Uncomment and complete token blacklisting in JWT service
+   - Update logout endpoint to use blacklisting
+
+2. **HIPAA Compliance**:
+   - Implement session timeout mechanisms
+   - Ensure comprehensive audit logging
+   - Add password rotation policies
+
+3. **Multi-Factor Authentication**:
+   - Implement TOTP validation for MFA
+   - Create MFA enrollment endpoints
+   - Add MFA verification to login flow
 
 ## Data Models
 
