@@ -8,7 +8,7 @@ clean architecture principles with precise, mathematically elegant implementatio
 import logging
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 import asyncio
 import pytest
@@ -99,6 +99,40 @@ class MockAuditLogService(IAuditLogger):
                              metadata: Optional[dict] = None) -> str:
         """Log system event without using the database."""
         return str(uuid.uuid4())
+    
+    async def get_audit_trail(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Mock implementation that returns an empty list."""
+        return []
+    
+    async def export_audit_logs(
+        self,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        format: str = "json",
+        file_path: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Mock implementation that returns a fake file path."""
+        return "/tmp/mock_audit_export.json"
+        
+    async def get_security_dashboard_data(
+        self,
+        days: int = 7
+    ) -> Dict[str, Any]:
+        """Mock implementation that returns empty dashboard data."""
+        return {
+            "login_attempts": 0,
+            "failed_logins": 0,
+            "phi_access_events": 0,
+            "security_incidents": 0
+        }
 
 
 @pytest.fixture

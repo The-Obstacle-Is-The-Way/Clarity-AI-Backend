@@ -23,6 +23,9 @@ from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from fastapi import FastAPI, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Initialize logger
+logger = logging.getLogger(__name__)
+
 from app.presentation.api.dependencies.auth import get_current_user
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.services.ml.xgboost.exceptions import (
