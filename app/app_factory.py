@@ -542,11 +542,15 @@ def create_application(
         instead of exposing internal implementation details or error messages.
         """
         # Log the original exception for internal debugging
-        logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
+        logger.error(f"Unhandled exception in handler: {type(exc).__name__}: {exc}")
         logger.error(traceback.format_exc())
         
         # Format compliant with RFC 7807: Problem Details for HTTP APIs
         response_data = {"detail": "An internal server error occurred."}
+        
+        # Get path to check if this is a test endpoint
+        path = request.url.path
+        is_test_endpoint = "/test-api/" in path
         
         # Determine appropriate status code based on exception type
         if isinstance(exc, HTTPException):
@@ -559,6 +563,11 @@ def create_application(
             # For validation errors, return 422 with details
             status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
             response_data = {"detail": exc.errors()}
+        elif is_test_endpoint and current_settings.ENVIRONMENT == "test":
+            # For test endpoints in test environment, log sensitive details but still mask in response
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            logger.warning(f"Test endpoint error details (masked in response): {str(exc)}")
+            # response_data is already set to generic message
         else:
             # For all other exceptions, use 500 and mask details
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
