@@ -553,6 +553,13 @@ def create_application(
             if hasattr(app_instance.state, "disable_audit_middleware"):
                 request.state.disable_audit_middleware = app_instance.state.disable_audit_middleware
             
+            # Add actual_session_factory to request state
+            if hasattr(app_instance.state, "actual_session_factory"):
+                request.state.actual_session_factory = app_instance.state.actual_session_factory
+                logger.debug(f"Setting actual_session_factory on request.state: {id(app_instance.state.actual_session_factory)}")
+            else:
+                logger.warning("actual_session_factory not found on app.state, cannot set on request.state")
+            
             # Continue with the request
             return await call_next(request)
         except Exception as e:
