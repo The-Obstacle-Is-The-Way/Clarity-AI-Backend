@@ -44,30 +44,29 @@ async def analytics_health_check():
 @router.post("/events", status_code=status.HTTP_202_ACCEPTED)
 async def record_analytics_event(
     request: Request,
-    request_data: Optional[Dict[str, Any]] = Body(default=None),  # Accept None to allow pure body
-    background_tasks: BackgroundTasks,  # Removed Depends()
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     process_event_use_case: ProcessAnalyticsEventUseCase = Depends(get_process_analytics_event_use_case),
     # Add query parameters to handle query args from tests
     args: Optional[str] = Query(default=None),
     kwargs: Optional[str] = Query(default=None)
 ):
-    # Debug prints 
-    print(f"DEBUG analytics events request_data: {request_data}")
-    
-    # Special case for test submissions without Body
-    if request_data is None:
-        # Try to get the raw request body
-        try:
-            body_bytes = await request.body()
-            if body_bytes:
-                import json
-                request_data = json.loads(body_bytes)
-            else:
-                request_data = {}
-        except Exception as e:
-            print(f"Error parsing request body: {e}")
+    """
+    Process a single analytics event.
+    Accepts both raw JSON and 'request' wrapped formats for flexibility.
+    """
+    # Parse the request body directly
+    try:
+        body_bytes = await request.body()
+        if body_bytes:
+            import json
+            request_data = json.loads(body_bytes)
+            print(f"DEBUG analytics events request_data: {request_data}")
+        else:
             request_data = {}
+    except Exception as e:
+        print(f"Error parsing request body: {e}")
+        request_data = {}
     
     # Handle the case where request_data is directly the event data with no wrapper
     # In test cases, the JSON is passed directly rather than wrapped in a 'request' property
@@ -89,50 +88,52 @@ async def record_analytics_event(
 @router.post("/events/batch", status_code=status.HTTP_202_ACCEPTED)
 async def record_analytics_batch(
     request: Request,
-    request_data: Optional[List[Dict[str, Any]]] = Body(default=None),  # Accept list for batch
-    background_tasks: BackgroundTasks,  # Removed Depends()
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(get_batch_process_analytics_use_case),
     # Add query parameters to handle query args from tests
     args: Optional[str] = Query(default=None),
     kwargs: Optional[str] = Query(default=None)
 ):
-    # Debug prints
-    print(f"DEBUG analytics batch request_data: {request_data}")
+    """
+    Process a batch of analytics events.
+    Accepts both list and dict formats for maximum flexibility with client implementations.
+    """
+    # Detailed debug prints
+    print(f"DEBUG analytics batch kwargs: {kwargs}")
+    print(f"DEBUG analytics batch args: {args}")
+    
+    # Parse the request body directly
+    try:
+        body_bytes = await request.body()
+        if body_bytes:
+            import json
+            request_data = json.loads(body_bytes)
+            print(f"DEBUG raw body parsed: {request_data}")
+            print(f"DEBUG raw body type: {type(request_data)}")
+        else:
+            request_data = []
+            print("DEBUG: Empty request body")
+    except Exception as e:
+        print(f"Error parsing request body: {e}")
+        request_data = []
     
     # Handle different types of input data
     events_data = []
     
-    if request_data is None:
-        # Try to get the raw request
-        try:
-            body_bytes = await request.body()
-            if body_bytes:
-                import json
-                body_data = json.loads(body_bytes)
-                if isinstance(body_data, list):
-                    request_data = body_data
-                elif isinstance(body_data, dict) and 'request' in body_data and isinstance(body_data['request'], list):
-                    request_data = body_data['request']
-                else:
-                    request_data = [body_data]  # Single event as a list of one
-            else:
-                request_data = []
-        except Exception as e:
-            print(f"Error parsing request body: {e}")
-            request_data = []
-    
-    # Now handle the parsed request_data
     if isinstance(request_data, list):
         # Direct list of events
         events_data = request_data
+        print(f"DEBUG: List detected, length: {len(events_data)}")
     elif isinstance(request_data, dict):
         if 'request' in request_data and isinstance(request_data['request'], list):
             # Wrapped list in 'request' property
             events_data = request_data['request']
+            print(f"DEBUG: Dict with request list detected, length: {len(events_data)}")
         else:
             # Single event as dict
             events_data = [request_data]
+            print(f"DEBUG: Single dict event detected")
     
     # Ensure background_tasks is not None (for testing)
     if background_tasks is None:
