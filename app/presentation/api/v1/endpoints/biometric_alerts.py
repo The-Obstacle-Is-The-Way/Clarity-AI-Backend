@@ -6,7 +6,7 @@ following clean architecture principles with proper separation of concerns.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from uuid import UUID
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -71,53 +71,97 @@ async def get_alerts(
     logger.debug(f"Getting alerts with patient_id={patient_id}")
     try:
         # Determine if request is for self or for a patient (provider access)
-        subject_id = patient_id if patient_id else current_user.id
+        subject_id = patient_id if patient_id else str(current_user.id)
         
         # Check authorization if requesting patient data
-        if patient_id and patient_id != current_user.id:
+        if patient_id and str(patient_id) != str(current_user.id):
             try:
                 # This will raise an exception if not authorized
-                await alert_service.validate_access(current_user.id, patient_id)
+                await alert_service.validate_access(str(current_user.id), patient_id)
             except Exception as e:
                 logger.warning(f"Access validation failed: {str(e)}")
                 # Return empty list for unauthorized access instead of error
                 return []
-            
-        # Convert filter params
-        filters = AlertsFilterParams(
-            status=status_param,
-            priority=priority,
-            alert_type=alert_type,
-            start_date=start_date,
-            end_date=end_date
-        )
         
         try:
-            # Get alerts from service - use patient_id parameter directly instead of subject_id
-            # This handles the case when we're passing a UUID string without conversion
+            # Get alerts from service directly using the interface parameters
+            # Adapt to match the AlertServiceInterface
+            start_time = None
+            end_time = None
+            
+            if start_date:
+                try:
+                    start_time = datetime.fromisoformat(start_date)
+                except ValueError:
+                    logger.warning(f"Invalid start_date format: {start_date}")
+                    
+            if end_date:
+                try:
+                    end_time = datetime.fromisoformat(end_date)
+                except ValueError:
+                    logger.warning(f"Invalid end_date format: {end_date}")
+            
             alerts = await alert_service.get_alerts(
-                patient_id=patient_id,  # Pass patient_id directly 
-                filters=filters,
+                patient_id=subject_id,
+                alert_type=alert_type.value if alert_type else None,
+                severity=priority,
+                status=status_param.value if status_param else None,
+                start_time=start_time,
+                end_time=end_time,
                 limit=limit,
-                offset=offset
+                skip=offset
             )
             
-            # Convert to response model
-            return [
-                AlertResponse(
-                    id=alert.id,
-                    alert_type=alert.alert_type,
-                    timestamp=alert.timestamp,
-                    status=alert.status,
-                    priority=alert.priority,
-                    message=alert.message,
-                    data=alert.data,
-                    user_id=alert.user_id,
-                    resolved_at=alert.resolved_at,
-                    resolution_notes=alert.resolution_notes
-                )
-                for alert in alerts
-            ]
+            # Handle different return types from alert service
+            result = []
+            
+            try:
+                # If alerts is a list of dicts, convert each to AlertResponse
+                if isinstance(alerts, list):
+                    for alert in alerts:
+                        try:
+                            # Handle dict or Alert object
+                            if isinstance(alert, dict):
+                                alert_response = AlertResponse(
+                                    id=alert.get("id"),
+                                    alert_type=alert.get("alert_type"),
+                                    timestamp=alert.get("timestamp"),
+                                    status=alert.get("status"),
+                                    priority=alert.get("priority"),
+                                    message=alert.get("message"),
+                                    data=alert.get("data"),
+                                    user_id=alert.get("user_id"),
+                                    resolved_at=alert.get("resolved_at"),
+                                    resolution_notes=alert.get("resolution_notes")
+                                )
+                                result.append(alert_response)
+                            else:
+                                # Assume it's an Alert object
+                                alert_response = AlertResponse(
+                                    id=alert.id,
+                                    alert_type=alert.alert_type,
+                                    timestamp=alert.timestamp,
+                                    status=alert.status,
+                                    priority=alert.priority,
+                                    message=alert.message,
+                                    data=alert.data,
+                                    user_id=alert.user_id,
+                                    resolved_at=alert.resolved_at,
+                                    resolution_notes=alert.resolution_notes
+                                )
+                                result.append(alert_response)
+                        except (AttributeError, TypeError) as e:
+                            logger.warning(f"Error converting alert item: {str(e)}")
+                            # Skip this item but continue processing
+                            continue
+                else:
+                    logger.warning(f"Alert service returned unexpected type: {type(alerts)}")
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"Error processing alerts: {str(e)}")
+                # Return empty list on error
+                
+            return result
+            
         except TypeError as e:
             # Handle case where the mock returns a tuple or other incorrect type
             logger.warning(f"Alert service returned unexpected data type: {str(e)}, returning empty list")
@@ -154,7 +198,7 @@ async def get_alert(
         try:
             alert = await alert_service.get_alert_by_id(
                 alert_id=str(alert_id),
-                user_id=current_user.id
+                user_id=str(current_user.id)
             )
         except Exception as e:
             logger.error(f"Error retrieving alert {alert_id}: {str(e)}")

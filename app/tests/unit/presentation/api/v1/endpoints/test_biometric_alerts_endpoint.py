@@ -206,7 +206,25 @@ def mock_template_repository() -> AsyncMock:
 def mock_alert_service() -> MagicMock:
     """Provides a mock alert service for tests."""
     service = MagicMock(spec=AlertServiceInterface)
-    service.get_alerts = AsyncMock(return_value=[])  # Return a list instead of tuple
+    
+    # Set up the get_alerts mock to return a list of dicts
+    mock_alerts = [
+        {
+            "id": str(uuid.uuid4()),
+            "alert_type": "biometric",
+            "timestamp": datetime.now(timezone.utc),
+            "status": "open",
+            "priority": "high",
+            "message": "Elevated heart rate detected",
+            "data": {"heart_rate": 110},
+            "user_id": "123e4567-e89b-42d3-a456-426614174000",
+            "resolved_at": None,
+            "resolution_notes": None
+        }
+    ]
+    service.get_alerts = AsyncMock(return_value=mock_alerts)
+    
+    service.validate_access = AsyncMock(return_value=True)
     service.get_alert_by_id = AsyncMock(return_value=None)
     service.update_alert_status = AsyncMock()
     service.get_patient_alert_summary = AsyncMock(return_value=None)
