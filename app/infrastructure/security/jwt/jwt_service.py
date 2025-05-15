@@ -52,14 +52,13 @@ except ImportError:
         pass
 
 # Import repository interfaces
-try:
-    from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-except ImportError:
-    IUserRepository = Any
+# Import concrete implementation directly for FastAPI compatibility
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 
 try:
     from app.core.interfaces.repositories.token_blacklist_repository_interface import ITokenBlacklistRepository
 except ImportError:
+    # Allow for tests without this dependency
     ITokenBlacklistRepository = Any
 
 try:
@@ -672,7 +671,7 @@ class JWTService(IJwtService):
 # Define dependency injection function
 def get_jwt_service(
     settings: Settings,
-    user_repository: Optional[IUserRepository] = None,
+    user_repository: Optional[SQLAlchemyUserRepository] = None,
     token_blacklist_repository: Optional[ITokenBlacklistRepository] = None
 ) -> IJwtService:
     """
