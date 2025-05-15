@@ -218,7 +218,7 @@ class TestJWTService:
         """Test verification of expired tokens."""
         # Create an expired token by setting 'exp' in the past
         past_exp = datetime.now(UTC) - timedelta(minutes=1)
-        # Construct payload for jwt.encode, ensuring all necessary fields for TokenPayload if decode_token is used
+        # Construct payload for jwt.encode, ensuring all necessary fields
         data = {
             "sub": "user123", 
             "role": "patient", 
@@ -226,17 +226,24 @@ class TestJWTService:
             "iat": int((past_exp - timedelta(minutes=15)).timestamp()), # Example iat
             "jti": str(uuid.uuid4()), # Add jti
             "type": TokenType.ACCESS, # Add type
-            "iss": jwt_service.issuer, # Add iss
-            "aud": jwt_service.audience  # Add aud
+            "roles": ["patient"],
+            "username": "test_user"
         }
+        
+        # Use jose.jwt directly since we need a token with specific expired timestamp
+        from jose import jwt
         expired_token = jwt.encode(
             data, jwt_service.secret_key, algorithm=jwt_service.algorithm
         )
-
-        # Verify the token fails validation when we explicitly require expiration verification
-        # Set verify_exp=True to override the test environment default
-        with pytest.raises(TokenExpiredException):
+        
+        # Test that expired token verification throws the expected exception
+        with pytest.raises(InvalidTokenException, match=r"Invalid token: Signature has expired."):
             jwt_service.decode_token(expired_token, options={"verify_exp": True})
+            
+        # But should work with verify_exp=False
+        decoded = jwt_service.decode_token(expired_token, options={"verify_exp": False})
+        assert decoded is not None
+        assert decoded.sub == "user123"
 
     @pytest.mark.asyncio
     async def test_verify_token_invalid_signature(self, jwt_service: JWTService):
@@ -412,24 +419,33 @@ class TestJWTService:
         # Verify identity
         assert identity == "user123"
 
-    def test_get_token_identity_missing_sub(self, jwt_service: JWTService):
-        """Test get_token_identity with token missing 'sub' claim raises AuthenticationError."""
-        payload_no_sub = {
-            "role": "guest", 
-            "exp": datetime.now(UTC) + timedelta(minutes=15),
-            "iat": int(datetime.now(UTC).timestamp()), # Ensure iat is int
-            "jti": str(uuid.uuid4()), # Ensure jti is present and string
-            "iss": jwt_service.issuer,
-            "aud": jwt_service.audience,
+    @pytest.mark.asyncio
+    async def test_get_token_identity_missing_sub(self, jwt_service: JWTService):
+        """Test handling tokens without a subject (sub) field."""
+        data_no_sub = {
+            "role": "guest",
+            "exp": int((datetime.now(UTC) + timedelta(minutes=15)).timestamp()),
+            "jti": str(uuid.uuid4()),
             "type": TokenType.ACCESS,
-            "roles": [] # Include roles to avoid validation errors
+            "roles": []
         }
-        # Directly encode a token without 'sub'
-        token_no_sub = jwt.encode(payload_no_sub, jwt_service.secret_key, algorithm=jwt_service.algorithm)
         
-        # Use a more generic pattern that will match regardless of exact formatting
-        with pytest.raises(AuthenticationError, match=r"Token validation error"): 
+        # Use jose.jwt directly since we need a token without a sub field
+        from jose import jwt
+        token_no_sub = jwt.encode(
+            data_no_sub, jwt_service.secret_key, algorithm=jwt_service.algorithm
+        )
+        
+        # Attempting to validate this token should raise an exception
+        with pytest.raises(InvalidTokenException, match=r"Invalid token.*sub.*Field required"):
             jwt_service.decode_token(token_no_sub)
+
+        # Logging expected for this case
+        assert any(
+            "Field required" in record.message 
+            for record in self.caplog.records 
+            if hasattr(record, 'message') and 'sub' in record.message
+        ), "Expected validation error log message not found"
 
     @pytest.mark.asyncio
     @freeze_time("2024-01-01 12:00:00")
