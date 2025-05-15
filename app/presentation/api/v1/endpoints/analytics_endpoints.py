@@ -45,7 +45,7 @@ async def analytics_health_check():
 async def record_analytics_event(
     request: Request,
     request_data: Optional[Dict[str, Any]] = Body(default=None),  # Accept None to allow pure body
-    background_tasks: BackgroundTasks = Depends(),
+    background_tasks: BackgroundTasks,  # Removed Depends()
     current_user: User = Depends(get_current_active_user),
     process_event_use_case: ProcessAnalyticsEventUseCase = Depends(get_process_analytics_event_use_case),
     # Add query parameters to handle query args from tests
@@ -90,7 +90,7 @@ async def record_analytics_event(
 async def record_analytics_batch(
     request: Request,
     request_data: Optional[List[Dict[str, Any]]] = Body(default=None),  # Accept list for batch
-    background_tasks: BackgroundTasks = Depends(),
+    background_tasks: BackgroundTasks,  # Removed Depends()
     current_user: User = Depends(get_current_active_user),
     batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(get_batch_process_analytics_use_case),
     # Add query parameters to handle query args from tests
