@@ -259,6 +259,36 @@ class AuthenticationService:
             "token_type": "bearer"
         }
 
+    async def login(self, username: str, password: str, remember_me: bool = False) -> dict[str, str]:
+        """
+        Authenticate a user with username and password and create token pair.
+        
+        Args:
+            username: The user's username
+            password: The user's password
+            remember_me: Whether to extend token lifetimes
+            
+        Returns:
+            Dict containing access_token, refresh_token and token_type
+            
+        Raises:
+            AuthenticationError: If credentials are invalid
+        """
+        # Authenticate user
+        user = await self.authenticate_user(username, password)
+        if not user:
+            raise AuthenticationError("Invalid username or password")
+            
+        # Create token pair
+        token_data = await self.create_token_pair(user)
+            
+        # Return tokens
+        return {
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data["refresh_token"],
+            "token_type": "bearer"
+        }
+
     async def refresh_token(self, refresh_token: str) -> dict[str, str]:
         """
         Refresh the access token using a valid refresh token.

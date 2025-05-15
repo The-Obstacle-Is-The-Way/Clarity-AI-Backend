@@ -700,39 +700,48 @@ def get_jwt_service(
                 secret_key = str(jwt_secret)
         elif hasattr(settings, 'jwt_secret_key'):
             jwt_secret = settings.jwt_secret_key
+            # Handle SecretStr type or similar
             if hasattr(jwt_secret, 'get_secret_value'):
                 secret_key = jwt_secret.get_secret_value()
             else:
                 secret_key = str(jwt_secret)
         else:
-            # Fallback for testing - use environment-dependent key
-            secret_key = getattr(settings, 'TEST_JWT_SECRET_KEY', None)
-            if not secret_key:
-                # Last resort fallback with warning
-                import os
-                secret_key = os.urandom(32).hex()
-                logger.warning("Generated random JWT secret key - NOT FOR PRODUCTION")
+            # Fallback for testing
+            secret_key = "test_secret_key_REPLACE_IN_PRODUCTION"
+            logger.warning("Using insecure default JWT secret key. DO NOT use in production!")
     except Exception as e:
-        logger.error(f"Error extracting JWT secret key from settings: {e}")
-        # Still provide a fallback to prevent service failure in testing
-        import os
-        secret_key = os.urandom(32).hex()
-        logger.warning("Generated random JWT secret key due to error - NOT FOR PRODUCTION")
+        logger.warning(f"Error extracting JWT secret key: {e}. Using a default key.")
+        secret_key = "test_secret_key_REPLACE_IN_PRODUCTION"
+        logger.warning("Using insecure default JWT secret key. DO NOT use in production!")
     
-    # Get other settings with fallbacks
+    # Get algorithm with fallback
     try:
-        algorithm = getattr(settings, 'JWT_ALGORITHM', 'HS256')
-        access_token_expire_minutes = getattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', 30)
-        refresh_token_expire_days = getattr(settings, 'REFRESH_TOKEN_EXPIRE_DAYS', 7)
-        issuer = getattr(settings, 'JWT_ISSUER', None)
-        audience = getattr(settings, 'JWT_AUDIENCE', None)
-    except Exception as e:
-        logger.error(f"Error extracting JWT settings: {e} - using defaults")
-        algorithm = 'HS256'
+        algorithm = settings.JWT_ALGORITHM
+    except (KeyError, AttributeError):
+        algorithm = "HS256"
+        
+    try:
+        access_token_expire_minutes = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+    except (KeyError, AttributeError):
         access_token_expire_minutes = 30
+        
+    try:
+        refresh_token_expire_days = settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
+    except (KeyError, AttributeError):
         refresh_token_expire_days = 7
-        issuer = None
-        audience = None
+        
+    # Optional settings
+    issuer = None
+    audience = None
+    try:
+        issuer = settings.JWT_ISSUER
+    except (KeyError, AttributeError):
+        pass
+        
+    try:
+        audience = settings.JWT_AUDIENCE
+    except (KeyError, AttributeError):
+        pass
     
     # Create and return a JWTService instance with settings
     return JWTService(
@@ -743,5 +752,6 @@ def get_jwt_service(
         token_blacklist_repository=token_blacklist_repository,
         user_repository=user_repository,
         issuer=issuer,
-        audience=audience
+        audience=audience,
+        settings=settings
     )
