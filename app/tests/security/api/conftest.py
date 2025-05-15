@@ -558,23 +558,26 @@ def global_mock_jwt_service() -> JWTServiceInterface:
             # Use getattr with default value to prevent AttributeError
             expire = now + timedelta(minutes=getattr(test_settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', 30))
         
-        to_encode.update({"exp": expire, "iat": now})
-
-        # Ensure subject claim is present
-        if "sub" not in to_encode:
-            if "user_id" in to_encode:
-                to_encode["sub"] = str(to_encode["user_id"])
-            else:
-                to_encode["sub"] = f"test-sub-{uuid.uuid4()}"
+        to_encode.update({
+            "exp": expire,  # When this token expires
+            "iat": now,  # When this token was issued
+            "nbf": now,  # When this token becomes valid
+            "jti": str(uuid.uuid4()),  # Unique token ID
+        })
         
-        # Generate a test token with predictable format
-        token = f"mock_access_token_{uuid.uuid4()}"
-        
-        # Store token data for verification - this is key for the token_store issue
-        mock_service.token_store[token] = to_encode
-        mock_service.token_exp_store[token] = expire
-        
-        return token
+        # Add any standard JWT claims if available in settings
+        if hasattr(test_settings, 'JWT_ISSUER'):
+            to_encode.update({"iss": test_settings.JWT_ISSUER})
+        if hasattr(test_settings, 'JWT_AUDIENCE'):
+            to_encode.update({"aud": test_settings.JWT_AUDIENCE})
+            
+        # Encode and return
+        encoded_jwt = jwt.encode(
+            to_encode,
+            getattr(test_settings, 'JWT_SECRET_KEY', 'test-secret-key'),
+            algorithm=getattr(test_settings, 'JWT_ALGORITHM', 'HS256')
+        )
+        return encoded_jwt
     
     # Create refresh token implementation
     async def mock_create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -593,14 +596,26 @@ def global_mock_jwt_service() -> JWTServiceInterface:
             refresh_days = getattr(test_settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', 7)
             expire = now + timedelta(days=refresh_days)
         
-        to_encode.update({"exp": expire, "iat": now})
+        to_encode.update({
+            "exp": expire,  # When this token expires
+            "iat": now,  # When this token was issued
+            "nbf": now,  # When this token becomes valid
+            "jti": str(uuid.uuid4()),  # Unique token ID
+        })
         
-        # For testing, use a predictable token format
-        token = f"mock_refresh_token_{uuid.uuid4()}"
-        mock_service.token_store[token] = to_encode
-        mock_service.token_exp_store[token] = expire
-        
-        return token
+        # Add any standard JWT claims if available in settings
+        if hasattr(test_settings, 'JWT_ISSUER'):
+            to_encode.update({"iss": test_settings.JWT_ISSUER})
+        if hasattr(test_settings, 'JWT_AUDIENCE'):
+            to_encode.update({"aud": test_settings.JWT_AUDIENCE})
+            
+        # Encode and return
+        encoded_jwt = jwt.encode(
+            to_encode,
+            getattr(test_settings, 'JWT_SECRET_KEY', 'test-secret-key'),
+            algorithm=getattr(test_settings, 'JWT_ALGORITHM', 'HS256')
+        )
+        return encoded_jwt
     
     # Decode token implementation
     async def mock_decode_token(token: str) -> dict[str, Any]:

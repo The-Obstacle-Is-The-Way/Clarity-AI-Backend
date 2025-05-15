@@ -139,7 +139,7 @@ async def get_jwt_service(
 
 async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    settings: Settings = Depends(get_settings),
+        settings: Settings = Depends(get_settings),
     jwt_service: JWTService = Depends(get_jwt_service),
     user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency)
 ) -> DomainUser:

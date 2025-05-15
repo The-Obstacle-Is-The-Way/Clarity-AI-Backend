@@ -158,78 +158,61 @@ class JWTService(IJwtService):
     """
     
     def __init__(
-        self, 
-        *,
-        secret_key: str = None, 
-        algorithm: str = "HS256",
-        access_token_expire_minutes: int = 30,
-        refresh_token_expire_days: int = 7,
-        issuer: str | None = None,
-        audience: str | None = None,
-        token_blacklist_repository: Any = None,
-        user_repository: Any = None,
+        self,
         settings: Any = None,
-    ):    
+        token_blacklist_repository: Optional[ITokenBlacklistRepository] = None,
+        secret_key: Optional[str] = None,
+        algorithm: Optional[str] = None,
+        access_token_expire_minutes: Optional[int] = None,
+        refresh_token_expire_days: Optional[int] = None,
+        issuer: Optional[str] = None,
+        audience: Optional[str] = None,
+    ):
         """
-        Initialize the JWT service with application settings.
+        Initialize JWT service with configuration.
         
         Args:
-            secret_key: Secret key for token signing
-            algorithm: Algorithm to use for token signing (default: HS256)
-            access_token_expire_minutes: Expiration time for access tokens in minutes (default: 30)
-            refresh_token_expire_days: Expiration time for refresh tokens in days (default: 7)
-            issuer: Issuer claim for tokens (optional)
-            audience: Audience claim for tokens (optional)
-            token_blacklist_repository: Repository for token blacklisting (optional but recommended for security)
-            user_repository: Repository to fetch user details (optional, needed for get_user_from_token)
-            settings: Application settings object (optional)
+            settings: Application settings
+            token_blacklist_repository: Repository for blacklisted tokens
+            secret_key: Override JWT secret key
+            algorithm: Override JWT algorithm
+            access_token_expire_minutes: Override access token expiration
+            refresh_token_expire_days: Override refresh token expiration
+            issuer: Override JWT issuer
+            audience: Override JWT audience
         """
-        # Allow initialization from settings object for backward compatibility
-        if settings is not None:
-            # Extract JWT configuration from settings
-            if hasattr(settings, 'JWT_SECRET_KEY'):
-                if hasattr(settings.JWT_SECRET_KEY, 'get_secret_value'):
-                    self.secret_key = settings.JWT_SECRET_KEY.get_secret_value()
-                else:
-                    self.secret_key = str(settings.JWT_SECRET_KEY)
-            elif hasattr(settings, 'SECRET_KEY'):
-                if hasattr(settings.SECRET_KEY, 'get_secret_value'):
-                    self.secret_key = settings.SECRET_KEY.get_secret_value()
-                else:
-                    self.secret_key = str(settings.SECRET_KEY)
-            elif secret_key:
-                self.secret_key = secret_key
-            else:
-                # Last resort for testing environments
-                if hasattr(settings, 'ENVIRONMENT') and settings.ENVIRONMENT == 'test':
-                    self.secret_key = "testsecretkeythatisverylong"
-                else:
-                    raise ValueError("No JWT secret key provided in settings or parameters")
-            
-            # Extract other settings
-            self.algorithm = getattr(settings, 'JWT_ALGORITHM', algorithm)
-            self.access_token_expire_minutes = getattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', access_token_expire_minutes)
-            self.refresh_token_expire_days = getattr(settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', refresh_token_expire_days)
-            self.issuer = getattr(settings, 'JWT_ISSUER', issuer)
-            self.audience = getattr(settings, 'JWT_AUDIENCE', audience)
-            
-            # Store settings for future reference
-            self.settings = settings
-        else:
-            # Direct initialization
-            if secret_key is None:
-                raise ValueError("secret_key is required when not using settings object")
-            self.secret_key = secret_key
-            self.algorithm = algorithm
-            self.access_token_expire_minutes = access_token_expire_minutes
-            self.refresh_token_expire_days = refresh_token_expire_days
-            self.issuer = issuer
-            self.audience = audience
-            self.settings = None
-        
         self.token_blacklist_repository = token_blacklist_repository
-        self.user_repository = user_repository
-
+        self.settings = settings
+        
+        # Get secret key from parameters or settings
+        if secret_key:
+            self.secret_key = secret_key
+        elif settings and hasattr(settings, 'JWT_SECRET_KEY') and settings.JWT_SECRET_KEY:
+            # Extract string value from SecretStr if needed
+            if hasattr(settings.JWT_SECRET_KEY, 'get_secret_value'):
+                self.secret_key = settings.JWT_SECRET_KEY.get_secret_value()
+            else:
+                self.secret_key = str(settings.JWT_SECRET_KEY)
+        else:
+            # Use a default for testing if in test environment
+            if settings and hasattr(settings, 'ENVIRONMENT') and settings.ENVIRONMENT == "test":
+                self.secret_key = "testsecretkeythatisverylong"
+            else:
+                raise ValueError("JWT_SECRET_KEY is required in settings")
+        
+        # Get algorithm from parameters or settings with default
+        self.algorithm = algorithm or getattr(settings, 'JWT_ALGORITHM', 'HS256')
+        
+        # Get token expiration times with defaults for testing
+        self.access_token_expire_minutes = access_token_expire_minutes or getattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', 30)
+        self.refresh_token_expire_days = refresh_token_expire_days or getattr(settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', 7)
+        
+        # Get optional issuer and audience
+        self.issuer = issuer or getattr(settings, 'JWT_ISSUER', None)
+        self.audience = audience or getattr(settings, 'JWT_AUDIENCE', None)
+        
+        self.user_repository = None
+        
         # If no token blacklist repository is provided, use an in-memory fallback
         # This is NOT suitable for production, but prevents errors in development/testing
         # Token blacklist for revoked tokens
