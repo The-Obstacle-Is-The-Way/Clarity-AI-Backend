@@ -351,6 +351,10 @@ async def test_logout(
     # First, perform login to get tokens.
     login_data = {"username": "testuser@example.com", "password": "testpassword"}
     login_response = await client.post("/api/v1/auth/login", json=login_data)
+    # Print login response details for debugging
+    print(f"Login status: {login_response.status_code}")
+    print(f"Login response: {login_response.text}")
+    
     # Ensure login succeeded
     assert login_response.status_code == 200 
     
