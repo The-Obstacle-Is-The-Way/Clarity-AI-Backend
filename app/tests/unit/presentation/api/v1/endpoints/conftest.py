@@ -18,21 +18,34 @@ def global_mock_jwt_service() -> MagicMock:
     """Create a module-scoped mock JWT service that can be used across tests."""
     mock_service = MagicMock(spec=JWTServiceInterface)
     
+    # Import the TokenPayload model for proper type conformance
+    from app.infrastructure.security.jwt.jwt_service import TokenPayload, TokenType
+    
     # Set up async methods
     mock_service.create_access_token = AsyncMock()
     mock_service.create_access_token.return_value = "mocked.access.token"
     
+    # Configure decode_token to return a proper TokenPayload model
     mock_service.decode_token = AsyncMock()
-    mock_service.decode_token.return_value = MagicMock(
-        sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-        roles=["read:patients", "write:clinical_notes"],
-        exp=9999999999
-    )
+    def mock_decode_token(token, **kwargs):
+        # Return a properly constructed TokenPayload
+        return TokenPayload(
+            sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            exp=int(datetime.now(timezone.utc).timestamp()) + 3600,  # 1 hour in the future
+            iat=int(datetime.now(timezone.utc).timestamp()),
+            jti=str(uuid.uuid4()),
+            type=TokenType.ACCESS,
+            roles=["clinician"],
+            iss="test-issuer",
+            aud="test-audience"
+        )
+    
+    mock_service.decode_token.side_effect = mock_decode_token
     
     mock_service.verify_token = AsyncMock(return_value=True)
     
     # Customize create_access_token to use provided data
-    async def custom_create_token(data=None, expires_delta=None):
+    async def custom_create_token(data=None, expires_delta=None, **kwargs):
         # Generate a fake token with some identifiable structure
         if not data:
             return "mocked.access.token.no.data"
@@ -44,6 +57,37 @@ def global_mock_jwt_service() -> MagicMock:
         return f"mocked.{prefix}.token.{roles_str}"
     
     mock_service.create_access_token.side_effect = custom_create_token
+    
+    # Add verify_access_token and verify_refresh_token methods
+    mock_service.verify_access_token = AsyncMock()
+    def mock_verify_access_token(token, **kwargs):
+        return TokenPayload(
+            sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            exp=int(datetime.now(timezone.utc).timestamp()) + 3600,  # 1 hour in the future
+            iat=int(datetime.now(timezone.utc).timestamp()),
+            jti=str(uuid.uuid4()),
+            type=TokenType.ACCESS,
+            roles=["clinician"],
+            iss="test-issuer",
+            aud="test-audience"
+        )
+    
+    mock_service.verify_access_token.side_effect = mock_verify_access_token
+    
+    mock_service.verify_refresh_token = AsyncMock()
+    def mock_verify_refresh_token(token, **kwargs):
+        return TokenPayload(
+            sub="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+            exp=int(datetime.now(timezone.utc).timestamp()) + 3600 * 24,  # 24 hours in the future
+            iat=int(datetime.now(timezone.utc).timestamp()),
+            jti=str(uuid.uuid4()),
+            type=TokenType.REFRESH,
+            roles=["clinician"],
+            iss="test-issuer",
+            aud="test-audience"
+        )
+    
+    mock_service.verify_refresh_token.side_effect = mock_verify_refresh_token
     
     return mock_service
 
