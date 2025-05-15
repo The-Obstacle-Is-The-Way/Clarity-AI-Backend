@@ -10,7 +10,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
-from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch, ANY
 from enum import Enum
 
 import asyncio
@@ -682,11 +682,11 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Attempt to acknowledge alert - use the AlertStatus enum object directly, not its value
+        # Attempt to acknowledge alert - wrap with "update_request" key for Body(...) parameter
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": AlertStatus.ACKNOWLEDGED, "resolution_notes": "Reviewing now"}
+            json={"update_request": {"status": AlertStatus.ACKNOWLEDGED, "resolution_notes": "Reviewing now"}}
         )
         
         # Debug - Print validation error details
@@ -729,12 +729,17 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Attempt to resolve alert - use the AlertStatus enum object directly
+        # Attempt to resolve alert - wrap with "update_request" key for Body(...) parameter
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": AlertStatus.RESOLVED, "resolution_notes": "Issue addressed"}
+            json={"update_request": {"status": AlertStatus.RESOLVED, "resolution_notes": "Issue addressed"}}
         )
+        
+        # Debug - Print validation error details
+        if response.status_code == 422:
+            error_detail = response.json()
+            print(f"Validation Error: {error_detail}")
         
         # Verify response
         assert response.status_code == 200
@@ -943,7 +948,7 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Request to trigger alert - use enum objects directly, not their values
+        # Request to trigger alert - wrap with "alert_data" key for Body(...) parameter
         alert_data = {
             "message": "Patient reporting increased anxiety",
             "priority": AlertPriority.HIGH,
@@ -954,8 +959,13 @@ class TestBiometricAlertsEndpoints:
         response = await client.post(
             f"/api/v1/biometric-alerts/patients/{sample_patient_id}/trigger",
             headers=get_valid_provider_auth_headers,
-            json=alert_data
+            json={"alert_data": alert_data}
         )
+        
+        # Debug - Print validation error details
+        if response.status_code == 422:
+            error_detail = response.json()
+            print(f"Validation Error: {error_detail}")
         
         # Verify response
         assert response.status_code == 200
@@ -966,7 +976,7 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock.create_alert.assert_called_once_with(
             patient_id=str(sample_patient_id),
             alert_type=AlertType.BIOMETRIC_ANOMALY.value,
-            severity=ANY,
+            severity=AlertPriority.HIGH,
             description="Patient reporting increased anxiety",
             source_data={"anxiety_level": 8, "reported_by": "provider"},
             metadata={"manually_triggered_by": ANY}
