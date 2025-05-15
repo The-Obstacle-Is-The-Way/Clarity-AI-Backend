@@ -97,8 +97,15 @@ class CustomAsyncClient(AsyncClient):
         # If json is in kwargs, make sure it's passed as request property
         if "json" in kwargs:
             # Add 'request' key for the FastAPI Pydantic model expectation
+            print(f"Original request JSON: {kwargs['json']}")
             kwargs["json"] = {"request": kwargs["json"]}
-        return await super().post(url, **kwargs)
+            print(f"Modified request JSON: {kwargs['json']}")
+        else:
+            print("No json in kwargs")
+        
+        response = await super().post(url, **kwargs)
+        print(f"Response: {response.status_code}, {response.text}")
+        return response
 
 # Refactored test client fixture
 @pytest_asyncio.fixture
@@ -131,6 +138,13 @@ async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGene
     # Middleware to copy app_state essentials to request_state
     @app.middleware("http")
     async def set_essential_app_state_on_request_middleware(request, call_next):
+        # Add debug prints
+        print("MIDDLEWARE: Request received")
+        print(f"MIDDLEWARE: Request path: {request.url.path}")
+        print(f"MIDDLEWARE: Request method: {request.method}")
+        print(f"MIDDLEWARE: Request headers: {request.headers}")
+        print(f"MIDDLEWARE: Request query params: {request.query_params}")
+        
         # Copy important app state to request state
         request.state.actual_session_factory = app.state.actual_session_factory
         request.state.db_engine = app.state.db_engine
@@ -139,8 +153,31 @@ async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGene
         # Add the required query parameters that the endpoint seems to be expecting
         if "args" not in request.query_params:
             request.scope["query_string"] += b"&args=&kwargs="
+            print("MIDDLEWARE: Added args and kwargs query params")
+        
+        # Debug: Try to read request body and then reuse it
+        body_bytes = await request.body()
+        print(f"MIDDLEWARE: Request body bytes: {body_bytes}")
+        if body_bytes:
+            try:
+                import json
+                body = json.loads(body_bytes)
+                print(f"MIDDLEWARE: Request body parsed: {body}")
+                
+                # Store the parsed body as a string directly in request.state
+                # This might be accessible by the endpoint handlers
+                request.state.raw_body = body_bytes
+                request.state.parsed_body = body
+                
+                # Create a new stream that can be read by FastAPI
+                from io import BytesIO
+                request._body = body_bytes
+                request._stream = BytesIO(body_bytes)
+            except Exception as e:
+                print(f"MIDDLEWARE: Failed to parse request body: {e}")
         
         response = await call_next(request)
+        print(f"MIDDLEWARE: Response status: {response.status_code}")
         return response
 
     # Create and yield the client using our custom client class
