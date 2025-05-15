@@ -167,13 +167,24 @@ async def login(
         # Log successful login
         logger.info(f"User logged in successfully: {username}")
         
-        # Return tokens and expiration
-        return TokenResponse(
+        # Calculate the expiration time for the response
+        # Get settings.ACCESS_TOKEN_EXPIRE_MINUTES, default to 30 minutes if not present
+        expires_in_minutes = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
+        expires_in_seconds = expires_in_minutes * 60
+        
+        # Extract user_id if present in the token data, not needed for TokenResponse
+        # but may be useful for extended response models
+        user_id = tokens.get("user_id", None)
+        
+        # Return tokens with proper response model format
+        token_response = TokenResponse(
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
-            token_type="bearer",
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            token_type=tokens.get("token_type", "bearer"),
+            expires_in=expires_in_seconds
         )
+        
+        return token_response
     except AuthenticationError as auth_exc:
         # Handle authentication errors with proper status code
         logger.warning(f"Authentication failed: {auth_exc}")
@@ -219,34 +230,46 @@ async def refresh_token(
         auth_service: Authentication service
         
     Returns:
-        TokenResponse with new access and refresh tokens
+        TokenResponse with new access token and refresh token
         
     Raises:
-        HTTPException: If refresh token is invalid or expired
+        HTTPException: If token is invalid or expired
     """
-    # Parse request body manually
     try:
-        body = await request.json()
-    except Exception:
-        # Handle case where body is not valid JSON
-        body = {}
+        # Try to get token from request body
+        refresh_data = None
+        try:
+            # Try to parse request body as JSON
+            refresh_data = await request.json()
+        except Exception:
+            # Request body is not valid JSON, fallback to form data
+            try:
+                form_data = await request.form()
+                if "refresh_token" in form_data:
+                    refresh_data = {"refresh_token": form_data["refresh_token"]}
+            except Exception:
+                # Not form data either, will try cookie next
+                pass
+            
+        # Determine which refresh token to use
+        token_to_use = None
+        if refresh_data and "refresh_token" in refresh_data:
+            # Use token from request body (highest priority)
+            token_to_use = refresh_data["refresh_token"]
+        elif refresh_token:
+            # Use token from cookie (fallback)
+            token_to_use = refresh_token
         
-    # Get refresh token from either request body or cookie
-    token_to_use = body.get("refresh_token") if isinstance(body, dict) else None
-    
-    # Use cookie token as fallback
-    if not token_to_use:
-        token_to_use = refresh_token
-        
-    if not token_to_use:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token required",
-            headers={"WWW-Authenticate": "Bearer"}
-        ) from None
-        
-    try:
-        # Use refresh_access_token - expected by mock_auth_service in tests
+        # Validate token presence
+        if not token_to_use:
+            logger.warning("Refresh attempt with missing token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token required",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+            
+        # Use refresh_access_token method which is expected by tests
         tokens = await auth_service.refresh_access_token(refresh_token_str=token_to_use)
         
         # Set cookies with new tokens
@@ -272,13 +295,24 @@ async def refresh_token(
         
         logger.info("Token refreshed successfully")
         
-        # Return new tokens
-        return TokenResponse(
+        # Calculate the expiration time for the response
+        # Get settings.ACCESS_TOKEN_EXPIRE_MINUTES, default to 30 minutes if not present
+        expires_in_minutes = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
+        expires_in_seconds = expires_in_minutes * 60
+        
+        # Extract user_id if present in the token data, not needed for TokenResponse
+        # but may be useful for extended response models
+        user_id = tokens.get("user_id", None)
+        
+        # Return tokens with proper response model format
+        token_response = TokenResponse(
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
-            token_type="bearer",
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            token_type=tokens.get("token_type", "bearer"),
+            expires_in=expires_in_seconds
         )
+        
+        return token_response
     except InvalidTokenError as token_exc:
         # Handle token validation errors
         logger.warning(f"Invalid refresh token: {token_exc}")
