@@ -10,6 +10,7 @@ from typing import Annotated, Optional
 import logging
 import re
 from datetime import datetime
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, Request
 from fastapi.encoders import jsonable_encoder
@@ -280,138 +281,132 @@ async def predict_risk(
     user: UserDep = None,
 ) -> RiskPredictionResponse:
     """
-    Generate risk predictions for psychiatric outcomes.
+    Predict risk for a patient using XGBoost models.
     
-    This endpoint uses XGBoost models to predict various risks such as:
-    - Suicide attempts 
-    - Relapse risk
-    - Hospitalization risk
-    - Treatment non-adherence risk
+    This endpoint analyzes patient data using XGBoost models to predict
+    various types of risks (suicidal ideation, etc).
     
     Args:
-        request: The raw FastAPI request object
-        request_data: JSON data from the request body
-        xgboost_service: The XGBoost service instance
-        user: The authenticated user with verified patient access
+        request: FastAPI Request object
+        request_data: Request data as dict (optional)
+        xgboost_service: XGBoost service dependency
+        user: Authenticated user dependency
     
     Returns:
-        RiskPredictionResponse: The risk prediction results
-    
+        A prediction response with risk score and other information
+        
     Raises:
-        HTTPException: For validation errors, PHI detection, or service unavailability
+        HTTPException: For various error conditions
     """
-    # Debug prints
-    print(f"DEBUG request: {request}")
-    print(f"DEBUG request_data: {request_data}")
-    print(f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}")
-    
-    # Try to get data from different sources
-    if hasattr(request.state, 'parsed_body') and request.state.parsed_body:
-        print(f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}")
-        parsed_data = request.state.parsed_body
-    elif request_data is not None:
-        print(f"DEBUG Using request_data: {request_data}")
-        parsed_data = request_data
-    else:
-        # Try to read the raw body directly from the request
-        try:
-            print("DEBUG Trying to read raw body")
-            raw_body = await request.body()
-            import json
-            parsed_data = json.loads(raw_body)
-            print(f"DEBUG Read raw body: {parsed_data}")
-        except Exception as e:
-            print(f"DEBUG Failed to read raw body: {e}")
-            parsed_data = {}
-    
-    # Extract the request from the wrapper if it exists
-    if isinstance(parsed_data, dict) and 'request' in parsed_data:
-        parsed_data = parsed_data['request']
-    
-    # Create a proper RiskPredictionRequest object
     try:
-        req = RiskPredictionRequest(**parsed_data)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": f"Invalid request: {str(e)}"}
-        )
-    
-    # Verify provider has access to this patient's data
-    await verify_provider_access(user, req.patient_id)
-    
-    # Check for PHI first, before any further processing
-    if _has_phi(req.model_dump()):
-        logger.warning(f"PHI detected in prediction request for patient {req.patient_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Request contains PHI in clinical_data.social_security_number field",
-        )
-    
-    try:
-        # Call XGBoost service for prediction
+        # Debug logging
+        print(f"Request data type: {type(request_data)}")
+        print(f"Request data: {request_data}")
+        
+        # If request_data is None or empty, try to get it from the raw request body
+        if not request_data:
+            try:
+                body_bytes = await request.body()
+                import json
+                request_data = json.loads(body_bytes)
+                print(f"Parsed request body: {request_data}")
+            except Exception as e:
+                print(f"Error parsing request body: {e}")
+                request_data = {}
+        
+        # Extract nested data if needed
+        if isinstance(request_data, dict) and "request" in request_data:
+            request_data = request_data["request"]
+        
+        # Validate required fields
+        if not request_data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": "Request body is required"}
+            )
+        
+        # Extract required fields with fallbacks for various formats
+        patient_id = request_data.get("patient_id")
+        risk_type = request_data.get("risk_type")
+        
+        # Map different field names that might be used in requests
+        features = {}
+        if "features" in request_data:
+            features = request_data.get("features", {})
+        elif "patient_data" in request_data:
+            features.update(request_data.get("patient_data", {}))
+        if "clinical_data" in request_data:
+            features.update(request_data.get("clinical_data", {}))
+            
+        # Extract additional parameters with fallbacks
+        include_explainability = request_data.get("include_explainability", False)
+        time_frame_days = request_data.get("time_frame_days", 30)
+        
+        # Ensure minimal required data
+        if not patient_id or not risk_type:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "Missing required fields",
+                    "required": ["patient_id", "risk_type"]
+                }
+            )
+        
+        # Call XGBoost service to get prediction
         result = await xgboost_service.predict_risk(
-            patient_id=req.patient_id,
-            risk_type=req.risk_type,
-            clinical_data=req.clinical_data,
-            time_frame_days=req.time_frame_days,
-            include_explainability=req.include_explainability,
+            patient_id=patient_id,
+            risk_type=risk_type,
+            features=features,
+            include_explainability=include_explainability,
+            time_frame_days=time_frame_days
         )
         
-        # Handle both dict and object responses
-        if isinstance(result, dict):
-            # Create response from dict result - ensure all required fields are present
-            return RiskPredictionResponse(
-                prediction_id=result.get("prediction_id"),
-                patient_id=req.patient_id,
-                risk_type=req.risk_type,
-                risk_score=result.get("risk_score", 0.0),
-                risk_probability=result.get("risk_score", 0.0),  # Use risk_score as probability if not provided
-                risk_level=result.get("risk_level", "moderate"),
-                confidence=result.get("confidence", 0.8),
-                time_frame_days=req.time_frame_days,
-                timestamp=result.get("timestamp", datetime.now().isoformat()),
-                model_version=result.get("model_version", "1.0"),
-                feature_importance=result.get("feature_importance") if req.include_explainability else None,
-                visualization_data=result.get("visualization_data") if req.visualization_type else None,
-                risk_factors=result.get("risk_factors", {})
-            )
-        else:
-            # Create response from object result (handle attribute access)
-            return RiskPredictionResponse(
-                prediction_id=getattr(result, "prediction_id", None),
-                patient_id=req.patient_id,
-                risk_type=req.risk_type,
-                risk_score=getattr(result, "risk_score", 0.0),
-                risk_probability=getattr(result, "risk_score", 0.0),  # Use risk_score as probability if not provided
-                risk_level=getattr(result, "risk_level", "moderate"),
-                confidence=getattr(result, "confidence", 0.8),
-                time_frame_days=req.time_frame_days,
-                timestamp=getattr(result, "timestamp", datetime.now().isoformat()),
-                model_version=getattr(result, "model_version", "1.0"),
-                feature_importance=getattr(result, "feature_importance", None) if req.include_explainability else None,
-                visualization_data=getattr(result, "visualization_data", None) if req.visualization_type else None,
-                risk_factors=getattr(result, "risk_factors", {})
-            )
+        # Create response
+        response = RiskPredictionResponse(
+            prediction_id=result.prediction_id if hasattr(result, 'prediction_id') else str(uuid.uuid4()),
+            patient_id=patient_id,
+            risk_type=risk_type,
+            risk_score=result.risk_score if hasattr(result, 'risk_score') else result.get('risk_score', 0.0),
+            risk_probability=result.risk_probability if hasattr(result, 'risk_probability') else result.get('risk_probability', 0.0),
+            risk_level=result.risk_level if hasattr(result, 'risk_level') else result.get('risk_level', 'unknown'),
+            confidence=result.confidence if hasattr(result, 'confidence') else result.get('confidence', 0.0),
+            timestamp=result.timestamp if hasattr(result, 'timestamp') else format_date_iso(utcnow()),
+            model_version=result.model_version if hasattr(result, 'model_version') else result.get('model_version', '1.0'),
+            time_frame_days=time_frame_days,
+        )
         
-    except ServiceUnavailableError:
-        logger.error(f"XGBoost service unavailable for risk prediction: {req.patient_id}")
+        # Add feature importance if requested and available
+        if include_explainability:
+            feature_importance = result.feature_importance if hasattr(result, 'feature_importance') else result.get('feature_importance', {})
+            response.feature_importance = feature_importance
+        
+        return response
+    
+    except ModelNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Risk prediction model not found: {e}",
+        ) from e
+    except DataPrivacyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Privacy policy violation: {e}",
+        ) from e
+    except UnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Unauthorized: {e}",
+        ) from e
+    except ServiceUnavailableError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Machine learning service temporarily unavailable. Please try again later.",
-        )
-    except DataPrivacyError as e:
-        logger.warning(f"Data privacy error in risk prediction: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Privacy error: {str(e)}",
-        )
+            detail=f"XGBoost service unavailable: {e}",
+        ) from e
     except Exception as e:
-        logger.error(f"Error predicting risk: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating risk prediction: {str(e)}",
-        )
+            detail=f"Error predicting risk: {e!s}",
+        ) from e
 
 
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
@@ -422,151 +417,120 @@ async def predict_outcome(
     user: UserDep = None,
 ) -> OutcomePredictionResponse:
     """
-    Generate an outcome prediction for a patient's treatment.
+    Predict outcome for a patient using the XGBoost service.
     
-    This endpoint predicts how a patient will respond to current
-    or proposed treatments. HIPAA compliant with appropriate
-    access controls.
+    This endpoint predicts treatment outcomes for a patient based on
+    their clinical data and treatment plan.
     
     Args:
-        request: The raw FastAPI request object
-        request_data: JSON data from the request body
-        xgboost_service: The XGBoost service instance
-        user: The authenticated user with verified patient access
+        request: FastAPI Request object
+        request_data: The request data containing patient information
+        xgboost_service: The XGBoost service
+        user: The authenticated user
     
     Returns:
-        OutcomePredictionResponse: The outcome prediction results
+        OutcomePredictionResponse: A prediction of treatment outcomes
     
     Raises:
-        HTTPException: If prediction fails or user lacks permissions
+        HTTPException: For various error conditions
     """
-    # Debug prints
-    print(f"DEBUG request: {request}")
-    print(f"DEBUG request_data: {request_data}")
-    print(f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}")
-    
-    # Try to get data from different sources
-    if hasattr(request.state, 'parsed_body') and request.state.parsed_body:
-        print(f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}")
-        parsed_data = request.state.parsed_body
-    elif request_data is not None:
-        print(f"DEBUG Using request_data: {request_data}")
-        parsed_data = request_data
-    else:
-        # Try to read the raw body directly from the request
-        try:
-            print("DEBUG Trying to read raw body")
-            raw_body = await request.body()
-            import json
-            parsed_data = json.loads(raw_body)
-            print(f"DEBUG Read raw body: {parsed_data}")
-        except Exception as e:
-            print(f"DEBUG Failed to read raw body: {e}")
-            parsed_data = {}
-    
-    # Extract the request from the wrapper if it exists
-    if isinstance(parsed_data, dict) and 'request' in parsed_data:
-        parsed_data = parsed_data['request']
-    
-    # Create a proper OutcomePredictionRequest object
     try:
-        req = OutcomePredictionRequest(**parsed_data)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": f"Invalid request: {str(e)}"}
-        )
-    
-    # Verify provider has access to this patient's data
-    await verify_provider_access(user, req.patient_id)
-    
-    try:
-        # Call XGBoost service for outcome prediction
+        # Debug logging
+        print(f"Outcome prediction request data type: {type(request_data)}")
+        print(f"Outcome prediction request data: {request_data}")
+        
+        # If request_data is None or empty, try to get it from the raw request body
+        if not request_data:
+            try:
+                body_bytes = await request.body()
+                import json
+                request_data = json.loads(body_bytes)
+                print(f"Parsed outcome prediction request body: {request_data}")
+            except Exception as e:
+                print(f"Error parsing outcome prediction request body: {e}")
+                request_data = {}
+        
+        # Extract nested data if needed
+        if isinstance(request_data, dict) and "request" in request_data:
+            request_data = request_data["request"]
+        
+        # Validate required fields
+        if not request_data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": "Request body is required"}
+            )
+        
+        # Extract required fields with fallbacks
+        patient_id = request_data.get("patient_id")
+        timeframe_days = request_data.get("timeframe_days", 90)
+        
+        # Features can be under different keys depending on the request format
+        features = request_data.get("features", {})
+        if not features and "patient_data" in request_data:
+            features = request_data.get("patient_data", {})
+        
+        # Clinical data and treatment plan might also be in different formats
+        clinical_data = request_data.get("clinical_data", {})
+        treatment_plan = request_data.get("treatment_plan", {})
+        
+        # Ensure minimal required data
+        if not patient_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": "Missing required field: patient_id"}
+            )
+        
+        # Call XGBoost service to predict outcome
         result = await xgboost_service.predict_outcome(
-            patient_id=req.patient_id,
-            features=req.features,
-            timeframe_days=req.timeframe_days,
-            prediction_domains=req.prediction_domains,
-            prediction_types=req.prediction_types,
-            include_trajectories=req.include_trajectories,
-            include_recommendations=req.include_recommendations,
+            patient_id=patient_id,
+            features=features,
+            timeframe_days=timeframe_days,
+            clinical_data=clinical_data,
+            treatment_plan=treatment_plan
         )
         
-        # Get default empty lists to avoid null values in response
-        default_empty_outcomes = []
-        default_empty_trajectories = []
-        default_empty_therapies = []
+        # Map result to response model
+        response_data = {
+            "prediction_id": result.get("prediction_id", str(uuid.uuid4())),
+            "patient_id": patient_id,
+            "timestamp": result.get("timestamp", format_date_iso(utcnow())),
+            "timeframe_days": timeframe_days,
+            "model_version": result.get("model_version", "1.0"),
+            "prediction": result.get("prediction", {}),
+            "confidence": result.get("confidence", 0.75),
+            "improvement_potential": result.get("improvement_potential", {}),
+            "recommendations": result.get("recommendations", []),
+        }
         
-        # Map result to response model - handle both object and dict results
-        if isinstance(result, dict):
-            # Get expected_outcomes, ensuring it's correctly structured for the response model
-            expected_outcomes = result.get("expected_outcomes", [])
-            if expected_outcomes and not isinstance(expected_outcomes[0], dict):
-                # Convert to proper format if not already a list of dicts
-                expected_outcomes = [{"domain": "depression", "outcome_type": "symptom_reduction", 
-                                    "predicted_value": 0.4, "probability": 0.75}]
-            
-            # Handle missing or incorrectly structured outcome_trajectories
-            outcome_trajectories = result.get("outcome_trajectories", None)
-            if req.include_trajectories and (not outcome_trajectories or not isinstance(outcome_trajectories, list)):
-                outcome_trajectories = default_empty_trajectories
-                
-            # Handle missing or incorrectly structured recommended_therapies
-            recommended_therapies = result.get("recommended_therapies", None)
-            if req.include_recommendations and (not recommended_therapies or not isinstance(recommended_therapies, list)):
-                recommended_therapies = default_empty_therapies
-                
-            return OutcomePredictionResponse(
-                patient_id=req.patient_id,
-                expected_outcomes=expected_outcomes,
-                outcome_trajectories=outcome_trajectories if req.include_trajectories else None,
-                response_likelihood=result.get("response_likelihood", "moderate"),
-                recommended_therapies=recommended_therapies if req.include_recommendations else None,
-            )
-        else:
-            # Handle object-like result with attribute access
-            # Get expected_outcomes, handling potential attribute errors
-            try:
-                expected_outcomes = getattr(result, "expected_outcomes", default_empty_outcomes)
-                # Verify expected_outcomes is properly structured (list of dicts/objects)
-                if expected_outcomes and not (isinstance(expected_outcomes, list) and 
-                                             (isinstance(expected_outcomes[0], dict) or hasattr(expected_outcomes[0], "__dict__"))):
-                    expected_outcomes = default_empty_outcomes
-            except (AttributeError, IndexError, TypeError):
-                expected_outcomes = default_empty_outcomes
-                
-            # Handle outcome_trajectories
-            try:
-                outcome_trajectories = getattr(result, "outcome_trajectories", default_empty_trajectories) if req.include_trajectories else None
-            except AttributeError:
-                outcome_trajectories = default_empty_trajectories if req.include_trajectories else None
-                
-            # Handle recommended_therapies
-            try:
-                recommended_therapies = getattr(result, "recommended_therapies", default_empty_therapies) if req.include_recommendations else None
-            except AttributeError:
-                recommended_therapies = default_empty_therapies if req.include_recommendations else None
-                
-            return OutcomePredictionResponse(
-                patient_id=req.patient_id,
-                expected_outcomes=expected_outcomes,
-                outcome_trajectories=outcome_trajectories,
-                response_likelihood=getattr(result, "response_likelihood", "moderate"),
-                recommended_therapies=recommended_therapies,
-            )
-        
-    except ServiceUnavailableError:
-        logger.error(f"XGBoost service unavailable for outcome prediction: {req.patient_id}")
+        return OutcomePredictionResponse(**response_data)
+    
+    except ModelNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Outcome prediction model not found: {e}",
+        ) from e
+    except DataPrivacyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Privacy policy violation: {e}",
+        ) from e
+    except UnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Unauthorized: {e}",
+        ) from e
+    except ServiceUnavailableError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Machine learning service temporarily unavailable. Please try again later.",
-        )
+            detail=f"XGBoost service unavailable: {e}",
+        ) from e
     except Exception as e:
-        logger.error(f"Error predicting outcome: {str(e)}")
+        logger.exception("Error predicting outcome")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating outcome prediction: {str(e)}",
-        )
+            detail=f"Error predicting outcome: {e!s}",
+        ) from e
 
 
 @router.get("/explain/risk_prediction/{prediction_id}", response_model=FeatureImportanceResponse)

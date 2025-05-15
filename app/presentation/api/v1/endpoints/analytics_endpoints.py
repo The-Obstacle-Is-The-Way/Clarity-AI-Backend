@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, status, Query, Body
+from fastapi import APIRouter, BackgroundTasks, Depends, status, Query, Body, Request
 # This import is based on what conftest.py was using for User in mocks, may need adjustment
 # depending on the actual User type expected by get_current_active_user dependency.
 # from app.core.domain.entities.user import User 
@@ -43,8 +43,9 @@ async def analytics_health_check():
 
 @router.post("/events", status_code=status.HTTP_202_ACCEPTED)
 async def record_analytics_event(
-    request_data: Dict[str, Any] = Body(default=None),  # Accept None to allow pure body
-    background_tasks: BackgroundTasks = None,  # FastAPI will inject the real one
+    request: Request,
+    request_data: Optional[Dict[str, Any]] = Body(default=None),  # Accept None to allow pure body
+    background_tasks: BackgroundTasks = Depends(),
     current_user: User = Depends(get_current_active_user),
     process_event_use_case: ProcessAnalyticsEventUseCase = Depends(get_process_analytics_event_use_case),
     # Add query parameters to handle query args from tests
@@ -56,18 +57,16 @@ async def record_analytics_event(
     
     # Special case for test submissions without Body
     if request_data is None:
-        # Try to get the raw request
-        from fastapi import Request
-        request = Request.scope.get("request", None)
-        if request:
-            try:
-                body = await request.body()
+        # Try to get the raw request body
+        try:
+            body_bytes = await request.body()
+            if body_bytes:
                 import json
-                request_data = json.loads(body)
-            except Exception as e:
-                print(f"Error parsing request body: {e}")
+                request_data = json.loads(body_bytes)
+            else:
                 request_data = {}
-        else:
+        except Exception as e:
+            print(f"Error parsing request body: {e}")
             request_data = {}
     
     # Handle the case where request_data is directly the event data with no wrapper
@@ -89,8 +88,9 @@ async def record_analytics_event(
 
 @router.post("/events/batch", status_code=status.HTTP_202_ACCEPTED)
 async def record_analytics_batch(
-    request_data: Any = Body(default=None),  # Accept any type of data
-    background_tasks: BackgroundTasks = None,  # FastAPI will inject the real one
+    request: Request,
+    request_data: Optional[List[Dict[str, Any]]] = Body(default=None),  # Accept list for batch
+    background_tasks: BackgroundTasks = Depends(),
     current_user: User = Depends(get_current_active_user),
     batch_process_use_case: BatchProcessAnalyticsUseCase = Depends(get_batch_process_analytics_use_case),
     # Add query parameters to handle query args from tests
@@ -105,20 +105,25 @@ async def record_analytics_batch(
     
     if request_data is None:
         # Try to get the raw request
-        from fastapi import Request
-        request = Request.scope.get("request", None)
-        if request:
-            try:
-                body = await request.body()
+        try:
+            body_bytes = await request.body()
+            if body_bytes:
                 import json
-                request_data = json.loads(body)
-            except Exception as e:
-                print(f"Error parsing request body: {e}")
+                body_data = json.loads(body_bytes)
+                if isinstance(body_data, list):
+                    request_data = body_data
+                elif isinstance(body_data, dict) and 'request' in body_data and isinstance(body_data['request'], list):
+                    request_data = body_data['request']
+                else:
+                    request_data = [body_data]  # Single event as a list of one
+            else:
+                request_data = []
+        except Exception as e:
+            print(f"Error parsing request body: {e}")
+            request_data = []
     
     # Now handle the parsed request_data
-    if request_data is None:
-        events_data = []
-    elif isinstance(request_data, list):
+    if isinstance(request_data, list):
         # Direct list of events
         events_data = request_data
     elif isinstance(request_data, dict):
