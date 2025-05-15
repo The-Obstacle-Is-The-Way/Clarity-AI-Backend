@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 from uuid import UUID, uuid4
 
-from app.domain.utils.datetime_utils import UTC
+from app.domain.utils.datetime_utils import UTC, now
 
 
 class MedicationStatus(Enum):
@@ -86,8 +86,8 @@ class Medication:
     refills_remaining: int = 0
     refill_history: list[datetime] = field(default_factory=list)
     side_effects: list[SideEffectReport] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now)
+    updated_at: datetime = field(default_factory=now)
     tags: set[str] = field(default_factory=set)
 
     @property
