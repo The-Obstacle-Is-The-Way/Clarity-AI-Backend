@@ -727,9 +727,14 @@ class BaseEncryptionService:
         )
         
         try:
-            kdf.verify(data.encode(), stored_key)
-            return True
-        except Exception: # Catches InvalidKey, and potentially others if underlying primitive changes
+            # Generate a new key with the same parameters
+            new_key = kdf.derive(data.encode())
+            
+            # Compare the generated key with the stored key
+            # Use constant time comparison to prevent timing attacks
+            return hmac.compare_digest(new_key, stored_key)
+        except Exception as e:
+            logger.error(f"Hash verification failed: {e}")
             return False
 
     def generate_hmac(self, data: str) -> tuple[str, str]:
