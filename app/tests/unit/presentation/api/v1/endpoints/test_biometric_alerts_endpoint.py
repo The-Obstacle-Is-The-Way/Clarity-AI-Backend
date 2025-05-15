@@ -697,7 +697,8 @@ async def test_app(
     # Skip auth middleware for test isolation
     app = create_application(
         settings_override=test_settings,
-        skip_auth_middleware=True
+        skip_auth_middleware=True,
+        skip_redis_middleware=True  # Skip the Redis rate limiting middleware
     )
     
     # Make sure app.state.skip_auth_middleware is explicitly set
