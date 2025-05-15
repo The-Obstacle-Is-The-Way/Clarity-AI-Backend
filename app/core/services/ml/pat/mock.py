@@ -1907,8 +1907,13 @@ class MockPATService(PATInterface):
 
         # Validate integration_types if provided
         if integration_types:
-            # Add any additional validation logic you want to execute for integration_types
-            pass
+            # Define valid integration types
+            valid_integration_types = ["activity", "sleep", "behavioral", "physiological", "nutrition", "hydration", "stress"]
+            
+            # Check if any provided integration types are not valid
+            invalid_types = [t for t in integration_types if t not in valid_integration_types]
+            if invalid_types:
+                raise ValidationError(f"Invalid integration types: {', '.join(invalid_types)}. Valid types are: {', '.join(valid_integration_types)}")
 
         return source_analysis_data
         
