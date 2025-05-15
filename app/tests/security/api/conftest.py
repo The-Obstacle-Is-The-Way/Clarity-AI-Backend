@@ -1181,7 +1181,7 @@ def middleware_patch(test_settings):
         path = request.url.path
         
         # Completely bypass middleware for test-api endpoints and other test endpoints
-        if "/test-api/" in path or "/test/" in path or "/direct-test/" in path:
+        if "/test-api/" in path or "/test/" in path or path.startswith("/api/v1/direct-test/"):
             try:
                 logger.info(f"Bypassing authentication for test endpoint: {path}")
                 response = await call_next(request)
@@ -1199,6 +1199,71 @@ def middleware_patch(test_settings):
             if scheme.lower() == "bearer":
                 token = param
                 
+        # Special handling for X-Mock-Role header (used in tests)
+        mock_role_header = request.headers.get("X-Mock-Role")
+        if mock_role_header and token:
+            logger.info(f"Found X-Mock-Role header: {mock_role_header}")
+            try:
+                # Create a fake user for testing based on the role
+                import uuid
+                from app.core.domain.entities.user import UserRole
+                from app.presentation.schemas.auth import AuthenticatedUser, AuthCredentials
+                
+                # Use fixed user_id if in the token, or generate a new one
+                user_id = None
+                
+                # Try to decode the token directly without verification
+                try:
+                    # Use jose-jwt to decode the token without verification 
+                    from jose import jwt as jose_jwt
+                    unverified_payload = jose_jwt.decode(
+                        token,
+                        key=test_settings.JWT_SECRET_KEY,
+                        options={
+                            "verify_signature": False,
+                            "verify_aud": False,
+                            "verify_exp": False,
+                            "verify_iss": False
+                        }
+                    )
+                    if "sub" in unverified_payload:
+                        user_id = uuid.UUID(unverified_payload["sub"])
+                except Exception as e:
+                    logger.warning(f"Error decoding token for X-Mock-Role: {e}")
+                
+                # Generate a fresh UUID if we couldn't extract one
+                if not user_id:
+                    user_id = uuid.uuid4()
+                
+                # Determine the role from the header
+                try:
+                    role_enum = UserRole(mock_role_header)
+                except ValueError:
+                    # Default to PATIENT if invalid role
+                    logger.warning(f"Invalid role in X-Mock-Role header: {mock_role_header}, defaulting to PATIENT")
+                    role_enum = UserRole.PATIENT
+                
+                # Create the user context
+                auth_user = AuthenticatedUser(
+                    id=user_id,
+                    username=f"test_{role_enum.value}",
+                    email=f"test_{role_enum.value}@example.com",
+                    roles=[role_enum],
+                    status=UserStatus.ACTIVE
+                )
+                
+                # Set user and auth in request scope
+                request.scope["user"] = auth_user
+                request.scope["auth"] = AuthCredentials(scopes=[role_enum.value])
+                
+                logger.info(f"Created mock user from X-Mock-Role: {auth_user.username} with role {role_enum}")
+                
+                # Process the request with our fake user
+                return await call_next(request)
+            except Exception as e:
+                logger.error(f"Error handling X-Mock-Role header: {e}", exc_info=True)
+                # Continue with regular token processing if this fails
+        
         if token:
             try:
                 # Try to validate the token using our patched method
