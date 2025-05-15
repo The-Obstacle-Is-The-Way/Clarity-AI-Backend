@@ -416,7 +416,7 @@ class ManualAlertRequest(BaseModel):
     
     message: str = Field(..., min_length=1, max_length=500, description="Alert message content")
     priority: AlertPriority = Field(default=AlertPriority.MEDIUM, description="Alert priority level")
-    alert_type: AlertType = Field(default=AlertType.BIOMETRIC, description="Type of alert")
+    alert_type: AlertType = Field(default=AlertType.BIOMETRIC_ANOMALY, description="Type of alert")
     data: dict[str, Any] = Field(default_factory=dict, description="Additional alert data")
 
 @router.post("/patients/{patient_id}/trigger", response_model=dict[str, Any])
