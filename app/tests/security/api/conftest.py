@@ -552,7 +552,11 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
             payload = jose_jwt.decode(
                 token, 
                 key=test_settings.JWT_SECRET_KEY,
-                options={"verify_signature": False, "verify_exp": False}
+                options={
+                    "verify_signature": False, 
+                    "verify_exp": False,
+                    "verify_aud": False  # Skip audience verification
+                }
             )
             
             # Extract user ID
