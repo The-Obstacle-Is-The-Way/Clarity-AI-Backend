@@ -248,21 +248,23 @@ class TestXGBoostIntegration:
 
         # Assertions
         assert response.status_code == 200
-        response_data = response.json()
-        # Don't assert on specific prediction_id because it's generated internally by the handler
-        assert "prediction_id" in response_data
-        assert isinstance(response_data["prediction_id"], str)
-        assert response_data["risk_score"] == 0.75
-        assert response_data["risk_level"] == "high"
-        assert response_data["confidence"] == 0.9
-        # Verify mock was called
+        
+        # Verify mock service was called with correct parameters
         mock_service.predict_risk.assert_called_once_with(
             patient_id="patient-123",
             risk_type="suicide_attempt",
-            features=risk_request["clinical_data"],
-            time_frame_days=90,  # Default value from the RiskPredictionRequest model
-            include_explainability=False  # Default value from the RiskPredictionRequest model
+            clinical_data=risk_request["patient_data"],
+            time_frame_days=90,
+            confidence_threshold=0.7,
+            include_explainability=False
         )
+        
+        # Verify response content
+        response_data = response.json()
+        assert response_data["prediction_id"] == "pred_risk_123"
+        assert response_data["risk_level"] == "high"
+        assert response_data["risk_score"] == 0.75
+        assert response_data["confidence"] == 0.9
 
     @pytest.mark.asyncio
     async def test_outcome_prediction(self, client: AsyncClient,
