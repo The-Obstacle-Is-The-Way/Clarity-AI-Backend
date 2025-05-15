@@ -693,36 +693,37 @@ async def test_app(
     Returns:
         A tuple containing (FastAPI app, AsyncClient)
     """
-    # Create the FastAPI app with test settings
-    # Skip auth middleware for test isolation
-    app = create_application(
-        settings_override=test_settings,
-        skip_auth_middleware=True
-    )
-    
-    # Make sure app.state.skip_auth_middleware is explicitly set
-    app.state.skip_auth_middleware = True
-    
-    # Add dependency overrides
-    app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
-    app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
-    app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
-    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
-    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
-    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
-    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
-    app.dependency_overrides[get_current_user] = lambda: mock_current_user
-    
-    # Create test client with ASGI app
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        # Override Redis service directly in app state to avoid connection failure
-        # Do this before entering the LifespanManager to ensure it's available during startup
-        app.state.redis_service = mock_redis_service
+    # Patch the create_redis_service function to return our mock
+    with patch("app.infrastructure.services.redis.redis_service.create_redis_service") as mock_create_redis:
+        # Configure the mock to return our mock_redis_service
+        mock_create_redis.return_value = mock_redis_service
         
-        # This uses the lifespan manager to properly initialize the app context
-        async with LifespanManager(app):
-            # Return both app and client as a tuple
-            yield app, client
+        # Create the FastAPI app with test settings
+        # Skip auth middleware for test isolation
+        app = create_application(
+            settings_override=test_settings,
+            skip_auth_middleware=True
+        )
+        
+        # Make sure app.state.skip_auth_middleware is explicitly set
+        app.state.skip_auth_middleware = True
+        
+        # Add dependency overrides
+        app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
+        app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
+        app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
+        app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
+        app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
+        app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
+        app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
+        app.dependency_overrides[get_current_user] = lambda: mock_current_user
+        
+        # Create test client with ASGI app
+        async with AsyncClient(app=app, base_url="http://test") as client:
+            # This uses the lifespan manager to properly initialize the app context
+            async with LifespanManager(app):
+                # Return both app and client as a tuple
+                yield app, client
 
 @pytest.fixture
 async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
