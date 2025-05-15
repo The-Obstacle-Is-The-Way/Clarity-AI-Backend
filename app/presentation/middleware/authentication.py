@@ -161,8 +161,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path: {request.url.path} - Skipping authentication")
+            # Set standard unauthenticated user for public paths
             request.scope["user"] = UnauthenticatedUser()
             request.scope["auth"] = AuthCredentials(scopes=[])
+            # Ensure no additional authentication checks for public paths
             return await call_next(request)
 
         token = self._extract_token(request)
@@ -170,7 +172,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.warning("No token found in request")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Not authenticated"},
+                content={"detail": "Token required for authentication"},
             )
 
         try:
@@ -182,27 +184,38 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         except TokenExpiredException as e:
             logger.warning(f"Token expired: {e}")
             return JSONResponse(
-                status_code=HTTP_403_FORBIDDEN,
+                status_code=HTTP_401_UNAUTHORIZED,
                 content={"detail": "Token has expired"},
             )
         except InvalidTokenException as e:
             logger.warning(f"Invalid token: {e}")
             return JSONResponse(
-                status_code=HTTP_403_FORBIDDEN,
-                content={"detail": "Invalid token"},
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": str(e)},
             )
         except UserNotFoundException as e:
             logger.warning(f"User not found during auth: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": str(e)},
+                content={"detail": "User associated with token not found"},
             )
         except AuthenticationException as e:
-            logger.warning(f"Authentication failed: {e}")
-            return JSONResponse(
-                status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": str(e)},
-            )
+            error_message = str(e)
+            logger.warning(f"Authentication failed: {error_message}")
+            
+            # Use different status codes based on the error type
+            if "not active" in error_message.lower():
+                # Inactive users get a forbidden status
+                return JSONResponse(
+                    status_code=HTTP_403_FORBIDDEN,
+                    content={"detail": error_message},
+                )
+            else:
+                # Other authentication errors get a 401
+                return JSONResponse(
+                    status_code=HTTP_401_UNAUTHORIZED,
+                    content={"detail": error_message},
+                )
         except Exception as e:
             logger.exception(f"Unexpected error in authentication middleware: {e}")
             return JSONResponse(

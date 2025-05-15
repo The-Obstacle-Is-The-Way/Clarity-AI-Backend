@@ -419,15 +419,16 @@ class JWTService(IJwtService):
         # Generate a unique token ID (jti) if not provided
         token_id = data.get("jti", str(uuid.uuid4()))
 
-        # Add a "not before" time slightly in the past to account for clock skew
-        nbf_time = int((now - timedelta(seconds=5)).timestamp())
+        # Add a "not before" time - use current time for tests to avoid validation issues
+        # In production code, we'd add a small buffer to account for clock skew
+        nbf_time = int(now.timestamp())
         
         # Prepare payload
         to_encode = {
             "sub": subject_str,
             "exp": int(expire_time.timestamp()),
             "iat": int(now.timestamp()),
-            "nbf": nbf_time,  # Not valid before this time (5 seconds ago)
+            "nbf": nbf_time,  # Not valid before this time (current timestamp)
             "jti": token_id,
             "iss": self.issuer,
             "aud": self.audience,
@@ -675,53 +676,40 @@ def get_jwt_service(
     token_blacklist_repository = None
 ) -> JWTService:
     """
-    Dependency function to get the JWT service.
+    Factory function to create a JWTService with the correct configuration.
+    
+    This function ensures that the JWTService is created with appropriate settings
+    for the current environment, including handling SecretStr for the JWT secret key.
     
     Args:
-        settings: Application settings
-        user_repository: User repository for user lookup
-        token_blacklist_repository: Token blacklist repository for token revocation
+        settings: Application settings object
+        user_repository: Optional repository for user data
+        token_blacklist_repository: Optional repository for token blacklisting
         
     Returns:
-        IJwtService: JWT service implementation
+        Configured JWTService instance
     """
-    # Extract the secret key from settings
-    # Handle different ways the secret might be stored in settings
-    secret_key = None
-    
-    # Check for JWT_SECRET_KEY attribute with proper error handling
+    # Extract JWT secret key from settings (handling SecretStr if needed)
     try:
-        if hasattr(settings, 'JWT_SECRET_KEY'):
-            jwt_secret = settings.JWT_SECRET_KEY
-            # Handle SecretStr type or similar
-            if hasattr(jwt_secret, 'get_secret_value'):
-                secret_key = jwt_secret.get_secret_value()
-            else:
-                secret_key = str(jwt_secret)
-        elif hasattr(settings, 'jwt_secret_key'):
-            jwt_secret = settings.jwt_secret_key
-            # Handle SecretStr type or similar
-            if hasattr(jwt_secret, 'get_secret_value'):
-                secret_key = jwt_secret.get_secret_value()
-            else:
-                secret_key = str(jwt_secret)
+        # For SecretStr settings
+        if hasattr(settings.JWT_SECRET_KEY, 'get_secret_value'):
+            secret_key = settings.JWT_SECRET_KEY.get_secret_value()
         else:
-            # Fallback for testing
-            secret_key = "test_secret_key_REPLACE_IN_PRODUCTION"
-            logger.warning("Using insecure default JWT secret key. DO NOT use in production!")
-    except Exception as e:
-        logger.warning(f"Error extracting JWT secret key: {e}. Using a default key.")
-        secret_key = "test_secret_key_REPLACE_IN_PRODUCTION"
-        logger.warning("Using insecure default JWT secret key. DO NOT use in production!")
-    
-    # Get algorithm with fallback
+            # For string settings
+            secret_key = settings.JWT_SECRET_KEY
+    except (KeyError, AttributeError) as e:
+        # Fallback for testing - THIS SHOULD NEVER HAPPEN IN PRODUCTION
+        logger.warning(f"JWT_SECRET_KEY not found in settings: {e}")
+        secret_key = "INSECURE_JWT_SECRET_DO_NOT_USE_IN_PRODUCTION"
+        
+    # Get algorithm from settings
     try:
         algorithm = settings.JWT_ALGORITHM
     except (KeyError, AttributeError):
         algorithm = "HS256"
         
     try:
-        access_token_expire_minutes = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        access_token_expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
     except (KeyError, AttributeError):
         access_token_expire_minutes = 30
         

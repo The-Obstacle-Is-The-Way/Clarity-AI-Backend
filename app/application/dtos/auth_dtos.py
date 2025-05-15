@@ -49,7 +49,8 @@ class UserSessionDTO(BaseModel):
 class LoginRequestDTO(BaseModel):
     """DTO representing a login request."""
     
-    email: EmailStr
+    username: str | None = None
+    email: EmailStr | None = None
     password: str
     
     @field_validator('password')
@@ -58,6 +59,24 @@ class LoginRequestDTO(BaseModel):
         if not v or len(v) < 1:
             raise ValueError('Password cannot be empty')
         return v
+        
+    @field_validator('email', 'username')
+    def validate_credentials(cls, v, info):
+        """Validate that either username or email is provided."""
+        # This will be called for both username and email fields
+        # We'll check the model at the end to make sure one of them is set
+        return v
+        
+    @classmethod
+    def model_validate(cls, obj, *args, **kwargs):
+        """Validate the model to ensure either username or email is provided."""
+        model = super().model_validate(obj, *args, **kwargs)
+        
+        # After normal validation, check that at least one identifier is present
+        if not model.username and not model.email:
+            raise ValueError('Either username or email must be provided')
+            
+        return model
 
 
 class RefreshTokenRequestDTO(BaseModel):
