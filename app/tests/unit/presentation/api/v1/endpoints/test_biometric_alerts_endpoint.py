@@ -22,7 +22,7 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from asgi_lifespan import LifespanManager
 from faker import Faker
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, status, Request, Depends
 from httpx import ASGITransport, AsyncClient
 from fastapi.testclient import TestClient
 
@@ -343,8 +343,9 @@ async def test_app(
     mock_session_factory = AsyncMock()
     app.state.actual_session_factory = mock_session_factory
     
-    # Get container and reset it to avoid state leakage between tests
-    from app.infrastructure.di.container import get_container, reset_container, DIContainer
+    # Import necessary for test application
+    from app.infrastructure.di.container import reset_container
+    from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
     
     # Reset container to avoid state leakage between tests
     reset_container()
@@ -353,26 +354,6 @@ async def test_app(
     from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
     from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
     from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
-    
-    # Get container and register repository factories
-    container = get_container()
-    
-    # Register repository factories in the container
-    # These functions return the mock repositories regardless of session
-    container.register_repository_factory(
-        BiometricAlertRepository,
-        lambda session: mock_biometric_alert_repository
-    )
-    
-    container.register_repository_factory(
-        BiometricAlertRuleRepository,
-        lambda session: mock_biometric_rule_repository
-    )
-    
-    container.register_repository_factory(
-        BiometricAlertTemplateRepository,
-        lambda session: mock_template_repository
-    )
     
     # Add custom test middleware that sets actual_session_factory on request.state
     @app.middleware("http")
@@ -388,6 +369,10 @@ async def test_app(
     mock_session.rollback = AsyncMock()
     mock_session.close = AsyncMock()
     
+    # Create a custom get_rule_service function that directly uses the mocks
+    def mock_get_rule_service(rule_repo = Depends(lambda: mock_biometric_rule_repository)):
+        return BiometricAlertRuleService(rule_repo, mock_template_repository)
+        
     # Add dependency overrides
     app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
     app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
@@ -398,6 +383,10 @@ async def test_app(
     app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
     app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    
+    # Override the rule service dependency in the endpoints
+    from app.presentation.api.v1.endpoints.biometric_alert_rules import get_rule_service
+    app.dependency_overrides[get_rule_service] = mock_get_rule_service
     
     # Override get_db_session to avoid database dependency
     from app.presentation.api.dependencies.database import get_db_session, get_async_session_utility
