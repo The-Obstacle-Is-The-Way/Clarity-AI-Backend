@@ -352,6 +352,38 @@ def create_application(
     app_instance.add_middleware(LoggingMiddleware)
     logger.info("LoggingMiddleware added.")
 
+    # Initialize Redis service for rate limiting middleware if Redis URL is configured
+    # and skip_redis_middleware is False
+    if current_settings.REDIS_URL and not skip_redis_middleware:
+        try:
+            # Create a minimal Redis service just for middleware initialization
+            # The full Redis service will be properly setup in lifespan
+            from app.infrastructure.services.redis.redis_service import create_redis_service
+            rate_limit_redis = create_redis_service(redis_url=current_settings.REDIS_URL)
+            
+            # Add rate limiting middleware
+            from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
+            app_instance.add_middleware(
+                RateLimitingMiddleware, 
+                redis_service=rate_limit_redis
+            )
+            logger.info("RateLimitingMiddleware added during app initialization.")
+        except Exception as e:
+            logger.warning(
+                "RateLimitingMiddleware NOT added: Redis initialization failed: %s", 
+                e
+            )
+            if current_settings.ENVIRONMENT != "test":
+                logger.error(
+                    "Redis service initialization failed in production environment: %s",
+                    e,
+                    exc_info=True
+                )
+    elif skip_redis_middleware:
+        logger.info("RateLimitingMiddleware skipped due to skip_redis_middleware flag.")
+    else:
+        logger.info("RateLimitingMiddleware skipped: No REDIS_URL configured.")
+
     # API Routers
     app_instance.include_router(api_v1_router, prefix=current_settings.API_V1_STR)
     logger.info(
