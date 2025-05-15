@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient
 
 from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings
-from app.domain.models.user import UserRole, User
+from app.core.domain.entities.user import UserRole, User
 
 # Define UserStatus locally for testing
 class UserStatus(str, Enum):
@@ -49,7 +49,7 @@ class DomainUser:
         self.roles = roles
         self.status = status
 
-from app.core.domain.entities.alert import AlertPriority, AlertStatus
+from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
@@ -224,7 +224,8 @@ def mock_current_user() -> User:
         roles=[UserRole.ADMIN],
         is_active=True,
         first_name="Test",
-        last_name="Admin User"
+        last_name="Admin User",
+        created_at=datetime.now(timezone.utc)  # Add the required created_at field
     )
 
 @pytest.fixture
@@ -271,7 +272,7 @@ def authenticated_provider_user() -> DomainUser:
         username="testprovider",
         full_name="Test Provider",
         hashed_password="fake_hash",
-        roles=[UserRole.PROVIDER],
+        roles=[UserRole.CLINICIAN],
         status=UserStatus.ACTIVE
     )
 
