@@ -233,9 +233,10 @@ class TestJWTService:
             data, jwt_service.secret_key, algorithm=jwt_service.algorithm
         )
 
-        # Verify the token fails validation
-        with pytest.raises(TokenExpiredException): # decode_token raises TokenExpiredException
-            jwt_service.decode_token(expired_token) # Changed from verify_token, removed await
+        # Verify the token fails validation when we explicitly require expiration verification
+        # Set verify_exp=True to override the test environment default
+        with pytest.raises(TokenExpiredException):
+            jwt_service.decode_token(expired_token, options={"verify_exp": True})
 
     @pytest.mark.asyncio
     async def test_verify_token_invalid_signature(self, jwt_service: JWTService):
