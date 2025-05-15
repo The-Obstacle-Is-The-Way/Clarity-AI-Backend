@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 from app.core.domain.entities.user import UserRole, UserStatus
 
@@ -20,5 +20,4 @@ class AuthenticatedUser(BaseModel):
     # last_name: str = None
     # last_login_at: datetime = None
 
-    class Config:
-        from_attributes = True  # For Pydantic v2
+    model_config = ConfigDict(from_attributes=True)  # Pydantic v2 compatible config
