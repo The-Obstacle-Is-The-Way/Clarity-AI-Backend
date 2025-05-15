@@ -168,12 +168,18 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             jwt_service: IJWTService = get_jwt_service(current_settings)
             fastapi_app.state.jwt_service = jwt_service  # Store the JWT service in app state
             
-            fastapi_app.add_middleware(
-                AuthenticationMiddleware,
-                jwt_service=jwt_service,
-                settings=current_settings
-            )
-            logger.info("AuthenticationMiddleware added.")
+            # Check if auth middleware should be skipped (for testing)
+            skip_auth = getattr(fastapi_app.state, 'skip_auth_middleware', False)
+            
+            if not skip_auth:
+                fastapi_app.add_middleware(
+                    AuthenticationMiddleware,
+                    jwt_service=jwt_service,
+                    settings=current_settings
+                )
+                logger.info("AuthenticationMiddleware added.")
+            else:
+                logger.info("AuthenticationMiddleware SKIPPED due to skip_auth_middleware flag.")
         except Exception as e:
             logger.error(
                 "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s", 
@@ -271,6 +277,11 @@ def create_application(
         f"FastAPI app instance created for '{current_settings.PROJECT_NAME}'."
     )
     app_instance.state.settings = current_settings
+    
+    # Store authentication middleware flag in app state
+    app_instance.state.skip_auth_middleware = skip_auth_middleware
+    if skip_auth_middleware:
+        logger.info("Authentication middleware will be skipped (test mode)")
     
     # Handle JWT service override for testing
     if jwt_service_override:
