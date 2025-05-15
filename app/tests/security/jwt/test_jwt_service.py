@@ -33,7 +33,19 @@ def mock_settings() -> MagicMock:
 @pytest.fixture
 def jwt_service(mock_settings: MagicMock) -> JWTService:
     """Creates a JWTService instance with mock settings."""
-    return JWTService(settings=mock_settings, user_repository=None)
+    # Get the secret key from the mock settings
+    secret_key = mock_settings.JWT_SECRET_KEY.get_secret_value()
+    
+    return JWTService(
+        secret_key=secret_key,
+        algorithm=mock_settings.JWT_ALGORITHM,
+        access_token_expire_minutes=mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        refresh_token_expire_days=mock_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
+        issuer=mock_settings.JWT_ISSUER,
+        audience=mock_settings.JWT_AUDIENCE,
+        settings=mock_settings,
+        user_repository=None
+    )
 
 @pytest.mark.venv_only() # Keep marker if it has specific meaning
 class TestJWTService:
