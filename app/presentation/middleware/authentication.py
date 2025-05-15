@@ -181,7 +181,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 
             try:
                 # Handle the roles - convert any format to proper UserRole enum values
-                # Important: Ensure we have valid UserRole enums for Pydantic validation
+                # Ensure we have valid UserRole enums for Pydantic validation
                 user_roles = []
                 
                 # First, check if domain_user has roles attribute
@@ -265,7 +265,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             raise
         except Exception as e:
             logger.error(f"Database error retrieving user {user_id}: {e}", exc_info=True)
-            raise UserNotFoundException(f"Error retrieving user {user_id}") from e
+            raise AuthenticationException(f"Database access error: {str(e)}") from e
         finally:
             # Ensure session is properly closed
             if session is not None:
@@ -306,6 +306,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.debug(f"User authenticated successfully: {user_context.id} with scopes: {scopes}")
             request.scope["user"] = user_context
             request.scope["auth"] = AuthCredentials(scopes=scopes)
+            return await call_next(request)
         except TokenExpiredException as e:
             logger.warning(f"Token expired: {e}")
             return JSONResponse(
@@ -341,12 +342,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 # General authentication failure - use 401 Unauthorized
                 return JSONResponse(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    content={"detail": "Authentication failed"},
+                    content={"detail": f"Authentication failed: {str(e)}"},
                 )
         except Exception as e:
             logger.exception(f"Unexpected error in authentication middleware: {e}")
             return JSONResponse(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": "An unexpected error occurred during authentication."},
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={"detail": f"Database access error: {str(e)}"},
             )
-        return await call_next(request)
