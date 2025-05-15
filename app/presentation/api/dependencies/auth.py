@@ -119,8 +119,8 @@ async def get_jwt_service(
     return JWTService(
         secret_key=settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
-        access_token_expire_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
+        access_token_expire_minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+        refresh_token_expire_days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
         issuer=settings.JWT_ISSUER,
         audience=settings.JWT_AUDIENCE,
         settings=settings,
