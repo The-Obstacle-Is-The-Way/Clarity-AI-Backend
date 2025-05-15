@@ -280,6 +280,7 @@ class TestJWTService:
         from jose import jwt
         payload = jwt.decode(
             refresh_token, 
+            jwt_service.secret_key,  # Use the service's secret key
             options={"verify_signature": False, "verify_exp": False}
         )
         
@@ -292,6 +293,7 @@ class TestJWTService:
         # Decode the new token
         new_payload = jwt.decode(
             new_refresh_token, 
+            jwt_service.secret_key,  # Use the service's secret key
             options={"verify_signature": False, "verify_exp": False}
         )
         
