@@ -23,6 +23,7 @@ from app.domain.entities.biometric_alert_rule import (
 )
 from app.domain.models.user import User
 from app.presentation.api.dependencies.auth import CurrentUserDep
+from app.presentation.api.dependencies.database import get_db_session
 from app.presentation.api.v1.dependencies.biometric import (
     BiometricRuleRepoDep,
 )
@@ -46,7 +47,7 @@ router = APIRouter(
 
 def get_rule_service(
     rule_repo: BiometricRuleRepoDep,
-    db_session = Depends(app.core.dependencies.database.get_db_session),
+    db_session = Depends(get_db_session),
 ) -> BiometricAlertRuleService:
     """Get alert rule service with proper repositories."""
     template_repo = get_repository_instance(BiometricAlertTemplateRepository, db_session)
@@ -59,7 +60,7 @@ async def get_alert_rules(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=100, description="Maximum number of records to return"),
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> List[AlertRuleResponse]:
     """
@@ -101,7 +102,7 @@ async def get_alert_rules(
 @router.get("/{rule_id}", response_model=AlertRuleResponse)
 async def get_alert_rule(
     rule_id: UUID = Path(..., description="Alert rule ID"),
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
     """
@@ -148,7 +149,7 @@ async def get_alert_rule(
 @router.post("", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert_rule(
     rule_data: AlertRuleCreate,
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
     """
@@ -186,7 +187,7 @@ async def create_alert_rule(
 @router.post("/from-template", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert_rule_from_template(
     template_data: RuleFromTemplateCreate,
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
     """
@@ -229,7 +230,7 @@ async def create_alert_rule_from_template(
 async def update_alert_rule(
     rule_id: UUID,
     update_data: AlertRuleUpdate,
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
     """
@@ -280,7 +281,7 @@ async def update_alert_rule(
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_alert_rule(
     rule_id: UUID,
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> None:
     """
@@ -322,7 +323,7 @@ async def delete_alert_rule(
 async def update_rule_active_status(
     rule_id: UUID,
     is_active: bool = Query(..., description="New active status"),
-    current_user: CurrentUserDep = Depends(),
+    current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
     """
