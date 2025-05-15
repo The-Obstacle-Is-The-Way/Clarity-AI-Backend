@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class AuditLog(BaseModel):
@@ -33,9 +33,9 @@ class AuditLog(BaseModel):
     details: Optional[Dict[str, Any]] = None
     success: Optional[bool] = None
     
-    class Config:
-        """Pydantic model configuration."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
     
     @field_validator('timestamp')
     def ensure_timezone(cls, v: datetime) -> datetime:
@@ -84,9 +84,9 @@ class AuditLogBatch(BaseModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     total_count: int
     
-    class Config:
-        """Pydantic model configuration."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
     
     @classmethod
     def create_from_logs(cls, logs: List[AuditLog]) -> 'AuditLogBatch':

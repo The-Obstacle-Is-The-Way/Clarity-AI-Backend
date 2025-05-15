@@ -59,9 +59,13 @@ class TestPHIAudit:
         # Create a file without PHI
         with open(os.path.join(app_dir, "infrastructure", "config.py"), "w") as f:
             f.write('''
+                from pydantic import ConfigDict
+                
                 class Config:
                     """Application configuration."""
-
+                    
+                    model_config = ConfigDict()
+                    
                     DEBUG = False
                     LOG_LEVEL = "INFO"
                     PORT = 8080

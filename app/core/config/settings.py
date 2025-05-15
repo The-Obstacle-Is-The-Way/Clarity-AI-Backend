@@ -33,7 +33,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Clarity AI"
     PROJECT_DESCRIPTION: str = "Mental Health Digital Twin API"
     API_V1_STR: str = "/api/v1"
-    DEBUG: bool = Field(default=False if (ENVIRONMENT == "test" or ENVIRONMENT == "test") else True, env="DEBUG")
+    DEBUG: bool = Field(
+        default=False if (ENVIRONMENT == "test" or ENVIRONMENT == "test") else True, 
+        json_schema_extra={"env": "DEBUG"}
+    )
     
     # Server Settings
     SERVER_HOST: str = "127.0.0.1"  # Default host for the server
@@ -133,9 +136,18 @@ class Settings(BaseSettings):
     # --- PHI Encryption Settings ---
     # PHI encryption settings with dummy keys for testing (NEVER use in production)
     # With proper environment setup, these will be overridden with real keys
-    PHI_ENCRYPTION_KEY: str = Field(secrets.token_urlsafe(32), description="The current encryption key")
-    PHI_ENCRYPTION_PREVIOUS_KEY: str | None = Field(None, description="Previous encryption key for rotation")
-    TEST_OTHER_ENCRYPTION_KEY: str = Field(secrets.token_urlsafe(32), description="Secondary test key for encryption error testing")
+    PHI_ENCRYPTION_KEY: str = Field(
+        default=secrets.token_urlsafe(32), 
+        json_schema_extra={"description": "The current encryption key"}
+    )
+    PHI_ENCRYPTION_PREVIOUS_KEY: str | None = Field(
+        default=None, 
+        json_schema_extra={"description": "Previous encryption key for rotation"}
+    )
+    TEST_OTHER_ENCRYPTION_KEY: str = Field(
+        default=secrets.token_urlsafe(32), 
+        json_schema_extra={"description": "Secondary test key for encryption error testing"}
+    )
     
     model_config = ConfigDict(
         env_file=".env",
