@@ -671,9 +671,9 @@ class JWTService(IJwtService):
 # Define dependency injection function
 def get_jwt_service(
     settings: Settings,
-    user_repository: Optional[SQLAlchemyUserRepository] = None,
-    token_blacklist_repository: Optional[ITokenBlacklistRepository] = None
-) -> IJwtService:
+    user_repository = None,
+    token_blacklist_repository = None
+) -> JWTService:
     """
     Dependency function to get the JWT service.
     
@@ -734,15 +734,14 @@ def get_jwt_service(
         issuer = None
         audience = None
     
-    # Return fully initialized service with all dependencies
+    # Create and return a JWTService instance with settings
     return JWTService(
         secret_key=secret_key,
         algorithm=algorithm,
-        access_token_expire_minutes=access_token_expire_minutes,
+        access_token_expire_minutes=access_token_expire_minutes, 
         refresh_token_expire_days=refresh_token_expire_days,
-        issuer=issuer,
-        audience=audience,
         token_blacklist_repository=token_blacklist_repository,
         user_repository=user_repository,
-        settings=settings
+        issuer=issuer,
+        audience=audience
     )

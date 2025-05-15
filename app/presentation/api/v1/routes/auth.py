@@ -5,12 +5,14 @@ This module provides API endpoints for user authentication, including
 login, token refresh, and registration functionality.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from typing import Any # Keep Any for now if actual service responses are complex
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie
+from typing import Any, Optional # Import Optional for nullable parameters
 
-# Import the concrete implementation instead of the interface for FastAPI compatibility
+# Import concrete implementations instead of interfaces for FastAPI compatibility
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.presentation.api.dependencies.auth_service import get_auth_service
+from app.presentation.api.dependencies.auth import get_current_user, get_optional_user
+from app.core.domain.entities.user import User
 from app.presentation.api.schemas.auth import (
     LoginRequestSchema,
     TokenResponseSchema,
@@ -33,9 +35,10 @@ router = APIRouter(
     tags=["authentication"],
 )
 
-@router.post("/login", response_model=TokenResponseSchema)
+@router.post("/login", response_model=TokenResponseSchema, status_code=status.HTTP_200_OK)
 async def login(
     login_data: LoginRequestSchema,
+    response: Response,
     auth_service: AuthenticationService = Depends(get_auth_service)
 ) -> TokenResponseSchema:
     """
