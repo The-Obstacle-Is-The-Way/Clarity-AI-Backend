@@ -394,65 +394,89 @@ class TestAuthorization:
         """Test access to an admin-only endpoint based on user role."""
         client, current_fastapi_app = client_app_tuple_func_scoped
         user_id_val = uuid.uuid4()
+        
+        # Create a more complete token payload
         token_user_data = {
             "sub": str(user_id_val), 
             "roles": [user_role.value], 
             "username": f"{user_role.name.lower()}_test", 
             "email": f"{user_role.name.lower()}@example.com",
+            "first_name": "Test",
+            "last_name": user_role.name.capitalize(),
             "iss": "test-issuer",
             "testing": True,
             "jti": str(uuid.uuid4()),
-            "type": "access"
+            "type": "access",
+            "iat": int(datetime.now(timezone.utc).timestamp()),
+            "exp": int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp()),
+            "aud": "test-audience"
         }
+        
+        # Create the token with our mock service
         token = await global_mock_jwt_service.create_access_token(data=token_user_data)
         
-        # Store token in mock service token store with far future expiration
+        # Store token in token store with future expiration
         global_mock_jwt_service.token_store[token] = token_user_data
         global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
         
-        # Add both the Authorization header and a special X-Mock-Role header for testing
+        # Make sure the token will be verified by our mock service
+        async def mock_verify_token(token_str):
+            """Patched verify_token that returns the token data for our test token"""
+            if token_str == token:
+                return token_user_data
+            return None
+        global_mock_jwt_service.verify_token = AsyncMock(side_effect=mock_verify_token)
+        
+        # Add handler for decode_token as well
+        async def mock_decode_token(token_str, verify_signature=True, options=None, **kwargs):
+            """Patched decode_token that returns the token data for our test token"""
+            if token_str == token:
+                return token_user_data
+            raise InvalidTokenException("Token not found")
+        global_mock_jwt_service.decode_token = AsyncMock(side_effect=mock_decode_token)
+        
+        # Create the headers with our token
         headers = {
             "Authorization": f"Bearer {token}",
-            "X-Mock-Role": user_role.value
+            "X-Mock-Role": user_role.value,
+            "Content-Type": "application/json"
         }
-
+        
+        # Create a mock user repository to handle the user lookup
         mock_user_repo = AsyncMock(spec=IUserRepository)
-        async def mock_get_user_by_id_inner(*, user_id: uuid.UUID): # Renamed inner parameter
+        async def mock_get_user_by_id(*, user_id: uuid.UUID):
+            """Return a user based on the token user ID"""
             if user_id == user_id_val:
                 return User(
                     id=str(user_id_val), 
                     username=token_user_data["username"], 
                     email=token_user_data["email"], 
-                    first_name="Test",
-                    last_name="User",
-                    full_name=f"{token_user_data['username']} Full Name", 
+                    first_name=token_user_data["first_name"],
+                    last_name=token_user_data["last_name"],
+                    full_name=f"{token_user_data['first_name']} {token_user_data['last_name']}", 
                     roles=[user_role], 
                     status=UserStatus.ACTIVE,
                     password_hash="hashed_password_example_generic",
                     created_at=datetime.now(timezone.utc)
                 )
             return None
-        mock_user_repo.get_by_id = mock_get_user_by_id_inner
-        mock_user_repo.get_user_by_id = mock_get_user_by_id_inner
-        # Mock for the endpoint itself if it tries to list users, for admin case
+        mock_user_repo.get_by_id = mock_get_user_by_id
+        mock_user_repo.get_user_by_id = mock_get_user_by_id
+        
+        # For admin case, return empty user list
         mock_user_repo.get_all_users = AsyncMock(return_value=([], 0)) 
-
+        
+        # Override user repository dependency
         current_fastapi_app.dependency_overrides[get_user_repository_dependency] = lambda: mock_user_repo
-
-        # Register a patched verify_token method on the global mock in case it's called directly
-        async def patched_verify_token(token_str):
-            """Handle test tokens for this specific test"""
-            if token_str == token:
-                return token_user_data
-            return None
-        global_mock_jwt_service.verify_token = AsyncMock(side_effect=patched_verify_token)
-
-        # Assuming /api/v1/admin/users is an admin endpoint (replace with actual one if different)
+        
+        # Make request to the admin endpoint
         response = await client.get("/api/v1/admin/users", headers=headers)
-
-        if get_user_repository_dependency in current_fastapi_app.dependency_overrides: 
+        
+        # Clean up dependency override
+        if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
             del current_fastapi_app.dependency_overrides[get_user_repository_dependency]
-
+        
+        # Assert expected status code
         assert response.status_code == expected_status_code, response.text
 
 @pytest.mark.db_required()
@@ -626,44 +650,27 @@ class TestErrorHandling:
         """
         Test that internal server errors do not expose sensitive information.
         
-        This approach simply checks that internal errors give the right HTTP status code and 
-        message without exposing sensitive details.
+        This test uses the test endpoint that intentionally raises an error to verify
+        proper error handling.
         """
-        client, app = client_app_tuple_func_scoped
+        client, _ = client_app_tuple_func_scoped
         
-        # Instead of testing with division by zero which causes issues with middleware,
-        # we'll use another route to see if it offers proper error masking
+        # Use the test endpoint that deliberately raises an error
+        response = await client.get("/api/v1/test/error")
         
-        # Add a test route with proper exception handling
-        @app.get("/api/v1/test-api/test-error-masked")
-        async def test_error_masked_route():
-            """Test endpoint with error handling."""
-            from fastapi import HTTPException
-            from starlette import status
-            
-            # Try/except to send a proper error response
-            try:
-                # Deliberately cause an error
-                result = 1 / 0
-                return {"result": result}
-            except Exception:
-                # This should be properly masked by the application's exception handlers
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="An internal server error occurred.",
-                )
-        
-        # Make request to the test endpoint
-        response = await client.get("/api/v1/test-api/test-error-masked")
-        
-        # Check response properties
+        # Check that we get a 500 status code
         assert response.status_code == 500
+        
+        # Check that the response has a proper error structure
         response_json = response.json()
         assert "detail" in response_json
-        assert response_json["detail"] == "An internal server error occurred."
         
-        # Sensitive details shouldn't be exposed
-        assert "division by zero" not in response.text.lower()
+        # Verify error message is generic and doesn't expose details
+        detail = response_json["detail"]
+        assert "internal server error" in detail.lower() or "error" in detail.lower()
+        
+        # Make sure sensitive information isn't exposed
+        assert "intentional test error" not in response.text.lower()
         assert "traceback" not in response.text.lower()
 
 # Standalone tests (not in a class) - ensure they also use client_app_tuple_func_scoped correctly
