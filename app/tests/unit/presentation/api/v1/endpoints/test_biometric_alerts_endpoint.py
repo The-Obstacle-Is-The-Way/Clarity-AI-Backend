@@ -664,12 +664,41 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_acknowledge(
         self,
         client: AsyncClient,
-        get_valid_provider_auth_headers: dict[str, str], 
+        get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
-        pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # headers = get_valid_provider_auth_headers # Original code was just a skip
-        # ... (rest of original test if any)
+        # Route is now implemented, remove skip
+        # pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented")
+        
+        # Create an alert
+        alert_id = str(uuid.uuid4())
+        
+        # Mock response for get_alert_by_id
+        alert_service_mock = MagicMock()
+        alert_service_mock.update_alert_status.return_value = (True, None)
+        
+        # Override dependency
+        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        
+        # Attempt to acknowledge alert
+        response = await client.patch(
+            f"/api/v1/biometric-alerts/{alert_id}/status",
+            headers=get_valid_provider_auth_headers,
+            json={"status": "acknowledged", "resolution_notes": "Reviewing now"}
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert "Alert status updated" in response.json()["message"]
+        
+        # Verify service called correctly
+        alert_service_mock.update_alert_status.assert_called_once_with(
+            alert_id=alert_id,
+            status="acknowledged",
+            resolution_notes="Reviewing now",
+            resolved_by=ANY
+        )
 
     @pytest.mark.asyncio
     async def test_update_alert_status_resolve(
@@ -678,9 +707,37 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
-        pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented") # MOVED TO TOP
-        # headers = get_valid_provider_auth_headers # Original code was just a skip
-        # ... (rest of original test if any)
+        # Route is now implemented, remove skip
+        # pytest.skip("Skipping test as PATCH /alerts/{id}/status route not implemented")
+        
+        # Create an alert
+        alert_id = str(uuid.uuid4())
+        
+        # Mock response for update_alert_status
+        alert_service_mock = MagicMock()
+        alert_service_mock.update_alert_status.return_value = (True, None)
+        
+        # Override dependency
+        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        
+        # Attempt to resolve alert
+        response = await client.patch(
+            f"/api/v1/biometric-alerts/{alert_id}/status",
+            headers=get_valid_provider_auth_headers,
+            json={"status": "resolved", "resolution_notes": "Issue addressed"}
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        
+        # Verify service called correctly
+        alert_service_mock.update_alert_status.assert_called_once_with(
+            alert_id=alert_id,
+            status="resolved",
+            resolution_notes="Issue addressed",
+            resolved_by=ANY
+        )
 
     @pytest.mark.asyncio
     async def test_update_alert_status_not_found(
@@ -705,11 +762,46 @@ class TestBiometricAlertsEndpoints:
         self,
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: uuid.UUID
+        sample_patient_id: uuid.UUID,
     ) -> None:
-        pytest.skip("Skipping test as GET /patients/{id}/summary route not implemented") # MOVED TO TOP
-        # headers = get_valid_provider_auth_headers # Original code was just a skip
-        # ... (rest of original test if any)
+        # Route is now implemented, remove skip
+        # pytest.skip("Skipping test as GET /patients/{id}/summary route not implemented")
+        
+        # Mock response for get_alert_summary
+        alert_service_mock = MagicMock()
+        alert_service_mock.validate_access.return_value = None  # No exception
+        alert_service_mock.get_alert_summary.return_value = {
+            "patient_id": str(sample_patient_id),
+            "start_date": "2023-01-01T00:00:00+00:00",
+            "end_date": "2023-02-01T00:00:00+00:00",
+            "alert_count": 5,
+            "by_status": {"open": 2, "acknowledged": 1, "resolved": 2},
+            "by_priority": {"low": 1, "medium": 2, "high": 2},
+            "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
+        }
+        
+        # Override dependency
+        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        
+        # Request alert summary
+        response = await client.get(
+            f"/api/v1/biometric-alerts/patients/{sample_patient_id}/summary",
+            headers=get_valid_provider_auth_headers,
+            params={"start_date": "2023-01-01T00:00:00", "end_date": "2023-02-01T00:00:00"}
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()["patient_id"] == str(sample_patient_id)
+        assert response.json()["alert_count"] == 5
+        assert "by_status" in response.json()
+        assert "by_priority" in response.json()
+        assert "by_type" in response.json()
+        
+        # Verify service called with correct parameters
+        alert_service_mock.get_alert_summary.assert_called_once()
+        call_args = alert_service_mock.get_alert_summary.call_args[1]
+        assert call_args["patient_id"] == str(sample_patient_id)
 
     @pytest.mark.asyncio
     async def test_get_patient_alert_summary_not_found(
@@ -812,3 +904,50 @@ class TestBiometricAlertsEndpoints:
         assert invalid_id not in str(resp_json['detail'])
         # URL in error should be obfuscated or not included
         assert invalid_id not in str(resp_json)
+
+    @pytest.mark.asyncio
+    async def test_manual_alert_trigger(
+        self,
+        client: AsyncClient,
+        get_valid_provider_auth_headers: dict[str, str],
+        sample_patient_id: uuid.UUID,
+    ) -> None:
+        # Route is now implemented, remove skip
+        # pytest.skip("Skipping test as POST /patients/{id}/trigger route not implemented")
+        
+        # Mock response for create_alert
+        alert_service_mock = MagicMock()
+        alert_service_mock.validate_access.return_value = None  # No exception
+        alert_service_mock.create_alert.return_value = (True, str(uuid.uuid4()), None)
+        
+        # Override dependency
+        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        
+        # Request to trigger alert
+        alert_data = {
+            "message": "Patient reporting increased anxiety",
+            "priority": "high",
+            "alert_type": "biometric_anomaly",
+            "data": {"anxiety_level": 8, "reported_by": "provider"}
+        }
+        
+        response = await client.post(
+            f"/api/v1/biometric-alerts/patients/{sample_patient_id}/trigger",
+            headers=get_valid_provider_auth_headers,
+            json=alert_data
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert "alert_id" in response.json()
+        
+        # Verify service called correctly
+        alert_service_mock.create_alert.assert_called_once_with(
+            patient_id=str(sample_patient_id),
+            alert_type="biometric_anomaly",
+            severity=ANY,
+            description="Patient reporting increased anxiety",
+            source_data={"anxiety_level": 8, "reported_by": "provider"},
+            metadata={"manually_triggered_by": ANY}
+        )
