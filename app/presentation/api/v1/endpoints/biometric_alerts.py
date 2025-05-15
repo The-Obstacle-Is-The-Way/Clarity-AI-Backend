@@ -241,7 +241,7 @@ async def get_alert(
 @router.patch("/{alert_id}/status", response_model=dict[str, Any])
 async def update_alert_status(
     alert_id: UUID = Path(..., description="Alert ID"),
-    update_request: AlertUpdateRequest = Depends(),
+    update_request: AlertUpdateRequest = Body(...),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user)
 ) -> dict[str, Any]:
