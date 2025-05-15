@@ -774,7 +774,8 @@ class TestBiometricAlertsEndpoints:
         
         # Mock response for get_alert_summary
         alert_service_mock = MagicMock()
-        alert_service_mock.validate_access.return_value = None  # No exception
+        # Fix validate_access to return True explicitly instead of None
+        alert_service_mock.validate_access = AsyncMock(return_value=True) 
         alert_service_mock.get_alert_summary.return_value = {
             "patient_id": str(sample_patient_id),
             "start_date": "2023-01-01T00:00:00+00:00",
@@ -924,18 +925,18 @@ class TestBiometricAlertsEndpoints:
         
         # Mock response for create_alert
         alert_service_mock = MagicMock()
-        alert_service_mock.validate_access.return_value = None  # No exception
+        alert_service_mock.validate_access = AsyncMock(return_value=True)
         alert_service_mock.create_alert.return_value = (True, str(uuid.uuid4()), None)
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Request to trigger alert
+        # Request to trigger alert - ensure fields match ManualAlertRequest
         alert_data = {
             "message": "Patient reporting increased anxiety",
             "priority": "high",
-            "alert_type": "biometric_anomaly",
+            "alert_type": "biometric_anomaly",  # Must use this exact value
             "data": {"anxiety_level": 8, "reported_by": "provider"}
         }
         
@@ -953,7 +954,7 @@ class TestBiometricAlertsEndpoints:
         # Verify service called correctly
         alert_service_mock.create_alert.assert_called_once_with(
             patient_id=str(sample_patient_id),
-            alert_type="biometric_anomaly",
+            alert_type="biometric_anomaly",  # Use the correct enum value
             severity=ANY,
             description="Patient reporting increased anxiety",
             source_data={"anxiety_level": 8, "reported_by": "provider"},
