@@ -6,7 +6,7 @@ HIPAA security standards and best practices for healthcare applications.
 """
 
 import uuid
-from datetime import datetime, timedelta, UTC, date
+from datetime import datetime, timedelta, UTC, date, timezone
 from enum import Enum
 from typing import Any, Dict, Optional, Union, List
 from uuid import UUID
@@ -378,83 +378,85 @@ class JWTService(IJwtService):
 
     def _create_token(
         self,
-        data: dict[str, Any],
-        token_type: TokenType,
-        expires_delta_minutes: int | None = None
+        subject: str,
+        expires_delta_minutes: int | None = None,
+        is_refresh_token: bool = False,
+        token_type: str = "access_token",
+        additional_claims: dict[str, Any] | None = None,
     ) -> str:
         """
-        Create a JWT token with standard claims and security features.
+        Create a JWT token with the given subject and expiration time.
         
         Args:
-            data: Dictionary containing claims to include in the token
-            token_type: Type of token to create (access or refresh)
-            expires_delta_minutes: Token expiration time in minutes
+            subject: Token subject (typically user ID)
+            expires_delta_minutes: Token lifetime in minutes (overrides default)
+            is_refresh_token: Whether this is a refresh token
+            token_type: Type of token (access_token or refresh_token)
+            additional_claims: Additional claims to include in the token
             
         Returns:
-            Encoded JWT token as a string
-        """
-        subject = data.get("sub") or data.get("user_id")
-        if not subject:
-            raise ValueError("Subject ('sub' or 'user_id') is required in data to create token")
-
-        subject_str = str(subject)
-
-        # Calculate expiration time
-        minutes = expires_delta_minutes or self.access_token_expire_minutes
-        expires_delta = timedelta(minutes=minutes)
-        now = datetime.now(UTC)
-        
-        # For testing environments, normally use a fixed timestamp to avoid expiration issues
-        # BUT, allow expires_delta_minutes to override for specific expiration tests.
-        # Use fixed future date ONLY if expires_delta_minutes matches the default.
-        if hasattr(self.settings, 'TESTING') and self.settings.TESTING and expires_delta_minutes == self.access_token_expire_minutes:
-            # Use a future fixed timestamp ONLY for default-expiry test tokens
-            now = datetime(2099, 1, 1, 12, 0, 0, tzinfo=UTC)
-            logger.debug(f"Using fixed future timestamp for token creation (TESTING=True, default expiry). Exp Mins: {expires_delta_minutes}")
-        else:
-            logger.debug(f"Using current time for token creation. TESTING={hasattr(self.settings, 'TESTING') and self.settings.TESTING}, Exp Mins: {expires_delta_minutes}")
+            JWT token string
             
-        expire_time = now + expires_delta
-
-        # Generate a unique token ID (jti) if not provided
-        token_id = data.get("jti", str(uuid.uuid4()))
-
-        # Add a "not before" time - use current time for tests to avoid validation issues
-        # In production code, we'd add a small buffer to account for clock skew
-        nbf_time = int(now.timestamp())
-        
-        # Prepare payload
-        to_encode = {
-            "sub": subject_str,
-            "exp": int(expire_time.timestamp()),
-            "iat": int(now.timestamp()),
-            "nbf": nbf_time,  # Not valid before this time (current timestamp)
-            "jti": token_id,
-            "iss": self.issuer,
-            "aud": self.audience,
-            "type": token_type,
-            # Add other claims from input data, excluding reserved claims
-            **{k: v for k, v in data.items() if k not in ["sub", "exp", "iat", "jti", "iss", "aud", "type", "scope", "nbf"]}
-        }
-
-        # Ensure role/roles consistency if present
-        if "role" in to_encode and "roles" not in to_encode:
-            to_encode["roles"] = [to_encode["role"]]
-        elif "roles" in to_encode and "role" not in to_encode and to_encode["roles"]:
-            to_encode["role"] = to_encode["roles"][0] # Set first role as primary
-
+        Raises:
+            TokenGenerationException: If token generation fails
+        """
         try:
-            # Ensure all payload values are serializable (e.g., convert UUIDs)
-            serializable_payload = self._make_payload_serializable(to_encode)
-            encoded_token = jwt_encode(
-                serializable_payload, self.secret_key, algorithm=self.algorithm
-            )
-        except TypeError as e:
-            logger.error(f"JWT Encoding Error: {e}. Payload: {to_encode}")
-            raise AuthenticationError("Failed to encode token due to unserializable data.") from e
-
-        logger.debug(f"Created {token_type} token with ID {token_id} for subject {subject_str}")
-        return encoded_token
+            # Determine expiration time
+            if not expires_delta_minutes:
+                if is_refresh_token:
+                    # For refresh tokens, use refresh token expiry setting
+                    expires_delta_minutes = self.refresh_token_expire_days * 24 * 60
+                else:
+                    # For access tokens, use access token expiry setting
+                    expires_delta_minutes = self.access_token_expire_minutes
+            
+            if expires_delta_minutes <= 0:
+                raise ValueError("Token expiration time must be greater than zero")
+            
+            # Always use current UTC time
+            now = datetime.now(timezone.utc)
+            expires_delta = timedelta(minutes=expires_delta_minutes)
+            expire_time = now + expires_delta
+            
+            # Add a "not before" time - using current time
+            nbf_time = int(now.timestamp())
+            
+            # Prepare payload
+            to_encode = {
+                "sub": subject,
+                "exp": int(expire_time.timestamp()),
+                "iat": int(now.timestamp()),
+                "nbf": nbf_time,  # Not valid before this time
+                "typ": token_type,
+                "jti": str(uuid.uuid4()),  # Unique token ID
+            }
+            
+            # Add scope identifier for token type
+            if is_refresh_token:
+                to_encode["scope"] = "refresh_token"
+                to_encode["refresh"] = True  # Backwards compatibility
+            
+            # Add issuer if configured
+            if self.issuer:
+                to_encode["iss"] = self.issuer
+                
+            # Add audience if configured
+            if self.audience:
+                to_encode["aud"] = self.audience
+                
+            # Add additional claims if provided
+            if additional_claims:
+                # Avoid overwriting protected claims
+                protected_claims = {'exp', 'iat', 'nbf', 'jti', 'sub', 'typ', 'scope', 'refresh', 'iss', 'aud'}
+                for key, value in additional_claims.items():
+                    if key not in protected_claims:
+                        to_encode[key] = value
+            
+            # Encode token with payload and secret
+            return jwt_encode(to_encode, self.secret_key, algorithm=self.algorithm)
+        except Exception as e:
+            logger.error("Token generation failed", exc_info=True)
+            raise TokenGenerationException(f"Failed to generate token: {e}")
 
     def decode_token(self, token: str) -> TokenPayload:
         """
@@ -688,54 +690,53 @@ def get_jwt_service(
         
     Returns:
         Configured JWTService instance
+        
+    Raises:
+        ValueError: If required settings are missing or invalid
     """
-    # Extract JWT secret key from settings (handling SecretStr if needed)
-    try:
-        # For SecretStr settings
-        if hasattr(settings.JWT_SECRET_KEY, 'get_secret_value'):
-            secret_key = settings.JWT_SECRET_KEY.get_secret_value()
-        else:
-            # For string settings
-            secret_key = settings.JWT_SECRET_KEY
-    except (KeyError, AttributeError) as e:
-        # Fallback for testing - THIS SHOULD NEVER HAPPEN IN PRODUCTION
-        logger.warning(f"JWT_SECRET_KEY not found in settings: {e}")
-        secret_key = "INSECURE_JWT_SECRET_DO_NOT_USE_IN_PRODUCTION"
-        
-    # Get algorithm from settings
-    try:
-        algorithm = settings.JWT_ALGORITHM
-    except (KeyError, AttributeError):
-        algorithm = "HS256"
-        
-    try:
-        access_token_expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    except (KeyError, AttributeError):
-        access_token_expire_minutes = 30
-        
-    try:
-        refresh_token_expire_days = settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
-    except (KeyError, AttributeError):
-        refresh_token_expire_days = 7
-        
-    # Optional settings
-    issuer = None
-    audience = None
-    try:
-        issuer = settings.JWT_ISSUER
-    except (KeyError, AttributeError):
-        pass
-        
-    try:
-        audience = settings.JWT_AUDIENCE
-    except (KeyError, AttributeError):
-        pass
+    if not settings:
+        raise ValueError("Settings object is required")
     
-    # Create and return a JWTService instance with settings
+    # Extract and validate JWT secret key
+    if not hasattr(settings, 'JWT_SECRET_KEY') or not settings.JWT_SECRET_KEY:
+        raise ValueError("JWT_SECRET_KEY is required in settings")
+    
+    # Handle SecretStr type safely
+    if hasattr(settings.JWT_SECRET_KEY, 'get_secret_value'):
+        secret_key = settings.JWT_SECRET_KEY.get_secret_value()
+    else:
+        secret_key = str(settings.JWT_SECRET_KEY)
+    
+    # Validate secret key
+    if not secret_key or len(secret_key.strip()) < 16:
+        raise ValueError("JWT_SECRET_KEY must be at least 16 characters long")
+    
+    # Get required settings with validation
+    try:
+        algorithm = str(getattr(settings, 'JWT_ALGORITHM', 'HS256'))
+        if algorithm not in ['HS256', 'HS384', 'HS512']:
+            raise ValueError(f"Unsupported JWT algorithm: {algorithm}")
+        
+        access_token_expire_minutes = int(getattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES', 30))
+        if access_token_expire_minutes < 1:
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be positive")
+        
+        refresh_token_expire_days = int(getattr(settings, 'JWT_REFRESH_TOKEN_EXPIRE_DAYS', 7))
+        if refresh_token_expire_days < 1:
+            raise ValueError("JWT_REFRESH_TOKEN_EXPIRE_DAYS must be positive")
+        
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid JWT settings: {str(e)}")
+    
+    # Get optional settings
+    issuer = getattr(settings, 'JWT_ISSUER', None)
+    audience = getattr(settings, 'JWT_AUDIENCE', None)
+    
+    # Create and return a JWTService instance with validated settings
     return JWTService(
         secret_key=secret_key,
         algorithm=algorithm,
-        access_token_expire_minutes=access_token_expire_minutes, 
+        access_token_expire_minutes=access_token_expire_minutes,
         refresh_token_expire_days=refresh_token_expire_days,
         token_blacklist_repository=token_blacklist_repository,
         user_repository=user_repository,
