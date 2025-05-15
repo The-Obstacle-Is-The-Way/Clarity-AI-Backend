@@ -172,7 +172,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.warning("No token found in request")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Token required for authentication"},
+                content={"detail": "Authentication token required"},
             )
 
         try:
@@ -185,36 +185,33 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.warning(f"Token expired: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "Token has expired"},
+                content={"detail": "Authentication token has expired"},
             )
         except InvalidTokenException as e:
             logger.warning(f"Invalid token: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": str(e)},
+                content={"detail": "Invalid authentication token"},
             )
         except UserNotFoundException as e:
             logger.warning(f"User not found during auth: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": "User associated with token not found"},
+                content={"detail": "Authentication failed"},
             )
         except AuthenticationException as e:
-            error_message = str(e)
-            logger.warning(f"Authentication failed: {error_message}")
-            
-            # Use different status codes based on the error type
-            if "not active" in error_message.lower():
-                # Inactive users get a forbidden status
+            logger.warning(f"Authentication failed: {e}")
+            if "inactive" in str(e).lower() or "disabled" in str(e).lower():
+                # User is authenticated but account is inactive - use 403 Forbidden
                 return JSONResponse(
                     status_code=HTTP_403_FORBIDDEN,
-                    content={"detail": error_message},
+                    content={"detail": "Account is inactive or disabled"},
                 )
             else:
-                # Other authentication errors get a 401
+                # General authentication failure - use 401 Unauthorized
                 return JSONResponse(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    content={"detail": error_message},
+                    content={"detail": "Authentication failed"},
                 )
         except Exception as e:
             logger.exception(f"Unexpected error in authentication middleware: {e}")
