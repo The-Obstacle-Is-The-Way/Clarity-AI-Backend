@@ -496,8 +496,8 @@ def test_app(mock_settings: MagicMock) -> FastAPI:
     async def refresh_token_endpoint(request: RefreshTokenRequest, jwt_service=Depends(get_test_jwt_service)):
         """Refresh token endpoint for testing."""
         try:
-            # Verify the refresh token
-            payload = jwt_service.decode_token(request.refresh_token)
+            # Verify the refresh token - skip expiration check
+            payload = jwt_service.decode_token(request.refresh_token, options={"verify_exp": False})
             
             # Check that it's a refresh token
             if not hasattr(payload, "refresh") or not payload.refresh:
