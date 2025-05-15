@@ -359,6 +359,19 @@ async def test_app(
     app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
     
+    # Override the get_repository_instance function to handle BiometricAlertTemplateRepository
+    from app.infrastructure.di.provider import get_repository_instance
+    from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+    
+    original_get_repository_instance = get_repository_instance
+    def mock_get_repository_instance(repo_type, session):
+        if repo_type == BiometricAlertTemplateRepository:
+            return mock_template_repository
+        return original_get_repository_instance(repo_type, session)
+    
+    # Add this to app state to make it available during request processing
+    app.state.mock_get_repository_instance = mock_get_repository_instance
+    
     # Also override get_db_session to avoid database dependency
     from app.presentation.api.dependencies.database import get_db_session, get_async_session_utility
     mock_session = AsyncMock()
