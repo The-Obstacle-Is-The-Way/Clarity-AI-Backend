@@ -31,7 +31,7 @@ except ImportError:
     def jwt_decode(token, key, algorithms=None, **kwargs):
         return jose_jwt.decode(token, key, algorithms=algorithms, **kwargs)
         
-from pydantic import BaseModel, ValidationError, ConfigDict
+from pydantic import BaseModel, ValidationError, ConfigDict, Field
 from pydantic import computed_field
 
 # Import the interface
@@ -105,50 +105,26 @@ class TokenType(str, Enum):
 TokenBlacklistDict = dict[str, Union[datetime, float, str]]
 
 class TokenPayload(BaseModel):
-    """
-    Model representing data contained in a JWT token.
-    Uses Pydantic for validation and proper typing.
-    
-    In accordance with HIPAA standards, no PHI (Protected Health Information)
-    is stored directly in tokens unless explicitly required and securely handled.
-    """
-    # Required standard JWT claims
-    sub: str  # Subject (user identifier)
-    exp: int  # Expiration time
-    iat: int  # Issued at time
-    jti: str  # JWT ID (unique identifier for this token)
-    
-    # Custom claims
-    user_id: Optional[str] = None  # User ID (if different from sub)
-    typ: Optional[str] = None  # Token type as string (access_token, refresh_token, etc.)
-    type: Optional[TokenType] = None  # Token type enum (for backward compatibility)
-    
-    # Optional standard JWT claims
-    iss: Optional[str] = None  # Issuer
-    aud: Optional[str] = None  # Audience
-    nbf: Optional[int] = None  # Not valid before
+    """Model for JWT token payload validation and parsing."""
+    sub: str  # Subject (user ID)
+    exp: datetime  # Expiration time
+    iat: datetime  # Issued at time
+    nbf: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))  # Not before time
+    jti: str = ""  # JWT ID for tracking tokens in blacklist
+    type: TokenType = TokenType.ACCESS  # Token type (access or refresh)
 
-    # User-related claims (excluding sensitive PHI)
-    # HIPAA COMPLIANCE: explicitly exclude sensitive fields from default claims 
-    # PHI fields like email and name are only included when explicitly passed
-    role: Optional[str] = None  # Primary role
-    roles: List[str] = []  # All roles
-    permissions: List[str] = []  # Permissions
-    
-    # Token family for refresh tokens (prevents replay attacks)
-    family_id: Optional[str] = None  # Family ID for refresh tokens
-    parent_jti: Optional[str] = None  # Parent token ID for refresh tokens
-    
-    # Session identifier for logout/tracking
-    session_id: Optional[str] = None  # Session ID
-    
-    # Refresh token indicator (for backward compatibility)
-    refresh: Optional[bool] = None
-    scope: Optional[str] = None
-    
-    # HIPAA COMPLIANCE: Strict model configuration to prevent PHI leakage
+    # JWT standard fields
+    iss: str | None = None  # Issuer
+    aud: str | None = None  # Audience
+
+    # Application-specific fields
+    scope: str | None = None  # Authorization scope
+    roles: list[str] = []  # User roles
+    refresh: bool = False  # Flag for refresh tokens
+    parent_jti: str | None = None  # Parent token JTI for refresh token tracking
+
     model_config = ConfigDict(
-        extra="ignore",  # Ignore extra fields to prevent accidental PHI inclusion
+        extra="allow",  # Changed from "ignore" to "allow" to support custom claims
         frozen=True,    # Immutable for security
         validate_assignment=True  # Validate values on assignment
     )
