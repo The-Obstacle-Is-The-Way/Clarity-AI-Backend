@@ -618,13 +618,15 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         return encoded_jwt
     
     # Decode token implementation
-    async def mock_decode_token(token: str) -> dict[str, Any]:
+    async def mock_decode_token(token: str, options: dict = None) -> dict[str, Any]:
         # Check if token exists in our store
         if token not in mock_service.token_store:
             raise InvalidTokenException("Token not found in store")
             
-        # Check if token is expired
-        if token in mock_service.token_exp_store and mock_service.token_exp_store[token] < datetime.now(timezone.utc):
+        # Check if token is expired, but only if verify_exp is not set to False in options
+        if (options is None or not options.get("verify_exp") is False) and \
+           token in mock_service.token_exp_store and \
+           mock_service.token_exp_store[token] < datetime.now(timezone.utc):
             raise TokenExpiredException("Token has expired")
             
         return mock_service.token_store[token]
