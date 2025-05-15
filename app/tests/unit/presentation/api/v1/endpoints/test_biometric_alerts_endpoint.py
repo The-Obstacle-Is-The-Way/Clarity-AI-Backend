@@ -664,6 +664,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_acknowledge(
         self,
         client: AsyncClient,
+        test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
