@@ -39,6 +39,7 @@ class DIContainer:
             is_mock: Whether this container should use mock implementations
         """
         self._services: dict[type, Any] = {}
+        self._singletons: dict[type, type] = {}
         self._factories: dict[type, Callable] = {}
         self._repository_factories: dict[type, Callable[[AsyncSession], Any]] = {}
         self._is_mock = is_mock
@@ -60,18 +61,29 @@ class DIContainer:
         else:
             logger.debug(register_msg)
     
-    def register_singleton(self, interface: type[T], implementation_type: type[T]) -> None:
+    def register_instance(self, interface: type[T], instance: T) -> None:
         """
-        Register a type that will be instantiated as a singleton.
+        Register a specific instance for an interface.
+        
+        This is an alias for register() to maintain a consistent naming convention.
         
         Args:
             interface: The interface type to register
-            implementation_type: The implementation type to instantiate
+            instance: The instance to register
         """
-        # Create a new instance and register it
-        implementation = implementation_type()
-        self.register(interface, implementation)
-        logger.info(f"Registered singleton {implementation_type.__name__} for {interface.__name__}")
+        self.register(interface, instance)
+    
+    def register_singleton(self, interface: type[T], implementation_type: type[T]) -> None:
+        """
+        Register a singleton implementation for an interface.
+        
+        This registers a type that will be instantiated once when first requested.
+        
+        Args:
+            interface: The interface type to register
+            implementation_type: The implementation type
+        """
+        self._singletons[interface] = implementation_type
     
     def register_factory(self, interface: type[T], factory: Callable[[], T]) -> None:
         """
@@ -110,11 +122,19 @@ class DIContainer:
         Raises:
             KeyError: If no implementation is registered for the interface
         """
-        # Check if we have a direct registration
+        # First check for direct instance registrations
         if interface in self._services:
             return self._services[interface]
         
-        # Check if we have a factory
+        # Then check for registered singletons
+        if interface in self._singletons:
+            implementation_type = self._singletons[interface]
+            instance = implementation_type()
+            # Cache the instance for future requests
+            self._services[interface] = instance
+            return instance
+        
+        # Then check for registered factories
         if interface in self._factories:
             # Create instance using factory
             instance = self._factories[interface]()
