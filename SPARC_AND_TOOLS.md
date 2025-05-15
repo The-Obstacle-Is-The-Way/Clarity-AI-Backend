@@ -115,4 +115,17 @@ SPARC research mode is particularly useful for:
 
 ------
 
+# MCP Tools Integration
+
+## MANDATORY TOOLS - CRITICAL TO PROJECT SUCCESS
+
+⚠️ **YOU MUST USE ALL FOUR CRITICAL TOOLS TOGETHER FOR MAXIMUM EFFECTIVENESS** ⚠️
+
+1. **SPARC** - Research-only mode for deep analysis (DOCUMENTED ABOVE)
+2. **MCP FILESYSTEM WITH ABSOLUTE PATHS** - NEVER use relative paths
+3. **MCP MEMORY** - ALWAYS use this as your knowledge bank
+4. **MCP SEQUENTIAL THINKING** - ALWAYS use for complex problem solving
+
+These tools are MANDATORY for this codebase. They complement each other and are ESSENTIAL for maintaining code quality.
+
 
