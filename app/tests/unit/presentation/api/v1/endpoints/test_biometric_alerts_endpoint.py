@@ -206,7 +206,7 @@ def mock_template_repository() -> AsyncMock:
 def mock_alert_service() -> MagicMock:
     """Provides a mock alert service for tests."""
     service = MagicMock(spec=AlertServiceInterface)
-    service.get_alerts = AsyncMock(return_value=([], 0))
+    service.get_alerts = AsyncMock(return_value=[])  # Return a list instead of tuple
     service.get_alert_by_id = AsyncMock(return_value=None)
     service.update_alert_status = AsyncMock()
     service.get_patient_alert_summary = AsyncMock(return_value=None)
@@ -627,6 +627,7 @@ class TestBiometricAlertsEndpoints:
             "limit": 5
         }
         
+        # Ensure mock returns a list, not a tuple
         mock_alert_service.get_alerts.return_value = []
         
         response = await client.get(

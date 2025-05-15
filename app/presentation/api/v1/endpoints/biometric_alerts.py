@@ -37,7 +37,7 @@ async def get_alerts(
     alert_type: Optional[AlertType] = Query(None, description="Filter by alert type"),
     start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
     end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
-    patient_id: Optional[UUID] = Query(None, description="Patient ID if accessing as provider"),
+    patient_id: Optional[str] = Query(None, description="Patient ID if accessing as provider"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
@@ -68,15 +68,16 @@ async def get_alerts(
     Raises:
         HTTPException: If user is not authorized to access this data
     """
+    logger.debug(f"Getting alerts with patient_id={patient_id}")
     try:
         # Determine if request is for self or for a patient (provider access)
-        subject_id = str(patient_id) if patient_id else current_user.id
+        subject_id = patient_id if patient_id else current_user.id
         
         # Check authorization if requesting patient data
-        if patient_id and str(patient_id) != current_user.id:
+        if patient_id and patient_id != current_user.id:
             try:
                 # This will raise an exception if not authorized
-                await alert_service.validate_access(current_user.id, str(patient_id))
+                await alert_service.validate_access(current_user.id, patient_id)
             except Exception as e:
                 logger.warning(f"Access validation failed: {str(e)}")
                 # Return empty list for unauthorized access instead of error
@@ -92,9 +93,10 @@ async def get_alerts(
         )
         
         try:
-            # Get alerts from service
+            # Get alerts from service - use patient_id parameter directly instead of subject_id
+            # This handles the case when we're passing a UUID string without conversion
             alerts = await alert_service.get_alerts(
-                subject_id=subject_id,
+                patient_id=patient_id,  # Pass patient_id directly 
                 filters=filters,
                 limit=limit,
                 offset=offset
@@ -116,9 +118,9 @@ async def get_alerts(
                 )
                 for alert in alerts
             ]
-        except TypeError:
+        except TypeError as e:
             # Handle case where the mock returns a tuple or other incorrect type
-            logger.warning("Alert service returned unexpected data type, returning empty list")
+            logger.warning(f"Alert service returned unexpected data type: {str(e)}, returning empty list")
             return []
             
     except Exception as e:
