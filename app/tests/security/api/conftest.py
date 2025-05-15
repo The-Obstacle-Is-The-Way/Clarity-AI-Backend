@@ -1218,132 +1218,118 @@ def middleware_patch(test_settings):
         # Special handling for X-Mock-Role header (used in tests)
         mock_role_header = request.headers.get("X-Mock-Role")
         if mock_role_header and token:
-            logger.info(f"Found X-Mock-Role header: {mock_role_header}")
+            logger.info(f"Found X-Mock-Role header: {mock_role_header}, processing special test auth")
             try:
-                # Create a fake user for testing based on the role
-                import uuid
-                from app.core.domain.entities.user import UserRole
-                from app.presentation.schemas.auth import AuthenticatedUser, AuthCredentials
-                
-                # Use fixed user_id if in the token, or generate a new one
-                user_id = None
-                
-                # Try to decode the token directly without verification
-                try:
-                    # Use jose-jwt to decode the token without verification 
-                    from jose import jwt as jose_jwt
-                    unverified_payload = jose_jwt.decode(
-                        token,
-                        key=test_settings.JWT_SECRET_KEY,
-                        options={
-                            "verify_signature": False,
-                            "verify_aud": False,
-                            "verify_exp": False,
-                            "verify_iss": False
-                        }
+                # Look up the token in the global mock service's token store
+                if hasattr(self.jwt_service, 'token_store') and token in self.jwt_service.token_store:
+                    token_data = self.jwt_service.token_store[token]
+                    
+                    # Create authenticated user from token data
+                    from app.presentation.schemas.auth import AuthenticatedUser, AuthCredentials
+                    from app.core.domain.entities.user import UserRole, UserStatus
+                    
+                    # Get user ID from token
+                    user_id = uuid.UUID(token_data.get("sub", str(uuid.uuid4())))
+                    
+                    # Determine role from token data or header
+                    role_value = mock_role_header
+                    try:
+                        role_enum = UserRole(role_value)
+                    except ValueError:
+                        logger.warning(f"Invalid role in X-Mock-Role header: {role_value}, defaulting to PATIENT")
+                        role_enum = UserRole.PATIENT
+                        
+                    # Create user context
+                    auth_user = AuthenticatedUser(
+                        id=user_id,
+                        username=token_data.get("username", f"test_{role_enum.value}_user"),
+                        email=token_data.get("email", f"test_{role_enum.value}@example.com"),
+                        roles=[role_enum],
+                        status=UserStatus.ACTIVE
                     )
-                    if "sub" in unverified_payload:
-                        user_id = uuid.UUID(unverified_payload["sub"])
-                except Exception as e:
-                    logger.warning(f"Error decoding token for X-Mock-Role: {e}")
-                
-                # Generate a fresh UUID if we couldn't extract one
-                if not user_id:
-                    user_id = uuid.uuid4()
-                
-                # Determine the role from the header
-                try:
-                    role_enum = UserRole(mock_role_header)
-                except ValueError:
-                    # Default to PATIENT if invalid role
-                    logger.warning(f"Invalid role in X-Mock-Role header: {mock_role_header}, defaulting to PATIENT")
-                    role_enum = UserRole.PATIENT
-                
-                # Create the user context
-                auth_user = AuthenticatedUser(
-                    id=user_id,
-                    username=f"test_{role_enum.value}",
-                    email=f"test_{role_enum.value}@example.com",
-                    roles=[role_enum],
-                    status=UserStatus.ACTIVE
-                )
-                
-                # Set user and auth in request scope
-                request.scope["user"] = auth_user
-                request.scope["auth"] = AuthCredentials(scopes=[role_enum.value])
-                
-                logger.info(f"Created mock user from X-Mock-Role: {auth_user.username} with role {role_enum}")
-                
-                # Process the request with our fake user
-                return await call_next(request)
+                    
+                    # Set user and auth in request scope
+                    request.scope["user"] = auth_user
+                    request.scope["auth"] = AuthCredentials(scopes=[role_enum.value])
+                    
+                    logger.info(f"Created mock user from X-Mock-Role and token: {auth_user.username} with role {role_enum}")
+                    
+                    # Process the request with our authenticated user
+                    return await call_next(request)
             except Exception as e:
-                logger.error(f"Error handling X-Mock-Role header: {e}", exc_info=True)
-                # Continue with regular token processing if this fails
+                logger.error(f"Error in X-Mock-Role processing: {str(e)}")
+                # Continue with normal auth in case this fails
         
         if token:
             try:
-                # Try to validate the token using our patched method
-                user_context, scopes = await patched_validate_and_prepare_user_context(self, token, request)
-                
-                # If successful, set the user and auth in request scope and continue
-                request.scope["user"] = user_context
-                request.scope["auth"] = AuthCredentials(scopes=scopes)
-                return await call_next(request)
-            except Exception as e:
-                logger.error(f"Error validating token: {e}", exc_info=True)
-                # Fall back to the original dispatch behavior
-                
-        # For non-test endpoints or if token validation failed, continue with the original middleware logic
-        try:
-            response = await original_dispatch(self, request, call_next)
-            return response
-        except Exception as e:
-            logger.error(f"Exception in original dispatch: {type(e).__name__}: {str(e)}")
-            # Re-raise to allow proper exception handling by the global handler
-            raise
-    
-    # Apply the patches to the middleware
-    AuthenticationMiddleware.dispatch = patched_dispatch
-    AuthenticationMiddleware._validate_and_prepare_user_context = patched_validate_and_prepare_user_context
-    
-    # Now patch the rate limiting middleware too
-    from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
-    
-    # Store the original rate limiting dispatch
-    if hasattr(RateLimitingMiddleware, 'dispatch'):
-        original_rate_limit_dispatch = RateLimitingMiddleware.dispatch
-        
-        # Create a patched dispatch for rate limiting
-        async def patched_rate_limit_dispatch(self, request, call_next):
-            """Patched dispatch method for rate limiting tests."""
-            # Skip test endpoints completely
-            path = request.url.path
-            if "/test-api/" in path or "/test/" in path or "/direct-test/" in path:
-                try:
-                    logger.info(f"Bypassing rate limiting for test endpoint: {path}")
-                    return await call_next(request)
-                except Exception as e:
-                    logger.error(f"Exception in test endpoint (rate limiting): {type(e).__name__}: {str(e)}")
-                    # Re-raise without handling to ensure proper error propagation
-                    raise
+                # Try to validate the token
+                token_data = await self.jwt_service.verify_token(token)
+                if token_data:
+                    # Get user ID and roles from token data
+                    user_id = token_data.get("sub", None)
+                    if not user_id:
+                        return self._create_unauthorized_response("Invalid user ID in token")
+                        
+                    # Get roles from token
+                    roles_data = token_data.get("roles", [])
+                    if not roles_data:
+                        return self._create_unauthorized_response("No roles specified in token")
+                        
+                    # Convert role strings to UserRole enums
+                    from app.core.domain.entities.user import UserRole, UserStatus
+                    user_roles = []
+                    if isinstance(roles_data, list):
+                        for role in roles_data:
+                            try:
+                                if isinstance(role, str):
+                                    user_roles.append(UserRole(role))
+                                else:
+                                    user_roles.append(role)
+                            except ValueError:
+                                # Default to patient for invalid roles
+                                user_roles.append(UserRole.PATIENT)
+                    elif isinstance(roles_data, str):
+                        try:
+                            user_roles.append(UserRole(roles_data))
+                        except ValueError:
+                            user_roles.append(UserRole.PATIENT)
+                            
+                    # Create authenticated user
+                    from app.presentation.schemas.auth import AuthenticatedUser, AuthCredentials
+                    auth_user = AuthenticatedUser(
+                        id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+                        username=token_data.get("username", f"user_{user_id}"),
+                        email=token_data.get("email", f"user_{user_id}@example.com"),
+                        roles=user_roles,
+                        status=UserStatus.ACTIVE
+                    )
                     
-            # For non-test endpoints, use original dispatch
-            try:
-                return await original_rate_limit_dispatch(self, request, call_next)
+                    # Set scopes based on roles
+                    scopes = [role.value for role in user_roles]
+                    
+                    # Set user and auth in request scope
+                    request.scope["user"] = auth_user
+                    request.scope["auth"] = AuthCredentials(scopes=scopes)
+                    
+                    # Continue with authenticated request
+                    return await call_next(request)
             except Exception as e:
-                logger.error(f"Exception in rate limiting dispatch: {type(e).__name__}: {str(e)}")
-                # Re-raise to allow proper error handling
-                raise
-                
-        # Apply the rate limiting patch
-        RateLimitingMiddleware.dispatch = patched_rate_limit_dispatch
+                logger.error(f"Error validating token: {str(e)}")
+                return self._create_unauthorized_response(str(e))
+        
+        # For requests without a token, return unauthorized
+        return self._create_unauthorized_response("No valid authentication credentials")
     
-    yield
-    
-    # Restore the original methods
-    AuthenticationMiddleware.dispatch = original_dispatch
-    if hasattr(RateLimitingMiddleware, 'dispatch') and 'original_rate_limit_dispatch' in locals():
-        RateLimitingMiddleware.dispatch = original_rate_limit_dispatch
+    # Helper method to create unauthorized response
+    def _create_unauthorized_response(self, detail="Not authenticated"):
+        """Create a JSON response for unauthorized requests."""
+        from fastapi.responses import JSONResponse
+        from starlette import status
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": detail},
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
 
 @pytest.fixture(scope="module")
@@ -1508,7 +1494,7 @@ class EnhancedAuthTestHelper:
         }
         
         # Encode and cache token
-        token = jose_jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
+        token = jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
         self._tokens[user_id] = token
         return token
     
