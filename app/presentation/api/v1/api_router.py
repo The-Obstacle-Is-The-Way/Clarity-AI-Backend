@@ -30,6 +30,8 @@ from app.presentation.api.v1.routes.patient import router as patient_router
 
 # Import our new biometric alert rules endpoint
 from app.presentation.api.v1.endpoints.biometric_alert_rules import router as biometric_alert_rules_router_endpoint
+# Import our new biometric alerts endpoint
+from app.presentation.api.v1.endpoints.biometric_alerts import router as biometric_alerts_endpoint_router
 
 # Create the main router for API v1
 api_v1_router = APIRouter()
@@ -44,6 +46,10 @@ api_v1_router.include_router(analytics_event_router, prefix="/analytics", tags=[
 api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biometrics"])
 api_v1_router.include_router(
     biometric_alerts_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
+)
+# Include our new biometric_alerts endpoint implementation
+api_v1_router.include_router(
+    biometric_alerts_endpoint_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
 )
 api_v1_router.include_router(
     biometric_alert_rules_router_route,
