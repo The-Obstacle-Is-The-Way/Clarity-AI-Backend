@@ -334,6 +334,7 @@ async def predict_risk(
         # Optional parameters
         time_frame_days = risk_data.get("time_frame_days", 90)
         confidence_threshold = risk_data.get("confidence_threshold", 0.7)
+        # Check for include_explainability in both directly passed and nested risk_data
         include_explainability = risk_data.get("include_explainability", False)
         
         # DIAGNOSTIC: Log input parameters
@@ -366,19 +367,20 @@ async def predict_risk(
             logger.error(f"XGBoost service returned non-dict result: {prediction_result}")
             prediction_result = {}
         
-        # Extract feature importance data if available
+        # Extract feature importance data if available - always include if present in response
         feature_importance = None
-        if include_explainability:
-            # First try to get feature_importance directly from result
+
+        # First try to get feature_importance directly from result, regardless of include_explainability flag
+        if "feature_importance" in prediction_result:
             feature_importance = prediction_result.get("feature_importance")
             logger.info(f"DIAGNOSTIC - Extracted direct feature_importance: {feature_importance}")
-            
-            # If not found directly, try to get it from explainability dictionary
-            if feature_importance is None and "explainability" in prediction_result:
-                explainability_data = prediction_result.get("explainability", {})
-                if isinstance(explainability_data, dict):
-                    feature_importance = explainability_data.get("feature_importance")
-                    logger.info(f"DIAGNOSTIC - Extracted nested feature_importance: {feature_importance}")
+        
+        # If not found directly, try to get it from explainability dictionary
+        elif "explainability" in prediction_result:
+            explainability_data = prediction_result.get("explainability", {})
+            if isinstance(explainability_data, dict):
+                feature_importance = explainability_data.get("feature_importance")
+                logger.info(f"DIAGNOSTIC - Extracted nested feature_importance: {feature_importance}")
         
         # DIAGNOSTIC: Log final feature_importance
         logger.info(f"DIAGNOSTIC - Final feature_importance: {feature_importance}")
