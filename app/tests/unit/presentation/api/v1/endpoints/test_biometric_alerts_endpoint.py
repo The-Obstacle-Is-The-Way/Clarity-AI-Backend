@@ -674,7 +674,7 @@ class TestBiometricAlertsEndpoints:
         # Create an alert
         alert_id = str(uuid.uuid4())
         
-        # Mock response for get_alert_by_id
+        # Mock response for update_alert_status - use AsyncMock
         alert_service_mock = MagicMock()
         alert_service_mock.update_alert_status = AsyncMock(return_value=(True, None))
         
@@ -686,7 +686,7 @@ class TestBiometricAlertsEndpoints:
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": AlertStatus.ACKNOWLEDGED, "resolution_notes": "Reviewing now"}
+            json={"status": AlertStatus.ACKNOWLEDGED.value, "resolution_notes": "Reviewing now"}
         )
         
         # Verify response
@@ -724,11 +724,11 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Attempt to resolve alert - use the AlertStatus enum object directly
+        # Attempt to resolve alert - use the AlertStatus enum value
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": AlertStatus.RESOLVED, "resolution_notes": "Issue addressed"}
+            json={"status": AlertStatus.RESOLVED.value, "resolution_notes": "Issue addressed"}
         )
         
         # Verify response
@@ -937,7 +937,7 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Request to trigger alert - use AlertType enum value explicitly
+        # Request to trigger alert - use enum objects without .value
         alert_data = {
             "message": "Patient reporting increased anxiety",
             "priority": AlertPriority.HIGH.value,
