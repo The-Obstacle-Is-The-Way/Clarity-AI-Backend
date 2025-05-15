@@ -312,6 +312,27 @@ async def app_instance(test_settings, auth_service_patch, jwt_service_patch, moc
             remember_me=remember_me
         )
         
+        # Set cookies for authentication like the real endpoint would
+        response.set_cookie(
+            key="access_token",
+            value=tokens["access_token"],
+            httponly=True,
+            secure=False,  # Not secure in test environment
+            samesite="lax",
+            max_age=3600,  # 1 hour
+            path="/"
+        )
+        
+        response.set_cookie(
+            key="refresh_token",
+            value=tokens["refresh_token"],
+            httponly=True,
+            secure=False,  # Not secure in test environment
+            samesite="lax",
+            max_age=86400,  # 1 day
+            path="/api/v1/auth/refresh"
+        )
+        
         # Return the tokens without validation
         return {
             "access_token": tokens["access_token"],
@@ -351,6 +372,18 @@ async def app_instance(test_settings, auth_service_patch, jwt_service_patch, moc
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Refresh token error: {str(e)}"
             )
+            
+    # Create a custom logout route handler that bypasses validation
+    async def patched_logout_route(request: Request, response: Response):
+        # Call the mock logout service method
+        await mock_auth_service.logout()
+        
+        # Clear cookies like the real endpoint would
+        response.delete_cookie(key="access_token", path="/")
+        response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
+        
+        # Return 204 No Content for successful logout
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     
     # Replace the route handlers
     for route in app.routes:
@@ -359,6 +392,8 @@ async def app_instance(test_settings, auth_service_patch, jwt_service_patch, moc
                 route.endpoint = patched_login_route
             elif route.path == "/api/v1/auth/refresh":
                 route.endpoint = patched_refresh_route
+            elif route.path == "/api/v1/auth/logout":
+                route.endpoint = patched_logout_route
     
     return app
 

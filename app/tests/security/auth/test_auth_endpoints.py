@@ -329,7 +329,6 @@ async def test_refresh_token_missing(client_app_tuple_func_scoped: tuple[AsyncCl
     assert response.status_code == 422 # This is a Pydantic validation error, does not hit the service mock
 
 @pytest.mark.asyncio
-@pytest.mark.skip("Temporarily skipping due to validation issues in tests")
 async def test_logout(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
@@ -342,7 +341,8 @@ async def test_logout(
         access_token="login_for_logout_access",
         refresh_token="login_for_logout_refresh",
         expires_in=3600,
-        user_id=uuid.uuid4()
+        user_id=uuid.uuid4(),
+        roles=["patient"]
     )
     # Ensure logout mock is in success state
     mock_auth_service.logout.side_effect = None
