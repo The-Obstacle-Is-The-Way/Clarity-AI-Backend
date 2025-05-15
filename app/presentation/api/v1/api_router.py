@@ -15,7 +15,7 @@ from app.presentation.api.v1.routes.actigraphy import router as actigraphy_route
 from app.presentation.api.v1.routes.biometric import router as biometric_router
 from app.presentation.api.v1.routes.biometric_alert_rules import router as biometric_alert_rules_router_route
 from app.presentation.api.v1.routes.biometric_alerts import (
-    router as biometric_alerts_router,
+    router as biometric_alerts_router_route,
 )
 from app.presentation.api.v1.routes.digital_twin import (
     router as digital_twin_router,
@@ -44,24 +44,19 @@ api_v1_router.include_router(analytics_query_router, prefix="/analytics", tags=[
 # Include the new analytics event ingestion router
 api_v1_router.include_router(analytics_event_router, prefix="/analytics", tags=["Analytics Events"])
 api_v1_router.include_router(biometric_router, prefix="/biometrics", tags=["Biometrics"])
-api_v1_router.include_router(
-    biometric_alerts_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
-)
-# Include our new biometric_alerts endpoint implementation
+
+# Prefer our endpoint implementation over the route version
 api_v1_router.include_router(
     biometric_alerts_endpoint_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
 )
-api_v1_router.include_router(
-    biometric_alert_rules_router_route,
-    prefix="/biometric-alerts/rules",
-    tags=["Biometric Alert Rules"],
-)
-# Add our new endpoint implementation
+
+# Include alert rules endpoint implementations
 api_v1_router.include_router(
     biometric_alert_rules_router_endpoint,
     prefix="/biometric-alert-rules",
     tags=["Biometric Alert Rules"],
 )
+
 api_v1_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])
 api_v1_router.include_router(mentallama_router, prefix="/mentallama", tags=["MentaLLaMA"])
 api_v1_router.include_router(
