@@ -12,6 +12,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from app.core.utils.date_utils import utcnow
+
 # Value Objects and Enums
 
 class AlertPriority(str, Enum):
@@ -141,7 +143,7 @@ class BiometricAlertRule(BaseModel):
     logical_operator: RuleLogicalOperator = RuleLogicalOperator.AND
     priority: AlertPriority = AlertPriority.MEDIUM
     is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime | None = None
     template_id: UUID | None = None
     
