@@ -594,13 +594,13 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        pytest.skip("Endpoint GET /api/v1/biometric-alerts not implemented, currently causes 500 error.") # ADDED SKIP
+        # pytest.skip("Endpoint GET /api/v1/biometric-alerts not implemented, currently causes 500 error.") # REMOVED SKIP
         headers = get_valid_provider_auth_headers
         response = await client.get(
             "/api/v1/biometric-alerts", 
             headers=headers
         )
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR # REVERTED from HTTP_404_NOT_FOUND
+        assert response.status_code == 200 # Updated to expect success response
 
     @pytest.mark.asyncio
     async def test_get_alerts_with_filters(
@@ -610,7 +610,7 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
         mock_alert_service: MagicMock, # This specific mock is for this test
     ) -> None:
-        pytest.skip("Endpoint GET /api/v1/biometric-alerts not implemented, currently causes 500 error.") # ADDED SKIP
+        # pytest.skip("Endpoint GET /api/v1/biometric-alerts not implemented, currently causes 500 error.") # REMOVED SKIP
         headers = get_valid_provider_auth_headers
         status_filter = AlertStatus.OPEN.value
         priority_filter = AlertPriority.HIGH.value
@@ -633,9 +633,9 @@ class TestBiometricAlertsEndpoints:
             headers=headers,
             params=params
         )
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR # REVERTED from HTTP_404_NOT_FOUND
-        # assert response.json() == [] # Cannot assert body on 404 typically
-        # mock_alert_service.get_alerts.assert_awaited_once() # Service won't be called if route is missing
+        assert response.status_code == 200 # Updated to expect success response
+        assert response.json() == [] # Assert empty list response
+        mock_alert_service.get_alerts.assert_called_once() # Service should be called
 
     @pytest.mark.asyncio
     async def test_update_alert_status_acknowledge(
