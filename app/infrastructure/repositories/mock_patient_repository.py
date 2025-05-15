@@ -21,6 +21,37 @@ class MockPatientRepository(IPatientRepository):
         """Initialize the mock repository with in-memory storage."""
         self._patients = {}
     
+    async def save(self, patient):
+        """
+        Save a patient object.
+        
+        Args:
+            patient: Patient object to save
+            
+        Returns:
+            The saved patient
+        """
+        patient_dict = {
+            "id": str(patient.id),
+            "first_name": patient.first_name,
+            "last_name": patient.last_name,
+            "date_of_birth": patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+            "gender": patient.gender,
+            "email": patient.email,
+            "phone": patient.phone,
+            "diagnoses": patient.diagnoses,
+            "medications": patient.medications,
+            "allergies": patient.allergies,
+            "created_at": "2025-05-14T15:00:00Z",
+            "updated_at": "2025-05-14T15:00:00Z",
+            "status": "active"
+        }
+        
+        # Store in memory
+        self._patients[str(patient.id)] = patient_dict
+        
+        return patient
+    
     async def create_patient(self, patient_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new patient.
