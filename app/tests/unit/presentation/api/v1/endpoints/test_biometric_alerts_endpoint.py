@@ -937,11 +937,11 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Request to trigger alert - ensure fields match ManualAlertRequest model exactly
+        # Request to trigger alert - use AlertType enum value explicitly
         alert_data = {
             "message": "Patient reporting increased anxiety",
-            "priority": "high",
-            "alert_type": "biometric_anomaly",  # Must use this exact value
+            "priority": AlertPriority.HIGH.value,
+            "alert_type": AlertType.BIOMETRIC_ANOMALY.value,
             "data": {"anxiety_level": 8, "reported_by": "provider"}
         }
         
@@ -959,7 +959,7 @@ class TestBiometricAlertsEndpoints:
         # Verify service called correctly
         alert_service_mock.create_alert.assert_called_once_with(
             patient_id=str(sample_patient_id),
-            alert_type="biometric_anomaly",  # Use the correct enum value
+            alert_type=AlertType.BIOMETRIC_ANOMALY.value,
             severity=ANY,
             description="Patient reporting increased anxiety",
             source_data={"anxiety_level": 8, "reported_by": "provider"},
