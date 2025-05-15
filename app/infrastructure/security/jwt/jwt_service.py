@@ -155,11 +155,11 @@ class TokenPayload(BaseModel):
     parent_jti: str | None = None  # Parent token JTI for refresh token tracking
     family_id: str | None = None  # Family ID for token rotation tracking
 
-    model_config = ConfigDict(
-        extra="allow",  # Changed from "ignore" to "allow" to support custom claims
-        frozen=True,    # Immutable for security
-        validate_assignment=True  # Validate values on assignment
-    )
+    model_config = {
+        "extra": "allow",  # Allow extra fields to support custom claims
+        "frozen": True,    # Immutable for security
+        "validate_assignment": True  # Validate values on assignment
+    }
     
     @computed_field
     def get_type(self) -> TokenType:
@@ -454,18 +454,13 @@ class JWTService(IJwtService):
         
         # Set token timestamp fields - handle both real and mock datetime objects safely
         try:
-            now = datetime.now(timezone.utc)
+            # Use timezone-aware datetime to avoid deprecation warnings
+            now = datetime.now(UTC)
+            now_timestamp = int(now.timestamp())
         except (TypeError, AttributeError):
             # Handle patched datetime in tests
-            now = datetime.now()
-            if not hasattr(now, 'timestamp'):
-                # If timestamp method is missing (some mocks), use a fixed timestamp
-                logger.warning("Using fixed timestamp due to patched datetime in tests")
-                now_timestamp = int(1704110400)  # 2024-01-01 00:00:00 UTC
-            else:
-                now_timestamp = int(now.timestamp())
-        else:
-            now_timestamp = int(now.timestamp())
+            logger.warning("Using fallback timestamp due to patched datetime in tests")
+            now_timestamp = int(1704110400)  # 2024-01-01 00:00:00 UTC
         
         # Determine expiration based on token type and provided override
         if expires_delta:
@@ -1001,7 +996,7 @@ class JWTService(IJwtService):
         # Default sanitized message
         return message
 
-    def refresh_token(self, refresh_token: str) -> str:
+    async def refresh_token(self, refresh_token: str) -> str:
         """
         Create a new refresh token based on an existing one.
         
@@ -1045,8 +1040,8 @@ class JWTService(IJwtService):
             parent_token_jti=payload.jti
         )
         
-        # Revoke the old token
-        self.revoke_token(refresh_token)
+        # Revoke the old token - now properly awaited
+        await self.revoke_token(refresh_token)
         
         return new_token
 

@@ -7,7 +7,7 @@ This module defines the Pydantic models used for audit log API requests and resp
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict
 
 from app.core.interfaces.services.audit_logger_interface import AuditEventType, AuditSeverity
 
@@ -26,10 +26,9 @@ class AuditLogResponseModel(BaseModel):
     ip_address: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
     
-    class Config:
-        """Pydantic model configuration."""
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "7f9e4567-e89b-12d3-a456-426614174000",
                 "timestamp": "2023-05-01T14:30:00Z",
@@ -46,6 +45,7 @@ class AuditLogResponseModel(BaseModel):
                 }
             }
         }
+    )
 
 
 class AuditSearchRequest(BaseModel):
@@ -57,9 +57,8 @@ class AuditSearchRequest(BaseModel):
     limit: int = Field(50, ge=1, le=100)
     offset: int = Field(0, ge=0)
     
-    class Config:
-        """Pydantic model configuration."""
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "filters": {
                     "event_type": "phi_accessed",
@@ -72,6 +71,7 @@ class AuditSearchRequest(BaseModel):
                 "offset": 0
             }
         }
+    )
     
     @validator("filters")
     def validate_filters(cls, v: Dict[str, Any]) -> Dict[str, Any]:
@@ -121,10 +121,9 @@ class SecurityDashboardResponse(BaseModel):
     anomalies_detected: int
     time_range: Dict[str, Any]
     
-    class Config:
-        """Pydantic model configuration."""
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "statistics": {
                     "total_logs": 1250,
@@ -172,4 +171,5 @@ class SecurityDashboardResponse(BaseModel):
                     "days": 7
                 }
             }
-        } 
+        }
+    ) 

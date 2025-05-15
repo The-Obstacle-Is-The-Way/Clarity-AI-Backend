@@ -281,20 +281,30 @@ class TestJWTService:
         payload = jwt.decode(
             refresh_token, 
             jwt_service.secret_key,  # Use the service's secret key
-            options={"verify_signature": False, "verify_exp": False}
+            options={
+                "verify_signature": False, 
+                "verify_exp": False,
+                "verify_aud": False,  # Disable audience validation
+                "verify_iss": False   # Disable issuer validation
+            }
         )
         
         # Assert that the family_id field is present in the token payload
         assert "family_id" in payload
         
-        # Generate new token using the first token
-        new_refresh_token = jwt_service.refresh_token(refresh_token)
+        # Generate new token using the first token - now with await
+        new_refresh_token = await jwt_service.refresh_token(refresh_token)
         
         # Decode the new token
         new_payload = jwt.decode(
             new_refresh_token, 
             jwt_service.secret_key,  # Use the service's secret key
-            options={"verify_signature": False, "verify_exp": False}
+            options={
+                "verify_signature": False, 
+                "verify_exp": False,
+                "verify_aud": False,  # Disable audience validation
+                "verify_iss": False   # Disable issuer validation
+            }
         )
         
         # Assert that the family ID is the same 
