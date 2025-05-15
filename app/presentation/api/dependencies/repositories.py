@@ -13,33 +13,38 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-# REMOVED: from app.infrastructure.database.session import get_async_session
-# ADDED: Import get_db from the local database dependency module
-from .database import get_db
+# Import interfaces for type annotations
+from app.core.interfaces.repositories.audit_log_repository_interface import IAuditLogRepository
 
-# Import the repository class implementation from the infrastructure layer
+# Import repository implementations
+from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
     SQLAlchemyUserRepository,
 )
 
-from app.infrastructure.persistence.repositories.audit_log_repository import AuditLogRepository
-from app.core.interfaces.repositories.audit_log_repository_interface import IAuditLogRepository
+# Import the database dependency - local import after external imports
+from .database import get_db
 
 logger = logging.getLogger(__name__) 
 
 
 def get_user_repository(
-    session: Annotated[AsyncSession, Depends(get_db)], # CHANGED to Depends(get_db)
-) -> IUserRepository:
-    """Dependency provider for the User Repository."""
+    session: AsyncSession = Depends(get_db),
+) -> SQLAlchemyUserRepository:  # Return concrete type instead of interface
+    """Dependency provider for the User Repository.
+    
+    Note: We return the concrete implementation type rather than the interface
+    to prevent FastAPI from trying to create a response model from the interface.
+    """
     logger.debug("Providing User Repository dependency")
     # Instantiate the repository with the session
-    return SQLAlchemyUserRepository(db_session=session) # Ensure consistent kwarg name
+    return SQLAlchemyUserRepository(db_session=session)  # Ensure consistent kwarg name
 
 
 # Type hint for dependency injection
-UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository)]
+# Use concrete implementation type for FastAPI compatibility
+# But annotate with the interface for proper type checking
+UserRepoDep = Annotated[SQLAlchemyUserRepository, Depends(get_user_repository)]
 
 
 async def get_audit_log_repository(db: AsyncSession = Depends(get_db)) -> IAuditLogRepository:
@@ -55,8 +60,11 @@ async def get_audit_log_repository(db: AsyncSession = Depends(get_db)) -> IAudit
     return AuditLogRepository(db)
 
 
+AuditLogRepoDep = Annotated[IAuditLogRepository, Depends(get_audit_log_repository)]
+
 __all__ = [
-    "get_user_repository",
+    "AuditLogRepoDep",
     "UserRepoDep",
     "get_audit_log_repository",
+    "get_user_repository",
 ]
