@@ -101,7 +101,6 @@ class TestEncryptionService:
             encryption_service.decrypt_string("invalid_fernet_token_string") 
         assert "Decryption failed" in str(excinfo.value)
 
-    @pytest.mark.xfail(reason="Investigate: PBKDF2 verify returning False unexpectedly")
     def test_generate_verify_hash(self, encryption_service):
         """Test generating and verifying a hash."""
         data = "sensitive_data"
