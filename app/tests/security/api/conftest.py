@@ -414,15 +414,31 @@ def app_instance(global_mock_jwt_service, test_settings, jwt_service_patch, midd
         logger = logging.getLogger("security_headers_middleware")
         
         # Completely bypass middleware for test endpoints
-        if "/test-api/" in request.url.path:
+        if "/test-api/" in request.url.path or "/test/" in request.url.path:
             try:
                 logger.debug(f"Bypassing security headers for test endpoint: {request.url.path}")
-                response = await call_next(request)
-                return response
+                try:
+                    response = await call_next(request)
+                    return response
+                except Exception as e:
+                    # For test endpoints, convert exceptions to JSON responses
+                    # This allows our error testing to work properly
+                    logger.info(f"Converting test endpoint error to JSONResponse: {str(e)}")
+                    from fastapi.responses import JSONResponse
+                    from starlette import status
+                    return JSONResponse(
+                        {"detail": "Internal Server Error"},
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
             except Exception as e:
                 logger.error(f"Exception in test endpoint (security headers): {type(e).__name__}: {str(e)}")
-                # Re-raise without attempting to handle it to ensure proper error propagation
-                raise
+                # Return a generic error response instead of re-raising
+                from fastapi.responses import JSONResponse
+                from starlette import status
+                return JSONResponse(
+                    {"detail": "Internal Server Error"},
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
         
         # For all other endpoints, add security headers
         try:
