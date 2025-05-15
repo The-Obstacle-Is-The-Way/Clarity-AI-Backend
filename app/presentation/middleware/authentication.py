@@ -162,9 +162,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if await self._is_public_path(request.url.path):
             logger.debug(f"Public path: {request.url.path} - Skipping authentication")
             # Set standard unauthenticated user for public paths
+            # Important: Create a new instance of UnauthenticatedUser to avoid reference issues
             request.scope["user"] = UnauthenticatedUser()
+            # Set empty auth credentials for public paths
             request.scope["auth"] = AuthCredentials(scopes=[])
-            # Ensure no additional authentication checks for public paths
+            # Add a flag to indicate this is a public path (helpful for tests)
+            request.scope["is_public_path"] = True
+            # Process the request without token validation
             return await call_next(request)
 
         token = self._extract_token(request)

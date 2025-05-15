@@ -116,13 +116,22 @@ async def get_jwt_service(
     token_blacklist_repository: RedisTokenBlacklistRepository = Depends(get_token_blacklist_repository)
 ) -> JWTService:  # Return concrete implementation, not interface
     """Dependency function to get JWTService instance conforming to IJwtService."""
+    # Extract and validate settings, providing defaults if not present
+    secret_key = str(settings.JWT_SECRET_KEY)
+    algorithm = getattr(settings, "JWT_ALGORITHM", "HS256")
+    access_expire = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
+    refresh_expire = getattr(settings, "JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7)  
+    issuer = getattr(settings, "JWT_ISSUER", None)
+    audience = getattr(settings, "JWT_AUDIENCE", None)
+    
+    # Create JWT service with validated settings
     return JWTService(
-        secret_key=settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
-        access_token_expire_minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
-        refresh_token_expire_days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
-        issuer=settings.JWT_ISSUER,
-        audience=settings.JWT_AUDIENCE,
+        secret_key=secret_key,
+        algorithm=algorithm,
+        access_token_expire_minutes=access_expire,
+        refresh_token_expire_days=refresh_expire,
+        issuer=issuer,
+        audience=audience,
         settings=settings,
         user_repository=user_repository,
         token_blacklist_repository=token_blacklist_repository
