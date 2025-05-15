@@ -503,6 +503,30 @@ async def predict_outcome(
             "recommendations": result.get("recommendations", []),
         }
         
+        # Add required expected_outcomes field
+        if "expected_outcomes" in result:
+            response_data["expected_outcomes"] = result.get("expected_outcomes", [])
+        else:
+            # Create default expected_outcomes if not provided
+            response_data["expected_outcomes"] = [
+                {
+                    "domain": "depression",  # Default domain
+                    "outcome_type": "symptom_reduction",  # Default outcome type
+                    "predicted_value": result.get("prediction", {}).get("score", 0.5),
+                    "probability": result.get("confidence", 0.5),
+                }
+            ]
+        
+        # Map optional fields if present
+        if "outcome_trajectories" in result:
+            response_data["outcome_trajectories"] = result.get("outcome_trajectories")
+        
+        if "response_likelihood" in result:
+            response_data["response_likelihood"] = result.get("response_likelihood")
+        
+        if "recommended_therapies" in result:
+            response_data["recommended_therapies"] = result.get("recommended_therapies")
+        
         return OutcomePredictionResponse(**response_data)
     
     except ModelNotFoundError as e:
