@@ -115,6 +115,12 @@ def get_jwt_service(
 ) -> IJwtService:
     """Dependency function to get JWTService instance conforming to IJwtService."""
     return JWTService(
+        secret_key=settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+        access_token_expire_minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
+        issuer=settings.JWT_ISSUER,
+        audience=settings.JWT_AUDIENCE,
         settings=settings,
         user_repository=user_repository,
         token_blacklist_repository=token_blacklist_repository
