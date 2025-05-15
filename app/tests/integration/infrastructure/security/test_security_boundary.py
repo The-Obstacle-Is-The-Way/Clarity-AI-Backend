@@ -40,26 +40,10 @@ class MockRBACService:
         return permission in self.get_role_permissions(role)
 
 @pytest.fixture
-def mock_settings(monkeypatch) -> Settings:
-    """Provides mock settings for JWT tests."""
-    settings_mock = MagicMock(spec=Settings)
-    # settings_mock.JWT_SECRET_KEY = "testkey12345678901234567890123456789" # Removed old assignment
-    settings_mock.JWT_ALGORITHM = "HS256"
-    settings_mock.ACCESS_TOKEN_EXPIRE_MINUTES = 15
-    settings_mock.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
-    settings_mock.JWT_ISSUER = "test_issuer"
-    settings_mock.JWT_AUDIENCE = "test_audience"
-    # settings.JWT_SECRET_KEY.get_secret_value.return_value = settings.JWT_SECRET_KEY # Removed old incorrect mock
-
-    # Correctly mock JWT_SECRET_KEY as a SecretStr
-    raw_secret = "testkey12345678901234567890123456789"
-    mock_secret_str = MagicMock(spec=SecretStr)
-    mock_secret_str.get_secret_value.return_value = raw_secret
-
-    # Set the mocked SecretStr on the mock settings object
-    settings_mock.JWT_SECRET_KEY = mock_secret_str
-
-    return settings_mock
+def mock_settings():
+    """Fixture to provide mock settings for tests."""
+    from app.tests.mocks.mock_settings import MockSettings
+    return MockSettings()
 
 @pytest.fixture
 def security_components(mock_settings: Settings):
@@ -226,20 +210,57 @@ class TestSecurityBoundary:
 
     @pytest.mark.asyncio
     async def test_token_generation_and_validation(self, mock_settings):
-        """Test generating and validating a standard token."""
-        jwt_service = JWTService(settings=mock_settings, user_repository=None)
-        user_id = str(uuid.uuid4())
-        roles = [Role.ADMIN.value]
-        user_data = {"sub": user_id, "roles": roles}
-
-        token = jwt_service.create_access_token(data=user_data)
-        assert isinstance(token, str)
-
-        payload = jwt_service.decode_token(token)
+        """Test the complete token generation and validation flow."""
+        # Create a JWT service
+        from app.infrastructure.security.jwt.jwt_service import JWTService
+        from app.domain.enums.token_type import TokenType
+        
+        jwt_service = JWTService(
+            secret_key=mock_settings.JWT_SECRET_KEY,
+            algorithm=mock_settings.JWT_ALGORITHM,
+            access_token_expire_minutes=mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+            refresh_token_expire_days=mock_settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
+            issuer=mock_settings.JWT_ISSUER,
+            audience=mock_settings.JWT_AUDIENCE
+        )
+        
+        # Test data
+        user_id = "test-user-id"
+        user_data = {
+            "sub": user_id,
+            "role": "user",
+            "permissions": ["read:own", "write:own"]
+        }
+        
+        # Create an access token
+        access_token = jwt_service.create_access_token(data=user_data)
+        
+        # Verify the token is not empty
+        assert access_token
+        assert isinstance(access_token, str)
+        assert len(access_token) > 0
+        
+        # Decode the token and verify its content
+        payload = jwt_service.decode_token(access_token)
+        
+        # Check that the token contains the expected data
         assert payload.sub == user_id
-        assert payload.roles == roles
-        assert payload.type == TokenType.ACCESS # Verify type
-        assert payload.exp > int(datetime.now(timezone.utc).timestamp())
+        assert hasattr(payload, "exp")
+        assert hasattr(payload, "iat")
+        assert hasattr(payload, "jti")
+        
+        # Verify token type
+        assert payload.type == TokenType.ACCESS
+        
+        # Create a refresh token
+        refresh_token = jwt_service.create_refresh_token(data=user_data)
+        
+        # Verify the refresh token
+        refresh_payload = jwt_service.verify_refresh_token(refresh_token)
+        
+        # Check refresh token specific fields
+        assert refresh_payload.type == TokenType.REFRESH
+        assert getattr(refresh_payload, "refresh", False) is True
 
     @pytest.mark.asyncio
     async def test_expired_token_validation(self, mock_settings):

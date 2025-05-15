@@ -192,4 +192,100 @@ async def client_app_tuple_func_scoped(test_settings) -> Generator[tuple[AsyncCl
     # Clean up resources
     await async_engine.dispose()
 
+# Add fixtures for JWT testing with in-memory token blacklist
+@pytest.fixture
+def test_jwt_secret_key():
+    """Fixture to provide a consistent JWT secret key for tests."""
+    return "test_jwt_secret_key_that_is_sufficiently_long_for_testing_purposes_only"
+
+@pytest.fixture
+def test_jwt_settings(test_jwt_secret_key):
+    """Fixture to provide JWT settings for tests."""
+    from app.core.config.settings import Settings
+    from unittest.mock import MagicMock
+    
+    # Create a mock settings object with JWT configuration
+    settings = MagicMock(spec=Settings)
+    settings.JWT_SECRET_KEY = test_jwt_secret_key
+    settings.JWT_ALGORITHM = "HS256"
+    settings.ACCESS_TOKEN_EXPIRE_MINUTES = 30
+    settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
+    settings.JWT_ISSUER = "clarity-ai-test"
+    settings.JWT_AUDIENCE = "test-audience"
+    settings.ENVIRONMENT = "test"
+    
+    return settings
+
+@pytest.fixture
+def test_token_blacklist_repository():
+    """Fixture to provide an in-memory token blacklist repository for tests."""
+    from app.infrastructure.security.token.in_memory_token_blacklist_repository import InMemoryTokenBlacklistRepository
+    return InMemoryTokenBlacklistRepository()
+
+@pytest.fixture
+def jwt_service(mock_token_blacklist_repository):
+    """Fixture for a configured JWT service for testing."""
+    from app.infrastructure.security.jwt.jwt_service import JWTService
+    from app.tests.utils.jwt_helpers import get_test_jwt_service_config
+    
+    config = get_test_jwt_service_config()
+    jwt_service = JWTService(
+        secret_key=config["secret_key"],
+        algorithm=config["algorithm"],
+        access_token_expire_minutes=config["access_token_expire_minutes"],
+        refresh_token_expire_days=config["refresh_token_expire_days"],
+        token_blacklist_repository=mock_token_blacklist_repository,
+        issuer=config["issuer"],
+        audience=config["audience"]
+    )
+    
+    return jwt_service
+
+@pytest.fixture
+def mock_redis_service():
+    """Fixture to provide a mock Redis service for tests."""
+    from app.tests.mocks.mock_redis_service import MockRedisService
+    return MockRedisService()
+
+@pytest.fixture
+def mock_redis_cache_service(mock_redis_service):
+    """Fixture to provide a mock Redis cache service for tests."""
+    from unittest.mock import MagicMock
+    
+    # Create a mock that wraps the MockRedisService for additional methods
+    mock_cache = MagicMock()
+    
+    # Forward basic Redis operations to the MockRedisService
+    mock_cache.get = mock_redis_service.get
+    mock_cache.set = mock_redis_service.set
+    mock_cache.delete = mock_redis_service.delete
+    mock_cache.exists = mock_redis_service.exists
+    mock_cache.expire = mock_redis_service.expire
+    mock_cache.ttl = mock_redis_service.ttl
+    mock_cache.incr = mock_redis_service.incr
+    mock_cache.decr = mock_redis_service.decr
+    mock_cache.hset = mock_redis_service.hset
+    mock_cache.hget = mock_redis_service.hget
+    mock_cache.hdel = mock_redis_service.hdel
+    
+    # Additional methods for CacheService
+    mock_cache.get_json = mock_redis_service.get
+    mock_cache.set_json = mock_redis_service.set
+    
+    return mock_cache
+
+@pytest.fixture
+def mock_token_blacklist_repository(mock_redis_service):
+    """Fixture to provide a mock token blacklist repository."""
+    from app.infrastructure.security.token.redis_token_blacklist_repository import RedisTokenBlacklistRepository
+    
+    # Use our mock Redis service for the token blacklist repository
+    return RedisTokenBlacklistRepository(redis_service=mock_redis_service)
+
+@pytest.fixture
+def mock_settings():
+    """Fixture to provide mock settings for tests."""
+    from app.tests.mocks.mock_settings import MockSettings
+    return MockSettings()
+
 # Setup other global fixtures if needed
