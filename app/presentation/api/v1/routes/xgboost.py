@@ -273,9 +273,9 @@ def _has_phi(request_data):
 
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
 async def predict_risk(
-    request: RiskPredictionRequest,
-    xgboost_service: XGBoostDep,
-    user: ProviderAccessDep,
+    request_wrapper: dict = None,  # Accept a dict with a 'request' property
+    xgboost_service: XGBoostDep = None,
+    user: UserDep = None,
 ) -> RiskPredictionResponse:
     """
     Generate risk predictions for psychiatric outcomes.
@@ -287,7 +287,7 @@ async def predict_risk(
     - Treatment non-adherence risk
     
     Args:
-        request: The risk prediction request with patient and clinical data
+        request_wrapper: A dictionary containing a 'request' property with the risk prediction request
         xgboost_service: The XGBoost service instance
         user: The authenticated user with verified patient access
     
@@ -297,6 +297,25 @@ async def predict_risk(
     Raises:
         HTTPException: For validation errors, PHI detection, or service unavailability
     """
+    # Check if request_wrapper is None or if it doesn't contain a 'request' property
+    if request_wrapper is None or 'request' not in request_wrapper:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "Request body is required"}
+        )
+    
+    # Extract the actual request
+    request_data = request_wrapper['request']
+    
+    # Create a proper RiskPredictionRequest object
+    try:
+        request = RiskPredictionRequest(**request_data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": f"Invalid request: {str(e)}"}
+        )
+    
     # Verify provider has access to this patient's data
     await verify_provider_access(user, request.patient_id)
     
@@ -376,9 +395,9 @@ async def predict_risk(
 
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
 async def predict_outcome(
-    request: OutcomePredictionRequest,
-    xgboost_service: XGBoostDep,
-    user: UserDep,
+    request_wrapper: dict = None,  # Accept a dict with a 'request' property
+    xgboost_service: XGBoostDep = None,
+    user: UserDep = None,
 ) -> OutcomePredictionResponse:
     """
     Generate an outcome prediction for a patient's treatment.
@@ -388,7 +407,7 @@ async def predict_outcome(
     access controls.
     
     Args:
-        request: The outcome prediction request with patient and treatment data
+        request_wrapper: A dictionary containing a 'request' property with the outcome prediction request
         xgboost_service: The XGBoost service instance
         user: The authenticated user with verified patient access
     
@@ -398,6 +417,25 @@ async def predict_outcome(
     Raises:
         HTTPException: If prediction fails or user lacks permissions
     """
+    # Check if request_wrapper is None or if it doesn't contain a 'request' property
+    if request_wrapper is None or 'request' not in request_wrapper:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "Request body is required"}
+        )
+    
+    # Extract the actual request
+    request_data = request_wrapper['request']
+    
+    # Create a proper OutcomePredictionRequest object
+    try:
+        request = OutcomePredictionRequest(**request_data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": f"Invalid request: {str(e)}"}
+        )
+    
     # Verify provider has access to this patient's data
     await verify_provider_access(user, request.patient_id)
     

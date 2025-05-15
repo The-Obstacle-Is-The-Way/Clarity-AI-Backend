@@ -142,14 +142,34 @@ async def get_comprehensive_insights(
 )
 async def analyze_clinical_text(
     patient_id: UUID,
-    request: ClinicalTextAnalysisRequest,
-    dt_service: DigitalTwinServiceDep,
+    request_wrapper: dict = None,  # Accept a dict with a 'request' property
+    dt_service: DigitalTwinServiceDep = None,  # Keep it as None to avoid Depends issues
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """
     Analyze clinical text using MentaLLaMA integration with the patient's digital twin.
     """
     logger.info(f"Analyzing clinical text for patient {patient_id}")
+    
+    # Check if request_wrapper is None or if it doesn't contain a 'request' property
+    if request_wrapper is None or 'request' not in request_wrapper:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "Request body is required"}
+        )
+    
+    # Extract the actual request
+    request_data = request_wrapper['request']
+    
+    # Create a proper ClinicalTextAnalysisRequest object
+    try:
+        request = ClinicalTextAnalysisRequest(**request_data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": f"Invalid request: {str(e)}"}
+        )
+    
     try:
         # Simply return the service response directly
         return await dt_service.analyze_clinical_text_mentallama(

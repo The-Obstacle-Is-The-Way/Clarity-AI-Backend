@@ -91,6 +91,15 @@ async def test_db_session():
     
     return engine, session_factory
 
+# Custom client class to handle request body properly
+class CustomAsyncClient(AsyncClient):
+    async def post(self, url, **kwargs):
+        # If json is in kwargs, make sure it's passed as request property
+        if "json" in kwargs:
+            # Add 'request' key for the FastAPI Pydantic model expectation
+            kwargs["json"] = {"request": kwargs["json"]}
+        return await super().post(url, **kwargs)
+
 # Refactored test client fixture
 @pytest_asyncio.fixture
 async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGenerator[AsyncClient, None]:
@@ -134,9 +143,9 @@ async def client(mock_service: MockXGBoostService, test_db_session) -> AsyncGene
         response = await call_next(request)
         return response
 
-    # Create and yield the client
+    # Create and yield the client using our custom client class
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client_instance:
+    async with CustomAsyncClient(transport=transport, base_url="http://test") as client_instance:
         yield client_instance
 
     # Clean up
