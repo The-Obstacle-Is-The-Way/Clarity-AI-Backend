@@ -30,7 +30,7 @@ from app.infrastructure.persistence.sqlalchemy.database import (
     AsyncSession, async_sessionmaker, get_session
 )
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
-from app.infrastructure.services.redis.redis_service import RedisService
+from app.infrastructure.services.redis.redis_service import RedisService, create_redis_service
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
@@ -119,7 +119,7 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                 current_settings.REDIS_URL
             )
             try:
-                redis_service_instance = RedisService(redis_url=current_settings.REDIS_URL)
+                redis_service_instance = create_redis_service(redis_url=current_settings.REDIS_URL)
                 if await redis_service_instance.ping():
                     fastapi_app.state.redis_service = redis_service_instance
                     logger.info(

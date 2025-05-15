@@ -17,14 +17,32 @@ class MockDigitalTwinCoreService:
     Used for testing and development without requiring external dependencies.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, 
+        digital_twin_repository=None,
+        patient_repository=None,
+        xgboost_service=None,
+        pat_service=None,
+        mentalllama_service=None,
+        config: Optional[Dict[str, Any]] = None
+    ):
         """
         Initialize the mock Digital Twin Core service.
         
         Args:
+            digital_twin_repository: Optional repository for digital twin data
+            patient_repository: Optional repository for patient data
+            xgboost_service: Optional XGBoost service
+            pat_service: Optional PAT service
+            mentalllama_service: Optional MentalLLaMA service
             config: Optional configuration dictionary
         """
         self.config = config or {}
+        self._digital_twin_repository = digital_twin_repository
+        self._patient_repository = patient_repository
+        self._xgboost_service = xgboost_service
+        self._pat_service = pat_service
+        self._mentalllama_service = mentalllama_service
         self._initialized = True
         self._digital_twins = {}
         self._sessions = {}
