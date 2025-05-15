@@ -591,11 +591,6 @@ This project is licensed under the Apache License 2.0.
 See [`LICENSE`](./LICENSE) for the full terms.
 
 </div>
-<div style="margin-left: auto;">
-
-![YC Backed](https://img.shields.io/badge/YC-Backed-orange?style=for-the-badge)
-
-</div>
 </div>
 
 ## Documentation Alignment and Improvement
