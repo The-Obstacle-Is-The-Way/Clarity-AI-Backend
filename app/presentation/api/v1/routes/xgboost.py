@@ -354,19 +354,24 @@ async def predict_risk(
         # Create response with defaults for any missing fields
         response = RiskPredictionResponse(
             prediction_id=prediction_result.get("prediction_id", str(uuid.uuid4())),
-            patient_id=patient_id,  # Use the original patient_id
-            risk_type=risk_type,
+            # Use the patient_id from the prediction result if available, otherwise use the original
+            patient_id=prediction_result.get("patient_id", patient_id),
+            # Use the risk_type from the prediction result if available, otherwise use the original
+            risk_type=prediction_result.get("risk_type", risk_type),
             risk_score=prediction_result.get("risk_score", 0.5),
             risk_probability=prediction_result.get("risk_probability", 0.5),
             risk_level=prediction_result.get("risk_level", "moderate"),
             confidence=prediction_result.get("confidence", 0.8),
-            time_frame_days=time_frame_days,
+            # Use the time_frame_days from the prediction result if available, otherwise use the original
+            time_frame_days=prediction_result.get("time_frame_days", time_frame_days),
             timestamp=prediction_result.get("timestamp", datetime.now().isoformat()),
             model_version=prediction_result.get("model_version", "1.0"),
             risk_factors=prediction_result.get("risk_factors", {}),
             supporting_evidence=prediction_result.get("supporting_evidence", []),
             recommendations=prediction_result.get("recommendations", []),
             visualization_data=prediction_result.get("visualization_data", {}),
+            # Extract feature_importance from the prediction result when include_explainability is True
+            feature_importance=prediction_result.get("feature_importance", {}) if include_explainability else None,
             explainability=prediction_result.get("explainability", {}) if include_explainability else None
         )
         
