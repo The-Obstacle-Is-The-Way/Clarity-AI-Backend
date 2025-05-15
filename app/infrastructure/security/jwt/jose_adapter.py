@@ -1,144 +1,102 @@
 """
-Jose JWT Adapter for HIPAA-compliant Authentication.
+Jose JWT adapter for Clarity AI Backend.
 
-This module provides a secure adapter for the python-jose library that fixes
-the deprecated datetime.utcnow() usage and adds quantum-secure enhancements
-for JWT token handling in a HIPAA-compliant healthcare context.
+Adapts the python-jose library for JWT operations while providing a consistent
+interface to ensure security and HIPAA compliance.
 """
 
-from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional, Union
-from functools import wraps
-import time
-import inspect
 
-# Import jose library components
-from jose import jwt as jose_jwt
-from jose import jws as jose_jws
-from jose import JWTError, ExpiredSignatureError
+# Import JWT functionalities from python-jose
+from jose import jwt, JWTError, ExpiredSignatureError
+from jose.exceptions import JWTClaimsError, JWSError, JWSSignatureError
 
-# Define quantum-secure encoding/decoding functions
+# Re-export common exceptions to avoid direct dependency on jose
+__all__ = ["encode", "decode", "JWTError", "ExpiredSignatureError", "JWTClaimsError"]
+
 def encode(
-    claims: Dict[str, Any], 
-    key: str, 
+    claims: Dict[str, Any],
+    key: str,
     algorithm: str = "HS256",
     headers: Optional[Dict[str, Any]] = None,
-    access_token: bool = True  # Whether this is an access token vs. refresh token
+    access_token: bool = False,
 ) -> str:
     """
-    Encode a JWT token with enhanced HIPAA security features.
-    
-    This function wraps python-jose's jwt.encode with timezone-aware
-    datetime handling and additional HIPAA-compliant security features.
+    Encode a set of claims into a JWT token.
     
     Args:
-        claims: JWT claims dictionary
-        key: Secret key for signing
-        algorithm: Signing algorithm (default: HS256)
-        headers: Optional JWT headers
-        access_token: Whether this is an access token (vs refresh token)
+        claims: Payload to encode
+        key: Key to sign the token with
+        algorithm: Algorithm to use for signing
+        headers: Additional headers to include
+        access_token: Whether this is an access token (for potential custom behavior)
         
     Returns:
-        JWT token string with enhanced security
+        Encoded JWT token as a string
     """
-    # Ensure all dates use timezone-aware objects instead of utcnow()
-    if 'iat' not in claims:
-        claims['iat'] = int(datetime.now(UTC).timestamp())
-        
-    # Add enhanced security features for HIPAA compliance
-    if access_token:
-        # Short-lived access tokens get more stringent settings
-        if 'exp' not in claims and 'expires_in' in claims:
-            claims['exp'] = claims['iat'] + claims['expires_in']
-            del claims['expires_in']
-            
-    # Add a 'nbf' (not before) claim slightly in the past to allow for clock skew
-    if 'nbf' not in claims:
-        # 5 seconds in the past
-        claims['nbf'] = claims['iat'] - 5
+    # Implement any custom claims or headers processing here
+    actual_headers = headers or {}
     
-    # Generate the token with python-jose
-    return jose_jwt.encode(claims, key, algorithm=algorithm, headers=headers)
+    # Set token type claim for security
+    if access_token:
+        actual_headers.update({"typ": "JWT", "use": "access"})
+    
+    # Encode with jose
+    return jwt.encode(claims, key, algorithm=algorithm, headers=actual_headers)
+
 
 def decode(
     token: str,
-    key: str,
+    key: str = "",
     algorithms: Optional[List[str]] = None,
-    options: Optional[Dict[str, bool]] = None,
-    audience: Optional[Union[str, List[str]]] = None,
+    audience: Optional[str] = None,
     issuer: Optional[str] = None,
     subject: Optional[str] = None,
-    access_token: bool = True  # Whether this is an access token
+    options: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Decode and validate a JWT token with enhanced security checks.
-    
-    This function wraps python-jose's jwt.decode with additional
-    HIPAA-compliant security validations and mitigates use of 
-    deprecated datetime functions.
+    Decode a JWT token and return its claims.
     
     Args:
         token: JWT token to decode
-        key: Secret key for verification
-        algorithms: Allowed algorithms for verification
-        options: Decoding options
+        key: Key to verify the token signature
+        algorithms: Allowed algorithms
         audience: Expected audience
         issuer: Expected issuer
         subject: Expected subject
-        access_token: Whether this is an access token (stricter validation)
-    
+        options: Additional options for decoding
+        
     Returns:
-        Decoded token claims dictionary
+        The decoded token claims
         
     Raises:
-        JWTError: For invalid tokens
-        ExpiredSignatureError: For expired tokens
+        JWTError: If the token is invalid
+        ExpiredSignatureError: If the token has expired
     """
+    # Default algorithms
     if algorithms is None:
         algorithms = ["HS256"]
-        
+    
+    # Default options ensuring security
     if options is None:
         options = {
             "verify_signature": True,
             "verify_aud": audience is not None,
-            "verify_iat": True,
-            "verify_exp": True,
-            "verify_nbf": True,
             "verify_iss": issuer is not None,
             "verify_sub": subject is not None,
-            "require_exp": True,
-            "require_iat": True
+            "verify_exp": True,
+            "verify_nbf": True,
+            "verify_iat": True,
+            "leeway": 0,
         }
-        
-    # Apply stricter validation for access tokens
-    if access_token:
-        options["leeway"] = 0  # No leeway for access tokens
-    else:
-        options["leeway"] = 5  # 5 seconds leeway for refresh tokens
-        
-    # Use python-jose to decode the token
-    return jose_jwt.decode(
-        token, 
-        key, 
+    
+    # Decode with jose
+    return jwt.decode(
+        token,
+        key,
         algorithms=algorithms,
-        options=options,
         audience=audience,
         issuer=issuer,
-        subject=subject
+        subject=subject,
+        options=options,
     )
-
-# Create aliases for other commonly used jose functions to provide a complete wrapper
-get_unverified_header = jose_jwt.get_unverified_header
-get_unverified_claims = jose_jwt.get_unverified_claims
-# decode_complete = jose_jwt.decode_complete  # Not available in python-jose 3.3.0
-
-# Export jose exceptions directly for consistent error handling
-__all__ = [
-    'encode', 
-    'decode', 
-    'get_unverified_header', 
-    'get_unverified_claims',
-    # 'decode_complete',
-    'JWTError',
-    'ExpiredSignatureError'
-] 
