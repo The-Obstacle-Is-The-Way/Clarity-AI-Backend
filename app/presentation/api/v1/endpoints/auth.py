@@ -115,7 +115,12 @@ async def login(
             body = await request.json()
         except Exception:
             # Handle case where body is not valid JSON
-            body = {}
+            logger.warning("Invalid JSON in login request")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid request format",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
             
         # Extract credentials
         username = body.get("username", "")
@@ -148,12 +153,27 @@ async def login(
                 "user_id": "test-user-id"
             }
         else:
-            # Use the login method directly - expected by mock_auth_service in tests
-            tokens = await auth_service.login(
-                username=username, 
-                password=password,
-                remember_me=remember_me
-            )
+            # Attempt to authenticate user
+            user = await auth_service.authenticate_user(username, password)
+            
+            if user is None:
+                logger.warning(f"Authentication failed for user: {username}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid credentials",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+                
+            if not user.is_active:
+                logger.warning(f"Login attempt for inactive account: {username}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Account is inactive",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+                
+            # Generate token pair for authenticated user
+            tokens = await auth_service.create_token_pair(user)
         
         # Set secure cookie with access token
         response.set_cookie(
@@ -194,54 +214,47 @@ async def login(
             
         expires_in_seconds = expires_in_minutes * 60
         
-        # Extract user_id if present in the token data, not needed for TokenResponse
-        # but may be useful for extended response models
-        user_id = tokens.get("user_id", None)
-        
-        # Return tokens with proper response model format
-        token_response = TokenResponse(
+        # Return token response
+        return TokenResponse(
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
             token_type=tokens.get("token_type", "bearer"),
             expires_in=expires_in_seconds
         )
-        
-        return token_response
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except AuthenticationError as auth_exc:
-        # Handle authentication errors with proper status code
-        logger.warning(f"Authentication failed: {auth_exc}")
-        error_detail = str(auth_exc)
-        # Standardize error messages for security
-        if "password" in error_detail.lower() or "credential" in error_detail.lower():
-            error_detail = "Invalid username or password"
-        
+        # Handle authentication-specific errors
+        logger.warning(f"Authentication error: {auth_exc}")
+        if "inactive" in str(auth_exc).lower():
+            # Account inactive error
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is inactive",
+                headers={"WWW-Authenticate": "Bearer"}
+            ) from auth_exc
+        else:
+            # General authentication error
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication failed",
+                headers={"WWW-Authenticate": "Bearer"}
+            ) from auth_exc
+    except Exception as e:
+        # Handle unexpected errors
+        logger.error(f"Login failed: {e!s}", exc_info=True)
+        # In production, don't expose internal error details
+        if settings.ENVIRONMENT in ["development", "test"]:
+            error_detail = f"Login error: {e!s}"
+        else:
+            error_detail = "Authentication service unavailable"
+            
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail,
             headers={"WWW-Authenticate": "Bearer"}
-        ) from auth_exc
-    except HTTPException as http_exc:
-        # Re-throw HTTP exceptions
-        raise http_exc from http_exc
-    except Exception as e:
-        # Log the error but don't expose details to client
-        logger.error(f"Login error: {e!s}", exc_info=True)
-        
-        # Determine if this is a client error or server error
-        if isinstance(e, (ValueError, TypeError)) and "username" in str(e).lower() or "password" in str(e).lower():
-            # Client error with credentials
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid login request format",
-                headers={"WWW-Authenticate": "Bearer"}
-            ) from e
-        else:
-            # Server error
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Authentication service unavailable",
-                headers={"WWW-Authenticate": "Bearer"}
-            ) from e
+        ) from e
 
 
 @router.post(
