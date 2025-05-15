@@ -113,7 +113,14 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
 
         # --- Redis Configuration ---
         redis_service_instance: IRedisService | None = None
-        if current_settings.REDIS_URL:
+
+        # First check if a pre-configured Redis service was provided (useful for testing)
+        if hasattr(fastapi_app.state, 'redis_service_override') and fastapi_app.state.redis_service_override:
+            logger.info("LIFESPAN_REDIS_OVERRIDE: Using pre-configured Redis service from app state")
+            fastapi_app.state.redis_service = fastapi_app.state.redis_service_override
+            redis_service_instance = fastapi_app.state.redis_service_override
+        # Otherwise try to create a new Redis service if URL is provided
+        elif current_settings.REDIS_URL:
             logger.info(
                 "LIFESPAN_REDIS_INIT_START: Connecting to Redis: %s",
                 current_settings.REDIS_URL
