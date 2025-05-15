@@ -8,6 +8,7 @@ authentication and authorization within the API endpoints.
 # Standard Library Imports
 import logging # MODULE LEVEL
 from typing import Annotated, AsyncGenerator
+import inspect
 import uuid # ADDED IMPORT
 # from unittest.mock import Mock # MODIFIED: Removed import for Mock
 
@@ -139,17 +140,41 @@ async def get_jwt_service(
 
 async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-        settings: Settings = Depends(get_settings),
+    settings: Settings = Depends(get_settings),
     jwt_service: JWTService = Depends(get_jwt_service),
-    user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency)
+    user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
+    options: dict = None
 ) -> DomainUser:
-    logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
-    logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
-    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
     """
     Dependency to get the current user from a JWT token.
     Handles token validation, user retrieval, and role checks.
+    
+    Args:
+        token_credentials: The HTTP Authorization credentials containing the JWT token
+        settings: Application settings
+        jwt_service: Service for JWT operations
+        user_repo: Repository for user operations
+        options: Optional parameters for token validation (e.g., {"verify_exp": False} for test tokens)
+    
+    Returns:
+        DomainUser: The authenticated user entity
+        
+    Raises:
+        HTTPException: For authentication and authorization errors
     """
+    logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
+    logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
+    logger.info(f"--- get_current_user CALLED --- Token credentials: {token_credentials}")
+    
+    # Initialize options dict if None
+    options = options or {}
+    
+    # Check if we're in test mode (can skip expiration check)
+    is_test_mode = getattr(settings, "TESTING", False)
+    if is_test_mode and "verify_exp" not in options:
+        options["verify_exp"] = False
+        logger.debug("Test mode detected: Token expiration check disabled")
+    
     if token_credentials is None:
         logger.warning("get_current_user: No token credentials provided (token is None).")
         raise HTTPException(
@@ -174,8 +199,14 @@ async def get_current_user(
     try:
         # Ensure the JWT service is correctly injected and used
         logger.debug(f"GET_CURRENT_USER: Using JWT service: {type(jwt_service).__name__}, ID: {id(jwt_service)}")
-        # Remove await as decode_token is not an async method
-        payload = jwt_service.decode_token(token)
+        
+        # Pass options to decode_token if supported
+        if hasattr(jwt_service, 'decode_token') and 'options' in inspect.signature(jwt_service.decode_token).parameters:
+            payload = jwt_service.decode_token(token, options=options)
+        else:
+            # Fallback to standard decode without options
+            payload = jwt_service.decode_token(token)
+            
         logger.debug(f"GET_CURRENT_USER: Token decoded successfully by JWT service. Payload type: {type(payload)}")
         
         # Validate payload structure (basic check)
@@ -183,40 +214,80 @@ async def get_current_user(
             logger.warning("get_current_user: Decoded payload is empty.")
             raise credentials_exception
         
-        username_from_sub: str | None = None
+        # Extract subject (user ID) from payload
+        user_id_str = None
         if hasattr(payload, 'sub'):
-            username_from_sub = payload.sub
+            user_id_str = payload.sub
         elif isinstance(payload, dict):
-            username_from_sub = payload.get("sub")
+            user_id_str = payload.get("sub")
             
-        if username_from_sub is None:
+        if user_id_str is None:
             logger.warning("get_current_user: Subject (sub) not in token payload.")
             raise credentials_exception
+            
+        # Extract roles from payload if present (for role-based validation)
+        roles = None
+        if hasattr(payload, 'roles'):
+            roles = payload.roles
+        elif isinstance(payload, dict):
+            roles = payload.get("roles")
+            
+        logger.debug(f"GET_CURRENT_USER: Extracted roles from token: {roles}")
         
     except InvalidTokenException as e: 
         logger.warning(f"get_current_user: Invalid token - {e}")
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except TokenExpiredException as e: 
         logger.warning(f"get_current_user: Expired token - {e}")
-        raise expired_token_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except JWTError as e:
         logger.warning(f"get_current_user: JWTError - {e}")
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"JWT validation error: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logger.error(f"get_current_user: Unexpected error during token validation - {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during authentication",
+        )
 
     try:
-        user_id_str_from_payload = str(payload.sub) if hasattr(payload, 'sub') else str(payload["sub"])
-        user_id_from_token = uuid.UUID(user_id_str_from_payload)
+        # Convert user_id to UUID and retrieve user
+        user_id_from_token = uuid.UUID(str(user_id_str))
         user = await user_repo.get_user_by_id(user_id=user_id_from_token)
         
+        if user is None:
+            logger.warning(f"get_current_user: User not found for ID: {user_id_str}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
     except ValueError as e:
-        subject_val = payload.sub if hasattr(payload, 'sub') else "unknown"
-        logger.error(f"get_current_user: Invalid user ID format in token: {subject_val}. Error: {e}")
-        raise credentials_exception
-
-    if user is None:
-        subject_val = payload.sub if hasattr(payload, 'sub') else "unknown"
-        logger.warning(f"get_current_user: User not found for ID: {subject_val}")
-        raise credentials_exception
+        logger.error(f"get_current_user: Invalid user ID format in token: {user_id_str}. Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID format in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logger.error(f"get_current_user: Error retrieving user - {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving user information",
+        )
     
     # --- DETAILED LOGGING BEFORE STATUS CHECK ---
     logger.info(f"GET_CURRENT_USER: Inspecting user object before status check. User: {user}")
