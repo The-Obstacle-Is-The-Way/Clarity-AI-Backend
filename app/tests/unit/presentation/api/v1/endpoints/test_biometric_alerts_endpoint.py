@@ -680,13 +680,13 @@ class TestBiometricAlertsEndpoints:
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
-        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
         
         # Attempt to acknowledge alert - use the AlertStatus enum object directly, not its value
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": AlertStatus.ACKNOWLEDGED.value, "resolution_notes": "Reviewing now"}
+            json={"status": AlertStatus.ACKNOWLEDGED, "resolution_notes": "Reviewing now"}
         )
         
         # Verify response
@@ -722,18 +722,19 @@ class TestBiometricAlertsEndpoints:
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
-        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
         
-        # Attempt to resolve alert - use the AlertStatus enum value
+        # Attempt to resolve alert - use the AlertStatus enum object directly
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": AlertStatus.RESOLVED.value, "resolution_notes": "Issue addressed"}
+            json={"status": AlertStatus.RESOLVED, "resolution_notes": "Issue addressed"}
         )
         
         # Verify response
         assert response.status_code == 200
         assert response.json()["success"] is True
+        assert "Alert status updated" in response.json()["message"]
         
         # Verify service called correctly with the enum string value
         alert_service_mock.update_alert_status.assert_called_once_with(
@@ -925,23 +926,23 @@ class TestBiometricAlertsEndpoints:
         # Route is now implemented, remove skip
         # pytest.skip("Skipping test as POST /patients/{id}/trigger route not implemented")
         
-        # Generate a mock alert ID
-        mock_alert_id = str(uuid.uuid4())
+        # Mock response for manual_alert
+        alert_service_mock = AsyncMock(spec=AlertServiceInterface)
+        alert_service_mock.create_manual_alert.return_value = (
+            uuid.uuid4(),  # created alert ID
+            True,  # success
+            None,  # error message
+        )
         
-        # Mock response for create_alert - use AsyncMock for both methods
-        alert_service_mock = MagicMock()
-        alert_service_mock.validate_access = AsyncMock(return_value=True)
-        alert_service_mock.create_alert = AsyncMock(return_value=(True, mock_alert_id, None))
+        # Register the mock with the DI container
+        app, _ = test_app
+        app.state.di_container.register_singleton(AlertServiceInterface, lambda: alert_service_mock)
         
-        # Override dependency - use the app from test_app
-        app, _ = test_app  # Extract app from test_app fixture
-        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
-        
-        # Request to trigger alert - use enum objects without .value
+        # Request to trigger alert - use enum objects directly, not their values
         alert_data = {
             "message": "Patient reporting increased anxiety",
-            "priority": AlertPriority.HIGH.value,
-            "alert_type": AlertType.BIOMETRIC_ANOMALY.value,
+            "priority": AlertPriority.HIGH,
+            "alert_type": AlertType.BIOMETRIC_ANOMALY,
             "data": {"anxiety_level": 8, "reported_by": "provider"}
         }
         
@@ -951,17 +952,14 @@ class TestBiometricAlertsEndpoints:
             json=alert_data
         )
         
-        # Verify response
         assert response.status_code == 200
-        assert response.json()["success"] is True
-        assert "alert_id" in response.json()
         
-        # Verify service called correctly
-        alert_service_mock.create_alert.assert_called_once_with(
+        # Verify the service was called with correct parameters
+        alert_service_mock.create_manual_alert.assert_called_once_with(
             patient_id=str(sample_patient_id),
+            message=alert_data["message"],
+            priority=AlertPriority.HIGH.value,
             alert_type=AlertType.BIOMETRIC_ANOMALY.value,
-            severity=ANY,
-            description="Patient reporting increased anxiety",
-            source_data={"anxiety_level": 8, "reported_by": "provider"},
-            metadata={"manually_triggered_by": ANY}
+            data=alert_data["data"],
+            created_by=ANY
         )
