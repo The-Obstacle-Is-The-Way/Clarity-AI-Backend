@@ -10,7 +10,7 @@ from uuid import UUID
 from datetime import datetime, timezone, timedelta
 import copy
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
 
 from app.core.domain.entities.user import User
 from app.core.exceptions.base_exceptions import ResourceNotFoundError, ModelExecutionError
@@ -142,7 +142,8 @@ async def get_comprehensive_insights(
 )
 async def analyze_clinical_text(
     patient_id: UUID,
-    request_wrapper: dict = None,  # Accept a dict with a 'request' property
+    request: Request,  # Add the Request object
+    request_data: Optional[dict] = Body(default=None),  # Make Body optional with default None
     dt_service: DigitalTwinServiceDep = None,  # Keep it as None to avoid Depends issues
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
@@ -151,19 +152,37 @@ async def analyze_clinical_text(
     """
     logger.info(f"Analyzing clinical text for patient {patient_id}")
     
-    # Check if request_wrapper is None or if it doesn't contain a 'request' property
-    if request_wrapper is None or 'request' not in request_wrapper:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "Request body is required"}
-        )
+    # Debug prints
+    print(f"DEBUG request: {request}")
+    print(f"DEBUG request_data: {request_data}")
+    print(f"DEBUG request.state has parsed_body: {'parsed_body' in request.state.__dict__}")
     
-    # Extract the actual request
-    request_data = request_wrapper['request']
+    # Try to get data from different sources
+    if hasattr(request.state, 'parsed_body') and request.state.parsed_body:
+        print(f"DEBUG Using parsed_body from request.state: {request.state.parsed_body}")
+        parsed_data = request.state.parsed_body
+    elif request_data is not None:
+        print(f"DEBUG Using request_data: {request_data}")
+        parsed_data = request_data
+    else:
+        # Try to read the raw body directly from the request
+        try:
+            print("DEBUG Trying to read raw body")
+            raw_body = await request.body()
+            import json
+            parsed_data = json.loads(raw_body)
+            print(f"DEBUG Read raw body: {parsed_data}")
+        except Exception as e:
+            print(f"DEBUG Failed to read raw body: {e}")
+            parsed_data = {}
+    
+    # Extract the request from the wrapper if it exists
+    if isinstance(parsed_data, dict) and 'request' in parsed_data:
+        parsed_data = parsed_data['request']
     
     # Create a proper ClinicalTextAnalysisRequest object
     try:
-        request = ClinicalTextAnalysisRequest(**request_data)
+        req = ClinicalTextAnalysisRequest(**parsed_data)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -174,8 +193,8 @@ async def analyze_clinical_text(
         # Simply return the service response directly
         return await dt_service.analyze_clinical_text_mentallama(
             patient_id=patient_id,
-            text=request.text,
-            analysis_type=request.analysis_type
+            text=req.text,
+            analysis_type=req.analysis_type
         )
     except ResourceNotFoundError as e:
         raise HTTPException(
