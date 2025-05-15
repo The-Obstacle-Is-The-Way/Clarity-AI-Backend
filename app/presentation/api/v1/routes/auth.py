@@ -53,17 +53,21 @@ async def login(
             remember_me=login_data.remember_me
         )
         
-        # Calculate expiration time (default to 3600 seconds if not present)
-        expires_in = 3600  # Default value
+        # Extract expiration time from token data or use default
+        expires_in = token_data.get("expires_in", 3600)  # Default to 3600 seconds if not present
+        
+        # Extract user_id and roles from token data
+        user_id = token_data.get("user_id", None)
+        roles = token_data.get("roles", None)
         
         # Return token data with required fields for TokenResponseSchema
         return {
             "access_token": token_data["access_token"],
             "refresh_token": token_data["refresh_token"],
-            "token_type": token_data["token_type"],
+            "token_type": token_data.get("token_type", "bearer"),
             "expires_in": expires_in,
-            "user_id": None,  # These can be populated from token claims if needed
-            "roles": None
+            "user_id": user_id,  # Include user_id from token data
+            "roles": roles  # Include roles from token data
         }
 
     except InvalidCredentialsException as e:
