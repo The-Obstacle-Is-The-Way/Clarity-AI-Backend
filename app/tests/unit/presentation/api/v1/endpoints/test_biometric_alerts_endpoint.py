@@ -261,7 +261,7 @@ def authenticated_provider_user() -> DomainUser:
         username="testprovider",
         full_name="Test Provider",
         hashed_password="fake_hash",
-        roles=[UserRole.CLINICIAN],
+        roles=[UserRole.PROVIDER],
         status=UserStatus.ACTIVE
     )
 
@@ -269,6 +269,20 @@ def authenticated_provider_user() -> DomainUser:
 def get_valid_provider_auth_headers(global_mock_jwt_service) -> dict[str, str]:
     """Generate valid auth headers for a provider user."""
     return {"Authorization": f"Bearer test.provider.token"}
+
+@pytest.fixture
+def mock_redis_service() -> MagicMock:
+    """Provides a mock Redis service for tests."""
+    redis_service = MagicMock()
+    redis_service.ping = AsyncMock(return_value=True)
+    redis_service.close = AsyncMock(return_value=None)
+    redis_service.get = AsyncMock(return_value=None)
+    redis_service.set = AsyncMock(return_value=True)
+    redis_service.delete = AsyncMock(return_value=True)
+    redis_service.exists = AsyncMock(return_value=False)
+    redis_service.incr = AsyncMock(return_value=1)
+    redis_service.expire = AsyncMock(return_value=True)
+    return redis_service
 
 @pytest.mark.asyncio
 class TestBiometricAlertsEndpoints:
@@ -661,34 +675,35 @@ async def test_app(
     mock_biometric_event_processor: AsyncMock,
     mock_current_user: User,
     authenticated_provider_user: DomainUser,
+    mock_redis_service: MagicMock,
 ) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
     """
     Creates a test application with specific dependency overrides:
     
     1. JWT Service: Provides a mock that returns pre-configured tokens
-    2. Alert Service: For alert endpoint testing
-    3. Alert Repository: For alert data persistence mocking
-    4. Rule Repository: For rule data persistence mocking
-    5. Template Repository: For alert template data access mocking
-    6. Event Processor: For biometric data processing mocking
-    7. Current User: For authentication testing
+    2. Auth Service: Handles user authentication and permissions
+    3. Alert Service: Manages alert operations
+    4. Alert Repository: Handles alert persistence
+    5. Rule Repository: Manages alert rules
+    6. Template Repository: Provides alert templates
+    7. Event Processor: Processes biometric events against rules
+    8. Current User: Provides the authenticated user
+    9. Redis Service: Mocks the Redis connection
     
-    Note: The key difference in this implementation is that we set all dependency
-    overrides BEFORE entering the LifespanManager context. This ensures mocks
-    are used during the application startup process.
+    Returns:
+        A tuple containing (FastAPI app, AsyncClient)
     """
-    
-    # Create the application with test settings and skip auth middleware
+    # Create the FastAPI app with test settings
+    # Skip auth middleware for test isolation
     app = create_application(
         settings_override=test_settings,
-        skip_auth_middleware=True  # Explicitly skip auth middleware setup in factory
+        skip_auth_middleware=True
     )
     
-    # Store test settings and configure app state before lifespan manager
-    app.state.settings = test_settings
+    # Make sure app.state.skip_auth_middleware is explicitly set
     app.state.skip_auth_middleware = True
     
-    # IMPORTANT: Override dependencies BEFORE LifespanManager
+    # Add dependency overrides
     app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
     app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
     app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
@@ -696,25 +711,18 @@ async def test_app(
     app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
     app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
     app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
-    app.dependency_overrides[get_current_user] = lambda: authenticated_provider_user
+    app.dependency_overrides[get_current_user] = lambda: mock_current_user
     
-    # Create test client with proper transport
-    transport = ASGITransport(app=app)
-    client = AsyncClient(transport=transport, base_url="http://testserver")
-    
-    # Now enter the LifespanManager with all dependencies already configured
-    async with LifespanManager(app):
-        try:
-            logger.info("Test app lifespan started with pre-configured dependencies")
+    # Create test client with ASGI app
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        # Override Redis service directly in app state to avoid connection failure
+        # Do this before entering the LifespanManager to ensure it's available during startup
+        app.state.redis_service = mock_redis_service
+        
+        # This uses the lifespan manager to properly initialize the app context
+        async with LifespanManager(app):
+            # Return both app and client as a tuple
             yield app, client
-        finally:
-            # Clean up
-            app.dependency_overrides.clear()
-            logger.info("Cleared dependency overrides after test")
-            
-            # Reset DI container if used
-            reset_container()
-            logger.info("Reset DI container after test")
 
 @pytest.fixture
 async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
