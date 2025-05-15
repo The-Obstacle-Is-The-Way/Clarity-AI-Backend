@@ -319,7 +319,7 @@ async def predict_risk(
             risk_data = {}
         
         # Extract required fields with fallbacks
-        patient_id = risk_data.get("patient_id", str(uuid.uuid4()))
+        patient_id = risk_data.get("patient_id") or str(uuid.uuid4())
         risk_type = risk_data.get("risk_type", "suicide_attempt")
         
         # Extract clinical data with fallbacks
@@ -354,7 +354,7 @@ async def predict_risk(
         # Create response with defaults for any missing fields
         response = RiskPredictionResponse(
             prediction_id=prediction_result.get("prediction_id", str(uuid.uuid4())),
-            patient_id=patient_id,
+            patient_id=patient_id,  # Use the original patient_id
             risk_type=risk_type,
             risk_score=prediction_result.get("risk_score", 0.5),
             risk_probability=prediction_result.get("risk_probability", 0.5),
@@ -439,7 +439,7 @@ async def predict_outcome(
             outcome_data = {}
         
         # Extract required fields with fallbacks
-        patient_id = outcome_data.get("patient_id", str(uuid.uuid4()))
+        patient_id = outcome_data.get("patient_id") or str(uuid.uuid4())
         outcome_type = outcome_data.get("outcome_type", "recovery")
         
         # Extract clinical data with fallbacks
@@ -461,7 +461,15 @@ async def predict_outcome(
             }
         
         # Optional parameters
-        outcome_timeframe = outcome_data.get("outcome_timeframe", {"timeframe": "short_term"})
+        # Convert timeframe_days to outcome_timeframe format if needed
+        time_frame_days = outcome_data.get("timeframe_days", 90)
+        if time_frame_days <= 30:
+            outcome_timeframe = {"timeframe": "short_term"}
+        elif time_frame_days <= 90:
+            outcome_timeframe = {"timeframe": "medium_term"}
+        else:
+            outcome_timeframe = {"timeframe": "long_term"}
+            
         include_trajectory = outcome_data.get("include_trajectory", True)
         
         # Make prediction
@@ -478,10 +486,30 @@ async def predict_outcome(
             logger.error(f"XGBoost service returned non-dict result: {prediction_result}")
             prediction_result = {}
         
+        # Generate expected outcomes for schema compatibility
+        expected_outcomes = []
+        if "outcome_details" in prediction_result:
+            for domain, value in prediction_result.get("outcome_details", {}).items():
+                expected_outcomes.append({
+                    "domain": domain,
+                    "outcome_type": outcome_type,
+                    "predicted_value": prediction_result.get("probability", 0.7),
+                    "probability": prediction_result.get("confidence", 0.8)
+                })
+        
+        # If no outcome details, add a default outcome
+        if not expected_outcomes:
+            expected_outcomes = [{
+                "domain": "symptom_reduction",
+                "outcome_type": outcome_type,
+                "predicted_value": prediction_result.get("probability", 0.7),
+                "probability": prediction_result.get("confidence", 0.8)
+            }]
+        
         # Create response with defaults for any missing fields
         response = OutcomePredictionResponse(
             prediction_id=prediction_result.get("prediction_id", str(uuid.uuid4())),
-            patient_id=patient_id,
+            patient_id=patient_id,  # Use the original patient_id
             outcome_type=outcome_type,
             probability=prediction_result.get("probability", 0.7),
             confidence=prediction_result.get("confidence", 0.8),
@@ -491,7 +519,8 @@ async def predict_outcome(
             outcome_details=prediction_result.get("outcome_details", {}),
             contributing_factors=prediction_result.get("contributing_factors", {}),
             recommendations=prediction_result.get("recommendations", []),
-            visualization_data=prediction_result.get("visualization_data", {})
+            visualization_data=prediction_result.get("visualization_data", {}),
+            expected_outcomes=expected_outcomes  # Add expected_outcomes for schema compatibility
         )
         
         # Return formatted response
