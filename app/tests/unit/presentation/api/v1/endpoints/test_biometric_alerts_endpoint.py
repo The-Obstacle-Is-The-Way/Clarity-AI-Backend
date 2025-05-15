@@ -678,8 +678,9 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock = MagicMock()
         alert_service_mock.update_alert_status.return_value = (True, None)
         
-        # Override dependency
-        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        # Override dependency - use the app from test_app
+        app, _ = test_app  # Extract app from test_app fixture
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # Attempt to acknowledge alert
         response = await client.patch(
@@ -705,6 +706,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_resolve(
         self,
         client: AsyncClient,
+        test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -718,8 +720,9 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock = MagicMock()
         alert_service_mock.update_alert_status.return_value = (True, None)
         
-        # Override dependency
-        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        # Override dependency - use the app from test_app
+        app, _ = test_app  # Extract app from test_app fixture
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # Attempt to resolve alert
         response = await client.patch(
@@ -762,6 +765,7 @@ class TestBiometricAlertsEndpoints:
     async def test_get_patient_alert_summary(
         self,
         client: AsyncClient,
+        test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -781,8 +785,9 @@ class TestBiometricAlertsEndpoints:
             "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
         }
         
-        # Override dependency
-        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        # Override dependency - use the app from test_app
+        app, _ = test_app  # Extract app from test_app fixture
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # Request alert summary
         response = await client.get(
@@ -910,6 +915,7 @@ class TestBiometricAlertsEndpoints:
     async def test_manual_alert_trigger(
         self,
         client: AsyncClient,
+        test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -921,8 +927,9 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock.validate_access.return_value = None  # No exception
         alert_service_mock.create_alert.return_value = (True, str(uuid.uuid4()), None)
         
-        # Override dependency
-        app.dependency_overrides[get_alert_service] = lambda: alert_service_mock
+        # Override dependency - use the app from test_app
+        app, _ = test_app  # Extract app from test_app fixture
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # Request to trigger alert
         alert_data = {
