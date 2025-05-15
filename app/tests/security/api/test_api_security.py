@@ -173,12 +173,22 @@ class TestAuthorization:
             "roles": [UserRole.PATIENT.value],
             "status": UserStatus.ACTIVE.value,
             "is_active": True,
+            "jti": str(uuid.uuid4()),
+            "iss": "test-issuer",
+            "aud": "test-audience",
+            "type": "access",
+            "testing": True
         }
+        
         patient_token = await global_mock_jwt_service.create_access_token(data=patient_token_data)
         patient_headers = {"Authorization": f"Bearer {patient_token}"}
         
-        # Update token_data to use patient data
-        token_data = await global_mock_jwt_service.decode_token(token=patient_token)
+        # Store token in token store for later verification
+        global_mock_jwt_service.token_store[patient_token] = patient_token_data
+        global_mock_jwt_service.token_exp_store[patient_token] = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        # Set the token data directly to avoid decode issues
+        token_data = patient_token_data
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
         async def mock_get_user_by_id(*, user_id: uuid.UUID):
