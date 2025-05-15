@@ -283,77 +283,153 @@ class MockXGBoostService(XGBoostInterface):
         **kwargs
     ) -> dict[str, Any]:
         """
-        Predict risk level using a risk model.
+        Predict risk for a patient.
         
         Args:
-            patient_id: Patient identifier
-            risk_type: Type of risk to predict
-            clinical_data: Clinical data for prediction
-            **kwargs: Additional prediction parameters
+            patient_id: ID of the patient
+            risk_type: Type of risk to predict (e.g., suicide, readmission)
+            clinical_data: Dictionary of clinical data for prediction
+            **kwargs: Additional arguments for prediction
             
         Returns:
-            Risk prediction result
+            Dictionary with prediction results
             
         Raises:
-            ValidationError: If parameters are invalid
-            DataPrivacyError: If PHI is detected in data
-            PredictionError: If prediction fails
+            ValidationError: If input parameters are invalid
+            DataPrivacyError: If inputs contain potential PHI
         """
-        self._ensure_initialized()
-        
-        # Simulate network latency
+        # Simulate network delay
         self._simulate_delay()
         
-        # Validate parameters
+        # Validate risk type
         self._validate_risk_type(risk_type)
         
         # Check for PHI in data
         self._check_phi_in_data(clinical_data)
         
-        # Generate prediction ID
-        prediction_id = f"risk-{uuid.uuid4()}"
+        # Get prediction parameters
+        time_frame_days = kwargs.get("time_frame_days", 30)
+        confidence_threshold = kwargs.get("confidence_threshold", 0.7)
+        include_explainability = kwargs.get("include_explainability", False)
         
-        # Generate a deterministic risk score based on inputs
-        # This ensures consistent results for the same inputs
+        # Generate deterministic risk score based on patient_id, risk_type, and data
         risk_score = self._generate_deterministic_risk_score(
-            patient_id, risk_type, clinical_data, **kwargs
+            patient_id=patient_id,
+            risk_type=risk_type,
+            clinical_data=clinical_data,
+            time_frame_days=time_frame_days
         )
         
-        # Map score to risk level
+        # Map risk score to risk level
         risk_level = self._map_score_to_risk_level(risk_score)
         
-        # Create prediction result
+        # Generate confidence level (normally high for mock)
+        confidence = 0.85 + (risk_score * 0.1)  # Higher confidence for extreme scores
+        confidence = min(0.98, max(0.7, confidence))  # Clamp between 0.7 and 0.98
+        
+        # Generate prediction ID
+        prediction_id = f"risk_{risk_type}_{hashlib.md5(f'{patient_id}_{int(time.time())}'.encode()).hexdigest()[:8]}"
+        
+        # Create base result
         result = {
             "prediction_id": prediction_id,
             "patient_id": patient_id,
             "risk_type": risk_type,
-            "risk_level": risk_level,
             "risk_score": risk_score,
-            "confidence": round(0.5 + risk_score * 0.4, 2),  # Higher score, higher confidence
-            "features": self._extract_features(clinical_data),
+            "risk_probability": risk_score,  # Add risk_probability field that matches risk_score
+            "risk_level": risk_level,
+            "confidence": confidence,
+            "time_frame_days": time_frame_days,
             "timestamp": datetime.now().isoformat(),
-            "time_frame_days": kwargs.get("time_frame_days", 30)
+            "model_version": "mock-1.0",
         }
-        
-        # Add supporting evidence based on risk level
-        result["supporting_evidence"] = self._generate_supporting_evidence(
-            risk_type, risk_level, clinical_data
+
+        # Add supporting evidence
+        supporting_evidence = self._generate_supporting_evidence(
+            risk_type=risk_type,
+            risk_level=risk_level,
+            clinical_data=clinical_data
         )
+        result["supporting_evidence"] = supporting_evidence
         
         # Add risk factors
-        result["risk_factors"] = self._generate_risk_factors(
-            risk_type, clinical_data
+        risk_factors = self._generate_risk_factors(
+            risk_type=risk_type,
+            clinical_data=clinical_data
         )
+        result["risk_factors"] = risk_factors
+        
+        # Add recommendations
+        result["recommendations"] = [
+            {
+                "priority": "high" if risk_level in ["high", "very_high"] else "medium",
+                "action": f"Consider {'immediate intervention' if risk_level == 'very_high' else 'increased monitoring'}",
+                "rationale": f"Based on {risk_level} risk level and clinical factors",
+                "category": "clinical"
+            },
+            {
+                "priority": "medium",
+                "action": f"Evaluate {risk_type.replace('_', ' ')} risk factors",
+                "rationale": "Address modifiable risk factors",
+                "category": "preventive"
+            }
+        ]
+        
+        # Add explainability data if requested
+        if include_explainability:
+            # Extract feature names from clinical_data
+            feature_names = list(clinical_data.keys())
+            # Generate explainability dictionary with feature importances
+            explainability = {
+                "method": "SHAP",
+                "feature_importance": {}
+            }
+            
+            # Add feature importances (using deterministic values based on feature name and risk_type)
+            total_importance = 0.0
+            raw_importances = {}
+            
+            for feature in feature_names:
+                # Hash the feature name with risk_type to get a deterministic value
+                feature_hash = int(hashlib.md5(f"{feature}_{risk_type}".encode()).hexdigest(), 16)
+                importance = (feature_hash % 100) / 100.0
+                raw_importances[feature] = importance
+                total_importance += importance
+            
+            # Normalize importances to sum to 1.0
+            for feature, importance in raw_importances.items():
+                explainability["feature_importance"][feature] = importance / total_importance if total_importance > 0 else 0.0
+            
+            result["explainability"] = explainability
+        
+        # Add visualization data
+        result["visualization_data"] = {
+            "risk_threshold": 0.7,  # Configurable threshold
+            "risk_distribution": {
+                "very_low": self._risk_level_distribution["very_low"] / 100,
+                "low": self._risk_level_distribution["low"] / 100,
+                "moderate": self._risk_level_distribution["moderate"] / 100,
+                "high": self._risk_level_distribution["high"] / 100,
+                "very_high": self._risk_level_distribution["very_high"] / 100
+            },
+            "historical_trend": [
+                {"date": (datetime.now() - timedelta(days=30)).isoformat(), "risk_score": max(0.1, risk_score - 0.2)},
+                {"date": (datetime.now() - timedelta(days=20)).isoformat(), "risk_score": max(0.1, risk_score - 0.1)},
+                {"date": (datetime.now() - timedelta(days=10)).isoformat(), "risk_score": risk_score},
+                {"date": datetime.now().isoformat(), "risk_score": risk_score}
+            ]
+        }
         
         # Store prediction for later retrieval
         self._predictions[prediction_id] = result
         
         # Notify observers
         self._notify_observers(EventType.PREDICTION, {
-            "prediction_type": "risk",
-            "risk_type": risk_type,
+            "prediction_id": prediction_id,
             "patient_id": patient_id,
-            "prediction_id": prediction_id
+            "risk_type": risk_type,
+            "risk_level": risk_level,
+            "timestamp": result["timestamp"]
         })
         
         return result
@@ -448,32 +524,29 @@ class MockXGBoostService(XGBoostInterface):
     async def predict_outcome(
         self,
         patient_id: str,
-        outcome_timeframe: dict[str, int],
+        outcome_timeframe: dict[str, Any],
         clinical_data: dict[str, Any],
         treatment_plan: dict[str, Any],
         **kwargs
     ) -> dict[str, Any]:
         """
-        Predict clinical outcomes based on treatment plan.
+        Predict treatment outcomes for a patient.
         
         Args:
-            patient_id: Patient identifier
-            outcome_timeframe: Timeframe for outcome prediction
-            clinical_data: Clinical data for prediction
-            treatment_plan: Treatment plan details
-            **kwargs: Additional prediction parameters
+            patient_id: ID of the patient
+            outcome_timeframe: Timeframe for prediction (e.g., {"timeframe": "short_term"})
+            clinical_data: Dictionary of clinical data for prediction
+            treatment_plan: Dictionary describing the treatment plan
+            **kwargs: Additional arguments for prediction
             
         Returns:
-            Outcome prediction result
+            Dictionary with prediction results
             
         Raises:
-            ValidationError: If parameters are invalid
-            DataPrivacyError: If PHI is detected in data
-            PredictionError: If prediction fails
+            ValidationError: If input parameters are invalid
+            DataPrivacyError: If inputs contain potential PHI
         """
-        self._ensure_initialized()
-        
-        # Simulate network latency
+        # Simulate network delay
         self._simulate_delay()
         
         # Validate parameters
@@ -483,58 +556,121 @@ class MockXGBoostService(XGBoostInterface):
         self._check_phi_in_data(clinical_data)
         self._check_phi_in_data(treatment_plan)
         
+        # Extract parameters
+        time_frame_days = outcome_timeframe.get("days", 90)
+        if "timeframe" in outcome_timeframe:
+            if outcome_timeframe["timeframe"] == "short_term":
+                time_frame_days = 30
+            elif outcome_timeframe["timeframe"] == "medium_term":
+                time_frame_days = 90
+            elif outcome_timeframe["timeframe"] == "long_term":
+                time_frame_days = 180
+        
+        include_trajectory = kwargs.get("include_trajectory", True)
+        outcome_type = kwargs.get("outcome_type", "recovery")
+        
         # Generate prediction ID
-        prediction_id = f"outcome-{uuid.uuid4()}"
+        prediction_id = f"outcome_{outcome_type}_{hashlib.md5(f'{patient_id}_{int(time.time())}'.encode()).hexdigest()[:8]}"
         
-        # Convert timeframe to days for consistent representation
-        time_frame_days = 0
-        if "days" in outcome_timeframe:
-            time_frame_days += outcome_timeframe["days"]
-        if "weeks" in outcome_timeframe:
-            time_frame_days += outcome_timeframe["weeks"] * 7
-        if "months" in outcome_timeframe:
-            time_frame_days += outcome_timeframe["months"] * 30
-        
-        # Determine outcome type from kwargs or default to symptom
-        outcome_type = kwargs.get("outcome_type", "symptom")
-        
-        # Generate a deterministic outcome score based on inputs
+        # Generate deterministic outcome score
         outcome_score = self._generate_deterministic_outcome_score(
-            patient_id, time_frame_days, clinical_data, treatment_plan, outcome_type
+            patient_id=patient_id,
+            time_frame_days=time_frame_days,
+            clinical_data=clinical_data,
+            treatment_plan=treatment_plan,
+            outcome_type=outcome_type
         )
         
-        # Create prediction result
+        # Generate confidence (normally high for mock)
+        confidence = 0.80 + (outcome_score * 0.15)  # Higher confidence for more extreme scores
+        confidence = min(0.95, max(0.75, confidence))  # Clamp between 0.75 and 0.95
+        
+        # Create base result
         result = {
             "prediction_id": prediction_id,
             "patient_id": patient_id,
             "outcome_type": outcome_type,
-            "outcome_score": outcome_score,
-            "time_frame_days": time_frame_days,
-            "confidence": round(0.5 + outcome_score * 0.3, 2),
-            "features": self._extract_features(clinical_data),
-            "treatment_features": self._extract_features(treatment_plan),
-            "timestamp": datetime.now().isoformat()
+            "probability": outcome_score,
+            "confidence": confidence,
+            "time_frame": outcome_timeframe,
+            "timestamp": datetime.now().isoformat(),
+            "model_version": "mock-1.0",
         }
         
-        # Add trajectory prediction
-        result["trajectory"] = self._generate_outcome_trajectory(
-            outcome_type, outcome_score, time_frame_days
+        # Generate outcome details
+        outcome_details = self._generate_outcome_details(
+            outcome_type=outcome_type,
+            outcome_score=outcome_score,
+            clinical_data=clinical_data,
+            treatment_plan=treatment_plan
         )
+        result["outcome_details"] = outcome_details
         
-        # Add outcome details
-        result["outcome_details"] = self._generate_outcome_details(
-            outcome_type, outcome_score, clinical_data, treatment_plan
-        )
+        # Add contributing factors
+        result["contributing_factors"] = {
+            "positive": [
+                {
+                    "factor": "medication_adherence",
+                    "impact": "high",
+                    "description": "Regular medication adherence improves outcomes"
+                },
+                {
+                    "factor": "therapy_engagement",
+                    "impact": "medium",
+                    "description": "Consistent therapy attendance supports recovery"
+                }
+            ],
+            "negative": [
+                {
+                    "factor": "stress_levels",
+                    "impact": "medium",
+                    "description": "Ongoing stressors may slow progress"
+                }
+            ]
+        }
+        
+        # Add recommendations
+        result["recommendations"] = [
+            {
+                "priority": "high",
+                "action": f"Continue {treatment_plan.get('therapy_type', 'current therapy')}",
+                "rationale": "Shows positive response trajectory",
+                "category": "treatment"
+            },
+            {
+                "priority": "medium",
+                "action": "Monitor medication side effects",
+                "rationale": "Ensure continued adherence",
+                "category": "monitoring"
+            }
+        ]
+        
+        # Add trajectory data if requested
+        if include_trajectory:
+            trajectory = self._generate_outcome_trajectory(
+                outcome_type=outcome_type,
+                outcome_score=outcome_score,
+                time_frame_days=time_frame_days
+            )
+            result["visualization_data"] = {
+                "trajectory": trajectory,
+                "benchmark": {
+                    "population_mean": 0.65,
+                    "similar_cases_mean": 0.7,
+                    "optimal_response": 0.85
+                }
+            }
         
         # Store prediction for later retrieval
         self._predictions[prediction_id] = result
         
         # Notify observers
         self._notify_observers(EventType.PREDICTION, {
-            "prediction_type": "outcome",
-            "outcome_type": outcome_type,
+            "prediction_id": prediction_id,
             "patient_id": patient_id,
-            "prediction_id": prediction_id
+            "outcome_type": outcome_type,
+            "probability": outcome_score,
+            "timestamp": result["timestamp"]
         })
         
         return result
