@@ -142,7 +142,18 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                             "LIFESPAN_REDIS_INIT_WARN: Test env; "
                             "proceeding without Redis after ping fail."
                         )
-                        fastapi_app.state.redis_service = None
+                        # In test environment, create a mock Redis service
+                        from unittest.mock import AsyncMock, MagicMock
+                        mock_redis = MagicMock()
+                        mock_redis.ping = AsyncMock(return_value=True)
+                        mock_redis.close = AsyncMock(return_value=None)
+                        mock_redis.get = AsyncMock(return_value=None)
+                        mock_redis.set = AsyncMock(return_value=True)
+                        mock_redis.delete = AsyncMock(return_value=True)
+                        mock_redis.exists = AsyncMock(return_value=False)
+                        mock_redis.incr = AsyncMock(return_value=1)
+                        mock_redis.expire = AsyncMock(return_value=True)
+                        fastapi_app.state.redis_service = mock_redis
                     else:
                         raise redis.exceptions.ConnectionError(
                             "Redis ping failed after connection."
@@ -155,14 +166,25 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
                     e,
                     exc_info=True
                 )
-                if current_settings.ENVIRONMENT != "test":
-                    raise RuntimeError(f"Redis connection failed: {e}") from e
-                else:
+                if current_settings.ENVIRONMENT == "test":
                     logger.warning(
                         "LIFESPAN_REDIS_INIT_WARN: Test env; "
-                        "proceeding without Redis connection."
+                        "proceeding with mock Redis service."
                     )
-                    fastapi_app.state.redis_service = None
+                    # Create a mock Redis service for testing
+                    from unittest.mock import AsyncMock, MagicMock
+                    mock_redis = MagicMock()
+                    mock_redis.ping = AsyncMock(return_value=True)
+                    mock_redis.close = AsyncMock(return_value=None)
+                    mock_redis.get = AsyncMock(return_value=None)
+                    mock_redis.set = AsyncMock(return_value=True)
+                    mock_redis.delete = AsyncMock(return_value=True)
+                    mock_redis.exists = AsyncMock(return_value=False)
+                    mock_redis.incr = AsyncMock(return_value=1)
+                    mock_redis.expire = AsyncMock(return_value=True)
+                    fastapi_app.state.redis_service = mock_redis
+                else:
+                    raise RuntimeError(f"Redis connection failed: {e}") from e
         else:
             logger.info(
                 "LIFESPAN_REDIS_SKIP: REDIS_URL not set, skipping Redis initialization."
@@ -200,16 +222,6 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             else:
                 raise RuntimeError(f"JWT service initialization failed: {e}") from e
 
-        if fastapi_app.state.redis_service:
-            fastapi_app.add_middleware(
-                RateLimitingMiddleware, redis_service=fastapi_app.state.redis_service
-            )
-            logger.info("RateLimitingMiddleware added.")
-        else:
-            logger.warning(
-                "RateLimitingMiddleware NOT added: Redis service not available."
-            )
-
         yield  # Application runs here
 
     finally:
@@ -242,7 +254,8 @@ def create_application(
     include_test_routers: bool = False,
     jwt_service_override: IJWTService | None = None,
     skip_auth_middleware: bool = False,
-    disable_audit_middleware: bool = False
+    disable_audit_middleware: bool = False,
+    skip_redis_middleware: bool = False
 ) -> FastAPI:
     """
     Application factory function to create and configure a FastAPI application instance.
@@ -256,6 +269,7 @@ def create_application(
         jwt_service_override: Optional `JWTServiceInterface` for testing or custom JWT handling.
         skip_auth_middleware: If True, skips adding AuthenticationMiddleware.
         disable_audit_middleware: If True, skips adding AuditLogMiddleware.
+        skip_redis_middleware: If True, skips adding RateLimitingMiddleware.
 
     Returns:
         A configured FastAPI application instance.
@@ -294,6 +308,11 @@ def create_application(
     if jwt_service_override:
         app_instance.state.jwt_service = jwt_service_override
         logger.info("Using JWT service override for testing")
+    
+    # Store Redis middleware flag in app state
+    app_instance.state.skip_redis_middleware = skip_redis_middleware
+    if skip_redis_middleware:
+        logger.info("Redis rate limiting middleware will be skipped (test mode)")
 
     @app_instance.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -326,15 +345,11 @@ def create_application(
         )
         logger.info(
             "CORSMiddleware added for origins: %s",
-            current_settings.BACKEND_CORS_ORIGINS
+            [str(origin) for origin in current_settings.BACKEND_CORS_ORIGINS]
         )
-    else:
-        logger.info(
-            "CORSMiddleware NOT added: No BACKEND_CORS_ORIGINS configured."
-        )
-
-    # Logging Middleware (basic request/response logging)
-    app_instance.add_middleware(LoggingMiddleware, logger=logger)
+        
+    # Add logging middleware (goes near beginning of chain to log everything)
+    app_instance.add_middleware(LoggingMiddleware)
     logger.info("LoggingMiddleware added.")
 
     # API Routers
