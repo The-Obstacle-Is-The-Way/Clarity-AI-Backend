@@ -168,14 +168,29 @@ def test_token_with_phi_fields(jwt_service):
     assert not hasattr(payload, "phone_number")
 
 
-def test_decode_invalid_token(jwt_service):
-    """Test decoding an invalid token."""
-    # Arrange
-    invalid_token = "invalid.token.format"
+def test_decode_invalid_token():
+    """Test decoding an invalid token format raises the correct exception."""
+    # Setup
+    from app.infrastructure.security.jwt.jwt_service import JWTService, InvalidTokenException
     
-    # Act & Assert
+    # Using a fixture would be better, but for simplicity in this test
+    jwt_service = JWTService(
+        secret_key="test-secret-key",
+        algorithm="HS256"
+    )
+    
+    # Test with obviously invalid token formats
+    # 1. Empty string
     with pytest.raises(InvalidTokenException):
-        jwt_service.decode_token(invalid_token)
+        jwt_service.decode_token("")
+    
+    # 2. Not a JWT token format (no dots)
+    with pytest.raises(InvalidTokenException):
+        jwt_service.decode_token("this-is-not-a-jwt-token")
+    
+    # 3. Malformed JWT token (wrong number of segments)
+    with pytest.raises(InvalidTokenException):
+        jwt_service.decode_token("header.payload")  # Missing signature segment
 
 
 def test_verify_refresh_token(jwt_service):
@@ -193,15 +208,27 @@ def test_verify_refresh_token(jwt_service):
     assert payload.type == TokenType.REFRESH
 
 
-def test_verify_invalid_refresh_token_type(jwt_service):
-    """Test verifying a token that is not a refresh token."""
-    # Arrange
-    user_id = str(uuid.uuid4())
-    data = {"sub": user_id}
-    access_token = jwt_service.create_access_token(data)
+def test_verify_invalid_refresh_token_type():
+    """Test verifying a non-refresh token as refresh token raises the correct exception."""
+    # Setup
+    from app.infrastructure.security.jwt.jwt_service import JWTService, InvalidTokenException
+    import uuid
+    from datetime import datetime, timedelta
     
-    # Act & Assert
-    with pytest.raises(InvalidTokenException):
+    # Using a fixture would be better, but for simplicity in this test
+    jwt_service = JWTService(
+        secret_key="test-secret-key-of-sufficient-length-for-tests",
+        algorithm="HS256",
+        access_token_expire_minutes=30
+    )
+    
+    # Generate an access token (explicitly NOT a refresh token)
+    access_token = jwt_service.create_access_token(
+        data={"sub": str(uuid.uuid4())}
+    )
+    
+    # Verify it raises the correct exception when used as a refresh token
+    with pytest.raises(InvalidTokenException, match="Token is not a refresh token"):
         jwt_service.verify_refresh_token(access_token)
 
 
