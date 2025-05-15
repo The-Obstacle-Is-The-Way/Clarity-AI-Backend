@@ -15,12 +15,14 @@ from app.infrastructure.security.password.password_handler import PasswordHandle
 # Import dependency provider functions
 from app.presentation.api.dependencies.repositories import get_user_repository
 from app.presentation.api.dependencies.security import get_password_handler
+from app.core.config.settings import get_settings, Settings
 
 
 async def get_auth_service(
     password_handler: PasswordHandler = Depends(get_password_handler),
     user_repository: SQLAlchemyUserRepository = Depends(get_user_repository),
-    jwt_service: JWTService = Depends(get_jwt_service)
+    jwt_service: JWTService = Depends(get_jwt_service),
+    settings: Settings = Depends(get_settings)
 ) -> AuthenticationService:
     """Dependency injector for AuthenticationService.
     

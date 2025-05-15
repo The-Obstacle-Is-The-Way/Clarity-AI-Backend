@@ -14,7 +14,8 @@ from starlette.status import (
 )
 
 from app.core.domain.entities.user import UserStatus
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+# Import concrete implementation instead of interface for FastAPI compatibility
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.domain.entities.auth import UnauthenticatedUser
 from app.domain.exceptions.auth_exceptions import (
@@ -36,7 +37,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         jwt_service: JWTServiceInterface,
-        user_repository: type[IUserRepository],
+        user_repository: type[SQLAlchemyUserRepository],
         public_paths: set[str],
         session_factory: Callable[[], AsyncIterator[AsyncSession]],
         public_path_regexes: list[str] = None,  # Default to None as list[str] | None is not supported in all Python versions
