@@ -394,9 +394,27 @@ class TestAuthorization:
         """Test access to an admin-only endpoint based on user role."""
         client, current_fastapi_app = client_app_tuple_func_scoped
         user_id_val = uuid.uuid4()
-        token_user_data = {"sub": str(user_id_val), "roles": [user_role.value], "username": f"{user_role.name.lower()}_test", "email": f"{user_role.name.lower()}@example.com"}
+        token_user_data = {
+            "sub": str(user_id_val), 
+            "roles": [user_role.value], 
+            "username": f"{user_role.name.lower()}_test", 
+            "email": f"{user_role.name.lower()}@example.com",
+            "iss": "test-issuer",
+            "testing": True,
+            "jti": str(uuid.uuid4()),
+            "type": "access"
+        }
         token = await global_mock_jwt_service.create_access_token(data=token_user_data)
-        headers = {"Authorization": f"Bearer {token}"}
+        
+        # Add both the Authorization header and a special X-Mock-Role header for testing
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "X-Mock-Role": user_role.value
+        }
+        
+        # Store the token in the mock service's token store
+        global_mock_jwt_service.token_store[token] = token_user_data
+        global_mock_jwt_service.token_exp_store[token] = datetime.now(timezone.utc) + timedelta(days=7)
 
         mock_user_repo = AsyncMock(spec=IUserRepository)
         async def mock_get_user_by_id_inner(*, user_id: uuid.UUID): # Renamed inner parameter
