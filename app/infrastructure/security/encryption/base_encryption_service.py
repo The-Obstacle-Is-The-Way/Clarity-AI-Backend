@@ -670,7 +670,7 @@ class BaseEncryptionService:
             data: The string data to hash.
 
         Returns:
-            A tuple containing (salt_hex, derived_key_hex).
+            A tuple containing (hash_hex, salt_hex).
         """
         if not data:
             # Consider if an empty string should be hashed or raise an error
@@ -692,8 +692,9 @@ class BaseEncryptionService:
         )
         key = kdf.derive(data.encode())
         
-        # Return salt and key as hex strings
-        return salt.hex(), key.hex()
+        # Return key and salt as hex strings
+        # Order is important - matches test expectations (hash_value, salt_hex)
+        return key.hex(), salt.hex()
 
     def verify_hash(self, data: str, salt_hex: str, hash_to_verify_hex: str) -> bool:
         """Verify a hash against the provided data and salt.
@@ -710,6 +711,7 @@ class BaseEncryptionService:
             return False # Or raise ValueError, depending on desired strictness
         
         try:
+            # Convert hex strings to bytes
             salt = bytes.fromhex(salt_hex)
             stored_key = bytes.fromhex(hash_to_verify_hex)
         except ValueError:
@@ -719,6 +721,7 @@ class BaseEncryptionService:
         settings = get_settings()
         iterations = getattr(settings, 'HASH_ITERATIONS', 390000)
         
+        # Key derivation function
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
@@ -734,7 +737,7 @@ class BaseEncryptionService:
             # Use constant time comparison to prevent timing attacks
             return hmac.compare_digest(new_key, stored_key)
         except Exception as e:
-            logger.error(f"Hash verification failed: {e}")
+            logger.debug(f"Hash verification failed: {e}")
             return False
 
     def generate_hmac(self, data: str) -> tuple[str, str]:
