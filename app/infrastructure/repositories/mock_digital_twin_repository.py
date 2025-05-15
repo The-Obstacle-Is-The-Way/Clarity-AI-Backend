@@ -21,6 +21,47 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         """Initialize the mock repository with in-memory storage."""
         self._digital_twins = {}
         self._sessions = {}
+        self._states = {}  # Store digital twin states by patient_id
+    
+    async def save(self, state) -> Any:
+        """
+        Save a digital twin state.
+        
+        Args:
+            state: Digital twin state object
+            
+        Returns:
+            The saved state
+        """
+        state_id = str(state.id)
+        patient_id = str(state.patient_id)
+        
+        # Create a list for this patient if it doesn't exist
+        if patient_id not in self._states:
+            self._states[patient_id] = []
+        
+        # Add the state to the patient's state list
+        self._states[patient_id].append(state)
+        
+        return state
+    
+    async def get_latest_state(self, patient_id: Union[str, UUID]) -> Optional[Any]:
+        """
+        Get the latest digital twin state for a patient.
+        
+        Args:
+            patient_id: Patient ID
+            
+        Returns:
+            The latest state if found, None otherwise
+        """
+        patient_id_str = str(patient_id)
+        
+        if patient_id_str not in self._states or not self._states[patient_id_str]:
+            return None
+        
+        # Sort by version (descending) and return the first one
+        return sorted(self._states[patient_id_str], key=lambda s: s.version, reverse=True)[0]
     
     async def create_digital_twin(self, twin_data: Dict[str, Any]) -> Dict[str, Any]:
         """
