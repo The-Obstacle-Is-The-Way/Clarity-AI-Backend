@@ -249,6 +249,12 @@ class TestJWTAuthentication:
             "type": "access"
         }
         
+        # Add the issuer and audience claims if they're set in the JWT service
+        if jwt_service.issuer:
+            user_data["iss"] = jwt_service.issuer
+        if jwt_service.audience:
+            user_data["aud"] = jwt_service.audience
+        
         # Directly encode the token with explicit claims, bypassing the service's methods
         expired_token = jwt.encode(
             user_data,
@@ -258,7 +264,7 @@ class TestJWTAuthentication:
         
         # The token should be rejected as expired
         with pytest.raises(TokenExpiredException):
-            jwt_service.decode_token(expired_token)
+            jwt_service.decode_token(expired_token, options={"verify_exp": True})
         
         # Test malformed token
         malformed_token = "this.is.not.jwt"

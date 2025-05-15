@@ -1,188 +1,73 @@
-# SPARC - AI Agent for Programming and Research Tasks
+# SPARC - AI Research Tool for Codebase Analysis
 
 ## Overview
 
-SPARC (Superior Programming Assistant for Research and Coding) is a powerful CLI tool that provides AI-assisted capabilities for software development tasks. It functions as an autonomous agent that can analyze codebases, conduct research, implement features, fix bugs, and provide code explanations.
+SPARC (Superior Programming Assistant for Research and Coding) is a powerful CLI tool for codebase analysis and research. When used in **research-only mode**, it functions as a non-invasive diagnostic tool that can analyze code, identify issues, and provide insights without making any changes to your codebase.
 
-## Installation
+## Effective Usage in Cursor IDE
 
-SPARC is pre-installed in the project environment. No additional installation steps are required.
+SPARC works best in Cursor IDE when used exclusively in **research-only mode**, which provides detailed analysis without attempting to make changes to your code.
 
-## Basic Usage
-
-The general syntax for using SPARC is:
+### Core Research Command
 
 ```bash
-sparc -m "Your task description" [options]
+sparc -m "Your detailed question or analysis request" --research-only
 ```
 
-### Core Command Options
+The `--research-only` flag is critical - it ensures SPARC only analyzes and reports findings without trying to modify files.
 
-| Option | Description |
-|--------|-------------|
-| `-m, --message` | The task or query to be executed by the agent |
-| `--research-only` | Only perform research without implementation |
-| `--non-interactive` | Run in non-interactive mode (for server deployments) |
-| `--hil, -H` | Enable human-in-the-loop mode for additional prompting |
-| `--chat` | Enable chat mode with direct human interaction |
-| `--cowboy-mode` | Skip interactive approval for shell commands |
+## Best Practices for Research Mode
 
-### Provider Configuration
+1. **Be specific in your queries**: The more specific your question, the more focused and helpful the analysis.
+   ```bash
+   sparc -m "Analyze why the JWT token expiration tests are failing in test_security_boundary.py" --research-only
+   ```
 
-| Option | Description |
-|--------|-------------|
-| `--provider` | The LLM provider to use |
-| `--model` | The model name to use |
-| `--expert-provider` | The LLM provider for expert knowledge queries |
-| `--expert-model` | The model name for expert knowledge queries |
+2. **Focus on one problem area at a time**: Target specific components or issues rather than asking for a full codebase analysis.
+   ```bash
+   sparc -m "Examine the token validation in jwt_service.py to identify inconsistencies in error handling" --research-only
+   ```
 
-## Operation Modes
+3. **Request code path analysis**: Have SPARC trace execution paths through the code to understand complex issues.
+   ```bash
+   sparc -m "Trace the JWT token validation flow from middleware through service to identify where token validation fails" --research-only
+   ```
 
-### Research Mode
+4. **Ask for pattern identification**: SPARC can identify patterns and inconsistencies across multiple files.
+   ```bash
+   sparc -m "Identify inconsistent exception handling patterns across all JWT-related services" --research-only
+   ```
 
-Research mode analyzes the codebase without making changes, providing insights and understanding.
+## When to Use SPARC Research Mode
 
-```bash
-sparc -m "Analyze the JWT authentication implementation" --research-only
-```
+SPARC research mode is particularly useful for:
 
-This is ideal for:
-- Understanding complex codebases
-- Diagnosing issues
-- Planning refactoring
-- Analyzing test failures
-- Security reviews
+- Diagnosing failing tests by analyzing test code and implementation
+- Understanding complex execution flows across multiple files
+- Identifying inconsistent patterns in error handling or validation logic
+- Exploring architectural issues without making changes
+- Getting insights on code quality and potential improvements
 
-### Implementation Mode
+## Implementation Mode Warning
 
-Implementation mode suggests and executes changes to fulfill the requested task.
+⚠️ **Important**: The implementation mode of SPARC (without the `--research-only` flag) attempts to make changes to your code automatically. This mode has shown compatibility issues with Cursor IDE and may not work reliably. Stick to research-only mode when working with Cursor IDE.
 
-```bash
-sparc -m "Fix the JWT token expiration handling in the authentication service"
-```
+## Example Workflow with Cursor IDE
 
-This is useful for:
-- Implementing new features
-- Fixing bugs
-- Refactoring code
-- Adding tests
+1. Run failing tests to identify issues:
+   ```bash
+   python -m pytest app/tests/path/to/failing/test.py -v
+   ```
 
-### Human-in-the-Loop Mode
+2. Use SPARC to analyze the specific failing test:
+   ```bash
+   sparc -m "Analyze why test_token_validation is failing in test_jwt_auth.py with 'Invalid issuer' error" --research-only
+   ```
 
-This mode allows SPARC to ask clarifying questions during execution.
+3. Review SPARC's analysis in the terminal output
 
-```bash
-sparc -m "Implement rate limiting for the API endpoints" --hil
-```
+4. Based on SPARC's insights, manually implement fixes with Cursor IDE's assistance
 
-Ideal for complex tasks where additional context might be needed during implementation.
+5. Run tests again to verify your fix worked
 
-### Chat Mode
-
-Provides an interactive dialogue about the codebase.
-
-```bash
-sparc --chat
-```
-
-Perfect for exploration and Q&A sessions about the codebase.
-
-## Workflow Integration
-
-### With Cursor IDE
-
-SPARC works excellently alongside Cursor IDE's built-in AI capabilities:
-
-1. **Initial Research Phase**
-   - Use SPARC for deep analysis: `sparc -m "Analyze [component]" --research-only`
-   - Use Cursor IDE for file navigation and focused code understanding
-
-2. **Planning Phase**
-   - Use SPARC's research output to inform planning
-   - Use Cursor IDE to implement the plan or make targeted changes
-
-3. **Implementation Phase**
-   - For complex implementations: `sparc -m "Implement [specific task]" --hil`
-   - For simpler tasks: Direct implementation with Cursor IDE's assistance
-
-4. **Testing and Validation**
-   - Use `sparc -m "Test and review changes to [component]" --research-only` to validate changes
-   - Use Cursor IDE for quick test running and debugging
-
-## Best Practices
-
-1. **Start with Research**
-   Always begin with `--research-only` to understand the problem space before implementation.
-
-2. **Be Specific**
-   Provide detailed, focused tasks rather than broad ones:
-   - Good: "Fix the token expiration handling in jwt_service.py"
-   - Avoid: "Fix the authentication system"
-
-3. **Use Human-in-the-Loop for Complex Tasks**
-   The `--hil` flag enables SPARC to ask questions when it needs more information.
-
-4. **Vertical Slices**
-   Break down large tasks into smaller, focused requests that address a complete vertical slice of functionality.
-
-5. **Verify Changes**
-   Always review and test changes made by SPARC before committing.
-
-6. **Security Considerations**
-   Be cautious with `--cowboy-mode` as it skips command approval. Only use in trusted environments.
-
-## Common Use Cases and Examples
-
-### Code Analysis
-
-```bash
-sparc -m "Analyze the failing JWT tests in the codebase" --research-only
-```
-
-### Bug Fixing
-
-```bash
-sparc -m "Fix the token expiration handling in jwt_service.py"
-```
-
-### Feature Implementation
-
-```bash
-sparc -m "Implement rate limiting middleware for the API endpoints" --hil
-```
-
-### Refactoring
-
-```bash
-sparc -m "Refactor the user authentication flow to use the repository pattern" --hil
-```
-
-### Performance Optimization
-
-```bash
-sparc -m "Identify and optimize database query bottlenecks in the user service" --research-only
-```
-
-### Security Review
-
-```bash
-sparc -m "Review the JWT implementation for security vulnerabilities" --research-only
-```
-
-## Conclusion
-
-SPARC is a powerful tool that enhances the development workflow when used correctly. It works best when:
-- Tasks are specific and well-defined
-- You start with research before implementation
-- You maintain a balance between automation and human oversight
-- You combine it with other tools in your development environment
-
-For more complex operations or queries about the SPARC tool itself, you can always run:
-
-```bash
-sparc --help
-```
-
----
-
-*This documentation was created to facilitate efficient use of the SPARC tool within the Clarity AI Digital Twin project.*
+This workflow combines SPARC's analytical capabilities with Cursor IDE's editing capabilities for an efficient problem-solving process.
