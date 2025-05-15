@@ -22,8 +22,9 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from asgi_lifespan import LifespanManager
 from faker import Faker
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Request
 from httpx import ASGITransport, AsyncClient
+from fastapi.testclient import TestClient
 
 from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings
@@ -338,6 +339,14 @@ async def test_app(
     # Set Redis service override before lifespan starts
     app.state.redis_service_override = mock_redis_service
     
+    # Add custom test middleware that sets actual_session_factory on request.state
+    @app.middleware("http")
+    async def add_session_factory_to_request_state(request: Request, call_next):
+        # Add a mock async_sessionmaker to the request.state
+        request.state.actual_session_factory = AsyncMock()
+        response = await call_next(request)
+        return response
+    
     # Add dependency overrides
     app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
     app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
@@ -349,6 +358,12 @@ async def test_app(
     app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
     app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    
+    # Also override get_db_session to avoid database dependency
+    from app.presentation.api.dependencies.database import get_db_session, get_async_session_utility
+    mock_session = AsyncMock()
+    app.dependency_overrides[get_db_session] = lambda: mock_session
+    app.dependency_overrides[get_async_session_utility] = lambda: mock_session
     
     # DEBUG: Print all registered routes in the app
     print("\n=== REGISTERED ROUTES ===")
@@ -385,7 +400,7 @@ class TestBiometricAlertsEndpoints:
         # Test is now enabled since we've implemented the endpoint
         # pytest.skip("Skipping test until authentication issues are fixed")
         headers = get_valid_provider_auth_headers
-        response = await client.get("/api/v1/biometric-alert-rules", headers=headers)
+        response = await client.get("/api/v1/biometric-alert-rules/biometric-alert-rules", headers=headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -484,7 +499,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_rule_id = str(uuid.uuid4())
         response = await client.get(
-            f"/api/v1/biometric-alert-rules/{non_existent_rule_id}",
+            f"/api/v1/biometric-alert-rules/biometric-alert-rules/{non_existent_rule_id}",
             headers=headers
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
