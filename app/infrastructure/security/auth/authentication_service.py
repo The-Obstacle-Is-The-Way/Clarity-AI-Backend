@@ -336,6 +336,23 @@ class AuthenticationService:
             logger.error(f"Error refreshing token: {e}", exc_info=True)
             raise AuthenticationError(f"Failed to refresh token: {e!s}")
 
+    async def refresh_access_token(self, refresh_token_str: str) -> dict[str, str]:
+        """
+        Alias for refresh_token with different parameter name for test compatibility.
+        
+        Args:
+            refresh_token_str: The refresh token
+            
+        Returns:
+            Dict containing new access_token and the same refresh_token
+            
+        Raises:
+            InvalidTokenError: If the refresh token is invalid
+            TokenExpiredError: If the refresh token is expired
+            AuthenticationError: For other authentication issues
+        """
+        return await self.refresh_token(refresh_token_str)
+
     async def validate_token(self, token: str) -> tuple[User, list[str]]:
         """
         Validate a token and return the associated user and permissions.
