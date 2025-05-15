@@ -46,15 +46,12 @@ class DIContainer:
     
     def register(self, interface: type[T], implementation: T) -> None:
         """
-        Register a service implementation for an interface.
+        Register an implementation for an interface.
         
         Args:
-            interface: The interface type
-            implementation: The concrete implementation instance
+            interface: The interface type to register
+            implementation: The implementation instance
         """
-        if interface in self._services:
-            logger.debug(f"Overriding existing registration for {interface.__name__}")
-        
         self._services[interface] = implementation
         
         register_msg = f"Registered {'MOCK' if self._is_mock else ''} {interface.__name__} in DI container."
@@ -62,6 +59,19 @@ class DIContainer:
             logger.info(register_msg)
         else:
             logger.debug(register_msg)
+    
+    def register_singleton(self, interface: type[T], implementation_type: type[T]) -> None:
+        """
+        Register a type that will be instantiated as a singleton.
+        
+        Args:
+            interface: The interface type to register
+            implementation_type: The implementation type to instantiate
+        """
+        # Create a new instance and register it
+        implementation = implementation_type()
+        self.register(interface, implementation)
+        logger.info(f"Registered singleton {implementation_type.__name__} for {interface.__name__}")
     
     def register_factory(self, interface: type[T], factory: Callable[[], T]) -> None:
         """
