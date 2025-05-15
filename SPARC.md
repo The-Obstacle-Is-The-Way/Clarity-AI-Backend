@@ -4,9 +4,14 @@
 
 SPARC (Superior Programming Assistant for Research and Coding) is a powerful CLI tool for codebase analysis and research. When used in **research-only mode**, it functions as a non-invasive diagnostic tool that can analyze code, identify issues, and provide insights without making any changes to your codebase.
 
-## Effective Usage in Cursor IDE
+## Recommended Workflow with Cursor IDE
 
-SPARC works best in Cursor IDE when used exclusively in **research-only mode**, which provides detailed analysis without attempting to make changes to your code.
+The optimal way to use SPARC with Cursor IDE is through a combined approach:
+
+1. **Use SPARC in research-only mode** to analyze issues and gain deep insights about the codebase
+2. **Use Claude in Cursor IDE** to implement the solutions based on SPARC's analysis
+
+This workflow combines SPARC's deep analytical capabilities with Claude's direct integration with the Cursor IDE for controlled, transparent code editing.
 
 ### Core Research Command
 
@@ -14,7 +19,7 @@ SPARC works best in Cursor IDE when used exclusively in **research-only mode**, 
 sparc -m "Your detailed question or analysis request" --research-only
 ```
 
-The `--research-only` flag is critical - it ensures SPARC only analyzes and reports findings without trying to modify files.
+The `--research-only` flag ensures SPARC only analyzes and reports findings without trying to modify files.
 
 ## Best Practices for Research Mode
 
@@ -45,14 +50,21 @@ SPARC research mode is particularly useful for:
 - Diagnosing failing tests by analyzing test code and implementation
 - Understanding complex execution flows across multiple files
 - Identifying inconsistent patterns in error handling or validation logic
-- Exploring architectural issues without making changes
+- Exploring architectural issues before making changes
 - Getting insights on code quality and potential improvements
 
-## Implementation Mode Warning
+## Implementation Options
 
-⚠️ **Important**: The implementation mode of SPARC (without the `--research-only` flag) attempts to make changes to your code automatically. This mode has shown compatibility issues with Cursor IDE and may not work reliably. Stick to research-only mode when working with Cursor IDE.
+While SPARC does offer implementation capabilities, using Claude in Cursor IDE for implementation provides several advantages:
 
-## Example Workflow with Cursor IDE
+1. **Greater visibility** into exactly what changes are being made
+2. **More controlled editing** with the ability to review changes before they're applied
+3. **Better integration** with Cursor IDE features
+4. **More reliable** for complex changes that require careful coordination
+
+For simpler projects or when working outside of Cursor, SPARC's full implementation mode can be used, but the research+Claude workflow is recommended for complex production codebases.
+
+## Example Combined Workflow
 
 1. Run failing tests to identify issues:
    ```bash
@@ -61,13 +73,16 @@ SPARC research mode is particularly useful for:
 
 2. Use SPARC to analyze the specific failing test:
    ```bash
-   sparc -m "Analyze why test_token_validation is failing in test_jwt_auth.py with 'Invalid issuer' error" --research-only
+   sparc -m "Analyze why test_token_validation is failing in test_jwt_auth.py" --research-only
    ```
 
-3. Review SPARC's analysis in the terminal output
+3. Review SPARC's analysis in the terminal
 
-4. Based on SPARC's insights, manually implement fixes with Cursor IDE's assistance
+4. Have Claude implement the fix in Cursor IDE based on SPARC's analysis
 
-5. Run tests again to verify your fix worked
+5. Run the tests again to verify the fix:
+   ```bash
+   python -m pytest app/tests/path/to/failing/test.py -v
+   ```
 
-This workflow combines SPARC's analytical capabilities with Cursor IDE's editing capabilities for an efficient problem-solving process.
+This combined approach leverages the strengths of both tools while minimizing their limitations.
