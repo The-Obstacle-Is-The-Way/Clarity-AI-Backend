@@ -34,7 +34,13 @@ from app.presentation.api.schemas.xgboost import (
     TreatmentResponseResponse,
     FeatureImportanceResponse,
 )
-from app.core.services.ml.xgboost.exceptions import DataPrivacyError, ModelNotFoundError, ServiceUnavailableError, UnauthorizedError
+from app.core.services.ml.xgboost.exceptions import (
+    DataPrivacyError, 
+    ModelNotFoundError, 
+    ServiceUnavailableError, 
+    UnauthorizedError,
+    ValidationError
+)
 
 # Create logger
 logger = logging.getLogger(__name__)
