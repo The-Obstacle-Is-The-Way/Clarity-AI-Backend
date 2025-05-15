@@ -259,7 +259,6 @@ def get_valid_provider_auth_headers(global_mock_jwt_service) -> dict[str, str]:
     """Generate valid auth headers for a provider user."""
     return {"Authorization": f"Bearer test.provider.token"}
 
-@pytest.mark.skip(reason="Skipping all biometric alert tests due to lifespan issues - will be fixed in a future PR")
 @pytest.mark.asyncio
 class TestBiometricAlertsEndpoints:
     @pytest.mark.asyncio
@@ -642,8 +641,6 @@ class TestBiometricAlertsEndpoints:
 @pytest.mark.asyncio
 async def test_app(
     test_settings: AppSettings,
-    # Changed to global_mock_jwt_service to match conftest.py more clearly if needed later
-    # though this test_app uses its own parameter `mock_jwt_service` for overrides.
     global_mock_jwt_service: MagicMock,
     mock_auth_service: MagicMock,
     mock_alert_service: MagicMock,
@@ -664,12 +661,23 @@ async def test_app(
     5. Template Repository: For alert template data access mocking
     6. Event Processor: For biometric data processing mocking
     7. Current User: For authentication testing
+    
+    Note: The key difference in this implementation is that we set all dependency
+    overrides BEFORE entering the LifespanManager context. This ensures mocks
+    are used during the application startup process.
     """
     
-    # Create the application with test settings
-    app = create_application()
+    # Create the application with test settings and skip auth middleware
+    app = create_application(
+        settings_override=test_settings,
+        skip_auth_middleware=True  # Explicitly skip auth middleware setup in factory
+    )
     
-    # Override dependencies
+    # Store test settings and configure app state before lifespan manager
+    app.state.settings = test_settings
+    app.state.skip_auth_middleware = True
+    
+    # IMPORTANT: Override dependencies BEFORE LifespanManager
     app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
     app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
     app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
@@ -677,21 +685,19 @@ async def test_app(
     app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
     app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
     app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
-    
-    # Mock the current user dependency to return our provider user
     app.dependency_overrides[get_current_user] = lambda: authenticated_provider_user
     
-    # Create a test client
+    # Create test client with proper transport
     transport = ASGITransport(app=app)
     client = AsyncClient(transport=transport, base_url="http://testserver")
     
-    # Start the application lifecycle for testing
+    # Now enter the LifespanManager with all dependencies already configured
     async with LifespanManager(app):
         try:
-            # Yield both the app and client for use in tests
+            logger.info("Test app lifespan started with pre-configured dependencies")
             yield app, client
         finally:
-            # Clear dependency overrides
+            # Clean up
             app.dependency_overrides.clear()
             logger.info("Cleared dependency overrides after test")
             
