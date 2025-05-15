@@ -336,6 +336,9 @@ async def predict_risk(
         confidence_threshold = risk_data.get("confidence_threshold", 0.7)
         include_explainability = risk_data.get("include_explainability", False)
         
+        # DIAGNOSTIC: Log input parameters
+        logger.info(f"DIAGNOSTIC - Risk prediction inputs: patient_id={patient_id}, risk_type={risk_type}, include_explainability={include_explainability}")
+        
         # Make prediction
         prediction_result = await xgboost_service.predict_risk(
             patient_id=patient_id,
@@ -346,10 +349,39 @@ async def predict_risk(
             include_explainability=include_explainability
         )
         
+        # DIAGNOSTIC: Log raw prediction result
+        logger.info(f"DIAGNOSTIC - Raw prediction result: {prediction_result}")
+        logger.info(f"DIAGNOSTIC - Result type: {type(prediction_result)}")
+        if isinstance(prediction_result, dict):
+            logger.info(f"DIAGNOSTIC - Keys in prediction_result: {prediction_result.keys()}")
+            if "feature_importance" in prediction_result:
+                logger.info(f"DIAGNOSTIC - Direct feature_importance: {prediction_result['feature_importance']}")
+            if "explainability" in prediction_result:
+                logger.info(f"DIAGNOSTIC - Explainability: {prediction_result['explainability']}")
+                if isinstance(prediction_result["explainability"], dict) and "feature_importance" in prediction_result["explainability"]:
+                    logger.info(f"DIAGNOSTIC - Nested feature_importance: {prediction_result['explainability']['feature_importance']}")
+        
         # Ensure the prediction result has all expected fields
         if not isinstance(prediction_result, dict):
             logger.error(f"XGBoost service returned non-dict result: {prediction_result}")
             prediction_result = {}
+        
+        # Extract feature importance data if available
+        feature_importance = None
+        if include_explainability:
+            # First try to get feature_importance directly from result
+            feature_importance = prediction_result.get("feature_importance")
+            logger.info(f"DIAGNOSTIC - Extracted direct feature_importance: {feature_importance}")
+            
+            # If not found directly, try to get it from explainability dictionary
+            if feature_importance is None and "explainability" in prediction_result:
+                explainability_data = prediction_result.get("explainability", {})
+                if isinstance(explainability_data, dict):
+                    feature_importance = explainability_data.get("feature_importance")
+                    logger.info(f"DIAGNOSTIC - Extracted nested feature_importance: {feature_importance}")
+        
+        # DIAGNOSTIC: Log final feature_importance
+        logger.info(f"DIAGNOSTIC - Final feature_importance: {feature_importance}")
         
         # Create response with defaults for any missing fields
         response = RiskPredictionResponse(
@@ -370,10 +402,14 @@ async def predict_risk(
             supporting_evidence=prediction_result.get("supporting_evidence", []),
             recommendations=prediction_result.get("recommendations", []),
             visualization_data=prediction_result.get("visualization_data", {}),
-            # Extract feature_importance from the prediction result when include_explainability is True
-            feature_importance=prediction_result.get("feature_importance", {}) if include_explainability else None,
+            # Use the extracted feature_importance
+            feature_importance=feature_importance,
             explainability=prediction_result.get("explainability", {}) if include_explainability else None
         )
+        
+        # DIAGNOSTIC: Log response object
+        logger.info(f"DIAGNOSTIC - Response feature_importance: {response.feature_importance}")
+        logger.info(f"DIAGNOSTIC - Full response: {response.model_dump()}")
         
         # Return formatted response
         return response
