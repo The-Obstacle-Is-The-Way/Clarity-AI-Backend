@@ -280,13 +280,29 @@ class TestXGBoostIntegration:
     async def test_outcome_prediction(self, client: AsyncClient,
                                           mock_service: MockXGBoostService) -> None:
         """Test the outcome prediction workflow."""
-        # Configure mock return value
+        # Configure mock return value with schema-compatible values
+        expected_outcomes = [
+            {
+                "domain": "depression",  # Valid OutcomeDomain enum value
+                "outcome_type": "symptom_reduction",  # Valid OutcomeType enum value
+                "predicted_value": 0.75,
+                "probability": 0.8
+            },
+            {
+                "domain": "anxiety",  # Valid OutcomeDomain enum value
+                "outcome_type": "functional_improvement",  # Valid OutcomeType enum value
+                "predicted_value": 0.65,
+                "probability": 0.75
+            }
+        ]
+        
         result = {
             "prediction_id": "pred_outcome_123",
             "probability": 0.8,
             "confidence": 0.9,
             "timestamp": datetime.now().isoformat(),
             "model_version": "1.0",
+            "expected_outcomes": expected_outcomes,  # Add correctly formatted expected_outcomes
             "outcome_details": {
                 "symptom_reduction": "significant",
                 "functional_improvement": "moderate"
@@ -348,7 +364,7 @@ class TestXGBoostIntegration:
         # Verify mock service was called with correct parameters
         mock_service.predict_outcome.assert_called_once_with(
             patient_id="patient-456",
-            outcome_timeframe={"timeframe": "short_term"},
+            outcome_timeframe={"timeframe": "medium_term"},  # Match the 90 days timeframe
             clinical_data=outcome_request["clinical_data"],
             treatment_plan=outcome_request["treatment_plan"],
             include_trajectory=True
@@ -359,7 +375,9 @@ class TestXGBoostIntegration:
         assert response_data["prediction_id"] == "pred_outcome_123"
         assert response_data["probability"] == 0.8
         assert response_data["confidence"] == 0.9
-        assert "outcome_details" in response_data
+        assert "expected_outcomes" in response_data
+        assert len(response_data["expected_outcomes"]) == 2
+        assert response_data["expected_outcomes"][0]["domain"] == "depression"
 
     # --- Add tests for other endpoints (outcome, model info, etc.) ---
     # Example for model info (assuming endpoint exists in router)
