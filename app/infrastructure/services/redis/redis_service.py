@@ -126,6 +126,39 @@ class RedisService(IRedisService):
             logger.error(f"Redis exists error for keys {names}: {str(e)}")
             return 0
     
+    async def ping(self) -> bool:
+        """
+        Ping the Redis server to check connectivity.
+        
+        Returns:
+            True if the ping was successful, False otherwise
+        """
+        try:
+            result = await self._redis.ping()
+            return result
+        except Exception as e:
+            logger.error(f"Redis ping error: {str(e)}")
+            return False
+    
+    async def close(self) -> None:
+        """
+        Close the Redis connection.
+        """
+        try:
+            await self._redis.close()
+            logger.debug("Redis connection closed")
+        except Exception as e:
+            logger.error(f"Redis close error: {str(e)}")
+    
+    async def get_client(self) -> Redis:
+        """
+        Get the underlying Redis client instance.
+        
+        Returns:
+            The Redis client instance
+        """
+        return self._redis
+    
     async def expire(self, name: str, time: int) -> bool:
         """
         Set a key's time to live in seconds.
@@ -285,4 +318,4 @@ def create_redis_service(redis_url: str) -> IRedisService:
     """
     pool = redis_asyncio.ConnectionPool.from_url(redis_url)
     client = redis_asyncio.Redis(connection_pool=pool)
-    return RedisService(client)
+    return RedisService(redis_client=client)
