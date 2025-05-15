@@ -38,6 +38,19 @@ from pydantic import computed_field
 # Import the interface
 from app.core.interfaces.services.jwt_service import IJwtService
 
+# Import token type enum
+try:
+    from app.domain.enums.token_type import TokenType
+except ImportError:
+    # Fallback when enum module doesn't exist (for local testing)
+    class TokenType(str, Enum):
+        """Token types used in the application."""
+        ACCESS = "access"
+        REFRESH = "refresh"
+        RESET = "reset"   # For password reset
+        ACTIVATE = "activate"  # For account activation
+        API = "api"  # For long-lived API tokens with restricted permissions
+
 # Import user entity
 try:
     from app.domain.entities.user import User
@@ -72,15 +85,33 @@ except ImportError:
 
 # Import necessary exceptions from domain layer
 try:
-    from app.domain.exceptions.token_exceptions import InvalidTokenException, TokenExpiredException, RevokedTokenException, TokenGenerationException
+    from app.domain.exceptions.token_exceptions import (
+        TokenException,
+        InvalidTokenException,
+        TokenExpiredException,
+        TokenBlacklistedException as RevokedTokenException,
+        TokenGenerationException
+    )
 except ImportError:
     # Define fallbacks
-    class InvalidTokenException(Exception):
+    class TokenException(Exception):
+        """Base token exception."""
+        pass
+
+    class InvalidTokenException(TokenException):
         """Invalid token exception."""
         pass
     
-    class TokenExpiredException(Exception):
+    class TokenExpiredException(TokenException):
         """Token expired exception."""
+        pass
+        
+    class RevokedTokenException(TokenException):
+        """Token has been revoked exception."""
+        pass
+        
+    class TokenGenerationException(TokenException):
+        """Token generation exception."""
         pass
 
 # Logging setup
