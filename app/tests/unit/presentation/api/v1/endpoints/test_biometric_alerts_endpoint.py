@@ -72,7 +72,7 @@ from app.presentation.api.dependencies.biometric_alert import (
 )
 from app.presentation.api.dependencies.auth import get_current_user, get_jwt_service as get_jwt_service_dependency, get_auth_service as get_auth_service_dependency
 from app.presentation.api.v1.dependencies.biometric import get_alert_service as get_alert_service_dependency, get_biometric_rule_repository
-from app.infrastructure.di.container import get_container, reset_container
+from app.infrastructure.di.container import get_container, reset_container, DIContainer
 
 # Attempt to import infrastructure implementations for more realistic mocking specs
 # Fallback to basic AsyncMock if infrastructure layer is not available
@@ -339,62 +339,102 @@ async def test_app(
     # Set Redis service override before lifespan starts
     app.state.redis_service_override = mock_redis_service
     
+    # Create a mock session factory and set it in app state
+    mock_session_factory = AsyncMock()
+    app.state.actual_session_factory = mock_session_factory
+    
+    # Get container and register repository factories
+    from app.infrastructure.di.container import get_container, reset_container, DIContainer
+    
+    # Reset container to avoid state leakage between tests
+    reset_container()
+    
+    from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
+    from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
+    from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+    
+    container = get_container()
+    
+    # Register repository factories in the container
+    container.register_factory(
+        BiometricAlertRepository,
+        lambda session: mock_biometric_alert_repository
+    )
+    
+    container.register_factory(
+        BiometricAlertRuleRepository,
+        lambda session: mock_biometric_rule_repository
+    )
+    
+    container.register_factory(
+        BiometricAlertTemplateRepository,
+        lambda session: mock_template_repository
+    )
+    
     # Add custom test middleware that sets actual_session_factory on request.state
+    # Ensure this is added as the first middleware in the chain
     @app.middleware("http")
     async def add_session_factory_to_request_state(request: Request, call_next):
-        # Add a mock async_sessionmaker to the request.state
-        request.state.actual_session_factory = AsyncMock()
+        # Add session factory from app state to request state
+        request.state.actual_session_factory = app.state.actual_session_factory
         response = await call_next(request)
         return response
     
-    # Add dependency overrides
-    app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
-    app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
-    app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
-    app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
-    app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
-    # Add dependency override for BiometricRuleRepoDep
-    app.dependency_overrides[get_biometric_rule_repository] = lambda: mock_biometric_rule_repository
-    app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
-    app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
-    app.dependency_overrides[get_current_user] = lambda: mock_current_user
-    
     # Override the get_repository_instance function to handle BiometricAlertTemplateRepository
     from app.infrastructure.di.provider import get_repository_instance
-    from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
     
     original_get_repository_instance = get_repository_instance
+    
+    # Create a more robust mock function that handles all repository types
     def mock_get_repository_instance(repo_type, session):
         if repo_type == BiometricAlertTemplateRepository:
             return mock_template_repository
+        elif repo_type == BiometricAlertRuleRepository:
+            return mock_biometric_rule_repository
+        elif repo_type == BiometricAlertRepository:
+            return mock_biometric_alert_repository
         return original_get_repository_instance(repo_type, session)
     
-    # Add this to app state to make it available during request processing
-    app.state.mock_get_repository_instance = mock_get_repository_instance
-    
-    # Also override get_db_session to avoid database dependency
-    from app.presentation.api.dependencies.database import get_db_session, get_async_session_utility
-    mock_session = AsyncMock()
-    app.dependency_overrides[get_db_session] = lambda: mock_session
-    app.dependency_overrides[get_async_session_utility] = lambda: mock_session
-    
-    # DEBUG: Print all registered routes in the app
-    print("\n=== REGISTERED ROUTES ===")
-    for route in app.routes:
-        print(f"Route: {route.path}, Methods: {', '.join(route.methods) if hasattr(route, 'methods') else 'N/A'}")
-    
-    if hasattr(app, "openapi"):
-        paths = app.openapi().get("paths", {})
-        print("\n=== OPENAPI PATHS ===")
-        for path, methods in paths.items():
-            print(f"Path: {path}, Methods: {', '.join(methods.keys())}")
-    
-    # Create test client with ASGI app
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        # This uses the lifespan manager to properly initialize the app context
-        async with LifespanManager(app):
-            # Return both app and client as a tuple
-            yield app, client
+    # Patch the repository provider function directly
+    with patch("app.infrastructure.di.provider.get_repository_instance", side_effect=mock_get_repository_instance):
+        # Also patch get_db_session to return a session
+        mock_session = AsyncMock()
+        
+        # Create a session with a commit method that doesn't raise exceptions
+        async def mock_commit():
+            pass
+        mock_session.commit = mock_commit
+        mock_session.rollback = AsyncMock()
+        mock_session.close = AsyncMock()
+        
+        # Add dependency overrides
+        app.dependency_overrides[get_jwt_service_dependency] = lambda: global_mock_jwt_service
+        app.dependency_overrides[get_auth_service_dependency] = lambda: mock_auth_service
+        app.dependency_overrides[get_alert_service_dependency] = lambda: mock_alert_service
+        app.dependency_overrides[get_alert_repository] = lambda: mock_biometric_alert_repository
+        app.dependency_overrides[get_rule_repository] = lambda: mock_biometric_rule_repository
+        # Add dependency override for BiometricRuleRepoDep
+        app.dependency_overrides[get_biometric_rule_repository] = lambda: mock_biometric_rule_repository
+        app.dependency_overrides[get_template_repository] = lambda: mock_template_repository
+        app.dependency_overrides[get_event_processor] = lambda: mock_biometric_event_processor
+        app.dependency_overrides[get_current_user] = lambda: mock_current_user
+        
+        # Override get_db_session to avoid database dependency
+        from app.presentation.api.dependencies.database import get_db_session, get_async_session_utility
+        app.dependency_overrides[get_db_session] = lambda: mock_session
+        app.dependency_overrides[get_async_session_utility] = lambda: mock_session
+        
+        # DEBUG: Print all registered routes in the app
+        logger.debug("=== REGISTERED ROUTES ===")
+        for route in app.routes:
+            logger.debug(f"Route: {route.path}, Methods: {', '.join(route.methods) if hasattr(route, 'methods') else 'N/A'}")
+        
+        # Create test client with ASGI app
+        async with AsyncClient(app=app, base_url="http://test") as client:
+            # This uses the lifespan manager to properly initialize the app context
+            async with LifespanManager(app):
+                # Return both app and client as a tuple
+                yield app, client
 
 @pytest.fixture
 async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
