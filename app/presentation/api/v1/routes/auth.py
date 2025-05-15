@@ -5,14 +5,12 @@ This module provides API endpoints for user authentication, including
 login, token refresh, and registration functionality.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie
-from typing import Any, Optional # Import Optional for nullable parameters
+from fastapi import APIRouter, Depends, HTTPException, status, Response
+from typing import Any, Optional
 
 # Import concrete implementations instead of interfaces for FastAPI compatibility
 from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.presentation.api.dependencies.auth_service import get_auth_service
-from app.presentation.api.dependencies.auth import get_current_user, get_optional_user
-from app.core.domain.entities.user import User
 from app.presentation.api.schemas.auth import (
     LoginRequestSchema,
     TokenResponseSchema,
@@ -40,7 +38,7 @@ async def login(
     login_data: LoginRequestSchema,
     response: Response,
     auth_service: AuthenticationService = Depends(get_auth_service)
-) -> TokenResponseSchema:
+) -> dict[str, Any]:
     """
     Authenticate a user and return access and refresh tokens.
     
@@ -48,26 +46,41 @@ async def login(
         Dictionary with access_token, refresh_token, and token_type
     """
     try:
-        # The actual auth_service.login method would handle token creation, 
-        # setting cookies (if applicable), and returning a TokenResponseSchema compatible dict/object.
-        # For now, we assume it returns something that can be directly converted.
+        # Call authentication service login method
         token_data = await auth_service.login(
-            username=login_data.username,
+            username=str(login_data.username),  # Convert EmailStr to str
             password=login_data.password,
             remember_me=login_data.remember_me
         )
-        # Assuming token_data is already in the correct TokenResponseSchema structure 
-        # or a Pydantic model that can be cast to it.
-        # If auth_service.login returns a model instance:
-        return TokenResponseSchema(**token_data.model_dump()) if hasattr(token_data, 'model_dump') else TokenResponseSchema(**token_data)
+        
+        # Calculate expiration time (default to 3600 seconds if not present)
+        expires_in = 3600  # Default value
+        
+        # Return token data with required fields for TokenResponseSchema
+        return {
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data["refresh_token"],
+            "token_type": token_data["token_type"],
+            "expires_in": expires_in,
+            "user_id": None,  # These can be populated from token claims if needed
+            "roles": None
+        }
 
     except InvalidCredentialsException as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=str(e)
+        ) from e
     except AccountDisabledException as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    except Exception as e: # Catch-all for unexpected errors during login
-        # In a real app, log this error carefully
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An internal error occurred during login.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=str(e)
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="An internal error occurred during login."
+        ) from e
 
 @router.post("/refresh", response_model=TokenResponseSchema)
 async def refresh_token(
