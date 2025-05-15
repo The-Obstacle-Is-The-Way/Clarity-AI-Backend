@@ -8,11 +8,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Tuple, cast, AsyncIterable
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, MagicMock, patch
 from contextlib import asynccontextmanager
 from httpx._transports.asgi import ASGITransport
+from fastapi import status
 
 from app.core.config.settings import Settings, get_settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
@@ -325,19 +326,32 @@ async def app_instance(test_settings, auth_service_patch, jwt_service_patch, moc
         body = await request.json()
         refresh_token = body.get("refresh_token", "")
         
-        # Use the mock auth service directly
-        tokens = await mock_auth_service.refresh_access_token(
-            refresh_token_str=refresh_token
-        )
-        
-        # Return the tokens without validation
-        return {
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "token_type": "bearer",
-            "expires_in": 3600
-        }
-        
+        try:
+            # Use the mock auth service directly
+            tokens = await mock_auth_service.refresh_access_token(
+                refresh_token_str=refresh_token
+            )
+            
+            # Return the tokens without validation
+            return {
+                "access_token": tokens["access_token"],
+                "refresh_token": tokens["refresh_token"],
+                "token_type": "bearer",
+                "expires_in": 3600
+            }
+        except InvalidTokenException as e:
+            # Convert to FastAPI HTTPException 
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(e)
+            )
+        except Exception as e:
+            # Convert to FastAPI HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Refresh token error: {str(e)}"
+            )
+    
     # Replace the route handlers
     for route in app.routes:
         if isinstance(route, APIRoute):
