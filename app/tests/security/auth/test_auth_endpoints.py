@@ -24,7 +24,7 @@ from app.domain.exceptions.auth_exceptions import InvalidCredentialsException, A
 # --- Tests --- 
 
 @pytest.mark.asyncio
-@pytest.mark.skip("Temporarily skipping due to validation issues in tests")
+# @pytest.mark.skip("Temporarily skipping due to validation issues in tests")
 async def test_login_success(
     client_app_tuple_func_scoped: tuple[AsyncClient, FastAPI], mock_auth_service: AsyncMock
 ) -> None:
