@@ -205,8 +205,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             )
         except AuthenticationException as e:
             logger.warning(f"Authentication failed: {e}")
-            if "inactive" in str(e).lower() or "disabled" in str(e).lower():
-                # User is authenticated but account is inactive - use 403 Forbidden
+            error_message = str(e).lower()
+            
+            # Check for inactive/disabled account - this is a 403 Forbidden case
+            # User is authenticated (identity is confirmed) but not authorized due to account status
+            if "inactive" in error_message or "disabled" in error_message or "not active" in error_message:
+                logger.warning(f"User authenticated but account inactive/disabled: {e}")
                 return JSONResponse(
                     status_code=HTTP_403_FORBIDDEN,
                     content={"detail": "Account is inactive or disabled"},
