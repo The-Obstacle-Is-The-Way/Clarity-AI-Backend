@@ -38,6 +38,20 @@ from app.domain.exceptions.token_exceptions import (
     MissingTokenError,
 )
 
+from app.domain.exceptions.auth_exceptions import (
+    AuthenticationException,
+    AuthorizationException,
+    InvalidCredentialsException,
+    AccountLockedException,
+    AccountDisabledException,
+    SessionExpiredException,
+    InsufficientPermissionsException,
+    RoleRequiredException,
+    MaxSessionsExceededException,
+    UserNotFoundException,
+    UserAlreadyExistsException,
+)
+
 from app.domain.exceptions.appointment_exceptions import (
     InvalidAppointmentStateError,
     InvalidAppointmentTimeError,
@@ -93,6 +107,19 @@ __all__ = [
     "InvalidTokenError",
     "TokenExpiredError",
     "MissingTokenError",
+    
+    # Auth exceptions
+    "AuthenticationException",
+    "AuthorizationException",
+    "InvalidCredentialsException",
+    "AccountLockedException",
+    "AccountDisabledException",
+    "SessionExpiredException",
+    "InsufficientPermissionsException",
+    "RoleRequiredException",
+    "MaxSessionsExceededException",
+    "UserNotFoundException",
+    "UserAlreadyExistsException",
     
     # Appointment exceptions
     "InvalidAppointmentStateError",
