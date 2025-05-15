@@ -35,6 +35,7 @@ from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
 from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
+from app.core.security.rate_limiting.limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -361,11 +362,15 @@ def create_application(
             from app.infrastructure.services.redis.redis_service import create_redis_service
             rate_limit_redis = create_redis_service(redis_url=current_settings.REDIS_URL)
             
+            # Create a rate limiter instance using the Redis service
+            rate_limiter = RateLimiter(requests_per_minute=current_settings.RATE_LIMIT_DEFAULT_RPM or 60)
+            
             # Add rate limiting middleware
             from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
             app_instance.add_middleware(
                 RateLimitingMiddleware, 
-                redis_service=rate_limit_redis
+                limiter=rate_limiter,  # Pass limiter as named parameter
+                exclude_paths=["/health", "/metrics", "/docs", "/redoc"]
             )
             logger.info("RateLimitingMiddleware added during app initialization.")
         except Exception as e:
