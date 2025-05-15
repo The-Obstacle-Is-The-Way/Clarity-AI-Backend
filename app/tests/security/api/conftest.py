@@ -19,6 +19,9 @@ from fastapi.security import OAuth2PasswordBearer
 from httpx import ASGITransport, AsyncClient
 from jose import jwt as jose_jwt  # Use jose for JWT operations in tests
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Import User entity for type hinting
+from app.domain.entities.user import User
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 

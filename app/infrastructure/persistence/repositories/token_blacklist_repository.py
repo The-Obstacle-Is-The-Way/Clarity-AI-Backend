@@ -12,6 +12,25 @@ from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Singleton instance for dependency injection
+_token_blacklist_repository_instance = None
+
+
+def get_token_blacklist_repository() -> 'TokenBlacklistRepository':
+    """
+    Get or create the token blacklist repository singleton instance.
+    
+    This function follows the dependency injection pattern used throughout
+    the application and provides a consistent way to access the repository.
+    
+    Returns:
+        TokenBlacklistRepository: The token blacklist repository instance
+    """
+    global _token_blacklist_repository_instance
+    if _token_blacklist_repository_instance is None:
+        _token_blacklist_repository_instance = TokenBlacklistRepository()
+    return _token_blacklist_repository_instance
+
 
 class TokenBlacklistRepository(ITokenRepository):
     """
