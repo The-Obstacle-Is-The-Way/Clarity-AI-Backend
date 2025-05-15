@@ -193,6 +193,17 @@ def mock_template_repository() -> AsyncMock:
     return repo
 
 @pytest.fixture
+def mock_alert_service() -> MagicMock:
+    """Provides a mock alert service for tests."""
+    service = MagicMock(spec=AlertServiceInterface)
+    service.get_alerts = AsyncMock(return_value=([], 0))
+    service.get_alert_by_id = AsyncMock(return_value=None)
+    service.update_alert_status = AsyncMock()
+    service.get_patient_alert_summary = AsyncMock(return_value=None)
+    service.trigger_alert_manually = AsyncMock()
+    return service
+
+@pytest.fixture
 def mock_current_user() -> User:
     """Returns a mock user for current_user dependency."""
     # Use a valid UUID string instead of a UUID object
