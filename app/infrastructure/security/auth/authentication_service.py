@@ -14,6 +14,10 @@ from app.domain.exceptions import (
     EntityNotFoundError,
     InvalidTokenError,
     TokenExpiredError,
+    InvalidCredentialsException,
+    AccountDisabledException,
+    TokenExpiredException,
+    InvalidTokenException,
 )
 
 # Import password service and user repository interface (adjust path as needed)
@@ -269,24 +273,38 @@ class AuthenticationService:
             remember_me: Whether to extend token lifetimes
             
         Returns:
-            Dict containing access_token, refresh_token and token_type
+            Dict containing access_token, refresh_token, token_type, expires_in, user_id and roles
             
         Raises:
-            AuthenticationError: If credentials are invalid
+            InvalidCredentialsException: If credentials are invalid
+            AccountDisabledException: If account is disabled
+            AuthenticationError: For other authentication failures
         """
         # Authenticate user
         user = await self.authenticate_user(username, password)
         if not user:
-            raise AuthenticationError("Invalid username or password")
+            raise InvalidCredentialsException("Invalid username or password")
+            
+        # Check if account is active
+        if user and not user.is_active:
+            raise AccountDisabledException("Account is inactive")
             
         # Create token pair
         token_data = await self.create_token_pair(user)
+        
+        # Get settings for token expiration time
+        from app.core.config.settings import get_settings
+        settings = get_settings()
+        expires_in = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30) * 60
             
-        # Return tokens
+        # Return TokenResponseSchema compatible dictionary
         return {
             "access_token": token_data["access_token"],
             "refresh_token": token_data["refresh_token"],
-            "token_type": "bearer"
+            "token_type": "bearer",
+            "expires_in": expires_in,
+            "user_id": user.id,  # Include user ID from authenticated user
+            "roles": user.roles  # Include roles from authenticated user
         }
 
     async def refresh_token(self, refresh_token: str) -> dict[str, str]:
@@ -297,11 +315,11 @@ class AuthenticationService:
             refresh_token: The refresh token
             
         Returns:
-            Dict containing new access_token and the same refresh_token
+            Dict containing new access_token, refresh_token, token_type, expires_in, user_id and roles
             
         Raises:
-            InvalidTokenError: If the refresh token is invalid
-            TokenExpiredError: If the refresh token is expired
+            InvalidTokenException: If the refresh token is invalid
+            TokenExpiredException: If the refresh token is expired
             AuthenticationError: For other authentication issues
         """
         try:
@@ -310,7 +328,7 @@ class AuthenticationService:
             
             # Check if it's a refresh token
             if not getattr(payload, "refresh", False) and payload.scope != "refresh_token":
-                raise InvalidTokenError("Not a refresh token")
+                raise InvalidTokenException("Not a refresh token")
                 
             # Get the user associated with the token
             user = await self.get_user_by_id(str(payload.sub))
@@ -318,15 +336,24 @@ class AuthenticationService:
             # Create a new access token
             access_token = await self.create_access_token(user)
             
+            # Get settings for token expiration time
+            from app.core.config.settings import get_settings
+            settings = get_settings()
+            expires_in = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30) * 60
+            
+            # Return TokenResponseSchema compatible dictionary
             return {
                 "access_token": access_token,
                 "refresh_token": refresh_token, # Return the same refresh token
-                "token_type": "bearer"
+                "token_type": "bearer",
+                "expires_in": expires_in,
+                "user_id": user.id,  # Include user ID from authenticated user
+                "roles": user.roles  # Include roles from authenticated user
             }
-        except TokenExpiredError:
+        except TokenExpiredException:
             # Re-raise expired token error
             raise
-        except InvalidTokenError:
+        except InvalidTokenException:
             # Re-raise invalid token error
             raise
         except EntityNotFoundError:
@@ -344,14 +371,21 @@ class AuthenticationService:
             refresh_token_str: The refresh token
             
         Returns:
-            Dict containing new access_token and the same refresh_token
+            Dict containing new access_token, refresh_token, token_type, expires_in, user_id and roles
             
         Raises:
-            InvalidTokenError: If the refresh token is invalid
-            TokenExpiredError: If the refresh token is expired
+            InvalidTokenException: If the refresh token is invalid
+            TokenExpiredException: If the refresh token is expired
             AuthenticationError: For other authentication issues
         """
-        return await self.refresh_token(refresh_token_str)
+        try:
+            return await self.refresh_token(refresh_token_str)
+        except TokenExpiredException as e:
+            # Map to the exception type expected by the tests
+            raise TokenExpiredException(str(e))
+        except InvalidTokenException as e:
+            # Map to the exception type expected by the tests
+            raise InvalidTokenException(str(e))
 
     async def validate_token(self, token: str) -> tuple[User, list[str]]:
         """
