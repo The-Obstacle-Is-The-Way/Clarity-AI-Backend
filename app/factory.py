@@ -163,13 +163,29 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
             fastapi_app.state.redis_service = None
 
         # --- State-Dependent Middleware Setup (Post-Resource Initialization) ---
-        jwt_service: IJWTService = get_jwt_service(current_settings)
-        fastapi_app.add_middleware(
-            AuthenticationMiddleware,
-            jwt_service=jwt_service,
-            settings=current_settings
-        )
-        logger.info("AuthenticationMiddleware added.")
+        try:
+            # Ensure we have a valid JWT service with proper secret key
+            jwt_service: IJWTService = get_jwt_service(current_settings)
+            fastapi_app.state.jwt_service = jwt_service  # Store the JWT service in app state
+            
+            fastapi_app.add_middleware(
+                AuthenticationMiddleware,
+                jwt_service=jwt_service,
+                settings=current_settings
+            )
+            logger.info("AuthenticationMiddleware added.")
+        except Exception as e:
+            logger.error(
+                "LIFESPAN_JWT_INIT_FAILURE: Failed to initialize JWT service: %s", 
+                e, 
+                exc_info=True
+            )
+            if current_settings.ENVIRONMENT == "test":
+                logger.warning(
+                    "LIFESPAN_JWT_INIT_WARN: Test env; proceeding without JWT service."
+                )
+            else:
+                raise RuntimeError(f"JWT service initialization failed: {e}") from e
 
         if fastapi_app.state.redis_service:
             fastapi_app.add_middleware(
@@ -255,6 +271,11 @@ def create_application(
         f"FastAPI app instance created for '{current_settings.PROJECT_NAME}'."
     )
     app_instance.state.settings = current_settings
+    
+    # Handle JWT service override for testing
+    if jwt_service_override:
+        app_instance.state.jwt_service = jwt_service_override
+        logger.info("Using JWT service override for testing")
 
     @app_instance.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
