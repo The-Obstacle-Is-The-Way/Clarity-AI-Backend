@@ -131,3 +131,4 @@ security-reports/temp*.html
 # -------------------
 test-results/
 report.json
+.aider*
