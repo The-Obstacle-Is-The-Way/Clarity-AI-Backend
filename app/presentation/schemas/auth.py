@@ -12,7 +12,7 @@ class AuthCredentials(BaseModel):
 class AuthenticatedUser(BaseModel):
     id: UUID
     username: str
-    email: EmailStr
+    email: str
     roles: list[UserRole] = []
     status: UserStatus
     # Optional: Add if these fields are commonly needed and available
