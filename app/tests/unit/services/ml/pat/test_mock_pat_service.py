@@ -525,7 +525,6 @@ class TestMockPAT:
                 analysis_id="analysis456"
             )
             
-    @pytest.mark.skip(reason="Integration types validation is implemented differently")
     def test_integration_validation_error_integration_types(
         self,
         initialized_mock_pat: MockPATService,
@@ -533,7 +532,7 @@ class TestMockPAT:
         sample_readings: list[dict[str, Any]],
         sample_device_info: dict[str, Any]
     ) -> None:
-        """Test integration types validation error. Skip for now."""
+        """Test integration types validation error."""
         result = initialized_mock_pat.analyze_actigraphy(
             patient_id="patient123",
             readings=sample_readings,
