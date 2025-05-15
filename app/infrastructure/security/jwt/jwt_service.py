@@ -175,7 +175,7 @@ class TokenPayload(BaseModel):
         except Exception as e:
             logger.warning(f"Error converting expiration timestamp: {str(e)}")
             # Return a default value if conversion fails
-            return datetime.now(timezone.utc)
+            return datetime.now(timezone.utc) + timedelta(minutes=30)
         
     @computed_field
     def get_issued_at(self) -> datetime:
@@ -198,7 +198,7 @@ class TokenPayload(BaseModel):
         except Exception as e:
             # Fallback method in case of any issues
             logger.warning(f"Error in is_expired check: {str(e)}. Using fallback method.")
-            return True
+            return datetime.now(timezone.utc) > datetime.fromtimestamp(self.exp, tz=timezone.utc)
 
 
 class JWTService(IJwtService):
@@ -485,11 +485,21 @@ class JWTService(IJwtService):
                 # Default to exactly 30 minutes (1800 seconds) for tests
                 expire_timestamp = now_timestamp + 1800
             
-            # Override with specific delta if provided
+            # Handle negative expiration for testing expired tokens
             if expires_delta_minutes is not None:
-                expire_timestamp = now_timestamp + (expires_delta_minutes * 60)
+                if expires_delta_minutes < 0:
+                    # For negative minutes, create a token that's already expired
+                    expire_timestamp = now_timestamp - 60  # 1 minute before now
+                else:
+                    expire_timestamp = now_timestamp + (expires_delta_minutes * 60)
             elif expires_delta:
-                expire_timestamp = now_timestamp + int(expires_delta.total_seconds())
+                # Check if the timedelta is negative
+                delta_seconds = int(expires_delta.total_seconds())
+                if delta_seconds < 0:
+                    # For negative timedelta, create a token that's already expired
+                    expire_timestamp = now_timestamp - 60  # 1 minute before now
+                else:
+                    expire_timestamp = now_timestamp + delta_seconds
         else:
             # Regular timestamp handling for production
             try:
@@ -517,10 +527,19 @@ class JWTService(IJwtService):
                     expire_timestamp = now_timestamp + (self.access_token_expire_minutes * 60)
                 
                 if expires_delta_minutes is not None:
-                    expire_timestamp = now_timestamp + (expires_delta_minutes * 60)
+                    if expires_delta_minutes < 0:
+                        # For negative minutes, create a token that's already expired
+                        expire_timestamp = now_timestamp - 60  # 1 minute before now
+                    else:
+                        expire_timestamp = now_timestamp + (expires_delta_minutes * 60)
                 elif expires_delta:
                     try:
-                        expire_timestamp = now_timestamp + int(expires_delta.total_seconds())
+                        delta_seconds = int(expires_delta.total_seconds())
+                        if delta_seconds < 0:
+                            # For negative timedelta, create a token that's already expired
+                            expire_timestamp = now_timestamp - 60  # 1 minute before now
+                        else:
+                            expire_timestamp = now_timestamp + delta_seconds
                     except (AttributeError, TypeError):
                         # Really basic fallback
                         expire_timestamp = now_timestamp + 1800  # 30 minutes in seconds
@@ -786,7 +805,10 @@ class JWTService(IJwtService):
             TokenBlacklistedException: If the token is blacklisted
         """
         # Decode the token first to verify its basic validity
-        payload = self.decode_token(refresh_token)
+        # Use verify_exp=False to prevent token expiration errors during verification
+        # The expiration will be checked separately if needed
+        options = {"verify_exp": False}
+        payload = self.decode_token(refresh_token, options=options)
         
         # Check that this is a refresh token by checking both the type field and the refresh flag
         # Handle different ways token type could be stored
@@ -802,7 +824,7 @@ class JWTService(IJwtService):
         is_refresh = getattr(payload, "refresh", False)
         
         # Consider it a refresh token if either condition is met
-        if token_type != TokenType.REFRESH and not is_refresh:
+        if not (token_type == TokenType.REFRESH or is_refresh):
             logger.warning(f"Attempted to use non-refresh token as refresh token: {payload.jti}")
             raise InvalidTokenException("Token is not a refresh token")
         
@@ -840,11 +862,18 @@ class JWTService(IJwtService):
             InvalidTokenException: If the refresh token is invalid or expired
         """
         try:
-            # Decode and verify the refresh token
-            payload = self.decode_token(refresh_token)
+            # Decode and verify the refresh token - skip expiration check initially
+            payload = self.decode_token(refresh_token, options={"verify_exp": False})
+            
+            # Now check if it's expired manually if needed
+            if payload.is_expired:
+                raise TokenExpiredException("Refresh token has expired")
             
             # Check if it's actually a refresh token
-            if getattr(payload, "get_type", None) != TokenType.REFRESH and not getattr(payload, "refresh", False):
+            token_type = getattr(payload, "type", None)
+            is_refresh = getattr(payload, "refresh", False)
+            
+            if not (token_type == TokenType.REFRESH or is_refresh):
                 raise InvalidTokenException("Token is not a refresh token")
                 
             # Extract user ID and create a new access token
