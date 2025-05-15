@@ -724,7 +724,7 @@ class TestBiometricAlertsEndpoints:
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Attempt to resolve alert - use the AlertStatus enum object
+        # Attempt to resolve alert - use the AlertStatus enum object directly
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
@@ -735,7 +735,7 @@ class TestBiometricAlertsEndpoints:
         assert response.status_code == 200
         assert response.json()["success"] is True
         
-        # Verify service called correctly
+        # Verify service called correctly with the enum string value
         alert_service_mock.update_alert_status.assert_called_once_with(
             alert_id=alert_id,
             status=AlertStatus.RESOLVED.value,
