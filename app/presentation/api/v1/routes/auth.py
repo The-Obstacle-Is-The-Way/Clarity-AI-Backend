@@ -8,7 +8,8 @@ login, token refresh, and registration functionality.
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from typing import Any # Keep Any for now if actual service responses are complex
 
-from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
+# Import the concrete implementation instead of the interface for FastAPI compatibility
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
 from app.presentation.api.dependencies.auth_service import get_auth_service
 from app.presentation.api.schemas.auth import (
     LoginRequestSchema,
@@ -35,7 +36,7 @@ router = APIRouter(
 @router.post("/login", response_model=TokenResponseSchema)
 async def login(
     login_data: LoginRequestSchema,
-    auth_service: AuthServiceInterface = Depends(get_auth_service)
+    auth_service: AuthenticationService = Depends(get_auth_service)
 ) -> TokenResponseSchema:
     """
     Authenticate a user and return access and refresh tokens.
@@ -68,7 +69,7 @@ async def login(
 @router.post("/refresh", response_model=TokenResponseSchema)
 async def refresh_token(
     refresh_data: RefreshTokenRequestSchema,
-    auth_service: AuthServiceInterface = Depends(get_auth_service)
+    auth_service: AuthenticationService = Depends(get_auth_service)
 ) -> TokenResponseSchema:
     """
     Refresh an access token using a valid refresh token.
@@ -87,7 +88,7 @@ async def refresh_token(
 @router.post("/register", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
 async def register(
     registration_data: UserRegistrationRequestSchema,
-    auth_service: AuthServiceInterface = Depends(get_auth_service)
+    auth_service: AuthenticationService = Depends(get_auth_service)
 ) -> UserRegistrationResponseSchema:
     """
     Register a new user account.
@@ -110,7 +111,7 @@ async def register(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     response: Response, # To manage cookies
-    auth_service: AuthServiceInterface = Depends(get_auth_service)
+    auth_service: AuthenticationService = Depends(get_auth_service)
 ) -> None:
     """
     Logs out the current user by invalidating tokens/session.
@@ -126,7 +127,7 @@ async def logout(
 
 @router.get("/session-info", response_model=SessionInfoResponseSchema)
 async def get_session_info(
-    auth_service: AuthServiceInterface = Depends(get_auth_service) 
+    auth_service: AuthenticationService = Depends(get_auth_service) 
     # current_user: User = Depends(get_current_active_user) # Or use a dependency that provides current user or None
 ) -> SessionInfoResponseSchema:
     """

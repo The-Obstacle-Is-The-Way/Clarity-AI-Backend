@@ -50,22 +50,24 @@ logger = logging.getLogger(__name__)
 
 # --- Type Hinting for Dependencies --- #
 
-AuthServiceDep = Annotated[AuthServiceInterface, Depends(get_auth_service)]
-JWTServiceDep = Annotated[JWTServiceInterface, Depends(get_jwt_service)]
+# Use concrete implementation types for FastAPI compatibility
+from app.infrastructure.security.auth.authentication_service import AuthenticationService
+AuthServiceDep = Annotated[AuthenticationService, Depends(get_auth_service)]
+JWTServiceDep = Annotated[JWTService, Depends(get_jwt_service)]
 
 # --- Dependency Functions --- #
 
 # Define an explicit dependency function for the user repository
 async def get_user_repository_dependency(
-    session: AsyncSession = Depends(get_db), # CHANGED to Depends(get_db)
-) -> IUserRepository:
-    """Provides an instance of IUserRepository using the injected session."""
-    # Import here to avoid potential circular on module load if other files import this and SQLAlchemyUserRepository imports something from auth too early
+    session: AsyncSession = Depends(get_db)
+) -> SQLAlchemyUserRepository:  # Return concrete implementation, not interface
+    """Provides an instance of SQLAlchemyUserRepository using the injected session."""
+    # Import here to avoid potential circular dependencies on module load
     from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import SQLAlchemyUserRepository
-    return SQLAlchemyUserRepository(db_session=session) # CHANGED: session -> db_session
+    return SQLAlchemyUserRepository(db_session=session)
 
-# Use the new explicit dependency function
-UserRepoDep = Annotated[IUserRepository, Depends(get_user_repository_dependency)]
+# Use the concrete implementation for FastAPI compatibility
+UserRepoDep = Annotated[SQLAlchemyUserRepository, Depends(get_user_repository_dependency)]
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
@@ -101,18 +103,18 @@ def get_redis_service(settings: Settings = Depends(get_settings)) -> RedisCacheS
     return redis_service
 
 # --- Dependency for Token Blacklist Repository ---
-def get_token_blacklist_repository(
+async def get_token_blacklist_repository(
     redis_service: RedisCacheService = Depends(get_redis_service)
-) -> ITokenBlacklistRepository:
+) -> RedisTokenBlacklistRepository:  # Return concrete implementation, not interface
     """Dependency function to get token blacklist repository."""
     return RedisTokenBlacklistRepository(redis_service=redis_service)
 
 # --- Updated JWT Service Dependency --- 
-def get_jwt_service(
+async def get_jwt_service(
     settings: Settings = Depends(get_settings),
-    user_repository: IUserRepository = Depends(get_db),
-    token_blacklist_repository: ITokenBlacklistRepository = Depends(get_token_blacklist_repository)
-) -> IJwtService:
+    user_repository: SQLAlchemyUserRepository = Depends(get_user_repository_dependency),
+    token_blacklist_repository: RedisTokenBlacklistRepository = Depends(get_token_blacklist_repository)
+) -> JWTService:  # Return concrete implementation, not interface
     """Dependency function to get JWTService instance conforming to IJwtService."""
     return JWTService(
         secret_key=settings.JWT_SECRET_KEY,
@@ -129,8 +131,8 @@ def get_jwt_service(
 async def get_current_user(
     token_credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     settings: Settings = Depends(get_settings),
-    jwt_service: IJwtService = Depends(get_jwt_service),
-    user_repo: IUserRepository = Depends(get_user_repository_dependency)
+    jwt_service: JWTService = Depends(get_jwt_service),
+    user_repo: SQLAlchemyUserRepository = Depends(get_user_repository_dependency)
 ) -> DomainUser:
     logger.info(f"--- get_current_user received jwt_service ID: {id(jwt_service)}, Type: {type(jwt_service)} ---")
     logger.info(f"--- get_current_user received user_repo Type: {type(user_repo)} ---")
