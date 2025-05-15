@@ -25,6 +25,7 @@ from app.core.config import settings
 # Import domain entities and enums
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
+from app.domain.exceptions.token_exceptions import InvalidTokenError
 
 # Import the base model
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
@@ -136,6 +137,12 @@ def mock_auth_service(test_user: User) -> AsyncMock:
 
     # Configure refresh_token method
     mock.refresh_token.return_value = {
+        "access_token": f"new_access_token_{TEST_USER_ID}",
+        "refresh_token": f"new_refresh_token_{TEST_USER_ID}"
+    }
+
+    # Add refresh_access_token method that the endpoint actually uses
+    mock.refresh_access_token.return_value = {
         "access_token": f"new_access_token_{TEST_USER_ID}",
         "refresh_token": f"new_refresh_token_{TEST_USER_ID}"
     }
@@ -334,7 +341,7 @@ async def test_refresh_token_success(
     
     # Assert
     assert response.status_code == status.HTTP_200_OK
-    mock_auth_service.refresh_token.assert_called_once_with(f"test_refresh_token_{TEST_USER_ID}")
+    mock_auth_service.refresh_access_token.assert_called_once_with(refresh_token_str=f"test_refresh_token_{TEST_USER_ID}")
     
     # Check response structure
     response_data = response.json()
@@ -355,17 +362,17 @@ async def test_refresh_token_invalid(
     # Arrange
     refresh_data = {"refresh_token": "invalid_refresh_token"}
     
-    # Configure the refresh_token method to raise an exception
-    mock_auth_service.refresh_token.side_effect = ValueError("Invalid refresh token")
+    # Configure the refresh_access_token method to raise an exception
+    mock_auth_service.refresh_access_token.side_effect = InvalidTokenError("Invalid refresh token")
     
     # Act
     response = client.post("/api/v1/auth/refresh", json=refresh_data)
     
     # Assert
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    mock_auth_service.refresh_token.assert_called_once_with("invalid_refresh_token")
+    mock_auth_service.refresh_access_token.assert_called_once_with(refresh_token_str="invalid_refresh_token")
     assert "detail" in response.json()
-    assert "Invalid or expired refresh token" in response.json()["detail"]
+    assert "Invalid refresh token" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

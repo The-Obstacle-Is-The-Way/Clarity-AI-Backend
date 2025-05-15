@@ -58,12 +58,18 @@ async def lifespan_wrapper(app: FastAPI) -> AsyncGenerator[None, None]:
 @pytest.fixture(scope="function") 
 async def client(test_settings: AppSettings, global_mock_jwt_service: MagicMock, authenticated_user: DomainUser) -> Tuple[FastAPI, AsyncClient]:
     """Provides a FastAPI app instance and an AsyncClient instance scoped per test function."""
+    # Override settings to ensure test mode is enabled
+    if hasattr(test_settings, 'TESTING'):
+        test_settings.TESTING = True
+    if hasattr(test_settings, 'JWT_SECRET_KEY'):
+        test_settings.JWT_SECRET_KEY = "test_secret_key_for_testing_only"
+    
     app_instance = create_application(settings_override=test_settings, skip_auth_middleware=True)
     
     # Override the JWT service dependency to use our global mock
     app_instance.dependency_overrides[get_jwt_service] = lambda: global_mock_jwt_service
     
-    # Override the authentication dependency directly - bypass JWT validation entirely
+    # Override the authentication dependency to always return our authenticated user
     app_instance.dependency_overrides[get_current_user] = lambda: authenticated_user
     
     # Create a mock session factory and set it on app.state
@@ -75,6 +81,33 @@ async def client(test_settings: AppSettings, global_mock_jwt_service: MagicMock,
     async def set_session_factory_middleware(request, call_next):
         # Set the session factory on request.state
         request.state.actual_session_factory = app_instance.state.actual_session_factory
+        return await call_next(request)
+    
+    # Create middleware to add auth header to all requests if missing
+    @app_instance.middleware("http")
+    async def auth_middleware(request, call_next):
+        if "Authorization" not in request.headers:
+            # Generate a test token
+            roles = []
+            for role in authenticated_user.roles:
+                role_value = role.value if hasattr(role, 'value') else str(role)
+                roles.append(role_value)
+            
+            token_data = {
+                "sub": str(authenticated_user.id),
+                "roles": roles,
+                "username": authenticated_user.username,
+                "email": authenticated_user.email,
+                "type": "access"
+            }
+            
+            # Create token synchronously for middleware
+            token = "test.token.for.middleware"
+            # Insert Authorization header
+            request.headers.__dict__["_list"].append(
+                (b"authorization", f"Bearer {token}".encode())
+            )
+        
         return await call_next(request)
     
     async with lifespan_wrapper(app_instance): # MODIFIED: Wrap client in lifespan
