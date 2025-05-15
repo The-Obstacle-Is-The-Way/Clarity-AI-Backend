@@ -13,7 +13,7 @@ from app.presentation.api.v1.endpoints.analytics_endpoints import router as anal
 from app.presentation.api.v1.routes.auth import router as auth_router
 from app.presentation.api.v1.routes.actigraphy import router as actigraphy_router
 from app.presentation.api.v1.routes.biometric import router as biometric_router
-from app.presentation.api.v1.routes.biometric_alert_rules import router as biometric_alert_rules_router
+from app.presentation.api.v1.routes.biometric_alert_rules import router as biometric_alert_rules_router_route
 from app.presentation.api.v1.routes.biometric_alerts import (
     router as biometric_alerts_router,
 )
@@ -27,6 +27,9 @@ from app.presentation.api.v1.routes.temporal_neurotransmitter import (
 )
 from app.presentation.api.v1.routes.xgboost import router as xgboost_router
 from app.presentation.api.v1.routes.patient import router as patient_router
+
+# Import our new biometric alert rules endpoint
+from app.presentation.api.v1.endpoints.biometric_alert_rules import router as biometric_alert_rules_router_endpoint
 
 # Create the main router for API v1
 api_v1_router = APIRouter()
@@ -43,8 +46,14 @@ api_v1_router.include_router(
     biometric_alerts_router, prefix="/biometric-alerts", tags=["Biometric Alerts"]
 )
 api_v1_router.include_router(
-    biometric_alert_rules_router,
+    biometric_alert_rules_router_route,
     prefix="/biometric-alerts/rules",
+    tags=["Biometric Alert Rules"],
+)
+# Add our new endpoint implementation
+api_v1_router.include_router(
+    biometric_alert_rules_router_endpoint,
+    prefix="/biometric-alert-rules",
     tags=["Biometric Alert Rules"],
 )
 api_v1_router.include_router(ml_router, prefix="/ml", tags=["Machine Learning"])

@@ -292,10 +292,11 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
+        """Test that we can get alert rules."""
+        # Test is now enabled since we've implemented the endpoint
+        # pytest.skip("Skipping test until authentication issues are fixed")
         headers = get_valid_provider_auth_headers
-        response = await client.get("/api/v1/biometric-alerts/rules", headers=headers)
+        response = await client.get("/api/v1/biometric-alert-rules", headers=headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -388,12 +389,13 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
+        """Test that we get a 404 when trying to get a non-existent alert rule."""
+        # Test is now enabled since we've implemented the endpoint
+        # pytest.skip("Skipping test until authentication issues are fixed")
         headers = get_valid_provider_auth_headers
         non_existent_rule_id = str(uuid.uuid4())
         response = await client.get(
-            f"/api/v1/biometric-alerts/rules/{non_existent_rule_id}",
+            f"/api/v1/biometric-alert-rules/{non_existent_rule_id}",
             headers=headers
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
