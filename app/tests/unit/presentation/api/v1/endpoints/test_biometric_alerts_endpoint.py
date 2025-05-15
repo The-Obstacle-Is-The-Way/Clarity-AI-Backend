@@ -676,17 +676,17 @@ class TestBiometricAlertsEndpoints:
         
         # Mock response for get_alert_by_id
         alert_service_mock = MagicMock()
-        alert_service_mock.update_alert_status.return_value = (True, None)
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(True, None))
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Attempt to acknowledge alert
+        # Attempt to acknowledge alert - use the AlertStatus enum object instead of string
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": "acknowledged", "resolution_notes": "Reviewing now"}
+            json={"status": AlertStatus.ACKNOWLEDGED.value, "resolution_notes": "Reviewing now"}
         )
         
         # Verify response
@@ -697,7 +697,7 @@ class TestBiometricAlertsEndpoints:
         # Verify service called correctly
         alert_service_mock.update_alert_status.assert_called_once_with(
             alert_id=alert_id,
-            status="acknowledged",
+            status=AlertStatus.ACKNOWLEDGED.value,
             resolution_notes="Reviewing now",
             resolved_by=ANY
         )
@@ -716,19 +716,19 @@ class TestBiometricAlertsEndpoints:
         # Create an alert
         alert_id = str(uuid.uuid4())
         
-        # Mock response for update_alert_status
+        # Mock response for update_alert_status - use AsyncMock
         alert_service_mock = MagicMock()
-        alert_service_mock.update_alert_status.return_value = (True, None)
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(True, None))
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Attempt to resolve alert
+        # Attempt to resolve alert - use the AlertStatus enum object
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"status": "resolved", "resolution_notes": "Issue addressed"}
+            json={"status": AlertStatus.RESOLVED.value, "resolution_notes": "Issue addressed"}
         )
         
         # Verify response
@@ -738,7 +738,7 @@ class TestBiometricAlertsEndpoints:
         # Verify service called correctly
         alert_service_mock.update_alert_status.assert_called_once_with(
             alert_id=alert_id,
-            status="resolved",
+            status=AlertStatus.RESOLVED.value,
             resolution_notes="Issue addressed",
             resolved_by=ANY
         )
@@ -772,11 +772,8 @@ class TestBiometricAlertsEndpoints:
         # Route is now implemented, remove skip
         # pytest.skip("Skipping test as GET /patients/{id}/summary route not implemented")
         
-        # Mock response for get_alert_summary
-        alert_service_mock = MagicMock()
-        # Fix validate_access to return True explicitly instead of None
-        alert_service_mock.validate_access = AsyncMock(return_value=True) 
-        alert_service_mock.get_alert_summary.return_value = {
+        # Create summary response data
+        summary_data = {
             "patient_id": str(sample_patient_id),
             "start_date": "2023-01-01T00:00:00+00:00",
             "end_date": "2023-02-01T00:00:00+00:00",
@@ -785,6 +782,11 @@ class TestBiometricAlertsEndpoints:
             "by_priority": {"low": 1, "medium": 2, "high": 2},
             "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
         }
+        
+        # Mock response for get_alert_summary - use AsyncMock for both methods
+        alert_service_mock = MagicMock()
+        alert_service_mock.validate_access = AsyncMock(return_value=True)
+        alert_service_mock.get_alert_summary = AsyncMock(return_value=summary_data)
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
@@ -923,16 +925,19 @@ class TestBiometricAlertsEndpoints:
         # Route is now implemented, remove skip
         # pytest.skip("Skipping test as POST /patients/{id}/trigger route not implemented")
         
-        # Mock response for create_alert
+        # Generate a mock alert ID
+        mock_alert_id = str(uuid.uuid4())
+        
+        # Mock response for create_alert - use AsyncMock for both methods
         alert_service_mock = MagicMock()
         alert_service_mock.validate_access = AsyncMock(return_value=True)
-        alert_service_mock.create_alert.return_value = (True, str(uuid.uuid4()), None)
+        alert_service_mock.create_alert = AsyncMock(return_value=(True, mock_alert_id, None))
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Request to trigger alert - ensure fields match ManualAlertRequest
+        # Request to trigger alert - ensure fields match ManualAlertRequest model exactly
         alert_data = {
             "message": "Patient reporting increased anxiety",
             "priority": "high",

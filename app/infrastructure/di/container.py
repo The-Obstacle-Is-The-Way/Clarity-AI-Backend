@@ -225,9 +225,17 @@ class DIContainer:
         from app.infrastructure.security.auth.auth_service import get_auth_service
         from app.infrastructure.security.jwt.jwt_service import get_jwt_service
         
+        # Import AlertServiceInterface and its implementation
+        from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
+        from app.application.services.biometric_alert_service import BiometricAlertService
+        
         # Register services directly or via factories
         self.register_factory(AuthServiceInterface, get_auth_service)
         self.register_factory(JWTServiceInterface, get_jwt_service)
+        
+        # Register AlertServiceInterface with BiometricAlertService implementation
+        self.register_singleton(AlertServiceInterface, BiometricAlertService)
+        logger.info("Registered BiometricAlertService as AlertServiceInterface implementation in DI container.")
         
         # Import and register Biometric Event Processor
         try:
@@ -313,3 +321,22 @@ def get_service(interface_type: type[T]) -> T:
 
 # Expose container singleton directly for backward compatibility
 container = get_container()
+
+def configure_container() -> DIContainer:
+    """Configure and return the dependency injection container."""
+    container = DIContainer()
+    
+    # Register interface implementations
+    container.register_instance(JWTConfig, JWTConfig())
+    container.register_singleton(AuthServiceInterface, AuthService) 
+    container.register_singleton(JWTServiceInterface, JWTService)
+    container.register_singleton(TokenEncryptionServiceInterface, TokenEncryptionService)
+    container.register_singleton(PasswordHashingServiceInterface, BcryptPasswordHashingService)
+    container.register_singleton(UserRepositoryInterface, UserRepository)
+    container.register_singleton(TokenBlacklistRepositoryInterface, InMemoryTokenBlacklistRepository)
+    container.register_singleton(AlertServiceInterface, BiometricAlertService)  # Register BiometricAlertService
+    
+    # Register factory methods for database-dependent services
+    container.register_factory(AsyncSessionLocal, get_session_factory)
+    
+    return container
