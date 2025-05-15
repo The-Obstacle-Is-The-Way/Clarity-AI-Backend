@@ -623,14 +623,25 @@ class JWTService(IJwtService):
             dict: Decoded JWT payload
             
         Raises:
-            Exception: Any exception from the jwt.decode function
+            ExpiredSignatureError: If the token has expired (passed through)
+            InvalidTokenException: For other validation errors
         """
         if not token:
             raise InvalidTokenException("Invalid token: Token is empty or None")
             
         # Basic token format validation before attempting to decode
-        if not isinstance(token, str) or token.count('.') != 2:
-            raise InvalidTokenException("Invalid token: Token has invalid format")
+        if not isinstance(token, str):
+            # Handle binary tokens or other non-string inputs consistently
+            if isinstance(token, bytes):
+                # Binary data usually results in header parsing errors
+                raise InvalidTokenException("Invalid token: Invalid header string")
+            else:
+                # Other non-string types
+                raise InvalidTokenException("Invalid token: Not enough segments")
+        
+        # Check if token follows the standard JWT format: header.payload.signature
+        if token.count('.') != 2:
+            raise InvalidTokenException("Invalid token: Not enough segments")
             
         if options is None:
             options = {}
@@ -654,12 +665,27 @@ class JWTService(IJwtService):
         # Some use 'algorithm' (singular) others use 'algorithms' (plural)
         try:
             return jwt_decode(token, key, algorithms=algorithms, options=options, **kwargs)
+        except ExpiredSignatureError:
+            # Let this pass through for dedicated handling in the caller
+            raise
+        except JWTError as e:
+            # Format the error message consistently
+            if "Invalid header" in str(e):
+                raise InvalidTokenException("Invalid token: Invalid header string")
+            elif "segment" in str(e).lower() or "segments" in str(e).lower():
+                raise InvalidTokenException("Invalid token: Not enough segments")
+            else:
+                logger.error(f"JWT decode error: {e}")
+                raise InvalidTokenException(f"Invalid token: {e}")
         except TypeError as e:
             # If the error suggests a parameter mismatch, try with 'algorithm' (singular)
             if "unexpected keyword argument" in str(e) and "algorithms" in str(e):
                 logger.warning("JWT decode failed with 'algorithms', trying with 'algorithm'")
                 try:
                     return jwt_decode(token, key, algorithm=algorithms[0], options=options, **kwargs)
+                except ExpiredSignatureError:
+                    # Let this pass through for dedicated handling in the caller
+                    raise
                 except Exception as inner_e:
                     logger.error(f"Error in _decode_jwt with algorithm fallback: {inner_e}")
                     raise InvalidTokenException(f"Invalid token: {inner_e}")
@@ -709,19 +735,22 @@ class JWTService(IJwtService):
                 options["verify_exp"] = False
                 logger.debug("Test environment detected: disabling token expiration verification by default")
         
-        # Track the original error for better error messages
-        original_error = None
-        
         try:
-            # First, decode the JWT
-            payload = self._decode_jwt(
-                token=token,
-                key=self.secret_key,
-                algorithms=algorithms,
-                audience=audience,
-                issuer=self.issuer,
-                options=options
-            )
+            # First try to catch ExpiredSignatureError directly from jose/jwt
+            try:
+                # First, decode the JWT
+                payload = self._decode_jwt(
+                    token=token,
+                    key=self.secret_key,
+                    algorithms=algorithms,
+                    audience=audience,
+                    issuer=self.issuer,
+                    options=options
+                )
+            except ExpiredSignatureError as e:
+                # Specifically handle expired tokens with the correct exception type
+                logger.error(f"Token has expired: {e}")
+                raise TokenExpiredException(f"Token has expired: {e}")
             
             # Ensure type field uses enum value
             if "type" in payload:
@@ -748,16 +777,12 @@ class JWTService(IJwtService):
             # Then validate the payload with Pydantic
             try:
                 token_payload = TokenPayload.model_validate(payload)
-            except Exception as e:
-                # Fall back to direct constructor if model_validate fails
-                try:
-                    token_payload = TokenPayload(**payload)
-                except ValidationError as ve:
-                    logger.error(f"Token validation error: {ve}")
-                    raise InvalidTokenException(f"Invalid token: {ve}")
-                except Exception as general_e:
-                    logger.error(f"Unexpected error creating TokenPayload: {general_e}")
-                    raise InvalidTokenException(f"Invalid token: {general_e}")
+            except ValidationError as ve:
+                logger.error(f"Token validation error: {ve}")
+                raise InvalidTokenException(f"Invalid token: {ve}")
+            except Exception as general_e:
+                logger.error(f"Unexpected error creating TokenPayload: {general_e}")
+                raise InvalidTokenException(f"Invalid token: {general_e}")
             
             # Check if token is blacklisted
             if token_payload.jti and self._is_token_blacklisted(token_payload.jti):
@@ -767,19 +792,17 @@ class JWTService(IJwtService):
             # Return the validated payload
             return token_payload
                 
-        except ExpiredSignatureError as e:
-            logger.error(f"Expired token: {e}")
-            raise TokenExpiredException(f"Token has expired: {e}")
+        except TokenExpiredException:
+            # Pass through our specific exception without wrapping it
+            raise
         except JWTError as e:
             logger.error(f"Error decoding token: {e}")
-            original_error = e
-            raise InvalidTokenException(f"Invalid token: {original_error}")
+            raise InvalidTokenException(f"Invalid token: {e}")
         except InvalidTokenException:
             # Rethrow without changing the message if it's already an InvalidTokenException
             raise
         except Exception as e:
             logger.error(f"Error decoding token: {e}")
-            original_error = e
             raise InvalidTokenException(f"Invalid token: {e}")
 
     async def get_user_from_token(self, token: str) -> User | None:
@@ -847,36 +870,41 @@ class JWTService(IJwtService):
         
         # Check that this is a refresh token by checking both the type field and the refresh flag
         # Handle different ways token type could be stored
-        token_type = None
-        if hasattr(payload, "type"):
-            token_type = payload.type
-        elif hasattr(payload, "get_type") and callable(payload.get_type):
-            try:
-                token_type = payload.get_type()
-            except Exception as e:
-                logger.warning(f"Error calling get_type(): {e}")
+        is_refresh = False
         
-        is_refresh = getattr(payload, "refresh", False)
+        # Check token type (primary method)
+        if payload.type == TokenType.REFRESH:
+            is_refresh = True
         
-        # Consider it a refresh token if either condition is met
-        if not (token_type == TokenType.REFRESH or is_refresh):
-            logger.warning(f"Attempted to use non-refresh token as refresh token: {payload.jti}")
+        # Check refresh flag (backward compatibility)
+        if hasattr(payload, "refresh") and payload.refresh is True:
+            is_refresh = True
+            
+        # Check scope (additional verification)
+        if hasattr(payload, "scope") and payload.scope == "refresh_token":
+            is_refresh = True
+            
+        if not is_refresh:
             raise InvalidTokenException("Token is not a refresh token")
-        
-        # Check if the token is blacklisted
-        if self._is_token_blacklisted(payload.jti):
-            logger.warning(f"Attempted to use blacklisted refresh token: {payload.jti}")
-            raise RevokedTokenException("Refresh token has been revoked")
-        
-        # If family tracking is enabled, check if this token has been superseded
-        if hasattr(payload, "family_id") and payload.family_id:
-            latest_jti = self._token_families.get(payload.family_id)
-            if latest_jti and latest_jti != payload.jti:
-                logger.warning(f"Attempted to use superseded refresh token: {payload.jti}")
-                # Only revoke this token if it's not the latest in its family
-                self._token_blacklist[payload.jti] = datetime.now(timezone.utc)
-                raise RevokedTokenException("Refresh token has been superseded")
-        
+            
+        # If we reach here, the token is a valid refresh token
+        # Now check if it's expired
+        if options.get("verify_exp", True):
+            # Only check expiration if verify_exp is True
+            if hasattr(payload, "is_expired") and payload.is_expired:
+                raise TokenExpiredException("Refresh token has expired")
+                
+            # Additional expiration check using raw timestamp
+            if hasattr(payload, "exp"):
+                now = datetime.now(UTC).timestamp()
+                if payload.exp < now:
+                    raise TokenExpiredException("Refresh token has expired")
+                    
+        # Check if token is blacklisted
+        if payload.jti and self._is_token_blacklisted(payload.jti):
+            raise InvalidTokenException("Refresh token has been revoked")
+                    
+        # Return the validated payload
         return payload
 
     def get_token_payload_subject(self, payload: TokenPayload) -> str | None:
