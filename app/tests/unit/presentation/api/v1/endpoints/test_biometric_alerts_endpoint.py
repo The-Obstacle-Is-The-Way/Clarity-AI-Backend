@@ -801,32 +801,37 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: uuid.UUID,
+        sample_patient_id: uuid.UUID
     ) -> None:
-        # Route is now implemented, remove skip
-        # pytest.skip("Skipping test as GET /patients/{id}/summary route not implemented")
+        # Remove skip - we're implementing the test now
+        # pytest.skip("Skipping test until authentication issues are fixed")
         
-        # Create summary response data
-        summary_data = {
+        # Create mock alert summary response
+        mock_alert_summary = {
             "patient_id": str(sample_patient_id),
-            "start_date": "2023-01-01T00:00:00+00:00",
-            "end_date": "2023-02-01T00:00:00+00:00",
-            "alert_count": 5,
-            "by_status": {"open": 2, "acknowledged": 1, "resolved": 2},
-            "by_priority": {"low": 1, "medium": 2, "high": 2},
-            "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
+            "start_date": "2023-01-01T00:00:00",
+            "end_date": "2023-02-01T00:00:00",
+            "total_alerts": 10,
+            "acknowledged_alerts": 3,
+            "resolved_alerts": 5,
+            "open_alerts": 2,
+            "alerts_by_type": {
+                "heart_rate": 5,
+                "blood_pressure": 3,
+                "oxygen_saturation": 2
+            }
         }
         
-        # Mock response for get_alert_summary - use AsyncMock for both methods
+        # Mock response for get_alert_summary
         alert_service_mock = MagicMock()
         alert_service_mock.validate_access = AsyncMock(return_value=True)
-        alert_service_mock.get_alert_summary = AsyncMock(return_value=summary_data)
+        alert_service_mock.get_alert_summary = AsyncMock(return_value=mock_alert_summary)
         
         # Override dependency - use the app from test_app
         app, _ = test_app  # Extract app from test_app fixture
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
-        # Request alert summary
+        # Request alert summary for patient
         response = await client.get(
             f"/api/v1/biometric-alerts/patients/{sample_patient_id}/summary",
             headers=get_valid_provider_auth_headers,
@@ -834,17 +839,16 @@ class TestBiometricAlertsEndpoints:
         )
         
         # Verify response
-        assert response.status_code == 200
-        assert response.json()["patient_id"] == str(sample_patient_id)
-        assert response.json()["alert_count"] == 5
-        assert "by_status" in response.json()
-        assert "by_priority" in response.json()
-        assert "by_type" in response.json()
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert response_json == mock_alert_summary
         
         # Verify service called with correct parameters
         alert_service_mock.get_alert_summary.assert_called_once()
         call_args = alert_service_mock.get_alert_summary.call_args[1]
         assert call_args["patient_id"] == str(sample_patient_id)
+        assert "start_date" in call_args
+        assert "end_date" in call_args
 
     @pytest.mark.asyncio
     async def test_get_patient_alert_summary_not_found(
