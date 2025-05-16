@@ -850,17 +850,38 @@ class TestBiometricAlertsEndpoints:
     async def test_get_patient_alert_summary_not_found(
         self,
         client: AsyncClient,
+        test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
-        headers = get_valid_provider_auth_headers
-        non_existent_patient_id = str(uuid.uuid4()) 
+        # Remove skip - we're implementing the test now
+        # pytest.skip("Skipping test until authentication issues are fixed")
+        
+        # Create a non-existent patient ID
+        non_existent_patient_id = str(uuid.uuid4())
+        
+        # Mock response for get_alert_summary to return None for non-existent patient
+        alert_service_mock = MagicMock()
+        alert_service_mock.validate_access = AsyncMock(return_value=True)
+        alert_service_mock.get_alert_summary = AsyncMock(return_value=None)
+        
+        # Override dependency - use the app from test_app
+        app, _ = test_app  # Extract app from test_app fixture
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        
+        # Request alert summary for non-existent patient
         response = await client.get(
-            f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary", 
-            headers=headers
+            f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary",
+            headers=get_valid_provider_auth_headers,
+            params={"start_date": "2023-01-01T00:00:00", "end_date": "2023-02-01T00:00:00"}
         )
+        
+        # Verify response
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        
+        # Verify service called with correct parameters
+        alert_service_mock.get_alert_summary.assert_called_once()
+        call_args = alert_service_mock.get_alert_summary.call_args[1]
+        assert call_args["patient_id"] == non_existent_patient_id
 
     @pytest.mark.asyncio
     async def test_create_alert_rule_template(
