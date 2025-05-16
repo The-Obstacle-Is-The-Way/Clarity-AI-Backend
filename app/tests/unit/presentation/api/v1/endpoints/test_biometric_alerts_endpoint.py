@@ -758,19 +758,42 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_not_found(
         self,
         client: AsyncClient,
+        test_app: Tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Skip this test until we fix the authentication issue
-        pytest.skip("Skipping test until authentication issues are fixed")
-        headers = get_valid_provider_auth_headers
+        # Remove skip - we're implementing the test now
+        # pytest.skip("Skipping test until authentication issues are fixed")
+        
+        # Create a non-existent alert ID
         non_existent_alert_id = str(uuid.uuid4())
-        update_payload = {"status": "acknowledged"}
+        
+        # Mock response for update_alert_status with not found result
+        alert_service_mock = MagicMock()
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found"))
+        
+        # Override dependency - use the app from test_app
+        app, _ = test_app  # Extract app from test_app fixture
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        
+        # Attempt to update non-existent alert - wrap with "update_request" key for Body(...) parameter
         response = await client.patch(
             f"/api/v1/biometric-alerts/{non_existent_alert_id}/status",
-            headers=headers,
-            json=update_payload
+            headers=get_valid_provider_auth_headers,
+            json={"update_request": {"status": AlertStatus.ACKNOWLEDGED.value, "resolution_notes": "Trying to review"}}
         )
+        
+        # Verify response
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["success"] is False
+        assert "not found" in response.json()["message"].lower()
+        
+        # Verify service called correctly with the enum string value
+        alert_service_mock.update_alert_status.assert_called_once_with(
+            alert_id=non_existent_alert_id,
+            status=AlertStatus.ACKNOWLEDGED.value,
+            resolution_notes="Trying to review",
+            resolved_by=ANY
+        )
 
     @pytest.mark.asyncio
     async def test_get_patient_alert_summary(
