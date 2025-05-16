@@ -686,7 +686,7 @@ class TestBiometricAlertsEndpoints:
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"update_request": {"status": AlertStatus.ACKNOWLEDGED, "resolution_notes": "Reviewing now"}}
+            json={"update_request": {"status": AlertStatus.ACKNOWLEDGED.value, "resolution_notes": "Reviewing now"}}
         )
         
         # Debug - Print validation error details
@@ -733,7 +733,7 @@ class TestBiometricAlertsEndpoints:
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             headers=get_valid_provider_auth_headers,
-            json={"update_request": {"status": AlertStatus.RESOLVED, "resolution_notes": "Issue addressed"}}
+            json={"update_request": {"status": AlertStatus.RESOLVED.value, "resolution_notes": "Issue addressed"}}
         )
         
         # Debug - Print validation error details
@@ -951,8 +951,8 @@ class TestBiometricAlertsEndpoints:
         # Request to trigger alert - wrap with "alert_data" key for Body(...) parameter
         alert_data = {
             "message": "Patient reporting increased anxiety",
-            "priority": AlertPriority.HIGH,
-            "alert_type": AlertType.BIOMETRIC_ANOMALY,
+            "priority": AlertPriority.HIGH.value,
+            "alert_type": AlertType.BIOMETRIC_ANOMALY.value,
             "data": {"anxiety_level": 8, "reported_by": "provider"}
         }
         
@@ -976,7 +976,7 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock.create_alert.assert_called_once_with(
             patient_id=str(sample_patient_id),
             alert_type=AlertType.BIOMETRIC_ANOMALY.value,
-            severity=AlertPriority.HIGH,
+            severity=AlertPriority.HIGH.value,
             description="Patient reporting increased anxiety",
             source_data={"anxiety_level": 8, "reported_by": "provider"},
             metadata={"manually_triggered_by": ANY}
