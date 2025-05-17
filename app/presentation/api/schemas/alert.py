@@ -13,7 +13,7 @@ from uuid import UUID
 from pydantic import Field, field_validator, UUID4, BaseModel
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
-from app.core.utils.date_utils import utcnow
+from app.core.utils.date_utils import utcnow, as_utc
 from app.domain.entities.biometric_rule import (
     AlertPriority as RuleAlertPriority,
     LogicalOperator,
@@ -25,7 +25,7 @@ from app.presentation.api.schemas.base import BaseModelConfig
 class AlertBase(BaseModelConfig):
     """Base schema for alert data with common fields."""
 
-    alert_type: AlertType
+    alert_type: str
     timestamp: datetime
     priority: AlertPriority
     message: str = Field(..., min_length=1, max_length=500)
@@ -33,10 +33,16 @@ class AlertBase(BaseModelConfig):
 
     @field_validator("timestamp")
     def validate_timestamp(cls, v):
-        """Ensure timestamp is not in the future."""
-        if v > utcnow():
+        """Ensure timestamp is not in the future and return an aware datetime."""
+        if isinstance(v, str):
+            try:
+                v = datetime.fromisoformat(v)
+            except ValueError:
+                raise ValueError("Invalid timestamp format")
+        aware_ts = as_utc(v)
+        if aware_ts > utcnow():
             raise ValueError("Timestamp cannot be in the future")
-        return v
+        return aware_ts
 
 
 class AlertCreateRequest(AlertBase):
@@ -80,7 +86,7 @@ class AlertsFilterParams(BaseModelConfig):
 
     status: AlertStatus | None = None
     priority: AlertPriority | None = None
-    alert_type: AlertType | None = None
+    alert_type: str | None = None
     start_date: str | None = None
     end_date: str | None = None
 
