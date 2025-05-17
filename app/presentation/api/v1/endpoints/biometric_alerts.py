@@ -34,7 +34,7 @@ router = APIRouter(
 async def get_alerts(
     status_param: Optional[AlertStatus] = Query(None, alias="status", description="Filter by alert status"),
     priority: Optional[AlertPriority] = Query(None, description="Filter by alert priority"),
-    alert_type: Optional[AlertType] = Query(None, description="Filter by alert type"),
+    alert_type: Optional[str] = Query(None, description="Filter by alert type"),
     start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
     end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
     patient_id: Optional[str] = Query(None, description="Patient ID if accessing as provider"),
@@ -103,7 +103,7 @@ async def get_alerts(
             
             alerts = await alert_service.get_alerts(
                 patient_id=subject_id,
-                alert_type=alert_type.value if alert_type else None,
+                alert_type=alert_type,
                 severity=priority,
                 status=status_param.value if status_param else None,
                 start_time=start_time,
@@ -281,8 +281,9 @@ async def update_alert_status(
         )
         
         if not success:
+            status_code = status.HTTP_404_NOT_FOUND if error_msg and "not found" in error_msg.lower() else status.HTTP_400_BAD_REQUEST
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status_code,
                 detail=error_msg or "Failed to update alert status"
             )
             

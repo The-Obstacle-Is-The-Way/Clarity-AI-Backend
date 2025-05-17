@@ -13,7 +13,7 @@ from uuid import UUID
 from pydantic import Field, field_validator, UUID4, BaseModel
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
-from app.core.utils.date_utils import utcnow
+from app.core.utils.date_utils import utcnow, as_utc
 from app.domain.entities.biometric_rule import (
     AlertPriority as RuleAlertPriority,
     LogicalOperator,
@@ -33,10 +33,11 @@ class AlertBase(BaseModelConfig):
 
     @field_validator("timestamp")
     def validate_timestamp(cls, v):
-        """Ensure timestamp is not in the future."""
-        if v > utcnow():
+        """Ensure timestamp is not in the future and return an aware datetime."""
+        aware_ts = as_utc(v)
+        if aware_ts > utcnow():
             raise ValueError("Timestamp cannot be in the future")
-        return v
+        return aware_ts
 
 
 class AlertCreateRequest(AlertBase):
