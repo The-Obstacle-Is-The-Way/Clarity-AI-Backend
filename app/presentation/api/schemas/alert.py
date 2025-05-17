@@ -69,6 +69,8 @@ class AlertUpdateRequest(BaseModelConfig):
 class AlertResponse(AlertBase):
     """Response schema for alert data."""
 
+    # Allow raw string values for alert_type in responses
+    alert_type: AlertType | str
     id: UUID
     status: AlertStatus
     user_id: str  # The ID of the patient this alert belongs to
