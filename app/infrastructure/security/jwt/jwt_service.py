@@ -7,6 +7,7 @@ HIPAA security standards and best practices for healthcare applications.
 
 import uuid
 from datetime import datetime, timedelta, UTC, date, timezone
+import math
 from enum import Enum
 from typing import Any, Dict, Optional, Union, List
 from uuid import UUID
@@ -514,13 +515,13 @@ class JWTService(IJwtService):
                 
                 # Determine expiration based on token type and provided override
                 if expires_delta:
-                    expire_timestamp = int((now + expires_delta).timestamp())
+                    expire_timestamp = math.ceil((now + expires_delta).timestamp())
                 elif expires_delta_minutes is not None:
-                    expire_timestamp = int((now + timedelta(minutes=expires_delta_minutes)).timestamp())
+                    expire_timestamp = math.ceil((now + timedelta(minutes=expires_delta_minutes)).timestamp())
                 elif is_refresh_token:
-                    expire_timestamp = int((now + timedelta(days=self.refresh_token_expire_days)).timestamp())
+                    expire_timestamp = math.ceil((now + timedelta(days=self.refresh_token_expire_days)).timestamp())
                 else:
-                    expire_timestamp = int((now + timedelta(minutes=self.access_token_expire_minutes)).timestamp())
+                    expire_timestamp = math.ceil((now + timedelta(minutes=self.access_token_expire_minutes)).timestamp())
             except (TypeError, AttributeError) as e:
                 # Fallback for any issues with datetime
                 logger.warning(f"Using fallback timestamp calculation due to: {e}")

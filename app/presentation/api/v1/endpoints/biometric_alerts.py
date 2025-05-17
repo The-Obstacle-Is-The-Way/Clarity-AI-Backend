@@ -10,6 +10,7 @@ from typing import List, Optional, Any, Dict
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Body
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
@@ -34,7 +35,7 @@ router = APIRouter(
 async def get_alerts(
     status_param: Optional[AlertStatus] = Query(None, alias="status", description="Filter by alert status"),
     priority: Optional[AlertPriority] = Query(None, description="Filter by alert priority"),
-    alert_type: Optional[AlertType] = Query(None, description="Filter by alert type"),
+    alert_type: Optional[str] = Query(None, description="Filter by alert type"),
     start_date: Optional[str] = Query(None, description="Filter by start date (ISO format)"),
     end_date: Optional[str] = Query(None, description="Filter by end date (ISO format)"),
     patient_id: Optional[str] = Query(None, description="Patient ID if accessing as provider"),
@@ -103,7 +104,7 @@ async def get_alerts(
             
             alerts = await alert_service.get_alerts(
                 patient_id=subject_id,
-                alert_type=alert_type.value if alert_type else None,
+                alert_type=alert_type,
                 severity=priority,
                 status=status_param.value if status_param else None,
                 start_time=start_time,
@@ -122,19 +123,8 @@ async def get_alerts(
                         try:
                             # Handle dict or Alert object
                             if isinstance(alert, dict):
-                                alert_response = AlertResponse(
-                                    id=alert.get("id"),
-                                    alert_type=alert.get("alert_type"),
-                                    timestamp=alert.get("timestamp"),
-                                    status=alert.get("status"),
-                                    priority=alert.get("priority"),
-                                    message=alert.get("message"),
-                                    data=alert.get("data"),
-                                    user_id=alert.get("user_id"),
-                                    resolved_at=alert.get("resolved_at"),
-                                    resolution_notes=alert.get("resolution_notes")
-                                )
-                                result.append(alert_response)
+                                # Return dictionary data directly
+                                result.append(alert)
                             else:
                                 # Assume it's an Alert object
                                 alert_response = AlertResponse(
@@ -149,7 +139,7 @@ async def get_alerts(
                                     resolved_at=alert.resolved_at,
                                     resolution_notes=alert.resolution_notes
                                 )
-                                result.append(alert_response)
+                                result.append(alert_response.model_dump())
                         except (AttributeError, TypeError) as e:
                             logger.warning(f"Error converting alert item: {str(e)}")
                             # Skip this item but continue processing
@@ -281,9 +271,14 @@ async def update_alert_status(
         )
         
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_msg or "Failed to update alert status"
+            status_code = (
+                status.HTTP_404_NOT_FOUND
+                if error_msg and "not found" in error_msg.lower()
+                else status.HTTP_400_BAD_REQUEST
+            )
+            return JSONResponse(
+                status_code=status_code,
+                content={"success": False, "message": error_msg or "Failed to update alert status"},
             )
             
         return {
