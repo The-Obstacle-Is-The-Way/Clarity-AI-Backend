@@ -784,6 +784,12 @@ class JWTService(IJwtService):
                 logger.error(f"Unexpected error creating TokenPayload: {general_e}")
                 raise InvalidTokenException(f"Invalid token: {general_e}")
             
+            # Check if token is expired manually, but only if verify_exp option is True
+            verify_exp = options.get("verify_exp", True)
+            if verify_exp and token_payload.is_expired:
+                logger.warning(f"Token with JTI {token_payload.jti} has expired")
+                raise TokenExpiredException("Token has expired")
+                
             # Check if token is blacklisted
             if token_payload.jti and self._is_token_blacklisted(token_payload.jti):
                 logger.warning(f"Token with JTI {token_payload.jti} is blacklisted")
