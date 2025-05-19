@@ -842,7 +842,8 @@ class TestBiometricAlertsEndpoints:
         response = await client.put(
             f"/api/v1/biometric-alert-rules/{rule_id_str}",
             headers=headers,
-            json=update_payload
+            # Wrap with update_data key as expected by the endpoint
+            json={"update_data": update_payload}
         )
         
         # Debug info if needed

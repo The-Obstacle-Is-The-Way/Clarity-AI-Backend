@@ -22,6 +22,7 @@ class AlertPriority(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+    INFO = "info"
     
     def __str__(self) -> str:
         return self.value
