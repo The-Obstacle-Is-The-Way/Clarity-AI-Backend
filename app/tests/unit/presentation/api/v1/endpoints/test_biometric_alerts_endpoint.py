@@ -795,8 +795,7 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
         
-        # The schema expects status to be an enum value "acknowledged"
-        # We need to ensure we're properly formatting the request to avoid validation errors (422)
+        # The API uses Pydantic validation for the request payload
         update_payload = {
             "status": "acknowledged",  # Valid enum value
             "resolution_notes": None   # Matches the field definition in AlertUpdateRequest

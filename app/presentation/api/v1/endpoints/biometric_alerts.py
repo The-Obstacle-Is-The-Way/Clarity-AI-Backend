@@ -281,10 +281,17 @@ async def update_alert_status(
         )
         
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_msg or "Failed to update alert status"
-            )
+            # If the error message indicates the alert wasn't found, return 404
+            if error_msg and "not found" in error_msg.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=error_msg
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=error_msg or "Failed to update alert status"
+                )
             
         return {
             "success": True,
