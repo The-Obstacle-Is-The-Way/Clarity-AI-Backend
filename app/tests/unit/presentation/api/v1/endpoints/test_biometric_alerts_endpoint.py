@@ -908,13 +908,15 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
+        # Remove skip decorator
+        # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
         headers = get_valid_provider_auth_headers
         response = await client.get(
-            "/api/v1/biometric-alerts/rules/templates",
+            "/api/v1/biometric-alert-rules/templates",
             headers=headers
         )
-        # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # Original position
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     @pytest.mark.asyncio
     async def test_get_alerts(
@@ -1351,7 +1353,8 @@ class TestBiometricAlertsEndpoints:
         client: AsyncClient,
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
+        # Remove skip decorator
+        # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # MOVED TO TOP
         headers = get_valid_provider_auth_headers
         payload = {
             "template_id": "high_heart_rate",
@@ -1371,10 +1374,11 @@ class TestBiometricAlertsEndpoints:
             "customizable_fields": ["threshold_value", "priority"]
         }
         response = await client.post(
-            "/api/v1/biometric-alerts/rules/templates",
+            "/api/v1/biometric-alert-rules/templates",
             headers=headers,
             json=payload
         )
+        assert response.status_code == 201
         # pytest.skip("Skipping test until AlertRuleTemplateService is implemented") # Original position
 
     @pytest.mark.asyncio

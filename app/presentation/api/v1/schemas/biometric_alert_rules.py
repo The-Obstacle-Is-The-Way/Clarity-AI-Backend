@@ -7,7 +7,7 @@ for biometric alert rules API endpoints, following clean architecture principles
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, validator
@@ -192,4 +192,38 @@ class AlertRuleList(BaseModel):
     items: List[AlertRuleResponse] = Field(..., description="List of alert rules")
     total: int = Field(..., description="Total count of matching rules")
     skip: int = Field(..., description="Number of rules skipped")
-    limit: int = Field(..., description="Maximum number of rules returned") 
+    limit: int = Field(..., description="Maximum number of rules returned")
+
+
+class AlertRuleTemplateResponse(BaseModel):
+    """Response model for rule templates."""
+    template_id: str = Field(..., description="Unique template identifier")
+    name: str = Field(..., description="Template name")
+    description: str = Field(..., description="Template description")
+    category: Optional[str] = Field(None, description="Template category")
+    conditions: List[Dict[str, Any]] = Field(..., description="Template conditions")
+    logical_operator: str = Field("and", description="Logical operator between conditions")
+    default_priority: str = Field("medium", description="Default priority for alerts")
+    customizable_fields: List[str] = Field([], description="Fields that can be customized")
+    
+    class Config:
+        """Pydantic model configuration."""
+        json_schema_extra = {
+            "example": {
+                "template_id": "high_heart_rate",
+                "name": "High Heart Rate Template",
+                "description": "Alert when heart rate exceeds threshold",
+                "category": "cardiac",
+                "conditions": [
+                    {
+                        "metric_name": "heart_rate",
+                        "comparator_operator": "greater_than",
+                        "threshold_value": 100,
+                        "duration_minutes": 5
+                    }
+                ],
+                "logical_operator": "and",
+                "default_priority": "medium",
+                "customizable_fields": ["threshold_value", "priority"]
+            }
+        } 
