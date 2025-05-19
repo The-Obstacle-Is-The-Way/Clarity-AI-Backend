@@ -793,7 +793,7 @@ class TestBiometricAlertsEndpoints:
         non_existent_alert_id = str(uuid.uuid4())
         
         # Correctly format the payload according to the AlertUpdateRequest schema
-        update_payload = {"status": "acknowledged", "resolution_notes": ""}
+        update_payload = {"update_request": {"status": "acknowledged", "resolution_notes": ""}}
         
         response = await client.patch(
             f"/api/v1/biometric-alerts/{non_existent_alert_id}/status",
@@ -821,6 +821,18 @@ class TestBiometricAlertsEndpoints:
             "by_priority": {"low": 1, "medium": 2, "high": 2},
             "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
         }
+        
+        # Mock response for get_alert_summary
+        alert_service_mock = MagicMock(spec=AlertServiceInterface)
+        alert_service_mock.get_alert_summary = AsyncMock(return_value=summary_data)
+        alert_service_mock.validate_access = AsyncMock(return_value=True)
+        
+        # Add missing abstract methods
+        alert_service_mock.create_rule = AsyncMock(return_value=None)
+        alert_service_mock.evaluate_biometric_data = AsyncMock(return_value=[])
+        alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
+        alert_service_mock.list_rules = AsyncMock(return_value=[])
+        alert_service_mock.update_rule = AsyncMock(return_value=None)
         
         # Override dependency - use the app from test_app
         app, _ = test_app  
@@ -865,6 +877,7 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock = MagicMock(spec=AlertServiceInterface)
         # Return a tuple (None, error_message, 404) to indicate a not found condition
         alert_service_mock.get_patient_alert_summary = AsyncMock(return_value=(None, "Patient not found", 404))
+        alert_service_mock.validate_access = AsyncMock(return_value=True)
         
         # Add missing abstract methods
         alert_service_mock.create_rule = AsyncMock(return_value=None)
@@ -872,7 +885,7 @@ class TestBiometricAlertsEndpoints:
         alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
         alert_service_mock.list_rules = AsyncMock(return_value=[])
         alert_service_mock.update_rule = AsyncMock(return_value=None)
-        alert_service_mock.get_alert_summary = AsyncMock(return_value=None)
+        alert_service_mock.get_alert_summary = AsyncMock(return_value=(None, "Patient not found", 404))
         
         # Apply the mock to the dependency
         app, _ = test_app
