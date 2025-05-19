@@ -780,6 +780,13 @@ class TestBiometricAlertsEndpoints:
             detail="Alert not found"
         ))
         
+        # Add missing abstract methods
+        alert_service_mock.create_rule = AsyncMock(return_value=None)
+        alert_service_mock.evaluate_biometric_data = AsyncMock(return_value=[])
+        alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
+        alert_service_mock.list_rules = AsyncMock(return_value=[])
+        alert_service_mock.update_rule = AsyncMock(return_value=None)
+        
         # Apply the mock to the app dependencies
         app, _ = test_app
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
@@ -806,9 +813,6 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
-        # Route is now implemented, remove skip
-        # pytest.skip("Skipping test as GET /patients/{id}/summary route not implemented")
-        
         # Create summary response data
         summary_data = {
             "patient_id": str(sample_patient_id),
@@ -821,12 +825,19 @@ class TestBiometricAlertsEndpoints:
         }
         
         # Mock response for get_alert_summary - use AsyncMock for both methods
-        alert_service_mock = MagicMock()
+        alert_service_mock = MagicMock(spec=AlertServiceInterface)
         alert_service_mock.validate_access = AsyncMock(return_value=True)
         alert_service_mock.get_alert_summary = AsyncMock(return_value=summary_data)
         
+        # Add missing abstract methods
+        alert_service_mock.create_rule = AsyncMock(return_value=None)
+        alert_service_mock.evaluate_biometric_data = AsyncMock(return_value=[])
+        alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
+        alert_service_mock.list_rules = AsyncMock(return_value=[])
+        alert_service_mock.update_rule = AsyncMock(return_value=None)
+        
         # Override dependency - use the app from test_app
-        app, _ = test_app  # Extract app from test_app fixture
+        app, _ = test_app  
         app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # Request alert summary
@@ -840,6 +851,14 @@ class TestBiometricAlertsEndpoints:
         assert response.status_code == 200
         assert response.json()["patient_id"] == str(sample_patient_id)
         assert response.json()["alert_count"] == 5
+        assert "by_status" in response.json()
+        assert "by_priority" in response.json()
+        assert "by_type" in response.json()
+        
+        # Verify service called correctly
+        alert_service_mock.get_alert_summary.assert_called_once()
+        call_args = alert_service_mock.get_alert_summary.call_args[1]
+        assert call_args["patient_id"] == str(sample_patient_id)
         assert "by_status" in response.json()
         assert "by_priority" in response.json()
         assert "by_type" in response.json()
@@ -863,6 +882,14 @@ class TestBiometricAlertsEndpoints:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Patient not found"
         ))
+        
+        # Add missing abstract methods
+        alert_service_mock.create_rule = AsyncMock(return_value=None)
+        alert_service_mock.evaluate_biometric_data = AsyncMock(return_value=[])
+        alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
+        alert_service_mock.list_rules = AsyncMock(return_value=[])
+        alert_service_mock.update_rule = AsyncMock(return_value=None)
+        alert_service_mock.get_alert_summary = AsyncMock(return_value=None)
         
         # Apply the mock to the dependency
         app, _ = test_app
