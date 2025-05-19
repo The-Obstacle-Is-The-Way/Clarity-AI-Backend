@@ -46,8 +46,8 @@ class User(BaseModel):
     is_active: bool = Field(True, description="Whether the user is active")
     status: UserStatus = Field(default=UserStatus.ACTIVE, description="User's account status")
     created_at: datetime = Field(default_factory=datetime.now, description="When the user was created")
-    updated_at: datetime | None = Field(None, description="When the user was last updated")
-    full_name: str | None = Field(None, description="User's full name (first + last)")
+    updated_at: datetime | None = Field(default=None, description="When the user was last updated")
+    full_name: str | None = Field(default=None, description="User's full name (first + last)")
 
     # Authentication fields
     hashed_password: str = Field(
@@ -69,7 +69,17 @@ class User(BaseModel):
         self.status = value
 
     # Modern Pydantic V2 configuration using ConfigDict
-    model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        use_enum_values=True, 
+        arbitrary_types_allowed=True,
+        populate_by_name=True,  # Allow populating fields by alias
+    )
+    
+    def __init__(self, **data: dict[str, any]):
+        # Handle account_status if provided in constructor
+        if "account_status" in data and "status" not in data:
+            data["status"] = data.pop("account_status")
+        super().__init__(**data)
 
     def has_role(self, role: UserRole | str) -> bool:
         """Check if the user has a specific role.
