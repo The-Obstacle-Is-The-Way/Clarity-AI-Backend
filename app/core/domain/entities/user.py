@@ -8,6 +8,7 @@ without any dependency on infrastructure or application layers.
 
 import enum
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -34,7 +35,7 @@ class UserStatus(str, enum.Enum):
 class User(BaseModel):
     """User domain entity representing a user in the system."""
 
-    id: str = Field(..., description="Unique identifier for the user")
+    id: UUID | str = Field(..., description="Unique identifier for the user")
     username: str = Field(default="test_user", description="Username for login")
     email: EmailStr = Field(..., description="User's email address")
     first_name: str = Field(..., description="User's first name")
@@ -44,7 +45,7 @@ class User(BaseModel):
     )
     is_active: bool = Field(True, description="Whether the user is active")
     status: UserStatus = Field(default=UserStatus.ACTIVE, description="User's account status")
-    created_at: datetime = Field(..., description="When the user was created")
+    created_at: datetime = Field(default_factory=datetime.now, description="When the user was created")
     updated_at: datetime | None = Field(None, description="When the user was last updated")
     full_name: str | None = Field(None, description="User's full name (first + last)")
 
@@ -55,9 +56,20 @@ class User(BaseModel):
     password_hash: str = Field(
         default="dummy_password_hash", description="Alias for hashed_password"
     )
+    
+    # Alias for status to maintain compatibility with tests
+    @property
+    def account_status(self) -> UserStatus:
+        """Alias for status to maintain compatibility with tests."""
+        return self.status
+    
+    @account_status.setter
+    def account_status(self, value: UserStatus) -> None:
+        """Setter for account_status that updates status."""
+        self.status = value
 
     # Modern Pydantic V2 configuration using ConfigDict
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
 
     def has_role(self, role: UserRole | str) -> bool:
         """Check if the user has a specific role.
