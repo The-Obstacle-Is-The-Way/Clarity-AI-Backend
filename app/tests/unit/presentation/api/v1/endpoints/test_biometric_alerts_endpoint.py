@@ -818,6 +818,9 @@ class TestBiometricAlertsEndpoints:
             "end_date": "2023-02-01T00:00:00+00:00",
             "alert_count": 5,
             "by_status": {"open": 2, "acknowledged": 1, "resolved": 2},
+            "by_priority": {"low": 1, "medium": 2, "high": 2},
+            "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
+        }
         
         # Override dependency - use the app from test_app
         app, _ = test_app  
