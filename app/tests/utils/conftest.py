@@ -5,6 +5,7 @@ This module provides fixtures and configuration for correctly handling
 async tests with mock objects throughout the test suite.
 """
 
+from collections.abc import Generator
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +14,7 @@ from app.tests.utils.async_test_helpers import SafeAsyncMock
 
 
 @pytest.fixture(autouse=True)
-def patch_async_mock():
+def patch_async_mock() -> Generator[None, None, None]:
     """
     Automatically patch AsyncMock with SafeAsyncMock throughout all tests.
 

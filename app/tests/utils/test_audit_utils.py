@@ -6,8 +6,10 @@ audit logging, allowing it to be disabled or mocked during tests.
 """
 
 import logging
-from collections.abc import AsyncGenerator
+import re
+from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI, Request
@@ -70,7 +72,7 @@ async def disable_audit_middleware_context(app: FastAPI) -> AsyncGenerator[None,
 
 
 def replace_middleware_with_mock(
-    app: FastAPI, middleware_class: type, mock_middleware: BaseHTTPMiddleware = None
+    app: FastAPI, middleware_class: type, mock_middleware: BaseHTTPMiddleware | None = None
 ) -> None:
     """
     Replace a middleware in the application with a mocked version.
@@ -91,7 +93,7 @@ def replace_middleware_with_mock(
                 app.middleware_stack.app.middleware[i]["instance"] = mock_middleware
             else:
                 # Create a pass-through mock middleware
-                async def mock_dispatch(request, call_next):
+                async def mock_dispatch(request: Request, call_next: Callable) -> Any:
                     return await call_next(request)
 
                 mock = AsyncMock()
@@ -133,16 +135,14 @@ def disable_authentication_middleware(app: FastAPI) -> None:
                     middleware_instance.public_paths.add("/api/*")
 
                     # Add patterns that match everything
-                    import re
-
                     middleware_instance.public_path_patterns.append(re.compile(".*"))
                     middleware_instance.public_path_patterns.append(re.compile("^/api/.*$"))
                     logger.info("Added wildcard patterns to auth middleware public paths")
 
                     # Replace dispatch method with a pass-through version
-                    original_dispatch = middleware_instance.dispatch
+                    # Note: not using the original_dispatch variable to avoid the F841 warning
 
-                    async def mock_dispatch(request, call_next):
+                    async def mock_dispatch(request: Request, call_next: Callable) -> Any:
                         # Add authentication data directly to request
                         from starlette.authentication import AuthCredentials
 
@@ -204,7 +204,7 @@ def get_mock_audit_service() -> IAuditLogger:
 
 
 @contextmanager
-def disabled_audit_logging(app: FastAPI):
+def disabled_audit_logging(app: FastAPI) -> Generator[None, None, None]:
     """
     Context manager to temporarily disable audit logging.
 
@@ -226,7 +226,7 @@ def disabled_audit_logging(app: FastAPI):
 
 
 @asynccontextmanager
-async def disabled_audit_logging_async(app: FastAPI):
+async def disabled_audit_logging_async(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Async context manager to temporarily disable audit logging.
 
@@ -249,65 +249,53 @@ async def disabled_audit_logging_async(app: FastAPI):
 
 def find_middleware_by_type(app: FastAPI, middleware_type: type) -> BaseHTTPMiddleware | None:
     """
-    Find middleware of a specific type in the application.
+    Find middleware of a specific type in the application's middleware stack.
 
     Args:
         app: The FastAPI application instance
         middleware_type: The type of middleware to find
 
     Returns:
-        Optional[BaseHTTPMiddleware]: The middleware instance if found, None otherwise
+        The middleware instance if found, None otherwise
     """
-    for middleware in app.user_middleware:
-        cls = middleware.cls
-        if cls == middleware_type or issubclass(cls, middleware_type):
-            return middleware
+    if not hasattr(app, "middleware_stack") or not app.middleware_stack:
+        return None
+
+    for middleware in app.middleware_stack.app.middleware:
+        if isinstance(middleware, dict) and middleware.get("cls") == middleware_type:
+            return middleware.get("instance")
+
     return None
 
 
 def create_test_request(
-    app: FastAPI, path: str = "/", method: str = "GET", headers: dict = None
+    app: FastAPI, path: str = "/", method: str = "GET", headers: dict[str, str] | None = None
 ) -> Request:
     """
-    Create a mock Request object for testing.
+    Create a test Request object for use in tests.
 
     Args:
         app: The FastAPI application
-        path: URL path
-        method: HTTP method
-        headers: Request headers
+        path: The request path
+        method: The HTTP method
+        headers: Optional request headers
 
     Returns:
-        Request: A mock Request object
+        A Request object configured with the provided parameters
     """
-    # Create minimal scope for request
+    from starlette.types import Scope
+
+    headers = headers or {}
     scope = {
         "type": "http",
-        "app": app,
-        "path": path,
+        "http_version": "1.1",
         "method": method,
-        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()],
-        "client": ("127.0.0.1", 8000),
-        "path_params": {},
+        "path": path,
+        "root_path": "",
+        "scheme": "http",
         "query_string": b"",
-        "url": f"http://testserver{path}",
-        "session": {},
+        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+        "fastapi.app": app,
     }
 
-    # Create request
-    request = Request(scope)
-
-    # Set disable flag directly on request.state
-    request.state.disable_audit_middleware = True
-
-    # Copy app state values to request state
-    if hasattr(app.state, "settings"):
-        request.state.settings = app.state.settings
-
-    if hasattr(app.state, "jwt_service"):
-        request.state.jwt_service = app.state.jwt_service
-
-    # Add mock user if needed
-    request.state.user = MagicMock(id="test_user_id")
-
-    return request
+    return Request(cast(Scope, scope))

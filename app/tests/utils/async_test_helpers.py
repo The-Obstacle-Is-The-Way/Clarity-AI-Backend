@@ -5,12 +5,12 @@ This module provides utilities that make it easier to work with AsyncMock object
 in pytest tests, preventing "coroutine was never awaited" warnings.
 """
 
+from typing import Any, TypeVar
 from unittest.mock import AsyncMock as _AsyncMock
-import inspect
-from typing import Any, Awaitable, Callable, Generic, Optional, TypeVar, Union, cast
 
 # Define a type variable for return types
 T = TypeVar("T")
+
 
 class SafeAsyncMock(_AsyncMock):
     """

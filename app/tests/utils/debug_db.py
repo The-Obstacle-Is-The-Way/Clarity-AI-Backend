@@ -7,26 +7,26 @@ and diagnosing any issues with the SQLite setup.
 
 import asyncio
 import logging
-import os
 import sys
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
+
+# Import SQLAlchemy components
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add the backend directory to sys.path if needed
-backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
-
-# Import SQLAlchemy components
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+backend_dir = Path(__file__).parent.parent.parent.parent.resolve()
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 # Direct SQL statements for table creation
-DIRECT_SQL = {
+DIRECT_SQL: dict[str, str] = {
     "enable_foreign_keys": """
     PRAGMA foreign_keys = ON;
     """,
@@ -69,8 +69,8 @@ TEST_PASSWORD_HASH = "hashed_password_for_testing_only"
 async def verify_table_exists(session: AsyncSession, table_name: str) -> bool:
     """Verify that a table exists in the database."""
     try:
-        query = text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
-        result = await session.execute(query)
+        query = text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table_name")
+        result = await session.execute(query, {"table_name": table_name})
         exists = result.scalar() is not None
 
         if exists:
@@ -156,7 +156,7 @@ async def create_test_patient(session: AsyncSession) -> None:
         raise
 
 
-async def debug_database():
+async def debug_database() -> None:
     """Create and test the database setup."""
     logger.info("Starting database debugging")
 

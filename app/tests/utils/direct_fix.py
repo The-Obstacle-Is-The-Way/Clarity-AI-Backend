@@ -7,129 +7,155 @@ any missing tables to enable our tests to pass immediately.
 
 import asyncio
 import logging
-import os
 import sys
-from pprint import pformat
+from pathlib import Path
+
+# Import SQLAlchemy components
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+# Import domain and infrastructure components
+from app.infrastructure.persistence.sqlalchemy.config.base import Base
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# Add the backend directory to sys.path if needed
-backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
-
-# Import Base to access metadata
-import uuid
-
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Text, text
-from sqlalchemy.dialects.postgresql import UUID
-
-from app.domain.utils.datetime_utils import now_utc
-from app.infrastructure.persistence.sqlalchemy.config.base import Base
+# Add the parent directory to sys.path if needed
+if str(Path(__file__).parent.parent.parent.parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+    logger.info(f"Added {Path(__file__).parent.parent.parent.parent} to sys.path")
 
 # Import all models to register with metadata
+logger.info("Importing models to register with metadata")
 
-try:
-    # Attempt to import Patient model
-    PATIENT_IMPORTED = True
-except Exception as e:
-    logger.error(f"Error importing Patient model: {e}")
-    PATIENT_IMPORTED = False
+# Database URL configuration
+DATABASE_URL = "sqlite+aiosqlite:///clarity_test.db"
+logger.info(f"Using database URL: {DATABASE_URL}")
 
-# Create in-memory SQLite database and test table creation
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+# Create engine and session
+engine = create_async_engine(DATABASE_URL, echo=True)
+async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+# Direct SQL statements for table creation
+DIRECT_SQL = {
+    "enable_foreign_keys": """
+    PRAGMA foreign_keys = ON;
+    """,
+    "create_digital_twin_table": """
+    CREATE TABLE IF NOT EXISTS digital_twins (
+        id TEXT PRIMARY KEY,
+        patient_id TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        version INTEGER NOT NULL DEFAULT 1,
+        config_json TEXT,
+        state_json TEXT,
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
+    );
+    """,
+    "create_biometric_twin_table": """
+    CREATE TABLE IF NOT EXISTS biometric_twins (
+        id TEXT PRIMARY KEY,
+        patient_id TEXT NOT NULL,
+        twin_type TEXT NOT NULL,
+        state_json TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        baseline_established BOOLEAN NOT NULL DEFAULT FALSE,
+        connected_devices TEXT,
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
+    );
+    """,
+    "create_biometric_data_points_table": """
+    CREATE TABLE IF NOT EXISTS biometric_data_points (
+        id TEXT PRIMARY KEY,
+        twin_id TEXT NOT NULL,
+        data_type TEXT NOT NULL,
+        value TEXT NOT NULL,
+        timestamp TIMESTAMP NOT NULL,
+        source TEXT NOT NULL,
+        metadata TEXT,
+        confidence REAL,
+        FOREIGN KEY (twin_id) REFERENCES biometric_twins(id)
+    );
+    """,
+    "create_biometric_rules_table": """
+    CREATE TABLE IF NOT EXISTS biometric_rules (
+        id TEXT PRIMARY KEY,
+        patient_id TEXT NOT NULL,
+        rule_type TEXT NOT NULL,
+        data_source TEXT NOT NULL,
+        condition TEXT NOT NULL,
+        metadata TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        threshold REAL,
+        min_value REAL,
+        max_value REAL,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
+    );
+    """,
+    "create_biometric_alerts_table": """
+    CREATE TABLE IF NOT EXISTS biometric_alerts (
+        id TEXT PRIMARY KEY,
+        patient_id TEXT NOT NULL,
+        rule_id TEXT NOT NULL,
+        data_point_id TEXT,
+        alert_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        status TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP,
+        acknowledged_at TIMESTAMP,
+        acknowledged_by TEXT,
+        metadata TEXT,
+        FOREIGN KEY (patient_id) REFERENCES patients(id),
+        FOREIGN KEY (rule_id) REFERENCES biometric_rules(id),
+        FOREIGN KEY (data_point_id) REFERENCES biometric_data_points(id)
+    );
+    """,
+}
 
 
-async def test_database_tables():
-    """Test creating all tables in SQLAlchemy metadata."""
-    # Register tables
-    registered_tables = list(Base.metadata.tables.keys())
-    logger.info(f"REGISTERED TABLES: {pformat(registered_tables)}")
+async def create_tables() -> None:
+    """
+    Create all tables in the database directly using SQLAlchemy metadata.
+    """
+    async with engine.begin() as conn:
+        # Enable foreign keys for SQLite
+        await conn.execute(text(DIRECT_SQL["enable_foreign_keys"]))
 
-    # Fix: If 'patients' table is not registered, create it manually
-    if "patients" not in registered_tables:
-        logger.warning("'patients' table not found in metadata, creating manually")
+        # Create tables from the model metadata
+        await conn.run_sync(Base.metadata.create_all)
 
-        # Define table manually with minimal required columns for tests
-        from sqlalchemy import Table
+        # Print the tables that were created
+        table_names = await conn.run_sync(lambda sync_conn: sync_conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).scalars().all())
+        logger.info(f"Tables in database: {', '.join(table_names)}")
 
-        if not hasattr(Base, "metadata"):
-            logger.error("Base.metadata does not exist!")
-            return
+        # Check if specific tables are missing
+        for table_name, sql in DIRECT_SQL.items():
+            if table_name != "enable_foreign_keys" and table_name.startswith("create_"):
+                table_name_actual = table_name.replace("create_", "").replace("_table", "")
+                if table_name_actual not in table_names:
+                    logger.warning(f"Table {table_name_actual} is missing, creating directly")
+                    await conn.execute(text(sql))
 
-        # Create a minimal patients table using SQLAlchemy Table construct
-        # CRITICAL FIX: Use column names that match the SQL schema (without underscores)
-        patients_table = Table(
-            "patients",
-            Base.metadata,
-            Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-            Column("user_id", UUID(as_uuid=True), ForeignKey("users.id"), nullable=True),
-            Column("first_name", Text, nullable=True),  # Match column names with SQL schema
-            Column("last_name", Text, nullable=True),  # Match column names with SQL schema
-            Column("date_of_birth", Text, nullable=True),  # Match column names with SQL schema
-            Column("email", Text, nullable=True),  # Match column names with SQL schema
-            Column("phone", Text, nullable=True),  # Match column names with SQL schema
-            Column("created_at", DateTime, default=now_utc, nullable=False),
-            Column(
-                "updated_at",
-                DateTime,
-                default=now_utc,
-                onupdate=now_utc,
-                nullable=False,
-            ),
-            Column("is_active", Boolean, default=True, nullable=False),
-        )
 
-        # Check that it's now registered
-        registered_tables = list(Base.metadata.tables.keys())
-        logger.info(f"UPDATED REGISTERED TABLES: {pformat(registered_tables)}")
-
-    # Create test in-memory database to verify table creation
-    db_url = "sqlite+aiosqlite:///:memory:"
-    engine = create_async_engine(db_url, echo=True)
-
+async def main() -> None:
+    """
+    Main entry point for the script.
+    """
     try:
-        # CRITICAL FIX: Enable foreign keys BEFORE creating tables
-        async with engine.begin() as conn:
-            # Enable foreign keys first
-            await conn.execute(text("PRAGMA foreign_keys = ON;"))
-            logger.info("Foreign keys enabled in SQLite")
-
-            # Then create all tables
-            await conn.run_sync(Base.metadata.create_all)
-            logger.info("Tables created successfully")
-
-        # Test session creation and verify tables
-        session_factory = async_sessionmaker(bind=engine, class_=AsyncSession)
-        async with session_factory() as session:
-            # Verify tables exist
-            result = await session.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table'")
-            )
-            tables = [row[0] for row in result]
-            logger.info(f"CREATED TABLES: {tables}")
-
-            # Check if critical tables exist
-            if "users" not in tables or "patients" not in tables:
-                logger.error(f"CRITICAL ERROR: Missing required tables! Found: {tables}")
-            else:
-                logger.info("SUCCESS: All required tables created")
-
-                # Verify table structure
-                for table_name in ["users", "patients"]:
-                    columns_query = text(f"PRAGMA table_info({table_name})")
-                    columns_result = await session.execute(columns_query)
-                    columns = columns_result.fetchall()
-                    column_names = [col[1] for col in columns]  # Column name is at index 1
-                    logger.info(f"Table {table_name} columns: {column_names}")
-
+        logger.info("Starting SQLAlchemy metadata registry examination and table creation")
+        await create_tables()
+        logger.info("Successfully created all tables")
     except Exception as e:
-        logger.error(f"Error during table creation: {e}")
-    finally:
-        await engine.dispose()
+        logger.error(f"Error during table creation: {e}", exc_info=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    asyncio.run(test_database_tables())
+    asyncio.run(main())
