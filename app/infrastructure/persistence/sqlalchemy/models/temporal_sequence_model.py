@@ -8,6 +8,7 @@ supporting neural network modeling and temporal analysis.
 import sqlalchemy as sa
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+import json
 
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
@@ -27,8 +28,8 @@ class TemporalSequenceModel(Base):
     sequence_id = sa.Column(GUID, primary_key=True)
     patient_id = sa.Column(GUID, nullable=True, index=True)
     
-    # Sequence metadata
-    feature_names = sa.Column(sa.ARRAY(sa.String), nullable=False)
+    # Sequence metadata - using JSONEncodedDict instead of ARRAY for SQLite compatibility
+    feature_names_json = sa.Column(JSONEncodedDict, nullable=False)
     sequence_metadata = sa.Column(JSONEncodedDict, nullable=False, default={})
     
     # Audit fields
@@ -47,6 +48,16 @@ class TemporalSequenceModel(Base):
     __table_args__ = (
         sa.Index("idx_temporal_sequences_patient", "patient_id"),
     )
+    
+    @property
+    def feature_names(self):
+        """Get feature names as a list."""
+        return self.feature_names_json
+    
+    @feature_names.setter
+    def feature_names(self, value):
+        """Set feature names from a list."""
+        self.feature_names_json = value
 
 
 class TemporalDataPointModel(Base):
