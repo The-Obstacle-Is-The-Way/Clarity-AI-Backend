@@ -489,6 +489,20 @@ class TemporalSequence(_GenericTemporalSequence):
             self.description = kwargs.get('description')
             self.time_unit = kwargs.get('time_unit')
             self.time_points: list[TimePoint] = []
+            self.metadata = {}
+            self.sequence_metadata = self.metadata
+            # Add essential attributes that might be accessed but not explicitly set
+            self.sequence_id = kwargs.get('sequence_id', uuid.uuid4())
+            self.patient_id = kwargs.get('patient_id', uuid.uuid4())
+            self._feature_names = kwargs.get('feature_names', ["value"])
+            self._timestamps = []
+            self._values = []
+            self.brain_region = kwargs.get('brain_region', None)
+            self.neurotransmitter = kwargs.get('neurotransmitter', None)
+            self.created_at = kwargs.get('created_at', datetime.now(UTC))
+            self.updated_at = kwargs.get('updated_at', datetime.now(UTC))
+            self.temporal_resolution = kwargs.get('temporal_resolution', None)
+            self._sequence_length = 0
         else:
             # Generic initialization for repository or service usages
             _GenericTemporalSequence.__init__(self, *args, **kwargs)

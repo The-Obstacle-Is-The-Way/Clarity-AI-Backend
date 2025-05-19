@@ -109,6 +109,18 @@ class TemporalNeurotransmitterMapping(NeurotransmitterMapping):
                 # Regions that produce a neurotransmitter have slightly higher baseline
                 self.baseline_levels[region][nt] = 0.6 if produces else 0.4
                 
+    def get_baseline_levels(self, brain_region: BrainRegion) -> dict[Neurotransmitter, float]:
+        """
+        Get baseline neurotransmitter levels for a specific brain region.
+        
+        Args:
+            brain_region: The brain region to get baseline levels for
+            
+        Returns:
+            Dictionary mapping neurotransmitters to their baseline levels (0.0-1.0)
+        """
+        return self.baseline_levels.get(brain_region, {})
+                
     def analyze_receptor_affinity(self, neurotransmitter: Neurotransmitter, brain_region: BrainRegion) -> float:
         """
         Analyze the affinity of receptors in a brain region for a specific neurotransmitter.
