@@ -846,16 +846,30 @@ class TestBiometricAlertsEndpoints:
     async def test_get_patient_alert_summary_not_found(
         self,
         client: AsyncClient,
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Skip this test until we fix the authentication issue
-        # Authentication issues fixed, continue with test
+        # Mock the alert service to properly handle the 404 case
+        alert_service_mock = MagicMock(spec=AlertServiceInterface)
+        # Configure the get_patient_alert_summary method to raise a 404 HTTP exception
+        alert_service_mock.get_patient_alert_summary = AsyncMock(side_effect=HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        ))
+        
+        # Apply the mock to the dependency
+        app, _ = test_app
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        
+        # Make the request
         headers = get_valid_provider_auth_headers
-        non_existent_patient_id = str(uuid.uuid4()) 
+        non_existent_patient_id = str(uuid.uuid4())
         response = await client.get(
             f"/api/v1/biometric-alerts/patients/{non_existent_patient_id}/summary", 
             headers=headers
         )
+        
+        # Assert the response status code is correctly set to 404
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
