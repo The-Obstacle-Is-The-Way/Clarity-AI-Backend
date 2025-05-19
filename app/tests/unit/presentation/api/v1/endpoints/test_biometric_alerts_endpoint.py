@@ -910,27 +910,34 @@ class TestBiometricAlertsEndpoints:
         test_app: tuple[FastAPI, AsyncClient],
         sample_patient_id: uuid.UUID # No get_valid_provider_auth_headers here
     ) -> None:
-        # Route is now implemented, no need to skip
-        # Create a new client without any auth override
+        # Setup the app with auth enforcement
         app, _ = test_app
         
-        # Create a special override to enforce auth check
-        app.dependency_overrides[get_current_active_user] = None  # Remove override
+        # We need to configure the app to require authentication
+        # First save the original dependencies
+        original_dependencies = dict(app.dependency_overrides)
         
-        # Reset auth middleware for this test to enforce auth
+        # Clear the dependency overrides completely
+        app.dependency_overrides = {}
+        
+        # We'll use fastapi's real get_current_active_user dependency that will enforce auth
+        # Create a custom client for this test only
         client = AsyncClient(app=app, base_url="http://test")
         
-        # No auth headers provided - should receive 401
+        # Send a request without auth headers
         alert_id = str(uuid.uuid4())
-        update_payload = {"status": "acknowledged"}
+        update_payload = {"status": "acknowledged", "resolution_notes": ""}
         response = await client.patch(
             f"/api/v1/biometric-alerts/{alert_id}/status",
             json=update_payload
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         
-        # Restore the override after test
-        app.dependency_overrides[get_current_active_user] = lambda: app.dependency_overrides[get_current_user]()
+        # Should return 401 Unauthorized since no auth token provided
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "Not authenticated" in response.json().get("detail", "")
+        
+        # Restore the original app dependencies
+        app.dependency_overrides = original_dependencies
 
     @pytest.mark.asyncio
     async def test_update_alert_status_invalid_payload(
