@@ -3,6 +3,7 @@ Biometric Alert Rules API endpoints.
 
 This module implements API endpoints for managing biometric alert rules,
 following clean architecture principles with proper separation of concerns.
+Fixed template creation and patient alert rules routing.
 """
 
 import logging
