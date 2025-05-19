@@ -72,7 +72,7 @@ watchfiles==0.18.1
 websockets==11.0.3
 
 # ADDED: zxcvbn
-zxcvbn==1.0
+python-zxcvbn==4.4.28
 
 # ADDED: slowapi
 slowapi==0.1.9
