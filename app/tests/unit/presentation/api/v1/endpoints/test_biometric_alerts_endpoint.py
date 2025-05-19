@@ -23,9 +23,10 @@ import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from asgi_lifespan import LifespanManager
 from faker import Faker
-from fastapi import FastAPI, status, Request, Depends
+from fastapi import FastAPI, status, Request, Depends, HTTPException
 from httpx import ASGITransport, AsyncClient
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock as Mock
 
 from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings
@@ -762,18 +763,32 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_not_found(
         self,
         client: AsyncClient,
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Skip this test until we fix the authentication issue
-        # Authentication issues fixed, continue with test
+        # Mock alert service to return None for the not found case
+        alert_service_mock = MagicMock(spec=AlertServiceInterface)
+        alert_service_mock.update_alert_status = AsyncMock(side_effect=HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert not found"
+        ))
+        
+        # Apply the mock to the app dependencies
+        app, _ = test_app
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
+        
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
-        update_payload = {"status": "acknowledged"}
+        
+        # Correctly format the payload according to the AlertUpdateRequest schema
+        update_payload = {"status": "acknowledged", "resolution_notes": ""}
+        
         response = await client.patch(
             f"/api/v1/biometric-alerts/{non_existent_alert_id}/status",
             headers=headers,
             json=update_payload
         )
+        
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
