@@ -89,44 +89,92 @@ class TemporalNeurotransmitterService:
         patient_id: UUID,
         brain_region: BrainRegion,
         neurotransmitter: Neurotransmitter,
-        time_range_days: int = 30,
+        time_range_days: int = 14,
         time_step_hours: int = 6
     ) -> UUID:
         """
-        Generate a temporal sequence for a neurotransmitter in a specific brain region.
+        Generate a time series for a specific neurotransmitter in a brain region.
         
         Args:
             patient_id: UUID of the patient
             brain_region: Target brain region
             neurotransmitter: Target neurotransmitter
             time_range_days: Number of days to simulate
-            time_step_hours: Hours between time points
+            time_step_hours: Time step between data points in hours
             
         Returns:
-            UUID of the created temporal sequence
+            UUID of the generated sequence
         """
+        # Create extended mapping if not already available
+        if not hasattr(self, 'nt_mapping'):
+            self.nt_mapping = extend_neurotransmitter_mapping(
+                self.base_mapping,
+                patient_id=patient_id
+            )
         
-        # Generate timestamps
-        end_time = datetime.now(UTC)
-        start_time = end_time - timedelta(days=time_range_days)
-        num_steps = int((time_range_days * 24) / time_step_hours)
-        timestamps = [
-            start_time + timedelta(hours=i * time_step_hours)
-            for i in range(num_steps + 1)
-        ]
+        # Calculate time points
+        start_time = datetime.now(UTC)
+        end_time = start_time + timedelta(days=time_range_days)
         
-        # Generate sequence using domain model
-        sequence = self.nt_mapping.generate_temporal_sequence(
-            brain_region=brain_region,
-            neurotransmitter=neurotransmitter,
-            timestamps=timestamps,
-            patient_id=patient_id
+        # Create time points with step size
+        time_points = []
+        current_time = start_time
+        while current_time <= end_time:
+            time_points.append(current_time)
+            current_time += timedelta(hours=time_step_hours)
+        
+        # Create temporal sequence
+        sequence = TemporalSequence(
+            name=f"{neurotransmitter.value}_time_series",
+            description=f"Time series for {neurotransmitter.value} in {brain_region.value}",
+            time_unit="hours",
+            feature_names=[nt.value for nt in Neurotransmitter]
         )
         
-        # Persist sequence
+        # Generate neurotransmitter levels for each time point
+        baseline_levels = self.nt_mapping.get_baseline_levels(brain_region)
+        for i, time_point in enumerate(time_points):
+            # Calculate data for this time point
+            # Use baseline with small variations to create a realistic time series
+            time_value = i * time_step_hours  # hours from start
+            
+            # Create data dictionary with all neurotransmitters
+            data = {}
+            for nt in Neurotransmitter:
+                # Get baseline level with some variation over time
+                baseline = baseline_levels.get(nt, 0.5)
+                
+                # Add time-based variation - more pronounced for target neurotransmitter
+                amplitude = 0.2 if nt == neurotransmitter else 0.05
+                frequency = 0.03  # cycles per hour
+                phase = 0.0
+                
+                # Calculate sinusoidal variation
+                variation = amplitude * ((time_value * frequency + phase) % 1)
+                
+                # Set level with baseline and variation
+                data[nt.value] = max(0.1, min(0.9, baseline + variation))
+            
+            # Add the time point to the sequence
+            sequence.add_time_point(
+                time_value=time_value,
+                data=data
+            )
+        
+        # Add metadata
+        sequence.metadata.update({
+            "patient_id": str(patient_id),
+            "brain_region": brain_region.value,
+            "primary_neurotransmitter": neurotransmitter.value,
+            "generation_time": datetime.now(UTC).isoformat(),
+            "time_range_days": time_range_days,
+            "time_step_hours": time_step_hours
+        })
+        
+        # Save the sequence
         sequence_id = await self.sequence_repository.save(sequence)
         
-        # Track event for audit and tracking purposes
+        # Track event if repository available
         if self.event_repository:
             event = await self._create_sequence_generation_event(
                 patient_id=patient_id,
