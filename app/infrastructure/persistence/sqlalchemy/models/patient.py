@@ -31,6 +31,9 @@ from sqlalchemy.orm import relationship
 from app.core.domain.entities.patient import Patient as DomainPatient
 from app.core.domain.enums import Gender  # Corrected Gender import
 
+# Import the encryption service instance directly
+from app.infrastructure.security.encryption import encryption_service_instance
+
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 from app.domain.exceptions.persistence_exceptions import PersistenceError
 from app.domain.utils.datetime_utils import now_utc
