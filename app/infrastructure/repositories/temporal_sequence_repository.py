@@ -1,17 +1,14 @@
 """
 Repository implementation for temporal sequence storage and retrieval.
 """
-import logging
-from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import text
 
 from app.domain.entities.temporal_sequence import TemporalSequence
-from app.domain.repositories.temporal_repository import TemporalSequenceRepository
 from app.domain.exceptions.persistence_exceptions import RepositoryError
+from app.domain.repositories.temporal_repository import TemporalSequenceRepository
 from app.infrastructure.models.temporal_sequence_model import (
     TemporalDataPointModel,
     TemporalSequenceModel,
@@ -54,8 +51,8 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         except Exception as e:
             # Rollback on error
             await self.session.rollback()
-            logger.error(f"Error creating temporal sequence: {str(e)}")
-            raise RepositoryError(f"Failed to create temporal sequence: {str(e)}")
+            logger.error(f"Error creating temporal sequence: {e!s}")
+            raise RepositoryError(f"Failed to create temporal sequence: {e!s}")
 
     async def save(self, sequence: TemporalSequence) -> UUID:
         """

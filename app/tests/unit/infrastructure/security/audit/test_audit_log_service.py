@@ -5,24 +5,21 @@ This module tests the audit logging service for HIPAA compliance and
 proper functionality.
 """
 
+import asyncio  # Added for asyncio.TimeoutError in new tests
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from fastapi import Request, Response
-from unittest.mock import MagicMock, AsyncMock, patch, call
-import asyncio  # Added for asyncio.TimeoutError in new tests
 
 from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
     AuditEventType,
-    AuditSeverity,
+    IAuditLogger,
 )
 from app.domain.entities.audit_log import AuditLog
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
-
 
 # Test data
 TEST_USER_ID = str(uuid.uuid4())
@@ -272,7 +269,7 @@ class TestAuditLogMiddleware:
         self,
         path: str,
         method: str,
-        user_id: Optional[str] = TEST_USER_ID,
+        user_id: str | None = TEST_USER_ID,
         env: str = "production",
         testing_flag: bool = False,
         disable_audit_flag: bool = False,

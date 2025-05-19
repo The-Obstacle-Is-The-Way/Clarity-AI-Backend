@@ -7,7 +7,6 @@ implementation based on Redis or similar technology.
 """
 
 import time
-from typing import Dict, Tuple
 
 from app.core.interfaces.services.rate_limiting.rate_limiter_interface import (
     IRateLimiter,
@@ -26,7 +25,7 @@ class InMemoryRateLimiter(IRateLimiter):
 
     def __init__(self):
         """Initialize empty rate limit state storage."""
-        self._state: Dict[str, Dict[str, int | float]] = {}
+        self._state: dict[str, dict[str, int | float]] = {}
 
     def check_rate_limit(self, key: str, config: RateLimitConfig) -> bool:
         """
@@ -49,7 +48,7 @@ class InMemoryRateLimiter(IRateLimiter):
         # Check if under limit
         return state["count"] < config.requests
 
-    async def track_request(self, key: str, config: RateLimitConfig) -> Tuple[int, int]:
+    async def track_request(self, key: str, config: RateLimitConfig) -> tuple[int, int]:
         """
         Track a request against the rate limit and return current status.
 
@@ -77,7 +76,7 @@ class InMemoryRateLimiter(IRateLimiter):
 
         return state["count"], seconds_until_reset
 
-    def _get_state(self, key: str) -> Dict[str, int | float]:
+    def _get_state(self, key: str) -> dict[str, int | float]:
         """
         Get or initialize state for a key.
 

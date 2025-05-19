@@ -8,7 +8,6 @@ and all core psychiatry analysis features.
 """
 
 from datetime import datetime
-import random
 
 import pytest
 

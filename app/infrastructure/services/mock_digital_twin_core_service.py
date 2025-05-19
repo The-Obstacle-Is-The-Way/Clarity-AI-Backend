@@ -5,10 +5,8 @@ This module provides a mock implementation of the Digital Twin Core service
 for testing purposes, maintaining clean architecture principles.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
-
-from app.core.exceptions import InvalidConfigurationError
 
 
 class MockDigitalTwinCoreService:
@@ -24,7 +22,7 @@ class MockDigitalTwinCoreService:
         xgboost_service=None,
         pat_service=None,
         mentalllama_service=None,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ):
         """
         Initialize the mock Digital Twin Core service.
@@ -125,7 +123,7 @@ class MockDigitalTwinCoreService:
         self._initialized = False
         return True
 
-    async def create_digital_twin(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_digital_twin(self, user_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new digital twin based on user data.
 
@@ -149,7 +147,7 @@ class MockDigitalTwinCoreService:
         self._digital_twins[twin_id] = digital_twin
         return digital_twin
 
-    async def get_digital_twin(self, twin_id: str) -> Optional[Dict[str, Any]]:
+    async def get_digital_twin(self, twin_id: str) -> dict[str, Any] | None:
         """
         Retrieve a digital twin by ID.
 
@@ -162,8 +160,8 @@ class MockDigitalTwinCoreService:
         return self._digital_twins.get(twin_id)
 
     async def create_session(
-        self, twin_id: str, context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, twin_id: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Create a new session with a digital twin.
 
@@ -191,7 +189,7 @@ class MockDigitalTwinCoreService:
         self._sessions[session_id] = session
         return session
 
-    async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    async def get_session(self, session_id: str) -> dict[str, Any] | None:
         """
         Retrieve a session by ID.
 
@@ -203,7 +201,7 @@ class MockDigitalTwinCoreService:
         """
         return self._sessions.get(session_id)
 
-    async def send_message(self, session_id: str, message: str) -> Dict[str, Any]:
+    async def send_message(self, session_id: str, message: str) -> dict[str, Any]:
         """
         Send a message to a digital twin session.
 
@@ -248,7 +246,7 @@ class MockDigitalTwinCoreService:
 
         return response
 
-    async def end_session(self, session_id: str) -> Dict[str, Any]:
+    async def end_session(self, session_id: str) -> dict[str, Any]:
         """
         End a digital twin session.
 
@@ -274,7 +272,7 @@ class MockDigitalTwinCoreService:
         }
 
     async def process_treatment_event(
-        self, patient_id: UUID, event_data: Dict[str, Any]
+        self, patient_id: UUID, event_data: dict[str, Any]
     ) -> Any:
         """
         Process a treatment event and update the digital twin state.
@@ -325,7 +323,7 @@ class MockDigitalTwinCoreService:
         patient_id: UUID,
         consider_current_medications: bool = True,
         include_therapy_options: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generate treatment recommendations based on the digital twin.
 
@@ -377,7 +375,7 @@ class MockDigitalTwinCoreService:
 
     async def get_visualization_data(
         self, patient_id: UUID, visualization_type: str = "brain_model"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get visualization data for the digital twin.
 
@@ -434,7 +432,7 @@ class MockDigitalTwinCoreService:
 
     async def compare_states(
         self, patient_id: UUID, state_id_1: UUID, state_id_2: UUID
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Compare two digital twin states.
 
@@ -470,7 +468,7 @@ class MockDigitalTwinCoreService:
         patient_id: UUID,
         include_treatment_history: bool = True,
         include_predictions: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a clinical summary for the patient.
 

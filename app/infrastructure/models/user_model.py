@@ -9,8 +9,7 @@ All new code should use the canonical User model directly.
 """
 
 import logging
-import sys
-from typing import Any, ClassVar, Type
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class UserModelProxy:
     This acts like User in all respects but avoids circular imports.
     """
 
-    _user_class: ClassVar[Type[Any]] = None
+    _user_class: ClassVar[type[Any]] = None
 
     def __new__(cls, *args, **kwargs):
         if cls._user_class is None:

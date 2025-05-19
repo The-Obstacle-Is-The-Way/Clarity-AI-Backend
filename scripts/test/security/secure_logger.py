@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Secure HIPAA-Compliant Logger
 
@@ -21,16 +20,13 @@ Usage:
     logger.info("Processing data for patient with ID: 12345")  # PHI will be redacted
 """
 
-import re
-import logging
 import hashlib
+import logging
 import os
-import sys
-import json
-from typing import Dict, List, Optional, Union, Any, Pattern, Match
+import re
 from datetime import datetime
-from pathlib import Path
-
+from re import Match, Pattern
+from typing import Any
 
 # PHI patterns to detect and sanitize
 PHI_PATTERNS = {
@@ -83,7 +79,7 @@ class PHISanitizer:
 
     def __init__(
         self,
-        patterns: Dict[str, str] = None,
+        patterns: dict[str, str] = None,
         redaction_text: str = DEFAULT_REDACTION,
         tokenize: bool = False,
     ):
@@ -239,7 +235,7 @@ class SecureLogger:
 
         return self.sanitizer.sanitize(message)
 
-    def _sanitize_args(self, args: List[Any]) -> List[Any]:
+    def _sanitize_args(self, args: list[Any]) -> list[Any]:
         """
         Sanitize PHI from positional arguments.
 
@@ -261,7 +257,7 @@ class SecureLogger:
 
         return sanitized_args
 
-    def _sanitize_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """
         Sanitize PHI from keyword arguments.
 

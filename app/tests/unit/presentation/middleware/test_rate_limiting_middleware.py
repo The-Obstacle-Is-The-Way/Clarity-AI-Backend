@@ -1,18 +1,14 @@
 """Unit tests for the rate limiting middleware."""
-from unittest.mock import AsyncMock, MagicMock
-
 import asyncio
+from unittest.mock import MagicMock
+
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from fastapi import FastAPI
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
-from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
 from app.presentation.middleware.rate_limiting import (
-    RateLimitExceededError,
     RateLimitingMiddleware,
 )
 

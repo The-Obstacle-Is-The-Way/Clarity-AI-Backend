@@ -1,6 +1,7 @@
 """Test file that uses the debug_with_timeout module to run the failing test with a timeout."""
 
 import pytest
+
 from .debug_with_timeout import run_test_with_timeout
 
 

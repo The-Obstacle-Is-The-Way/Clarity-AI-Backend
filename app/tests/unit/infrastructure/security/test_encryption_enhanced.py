@@ -5,18 +5,14 @@ This test suite provides comprehensive coverage for the encryption module,
 ensuring secure data handling and HIPAA-compliant data protection.
 """
 
-import os
-import tempfile
-from unittest.mock import MagicMock, patch
 
 import pytest
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 
 # Correctly import the necessary components
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )
-from app.infrastructure.security.encryption import get_settings
 
 # Define constants for testing
 TEST_KEY_MATERIAL = "test-key-material-needs-32-bytes!"

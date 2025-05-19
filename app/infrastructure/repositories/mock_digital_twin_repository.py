@@ -5,7 +5,7 @@ This module provides a mock implementation of the Digital Twin repository
 for testing purposes. It follows clean architecture principles.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.core.interfaces.repositories.digital_twin_repository_interface import (
@@ -47,7 +47,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
 
         return state
 
-    async def get_latest_state(self, patient_id: Union[str, UUID]) -> Optional[Any]:
+    async def get_latest_state(self, patient_id: str | UUID) -> Any | None:
         """
         Get the latest digital twin state for a patient.
 
@@ -67,7 +67,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
             self._states[patient_id_str], key=lambda s: s.version, reverse=True
         )[0]
 
-    async def create_digital_twin(self, twin_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_digital_twin(self, twin_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new digital twin.
 
@@ -95,8 +95,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return digital_twin
 
     async def get_digital_twin(
-        self, twin_id: Union[str, UUID]
-    ) -> Optional[Dict[str, Any]]:
+        self, twin_id: str | UUID
+    ) -> dict[str, Any] | None:
         """
         Get a digital twin by ID.
 
@@ -110,8 +110,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return self._digital_twins.get(twin_id_str)
 
     async def update_digital_twin(
-        self, twin_id: Union[str, UUID], twin_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, twin_id: str | UUID, twin_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Update a digital twin.
 
@@ -134,7 +134,7 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
 
         return digital_twin
 
-    async def delete_digital_twin(self, twin_id: Union[str, UUID]) -> bool:
+    async def delete_digital_twin(self, twin_id: str | UUID) -> bool:
         """
         Delete a digital twin.
 
@@ -155,8 +155,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return True
 
     async def list_digital_twins(
-        self, user_id: Optional[Union[str, UUID]] = None
-    ) -> List[Dict[str, Any]]:
+        self, user_id: str | UUID | None = None
+    ) -> list[dict[str, Any]]:
         """
         List all digital twins, optionally filtered by user ID.
 
@@ -179,8 +179,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         ]
 
     async def create_session(
-        self, twin_id: Union[str, UUID], session_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, twin_id: str | UUID, session_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a new session for a digital twin.
 
@@ -215,8 +215,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return session
 
     async def get_session(
-        self, session_id: Union[str, UUID]
-    ) -> Optional[Dict[str, Any]]:
+        self, session_id: str | UUID
+    ) -> dict[str, Any] | None:
         """
         Get a session by ID.
 
@@ -230,8 +230,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return self._sessions.get(session_id_str)
 
     async def update_session(
-        self, session_id: Union[str, UUID], session_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, session_id: str | UUID, session_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Update a session.
 
@@ -255,8 +255,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return session
 
     async def add_message_to_session(
-        self, session_id: Union[str, UUID], message: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, session_id: str | UUID, message: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Add a message to a session.
 
@@ -282,8 +282,8 @@ class MockDigitalTwinRepository(IDigitalTwinRepository):
         return session
 
     async def end_session(
-        self, session_id: Union[str, UUID]
-    ) -> Optional[Dict[str, Any]]:
+        self, session_id: str | UUID
+    ) -> dict[str, Any] | None:
         """
         End a session.
 

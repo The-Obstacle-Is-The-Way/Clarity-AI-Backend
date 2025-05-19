@@ -5,14 +5,12 @@ These tests mock the dependencies to test the endpoints functionality
 in isolation from the full application.
 """
 
+import asyncio
 import warnings
-from collections.abc import Callable
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import asyncio
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 

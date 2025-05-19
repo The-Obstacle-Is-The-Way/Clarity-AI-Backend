@@ -4,9 +4,8 @@ import asyncio
 import logging
 import sys
 import traceback
+
 from fastapi import status
-from httpx import AsyncClient, ASGITransport, Response
-import pytest
 
 # Configure debug logging
 logging.basicConfig(

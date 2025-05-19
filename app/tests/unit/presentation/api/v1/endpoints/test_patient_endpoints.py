@@ -1,53 +1,46 @@
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from unittest.mock import AsyncMock, MagicMock
-from faker import Faker
-from fastapi import status, FastAPI, HTTPException, APIRouter, Depends
-from httpx import AsyncClient, Response, ASGITransport
+import logging
 import uuid
 from datetime import date, datetime, timezone
-import logging
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from faker import Faker
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from httpx import ASGITransport, AsyncClient, Response
 
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 # Add imports for managing lifespan explicitly
-import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Tuple
 
 from app.application.services.patient_service import PatientService
-
-# from app.main import app # REMOVED
-from app.presentation.api.v1.routes.patient import get_patient_service
-
-# Add imports for create_application and Settings
-from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings  # Use alias
-from app.presentation.api.schemas.patient import (
-    PatientCreateRequest,
-    PatientRead,
-    PatientCreateResponse,
-)  # Import schemas
-from app.presentation.api.dependencies.auth import (
-    CurrentUserDep,
-    get_current_user,
-    get_jwt_service,
-)  # FIXED: Import get_jwt_service from auth.py
-
-# CORRECTED DomainUser and related imports to align with auth.py
-from app.core.domain.entities.user import User as DomainUser, UserStatus, UserRole
-
-# Import the dependency to override for read tests
-from app.presentation.api.dependencies.patient import get_patient_id  # CORRECTED NAME
 from app.core.domain.entities.patient import (
     Patient,
 )  # Import Patient entity for mocking
 
+# CORRECTED DomainUser and related imports to align with auth.py
+from app.core.domain.entities.user import User as DomainUser
+
+# from app.main import app # REMOVED
+# Add imports for create_application and Settings
+from app.factory import create_application
+
 # FIXED JWT imports
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.infrastructure.security.jwt.jwt_service import TokenPayload
-from app.domain.exceptions.token_exceptions import InvalidTokenException
+from app.presentation.api.dependencies.auth import (
+    get_current_user,
+    get_jwt_service,
+)  # FIXED: Import get_jwt_service from auth.py
+
+# Import the dependency to override for read tests
+from app.presentation.api.dependencies.patient import get_patient_id  # CORRECTED NAME
+from app.presentation.api.schemas.patient import (
+    PatientCreateRequest,
+    PatientCreateResponse,
+    PatientRead,
+)  # Import schemas
 
 
 # Helper context manager for lifespan
@@ -75,7 +68,7 @@ async def client(
     test_settings: AppSettings,
     global_mock_jwt_service: MagicMock,
     authenticated_user: DomainUser,
-) -> Tuple[FastAPI, AsyncClient]:
+) -> tuple[FastAPI, AsyncClient]:
     """Provides a FastAPI app instance and an AsyncClient instance scoped per test function."""
     # Override settings to ensure test mode is enabled
     if hasattr(test_settings, "TESTING"):

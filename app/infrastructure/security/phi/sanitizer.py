@@ -11,7 +11,7 @@ import hashlib
 import logging
 import re
 from enum import Enum
-from typing import Any, Dict, List, Optional, Pattern, Set, Union, Callable
+from typing import Any
 
 try:
     from app.core.config.settings import get_settings
@@ -416,9 +416,9 @@ class PHISanitizer:
 
     def __init__(
         self,
-        phi_patterns: Optional[Dict[str, str]] = None,
-        whitelist_patterns: Optional[Set[str]] = None,
-        path_whitelist_patterns: Optional[Dict[str, List[str]]] = None,
+        phi_patterns: dict[str, str] | None = None,
+        whitelist_patterns: set[str] | None = None,
+        path_whitelist_patterns: dict[str, list[str]] | None = None,
     ):
         """
         Initialize PHI sanitizer with patterns.
@@ -452,7 +452,7 @@ class PHISanitizer:
         # Add patterns property for test compatibility
         self.patterns = list(self._patterns.keys())
 
-    def is_whitelisted(self, key: str, path: Optional[str] = None) -> bool:
+    def is_whitelisted(self, key: str, path: str | None = None) -> bool:
         """
         Check if a key matches any whitelist pattern.
 
@@ -476,7 +476,7 @@ class PHISanitizer:
 
         return False
 
-    def sanitize_string(self, text: str, path: Optional[str] = None) -> str:
+    def sanitize_string(self, text: str, path: str | None = None) -> str:
         """
         Sanitize a string by replacing PHI with redacted markers.
 
@@ -559,7 +559,7 @@ class PHISanitizer:
         return sanitized_text
 
     def sanitize_json(
-        self, data: Any, path: Optional[str] = None, parent_key: str = ""
+        self, data: Any, path: str | None = None, parent_key: str = ""
     ) -> Any:
         """
         Recursively sanitize a JSON-like data structure.
@@ -635,7 +635,7 @@ class PHISanitizer:
         # Non-string primitive types are returned as is
         return data
 
-    def sanitize_error(self, error: Union[str, Exception]) -> str:
+    def sanitize_error(self, error: str | Exception) -> str:
         """
         Sanitize an error message to ensure no PHI is included.
 
@@ -664,7 +664,7 @@ class PHISanitizer:
 
     # Add compatibility methods for PHIService API
     def sanitize(
-        self, data: Any, sensitivity: Optional[str] = None, *args, **kwargs
+        self, data: Any, sensitivity: str | None = None, *args, **kwargs
     ) -> Any:
         """
         Sanitize any data by removing PHI. Main compatibility method for old PHIService API.
@@ -705,7 +705,7 @@ class PHISanitizer:
             return data
 
     def sanitize_text(
-        self, text: str, sensitivity: Optional[str] = None, *args, **kwargs
+        self, text: str, sensitivity: str | None = None, *args, **kwargs
     ) -> str:
         """
         Compatibility method for PHIService's sanitize_text method.
@@ -803,7 +803,7 @@ class PHISanitizer:
 
         return False
 
-    def detect_phi(self, data: Any, path: Optional[str] = None) -> list:
+    def detect_phi(self, data: Any, path: str | None = None) -> list:
         """
         Compatibility method for PHIService's detect_phi method.
 

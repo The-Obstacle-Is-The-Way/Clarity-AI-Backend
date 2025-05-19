@@ -8,14 +8,15 @@ isolation of PHI data in ML workflows.
 Note: This file has been updated to work with the consolidated PHISanitizer implementation.
 """
 
-import uuid
-from unittest.mock import MagicMock, patch
 import json
 import os
+import uuid
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from app.infrastructure.security.encryption import BaseEncryptionService
-from app.infrastructure.security.phi import PHISanitizer, contains_phi
+from app.infrastructure.security.phi import PHISanitizer
 
 
 # Define a simple context manager if one doesn't exist
@@ -162,7 +163,7 @@ class TestMLModelPHISecurity:
     def test_phi_data_is_never_logged(self, sample_patient_data, caplog):
         """Test that PHI is never logged during ML processing."""
         import logging
-        from app.infrastructure.security.phi.sanitizer import PHISanitizer
+
 
         # Create a test logger with a handler to ensure logs are captured
         test_logger = logging.getLogger("test_phi_logger")

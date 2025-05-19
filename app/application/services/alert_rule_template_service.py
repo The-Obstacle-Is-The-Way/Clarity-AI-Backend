@@ -6,8 +6,7 @@ following clean architecture principles.
 """
 
 import logging
-import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.core.exceptions import ApplicationError, ErrorCode
@@ -22,11 +21,11 @@ from app.domain.entities.biometric_alert_rule import (
     RuleCondition,
     RuleLogicalOperator,
 )
-from app.domain.repositories.biometric_alert_template_repository import (
-    BiometricAlertTemplateRepository,
-)
 from app.domain.repositories.biometric_alert_rule_repository import (
     BiometricAlertRuleRepository,
+)
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,7 +54,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         self.template_repository = template_repository
         self.rule_repository = rule_repository
 
-    async def get_all_templates(self) -> List[Dict[str, Any]]:
+    async def get_all_templates(self) -> list[dict[str, Any]]:
         """
         Get all available alert rule templates.
 
@@ -66,7 +65,7 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         templates = await self.template_repository.get_all_templates()
         return [self._to_dict(template) for template in templates]
 
-    async def get_template_by_id(self, template_id: str) -> Dict[str, Any] | None:
+    async def get_template_by_id(self, template_id: str) -> dict[str, Any] | None:
         """
         Get a specific template by ID or code.
 
@@ -86,8 +85,8 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         self,
         template_id: str,
         patient_id: UUID,
-        customization: Dict[str, Any] | None = None,
-    ) -> Dict[str, Any]:
+        customization: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Apply a template to create a rule for a specific patient.
 
@@ -180,12 +179,12 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
             return self._to_dict(alert_rule)
 
         except Exception as e:
-            error_msg = f"Failed to apply template: {str(e)}"
+            error_msg = f"Failed to apply template: {e!s}"
             logger.error(error_msg)
             raise ApplicationError(code=ErrorCode.INTERNAL_ERROR, message=error_msg)
 
     async def _create_rule_from_dict(
-        self, rule_data: Dict[str, Any]
+        self, rule_data: dict[str, Any]
     ) -> BiometricAlertRule:
         """
         Create a rule entity from a dictionary and save it.
@@ -274,11 +273,11 @@ class AlertRuleTemplateService(AlertRuleTemplateServiceInterface):
             return await self.rule_repository.save(rule)
 
         except Exception as e:
-            error_msg = f"Failed to create rule from dictionary: {str(e)}"
+            error_msg = f"Failed to create rule from dictionary: {e!s}"
             logger.error(error_msg)
             raise ApplicationError(code=ErrorCode.INTERNAL_ERROR, message=error_msg)
 
-    def _to_dict(self, entity: Any) -> Dict[str, Any]:
+    def _to_dict(self, entity: Any) -> dict[str, Any]:
         """
         Convert an entity to a dictionary.
 

@@ -5,36 +5,23 @@ access to protected resources and routes in our HIPAA-compliant system.
 """
 
 import json
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
+import logging
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID  # For direct UUID usage if needed
-from datetime import datetime
 
-from starlette.requests import Request as StarletteRequest
+import pytest
 from fastapi import FastAPI, Request, Response, status
-from starlette.authentication import AuthCredentials, UnauthenticatedUser
-from starlette.datastructures import (
-    Headers,
-    State,
-)  # State might still be in scope for request creation
+from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 
-# Import the refactored middleware and its Pydantic model
-from app.presentation.middleware.authentication import (
-    AuthenticationMiddleware,
-    AuthenticatedUser,
-)
-
 # Domain entities & interfaces needed for mocks
-from app.core.domain.entities.user import User as DomainUser, UserStatus, UserRole
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
+from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 
 # Exceptions
-from app.domain.exceptions.auth_exceptions import AuthenticationException
-
 # UserNotFoundException is raised by the middleware itself, not directly by user_repo in these tests typically
 # from app.domain.exceptions.auth_exceptions import UserNotFoundException
 from app.domain.exceptions.token_exceptions import (
@@ -45,7 +32,11 @@ from app.domain.exceptions.token_exceptions import (
 # Import TokenPayload from the correct location
 from app.infrastructure.security.jwt.jwt_service import TokenPayload
 
-import logging
+# Import the refactored middleware and its Pydantic model
+from app.presentation.middleware.authentication import (
+    AuthenticatedUser,
+    AuthenticationMiddleware,
+)
 
 logger = logging.getLogger(__name__)
 

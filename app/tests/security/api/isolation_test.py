@@ -5,12 +5,12 @@ completely bypassing the middleware chain issues.
 """
 
 import logging
-import pytest
-import asyncio
 import traceback
+
+import pytest
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger("isolation_test")
@@ -74,7 +74,7 @@ def create_isolated_app():
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         """Handle all exceptions and mask sensitive information."""
-        logger.error(f"Exception in isolation test: {type(exc).__name__}: {str(exc)}")
+        logger.error(f"Exception in isolation test: {type(exc).__name__}: {exc!s}")
         logger.debug(traceback.format_exc())
 
         # Return sanitized, masked response

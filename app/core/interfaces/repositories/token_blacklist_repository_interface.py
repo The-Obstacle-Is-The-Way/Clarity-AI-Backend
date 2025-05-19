@@ -8,7 +8,6 @@ while maintaining HIPAA compliance and clean architecture.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional
 
 
 class ITokenBlacklistRepository(ABC):
@@ -22,7 +21,7 @@ class ITokenBlacklistRepository(ABC):
 
     @abstractmethod
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: Optional[str] = None
+        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
     ) -> None:
         """
         Add a token to the blacklist.

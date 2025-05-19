@@ -6,18 +6,13 @@ This module tests PHI sanitization functionality across different data types and
 
 import json
 import unittest
-from typing import Any
 
 import pytest
 
 # Remove the skip marker since we're updating to use actual PHI implementation
 # Instead of using a standalone version, we'll import from the actual module
-
 from app.infrastructure.security.phi import (
     PHISanitizer,
-    RedactionStrategy,
-    sanitize_phi,
-    contains_phi,
 )
 
 # ============= TestCase Implementation =============

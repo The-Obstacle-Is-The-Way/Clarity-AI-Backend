@@ -12,9 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.core.exceptions.base_exceptions import InvalidConfigurationError
 from app.core.interfaces.aws_service_interface import (

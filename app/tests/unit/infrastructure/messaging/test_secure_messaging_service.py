@@ -4,11 +4,9 @@ Tests for the Secure Messaging Service.
 
 import time
 import uuid
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization

@@ -6,10 +6,10 @@ This script discovers and runs all tests in the project, with options to filter 
 module, or specific test. It provides better error reporting and summary statistics.
 """
 
-import os
-import sys
 import argparse
+import os
 import subprocess
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -113,7 +113,7 @@ def main():
     project_root = get_project_root()
     app_tests_dir = os.path.join(project_root, "app", "tests")
 
-    print(f"Novamind Backend Test Runner")
+    print("Novamind Backend Test Runner")
     print(f"Project root: {project_root}")
     print(f"Tests directory: {app_tests_dir}")
 

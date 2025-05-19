@@ -9,7 +9,7 @@ using abstracted AWS service interfaces instead of direct boto3 calls.
 """
 
 from datetime import datetime
-from typing import Any, List, Dict
+from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 

@@ -7,11 +7,10 @@ following clean architecture principles with mathematically precise implementati
 """
 
 import os
-import sys
 import subprocess
+import sys
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
 
 # Define execution constants
 TEST_RESULTS_DIR = Path("/app/test-results")
@@ -101,7 +100,7 @@ class DockerTestOrchestrator:
         print(f"Database dependency check timed out after {timeout}s")
         return False
 
-    def run_tests(self, test_level: str, options: List[str] = None) -> int:
+    def run_tests(self, test_level: str, options: list[str] = None) -> int:
         """
         Run tests for a specific level with specified options.
 
@@ -134,7 +133,7 @@ class DockerTestOrchestrator:
             print(f"Error running tests: {e}")
             return 1
 
-    def main(self, args: List[str]) -> int:
+    def main(self, args: list[str]) -> int:
         """
         Main entry point with clean error handling.
 

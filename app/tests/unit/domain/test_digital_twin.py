@@ -4,23 +4,22 @@ Unit tests for the Digital Twin models and services.
 These tests use the actual implementations from the domain layer.
 """
 
+from datetime import datetime
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
-import numpy as np
-from datetime import datetime, timedelta
-from dataclasses import dataclass
 
 # Import the actual implementations
 from app.domain.entities.digital_twin import (
     DigitalTwin,
-    NeurotransmitterTwinModel,
-    MentalStateModel,
     MedicationResponseModel,
+    MentalStateModel,
+    NeurotransmitterTwinModel,
 )
-from app.domain.services.mocks.digital_twin_service import MockDigitalTwinService
+from app.domain.entities.medication import DosageSchedule, Medication
 from app.domain.entities.patient import Patient
-from app.domain.entities.medication import Medication, DosageSchedule
 from app.domain.exceptions.base_exceptions import ValidationError
+from app.domain.services.mocks.digital_twin_service import MockDigitalTwinService
 from app.domain.utils.datetime_utils import UTC
 
 

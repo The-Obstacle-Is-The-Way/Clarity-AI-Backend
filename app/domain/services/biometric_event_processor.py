@@ -8,9 +8,9 @@ and trigger clinical interventions when concerning patterns emerge.
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.domain.entities.biometric_alert import AlertStatusEnum

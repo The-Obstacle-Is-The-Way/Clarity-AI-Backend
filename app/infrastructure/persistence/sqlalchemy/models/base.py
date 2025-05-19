@@ -8,21 +8,21 @@ It also re-exports common mixins.
 
 import logging
 import uuid
-from datetime import datetime
-from sqlalchemy import Column, DateTime, UUID as SQLAlchemyUUID
+
+from sqlalchemy import UUID as SQLAlchemyUUID
+from sqlalchemy import Column, DateTime
+
+# Import AsyncAttrs for async model support
+from sqlalchemy.ext.asyncio import AsyncAttrs
 
 # Removed Mapped, mapped_column imports
-from sqlalchemy.orm import declared_attr
 from sqlalchemy.sql import func
-
-# Import the central SQLAlchemy registry
-from app.infrastructure.persistence.sqlalchemy.registry import registry as sa_registry
 
 # Import common mixins from their canonical location
 from app.infrastructure.database.base_class import AuditMixin, TimestampMixin
 
-# Import AsyncAttrs for async model support
-from sqlalchemy.ext.asyncio import AsyncAttrs
+# Import the central SQLAlchemy registry
+from app.infrastructure.persistence.sqlalchemy.registry import registry as sa_registry
 
 # Configure logging
 logger = logging.getLogger(__name__)

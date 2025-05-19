@@ -6,7 +6,7 @@ that doesn't require database access. This is primarily used for testing.
 """
 
 from datetime import datetime
-from typing import List, Dict, Optional, Any
+from typing import Any
 
 from app.core.interfaces.repositories.audit_log_repository_interface import (
     IAuditLogRepository,
@@ -23,7 +23,7 @@ class MockAuditLogRepository(IAuditLogRepository):
 
     def __init__(self):
         """Initialize the mock repository with an empty logs collection."""
-        self.logs: Dict[str, AuditLog] = {}
+        self.logs: dict[str, AuditLog] = {}
 
     async def create(self, audit_log: AuditLog) -> str:
         """
@@ -39,7 +39,7 @@ class MockAuditLogRepository(IAuditLogRepository):
         self.logs[log_id] = audit_log
         return log_id
 
-    async def get_by_id(self, log_id: str) -> Optional[AuditLog]:
+    async def get_by_id(self, log_id: str) -> AuditLog | None:
         """
         Retrieve an audit log by ID.
 
@@ -53,12 +53,12 @@ class MockAuditLogRepository(IAuditLogRepository):
 
     async def search(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """
         Search for audit logs based on filters.
 
@@ -101,8 +101,8 @@ class MockAuditLogRepository(IAuditLogRepository):
         return results
 
     async def get_statistics(
-        self, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
-    ) -> Dict[str, Any]:
+        self, start_time: datetime | None = None, end_time: datetime | None = None
+    ) -> dict[str, Any]:
         """
         Get statistics about audit logs for the specified time period.
 

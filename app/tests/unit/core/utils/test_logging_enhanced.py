@@ -1,7 +1,6 @@
 """Unit tests for enhanced logging functionality."""
 import logging
 import os
-import sys
 import tempfile
 from unittest.mock import MagicMock, patch
 

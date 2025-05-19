@@ -6,14 +6,13 @@ handle requests, interact with the XGBoost service, and return
 appropriate responses.
 """
 
-import pytest
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from app.application.services.ml.xgboost_service import XGBoostService
-from app.core.services.ml.xgboost.interface import ModelType
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from app.core.services.ml.xgboost.enums import ResponseLevel, RiskLevel
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
@@ -21,10 +20,7 @@ from app.core.services.ml.xgboost.exceptions import (
     PredictionError,
     ServiceConnectionError,
 )
-from app.presentation.api.schemas.xgboost import (
-    XGBoostPredictionRequest,
-    XGBoostPredictionResponse,
-)
+from app.core.services.ml.xgboost.interface import ModelType
 from app.infrastructure.di.container import get_service
 from app.presentation.api.dependencies.auth import get_current_user
 from app.presentation.api.v1.routes.xgboost import router

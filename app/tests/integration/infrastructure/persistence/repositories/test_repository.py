@@ -10,10 +10,7 @@ import logging
 import uuid
 from datetime import date
 
-import asyncio
 import pytest
-import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,14 +22,10 @@ from app.domain.value_objects.address import Address as AddressVO
 from app.domain.value_objects.contact_info import ContactInfo as ContactInfoVO
 from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.domain.value_objects.name import Name as NameVO
-from app.core.domain.enums.gender import Gender
 
 # Use the actual Patient model and Repository
 from app.infrastructure.persistence.sqlalchemy.models.patient import (
     Patient as PatientModel,
-)
-from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
-    PatientRepository,
 )
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,

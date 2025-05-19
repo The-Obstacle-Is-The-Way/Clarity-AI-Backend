@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 PHI Audit Test Runner - Focuses specifically on PHI audit tests
 
@@ -7,10 +6,10 @@ This script applies the ultimate fixes and runs only the PHI audit tests
 to verify the fixes are working correctly
 """
 
-import os
-import sys
-import subprocess
 import importlib.util
+import os
+import subprocess
+import sys
 import time
 
 

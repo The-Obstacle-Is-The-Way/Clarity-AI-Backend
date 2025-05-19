@@ -14,7 +14,6 @@ import argparse
 import os
 import subprocess
 import sys
-from typing import List, Optional
 
 
 # ANSI colors for terminal output

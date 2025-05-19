@@ -5,10 +5,10 @@ This file redirects imports to the actual implementation in scripts/test/runners
 Enhanced for Docker container test execution with environment variable handling.
 """
 
-import sys
-import os
-from pathlib import Path
 import argparse
+import os
+import sys
+from pathlib import Path
 
 # Get the actual module path
 current_dir = Path(__file__).parent.resolve()
@@ -42,8 +42,6 @@ if any("--docker" in arg for arg in sys.argv):
 # Import and customize run_tests_by_level for Docker
 from scripts.test.runners.legacy.run_tests_by_level import (
     main as original_main,
-    run_tests,
-    TEST_LEVELS,
 )
 
 

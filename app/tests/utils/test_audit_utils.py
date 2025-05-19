@@ -5,19 +5,19 @@ This module provides utility functions to help with testing code that uses
 audit logging, allowing it to be disabled or mocked during tests.
 """
 
-from typing import AsyncGenerator, Optional, Union, Callable
-from fastapi import FastAPI, Request
-from contextlib import asynccontextmanager, contextmanager
-from starlette.middleware.base import BaseHTTPMiddleware
 import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager, contextmanager
 from unittest.mock import AsyncMock, MagicMock
 
+from fastapi import FastAPI, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.infrastructure.persistence.repositories.mock_audit_log_repository import (
     MockAuditLogRepository,
 )
-from app.application.services.audit_log_service import AuditLogService
-from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +153,9 @@ def disable_authentication_middleware(app: FastAPI) -> None:
 
                     async def mock_dispatch(request, call_next):
                         # Add authentication data directly to request
+                        from starlette.authentication import AuthCredentials
+
                         from app.core.domain.entities.user import UserRole
-                        from starlette.authentication import AuthCredentials, BaseUser
 
                         # Create mock authenticated user
                         mock_user = MagicMock()
@@ -257,7 +258,7 @@ async def disabled_audit_logging_async(app: FastAPI):
 
 def find_middleware_by_type(
     app: FastAPI, middleware_type: type
-) -> Optional[BaseHTTPMiddleware]:
+) -> BaseHTTPMiddleware | None:
     """
     Find middleware of a specific type in the application.
 
@@ -310,16 +311,16 @@ def create_test_request(
     request = Request(scope)
 
     # Set disable flag directly on request.state
-    setattr(request.state, "disable_audit_middleware", True)
+    request.state.disable_audit_middleware = True
 
     # Copy app state values to request state
     if hasattr(app.state, "settings"):
-        setattr(request.state, "settings", app.state.settings)
+        request.state.settings = app.state.settings
 
     if hasattr(app.state, "jwt_service"):
-        setattr(request.state, "jwt_service", app.state.jwt_service)
+        request.state.jwt_service = app.state.jwt_service
 
     # Add mock user if needed
-    setattr(request.state, "user", MagicMock(id="test_user_id"))
+    request.state.user = MagicMock(id="test_user_id")
 
     return request

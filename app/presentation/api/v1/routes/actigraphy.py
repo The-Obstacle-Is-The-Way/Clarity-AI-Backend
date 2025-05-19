@@ -3,35 +3,32 @@
 Handles endpoints related to retrieving and managing actigraphy data.
 """
 
-from datetime import timedelta, timezone, datetime
 import uuid
-from typing import Any, Dict, List, Optional, Literal
-import random
+from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
-from pydantic import BaseModel, UUID4
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Proper imports following Clean Architecture principles
-from app.presentation.api.dependencies.auth import require_roles, get_current_user
-from app.presentation.api.dependencies.auth import CurrentUserDep
-from app.presentation.api.dependencies.database import get_db
-from app.core.domain.entities.user import UserRole, User
+from app.core.domain.entities.user import User, UserRole
+from app.core.utils.date_utils import format_date_iso, utcnow
 from app.infrastructure.logging.audit_logger import audit_log_phi_access
-from app.core.utils.date_utils import utcnow, format_date_iso
+
+# Proper imports following Clean Architecture principles
+from app.presentation.api.dependencies.auth import CurrentUserDep, require_roles
+from app.presentation.api.dependencies.database import get_db
 
 # Import centralized schemas
 from app.presentation.api.schemas.actigraphy import (
     ActigraphyAnalysisRequest,
-    AnalyzeActigraphyResponse,
-    ActigraphyModelInfoResponse,
-    ActigraphyUploadResponse,
-    ActigraphySummaryResponse,
-    ActigraphyDataResponse,
     ActigraphyAnalysisResult,
+    ActigraphyDataResponse,
+    ActigraphyModelInfoResponse,
+    ActigraphySummaryResponse,
+    ActigraphyUploadResponse,
     AnalysisType,
+    AnalyzeActigraphyResponse,
     DailySummary,
-    SleepStage,
 )
 
 
@@ -121,8 +118,8 @@ async def analyze_actigraphy(
     ),
     pat_service: IPATService = Depends(get_pat_service),
     # Add optional query parameters to fix test failures
-    args: Optional[str] = Query(default=None),
-    kwargs: Optional[str] = Query(default=None),
+    args: str | None = Query(default=None),
+    kwargs: str | None = Query(default=None),
 ) -> AnalyzeActigraphyResponse:
     """Analyze actigraphy data and return results.
 
@@ -221,8 +218,8 @@ async def get_model_info(
         require_roles([UserRole.PATIENT, UserRole.CLINICIAN, UserRole.ADMIN])
     ),
     # Add query parameters to fix test failures
-    args: Optional[str] = Query(default=None),
-    kwargs: Optional[str] = Query(default=None),
+    args: str | None = Query(default=None),
+    kwargs: str | None = Query(default=None),
 ) -> ActigraphyModelInfoResponse:
     """
     Get information about the current actigraphy model.
@@ -313,8 +310,8 @@ async def get_patient_actigraphy_data(
     end_date: datetime,
     current_user: CurrentUserDep,
     # Add query parameters to fix test failures
-    args: Optional[str] = Query(default=None),
-    kwargs: Optional[str] = Query(default=None),
+    args: str | None = Query(default=None),
+    kwargs: str | None = Query(default=None),
 ):
     """
     Get actigraphy data for a specific patient within a date range.

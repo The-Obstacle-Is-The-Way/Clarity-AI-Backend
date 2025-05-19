@@ -6,43 +6,38 @@ the clean architecture implementation. It redirects requests to
 the new presentation layer endpoints following SOLID principles.
 """
 
-from typing import Annotated, Optional
 import logging
 import re
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, Request
-from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
 # Import from the new clean architecture
 from app.core.domain.entities.user import User
 from app.core.interfaces.services.ml.xgboost import XGBoostInterface
-from app.core.utils.date_utils import utcnow, format_date_iso
-from app.infrastructure.di.provider import get_service_instance
-from app.presentation.api.dependencies.auth import (
-    get_current_user,
-    verify_provider_access,
-)
-from app.presentation.api.schemas.xgboost import (
-    ModelInfoRequest,
-    ModelInfoResponse,
-    OutcomePredictionRequest,
-    OutcomePredictionResponse,
-    RiskPredictionRequest,
-    RiskPredictionResponse,
-    TherapyDetails,
-    TimeFrame,
-    TreatmentResponseRequest,
-    TreatmentResponseResponse,
-    FeatureImportanceResponse,
-)
 from app.core.services.ml.xgboost.exceptions import (
     DataPrivacyError,
     ModelNotFoundError,
     ServiceUnavailableError,
     UnauthorizedError,
     ValidationError,
+)
+from app.infrastructure.di.provider import get_service_instance
+from app.presentation.api.dependencies.auth import (
+    get_current_user,
+    verify_provider_access,
+)
+from app.presentation.api.schemas.xgboost import (
+    FeatureImportanceResponse,
+    ModelInfoRequest,
+    ModelInfoResponse,
+    OutcomePredictionResponse,
+    RiskPredictionResponse,
+    TimeFrame,
+    TreatmentResponseRequest,
+    TreatmentResponseResponse,
 )
 
 # Create logger
@@ -300,7 +295,7 @@ def _has_phi(request_data):
 @router.post("/risk-prediction", response_model=RiskPredictionResponse)
 async def predict_risk(
     request: Request,  # Get the raw request object
-    request_data: Optional[dict] = Body(
+    request_data: dict | None = Body(
         default=None
     ),  # Make Body optional with default None
     xgboost_service: XGBoostDep = None,
@@ -486,7 +481,7 @@ async def predict_risk(
 @router.post("/outcome-prediction", response_model=OutcomePredictionResponse)
 async def predict_outcome(
     request: Request,  # Get the raw request object
-    request_data: Optional[dict] = Body(
+    request_data: dict | None = Body(
         default=None
     ),  # Make Body optional with default None
     xgboost_service: XGBoostDep = None,
@@ -704,7 +699,7 @@ async def get_feature_importance(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving feature importance: {str(e)}",
+            detail=f"Error retrieving feature importance: {e!s}",
         ) from e
 
 

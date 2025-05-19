@@ -14,21 +14,17 @@ The tests validate:
     5. Session security
 """
 
-import asyncio
-import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
-from datetime import timedelta, datetime, timezone
-import jwt
-from jose import jwt as jose_jwt
 
+import jwt
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # import jwt # Use JWTService methods for encoding/decoding
-from fastapi import status, FastAPI, Depends, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from pydantic import SecretStr, BaseModel
+from pydantic import BaseModel, SecretStr
 
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
@@ -39,8 +35,8 @@ from app.infrastructure.security.jwt.jwt_service import (
     JWTService,
     TokenPayload,
     TokenType,
+    get_jwt_service,
 )
-from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 
 # Mock data for testing
 TEST_USERS = {
@@ -497,7 +493,7 @@ class TestJWTAuthentication:
                 payload.sub == TEST_USERS["patient"]["sub"]
             ), "User ID in token payload is wrong"
         except Exception as e:
-            pytest.fail(f"Failed to validate the new access token: {str(e)}")
+            pytest.fail(f"Failed to validate the new access token: {e!s}")
 
         # Test with an invalid token
         response = client.post(
@@ -526,7 +522,7 @@ class TestJWTAuthentication:
             f"User with SSN {test_ssn} not found in database",
         ]
 
-        for error_type, message in zip(error_types, sensitive_messages):
+        for error_type, message in zip(error_types, sensitive_messages, strict=False):
             # Get response with sensitive data
             response = jwt_service.create_unauthorized_response(error_type, message)
 

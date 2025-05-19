@@ -7,12 +7,8 @@ to enforce proper authentication and authorization boundaries.
 
 import asyncio
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import MagicMock
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from pydantic import SecretStr  # Correct import location
 
 from app.config.settings import Settings  # Import Settings
 

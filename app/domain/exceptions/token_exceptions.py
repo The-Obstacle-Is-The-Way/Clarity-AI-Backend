@@ -6,7 +6,6 @@ All exceptions follow HIPAA compliance for error messages.
 """
 
 from app.domain.exceptions.base_exceptions import (
-    BaseApplicationError,
     AuthenticationError,
 )
 

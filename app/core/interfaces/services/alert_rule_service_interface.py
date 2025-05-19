@@ -5,7 +5,7 @@ This interface defines the contract for services that manage biometric alert rul
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -18,7 +18,7 @@ class AlertRuleServiceInterface(ABC):
     """
 
     @abstractmethod
-    async def create_rule(self, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_rule(self, rule_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new alert rule from raw data.
 
@@ -34,7 +34,7 @@ class AlertRuleServiceInterface(ABC):
         pass
 
     @abstractmethod
-    async def get_rule_by_id(self, rule_id: UUID) -> Optional[Dict[str, Any]]:
+    async def get_rule_by_id(self, rule_id: UUID) -> dict[str, Any] | None:
         """
         Get a rule by its ID.
 
@@ -52,11 +52,11 @@ class AlertRuleServiceInterface(ABC):
     @abstractmethod
     async def get_rules(
         self,
-        patient_id: Optional[UUID] = None,
-        is_active: Optional[bool] = None,
+        patient_id: UUID | None = None,
+        is_active: bool | None = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get rules with optional filtering.
 
@@ -76,8 +76,8 @@ class AlertRuleServiceInterface(ABC):
 
     @abstractmethod
     async def update_rule(
-        self, rule_id: UUID, update_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, rule_id: UUID, update_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Update an existing rule.
 

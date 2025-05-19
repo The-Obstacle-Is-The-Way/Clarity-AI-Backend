@@ -20,7 +20,6 @@ from uuid import UUID
 import pytest
 
 from app.domain.entities.biometric_twin import BiometricDataPoint
-from app.domain.exceptions import ValidationError
 from app.domain.services.biometric_event_processor import (
     AlertObserver,
     AlertPriority,

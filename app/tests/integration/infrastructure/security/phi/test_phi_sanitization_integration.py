@@ -13,9 +13,7 @@ from datetime import date
 from io import StringIO
 from typing import Any
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.entities.patient import Patient
 from app.domain.value_objects.address import Address

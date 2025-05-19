@@ -9,7 +9,7 @@ import base64
 import json
 import logging
 import os
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Optional, Union
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -90,8 +90,8 @@ encryption_service_instance = None
 
 
 def get_encryption_service(
-    direct_key: Optional[str] = None,
-    previous_key: Optional[str] = None,
+    direct_key: str | None = None,
+    previous_key: str | None = None,
     reinitialize: bool = False,
 ) -> "BaseEncryptionService":
     """
@@ -139,7 +139,7 @@ def get_encryption_service(
 
         return encryption_service_instance
     except Exception as e:
-        logger.error(f"Error creating encryption service: {str(e)}")
+        logger.error(f"Error creating encryption service: {e!s}")
         # Fallback to a default instance for testing
         from app.infrastructure.security.encryption.base_encryption_service import (
             BaseEncryptionService,
@@ -154,17 +154,17 @@ def get_encryption_service(
 
 # Import main components at the end to avoid circular imports
 from app.infrastructure.security.encryption.base_encryption_service import (
-    BaseEncryptionService,
-    VERSION_PREFIX,
     KDF_ITERATIONS,
-)
-from app.infrastructure.security.encryption.ml_encryption_service import (
-    MLEncryptionService,
-    get_ml_encryption_service,
+    VERSION_PREFIX,
+    BaseEncryptionService,
 )
 
 # Field-level encryption utilities - after base class is imported
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
+from app.infrastructure.security.encryption.ml_encryption_service import (
+    MLEncryptionService,
+    get_ml_encryption_service,
+)
 
 
 # PHI specific encryption functions
@@ -239,7 +239,7 @@ def generate_phi_key() -> str:
 
 
 def create_encryption_service(
-    secret_key: Optional[str] = None, salt: Optional[str] = None
+    secret_key: str | None = None, salt: str | None = None
 ) -> BaseEncryptionService:
     """
     Create a new instance of the encryption service.
@@ -261,13 +261,10 @@ def create_encryption_service(
 
 # Import ML encryption service after all helper functions are defined
 # This prevents circular imports
-from app.infrastructure.security.encryption.ml_encryption_service import (
-    MLEncryptionService,
-)
 
 
 def create_ml_encryption_service(
-    secret_key: Optional[str] = None, salt: Optional[str] = None
+    secret_key: str | None = None, salt: str | None = None
 ) -> MLEncryptionService:
     """
     Create a new instance of the ML encryption service.
@@ -292,19 +289,19 @@ __all__ = [
     "BaseEncryptionService",
     "FieldEncryptor",
     "MLEncryptionService",
-    "encryption_service_instance",
+    "create_encryption_service",
+    "create_ml_encryption_service",
     "decrypt_field",
     "decrypt_phi",
     "decrypt_value",
     "encrypt_field",
     "encrypt_phi",
     "encrypt_value",
+    "encryption_service_instance",
     "generate_phi_key",
     "get_encryption_key",
-    "get_settings",
     "get_encryption_service",
-    "create_encryption_service",
-    "create_ml_encryption_service",
+    "get_settings",
 ]
 
 # Potentially import from encryption_service if needed elsewhere

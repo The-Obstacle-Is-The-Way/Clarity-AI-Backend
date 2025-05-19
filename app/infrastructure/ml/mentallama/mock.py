@@ -8,7 +8,7 @@ to the domain-driven MentaLLaMAServiceInterface.
 import random
 import uuid
 from datetime import datetime
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 from zoneinfo import ZoneInfo
 
 # Define UTC timezone
@@ -33,7 +33,7 @@ class MockMentaLLaMA:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         api_endpoint: str = "https://api.mockmentallama.com/v1",
         model_name: str = "mock-mentallama-1",
         temperature: float = 0.7,
@@ -77,7 +77,7 @@ class MockMentaLLaMA:
             self._initialized = True
         except Exception as e:
             raise InvalidConfigurationError(
-                f"Failed to initialize MentaLLaMA mock: {str(e)}"
+                f"Failed to initialize MentaLLaMA mock: {e!s}"
             )
 
     def is_healthy(self) -> bool:
@@ -100,7 +100,7 @@ class MockMentaLLaMA:
         if not text:
             raise InvalidRequestError("Text cannot be empty")
 
-    def process(self, text: str, model_type: Optional[str] = None) -> dict[str, Any]:
+    def process(self, text: str, model_type: str | None = None) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA service.
 
@@ -174,7 +174,7 @@ class MockMentaLLaMA:
     # No need for insight conversion since we directly generate the dict format
 
     def detect_depression(
-        self, text: str, options: Optional[dict[str, Any]] = None
+        self, text: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Mock depression detection.
@@ -255,8 +255,8 @@ class MockMentaLLaMA:
     def assess_risk(
         self,
         text: str,
-        risk_type: Optional[str] = None,
-        options: Optional[dict[str, Any]] = None,
+        risk_type: str | None = None,
+        options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Mock risk assessment.
@@ -310,7 +310,7 @@ class MockMentaLLaMA:
         }
 
     def analyze_sentiment(
-        self, text: str, options: Optional[dict[str, Any]] = None
+        self, text: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Mock sentiment analysis.
@@ -465,8 +465,8 @@ class MockMentaLLaMA:
     def analyze_wellness_dimensions(
         self,
         text: str,
-        dimensions: Optional[list[str]] = None,
-        options: Optional[dict[str, Any]] = None,
+        dimensions: list[str] | None = None,
+        options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Mock wellness dimensions analysis.
@@ -580,7 +580,7 @@ class MockMentaLLaMA:
         }
 
     def digital_twin_session(
-        self, text: str, options: Optional[dict[str, Any]] = None
+        self, text: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Mock digital twin session analysis.
@@ -637,12 +637,12 @@ class MockMentaLLaMA:
 
     def generate_digital_twin(
         self,
-        text_data: Optional[list[str]] = None,
-        demographic_data: Optional[dict[str, Any]] = None,
-        medical_history: Optional[dict[str, Any]] = None,
-        treatment_history: Optional[dict[str, Any]] = None,
-        options: Optional[dict[str, Any]] = None,
-        patient_id: Optional[str] = None,
+        text_data: list[str] | None = None,
+        demographic_data: dict[str, Any] | None = None,
+        medical_history: dict[str, Any] | None = None,
+        treatment_history: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+        patient_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Generate a mock digital twin based on input data.
@@ -703,7 +703,7 @@ class MockMentaLLaMA:
         self,
         twin_id: str,
         session_type: str = "therapy",
-        options: Optional[dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Create a mock session with a digital twin.
@@ -778,7 +778,7 @@ class MockMentaLLaMA:
         }
 
     def send_message_to_session(
-        self, session_id: str, message: str, options: Optional[dict[str, Any]] = None
+        self, session_id: str, message: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Send a message to a digital twin session.
@@ -899,7 +899,7 @@ class MockMentaLLaMA:
             return "I'm here to support you. What specific aspects of your mental health would you like to focus on today?"
 
     def end_digital_twin_session(
-        self, session_id: str, options: Optional[dict[str, Any]] = None
+        self, session_id: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         End a digital twin session.
@@ -954,7 +954,7 @@ class MockMentaLLaMA:
         }
 
     def get_session_insights(
-        self, session_id: str, options: Optional[dict[str, Any]] = None
+        self, session_id: str, options: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Get insights from a digital twin session.

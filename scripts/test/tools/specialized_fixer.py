@@ -4,15 +4,11 @@ Specialized script to fix common syntax errors in test files.
 This script handles specific patterns of errors found in the codebase.
 """
 
-import os
-import sys
-import re
-import ast
-import py_compile
-from pathlib import Path
 import logging
-import tempfile
-import traceback
+import os
+import py_compile
+import re
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -167,7 +163,7 @@ def add_missing_imports(content):
 def fix_file(file_path):
     """Apply all fixes to a file."""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         # Store original content to check if changes were made

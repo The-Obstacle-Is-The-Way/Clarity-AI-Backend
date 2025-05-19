@@ -5,7 +5,6 @@ Provides API endpoints for managing biometric alert rules.
 """
 
 import logging
-import uuid
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -17,11 +16,10 @@ from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
 )
 from app.core.domain.entities.user import User
-from app.presentation.api.dependencies.database import get_db
-from app.infrastructure.security.rate_limiting.limiter import RateLimiter
 from app.presentation.api.dependencies.auth import (
     get_current_active_user_wrapper,
 )
+from app.presentation.api.dependencies.database import get_db
 from app.presentation.api.schemas.alert import (
     AlertRuleCreateFromTemplateRequest,
     AlertRuleCreateRequest,
@@ -104,10 +102,10 @@ async def create_alert_rule(
             last_updated=rule.updated_at or rule.created_at,
         )
     except Exception as e:
-        logger.error(f"Error creating alert rule: {str(e)}")
+        logger.error(f"Error creating alert rule: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create alert rule: {str(e)}",
+            detail=f"Failed to create alert rule: {e!s}",
         )
 
 
@@ -181,10 +179,10 @@ async def create_alert_rule_from_template(
             last_updated=rule.updated_at or rule.created_at,
         )
     except Exception as e:
-        logger.error(f"Error creating alert rule from template: {str(e)}")
+        logger.error(f"Error creating alert rule from template: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create alert rule from template: {str(e)}",
+            detail=f"Failed to create alert rule from template: {e!s}",
         )
 
 
@@ -239,7 +237,7 @@ async def get_alert_rules(
             for rule in rules
         ]
     except Exception as e:
-        logger.error(f"Error fetching alert rules: {str(e)}")
+        logger.error(f"Error fetching alert rules: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while retrieving alert rules",
@@ -296,7 +294,7 @@ async def get_alert_rule(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching alert rule {rule_id}: {str(e)}")
+        logger.error(f"Error fetching alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while retrieving the alert rule",
@@ -411,10 +409,10 @@ async def update_alert_rule(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating alert rule {rule_id}: {str(e)}")
+        logger.error(f"Error updating alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to update alert rule: {str(e)}",
+            detail=f"Failed to update alert rule: {e!s}",
         )
 
 
@@ -450,7 +448,7 @@ async def delete_alert_rule(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting alert rule {rule_id}: {str(e)}")
+        logger.error(f"Error deleting alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while deleting the alert rule",

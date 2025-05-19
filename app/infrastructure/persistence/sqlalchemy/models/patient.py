@@ -5,75 +5,60 @@ This module defines the patient-related SQLAlchemy models.
 Encryption/decryption is handled by the repository layer.
 """
 
+# from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location # This line will be removed
 import inspect
 import json
 import logging
 import uuid
-from typing import Any, Dict
 from datetime import date, datetime, timezone
+from typing import Any
 
 from dateutil import parser
+from pydantic import ValidationError
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
     ForeignKey,
     String,
-    Text,
-    Date as SQLDate,
-    JSON,
     inspect,
 )
-from sqlalchemy.orm import relationship, backref
-from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.ext.hybrid import hybrid_property
-from pydantic import ValidationError
+from sqlalchemy.orm import relationship
 
+# from app.infrastructure.security.encryption.encryption_service import EncryptionService # Old import removed
 # Use the core domain model, which has phone_number attribute
 from app.core.domain.entities.patient import Patient as DomainPatient
-from app.domain.utils.datetime_utils import UTC, now_utc
-from app.domain.value_objects.address import Address
-from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.core.domain.enums import Gender  # Corrected Gender import
-from app.infrastructure.persistence.sqlalchemy.models.base import (
-    Base,
-    TimestampMixin,
-    AuditMixin,
-)
 
 # from app.infrastructure.security.encryption import EncryptedString, EncryptedText, EncryptedDate, EncryptedJSON # REMOVED - Caused ImportError
 from app.domain.exceptions.persistence_exceptions import PersistenceError
-
-# Break circular import by using string reference to User model
-# This follows SQLAlchemy best practices for circular relationship references
-from app.infrastructure.security.encryption.base_encryption_service import (
-    BaseEncryptionService,
+from app.domain.utils.datetime_utils import now_utc
+from app.domain.value_objects.address import Address
+from app.domain.value_objects.emergency_contact import EmergencyContact
+from app.infrastructure.persistence.sqlalchemy.models.base import (
+    AuditMixin,
+    Base,
+    TimestampMixin,
 )
-
-# from app.infrastructure.security.encryption.encryption_service import EncryptionService # Old import removed
-from app.core.config import settings
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
+    EncryptedJSON,
     EncryptedString,
     EncryptedText,
-    EncryptedJSON,
 )
-
-# from app.tests.standalone.domain.test_standalone_patient import Gender # TEMPORARY: Gender enum location # This line will be removed
-import base64  # Import base64 for decoding the key
 
 # Import the encryption service instance directly for use in TypeDecorators
 # This allows tests to patch it directly in this module
-from app.infrastructure.security.encryption import encryption_service_instance
+
+# Break circular import by using string reference to User model
+# This follows SQLAlchemy best practices for circular relationship references
 
 logger = logging.getLogger(__name__)
 
-import dataclasses  # Add this import
 
 # Correct import: Use absolute path to types.py file
-from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
+from app.infrastructure.persistence.sqlalchemy.types import GUID
 
 
 @register_model
@@ -473,7 +458,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
         )  # EncryptedJSON handles dict serialization
 
         # DEBUG PRINTS START
-        print(f"[DEBUG PatientModel.from_domain] Final model attributes before return:")
+        print("[DEBUG PatientModel.from_domain] Final model attributes before return:")
         print(f"  _contact_info TYPE: {type(model._contact_info)}")
         print(f"  _contact_info VALUE: {model._contact_info}")
         print(f"  _address_details TYPE: {type(model._address_details)}")
@@ -524,7 +509,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
                     actual_value_via_getattr = getattr(self, attr_name)
                     print(f"  DEBUG Attr [{attr_name}]:")
                     print(
-                        f"    - Value via getattr(): {repr(actual_value_via_getattr)}"
+                        f"    - Value via getattr(): {actual_value_via_getattr!r}"
                     )
                     print(
                         f"    - Type  via getattr(): {type(actual_value_via_getattr)}"
@@ -532,7 +517,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
                     if instance_state.attrs.has_key(attr_name):
                         attr_state = instance_state.attrs.get(attr_name)
-                        print(f"    - SA State Value   : {repr(attr_state.value)}")
+                        print(f"    - SA State Value   : {attr_state.value!r}")
                         print(f"    - SA State Type    : {type(attr_state.value)}")
                         # History can be verbose, print only if necessary or summarized
                         # print(f"    - SA State History : {attr_state.history}")
@@ -853,31 +838,31 @@ class Patient(Base, TimestampMixin, AuditMixin):
 
         try:
             logger.debug(
-                f"[PatientModel.to_domain] Attempting to create DomainPatient with args: {{k: (type(v), str(v)[:100]) for k, v in patient_args.items()}}"
+                "[PatientModel.to_domain] Attempting to create DomainPatient with args: {k: (type(v), str(v)[:100]) for k, v in patient_args.items()}"
             )
             domain_patient = DomainPatient(**patient_args)
             return domain_patient
         except ValidationError as e:
             logger.error(
-                f"Pydantic V2 Validation error in to_domain. Errors: {{e.errors()}}",
+                "Pydantic V2 Validation error in to_domain. Errors: {e.errors()}",
                 exc_info=True,
             )
             logger.error(
-                f"Problematic patient_args for DomainPatient: {{patient_args}}"
+                "Problematic patient_args for DomainPatient: {patient_args}"
             )
             raise PersistenceError(
-                f"Data integrity issue converting DB model to domain model: {{e.errors()}}"
+                "Data integrity issue converting DB model to domain model: {e.errors()}"
             ) from e
         except Exception as e:
             logger.error(
-                f"Unexpected error creating DomainPatient in to_domain: {{e}}",
+                "Unexpected error creating DomainPatient in to_domain: {e}",
                 exc_info=True,
             )
             logger.error(
-                f"Problematic patient_args for DomainPatient: {{patient_args}}"
+                "Problematic patient_args for DomainPatient: {patient_args}"
             )
             raise PersistenceError(
-                f"Unexpected error converting DB model to domain model: {{e}}"
+                "Unexpected error converting DB model to domain model: {e}"
             ) from e
 
     # AuditMixin fields (handled by the mixin)

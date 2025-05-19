@@ -5,10 +5,11 @@ bypassing the middleware chain that's causing recursion issues.
 """
 
 import logging
+
 import pytest
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def create_standalone_app():
     @app.exception_handler(RuntimeError)
     async def runtime_error_handler(request: Request, exc: RuntimeError):
         """Handle RuntimeError exceptions with masked details."""
-        logger.error(f"Runtime error in standalone test: {str(exc)}")
+        logger.error(f"Runtime error in standalone test: {exc!s}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},
@@ -40,7 +41,7 @@ def create_standalone_app():
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         """Handle all exceptions with masked details."""
-        logger.error(f"Exception in standalone test: {type(exc).__name__}: {str(exc)}")
+        logger.error(f"Exception in standalone test: {type(exc).__name__}: {exc!s}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},

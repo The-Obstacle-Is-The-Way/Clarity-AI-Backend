@@ -5,10 +5,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
 
-from app.core.config.settings import Settings as AppSettings
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 

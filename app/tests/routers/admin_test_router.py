@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.domain.entities.user import UserRole, User as DomainUser
+from fastapi import APIRouter, Depends
+
+from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import UserRole
 from app.presentation.api.dependencies.auth import require_roles
 
 router = APIRouter()

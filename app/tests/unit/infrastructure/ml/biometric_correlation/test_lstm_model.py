@@ -10,9 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.ml.biometric_correlation.lstm_model import (
     BiometricCorrelationModel,

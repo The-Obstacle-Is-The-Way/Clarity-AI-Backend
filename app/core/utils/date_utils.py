@@ -7,8 +7,7 @@ Ensures HIPAA compliance by providing consistent timestamps for audit logging.
 """
 
 import logging
-from datetime import date, datetime, timezone, timedelta
-from typing import Union, Optional
+from datetime import date, datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +82,9 @@ def is_aware(dt: datetime) -> bool:
 
 
 def is_date_in_range(
-    check_date: Union[datetime, date],
-    start_date: Union[datetime, date],
-    end_date: Union[datetime, date],
+    check_date: datetime | date,
+    start_date: datetime | date,
+    end_date: datetime | date,
 ) -> bool:
     """
     Check if a date is within a specified range (inclusive).
@@ -109,7 +108,7 @@ def is_date_in_range(
     return start_date <= check_date <= end_date
 
 
-def format_date_iso(dt: Union[datetime, date], include_time: bool = True) -> str:
+def format_date_iso(dt: datetime | date, include_time: bool = True) -> str:
     """
     Format a date or datetime object as an ISO 8601 string.
 
@@ -132,7 +131,7 @@ def format_date_iso(dt: Union[datetime, date], include_time: bool = True) -> str
         return dt.strftime("%Y-%m-%d")
 
 
-def parse_iso_date(date_str: str) -> Union[datetime, date]:
+def parse_iso_date(date_str: str) -> datetime | date:
     """
     Parse an ISO 8601 date or datetime string.
 
@@ -188,7 +187,7 @@ def parse_iso_date(date_str: str) -> Union[datetime, date]:
         raise ValueError(f"Could not parse {date_str} as ISO 8601 date/datetime")
 
 
-def get_age_from_birthdate(birthdate: Union[datetime, date]) -> int:
+def get_age_from_birthdate(birthdate: datetime | date) -> int:
     """
     Calculate age in years from a birthdate.
 

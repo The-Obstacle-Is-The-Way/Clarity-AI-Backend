@@ -3,11 +3,10 @@
 import asyncio
 import logging
 import sys
-import time
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from httpx import AsyncClient, ASGITransport
-import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Configure debug logging
 logging.basicConfig(

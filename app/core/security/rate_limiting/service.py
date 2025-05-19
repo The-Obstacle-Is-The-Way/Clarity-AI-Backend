@@ -5,7 +5,7 @@ Contains the interface or concrete implementation for the rate limiting service.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+
 from fastapi import Request
 
 # Placeholder - In a real implementation, this might depend on Redis, etc.

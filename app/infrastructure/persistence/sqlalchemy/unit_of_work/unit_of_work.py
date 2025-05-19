@@ -9,7 +9,7 @@ import abc
 import contextlib
 import logging
 from datetime import datetime, timezone
-from typing import Any, ContextManager, TypeVar, Dict, Optional
+from typing import Any, ContextManager, TypeVar
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -61,8 +61,8 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
 
         # Audit metadata tracking
         self._audit_enabled = True
-        self._current_user_id: Optional[str] = None
-        self._current_access_reason: Optional[str] = None
+        self._current_user_id: str | None = None
+        self._current_access_reason: str | None = None
 
     @property
     def session(self) -> Session:
@@ -191,7 +191,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
 
                     # Log the failed transaction for audit purposes
                     if self._metadata and self._audit_enabled:
-                        self._log_transaction_failure(f"SQLAlchemy error: {str(e)}")
+                        self._log_transaction_failure(f"SQLAlchemy error: {e!s}")
                 except Exception as final_rb_err:
                     logger.error(f"Error during final rollback attempt: {final_rb_err}")
             raise RepositoryError(f"Error during transaction cleanup: {e!s}") from e
@@ -205,7 +205,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
 
                     # Log the failed transaction for audit purposes
                     if self._metadata and self._audit_enabled:
-                        self._log_transaction_failure(f"Unexpected error: {str(e)}")
+                        self._log_transaction_failure(f"Unexpected error: {e!s}")
                 except Exception as final_rb_err:
                     logger.error(f"Error during final rollback attempt: {final_rb_err}")
             raise  # Re-raise unexpected errors
@@ -428,11 +428,11 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         self._audit_enabled = True
         logger.info("Audit logging re-enabled for this Unit of Work")
 
-    def get_current_user_id(self) -> Optional[str]:
+    def get_current_user_id(self) -> str | None:
         """Get the current user ID for this transaction context."""
         return self._current_user_id
 
-    def get_current_access_reason(self) -> Optional[str]:
+    def get_current_access_reason(self) -> str | None:
         """Get the current access reason for this transaction context."""
         return self._current_access_reason
 

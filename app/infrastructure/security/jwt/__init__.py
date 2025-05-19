@@ -6,11 +6,11 @@ according to HIPAA security standards and best practices.
 """
 
 from app.infrastructure.security.jwt.jwt_service import (
-    JWTService,
     IJwtService,
+    JWTService,
     TokenPayload,
     TokenType,
     get_jwt_service,
 )
 
-__all__ = ["JWTService", "IJwtService", "TokenPayload", "TokenType", "get_jwt_service"]
+__all__ = ["IJwtService", "JWTService", "TokenPayload", "TokenType", "get_jwt_service"]

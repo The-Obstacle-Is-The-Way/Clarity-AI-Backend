@@ -5,9 +5,7 @@ This module tests the database connection utilities for SQLAlchemy.
 """
 import os
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession
 

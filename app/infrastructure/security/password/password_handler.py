@@ -13,7 +13,6 @@ import secrets
 import string
 
 from passlib.context import CryptContext
-from passlib.hash import bcrypt
 from zxcvbn import zxcvbn
 
 # Use canonical config import

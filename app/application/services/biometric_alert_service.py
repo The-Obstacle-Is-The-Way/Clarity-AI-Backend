@@ -6,11 +6,11 @@ for the biometric monitoring system, following clean architecture principles.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
-from app.core.domain.entities.alert import Alert, AlertStatus, AlertPriority, AlertType
+from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 
@@ -25,21 +25,21 @@ class BiometricAlertService(AlertServiceInterface):
     creation, retrieval, updating, and management of alert statuses.
     """
 
-    def __init__(self, alert_repository: Optional[BiometricAlertRepository] = None):
+    def __init__(self, alert_repository: BiometricAlertRepository | None = None):
         """Initialize the service with optional repository dependency."""
         self.alert_repository = alert_repository
 
     async def get_alerts(
         self,
-        patient_id: Optional[str] = None,
-        alert_type: Optional[str] = None,
-        severity: Optional[AlertPriority] = None,
-        status: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        patient_id: str | None = None,
+        alert_type: str | None = None,
+        severity: AlertPriority | None = None,
+        status: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         skip: int = 0,
-    ) -> List[Alert]:
+    ) -> list[Alert]:
         """
         Get alerts with optional filtering.
 
@@ -79,8 +79,8 @@ class BiometricAlertService(AlertServiceInterface):
         return []
 
     async def get_alert_by_id(
-        self, alert_id: str, user_id: Optional[str] = None
-    ) -> Optional[Alert]:
+        self, alert_id: str, user_id: str | None = None
+    ) -> Alert | None:
         """
         Get a specific alert by ID.
 
@@ -113,9 +113,9 @@ class BiometricAlertService(AlertServiceInterface):
         self,
         alert_id: str,
         status: str,
-        resolution_notes: Optional[str] = None,
-        resolved_by: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str]]:
+        resolution_notes: str | None = None,
+        resolved_by: str | None = None,
+    ) -> tuple[bool, str | None]:
         """
         Update the status of an alert.
 
@@ -146,9 +146,9 @@ class BiometricAlertService(AlertServiceInterface):
         alert_type: str,
         severity: AlertPriority,
         description: str,
-        source_data: Dict[str, Any] = None,
-        metadata: Dict[str, Any] = None,
-    ) -> Tuple[bool, str, Optional[str]]:
+        source_data: dict[str, Any] = None,
+        metadata: dict[str, Any] = None,
+    ) -> tuple[bool, str, str | None]:
         """
         Create a new alert.
 
@@ -182,7 +182,7 @@ class BiometricAlertService(AlertServiceInterface):
 
     async def get_alert_summary(
         self, patient_id: str, start_time: datetime, end_time: datetime
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get summary statistics for alerts.
 

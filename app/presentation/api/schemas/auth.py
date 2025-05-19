@@ -2,16 +2,15 @@
 Pydantic schemas for authentication-related requests and responses.
 """
 import uuid
-from typing import List, Optional  # Corrected from list
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class TokenDataSchema(BaseModel):
     """Schema for data embedded within a token."""
 
     sub: str = Field(..., description="Subject of the token (usually user ID)")
-    roles: Optional[List[str]] = Field(None, description="User roles")
+    roles: list[str] | None = Field(None, description="User roles")
     # Add other custom claims as needed
 
 
@@ -22,10 +21,10 @@ class TokenResponseSchema(BaseModel):
     refresh_token: str = Field(..., description="JWT Refresh Token")
     token_type: str = Field("bearer", description="Type of the token")
     expires_in: int = Field(..., description="Seconds until access token expiration")
-    user_id: Optional[uuid.UUID] = Field(
+    user_id: uuid.UUID | None = Field(
         None, description="User ID of the authenticated user"
     )  # Added Optional
-    roles: Optional[List[str]] = Field(
+    roles: list[str] | None = Field(
         None, description="Roles of the authenticated user"
     )
 
@@ -57,12 +56,12 @@ class SessionInfoResponseSchema(BaseModel):
     session_active: bool = Field(
         ..., description="Whether there is an active session (e.g., valid token)"
     )
-    user_id: Optional[uuid.UUID] = Field(None, description="User ID if authenticated")
-    roles: Optional[List[str]] = Field(None, description="User roles if authenticated")
-    permissions: Optional[List[str]] = Field(
+    user_id: uuid.UUID | None = Field(None, description="User ID if authenticated")
+    roles: list[str] | None = Field(None, description="User roles if authenticated")
+    permissions: list[str] | None = Field(
         None, description="User permissions if authenticated"
     )
-    exp: Optional[int] = Field(
+    exp: int | None = Field(
         None, description="Access token expiry timestamp (seconds since epoch)"
     )
     # Add other relevant session details like CSRF token if used
@@ -77,7 +76,7 @@ class UserRegistrationRequestSchema(BaseModel):
     password: str = Field(
         ..., min_length=8, description="User's chosen password (min 8 characters)"
     )
-    full_name: Optional[str] = Field(
+    full_name: str | None = Field(
         None, max_length=100, description="User's full name"
     )
     # Add other fields like terms_accepted, etc.

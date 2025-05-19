@@ -6,14 +6,8 @@ for testing purposes. It follows clean architecture principles by
 implementing the domain service interface.
 """
 
-from typing import Any, Dict, List, Optional
-from uuid import UUID, uuid4
-
-from app.core.exceptions import (
-    InvalidConfigurationError,
-    ModelNotFoundError,
-    ServiceUnavailableError,
-)
+from typing import Any
+from uuid import uuid4
 
 
 class MockPATService:
@@ -22,7 +16,7 @@ class MockPATService:
     Used for testing and development without requiring external dependencies.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the mock PAT service.
 
@@ -54,7 +48,7 @@ class MockPATService:
         self._initialized = False
         return True
 
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the model used by this service.
 
@@ -76,8 +70,8 @@ class MockPATService:
         }
 
     async def analyze_text(
-        self, text: str, options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, text: str, options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze text using the PAT service.
 
@@ -126,7 +120,7 @@ class MockPATService:
 
         return result
 
-    async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    async def get_session(self, session_id: str) -> dict[str, Any] | None:
         """
         Retrieve a previously created analysis session.
 

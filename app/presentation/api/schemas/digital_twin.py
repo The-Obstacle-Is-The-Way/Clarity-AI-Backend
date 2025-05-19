@@ -8,10 +8,10 @@ strict validation of all input and output data for HIPAA compliance.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Dict, Optional
+from typing import Any
 from uuid import UUID
 
-from pydantic import Field, ConfigDict
+from pydantic import ConfigDict, Field
 
 from app.core.domain.entities.digital_twin import SimulationType, TwinType
 from app.presentation.api.schemas.base import BaseModelConfig
@@ -95,7 +95,7 @@ class DigitalTwinStatusResponse(BaseModelConfig):
     completeness: int = Field(
         ..., ge=0, le=100, description="Percentage of completeness"
     )
-    components: Dict[str, ComponentStatus]
+    components: dict[str, ComponentStatus]
     last_checked: datetime
 
     # Modern Pydantic V2 configuration using ConfigDict
@@ -158,20 +158,20 @@ class Recommendation(BaseModelConfig):
 class MedicationResponsePredictions(BaseModelConfig):
     """Schema for medication response predictions."""
 
-    predictions: List[MedicationPrediction]
+    predictions: list[MedicationPrediction]
 
 
 class SymptomForecasting(BaseModelConfig):
     """Schema for symptom forecasting."""
 
-    trending_symptoms: List[SymptomTrend]
-    risk_alerts: List[RiskAlert]
+    trending_symptoms: list[SymptomTrend]
+    risk_alerts: list[RiskAlert]
 
 
 class BiometricCorrelations(BaseModelConfig):
     """Schema for biometric correlations."""
 
-    strong_correlations: List[BiometricCorrelation]
+    strong_correlations: list[BiometricCorrelation]
 
 
 class PharmacogenomicsData(BaseModelConfig):
@@ -189,14 +189,14 @@ class PersonalizedInsightResponse(BaseModelConfig):
     query: str | None = None
     insight_type: str | None = None
     insight: str | None = None
-    key_points: List[str] | None = None
+    key_points: list[str] | None = None
     confidence: float | None = Field(None, ge=0, le=1)
     timestamp: datetime | None = None
     generated_at: datetime | None = None
     symptom_forecasting: SymptomForecasting | None = None
     biometric_correlation: BiometricCorrelations | None = None
     pharmacogenomics: PharmacogenomicsData | None = None
-    integrated_recommendations: List[Recommendation] | None = None
+    integrated_recommendations: list[Recommendation] | None = None
 
     # Modern Pydantic V2 configuration using ConfigDict
     model_config = ConfigDict(
@@ -234,4 +234,4 @@ class ClinicalTextAnalysisResponse(BaseModelConfig):
     result: str
     metadata: dict[str, Any] | None = None
     confidence: float | None = Field(None, ge=0, le=1)
-    insights: List[str] | None = None
+    insights: list[str] | None = None

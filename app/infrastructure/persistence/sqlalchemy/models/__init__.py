@@ -18,11 +18,12 @@ from app.infrastructure.persistence.sqlalchemy.registry import (
     ensure_all_models_registered,
     validate_models,
 )
-from .base import Base, AuditMixin, TimestampMixin
+
+from .analytics import AnalyticsEventModel
+from .base import AuditMixin, Base, TimestampMixin
 
 # Import models in dependency order (models with no dependencies first)
 from .provider import ProviderModel
-from .analytics import AnalyticsEventModel
 from .user import User, UserRole
 
 # Biometric and Digital Twin models should be imported before Patient if Patient refers to them
@@ -80,9 +81,10 @@ except ImportError:  # MODIFIED: Comment out except
 
 # Comprehensive list of all models for proper export
 __all__ = [
-    "AuditMixin",
+    "AnalyticsEventModel",
     "AppointmentModel",
     "AuditLog",  # Updated from AuditLogModel to AuditLog
+    "AuditMixin",
     "Base",
     "BiometricAlertModel",
     "BiometricRuleModel",
@@ -95,7 +97,6 @@ __all__ = [
     "TimestampMixin",
     "User",
     "UserRole",
-    "AnalyticsEventModel",
 ]
 
 # This ensures all models are properly validated during application startup

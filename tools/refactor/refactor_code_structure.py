@@ -13,13 +13,12 @@ Options:
     --dry-run  Show what would be done without making changes
 """
 
+import argparse
 import os
-import sys
 import re
 import shutil
-from pathlib import Path
 from enum import Enum
-import argparse
+from pathlib import Path
 
 
 class Layer(Enum):
@@ -194,7 +193,7 @@ class RefactoringStrategy:
             print(f"Would update imports in: {file_path}")
             return
 
-        with open(file_path, "r") as file:
+        with open(file_path) as file:
             content = file.read()
 
         for old_import, new_import in import_mappings.items():

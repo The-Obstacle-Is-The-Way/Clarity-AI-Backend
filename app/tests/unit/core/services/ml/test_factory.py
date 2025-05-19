@@ -14,6 +14,7 @@ pytest.skip(
 )
 
 from unittest.mock import MagicMock, patch
+
 from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.factory import MLServiceFactory
 

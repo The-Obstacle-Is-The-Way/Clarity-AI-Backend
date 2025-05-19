@@ -6,14 +6,15 @@ using the consolidated PHI sanitization components.
 """
 
 import ast
+import configparser
+import json
 import os
 import re
-import yaml
-import json
-import configparser
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Set, Tuple
+from typing import Any
+
+import yaml
 
 from app.infrastructure.security.phi.sanitizer import PHISanitizer, get_sanitized_logger
 
@@ -650,9 +651,9 @@ class PHICodeAnalyzer:
 
     def _check_config_dict(
         self,
-        config: Dict,
+        config: dict,
         file_path: str,
-        findings: List[PHIFinding],
+        findings: list[PHIFinding],
         path: str = "",
         line: int = 0,
     ):
@@ -725,8 +726,8 @@ class PHICodeAnalyzer:
         return any(pattern in key_lower for pattern in self.SENSITIVE_CONFIG_PATTERNS)
 
     def audit_api_endpoints(
-        self, api_spec_file: Optional[str] = None
-    ) -> List[PHIFinding]:
+        self, api_spec_file: str | None = None
+    ) -> list[PHIFinding]:
         """
         Audit API endpoints for potential PHI exposure.
 
@@ -758,7 +759,7 @@ class PHICodeAnalyzer:
                 return findings
 
             # Load the file content directly first for a raw search
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 content = f.read()
 
             # Do an initial scan for PHI terms in the raw content
@@ -968,9 +969,9 @@ class PHICodeAnalyzer:
                         PHIFinding(
                             file_path=api_spec_file,
                             line_number=0,
-                            message=f"Error parsing API specification: {str(e)}",
+                            message=f"Error parsing API specification: {e!s}",
                             severity=CodeSeverity.WARNING,
-                            code_snippet=f"Exception: {str(e)}",
+                            code_snippet=f"Exception: {e!s}",
                         )
                     )
 
@@ -982,16 +983,16 @@ class PHICodeAnalyzer:
                 PHIFinding(
                     file_path=api_spec_file if api_spec_file else "unknown",
                     line_number=0,
-                    message=f"Error scanning API specification: {str(e)}",
+                    message=f"Error scanning API specification: {e!s}",
                     severity=CodeSeverity.WARNING,
-                    code_snippet=f"Exception: {str(e)}",
+                    code_snippet=f"Exception: {e!s}",
                 )
             )
             return findings
 
     def audit_code(
-        self, directory_path: str, exclude_dirs: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, directory_path: str, exclude_dirs: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Perform a comprehensive PHI audit of code in a directory.
 
@@ -1029,7 +1030,7 @@ class PHICodeAnalyzer:
             "summary": summary,
         }
 
-    def audit_configuration(self, directory_path: str) -> Dict[str, Any]:
+    def audit_configuration(self, directory_path: str) -> dict[str, Any]:
         """
         Audit configuration files for sensitive information.
 

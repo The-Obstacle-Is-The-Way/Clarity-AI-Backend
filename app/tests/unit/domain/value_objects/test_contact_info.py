@@ -6,7 +6,6 @@ HIPAA-compliant PHI protection.
 """
 
 import json
-import re
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,12 +13,6 @@ import pytest
 from app.domain.value_objects.contact_info import (
     ContactInfo,
     create_secure_contact_info,
-)
-from app.infrastructure.security.encryption.base_encryption_service import (
-    BaseEncryptionService,
-    encrypt_value,
-    decrypt_value,
-    get_encryption_service,
 )
 
 

@@ -18,18 +18,18 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.mutable import MutableDict
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
+    AuditMixin,
     Base,
     TimestampMixin,
-    AuditMixin,
 )
-from app.domain.utils.datetime_utils import now_utc
 
 
 class DigitalTwinDataPoint(Base):

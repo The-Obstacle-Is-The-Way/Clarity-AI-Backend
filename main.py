@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Clarity-AI FastAPI Application
 =============================
@@ -6,40 +5,34 @@ Main entry point for the Clarity-AI psychiatric platform.
 Implements HIPAA-compliant API with proper security measures.
 """
 
-import os
 import time
 import traceback
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Callable, Dict, Any, List, Optional
 
 import uvicorn
-from fastapi import FastAPI, Request, Response, status, Depends, HTTPException
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config.settings import settings
 from app.core.utils.logging import get_logger
+from app.domain.exceptions import (
+    AuthenticationException,
+    AuthorizationException,
+    EntityNotFoundException,
+    NovaBaseException,
+    ValidationException,
+)
+from app.infrastructure.di.container import get_container
 
 # Updated imports to match new structure
 from app.presentation.api.routes import api_router, setup_routers
-from app.infrastructure.di.container import get_container
-from app.domain.exceptions import (
-    NovaBaseException,
-    EntityNotFoundException,
-    ValidationException,
-    AuthenticationException,
-    AuthorizationException,
-)
-from app.infrastructure.persistence.sqlalchemy.config.database import (
-    get_db_instance,
-    get_db_session,
-)
 
 # Ensure this import is correct and remove any old, direct router imports below
 # from app.presentation.api.routes.analytics_endpoints import router as analytics_router
@@ -136,7 +129,7 @@ async def log_requests_middleware(request: Request, call_next: Callable) -> Resp
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(
-            f"Request failed: {request.method} {path} - Error: {str(e)} - Time: {process_time:.4f}s"
+            f"Request failed: {request.method} {path} - Error: {e!s} - Time: {process_time:.4f}s"
         )
         raise
 
@@ -147,7 +140,7 @@ async def base_exception_handler(
     request: Request, exc: NovaBaseException
 ) -> JSONResponse:
     """Handle all Clarity-AI custom exceptions."""
-    logger.warning(f"Application exception: {exc.__class__.__name__}: {str(exc)}")
+    logger.warning(f"Application exception: {exc.__class__.__name__}: {exc!s}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -164,7 +157,7 @@ async def not_found_exception_handler(
     request: Request, exc: EntityNotFoundException
 ) -> JSONResponse:
     """Handle entity not found exceptions."""
-    logger.warning(f"Entity not found: {str(exc)}")
+    logger.warning(f"Entity not found: {exc!s}")
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
@@ -181,7 +174,7 @@ async def validation_exception_handler(
     request: Request, exc: ValidationException
 ) -> JSONResponse:
     """Handle validation exceptions."""
-    logger.warning(f"Validation error: {str(exc)}")
+    logger.warning(f"Validation error: {exc!s}")
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -197,7 +190,7 @@ async def auth_exception_handler(
     request: Request, exc: AuthenticationException
 ) -> JSONResponse:
     """Handle authentication exceptions."""
-    logger.warning(f"Authentication error: {str(exc)}")
+    logger.warning(f"Authentication error: {exc!s}")
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={
@@ -212,7 +205,7 @@ async def auth_exception_handler(
     request: Request, exc: AuthorizationException
 ) -> JSONResponse:
     """Handle authorization exceptions."""
-    logger.warning(f"Authorization error: {str(exc)}")
+    logger.warning(f"Authorization error: {exc!s}")
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
         content={
@@ -226,7 +219,7 @@ async def auth_exception_handler(
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle all unhandled exceptions with HIPAA-compliant error messages."""
     error_id = str(int(time.time()))
-    logger.error(f"Unhandled exception [{error_id}]: {str(exc)}")
+    logger.error(f"Unhandled exception [{error_id}]: {exc!s}")
     logger.error(traceback.format_exc())
 
     # In production, don't return detailed error information

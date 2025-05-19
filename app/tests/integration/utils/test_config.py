@@ -6,7 +6,7 @@ ensuring that JWT tokens and other security settings are consistent and valid.
 """
 
 import os
-from typing import Any, AsyncGenerator
+from typing import Any
 
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession

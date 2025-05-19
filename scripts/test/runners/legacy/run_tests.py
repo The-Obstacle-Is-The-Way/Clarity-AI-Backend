@@ -14,14 +14,13 @@ Usage:
     python scripts/run_tests.py --coverage          # Generate coverage reports
 """
 
+import argparse
 import os
+import subprocess
 import sys
 import time
-import argparse
-import subprocess
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any
+from pathlib import Path
 
 
 # ANSI color codes for terminal output
@@ -48,8 +47,8 @@ def print_section(message: str) -> None:
 
 
 def run_command(
-    cmd: List[str], env: Optional[Dict[str, str]] = None
-) -> Tuple[bool, str, float]:
+    cmd: list[str], env: dict[str, str] | None = None
+) -> tuple[bool, str, float]:
     """Run a command and return success status, output, and execution time."""
     print(f"Running: {' '.join(cmd)}")
     start_time = time.time()
@@ -94,8 +93,8 @@ def ensure_test_directories():
 
 
 def run_test_directory(
-    directory: str, coverage: bool, junit: bool, markers: Optional[str]
-) -> Tuple[bool, float]:
+    directory: str, coverage: bool, junit: bool, markers: str | None
+) -> tuple[bool, float]:
     """Run tests in the specified directory."""
     print_section(f"Running {directory.capitalize()} Tests")
 

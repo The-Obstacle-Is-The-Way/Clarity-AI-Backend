@@ -10,9 +10,8 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar
 
-from app.core.config.settings import get_settings
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
     get_encryption_service,
@@ -38,16 +37,16 @@ class ContactInfo:
     """
 
     # Public attributes
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    preferred_contact_method: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    preferred_contact_method: str | None = None
 
     # Class constants for validation
     EMAIL_PATTERN: ClassVar[str] = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     VALID_CONTACT_METHODS: ClassVar[set] = {"email", "phone", "none"}
 
     # Class-level encryption service cache
-    _encryption_service: ClassVar[Optional[BaseEncryptionService]] = None
+    _encryption_service: ClassVar[BaseEncryptionService | None] = None
 
     # Private attribute for encryption state
     _is_encrypted: bool = False
@@ -90,7 +89,7 @@ class ContactInfo:
         return False
 
     @staticmethod
-    def _validate_email(email: Optional[str]) -> None:
+    def _validate_email(email: str | None) -> None:
         """
         Validate email format without exposing the email in error messages.
 
@@ -112,7 +111,7 @@ class ContactInfo:
             raise ValueError("Invalid email format")
 
     @staticmethod
-    def _validate_phone(phone: Optional[str]) -> None:
+    def _validate_phone(phone: str | None) -> None:
         """
         Validate phone number format without exposing the phone number in error messages.
 
@@ -135,7 +134,7 @@ class ContactInfo:
             raise ValueError("Phone number must have at least 10 digits")
 
     @staticmethod
-    def _validate_preferred_contact_method(method: Optional[str]) -> None:
+    def _validate_preferred_contact_method(method: str | None) -> None:
         """
         Validate preferred contact method.
 
@@ -158,7 +157,7 @@ class ContactInfo:
             )
 
     @classmethod
-    def from_dict(cls, data: Optional[Dict[str, Any]]) -> "ContactInfo":
+    def from_dict(cls, data: dict[str, Any] | None) -> "ContactInfo":
         """
         Create a ContactInfo instance from a dictionary.
 
@@ -185,7 +184,7 @@ class ContactInfo:
             logger.error(f"ContactInfo validation error: {type(e).__name__}")
             raise ValueError("Invalid contact information format") from e
 
-    def to_dict(self, include_empty: bool = False) -> Dict[str, Any]:
+    def to_dict(self, include_empty: bool = False) -> dict[str, Any]:
         """
         Convert to dictionary.
 
@@ -307,7 +306,7 @@ class ContactInfo:
         """
         return bool(self.email or self.phone)
 
-    def redact_phi(self) -> Dict[str, Any]:
+    def redact_phi(self) -> dict[str, Any]:
         """
         Create a redacted version suitable for logging.
 
@@ -326,9 +325,9 @@ class ContactInfo:
 
 
 def create_secure_contact_info(
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
-    preferred_method: Optional[str] = None,
+    email: str | None = None,
+    phone: str | None = None,
+    preferred_method: str | None = None,
 ) -> ContactInfo:
     """
     Factory function to safely create contact info with validation.

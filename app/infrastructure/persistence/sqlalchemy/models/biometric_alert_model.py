@@ -7,33 +7,35 @@ of concerning patterns in patient biometric data.
 """
 
 import uuid
+
 from sqlalchemy import (
+    JSON,
     Column,
+    DateTime,
     ForeignKey,
     String,
     Text,
-    JSON,
-    Boolean,
-    DateTime,
-    Enum as SQLAlchemyEnum,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.mutable import MutableDict
-
-from app.domain.utils.datetime_utils import now_utc
-
-# from app.infrastructure.persistence.sqlalchemy.config.database import Base # Old Base
-from app.infrastructure.persistence.sqlalchemy.models.base import (
-    Base,
-    TimestampMixin,
-    AuditMixin,
+from sqlalchemy import (
+    Enum as SQLAlchemyEnum,
 )
-from app.infrastructure.persistence.sqlalchemy.models.base import Base  # Canonical Base
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import relationship
 
 # from app.infrastructure.persistence.sqlalchemy.types import GUID # REMOVED
 from app.domain.entities.biometric_alert import AlertStatusEnum
 from app.domain.entities.biometric_alert_rule import AlertPriority as AlertPriorityEnum
+from app.domain.utils.datetime_utils import now_utc
+
+# from app.infrastructure.persistence.sqlalchemy.config.database import Base # Old Base
+from app.infrastructure.persistence.sqlalchemy.models.base import (
+    AuditMixin,
+    Base,
+    TimestampMixin,
+)
 
 
 class BiometricAlertModel(Base, TimestampMixin, AuditMixin):

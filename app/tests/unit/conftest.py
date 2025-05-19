@@ -5,11 +5,12 @@ This file contains fixtures that are common to all unit tests.
 """
 
 import asyncio
+
 import pytest
 
 from app.tests.utils.asyncio_helpers import (
-    configure_test_event_loop,
     cleanup_event_loop,
+    configure_test_event_loop,
 )
 
 

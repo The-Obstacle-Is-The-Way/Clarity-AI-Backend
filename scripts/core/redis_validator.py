@@ -7,11 +7,10 @@ pure Python socket implementation rather than relying on external tools.
 This enables proper neurotransmitter pathway testing in the Docker environment.
 """
 
+import logging
 import socket
 import time
-import logging
 from urllib.parse import urlparse
-from typing import Tuple, Optional, Dict, Any
 
 logger = logging.getLogger("redis_validator")
 
@@ -22,7 +21,7 @@ class RedisValidator:
     """
 
     @staticmethod
-    def parse_redis_url(redis_url: str) -> Tuple[str, int]:
+    def parse_redis_url(redis_url: str) -> tuple[str, int]:
         """
         Parse Redis URL with neural precision to extract host and port.
 

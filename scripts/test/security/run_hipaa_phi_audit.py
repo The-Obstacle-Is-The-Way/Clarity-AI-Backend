@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Complete HIPAA PHI Auditor implementation.
 This script creates a proper PHIAuditor class with the required functionality.
 """
 
-import os
-import sys
-import re
-import shutil
-from typing import Dict, List, Any, Optional
 import json
 import logging
-import time
+import os
+import re
+import sys
+from typing import Any
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -59,7 +56,7 @@ class PHIDetector:
             r"\bMEDICAL[_-]?RECORD[_-]?\d+\b",
         ]
 
-    def detect_phi(self, content: str) -> List[Dict[str, Any]]:
+    def detect_phi(self, content: str) -> list[dict[str, Any]]:
         """
         Detect potential PHI in content.
 
@@ -347,7 +344,7 @@ class PHIAuditor:
         """Scan a file for PHI patterns and return a result object."""
         result = PHIAuditResult(file_path)
         try:
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 content = f.read()
                 lines = content.split("\n")
 
@@ -415,12 +412,12 @@ class PHIAuditor:
                             }
                         )
         except Exception as e:
-            logger.error(f"Error scanning file {file_path}: {str(e)}")
+            logger.error(f"Error scanning file {file_path}: {e!s}")
             result.error = str(e)
 
         return result
 
-    def scan_directory(self, directory: str) -> List[PHIAuditResult]:
+    def scan_directory(self, directory: str) -> list[PHIAuditResult]:
         """
         Scan a directory for PHI.
 
@@ -480,7 +477,7 @@ def get_patient():
         for file_path in self.files_examined:
             if self._check_api_file(file_path):
                 try:
-                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                    with open(file_path, encoding="utf-8", errors="replace") as f:
                         content = f.read()
 
                         # Check for endpoints without authentication
@@ -526,7 +523,7 @@ def get_patient():
                                 )
                 except Exception as e:
                     logger.error(
-                        f"Error auditing API endpoints in {file_path}: {str(e)}"
+                        f"Error auditing API endpoints in {file_path}: {e!s}"
                     )
 
     def _check_api_file(self, file_path: str) -> bool:
@@ -610,7 +607,7 @@ def get_patient():
 
         for file_path in config_files:
             try:
-                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(file_path, encoding="utf-8", errors="replace") as f:
                     content = f.read()
 
                     # Check for security settings
@@ -646,7 +643,7 @@ def get_patient():
                                 f"Missing security settings in {file_path}: {', '.join(missing_settings)}"
                             )
             except Exception as e:
-                logger.error(f"Error auditing configuration in {file_path}: {str(e)}")
+                logger.error(f"Error auditing configuration in {file_path}: {e!s}")
 
     def audit_code_for_phi(self) -> None:
         """Audit code for PHI."""
@@ -655,10 +652,10 @@ def get_patient():
         # Add SSN_PATTERN for test_ssn_pattern_detection test
         for file_path in self.files_examined:
             if "ssn_example.py" in file_path:
-                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(file_path, encoding="utf-8", errors="replace") as f:
                     content = f.read()
                     if "123-45-6789" in content:
-                        evidence = f"SSN found in file: 123-45-6789"
+                        evidence = "SSN found in file: 123-45-6789"
                         self.findings["code_phi"].append(
                             {
                                 "file": file_path,
@@ -680,7 +677,7 @@ def get_patient():
 
         for file_path in self.files_examined:
             try:
-                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(file_path, encoding="utf-8", errors="replace") as f:
                     content = f.read()
 
                     # Check for logging without sanitization
@@ -722,7 +719,7 @@ def get_patient():
                                     )
                                     break
             except Exception as e:
-                logger.error(f"Error auditing logging in {file_path}: {str(e)}")
+                logger.error(f"Error auditing logging in {file_path}: {e!s}")
 
         self.findings["logging_issues"] = logging_issues
 
@@ -775,7 +772,7 @@ def get_patient():
 
         return passed
 
-    def generate_report(self, output_file: Optional[str] = None) -> str:
+    def generate_report(self, output_file: str | None = None) -> str:
         """Generate a report of the audit findings."""
         report_json = self.report.to_json()
 

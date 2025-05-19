@@ -118,7 +118,7 @@ class SQLAlchemyAppointmentRepository:
 
     async def get_by_id(
         self, appointment_id: Any
-    ) -> Appointment | None:  # noqa: ANN401 – Any for flexibility
+    ) -> Appointment | None:
         # Fast path for mock session
         if hasattr(self.db_session, "_query_results"):
             self.db_session._last_executed_query = "mock_get_by_id"

@@ -9,7 +9,7 @@ requirements (45 CFR § 164.312(b) and 45 CFR § 164.308(a)(1)(ii)(D)).
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Union
+from typing import Any
 
 # Get a dedicated logger for audit events
 _audit_log = logging.getLogger("audit")
@@ -27,12 +27,12 @@ class AuditLogger:
 
     def log_access(
         self,
-        resource_id: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        field_name: Optional[str] = None,
+        resource_id: str | None = None,
+        resource_type: str | None = None,
+        field_name: str | None = None,
         action: str = "view",
-        user_id: Optional[str] = None,
-        additional_data: Optional[Dict[str, Any]] = None,
+        user_id: str | None = None,
+        additional_data: dict[str, Any] | None = None,
         severity: str = "info",
     ) -> str:
         """
@@ -78,9 +78,9 @@ class AuditLogger:
     def log_security_event(
         self,
         event_type: str,
-        event_details: Dict[str, Any],
-        user_id: Optional[str] = None,
-        resource_id: Optional[str] = None,
+        event_details: dict[str, Any],
+        user_id: str | None = None,
+        resource_id: str | None = None,
         severity: str = "info",
     ) -> str:
         """
@@ -118,8 +118,8 @@ class AuditLogger:
     def log_system_event(
         self,
         event_type: str,
-        event_details: Dict[str, Any],
-        user_id: Optional[str] = None,
+        event_details: dict[str, Any],
+        user_id: str | None = None,
         severity: str = "info",
     ) -> str:
         """

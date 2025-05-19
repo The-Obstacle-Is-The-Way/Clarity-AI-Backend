@@ -11,7 +11,6 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.core.interfaces.repositories.biometric_alert_repository import (
     IBiometricAlertRepository,
 )
@@ -26,8 +25,9 @@ from app.core.interfaces.repositories.digital_twin_repository import (
 )
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.domain.exceptions import RepositoryError
+from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.core.utils.logging import get_logger
+from app.domain.exceptions import RepositoryError
 
 # Configure logger
 logger = logging.getLogger(__name__)

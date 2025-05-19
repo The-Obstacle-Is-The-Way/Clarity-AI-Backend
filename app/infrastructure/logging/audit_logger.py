@@ -8,22 +8,19 @@ modifications, ensuring compliance with HIPAA Security Rule § 164.312(b).
 import json
 import logging
 import os
-import re
 import tempfile
-import uuid
-from typing import Any, Dict, Optional
 from datetime import date
-
-from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
-    AuditEventType,
-    AuditSeverity,
-)
-from app.core.utils.date_utils import utcnow, format_date_iso
+from typing import Any
 
 # Corrected import path
 # from app.config.settings import settings # Keep only get_settings
 from app.core.config.settings import get_settings
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    AuditSeverity,
+    IAuditLogger,
+)
+from app.core.utils.date_utils import format_date_iso, utcnow
 
 # Load settings once
 settings = get_settings()
@@ -37,9 +34,7 @@ except (ImportError, AttributeError):
     AUDIT_ENABLED = True
     AUDIT_LOG_DIR = os.path.join(tempfile.gettempdir(), "novamind_audit")
 
-from pydantic import BaseModel, Field, field_validator
 
-from app.core.domain.entities.user import User, UserRole
 
 
 class AuditLogger(IAuditLogger):
@@ -258,11 +253,11 @@ def log_security_event(*args, **kwargs):  # type: ignore[missing-return-type-doc
 # of *AuditLogger*.
 
 __all__ = [
-    "AuditLogger",
-    "log_phi_access",
-    "log_security_event",
-    "log_audit_event",
     "AuditEventType",
+    "AuditLogger",
     "AuditSeverity",
     "IAuditLogger",
+    "log_audit_event",
+    "log_phi_access",
+    "log_security_event",
 ]

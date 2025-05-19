@@ -8,15 +8,16 @@ and dependency inversion.
 
 from abc import ABC, abstractmethod
 
+from fastapi import Response  # For logout method
+
 from app.core.domain.entities.user import User
 
 # Import Pydantic Schemas for type hinting in the interface
 from app.presentation.api.schemas.auth import (
+    SessionInfoResponseSchema,
     TokenResponseSchema,
     UserRegistrationResponseSchema,
-    SessionInfoResponseSchema,
 )
-from fastapi import Response  # For logout method
 
 
 class AuthServiceInterface(ABC):

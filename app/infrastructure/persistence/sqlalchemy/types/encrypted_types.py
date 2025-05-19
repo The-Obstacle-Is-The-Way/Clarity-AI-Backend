@@ -6,14 +6,15 @@ encrypt data when writing to the database and decrypt it when reading,
 using the application's configured encryption service.
 """
 
-import logging
-from sqlalchemy import types, Text
-import json
 import base64
 import dataclasses
-from sqlalchemy.engine import Dialect
-from typing import Any, Dict, List, Optional, Union, TypeVar, Type, cast
+import json
+import logging
+from typing import Any, TypeVar
+
 from pydantic import BaseModel
+from sqlalchemy import types
+from sqlalchemy.engine import Dialect
 
 # Import the shared instance from the encryption module
 from app.infrastructure.security.encryption import (
@@ -78,12 +79,12 @@ def serialize_for_encryption(obj: Any) -> str:
             return json.dumps(str(obj))
         except Exception:
             raise TypeError(
-                f"Object of type {type(obj).__name__} cannot be serialized to JSON: {str(e)}"
+                f"Object of type {type(obj).__name__} cannot be serialized to JSON: {e!s}"
             )
 
 
 def deserialize_from_encryption(
-    json_str: str, target_cls: Type[PydanticModel] = None
+    json_str: str, target_cls: type[PydanticModel] = None
 ) -> Any:
     """
     Deserialize JSON string back to an object.
@@ -122,11 +123,11 @@ def deserialize_from_encryption(
         # Otherwise return the parsed data
         return data
     except json.JSONDecodeError as e:
-        logger.error(f"JSON deserialization failed: {str(e)}")
-        raise ValueError(f"Failed to parse JSON data: {str(e)}")
+        logger.error(f"JSON deserialization failed: {e!s}")
+        raise ValueError(f"Failed to parse JSON data: {e!s}")
     except Exception as e:
-        logger.error(f"Object deserialization failed: {str(e)}")
-        raise ValueError(f"Failed to deserialize data: {str(e)}")
+        logger.error(f"Object deserialization failed: {e!s}")
+        raise ValueError(f"Failed to deserialize data: {e!s}")
 
 
 class EncryptedTypeBase(types.TypeDecorator):
@@ -247,8 +248,8 @@ class EncryptedTypeBase(types.TypeDecorator):
         try:
             return self.encryption_service.encrypt_string(converted)
         except Exception as e:
-            logger.error(f"Failed to encrypt value: {str(e)}", exc_info=True)
-            raise ValueError(f"Encryption failed: {str(e)}")
+            logger.error(f"Failed to encrypt value: {e!s}", exc_info=True)
+            raise ValueError(f"Encryption failed: {e!s}")
 
     def process_result_value(self, value: str, dialect: Dialect) -> Any:
         """
@@ -286,7 +287,7 @@ class EncryptedTypeBase(types.TypeDecorator):
                 else:
                     value = str(value)
             except Exception as e:
-                logger.error(f"Failed to convert {type(value)} to string: {str(e)}")
+                logger.error(f"Failed to convert {type(value)} to string: {e!s}")
                 raise ValueError(f"Cannot decrypt value of type {type(value)}")
 
         # Decrypt the value using the encryption service
@@ -331,17 +332,17 @@ class EncryptedTypeBase(types.TypeDecorator):
                     return self._convert_result_value(decrypted)
                 except Exception as e2:
                     logger.error(
-                        f"All decryption attempts failed: {str(e2)}", exc_info=True
+                        f"All decryption attempts failed: {e2!s}", exc_info=True
                     )
                     raise ValueError(
-                        f"Decryption failed with all available keys: {str(e2)}"
+                        f"Decryption failed with all available keys: {e2!s}"
                     )
             else:
                 logger.error(f"Decryption failed: {error_msg}", exc_info=True)
                 raise ValueError(f"Decryption failed: {error_msg}")
         except Exception as e:
-            logger.error(f"Unexpected error during decryption: {str(e)}", exc_info=True)
-            raise ValueError(f"Decryption failed: {str(e)}")
+            logger.error(f"Unexpected error during decryption: {e!s}", exc_info=True)
+            raise ValueError(f"Decryption failed: {e!s}")
 
 
 class EncryptedString(EncryptedTypeBase):
@@ -365,7 +366,7 @@ class EncryptedString(EncryptedTypeBase):
 
         return value
 
-    def _convert_result_value(self, value: Union[str, bytes]) -> str:
+    def _convert_result_value(self, value: str | bytes) -> str:
         """
         Return the decrypted string directly.
 
@@ -417,7 +418,7 @@ class EncryptedText(EncryptedTypeBase):
 
         return value
 
-    def _convert_result_value(self, value: Union[str, bytes]) -> str:
+    def _convert_result_value(self, value: str | bytes) -> str:
         """
         Return the decrypted string directly.
 
@@ -466,10 +467,10 @@ class EncryptedInteger(EncryptedTypeBase):
             int_value = int(value)
             return str(int_value)
         except (ValueError, TypeError) as e:
-            logger.error(f"Failed to convert {value} to integer: {str(e)}")
+            logger.error(f"Failed to convert {value} to integer: {e!s}")
             raise TypeError(f"Value {value} cannot be converted to integer")
 
-    def _convert_result_value(self, value: Union[str, bytes]) -> int:
+    def _convert_result_value(self, value: str | bytes) -> int:
         """
         Convert a decrypted string value to an integer.
 
@@ -508,9 +509,9 @@ class EncryptedInteger(EncryptedTypeBase):
 
             return int(value_str)
         except (ValueError, TypeError) as e:
-            logger.error(f"Failed to convert '{value}' to integer: {str(e)}")
+            logger.error(f"Failed to convert '{value}' to integer: {e!s}")
             raise ValueError(
-                f"Cannot convert decrypted value '{value}' to integer: {str(e)}"
+                f"Cannot convert decrypted value '{value}' to integer: {e!s}"
             )
 
 
@@ -521,7 +522,7 @@ class EncryptedJSON(EncryptedTypeBase):
     and store the encrypted string in the database.
     """
 
-    def _convert_bind_param(self, value: Union[dict, list, BaseModel, Any]) -> str:
+    def _convert_bind_param(self, value: dict | list | BaseModel | Any) -> str:
         """
         Convert a Python object to a JSON string for encryption.
 
@@ -540,7 +541,7 @@ class EncryptedJSON(EncryptedTypeBase):
         # Use the serialization helper to handle various types
         return serialize_for_encryption(value)
 
-    def _convert_result_value(self, value: Union[str, bytes]) -> Union[dict, list]:
+    def _convert_result_value(self, value: str | bytes) -> dict | list:
         """
         Convert a decrypted string to a JSON object.
 
@@ -579,8 +580,8 @@ class EncryptedJSON(EncryptedTypeBase):
                 cleaned_value = value.strip("\"'")
                 return json.loads(cleaned_value)
             except json.JSONDecodeError:
-                logger.error(f"Failed to parse JSON from decrypted value: {str(e)}")
-                raise ValueError(f"Invalid JSON in decrypted data: {str(e)}")
+                logger.error(f"Failed to parse JSON from decrypted value: {e!s}")
+                raise ValueError(f"Invalid JSON in decrypted data: {e!s}")
 
 
 class EncryptedPickle(EncryptedTypeBase):
@@ -615,9 +616,9 @@ class EncryptedPickle(EncryptedTypeBase):
             pickled = pickle.dumps(value)
             return base64.b64encode(pickled).decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to pickle object: {str(e)}")
+            logger.error(f"Failed to pickle object: {e!s}")
             raise TypeError(
-                f"Object of type {type(value).__name__} cannot be pickled: {str(e)}"
+                f"Object of type {type(value).__name__} cannot be pickled: {e!s}"
             )
 
     def _convert_result_value(self, value: str) -> Any:
@@ -642,17 +643,17 @@ class EncryptedPickle(EncryptedTypeBase):
             pickled = base64.b64decode(value)
             return pickle.loads(pickled)
         except Exception as e:
-            logger.error(f"Failed to unpickle object: {str(e)}")
-            raise ValueError(f"Failed to unpickle decrypted value: {str(e)}")
+            logger.error(f"Failed to unpickle object: {e!s}")
+            raise ValueError(f"Failed to unpickle decrypted value: {e!s}")
 
 
 __all__ = [
-    "EncryptedString",
     "EncryptedInteger",
     "EncryptedJSON",
     "EncryptedPickle",
-    "EncryptedTypeBase",
+    "EncryptedString",
     "EncryptedText",
+    "EncryptedTypeBase",
     # Add other encrypted types here when defined
 ]
 

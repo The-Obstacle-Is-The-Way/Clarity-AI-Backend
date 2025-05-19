@@ -51,9 +51,9 @@ class RateLimitConfig:
 
 # Export relevant classes
 __all__ = [
-    "RateLimitStrategy",
     "RateLimitConfig",
+    "RateLimitStrategy",
     "RateLimiterService",
-    "get_rate_limiter_service",
     "RateLimitingMiddleware",
+    "get_rate_limiter_service",
 ]

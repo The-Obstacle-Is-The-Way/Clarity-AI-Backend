@@ -12,11 +12,9 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Any, Union, Set
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-import aiofiles
-from cryptography.hazmat.primitives import hashes
 from fastapi import Request
 
 from app.core.config.settings import get_settings
@@ -24,9 +22,9 @@ from app.core.interfaces.repositories.audit_log_repository_interface import (
     IAuditLogRepository,
 )
 from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
     AuditEventType,
     AuditSeverity,
+    IAuditLogger,
 )
 from app.domain.entities.audit_log import AuditLog
 
@@ -63,22 +61,22 @@ class AuditLogService(IAuditLogger):
         self._anomaly_detection_enabled = True
 
         # Track velocity by user for anomaly detection
-        self._user_access_history: Dict[str, List[datetime]] = {}
-        self._suspicious_ips: Set[str] = set()
+        self._user_access_history: dict[str, list[datetime]] = {}
+        self._suspicious_ips: set[str] = set()
 
     async def log_event(
         self,
         event_type: AuditEventType,
-        actor_id: Optional[str] = None,
-        target_resource: Optional[str] = None,
-        target_id: Optional[str] = None,
-        action: Optional[str] = None,
-        status: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        actor_id: str | None = None,
+        target_resource: str | None = None,
+        target_id: str | None = None,
+        action: str | None = None,
+        status: str | None = None,
+        details: dict[str, Any] | None = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None,
-        timestamp: Optional[datetime] = None,
-        request: Optional[Request] = None,
+        metadata: dict[str, Any] | None = None,
+        timestamp: datetime | None = None,
+        request: Request | None = None,
         _skip_anomaly_check: bool = False,  # Internal flag to prevent recursion
     ) -> str:
         """
@@ -154,11 +152,11 @@ class AuditLogService(IAuditLogger):
     async def log_security_event(
         self,
         description: str,
-        actor_id: Optional[str] = None,
-        status: Optional[str] = None,
+        actor_id: str | None = None,
+        status: str | None = None,
         severity: AuditSeverity = AuditSeverity.HIGH,
-        details: Optional[Dict[str, Any]] = None,
-        request: Optional[Request] = None,
+        details: dict[str, Any] | None = None,
+        request: Request | None = None,
     ) -> str:
         """
         Log a security-related event.
@@ -213,12 +211,12 @@ class AuditLogService(IAuditLogger):
         resource_type: str,
         action: str,
         status: str,
-        phi_fields: Optional[List[str]] = None,
-        reason: Optional[str] = None,
-        request: Optional[Request] = None,
-        request_context: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        ip_address: Optional[str] = None,
+        phi_fields: list[str] | None = None,
+        reason: str | None = None,
+        request: Request | None = None,
+        request_context: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        ip_address: str | None = None,
     ) -> str:
         """
         Log PHI access event specifically.
@@ -303,12 +301,12 @@ class AuditLogService(IAuditLogger):
 
     async def get_audit_trail(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve audit trail entries based on filters.
 
@@ -334,7 +332,7 @@ class AuditLogService(IAuditLogger):
         # Convert to dictionaries for API response
         return [log.model_dump() for log in logs]
 
-    async def get_security_dashboard_data(self, days: int = 7) -> Dict[str, Any]:
+    async def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
         """
         Get data for a security dashboard.
 
@@ -393,11 +391,11 @@ class AuditLogService(IAuditLogger):
 
     async def export_audit_logs(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         format: str = "json",
-        file_path: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        file_path: str | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> str:
         """
         Export audit logs to a file in the specified format.
@@ -534,7 +532,7 @@ class AuditLogService(IAuditLogger):
         return request.client.host if request.client else "127.0.0.1"
 
     def _calculate_chain_hash(
-        self, log_id: str, timestamp: str, user_id: Optional[str], action: str
+        self, log_id: str, timestamp: str, user_id: str | None, action: str
     ) -> str:
         """
         Calculate hash chain value for tamper evidence.

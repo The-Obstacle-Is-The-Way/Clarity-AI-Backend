@@ -5,7 +5,7 @@ This module defines the core service for Digital Twin operations,
 following clean architecture principles.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class DigitalTwinCoreService:
@@ -16,7 +16,7 @@ class DigitalTwinCoreService:
     digital twin creation, management, and interaction.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the Digital Twin Core service.
 
@@ -25,7 +25,7 @@ class DigitalTwinCoreService:
         """
         self.config = config or {}
 
-    async def generate_digital_twin(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_digital_twin(self, user_data: dict[str, Any]) -> dict[str, Any]:
         """
         Generate a new digital twin based on user data.
 
@@ -40,7 +40,7 @@ class DigitalTwinCoreService:
             "This method must be implemented by concrete service classes"
         )
 
-    async def create_session(self, twin_id: str) -> Dict[str, Any]:
+    async def create_session(self, twin_id: str) -> dict[str, Any]:
         """
         Create a new session with a digital twin.
 
@@ -55,7 +55,7 @@ class DigitalTwinCoreService:
             "This method must be implemented by concrete service classes"
         )
 
-    async def send_message(self, session_id: str, message: str) -> Dict[str, Any]:
+    async def send_message(self, session_id: str, message: str) -> dict[str, Any]:
         """
         Send a message to a digital twin session.
 
@@ -71,7 +71,7 @@ class DigitalTwinCoreService:
             "This method must be implemented by concrete service classes"
         )
 
-    async def end_session(self, session_id: str) -> Dict[str, Any]:
+    async def end_session(self, session_id: str) -> dict[str, Any]:
         """
         End a digital twin session.
 

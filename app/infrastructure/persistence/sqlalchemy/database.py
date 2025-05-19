@@ -7,12 +7,11 @@ unit-of-work pattern, ensuring backward compatibility during the transition.
 """
 
 import logging
-from typing import AsyncGenerator, Callable, Optional
+from collections.abc import AsyncGenerator
 
-from fastapi import Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy.orm import Session
+from fastapi import Request
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config.settings import get_settings
 from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work_factory import (

@@ -13,11 +13,9 @@ Usage:
 """
 
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 
 class Colors:
@@ -66,7 +64,7 @@ class IndentationFixer:
             (r"\}\s*$", self._fix_unmatched_brace),
         ]
 
-    def find_test_files(self) -> List[Path]:
+    def find_test_files(self) -> list[Path]:
         """Find all test files in the test directory."""
         test_files = []
         for path in self.tests_dir.glob("**/*.py"):
@@ -85,7 +83,7 @@ class IndentationFixer:
             if self.verbose:
                 print(f"Examining {file_path}")
 
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             # Store original lines for comparison
@@ -120,11 +118,11 @@ class IndentationFixer:
             return True
 
         except Exception as e:
-            print(f"{Colors.RED}Error fixing {file_path}: {str(e)}{Colors.ENDC}")
+            print(f"{Colors.RED}Error fixing {file_path}: {e!s}{Colors.ENDC}")
             self.failed_files.append((file_path, str(e)))
             return False
 
-    def fix_indentation(self, lines: List[str]) -> List[str]:
+    def fix_indentation(self, lines: list[str]) -> list[str]:
         """Fix indentation issues in the file."""
         fixed_lines = []
 
@@ -191,7 +189,7 @@ class IndentationFixer:
 
         return fixed_lines
 
-    def fix_bracket_matching(self, lines: List[str]) -> List[str]:
+    def fix_bracket_matching(self, lines: list[str]) -> list[str]:
         """Fix bracket matching issues by identifying and correcting unmatched brackets."""
         # Count brackets across the file
         bracket_counts = {"(": 0, ")": 0, "{": 0, "}": 0, "[": 0, "]": 0}
@@ -269,8 +267,8 @@ class IndentationFixer:
         return lines
 
     def _fix_return_outside_function(
-        self, lines: List[str], line_idx: int
-    ) -> List[str]:
+        self, lines: list[str], line_idx: int
+    ) -> list[str]:
         """Fix 'return' outside function by wrapping it in a function."""
         # Find the indentation of the return statement
         line = lines[line_idx]
@@ -290,7 +288,7 @@ class IndentationFixer:
 
         return new_lines
 
-    def _fix_unmatched_parenthesis(self, lines: List[str], line_idx: int) -> List[str]:
+    def _fix_unmatched_parenthesis(self, lines: list[str], line_idx: int) -> list[str]:
         """Fix unmatched parenthesis by counting and matching them."""
         line = lines[line_idx]
 
@@ -310,7 +308,7 @@ class IndentationFixer:
 
         return lines
 
-    def _fix_unmatched_brace(self, lines: List[str], line_idx: int) -> List[str]:
+    def _fix_unmatched_brace(self, lines: list[str], line_idx: int) -> list[str]:
         """Fix unmatched brace by counting and matching them."""
         line = lines[line_idx]
 
@@ -353,7 +351,7 @@ class IndentationFixer:
             self.fix_file(file_path)
 
         # Print summary
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  - Fixed {len(self.fixed_files)} files")
         print(f"  - Failed to fix {len(self.failed_files)} files")
 

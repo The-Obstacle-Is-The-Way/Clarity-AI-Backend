@@ -12,14 +12,13 @@ import pytest
 
 from app.core.exceptions.base_exceptions import (
     AuthorizationError,
+    InitializationError,
     ResourceNotFoundError,
     ValidationError,
-    InitializationError,
 )
 
 # Import the PAT-specific one for testing the theory
 # from app.core.services.ml.pat.exceptions import AuthorizationError as PatAuthorizationError
-
 from app.core.services.ml.pat.mock import MockPATService as MockPAT
 
 

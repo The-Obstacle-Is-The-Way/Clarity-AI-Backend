@@ -9,9 +9,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock
 from uuid import UUID
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Correct interface import
 # Correct repository import

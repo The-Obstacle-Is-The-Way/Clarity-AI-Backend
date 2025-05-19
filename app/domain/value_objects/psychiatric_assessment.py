@@ -1,8 +1,7 @@
 """Psychiatric assessment value object."""
 
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Optional
+from datetime import date
 from uuid import UUID, uuid4
 
 
@@ -18,7 +17,7 @@ class PsychiatricAssessment:
     diagnosis: str
     severity: str
     treatment_plan: str
-    notes: Optional[str] = None
+    notes: str | None = None
     id: UUID = uuid4()
 
     def __post_init__(self) -> None:

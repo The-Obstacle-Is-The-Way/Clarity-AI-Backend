@@ -7,8 +7,7 @@ and their results.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, auto
-from typing import Dict, Union, Optional
+from enum import Enum
 from uuid import UUID
 
 
@@ -36,5 +35,5 @@ class AssessmentResult:
     raw_score: float
     normalized_score: float  # 0-100 scale for consistent comparisons
     severity: str  # Interpretation of the score (e.g., "Minimal", "Moderate", "Severe")
-    responses: Dict[str, Union[int, float, str]] = field(default_factory=dict)
-    notes: Optional[str] = None
+    responses: dict[str, int | float | str] = field(default_factory=dict)
+    notes: str | None = None

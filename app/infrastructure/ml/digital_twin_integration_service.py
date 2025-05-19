@@ -7,7 +7,7 @@ to provide a unified interface for digital twin functionality.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID, uuid4
 
 # Core imports
@@ -73,7 +73,7 @@ class DigitalTwinIntegrationService:
         logger.info(f"Created digital twin {digital_twin.id} for patient {patient_id}")
         return digital_twin
 
-    async def get_digital_twin(self, digital_twin_id: str) -> Optional[DigitalTwin]:
+    async def get_digital_twin(self, digital_twin_id: str) -> DigitalTwin | None:
         """
         Retrieve a digital twin by its ID.
 
@@ -90,7 +90,7 @@ class DigitalTwinIntegrationService:
 
     async def get_digital_twin_by_patient(
         self, patient_id: str
-    ) -> Optional[DigitalTwin]:
+    ) -> DigitalTwin | None:
         """
         Retrieve a digital twin by patient ID.
 
@@ -108,7 +108,7 @@ class DigitalTwinIntegrationService:
 
     async def update_digital_twin(
         self, digital_twin_id: str, updates: dict
-    ) -> Optional[DigitalTwin]:
+    ) -> DigitalTwin | None:
         """
         Update a digital twin with new data.
 
@@ -192,7 +192,7 @@ class DigitalTwinIntegrationService:
                     }
             except Exception as e:
                 logger.error(f"Error simulating medication effect: {e}")
-                result["error"] = f"Simulation error: {str(e)}"
+                result["error"] = f"Simulation error: {e!s}"
 
         elif intervention_type == "therapy":
             # Example therapy simulation
@@ -549,7 +549,7 @@ class DigitalTwinIntegrationService:
             ValueError: If patient not found
         """
         if not self.patient_repository:
-            raise ValueError(f"Patient repository not available")
+            raise ValueError("Patient repository not available")
 
         try:
             patient = await self.patient_repository.get_by_id(patient_id)
@@ -558,7 +558,7 @@ class DigitalTwinIntegrationService:
             return patient
         except Exception as e:
             logger.error(f"Error retrieving patient data: {e}")
-            raise ValueError(f"Error retrieving patient data: {str(e)}")
+            raise ValueError(f"Error retrieving patient data: {e!s}")
 
     async def get_patient_data(self, patient_id: str) -> dict:
         """

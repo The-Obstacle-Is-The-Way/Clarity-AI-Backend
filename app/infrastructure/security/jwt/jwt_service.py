@@ -5,26 +5,29 @@ This service handles token creation, validation, and management according to
 HIPAA security standards and best practices for healthcare applications.
 """
 
-import uuid
-from datetime import datetime, timedelta, UTC, date, timezone
-from enum import Enum
-from typing import Any, Dict, Optional, Union, List
-from uuid import UUID
-import re
 import logging
+import re
+import uuid
+from datetime import UTC, date, datetime, timedelta, timezone
+from enum import Enum
+from typing import Any
 
 # Replace direct jose import with our adapter
 try:
     from app.infrastructure.security.jwt.jose_adapter import (
-        encode as jwt_encode,
-        decode as jwt_decode,
-        JWTError,
         ExpiredSignatureError,
+        JWTError,
+    )
+    from app.infrastructure.security.jwt.jose_adapter import (
+        decode as jwt_decode,
+    )
+    from app.infrastructure.security.jwt.jose_adapter import (
+        encode as jwt_encode,
     )
 except ImportError:
     # Fallback to direct imports if adapter is not available
     from jose import jwt as jose_jwt
-    from jose.exceptions import JWTError, ExpiredSignatureError
+    from jose.exceptions import ExpiredSignatureError, JWTError
 
     def jwt_encode(claims, key, algorithm="HS256", **kwargs):
         return jose_jwt.encode(claims, key, algorithm=algorithm, **kwargs)
@@ -33,8 +36,7 @@ except ImportError:
         return jose_jwt.decode(token, key, algorithms=algorithms, **kwargs)
 
 
-from pydantic import BaseModel, ValidationError, ConfigDict, Field
-from pydantic import computed_field
+from pydantic import BaseModel, ValidationError, computed_field
 
 # Import the interface
 from app.core.interfaces.services.jwt_service import IJwtService
@@ -74,9 +76,6 @@ except ImportError:
 
 # Import repository interfaces
 # Import concrete implementation directly for FastAPI compatibility
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
-    SQLAlchemyUserRepository,
-)
 
 try:
     from app.core.interfaces.repositories.token_blacklist_repository_interface import (
@@ -95,11 +94,13 @@ except ImportError:
 # Import necessary exceptions from domain layer
 try:
     from app.domain.exceptions.token_exceptions import (
-        TokenException,
         InvalidTokenException,
+        TokenException,
         TokenExpiredException,
-        TokenBlacklistedException as RevokedTokenException,
         TokenGenerationException,
+    )
+    from app.domain.exceptions.token_exceptions import (
+        TokenBlacklistedException as RevokedTokenException,
     )
 except ImportError:
     # Define fallbacks
@@ -150,7 +151,7 @@ class TokenType(str, Enum):
 
 # Type definition for token blacklist dictionary
 # Maps JTI (JWT ID) to expiration datetime
-TokenBlacklistDict = dict[str, Union[datetime, float, str]]
+TokenBlacklistDict = dict[str, datetime | float | str]
 
 
 class TokenPayload(BaseModel):
@@ -192,7 +193,7 @@ class TokenPayload(BaseModel):
             # Use timezone-aware datetime for maximum compatibility
             return datetime.fromtimestamp(self.exp, tz=timezone.utc)
         except Exception as e:
-            logger.warning(f"Error converting expiration timestamp: {str(e)}")
+            logger.warning(f"Error converting expiration timestamp: {e!s}")
             # Return a default value if conversion fails
             return datetime.now(timezone.utc) + timedelta(minutes=30)
 
@@ -203,7 +204,7 @@ class TokenPayload(BaseModel):
             # Use timezone-aware datetime for maximum compatibility
             return datetime.fromtimestamp(self.iat, tz=timezone.utc)
         except Exception as e:
-            logger.warning(f"Error converting issued_at timestamp: {str(e)}")
+            logger.warning(f"Error converting issued_at timestamp: {e!s}")
             # Return a reasonable default
             return datetime.now(timezone.utc) - timedelta(minutes=30)
 
@@ -217,7 +218,7 @@ class TokenPayload(BaseModel):
         except Exception as e:
             # Fallback method in case of any issues
             logger.warning(
-                f"Error in is_expired check: {str(e)}. Using fallback method."
+                f"Error in is_expired check: {e!s}. Using fallback method."
             )
             try:
                 # Additional fallback using direct integer comparison
@@ -239,14 +240,14 @@ class JWTService(IJwtService):
     def __init__(
         self,
         settings: Any = None,
-        token_blacklist_repository: Optional[ITokenBlacklistRepository] = None,
+        token_blacklist_repository: ITokenBlacklistRepository | None = None,
         user_repository: Any = None,
-        secret_key: Optional[str] = None,
-        algorithm: Optional[str] = None,
-        access_token_expire_minutes: Optional[int] = None,
-        refresh_token_expire_days: Optional[int] = None,
-        issuer: Optional[str] = None,
-        audience: Optional[str] = None,
+        secret_key: str | None = None,
+        algorithm: str | None = None,
+        access_token_expire_minutes: int | None = None,
+        refresh_token_expire_days: int | None = None,
+        issuer: str | None = None,
+        audience: str | None = None,
     ):
         """
         Initialize JWT service with configuration.
@@ -1386,7 +1387,7 @@ def get_jwt_service(
             access_token_expire_minutes = 30
             refresh_token_expire_days = 7
         else:
-            raise ValueError(f"Invalid JWT settings: {str(e)}")
+            raise ValueError(f"Invalid JWT settings: {e!s}")
 
     # Get optional settings
     issuer = getattr(settings, "JWT_ISSUER", None)

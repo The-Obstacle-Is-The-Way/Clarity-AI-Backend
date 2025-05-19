@@ -7,7 +7,6 @@ Fixed template creation and patient alert rules routing.
 """
 
 import logging
-from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 from fastapi import (
@@ -16,46 +15,31 @@ from fastapi import (
     HTTPException,
     Path,
     Query,
-    status,
-    Body,
     Request,
+    status,
 )
-from pydantic import BaseModel, Field, validator
 
 from app.application.services.biometric_alert_rule_service import (
     BiometricAlertRuleService,
 )
-from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.core.interfaces.services.alert_rule_template_service_interface import (
     AlertRuleTemplateServiceInterface,
 )
-from app.domain.entities.biometric_alert_rule import (
-    AlertPriority,
-    BiometricAlertRule,
-    ComparatorOperator,
-    RuleCondition,
-    RuleLogicalOperator,
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
 )
-from app.domain.models.user import User
+from app.infrastructure.di.provider import get_repository_instance
 from app.presentation.api.dependencies.auth import CurrentUserDep
 from app.presentation.api.dependencies.database import get_db_session
 from app.presentation.api.v1.dependencies.biometric import (
     BiometricRuleRepoDep,
     get_alert_rule_template_service,
 )
-from app.domain.repositories.biometric_alert_template_repository import (
-    BiometricAlertTemplateRepository,
-)
-from app.infrastructure.di.provider import get_repository_instance
 from app.presentation.api.v1.schemas.biometric_alert_rules import (
-    AlertRuleCreate,
     AlertRuleResponse,
+    AlertRuleTemplateResponse,
     AlertRuleUpdate,
     RuleFromTemplateCreate,
-    AlertRuleList,
-    AlertRuleTemplateResponse,
-    AlertRuleWrapperRequest,
-    AlertRuleTemplateCreate,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,17 +60,17 @@ def get_rule_service(
     return BiometricAlertRuleService(rule_repo, template_repo)
 
 
-@router.get("", response_model=List[AlertRuleResponse])
+@router.get("", response_model=list[AlertRuleResponse])
 async def get_alert_rules(
-    patient_id: Optional[UUID] = Query(None, description="Filter by patient ID"),
-    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    patient_id: UUID | None = Query(None, description="Filter by patient ID"),
+    is_active: bool | None = Query(None, description="Filter by active status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(
         100, ge=1, le=100, description="Maximum number of records to return"
     ),
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
-) -> List[AlertRuleResponse]:
+) -> list[AlertRuleResponse]:
     """
     Get alert rules with optional filtering.
 
@@ -122,19 +106,19 @@ async def get_alert_rules(
         return result
 
     except Exception as e:
-        logger.error(f"Error getting alert rules: {str(e)}")
+        logger.error(f"Error getting alert rules: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve alert rules",
         )
 
 
-@router.get("/patients/{patient_id}", response_model=List[AlertRuleResponse])
+@router.get("/patients/{patient_id}", response_model=list[AlertRuleResponse])
 async def get_patient_alert_rules(
     patient_id: UUID = Path(..., description="Patient ID"),
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
-) -> List[AlertRuleResponse]:
+) -> list[AlertRuleResponse]:
     """
     Get all alert rules for a specific patient.
 
@@ -165,22 +149,22 @@ async def get_patient_alert_rules(
         return result
 
     except Exception as e:
-        logger.error(f"Error getting alert rules for patient {patient_id}: {str(e)}")
+        logger.error(f"Error getting alert rules for patient {patient_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve alert rules for patient: {str(e)}",
+            detail=f"Failed to retrieve alert rules for patient: {e!s}",
         )
 
 
-@router.get("/templates", response_model=List[AlertRuleTemplateResponse])
+@router.get("/templates", response_model=list[AlertRuleTemplateResponse])
 async def get_rule_templates(
-    category: Optional[str] = Query(None, description="Filter templates by category"),
-    metric: Optional[str] = Query(None, description="Filter templates by metric type"),
+    category: str | None = Query(None, description="Filter templates by category"),
+    metric: str | None = Query(None, description="Filter templates by metric type"),
     current_user: CurrentUserDep = None,
     template_service: AlertRuleTemplateServiceInterface = Depends(
         get_alert_rule_template_service
     ),
-) -> List[AlertRuleTemplateResponse]:
+) -> list[AlertRuleTemplateResponse]:
     """
     Get available alert rule templates.
 
@@ -222,10 +206,10 @@ async def get_rule_templates(
         return [AlertRuleTemplateResponse(**template) for template in templates]
 
     except Exception as e:
-        logger.error(f"Error getting alert rule templates: {str(e)}")
+        logger.error(f"Error getting alert rule templates: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve alert rule templates: {str(e)}",
+            detail=f"Failed to retrieve alert rule templates: {e!s}",
         )
 
 
@@ -273,7 +257,7 @@ async def get_alert_rule(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error getting alert rule {rule_id}: {str(e)}")
+        logger.error(f"Error getting alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve alert rule",
@@ -334,10 +318,10 @@ async def create_alert_rule(
             return AlertRuleResponse.from_entity(created_rule)
 
     except Exception as e:
-        logger.error(f"Error creating alert rule: {str(e)}")
+        logger.error(f"Error creating alert rule: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create alert rule: {str(e)}",
+            detail=f"Failed to create alert rule: {e!s}",
         )
 
 
@@ -390,10 +374,10 @@ async def create_alert_rule_from_template(
             return AlertRuleResponse.from_entity(rule_data)
 
     except Exception as e:
-        logger.error(f"Error creating rule from template: {str(e)}")
+        logger.error(f"Error creating rule from template: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create rule from template: {str(e)}",
+            detail=f"Failed to create rule from template: {e!s}",
         )
 
 
@@ -446,10 +430,10 @@ async def update_alert_rule(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error updating alert rule {rule_id}: {str(e)}")
+        logger.error(f"Error updating alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to update alert rule: {str(e)}",
+            detail=f"Failed to update alert rule: {e!s}",
         )
 
 
@@ -487,10 +471,10 @@ async def delete_alert_rule(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error deleting alert rule {rule_id}: {str(e)}")
+        logger.error(f"Error deleting alert rule {rule_id}: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete alert rule: {str(e)}",
+            detail=f"Failed to delete alert rule: {e!s}",
         )
 
 
@@ -551,10 +535,10 @@ async def update_rule_active_status(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error updating rule {rule_id} active status: {str(e)}")
+        logger.error(f"Error updating rule {rule_id} active status: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update alert rule status: {str(e)}",
+            detail=f"Failed to update alert rule status: {e!s}",
         )
 
 
@@ -636,8 +620,8 @@ async def create_alert_rule_template(
         return response_template
 
     except Exception as e:
-        logger.error(f"Error creating alert rule template: {str(e)}")
+        logger.error(f"Error creating alert rule template: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create alert rule template: {str(e)}",
+            detail=f"Failed to create alert rule template: {e!s}",
         )

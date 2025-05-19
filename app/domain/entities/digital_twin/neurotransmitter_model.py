@@ -5,9 +5,8 @@ This module implements models for simulating neurotransmitter levels
 and their effects on mental health conditions.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 import random
+from dataclasses import dataclass, field
 
 from app.domain.entities.digital_twin.digital_twin import DigitalTwin
 from app.domain.entities.medication import Medication
@@ -215,7 +214,7 @@ class MedicationResponseModel:
 
     def predict_response(
         self, medication: Medication, days: int = 28
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Predict how the patient would respond to a medication.
 

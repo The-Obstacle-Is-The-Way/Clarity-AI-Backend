@@ -9,10 +9,10 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
+from app.core.exceptions import InvalidConfigurationError
 from app.core.services.ml.pat.bedrock import BedrockPAT
 from app.core.services.ml.pat.factory import PATServiceFactory
 from app.core.services.ml.pat.mock import MockPATService
-from app.core.exceptions import InvalidConfigurationError
 
 
 class TestPATServiceFactory(unittest.TestCase):

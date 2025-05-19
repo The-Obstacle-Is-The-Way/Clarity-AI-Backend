@@ -9,15 +9,11 @@ Usage:
     python enhanced_repair_test_syntax.py [--dry-run] [--path PATH] [--verbose]
 """
 
+import argparse
+import ast
 import os
 import re
-import ast
-import sys
-import argparse
-import tokenize
-import io
 import traceback
-from typing import Dict, List, Tuple, Optional, Set, Any
 from pathlib import Path
 
 
@@ -39,7 +35,7 @@ class EnhancedSyntaxRepair:
     Enhanced tool for repairing common syntax errors in test files.
     """
 
-    def __init__(self, project_root: Optional[Path] = None, verbose: bool = False):
+    def __init__(self, project_root: Path | None = None, verbose: bool = False):
         """
         Initialize the test repair tool.
 
@@ -52,13 +48,13 @@ class EnhancedSyntaxRepair:
         self.fixed_files = 0
         self.error_files = 0
         self.skipped_files = 0
-        self.error_types: Dict[str, int] = {}
+        self.error_types: dict[str, int] = {}
         self.verbose = verbose
 
         print(f"Project root: {self.project_root}")
         print(f"Tests directory: {self.tests_dir}")
 
-    def find_test_files(self, start_dir: Path = None) -> List[Path]:
+    def find_test_files(self, start_dir: Path = None) -> list[Path]:
         """
         Find all Python test files in the given directory.
 
@@ -80,7 +76,7 @@ class EnhancedSyntaxRepair:
 
     def check_syntax(
         self, file_path: Path
-    ) -> Tuple[Optional[SyntaxError], Optional[int], Optional[int]]:
+    ) -> tuple[SyntaxError | None, int | None, int | None]:
         """
         Check if a Python file has syntax errors and return detailed information.
 
@@ -92,7 +88,7 @@ class EnhancedSyntaxRepair:
             (None, None, None) otherwise
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
                 ast.parse(content, filename=str(file_path))
             return None, None, None
@@ -110,7 +106,7 @@ class EnhancedSyntaxRepair:
         Returns:
             Content of the line
         """
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             for i, line in enumerate(f, 1):
                 if i == line_number:
                     return line.rstrip("\n")
@@ -436,7 +432,7 @@ class EnhancedSyntaxRepair:
                     f"Attempting to fix {file_path} (line {line_num}, col {col_offset}): {error_msg}"
                 )
 
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Try targeted fix for the specific error first
@@ -463,7 +459,7 @@ class EnhancedSyntaxRepair:
                 except SyntaxError:
                     # Targeted fix didn't work, continue with general fixes
                     if self.verbose:
-                        print(f"Targeted fix didn't work, trying general fixes...")
+                        print("Targeted fix didn't work, trying general fixes...")
 
             # Apply general fixes
             fixed_content = content
@@ -497,13 +493,13 @@ class EnhancedSyntaxRepair:
                 return True
             except SyntaxError as e:
                 print(
-                    f"{Colors.FAIL}Failed to fix {file_path} - still has syntax errors: {str(e)}{Colors.ENDC}"
+                    f"{Colors.FAIL}Failed to fix {file_path} - still has syntax errors: {e!s}{Colors.ENDC}"
                 )
                 self.error_files += 1
                 return False
 
         except Exception as e:
-            print(f"{Colors.FAIL}Error processing {file_path}: {str(e)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}Error processing {file_path}: {e!s}{Colors.ENDC}")
             if self.verbose:
                 traceback.print_exc()
             self.error_files += 1
@@ -549,7 +545,7 @@ class EnhancedSyntaxRepair:
         print(f"Found {len(test_files)} test files")
 
         files_with_errors = []
-        categorized_errors: Dict[str, List[Path]] = {
+        categorized_errors: dict[str, list[Path]] = {
             "missing_colon": [],
             "indent_error": [],
             "missing_indent": [],

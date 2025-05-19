@@ -5,14 +5,14 @@ This script combines the syntax fixer with pytest execution to make
 sure the tests not only compile but also run successfully.
 """
 
-import os
-import sys
-import subprocess
 import argparse
-from pathlib import Path
-import logging
-import json
 import datetime
+import json
+import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -71,7 +71,7 @@ class TestRunner:
             self.backend_dir, "unfixed_syntax_errors.txt"
         )
         if os.path.exists(unfixed_errors_path):
-            with open(unfixed_errors_path, "r") as f:
+            with open(unfixed_errors_path) as f:
                 error_files = [line.split(":")[0].strip() for line in f.readlines()]
                 self.results["syntax_error_files"] = error_files
 

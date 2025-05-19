@@ -9,8 +9,6 @@ import logging
 from datetime import datetime
 from typing import Any
 from uuid import UUID
-import numpy as np
-import pandas as pd
 
 # from app.config.settings import get_settings # Legacy import
 from app.core.config.settings import get_settings  # Corrected import

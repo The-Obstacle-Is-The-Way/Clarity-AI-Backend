@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Fix indentation and other issues in the PHI auditor script.
 """
-import os
 import re
 
 
 def fix_phi_auditor_class():
     """Fix indentation and method issues in the PHIAuditor class."""
-    with open("scripts/run_hipaa_phi_audit.py", "r") as f:
+    with open("scripts/run_hipaa_phi_audit.py") as f:
         lines = f.readlines()
 
     # Detect class boundaries

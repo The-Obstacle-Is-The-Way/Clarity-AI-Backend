@@ -6,18 +6,17 @@ in test environments, including direct authentication bypasses for integration t
 """
 
 import logging
-from collections.abc import Awaitable, Callable
 import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
-import pytest
 from fastapi import FastAPI, Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.status import HTTP_401_UNAUTHORIZED
-from starlette.responses import JSONResponse
 from starlette.authentication import AuthCredentials
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from starlette.status import HTTP_401_UNAUTHORIZED
 
-from app.core.domain.entities.user import User, UserStatus, UserRole
+from app.core.domain.entities.user import User, UserRole, UserStatus
 
 logger = logging.getLogger(__name__)
 
@@ -124,9 +123,9 @@ class TestAuthenticationMiddleware(BaseHTTPMiddleware):
                 )
 
             except Exception as e:
-                logger.error(f"TestAuthMiddleware: Authentication error: {str(e)}")
+                logger.error(f"TestAuthMiddleware: Authentication error: {e!s}")
                 return JSONResponse(
-                    {"detail": f"Invalid test authentication: {str(e)}"},
+                    {"detail": f"Invalid test authentication: {e!s}"},
                     status_code=HTTP_401_UNAUTHORIZED,
                 )
         else:

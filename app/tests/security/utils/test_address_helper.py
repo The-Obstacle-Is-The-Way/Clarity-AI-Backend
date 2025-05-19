@@ -5,15 +5,12 @@ This module ensures proper encryption of address data structures
 while maintaining HIPAA compliance.
 """
 
-import ast  # Import ast for literal_eval
 
-import pytest
 
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
-from app.tests.mocks.mock_encryption_service import MockEncryptionService
 
 # TEMP: Comment out missing AddressHelper import
 # from app.infrastructure.utils.address_helper import AddressHelper

@@ -8,7 +8,7 @@ while maintaining HIPAA compliance and clean architecture.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -30,9 +30,9 @@ class IJwtService(ABC):
     @abstractmethod
     async def create_access_token(
         self,
-        user_id: Union[str, UUID],
+        user_id: str | UUID,
         roles: list[str] = None,
-        expires_delta_minutes: Optional[int] = None,
+        expires_delta_minutes: int | None = None,
     ) -> str:
         """
         Create a JWT access token for authentication.
@@ -49,7 +49,7 @@ class IJwtService(ABC):
 
     @abstractmethod
     async def create_refresh_token(
-        self, user_id: Union[str, UUID], expires_delta_minutes: Optional[int] = None
+        self, user_id: str | UUID, expires_delta_minutes: int | None = None
     ) -> str:
         """
         Create a JWT refresh token that can be used to generate new access tokens.
@@ -64,7 +64,7 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    async def verify_token(self, token: str) -> Dict[str, Any]:
+    async def verify_token(self, token: str) -> dict[str, Any]:
         """
         Verify a JWT token's validity and return its decoded payload.
 
@@ -123,7 +123,7 @@ class IJwtService(ABC):
         pass
 
     @abstractmethod
-    async def get_token_identity(self, token: str) -> Union[str, UUID]:
+    async def get_token_identity(self, token: str) -> str | UUID:
         """
         Extract the user identity from a token.
 

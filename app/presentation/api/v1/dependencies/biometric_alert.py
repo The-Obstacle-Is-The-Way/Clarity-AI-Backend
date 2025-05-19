@@ -8,6 +8,9 @@ following clean architecture principles with proper separation of concerns.
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.biometric_alert_rule_service import (
+    BiometricAlertRuleService,
+)
 from app.core.dependencies.database import get_db_session
 from app.core.interfaces.repositories.alert_repository_interface import (
     AlertRepositoryInterface,
@@ -15,19 +18,14 @@ from app.core.interfaces.repositories.alert_repository_interface import (
 from app.core.interfaces.services.encryption_service_interface import (
     EncryptionServiceInterface,
 )
-from app.infrastructure.di.container import get_container
-from app.infrastructure.repositories.alert_repository import AlertRepository
-from app.presentation.api.dependencies.repository import get_encryption_service
-
-from app.application.services.biometric_alert_rule_service import (
-    BiometricAlertRuleService,
-)
 from app.domain.repositories.biometric_alert_rule_repository import (
     BiometricAlertRuleRepository,
 )
 from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
+from app.infrastructure.di.container import get_container
+from app.infrastructure.repositories.alert_repository import AlertRepository
 from app.infrastructure.repositories.memory.biometric_alert_template_repository import (
     InMemoryBiometricAlertTemplateRepository,
 )
@@ -35,6 +33,7 @@ from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository 
     SQLAlchemyBiometricAlertRuleRepository,
 )
 from app.presentation.api.dependencies.database import get_db
+from app.presentation.api.dependencies.repository import get_encryption_service
 
 
 def get_alert_repository(

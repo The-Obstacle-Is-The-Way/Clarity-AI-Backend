@@ -7,10 +7,9 @@ and properly injecting concrete implementations.
 """
 
 import logging
-from dataclasses import dataclass
-from typing import Callable, Optional
+from collections.abc import Callable
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import HTTPException, Request, status
 
 from app.core.interfaces.services.rate_limiting.rate_limiter_interface import (
     IRateLimiter,
@@ -40,8 +39,8 @@ class RateLimitDependency:
         block_seconds: int = 300,
         scope_key: str = "default",
         error_message: str = "Rate limit exceeded. Please try again later.",
-        limiter: Optional[IRateLimiter] = None,
-        key_func: Optional[Callable[[Request], str]] = None,
+        limiter: IRateLimiter | None = None,
+        key_func: Callable[[Request], str] | None = None,
     ):
         """
         Initialize rate limiter dependency.
@@ -116,7 +115,7 @@ class RateLimitDependency:
                 raise
 
             # Log error but allow request to proceed
-            logger.error(f"Rate limiting error: {str(e)}")
+            logger.error(f"Rate limiting error: {e!s}")
 
     async def _get_rate_limit_key(self, request: Request) -> str:
         """

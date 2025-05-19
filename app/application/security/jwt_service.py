@@ -5,24 +5,24 @@ This module provides a service for JWT token generation, validation, and managem
 following HIPAA compliance requirements for secure authentication and authorization.
 """
 
+import asyncio
 import time
 import uuid
-import asyncio
 from datetime import timedelta
 from typing import Any
 
 import jwt
 from pydantic import BaseModel
 
-from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
-    AuditEventType,
-    AuditSeverity,
-)
+from app.core.config import Settings
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
 )
-from app.core.config import Settings
+from app.core.interfaces.services.audit_logger_interface import (
+    AuditEventType,
+    AuditSeverity,
+    IAuditLogger,
+)
 from app.core.utils.date_utils import utcnow
 from app.domain.exceptions.auth_exceptions import (
     InvalidTokenException,

@@ -7,8 +7,7 @@ All concrete implementations must conform to these interfaces to ensure proper
 dependency inversion and modular design.
 """
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.clinical_insight import ClinicalInsight
@@ -24,7 +23,7 @@ class MentaLLaMAServiceInterface(ABC):
 
     @abstractmethod
     async def analyze_clinical_notes(
-        self, patient_id: UUID, note_text: str, context: Optional[dict[str, Any]] = None
+        self, patient_id: UUID, note_text: str, context: dict[str, Any] | None = None
     ) -> list[ClinicalInsight]:
         """
         Analyze clinical notes to extract structured insights.
@@ -41,7 +40,7 @@ class MentaLLaMAServiceInterface(ABC):
 
     @abstractmethod
     async def get_analysis_by_id(
-        self, analysis_id: Union[UUID, str], patient_id: Optional[UUID] = None
+        self, analysis_id: UUID | str, patient_id: UUID | None = None
     ) -> dict[str, Any]:
         """
         Retrieve a previously generated analysis by its ID.

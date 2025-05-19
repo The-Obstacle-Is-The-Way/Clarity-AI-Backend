@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Test File Syntax Fixer for Identified Files
 
@@ -13,13 +12,11 @@ Usage:
     python scripts/test/tools/fix_specific_test_files.py
 """
 
+import ast
+import logging
 import os
 import re
 import sys
-import ast
-import logging
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -122,7 +119,7 @@ def fix_specific_file(file_path: str, project_root: str) -> bool:
 
     try:
         # Read the file
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         # Check if it already has valid syntax
@@ -158,14 +155,14 @@ def fix_specific_file(file_path: str, project_root: str) -> bool:
             return True
 
     except Exception as e:
-        logger.error(f"Error fixing {rel_path}: {str(e)}")
+        logger.error(f"Error fixing {rel_path}: {e!s}")
         return False
 
 
 def fix_mentallama_service(file_path: str) -> bool:
     """Special fixes for test_mentallama_service.py"""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             lines = f.readlines()
 
         # Line 18 is reported to have a missing colon (expected ':')
@@ -177,7 +174,7 @@ def fix_mentallama_service(file_path: str) -> bool:
             f.writelines(lines)
 
         # Verify the fix worked
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         try:
@@ -189,14 +186,14 @@ def fix_mentallama_service(file_path: str) -> bool:
             return False
 
     except Exception as e:
-        logger.error(f"Error fixing test_mentallama_service.py: {str(e)}")
+        logger.error(f"Error fixing test_mentallama_service.py: {e!s}")
         return False
 
 
 def fix_mock_pat(file_path: str) -> bool:
     """Special fixes for test_mock_pat.py"""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             lines = f.readlines()
 
         # Line 25 is reported to have expected ':'
@@ -208,7 +205,7 @@ def fix_mock_pat(file_path: str) -> bool:
             f.writelines(lines)
 
         # Verify
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         try:
@@ -220,7 +217,7 @@ def fix_mock_pat(file_path: str) -> bool:
             return False
 
     except Exception as e:
-        logger.error(f"Error fixing test_mock_pat.py: {str(e)}")
+        logger.error(f"Error fixing test_mock_pat.py: {e!s}")
         return False
 
 

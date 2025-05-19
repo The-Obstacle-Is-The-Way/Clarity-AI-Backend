@@ -7,30 +7,9 @@ Aggregates all endpoint routers for this version.
 
 from fastapi import APIRouter
 
-# Corrected imports pointing to the canonical router location
-from app.presentation.api.v1.routes.analytics import router as analytics_query_router
 from app.presentation.api.v1.endpoints.analytics_endpoints import (
     router as analytics_event_router,
 )
-from app.presentation.api.v1.routes.auth import router as auth_router
-from app.presentation.api.v1.routes.actigraphy import router as actigraphy_router
-from app.presentation.api.v1.routes.biometric import router as biometric_router
-from app.presentation.api.v1.routes.biometric_alert_rules import (
-    router as biometric_alert_rules_router_route,
-)
-from app.presentation.api.v1.routes.biometric_alerts import (
-    router as biometric_alerts_router_route,
-)
-from app.presentation.api.v1.routes.digital_twin import (
-    router as digital_twin_router,
-)
-from app.presentation.api.v1.routes.ml import router as ml_router
-from app.presentation.api.v1.routes.mentallama import router as mentallama_router
-from app.presentation.api.v1.routes.temporal_neurotransmitter import (
-    router as temporal_neurotransmitter_router,
-)
-from app.presentation.api.v1.routes.xgboost import router as xgboost_router
-from app.presentation.api.v1.routes.patient import router as patient_router
 
 # Import our new biometric alert rules endpoint
 from app.presentation.api.v1.endpoints.biometric_alert_rules import (
@@ -41,6 +20,22 @@ from app.presentation.api.v1.endpoints.biometric_alert_rules import (
 from app.presentation.api.v1.endpoints.biometric_alerts import (
     router as biometric_alerts_endpoint_router,
 )
+from app.presentation.api.v1.routes.actigraphy import router as actigraphy_router
+
+# Corrected imports pointing to the canonical router location
+from app.presentation.api.v1.routes.analytics import router as analytics_query_router
+from app.presentation.api.v1.routes.auth import router as auth_router
+from app.presentation.api.v1.routes.biometric import router as biometric_router
+from app.presentation.api.v1.routes.digital_twin import (
+    router as digital_twin_router,
+)
+from app.presentation.api.v1.routes.mentallama import router as mentallama_router
+from app.presentation.api.v1.routes.ml import router as ml_router
+from app.presentation.api.v1.routes.patient import router as patient_router
+from app.presentation.api.v1.routes.temporal_neurotransmitter import (
+    router as temporal_neurotransmitter_router,
+)
+from app.presentation.api.v1.routes.xgboost import router as xgboost_router
 
 # Create the main router for API v1
 api_v1_router = APIRouter()

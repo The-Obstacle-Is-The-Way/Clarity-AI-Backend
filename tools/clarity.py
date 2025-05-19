@@ -10,10 +10,8 @@ maintenance, and security operations.
 import argparse
 import importlib
 import logging
-import os
 import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Callable, Any
+from typing import Any
 
 # Configure logging with no sensitive information
 logging.basicConfig(
@@ -24,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger("clarity")
 
 # Define available commands
-COMMANDS: Dict[str, Dict[str, Any]] = {
+COMMANDS: dict[str, dict[str, Any]] = {
     "refactor": {
         "description": "Refactor the codebase according to clean architecture",
         "module": "tools.refactor.refactor_code_structure",
@@ -68,7 +66,7 @@ def setup_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_command(command: str, args: List[str]) -> int:
+def run_command(command: str, args: list[str]) -> int:
     """
     Run the specified command with the given arguments.
 
@@ -97,10 +95,10 @@ def run_command(command: str, args: List[str]) -> int:
         return func()
 
     except ImportError as e:
-        logger.error(f"Failed to import {command_info['module']}: {str(e)}")
+        logger.error(f"Failed to import {command_info['module']}: {e!s}")
         return 2
 
-    except AttributeError as e:
+    except AttributeError:
         logger.error(
             f"Function {command_info['function']} not found in {command_info['module']}"
         )
@@ -143,7 +141,7 @@ def show_full_help(command: str) -> int:
         return func()
 
     except Exception as e:
-        logger.error(f"Error showing help for {command}: {str(e)}")
+        logger.error(f"Error showing help for {command}: {e!s}")
         return 1
 
 

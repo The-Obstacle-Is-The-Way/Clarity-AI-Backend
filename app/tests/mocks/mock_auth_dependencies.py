@@ -5,17 +5,14 @@ This module provides mock authentication dependencies that
 can be used to override FastAPI dependency injections for testing.
 """
 
-from typing import Callable, Dict, Any, Optional, Union
 import uuid
-from fastapi import Depends, HTTPException, status
-from pydantic import BaseModel
+from collections.abc import Callable
+
+from fastapi import HTTPException, status
 
 from app.core.dto.auth.token import TokenPayload
-from app.core.dto.user.user import UserBase
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
-from app.tests.utils.jwt_helpers import create_test_token
-
 
 # Mock user for testing
 MOCK_USER_ID = str(uuid.uuid4())
@@ -37,7 +34,7 @@ class MockCurrentUser:
     for testing authentication-protected endpoints.
     """
 
-    def __init__(self, user: Optional[User] = None, raise_error: bool = False):
+    def __init__(self, user: User | None = None, raise_error: bool = False):
         """
         Initialize with optional user override and error flag.
 
@@ -68,7 +65,7 @@ class MockCurrentUser:
 
 
 def get_mock_current_user(
-    user: Optional[User] = None, raise_error: bool = False
+    user: User | None = None, raise_error: bool = False
 ) -> Callable:
     """
     Get a mock current user dependency.
@@ -84,7 +81,7 @@ def get_mock_current_user(
 
 
 def get_mock_current_active_user(
-    user: Optional[User] = None, raise_error: bool = False
+    user: User | None = None, raise_error: bool = False
 ) -> Callable:
     """
     Get a mock current active user dependency.
@@ -107,7 +104,7 @@ def get_mock_current_active_user(
 
 
 def get_mock_current_admin_user(
-    user: Optional[User] = None, raise_error: bool = False
+    user: User | None = None, raise_error: bool = False
 ) -> Callable:
     """
     Get a mock current admin user dependency.

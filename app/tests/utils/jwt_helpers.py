@@ -4,9 +4,10 @@ JWT Test Helpers.
 This module provides utility functions for testing JWT functionality.
 """
 
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import jwt
-from datetime import datetime, timedelta, UTC
-from typing import Any, Dict, Optional
 
 # Constants for testing
 TEST_SECRET_KEY = (
@@ -20,8 +21,8 @@ TEST_AUDIENCE = "test-audience"
 def create_test_token(
     subject: str,
     token_type: str = "access",
-    expiry_delta: Optional[timedelta] = None,
-    custom_claims: Optional[Dict[str, Any]] = None,
+    expiry_delta: timedelta | None = None,
+    custom_claims: dict[str, Any] | None = None,
     secret_key: str = TEST_SECRET_KEY,
     expired: bool = False,
     algorithm: str = TEST_ALGORITHM,
@@ -81,7 +82,7 @@ def decode_test_token(
     secret_key: str = TEST_SECRET_KEY,
     verify: bool = True,
     algorithm: str = TEST_ALGORITHM,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Decode a JWT token for testing.
 
@@ -102,7 +103,7 @@ def decode_test_token(
     return jwt.decode(token, secret_key, algorithms=[algorithm], options=options)
 
 
-def get_test_jwt_service_config() -> Dict[str, Any]:
+def get_test_jwt_service_config() -> dict[str, Any]:
     """
     Get configuration for JWTService in tests.
 

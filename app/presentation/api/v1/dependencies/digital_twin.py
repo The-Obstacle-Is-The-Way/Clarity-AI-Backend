@@ -13,8 +13,8 @@ from fastapi import Depends
 from app.core.interfaces.services.digital_twin_service_interface import (
     DigitalTwinServiceInterface,
 )
-from app.infrastructure.di.provider import get_service_instance
 from app.core.services.ml.interface import MentaLLaMAInterface
+from app.infrastructure.di.provider import get_service_instance
 
 logger = logging.getLogger(__name__)
 

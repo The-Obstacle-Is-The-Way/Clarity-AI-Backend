@@ -11,38 +11,37 @@ import logging.config
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-# Third-Party Imports
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 import redis
 import redis.exceptions
 import sentry_sdk
+
+# Third-Party Imports
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 # Application-Specific Imports
-from app.core.config import Settings, get_settings as global_get_settings
+from app.core.config import Settings
+from app.core.config import get_settings as global_get_settings
 from app.core.interfaces.services.jwt_service_interface import (
     JWTServiceInterface as IJWTService,
 )
 from app.core.interfaces.services.redis_service_interface import IRedisService
-from app.core.logging_config import LOGGING_CONFIG, setup_logging
+from app.core.logging_config import LOGGING_CONFIG
+from app.core.security.rate_limiting.limiter import RateLimiter
 from app.infrastructure.persistence.sqlalchemy.database import (
     AsyncSession,
     async_sessionmaker,
-    get_session,
 )
 from app.infrastructure.security.jwt.jwt_service import get_jwt_service
 from app.infrastructure.services.redis.redis_service import (
-    RedisService,
     create_redis_service,
 )
 from app.presentation.api.v1.api_router import api_v1_router
 from app.presentation.middleware.authentication import AuthenticationMiddleware
 from app.presentation.middleware.logging import LoggingMiddleware
-from app.presentation.middleware.rate_limiting import RateLimitingMiddleware
-from app.core.security.rate_limiting.limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 

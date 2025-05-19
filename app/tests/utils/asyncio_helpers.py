@@ -6,8 +6,10 @@ event loops in tests, addressing common issues with asyncio tests.
 """
 
 import asyncio
+from collections.abc import Generator
+from typing import Any, TypeVar
+
 import pytest
-from typing import AsyncGenerator, Generator, Any, Callable, TypeVar, Awaitable
 
 T = TypeVar("T")
 

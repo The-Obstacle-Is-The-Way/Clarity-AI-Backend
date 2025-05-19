@@ -7,15 +7,12 @@ to an XML file. It also creates patched versions of files to fix common issues
 that cause test failures in the standalone mode.
 """
 
-import os
-import sys
+import argparse
 import shutil
 import subprocess
-import argparse
-import tempfile
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set, Optional, Any, Union
 
 # Root directory setup
 ROOT_DIR = Path(__file__).parents[1]  # backend directory

@@ -5,6 +5,7 @@ This module provides unit tests for the mock implementation of MentaLLaMA servic
 """
 
 import json
+
 import pytest
 
 # Skip this test module as it's using an old implementation

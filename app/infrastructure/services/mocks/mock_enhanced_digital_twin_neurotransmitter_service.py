@@ -5,7 +5,7 @@ as part of the Enhanced Digital Twin Core.
 """
 import random
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.digital_twin_enums import (
@@ -35,7 +35,7 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
 
     def __init__(self) -> None:
         """Initialize the mock neurotransmitter service."""
-        self._patient_mappings: Dict[UUID, NeurotransmitterMapping] = {}
+        self._patient_mappings: dict[UUID, NeurotransmitterMapping] = {}
 
     async def get_neurotransmitter_mapping(
         self, patient_id: UUID
@@ -58,7 +58,7 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
         return self._patient_mappings[patient_id]
 
     async def update_neurotransmitter_mapping(
-        self, patient_id: UUID, mapping_updates: Dict[str, Any]
+        self, patient_id: UUID, mapping_updates: dict[str, Any]
     ) -> NeurotransmitterMapping:
         """
         Update the neurotransmitter mapping for a patient.
@@ -94,8 +94,8 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
         return mapping
 
     async def predict_medication_impacts(
-        self, patient_id: UUID, medications: List[Dict[str, Any]]
-    ) -> Dict[Neurotransmitter, Dict[str, float]]:
+        self, patient_id: UUID, medications: list[dict[str, Any]]
+    ) -> dict[Neurotransmitter, dict[str, float]]:
         """
         Predict how medications will impact neurotransmitter levels.
 
@@ -180,9 +180,9 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
     async def predict_network_connectivity_changes(
         self,
         patient_id: UUID,
-        baseline_data: Optional[Dict[str, Any]] = None,
-        intervention_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        baseline_data: dict[str, Any] | None = None,
+        intervention_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Predict changes in neural network connectivity based on interventions.
 
@@ -230,8 +230,8 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
         return results
 
     async def simulate_emotional_regulation_circuit(
-        self, patient_id: UUID, emotional_stimulus: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, emotional_stimulus: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Simulate the emotional regulation circuit's response to stimuli.
 
@@ -305,8 +305,8 @@ class MockEnhancedDigitalTwinNeurotransmitterService(
         self,
         patient_id: UUID,
         pathway_name: str,
-        stimulus_parameters: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        stimulus_parameters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Model the activation patterns of specific neural pathways.
 

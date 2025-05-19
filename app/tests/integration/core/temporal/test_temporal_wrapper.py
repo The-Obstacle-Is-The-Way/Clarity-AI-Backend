@@ -4,9 +4,7 @@ Integration test wrapper for temporal neurotransmitter system.
 This wrapper avoids directly importing the router to prevent
 FastAPI from analyzing AsyncSession dependencies at module import time.
 """
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip(
     "Skipping temporal wrapper integration tests: pending refactor",

@@ -1,7 +1,5 @@
 """Unit tests for the Ensemble Model for symptom forecasting."""
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip(
     "Skipping ensemble model tests (torch unsupported)", allow_module_level=True

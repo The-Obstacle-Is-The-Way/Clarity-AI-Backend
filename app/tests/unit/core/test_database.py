@@ -2,10 +2,10 @@
 Unit tests for database connection and session management.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 

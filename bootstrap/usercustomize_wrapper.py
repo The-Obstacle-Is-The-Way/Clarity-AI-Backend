@@ -42,7 +42,7 @@ globals().update(_impl.__dict__)
 # Sanity check – verify that the in‑memory *boto3* replacement is active.
 # ---------------------------------------------------------------------------
 
-import boto3  # noqa: WPS433 – runtime verification
+import boto3
 
 assert getattr(
     boto3, "__shim__", False

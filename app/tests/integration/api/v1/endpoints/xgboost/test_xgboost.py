@@ -5,43 +5,24 @@ These tests verify that the XGBoost API endpoints correctly validate input,
 handle authentication, and pass data to and from the service layer.
 """
 
-from collections.abc import AsyncGenerator
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, Tuple
-from unittest.mock import AsyncMock, patch
-import uuid
-import httpx
 import logging
-import asyncio
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout, run_with_timeout_asyncio
-from fastapi import FastAPI, status, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from httpx import AsyncClient, ASGITransport
+from fastapi import FastAPI, status
+from httpx import ASGITransport, AsyncClient
+
 from app.core.config import Settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
-from app.core.services.ml.xgboost.exceptions import (
-    DataPrivacyError,
-    ModelNotFoundError,
-    ServiceUnavailableError,
-    UnauthorizedError,
-)
-from app.core.interfaces.services.ml.xgboost import XGBoostInterface
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_dependency
-from app.infrastructure.security.audit.middleware import AuditLogMiddleware
-from app.tests.utils.test_audit_utils import (
-    disable_audit_middleware,
-    replace_middleware_with_mock,
-    disable_authentication_middleware,
-)
 from app.factory import create_application
 from app.presentation.api.dependencies.auth import (
-    verify_provider_access,
     get_current_user,
 )
 from app.presentation.api.v1.routes.xgboost import get_xgboost_service
-from app.tests.integration.utils.test_authentication import create_test_headers_for_role
 from app.tests.integration.utils.test_config import setup_test_environment
 
 # Initialize logger
@@ -166,7 +147,7 @@ async def db_session():
 @pytest_asyncio.fixture
 async def xgboost_test_client(
     mock_xgboost_service, db_session
-) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
+) -> AsyncGenerator[tuple[FastAPI, AsyncClient], None]:
     """Create an HTTP client for testing the XGBoost endpoints."""
     # Create application with test settings
     settings = Settings(

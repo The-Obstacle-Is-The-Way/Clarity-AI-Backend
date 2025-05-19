@@ -7,7 +7,7 @@ for HIPAA compliance and security auditing purposes.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -27,12 +27,12 @@ class IAuditLogger(ABC):
     async def log_auth_event(
         self,
         event_type: str,
-        user_id: Optional[Union[str, UUID]] = None,
+        user_id: str | UUID | None = None,
         success: bool = True,
-        details: Optional[Dict[str, Any]] = None,
-        timestamp: Optional[datetime] = None,
-        request_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        timestamp: datetime | None = None,
+        request_id: str | None = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log an authentication or authorization related event.
@@ -59,13 +59,13 @@ class IAuditLogger(ABC):
         self,
         data_type: str,
         action: str,
-        user_id: Union[str, UUID],
-        resource_id: Optional[Union[str, UUID]] = None,
+        user_id: str | UUID,
+        resource_id: str | UUID | None = None,
         success: bool = True,
-        reason: Optional[str] = None,
-        timestamp: Optional[datetime] = None,
-        request_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        reason: str | None = None,
+        timestamp: datetime | None = None,
+        request_id: str | None = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log a data access event for auditing purposes.
@@ -94,11 +94,11 @@ class IAuditLogger(ABC):
         self,
         event_type: str,
         severity: str,
-        details: Dict[str, Any],
-        user_id: Optional[Union[str, UUID]] = None,
-        timestamp: Optional[datetime] = None,
-        request_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        details: dict[str, Any],
+        user_id: str | UUID | None = None,
+        timestamp: datetime | None = None,
+        request_id: str | None = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log a security event such as suspicious activity or system change.
@@ -123,14 +123,14 @@ class IAuditLogger(ABC):
     @abstractmethod
     async def get_audit_logs(
         self,
-        event_type: Optional[str] = None,
-        user_id: Optional[Union[str, UUID]] = None,
-        resource_id: Optional[Union[str, UUID]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        event_type: str | None = None,
+        user_id: str | UUID | None = None,
+        resource_id: str | UUID | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve audit logs based on filter criteria.
 

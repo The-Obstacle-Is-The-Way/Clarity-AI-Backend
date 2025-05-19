@@ -1,7 +1,6 @@
 """Emergency contact value object."""
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Union
 
 from app.domain.value_objects.address import Address
 
@@ -17,8 +16,8 @@ class EmergencyContact:
     name: str
     relationship: str
     phone: str
-    email: Optional[str] = None
-    address: Optional[Union[Address, Dict]] = None
+    email: str | None = None
+    address: Address | dict | None = None
 
     def __post_init__(self) -> None:
         """Validate emergency contact data."""

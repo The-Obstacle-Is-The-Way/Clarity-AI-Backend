@@ -6,45 +6,39 @@ clean architecture principles with precise, mathematically elegant implementatio
 """
 
 import logging
+import uuid
 from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
-from typing import Optional, Dict, Any, List
 
-import asyncio
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout, run_with_timeout_asyncio
-from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
-from datetime import datetime, timezone, timedelta
-import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.domain.entities.audit_log import AuditLog
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from app.core.config import Settings
 from app.core.interfaces.services.audit_logger_interface import (
     AuditEventType,
     IAuditLogger,
-    AuditSeverity,
 )
-from app.application.services.audit_log_service import AuditLogService
-from app.core.security.rate_limiting.middleware import RateLimitingMiddleware
+from app.core.interfaces.services.authentication_service import IAuthenticationService
+from app.core.interfaces.services.jwt_service import IJwtService
+from app.core.models.token_models import TokenPayload
+from app.core.services.ml.interface import MentaLLaMAInterface
+from app.domain.entities.user import User
+from app.domain.models.user import UserRole
 
 # Application imports (Sorted)
 from app.factory import create_application
-from app.core.config import Settings
-from app.core.interfaces.services.authentication_service import IAuthenticationService
-from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.services.ml.interface import MentaLLaMAInterface
-from app.core.models.token_models import TokenPayload
-from app.domain.entities.user import User
-from app.domain.models.user import UserRole
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.presentation.api.dependencies.auth import (
-    get_current_user,
     get_current_active_user,
+    get_current_user,
+    get_jwt_service,
 )
 from app.presentation.api.v1.dependencies.digital_twin import get_mentallama_service
-from app.presentation.api.dependencies.auth import get_jwt_service
 
 
 # Create a custom audit service dependency for testing
@@ -76,12 +70,12 @@ class MockAuditLogService(IAuditLogger):
         self,
         event_type: AuditEventType,
         actor_id: str,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        action: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        ip_address: Optional[str] = None,
-        details: Optional[str] = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        action: str | None = None,
+        metadata: dict | None = None,
+        ip_address: str | None = None,
+        details: str | None = None,
     ) -> str:
         """Log an event without using the database."""
         return str(uuid.uuid4())
@@ -92,9 +86,9 @@ class MockAuditLogService(IAuditLogger):
         resource_type: str,
         resource_id: str,
         action: str,
-        metadata: Optional[dict] = None,
-        ip_address: Optional[str] = None,
-        details: Optional[str] = None,
+        metadata: dict | None = None,
+        ip_address: str | None = None,
+        details: str | None = None,
     ) -> str:
         """Log PHI access without using the database."""
         return str(uuid.uuid4())
@@ -104,8 +98,8 @@ class MockAuditLogService(IAuditLogger):
         event_type: AuditEventType,
         actor_id: str,
         details: str,
-        metadata: Optional[dict] = None,
-        ip_address: Optional[str] = None,
+        metadata: dict | None = None,
+        ip_address: str | None = None,
     ) -> str:
         """Log security event without using the database."""
         return str(uuid.uuid4())
@@ -114,10 +108,10 @@ class MockAuditLogService(IAuditLogger):
         self,
         actor_id: str,
         action: str,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        details: Optional[str] = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        metadata: dict | None = None,
+        details: str | None = None,
     ) -> str:
         """Log admin action without using the database."""
         return str(uuid.uuid4())
@@ -126,13 +120,13 @@ class MockAuditLogService(IAuditLogger):
         self,
         user_id: str,
         success: bool,
-        ip_address: Optional[str] = None,
-        details: Optional[str] = None,
+        ip_address: str | None = None,
+        details: str | None = None,
     ) -> str:
         """Log login event without using the database."""
         return str(uuid.uuid4())
 
-    async def log_logout(self, user_id: str, ip_address: Optional[str] = None) -> str:
+    async def log_logout(self, user_id: str, ip_address: str | None = None) -> str:
         """Log logout event without using the database."""
         return str(uuid.uuid4())
 
@@ -140,35 +134,35 @@ class MockAuditLogService(IAuditLogger):
         self,
         event_type: str,
         details: str,
-        component: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        component: str | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """Log system event without using the database."""
         return str(uuid.uuid4())
 
     async def get_audit_trail(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Mock implementation that returns an empty list."""
         return []
 
     async def export_audit_logs(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         format: str = "json",
-        file_path: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        file_path: str | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> str:
         """Mock implementation that returns a fake file path."""
         return "/tmp/mock_audit_export.json"
 
-    async def get_security_dashboard_data(self, days: int = 7) -> Dict[str, Any]:
+    async def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
         """Mock implementation that returns empty dashboard data."""
         return {
             "login_attempts": 0,
@@ -377,13 +371,13 @@ async def mentallama_test_client(
 
     # Disable audit logging middleware for tests
     app.state.disable_audit_middleware = True
-    logging.info(f"MENTALLAMA_TEST_CLIENT: Disabled audit middleware for testing")
+    logging.info("MENTALLAMA_TEST_CLIENT: Disabled audit middleware for testing")
 
     # Override audit log service with our mock
     mock_audit_service = MockAuditLogService()
     app.dependency_overrides[get_audit_log_service] = lambda: mock_audit_service
     logging.info(
-        f"MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService"
+        "MENTALLAMA_TEST_CLIENT: Overrode AuditLogService with MockAuditLogService"
     )
 
     # Set the mock audit logger on app.state to use in middleware

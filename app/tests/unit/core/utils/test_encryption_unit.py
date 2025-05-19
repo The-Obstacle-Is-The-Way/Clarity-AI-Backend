@@ -4,7 +4,6 @@ Unit tests for the HIPAA-compliant encryption utility.
 
 import os
 from unittest.mock import patch
-from typing import Optional
 
 import pytest
 

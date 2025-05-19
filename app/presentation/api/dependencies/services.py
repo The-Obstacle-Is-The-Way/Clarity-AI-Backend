@@ -10,14 +10,14 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from app.application.services.audit_log_service import AuditLogService
+
 # Correct service/factory imports
 from app.application.services.digital_twin_service import DigitalTwinApplicationService
-from app.core.config import settings
+from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 
 # from app.infrastructure.ml.pat.bedrock_pat import BedrockPAT # Example PAT implementation
 from app.infrastructure.ml.pat.service import PATService  # Correct path
-from app.application.services.audit_log_service import AuditLogService
-from app.core.interfaces.services.audit_logger_interface import IAuditLogger
 from app.presentation.api.dependencies.repositories import get_audit_log_repository
 
 logger = logging.getLogger(__name__)

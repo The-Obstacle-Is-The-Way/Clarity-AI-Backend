@@ -7,11 +7,8 @@ and manages clinical rules for biometric data.
 
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from datetime import datetime, timezone
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 # Removed unused import for non-existent entity
 # from app.domain.entities.clinical_impression import ClinicalImpression, ImpressionSection

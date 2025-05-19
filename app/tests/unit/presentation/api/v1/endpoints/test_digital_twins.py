@@ -5,22 +5,23 @@ Tests the API endpoints for Digital Twin functionality, including
 the MentaLLaMA integration for clinical text processing.
 """
 # Standard Library Imports
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
-from uuid import UUID, uuid4
 import logging
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock
+from uuid import UUID, uuid4
 
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 # Third-Party Imports
-from fastapi import FastAPI, status, HTTPException
-from httpx import AsyncClient
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import signal
 import functools
+import signal
+
+import pytest
+from fastapi import FastAPI, status
+from httpx import AsyncClient
+
+from app.core.config.settings import Settings as AppSettings  # Use alias
 
 # First-Party Imports (Organized)
 # Assuming base exceptions are in core.exceptions.base_exceptions
@@ -29,9 +30,12 @@ from app.core.exceptions.base_exceptions import (
     ResourceNotFoundError,
 )
 from app.domain.entities.user import User  # Added User import
+
+# Add imports for create_application and Settings
+from app.factory import create_application
 from app.presentation.api.dependencies.auth import (
-    get_current_user,
     get_current_active_user,
+    get_current_user,
 )  # Standard auth dependency
 from app.presentation.api.dependencies.services import (
     get_digital_twin_service,
@@ -39,16 +43,7 @@ from app.presentation.api.dependencies.services import (
 
 # Import digital_twin specific services
 from app.presentation.api.v1.dependencies.digital_twin import get_digital_twin_service
-from app.presentation.api.schemas.digital_twin import (
-    # ClinicalTextAnalysisResponse, # Let's use the specific fixture name for clarity if needed
-    PersonalizedInsightResponse,  # Assuming this covers the /insights endpoint test case
-)
 from app.presentation.api.v1.routes.digital_twin import router as digital_twin_router
-
-# Add imports for create_application and Settings
-from app.factory import create_application
-from app.core.config.settings import Settings as AppSettings  # Use alias
-from app.presentation.middleware.authentication import AuthenticationMiddleware
 
 # Define UTC timezone
 UTC = timedelta(0)  # Simple UTC offset
@@ -114,9 +109,6 @@ def app(mock_digital_twin_service: AsyncMock, mock_current_user: User) -> FastAP
     ] = lambda: mock_digital_twin_service
 
     # Direct import and mounting of the digital_twin router for tests
-    from app.presentation.api.v1.routes.digital_twin import (
-        router as digital_twin_router,
-    )
 
     # Clear existing routes to avoid duplicates
     app_instance.router.routes = []
@@ -421,8 +413,8 @@ class TestDigitalTwinsEndpoints:
         )
 
         # Create a simple client to test with different settings
-        from httpx import AsyncClient
         from fastapi.testclient import TestClient
+
         from app.factory import create_application
 
         settings = client.base_url
@@ -431,17 +423,14 @@ class TestDigitalTwinsEndpoints:
         )
 
         # Add the same dependency overrides
-        from app.presentation.api.v1.dependencies.digital_twin import (
-            get_digital_twin_service,
-        )
 
         app_test.dependency_overrides[
             get_digital_twin_service
         ] = lambda: mock_digital_twin_service
 
         from app.presentation.api.dependencies.auth import (
-            get_current_user,
             get_current_active_user,
+            get_current_user,
         )
         from app.tests.unit.presentation.api.v1.endpoints.test_digital_twins import (
             mock_current_user,
@@ -548,8 +537,8 @@ class TestDigitalTwinsEndpoints:
         )
 
         # Create a simple client to test with different settings
-        from httpx import AsyncClient
         from fastapi.testclient import TestClient
+
         from app.factory import create_application
 
         settings = client.base_url
@@ -558,17 +547,14 @@ class TestDigitalTwinsEndpoints:
         )
 
         # Add the same dependency overrides
-        from app.presentation.api.v1.dependencies.digital_twin import (
-            get_digital_twin_service,
-        )
 
         app_test.dependency_overrides[
             get_digital_twin_service
         ] = lambda: mock_digital_twin_service
 
         from app.presentation.api.dependencies.auth import (
-            get_current_user,
             get_current_active_user,
+            get_current_user,
         )
         from app.tests.unit.presentation.api.v1.endpoints.test_digital_twins import (
             mock_current_user,

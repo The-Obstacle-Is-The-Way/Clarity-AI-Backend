@@ -5,9 +5,7 @@ These tests verify that the Treatment Response Model correctly
 predicts medication efficacy and side effects based on patient data.
 """
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip(
     "Skipping pharmacogenomics treatment model tests (torch unsupported)",

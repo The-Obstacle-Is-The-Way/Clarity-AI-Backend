@@ -6,24 +6,24 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
-from datetime import datetime
 
+from sqlalchemy import (
+    UUID as SQLAlchemyUUID,
+)
 from sqlalchemy import (
     Boolean,
     Column,
     Date,
-    DateTime,
     ForeignKey,
     String,
     Text,
-    UUID as SQLAlchemyUUID,
 )
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
+    AuditMixin,
     Base,
     TimestampMixin,
-    AuditMixin,
 )
 
 

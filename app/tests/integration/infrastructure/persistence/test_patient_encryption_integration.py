@@ -5,20 +5,14 @@ This module verifies that patient PHI is properly encrypted when stored in
 the database and decrypted when retrieved, according to HIPAA requirements.
 """
 
-import json
 import logging
 import uuid
 
 # from collections.abc import AsyncGenerator # Not used directly in this version
 from datetime import date, datetime, timezone
 
-import asyncio
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 import sqlalchemy
 
 # from cryptography.fernet import Fernet # Fernet from fixture is BaseEncryptionService
@@ -31,37 +25,18 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )  # , async_sessionmaker, create_async_engine
 
+# from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
+from app.core.config import settings
+from app.core.domain.entities.patient import (
+    ContactInfo,
+)
+
 # Import domain entities with clear namespace
 from app.core.domain.entities.patient import (
     Patient as DomainPatient,
-    ContactInfo,
 )  # Gender, Address, EmergencyContact will be added to DomainPatient
-from app.core.domain.enums import Gender  # Corrected Gender import
-from app.domain.value_objects.address import (
-    Address,
-)  # Assuming this is the canonical Pydantic/dataclass VO
-from app.domain.value_objects.emergency_contact import (
-    EmergencyContact,
-)  # Assuming this is the canonical Pydantic/dataclass VO
-
 from app.core.domain.entities.user import UserRole
-
-# from app.infrastructure.persistence.sqlalchemy.database import async_session_factory, engine, Base # engine, Base for setup
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance
-from app.infrastructure.persistence.sqlalchemy.models import Patient as PatientModel
-from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
-from app.infrastructure.persistence.sqlalchemy.models.user import User
-from app.infrastructure.security.password.hashing import pwd_context  # Added import
-
-# Use the global encryption service instance
-from app.infrastructure.security.encryption import (
-    encryption_service_instance,
-    get_encryption_service,
-)
-
-# from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import EncryptedString, EncryptedText, EncryptedJSON # Not directly used in test logic
-from app.core.config import settings
+from app.core.domain.enums import Gender  # Corrected Gender import
 
 # Ensure patient.py's encryption_service_instance is available for EncryptedTypes
 # This import is crucial for the types to find the service.
@@ -69,11 +44,29 @@ from app.core.config import settings
 # So, specific patching of patient_module_for_esi is no longer the primary mechanism.
 # However, ensuring the global instance is correctly configured for tests IS crucial.
 # import app.infrastructure.persistence.sqlalchemy.models.patient as patient_module_for_esi # Keep for now if other parts rely on it, but aim to remove dependency on this patching.
-
 from app.core.exceptions.base_exceptions import PersistenceError  # Corrected import
+from app.domain.value_objects.address import (
+    Address,
+)  # Assuming this is the canonical Pydantic/dataclass VO
+from app.domain.value_objects.emergency_contact import (
+    EmergencyContact,
+)  # Assuming this is the canonical Pydantic/dataclass VO
+from app.infrastructure.persistence.sqlalchemy.config.database import get_db_instance
+from app.infrastructure.persistence.sqlalchemy.models.audit_log import AuditLog
+
+# from app.infrastructure.persistence.sqlalchemy.database import async_session_factory, engine, Base # engine, Base for setup
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.infrastructure.persistence.sqlalchemy.models.user import User
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
     PatientRepository,
 )
+
+# Use the global encryption service instance
+from app.infrastructure.security.encryption import (
+    encryption_service_instance,
+    get_encryption_service,
+)
+from app.infrastructure.security.password.hashing import pwd_context  # Added import
 
 logger = logging.getLogger(__name__)
 
@@ -392,7 +385,7 @@ class TestPatientEncryptionIntegration:
         # Convert UUID to string for SQLite compatibility
         result = await session.execute(
             text(
-                f"SELECT first_name, last_name, email, ssn, contact_info, medical_history FROM patients WHERE id = :id"
+                "SELECT first_name, last_name, email, ssn, contact_info, medical_history FROM patients WHERE id = :id"
             ),
             {"id": str(patient_id)},
         )
@@ -580,7 +573,7 @@ class TestPatientEncryptionIntegration:
         except ValueError as e:
             assert "Invalid" in str(
                 e
-            ), f"Expected 'Invalid' in error message, got: {str(e)}"
+            ), f"Expected 'Invalid' in error message, got: {e!s}"
         logger.debug("Caught expected missing prefix error for string.")
 
         # Test decryption of prefixed but invalid (non-base64) data

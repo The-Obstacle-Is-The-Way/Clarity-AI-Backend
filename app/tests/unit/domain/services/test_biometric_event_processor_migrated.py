@@ -6,7 +6,7 @@ biometric data points, evaluates rules, and notifies observers.
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
@@ -19,9 +19,6 @@ from app.domain.services.biometric_event_processor import (
     AlertRule,
     BiometricAlert,
     BiometricEventProcessor,
-    EmailAlertObserver,
-    InAppAlertObserver,
-    SMSAlertObserver,
 )
 from app.domain.utils.datetime_utils import UTC
 

@@ -6,24 +6,22 @@ with special focus on ensuring secure storage of PHI in ML systems
 while maintaining HIPAA compliance.
 """
 
-import logging
-import os
 import base64
 import hashlib
 import json
-from typing import Dict, Any, Optional, Union, List, Tuple
+import logging
+import os
+from typing import Any
 
 import numpy as np
-
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from app.core.config.settings import get_settings
 from app.infrastructure.security.encryption.base_encryption_service import (
-    BaseEncryptionService,
-    VERSION_PREFIX,
     KDF_ITERATIONS,
+    BaseEncryptionService,
 )
 
 # Initialize a basic logger to avoid import cycles
@@ -65,10 +63,10 @@ class MLEncryptionService(BaseEncryptionService):
 
     def __init__(
         self,
-        secret_key: Optional[Union[str, bytes]] = None,
-        salt: Optional[Union[str, bytes]] = None,
-        direct_key: Optional[str] = None,
-        previous_key: Optional[str] = None,
+        secret_key: str | bytes | None = None,
+        salt: str | bytes | None = None,
+        direct_key: str | None = None,
+        previous_key: str | None = None,
         use_legacy_prefix: bool = False,
     ):
         """
@@ -121,12 +119,12 @@ class MLEncryptionService(BaseEncryptionService):
                 derived_key = base64.urlsafe_b64encode(kdf.derive(previous_key_bytes))
                 self._previous_cipher = Fernet(derived_key)
             except Exception as e:
-                logger.warning(f"Failed to initialize previous cipher: {str(e)}")
+                logger.warning(f"Failed to initialize previous cipher: {e!s}")
 
         logger.debug("ML Encryption Service initialized")
 
     @property
-    def previous_key(self) -> Optional[str]:
+    def previous_key(self) -> str | None:
         """Get the previous key used for key rotation."""
         return self._previous_key
 
@@ -135,7 +133,7 @@ class MLEncryptionService(BaseEncryptionService):
         """Get whether this service is using legacy version prefix."""
         return self._use_legacy_prefix
 
-    def decrypt(self, value: Union[str, bytes, None]) -> Optional[bytes]:
+    def decrypt(self, value: str | bytes | None) -> bytes | None:
         """
         Decrypt a version-prefixed encrypted value, with key rotation support.
 
@@ -182,9 +180,9 @@ class MLEncryptionService(BaseEncryptionService):
                 except Exception as e2:
                     # Both keys failed - include both errors in the message
                     logger.error(
-                        f"Decryption failed with current and previous keys: {str(e)}, {str(e2)}"
+                        f"Decryption failed with current and previous keys: {e!s}, {e2!s}"
                     )
-                    raise ValueError(f"Decryption failed with all available keys")
+                    raise ValueError("Decryption failed with all available keys")
             else:
                 # No previous key available
                 raise
@@ -221,7 +219,7 @@ class MLEncryptionService(BaseEncryptionService):
                     )
                 embedding = np.array(embedding)
             except Exception as e:
-                raise ValueError(f"Embedding must be a NumPy array: {str(e)}")
+                raise ValueError(f"Embedding must be a NumPy array: {e!s}")
 
         # Convert to list for JSON serialization and encrypt
         return self.encrypt_embeddings(embedding.tolist())
@@ -267,16 +265,16 @@ class MLEncryptionService(BaseEncryptionService):
             return np.array(embeddings_list, dtype=np.float32)
         except ValueError as e:
             # Re-raise with more specific message for embedding
-            raise ValueError(f"Failed to decrypt embedding: {str(e)}")
+            raise ValueError(f"Failed to decrypt embedding: {e!s}")
         except Exception as e:
             # Handle other exceptions
-            raise ValueError(f"Error decrypting embedding: {str(e)}")
+            raise ValueError(f"Error decrypting embedding: {e!s}")
 
-    def encrypt_tensors(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
+    def encrypt_tensors(self, tensors: dict[str, np.ndarray]) -> dict[str, str]:
         """Alias for encrypt_tensors method to match tests."""
         return self._encrypt_tensors_impl(tensors)
 
-    def _encrypt_tensors_impl(self, tensors: Dict[str, np.ndarray]) -> Dict[str, str]:
+    def _encrypt_tensors_impl(self, tensors: dict[str, np.ndarray]) -> dict[str, str]:
         """Implementation of encrypt_tensors to avoid recursive calls."""
         if tensors is None:
             return None
@@ -295,8 +293,8 @@ class MLEncryptionService(BaseEncryptionService):
         return result
 
     def decrypt_tensors(
-        self, encrypted_tensors: Dict[str, str]
-    ) -> Dict[str, np.ndarray]:
+        self, encrypted_tensors: dict[str, str]
+    ) -> dict[str, np.ndarray]:
         """
         Decrypt a dictionary of encrypted tensors.
 
@@ -321,7 +319,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         return result
 
-    def encrypt_ml_data(self, ml_data: Dict[str, Any]) -> Dict[str, Any]:
+    def encrypt_ml_data(self, ml_data: dict[str, Any]) -> dict[str, Any]:
         """
         Encrypt machine learning data with intelligent field handling.
 
@@ -426,7 +424,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         return result
 
-    def decrypt_ml_data(self, encrypted_ml_data: Dict[str, Any]) -> Dict[str, Any]:
+    def decrypt_ml_data(self, encrypted_ml_data: dict[str, Any]) -> dict[str, Any]:
         """
         Decrypt machine learning data that was encrypted with encrypt_ml_data.
 
@@ -510,7 +508,7 @@ class MLEncryptionService(BaseEncryptionService):
                         result[key] = decrypted
                 except Exception as e:
                     # If decryption fails, keep the original value
-                    logger.error(f"Failed to decrypt field {key}: {str(e)}")
+                    logger.error(f"Failed to decrypt field {key}: {e!s}")
                     result[key] = value
             else:
                 # Non-encrypted values pass through
@@ -544,7 +542,7 @@ class MLEncryptionService(BaseEncryptionService):
                 encrypted_path, "wb"
             ) as dst_file:
                 # Write version prefix
-                dst_file.write(f"{self.VERSION_PREFIX}".encode("utf-8"))
+                dst_file.write(f"{self.VERSION_PREFIX}".encode())
 
                 # Process file in chunks to handle large models
                 chunk_size = 4 * 1024 * 1024  # 4MB chunks
@@ -564,11 +562,11 @@ class MLEncryptionService(BaseEncryptionService):
             return encrypted_path
 
         except Exception as e:
-            logger.error(f"Failed to encrypt model file: {str(e)}")
+            logger.error(f"Failed to encrypt model file: {e!s}")
             # Clean up partial file if it exists
             if os.path.exists(encrypted_path):
                 os.remove(encrypted_path)
-            raise IOError(f"Failed to encrypt model file: {str(e)}")
+            raise OSError(f"Failed to encrypt model file: {e!s}")
 
     def decrypt_model_file(self, encrypted_file_path: str) -> str:
         """
@@ -624,19 +622,19 @@ class MLEncryptionService(BaseEncryptionService):
                         decrypted_chunk = self.cipher.decrypt(encrypted_chunk)
                         dst_file.write(decrypted_chunk)
                     except Exception as e:
-                        raise ValueError(f"Failed to decrypt chunk: {str(e)}")
+                        raise ValueError(f"Failed to decrypt chunk: {e!s}")
 
             logger.info(f"Model file decrypted to {decrypted_path}")
             return decrypted_path
 
         except Exception as e:
-            logger.error(f"Failed to decrypt model file: {str(e)}")
+            logger.error(f"Failed to decrypt model file: {e!s}")
             # Clean up partial file if it exists
             if os.path.exists(decrypted_path):
                 os.remove(decrypted_path)
-            raise IOError(f"Failed to decrypt model file: {str(e)}")
+            raise OSError(f"Failed to decrypt model file: {e!s}")
 
-    def encrypt_phi_safe_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def encrypt_phi_safe_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Encrypt data with PHI-safe fields handling.
 
@@ -713,7 +711,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         return result
 
-    def decrypt_phi_safe_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def decrypt_phi_safe_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Decrypt data with PHI-safe fields handling.
 
@@ -771,7 +769,7 @@ class MLEncryptionService(BaseEncryptionService):
 
         return result
 
-    def encrypt_embeddings(self, embeddings: Union[List[float], np.ndarray]) -> str:
+    def encrypt_embeddings(self, embeddings: list[float] | np.ndarray) -> str:
         """
         Encrypt vector embeddings for secure storage.
 
@@ -806,10 +804,10 @@ class MLEncryptionService(BaseEncryptionService):
             # Encrypt with standard method
             return self.encrypt_string(embeddings_json)
         except Exception as e:
-            logger.error(f"Embedding encryption failed: {str(e)}")
-            raise ValueError(f"Failed to encrypt embeddings: {str(e)}")
+            logger.error(f"Embedding encryption failed: {e!s}")
+            raise ValueError(f"Failed to encrypt embeddings: {e!s}")
 
-    def decrypt_embeddings(self, encrypted_embeddings: str) -> List[float]:
+    def decrypt_embeddings(self, encrypted_embeddings: str) -> list[float]:
         """
         Decrypt an encrypted embedding list.
 
@@ -860,14 +858,14 @@ class MLEncryptionService(BaseEncryptionService):
 
                 except Exception as inner_e:
                     # Both keys failed, propagate the original error
-                    logger.error(f"Failed to decrypt with previous key: {str(inner_e)}")
+                    logger.error(f"Failed to decrypt with previous key: {inner_e!s}")
 
             # Re-raise the original error with a more specific message
-            raise ValueError(f"Failed to decrypt embeddings: {str(e)}")
+            raise ValueError(f"Failed to decrypt embeddings: {e!s}")
 
         except Exception as e:
             # Handle other exceptions
-            raise ValueError(f"Error decrypting embeddings: {str(e)}")
+            raise ValueError(f"Error decrypting embeddings: {e!s}")
 
     def encrypt_model(self, model_bytes: bytes) -> str:
         """
@@ -910,10 +908,10 @@ class MLEncryptionService(BaseEncryptionService):
             # Encode final result
             return f"{self.VERSION_PREFIX}{base64.b64encode(json.dumps(payload).encode()).decode()}"
         except Exception as e:
-            logger.error(f"Model encryption failed: {str(e)}")
-            raise ValueError(f"Failed to encrypt ML model: {str(e)}")
+            logger.error(f"Model encryption failed: {e!s}")
+            raise ValueError(f"Failed to encrypt ML model: {e!s}")
 
-    def decrypt_model(self, encrypted_model: str) -> Tuple[bytes, Dict[str, Any]]:
+    def decrypt_model(self, encrypted_model: str) -> tuple[bytes, dict[str, Any]]:
         """
         Decrypt a machine learning model and verify its checksum.
 
@@ -964,8 +962,8 @@ class MLEncryptionService(BaseEncryptionService):
             logger.error("Invalid JSON format in encrypted model")
             raise ValueError("Cannot decrypt model: invalid format")
         except Exception as e:
-            logger.error(f"Model decryption failed: {str(e)}")
-            raise ValueError(f"Failed to decrypt ML model: {str(e)}")
+            logger.error(f"Model decryption failed: {e!s}")
+            raise ValueError(f"Failed to decrypt ML model: {e!s}")
 
     def encrypt_tensor(self, tensor: np.ndarray) -> str:
         """
@@ -993,12 +991,12 @@ class MLEncryptionService(BaseEncryptionService):
             # Encrypt the serialized tensor
             return self.encrypt_string(json.dumps(tensor_list))
         except Exception as e:
-            logger.error(f"Tensor encryption failed: {str(e)}")
-            raise ValueError(f"Failed to encrypt tensor: {str(e)}")
+            logger.error(f"Tensor encryption failed: {e!s}")
+            raise ValueError(f"Failed to encrypt tensor: {e!s}")
 
     def encrypt_dict(
         self, data: dict, legacy_mode: bool = True
-    ) -> Optional[Union[Dict[str, Any], str]]:
+    ) -> dict[str, Any] | str | None:
         """
         Encrypt a dictionary, using legacy mode by default for ML operations.
 
@@ -1060,20 +1058,20 @@ class MLEncryptionService(BaseEncryptionService):
                 except Exception as inner_e:
                     # Both keys failed
                     logger.error(
-                        f"Failed to decrypt tensor with previous key: {str(inner_e)}"
+                        f"Failed to decrypt tensor with previous key: {inner_e!s}"
                     )
 
             # Re-raise with better error message
-            raise ValueError(f"Failed to decrypt tensor: {str(e)}")
+            raise ValueError(f"Failed to decrypt tensor: {e!s}")
         except Exception as e:
             # Handle other exceptions
-            raise ValueError(f"Error decrypting tensor: {str(e)}")
+            raise ValueError(f"Error decrypting tensor: {e!s}")
 
 
 def get_ml_encryption_service(
-    direct_key: Optional[str] = None,
-    previous_key: Optional[str] = None,
-    salt: Optional[Union[str, bytes]] = None,
+    direct_key: str | None = None,
+    previous_key: str | None = None,
+    salt: str | bytes | None = None,
     use_legacy_prefix: bool = False,
 ) -> MLEncryptionService:
     """
@@ -1126,7 +1124,7 @@ def get_ml_encryption_service(
         return service
 
     except Exception as e:
-        logger.error(f"Failed to create ML encryption service: {str(e)}")
+        logger.error(f"Failed to create ML encryption service: {e!s}")
         # Create a fallback service for tests
         return MLEncryptionService(
             direct_key="test_ml_encryption_key_for_unit_tests_only_",

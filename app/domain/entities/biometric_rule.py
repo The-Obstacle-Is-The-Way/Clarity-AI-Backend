@@ -2,13 +2,13 @@
 Domain entities related to Biometric Rules for the Digital Twin.
 """
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
-from app.domain.utils.datetime_utils import now_utc
 from app.core.domain.entities.biometric import MetricType
+from app.domain.utils.datetime_utils import now_utc
 
 
 class AlertPriority(Enum):
@@ -301,7 +301,7 @@ class BiometricAlertRule:
     id: UUID = field(default_factory=uuid4)
     name: str = ""
     description: str | None = None
-    conditions: List[BiometricRuleCondition] = field(default_factory=list)
+    conditions: list[BiometricRuleCondition] = field(default_factory=list)
     logical_operator: LogicalOperator = LogicalOperator.AND
     priority: AlertPriority = AlertPriority.MEDIUM
     patient_id: UUID | None = None  # If None, considered a template or global rule
@@ -357,7 +357,7 @@ class BiometricAlertRule:
         cls,
         template: "BiometricAlertRule",
         patient_id: UUID,
-        provider_id: Optional[UUID] = None,
+        provider_id: UUID | None = None,
         **custom_overrides,
     ) -> "BiometricAlertRule":
         """

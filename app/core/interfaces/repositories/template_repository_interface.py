@@ -6,7 +6,7 @@ Defines the interface for repositories that manage templates for various entitie
 
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.domain.entities.biometric_rule import BiometricAlertRule
 
@@ -15,7 +15,7 @@ class ITemplateRepository(ABC):
     """Interface for template repositories."""
 
     @abstractmethod
-    async def get_all_templates(self) -> List[BiometricAlertRule]:
+    async def get_all_templates(self) -> list[BiometricAlertRule]:
         """
         Get all available templates.
 
@@ -30,7 +30,7 @@ class ITemplateRepository(ABC):
     @abstractmethod
     async def get_template_by_id(
         self, template_id: uuid.UUID
-    ) -> Optional[BiometricAlertRule]:
+    ) -> BiometricAlertRule | None:
         """
         Get a template by its ID.
 
@@ -47,7 +47,7 @@ class ITemplateRepository(ABC):
 
     @abstractmethod
     async def create_template(
-        self, template_data: Dict[str, Any]
+        self, template_data: dict[str, Any]
     ) -> BiometricAlertRule:
         """
         Create a new template.
@@ -66,8 +66,8 @@ class ITemplateRepository(ABC):
 
     @abstractmethod
     async def update_template(
-        self, template_id: uuid.UUID, template_data: Dict[str, Any]
-    ) -> Optional[BiometricAlertRule]:
+        self, template_id: uuid.UUID, template_data: dict[str, Any]
+    ) -> BiometricAlertRule | None:
         """
         Update an existing template.
 

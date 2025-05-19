@@ -11,11 +11,11 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.utils.logging import get_logger
 from app.domain.exceptions import EntityNotFoundError, RepositoryError
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.services.biometric_event_processor import AlertPriority, BiometricAlert
 from app.domain.utils.datetime_utils import now_utc
-from app.core.utils.logging import get_logger
 from app.infrastructure.persistence.sqlalchemy.models.biometric_alert_model import (
     BiometricAlertModel,
 )
@@ -234,7 +234,7 @@ class SQLAlchemyBiometricAlertRepository(BiometricAlertRepository):
                     scalars_result = await scalars_result
 
                 # Get all items from the result
-                all_method = getattr(scalars_result, "all")
+                all_method = scalars_result.all
                 if hasattr(all_method, "__await__"):
                     self.logger.debug("All method is a coroutine, handling for tests")
                     alert_models = await all_method()

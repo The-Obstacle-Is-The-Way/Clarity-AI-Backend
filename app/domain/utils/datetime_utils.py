@@ -6,7 +6,6 @@ with dates and times in a consistent manner across the application.
 """
 
 import datetime
-from typing import Optional, Union
 from zoneinfo import ZoneInfo
 
 # Standard timezone for all application operations
@@ -103,7 +102,7 @@ def timestamp_ms() -> int:
 
 
 def days_between(
-    start: Union[datetime.datetime, str], end: Union[datetime.datetime, str]
+    start: datetime.datetime | str, end: datetime.datetime | str
 ) -> int:
     """
     Calculate the number of days between two datetimes.
@@ -131,7 +130,7 @@ def days_between(
     return delta.days
 
 
-def format_iso8601(dt: Optional[datetime.datetime] = None) -> str:
+def format_iso8601(dt: datetime.datetime | None = None) -> str:
     """
     Alias for format_iso() - format a datetime as ISO 8601 string.
     Added for backward compatibility with existing code.

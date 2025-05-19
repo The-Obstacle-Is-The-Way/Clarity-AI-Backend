@@ -6,10 +6,8 @@ for testing purposes, following clean architecture principles by implementing
 the domain service interface.
 """
 
-from typing import Any, Dict, List, Optional
-from uuid import UUID, uuid4
-
-from app.core.exceptions import InvalidConfigurationError, ModelNotFoundError
+from typing import Any
+from uuid import uuid4
 
 
 class MockXGBoostService:
@@ -18,7 +16,7 @@ class MockXGBoostService:
     Used for testing and development without requiring external dependencies.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the mock XGBoost service.
 
@@ -50,7 +48,7 @@ class MockXGBoostService:
         self._initialized = False
         return True
 
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the model used by this service.
 
@@ -73,8 +71,8 @@ class MockXGBoostService:
         }
 
     async def predict(
-        self, features: Dict[str, Any], options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, features: dict[str, Any], options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Make a prediction using the XGBoost model.
 
@@ -115,7 +113,7 @@ class MockXGBoostService:
 
         return prediction
 
-    async def get_prediction(self, prediction_id: str) -> Optional[Dict[str, Any]]:
+    async def get_prediction(self, prediction_id: str) -> dict[str, Any] | None:
         """
         Retrieve a previously made prediction.
 
@@ -129,9 +127,9 @@ class MockXGBoostService:
 
     async def batch_predict(
         self,
-        batch_features: List[Dict[str, Any]],
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        batch_features: list[dict[str, Any]],
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Make batch predictions using the XGBoost model.
 

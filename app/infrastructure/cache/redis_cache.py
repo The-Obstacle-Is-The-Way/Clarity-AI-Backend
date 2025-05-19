@@ -8,7 +8,7 @@ interface for efficient caching in a distributed environment.
 import asyncio
 import json
 import logging
-from typing import Any, Optional, Dict, Union
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Optional dependency handling
@@ -74,15 +74,14 @@ except ModuleNotFoundError:  # pragma: no cover – executed only in test env
     aioredis.Redis = _InMemoryRedisShim  # type: ignore
 
 from redis import asyncio as aioredis
-from redis.exceptions import RedisError
-
-# from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings  # Corrected import
 
 # from app.core.interfaces.cache_service import CacheService # Incorrect import
 from app.application.interfaces.services.cache_service import (
     CacheService,
 )  # Corrected import
+
+# from app.config.settings import get_settings # Legacy import
+from app.core.config.settings import get_settings  # Corrected import
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +94,7 @@ class RedisCache(CacheService):
     suitable for production use in a distributed environment.
     """
 
-    def __init__(self, connection_url: Optional[str] = None):
+    def __init__(self, connection_url: str | None = None):
         """
         Initialize RedisCache.
 
@@ -267,7 +266,7 @@ class RedisCache(CacheService):
             return 0  # Return 0 by default
 
     # Special method for compatibility with tests that expect None on error
-    async def increment_with_none(self, key: str, amount: int = 1) -> Optional[int]:
+    async def increment_with_none(self, key: str, amount: int = 1) -> int | None:
         """
         Increment a counter in the cache, returning None on errors for test compatibility.
 
@@ -329,7 +328,7 @@ class RedisCache(CacheService):
             return -2
 
     # Method for test compatibility
-    async def get_ttl(self, key: str) -> Optional[int]:
+    async def get_ttl(self, key: str) -> int | None:
         """
         Get the remaining TTL for a key (for test compatibility).
 

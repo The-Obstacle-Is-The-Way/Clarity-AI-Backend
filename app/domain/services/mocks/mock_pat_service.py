@@ -5,14 +5,13 @@ This provides a mock implementation of the PAT (Personalized Adaptive Testing)
 service for use in testing without depending on the actual external service.
 """
 
-from typing import Dict, List, Optional, Any, Union
 import random
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
-from app.domain.interfaces.pat_service import PATService
 from app.domain.entities.assessment import AssessmentResult, AssessmentType
-from app.domain.entities.patient import Patient
+from app.domain.interfaces.pat_service import PATService
 from app.domain.utils.datetime_utils import UTC
 
 
@@ -24,7 +23,7 @@ class MockPATService(PATService):
     requiring connection to external services.
     """
 
-    def __init__(self, seed: Optional[int] = None):
+    def __init__(self, seed: int | None = None):
         """
         Initialize the mock PAT service.
 
@@ -32,11 +31,11 @@ class MockPATService(PATService):
             seed: Random seed for reproducible results
         """
         self.rng = random.Random(seed)
-        self._assessments: Dict[UUID, List[AssessmentResult]] = {}
+        self._assessments: dict[UUID, list[AssessmentResult]] = {}
 
     def get_assessment_questions(
         self, patient_id: UUID, assessment_type: AssessmentType
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get a list of assessment questions for a patient.
 
@@ -101,7 +100,7 @@ class MockPATService(PATService):
         self,
         patient_id: UUID,
         assessment_type: AssessmentType,
-        responses: Dict[str, Union[int, float, str]],
+        responses: dict[str, int | float | str],
     ) -> AssessmentResult:
         """
         Submit an assessment for a patient and get the result.
@@ -187,9 +186,9 @@ class MockPATService(PATService):
     def get_assessment_history(
         self,
         patient_id: UUID,
-        assessment_type: Optional[AssessmentType] = None,
+        assessment_type: AssessmentType | None = None,
         limit: int = 10,
-    ) -> List[AssessmentResult]:
+    ) -> list[AssessmentResult]:
         """
         Get assessment history for a patient.
 
@@ -217,9 +216,9 @@ class MockPATService(PATService):
         self,
         patient_id: UUID,
         assessment_type: AssessmentType,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, Any]:
         """
         Get trend analysis for a patient's assessment results.
 
@@ -276,7 +275,7 @@ class MockPATService(PATService):
             "average_score": sum(scores) / len(scores),
             "min_score": min(scores),
             "max_score": max(scores),
-            "scores_by_date": {d.isoformat(): s for d, s in zip(dates, scores)},
+            "scores_by_date": {d.isoformat(): s for d, s in zip(dates, scores, strict=False)},
         }
 
     def generate_random_assessments(
@@ -285,7 +284,7 @@ class MockPATService(PATService):
         assessment_type: AssessmentType,
         count: int = 5,
         days_between: int = 7,
-    ) -> List[AssessmentResult]:
+    ) -> list[AssessmentResult]:
         """
         Generate random assessment data for testing.
 

@@ -8,9 +8,8 @@ without any dependency on infrastructure or application layers.
 
 import enum
 from datetime import datetime
-from typing import List, Optional, Set, Union
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserRole(str, enum.Enum):
@@ -40,7 +39,7 @@ class User(BaseModel):
     email: EmailStr = Field(..., description="User's email address")
     first_name: str = Field(..., description="User's first name")
     last_name: str = Field(..., description="User's last name")
-    roles: Union[List[UserRole], Set[UserRole], List[str], Set[str]] = Field(
+    roles: list[UserRole] | set[UserRole] | list[str] | set[str] = Field(
         default_factory=list, description="User's roles in the system"
     )
     is_active: bool = Field(True, description="Whether the user is active")
@@ -48,10 +47,10 @@ class User(BaseModel):
         default=UserStatus.ACTIVE, description="User's account status"
     )
     created_at: datetime = Field(..., description="When the user was created")
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         None, description="When the user was last updated"
     )
-    full_name: Optional[str] = Field(
+    full_name: str | None = Field(
         None, description="User's full name (first + last)"
     )
 
@@ -66,7 +65,7 @@ class User(BaseModel):
     # Modern Pydantic V2 configuration using ConfigDict
     model_config = ConfigDict(use_enum_values=True)
 
-    def has_role(self, role: Union[UserRole, str]) -> bool:
+    def has_role(self, role: UserRole | str) -> bool:
         """Check if the user has a specific role.
 
         Args:
@@ -84,7 +83,7 @@ class User(BaseModel):
                 return True
         return False
 
-    def has_any_role(self, roles: List[Union[UserRole, str]]) -> bool:
+    def has_any_role(self, roles: list[UserRole | str]) -> bool:
         """Check if the user has any of the specified roles.
 
         Args:

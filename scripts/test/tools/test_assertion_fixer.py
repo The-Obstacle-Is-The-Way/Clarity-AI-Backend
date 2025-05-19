@@ -13,14 +13,9 @@ Usage:
 """
 
 import argparse
-import ast
-import os
 import re
 import sys
-import tempfile
-import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 
 class Colors:
@@ -84,7 +79,7 @@ class TestAssertionFixer:
         """Clean up after each test method."""
         pass
 
-    def find_test_files(self) -> List[Path]:
+    def find_test_files(self) -> list[Path]:
         """Find all test files in the test directory."""
         test_files = []
         for path in self.tests_dir.glob("**/*.py"):
@@ -103,7 +98,7 @@ class TestAssertionFixer:
             if self.verbose:
                 print(f"Examining {file_path}")
 
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Store original content for comparison
@@ -138,7 +133,7 @@ class TestAssertionFixer:
             return True
 
         except Exception as e:
-            print(f"{Colors.RED}Error fixing {file_path}: {str(e)}{Colors.ENDC}")
+            print(f"{Colors.RED}Error fixing {file_path}: {e!s}{Colors.ENDC}")
             self.failed_files.append((file_path, str(e)))
             return False
 
@@ -274,7 +269,7 @@ class TestAssertionFixer:
             self.fix_file(file_path)
 
         # Print summary
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  - Fixed {len(self.fixed_files)} files")
         print(f"  - Failed to fix {len(self.failed_files)} files")
 

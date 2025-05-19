@@ -5,23 +5,21 @@ This module provides helper utilities for testing, particularly focused on
 authentication, database setup, and mocking common dependencies.
 """
 
-import uuid
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from jose import jwt
-from unittest.mock import AsyncMock, MagicMock
 
 from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.presentation.api.dependencies.auth import (
-    get_current_user,
     get_current_active_user,
+    get_current_user,
     require_admin_role,
     require_clinician_role,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +51,12 @@ class AuthBypass:
 
     def create_test_user(
         self,
-        role: Union[UserRole, str],
-        user_id: Optional[Union[uuid.UUID, str]] = None,
-        username: Optional[str] = None,
-        email: Optional[str] = None,
-        full_name: Optional[str] = None,
-        account_status: Optional[UserStatus] = None,
+        role: UserRole | str,
+        user_id: uuid.UUID | str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+        full_name: str | None = None,
+        account_status: UserStatus | None = None,
     ) -> User:
         """
         Create a test user with the specified role
@@ -116,7 +114,7 @@ class AuthBypass:
 
         return user
 
-    def get_user_by_role(self, role: Union[UserRole, str]) -> User:
+    def get_user_by_role(self, role: UserRole | str) -> User:
         """
         Get or create a test user with the specified role
 
@@ -143,11 +141,11 @@ class AuthBypass:
 
     def create_token(
         self,
-        user_or_id: Union[User, uuid.UUID, str],
-        roles: Optional[List[str]] = None,
-        username: Optional[str] = None,
-        email: Optional[str] = None,
-        expires_delta: Optional[timedelta] = None,
+        user_or_id: User | uuid.UUID | str,
+        roles: list[str] | None = None,
+        username: str | None = None,
+        email: str | None = None,
+        expires_delta: timedelta | None = None,
     ) -> str:
         """
         Create a JWT token for testing
@@ -214,8 +212,8 @@ class AuthBypass:
         return token
 
     def get_auth_headers(
-        self, user_or_role: Union[User, UserRole, str]
-    ) -> Dict[str, str]:
+        self, user_or_role: User | UserRole | str
+    ) -> dict[str, str]:
         """
         Get authentication headers for a user or role
 
@@ -252,7 +250,7 @@ class AuthBypass:
 
         return {"Authorization": f"Bearer {token}"}
 
-    def get_test_auth_header(self, role: str = "patient") -> Dict[str, str]:
+    def get_test_auth_header(self, role: str = "patient") -> dict[str, str]:
         """
         Get a test authentication header with the specified role
 
@@ -279,7 +277,7 @@ class AuthBypass:
         }
 
     def override_auth_dependencies(
-        self, app: FastAPI, role: Union[UserRole, str] = UserRole.PATIENT
+        self, app: FastAPI, role: UserRole | str = UserRole.PATIENT
     ):
         """
         Override authentication dependencies in a FastAPI app
@@ -330,7 +328,7 @@ class AuthBypass:
         return original_overrides
 
     def restore_auth_dependencies(
-        self, app: FastAPI, original_overrides: Dict[Any, Any]
+        self, app: FastAPI, original_overrides: dict[Any, Any]
     ):
         """
         Restore original authentication dependencies

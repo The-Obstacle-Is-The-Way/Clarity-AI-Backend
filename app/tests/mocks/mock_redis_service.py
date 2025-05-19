@@ -5,8 +5,8 @@ This module provides a mock implementation of the Redis service
 for testing, avoiding the need for a real Redis instance.
 """
 
-from typing import Any, Dict, List, Optional, Set, Union
 import logging
+from typing import Any
 
 # Attempt to import the interface, provide a fallback if not found
 try:
@@ -24,7 +24,7 @@ except ImportError:
             pass
 
         @abstractmethod
-        async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+        async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
             """Set key to value with optional expiration."""
             pass
 
@@ -54,8 +54,8 @@ class MockRedisService(RedisService):
 
     def __init__(self):
         """Initialize the mock Redis service."""
-        self._data: Dict[str, Any] = {}
-        self._expiry: Dict[str, int] = {}  # TTL in seconds
+        self._data: dict[str, Any] = {}
+        self._expiry: dict[str, int] = {}  # TTL in seconds
         logger.info("Initialized MockRedisService")
 
     async def get(self, key: str) -> Any:
@@ -71,7 +71,7 @@ class MockRedisService(RedisService):
         logger.debug(f"MockRedisService.get({key})")
         return self._data.get(key)
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """
         Set key to value with optional expiration.
 
@@ -252,7 +252,7 @@ class MockRedisService(RedisService):
         self._data.clear()
         self._expiry.clear()
 
-    def _get_data(self) -> Dict[str, Any]:
+    def _get_data(self) -> dict[str, Any]:
         """
         Get all data (testing helper).
 

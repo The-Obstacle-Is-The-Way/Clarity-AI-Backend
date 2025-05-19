@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.utils.datetime_utils import UTC
 

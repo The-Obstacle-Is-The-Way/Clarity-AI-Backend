@@ -5,8 +5,8 @@ This module defines error codes and error handling utilities for the application
 providing consistent error patterns that can be used across different layers.
 """
 
-from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any
 
 from app.core.exceptions.base_exceptions import ApplicationError as BaseApplicationError
 
@@ -82,7 +82,7 @@ class ApplicationError(BaseApplicationError):
     def __init__(
         self,
         message: str = "Application error",
-        detail: Optional[str | List[str] | Dict[str, Any]] = None,
+        detail: str | list[str] | dict[str, Any] | None = None,
         code: ErrorCode = ErrorCode.INTERNAL_ERROR,
     ):
         """

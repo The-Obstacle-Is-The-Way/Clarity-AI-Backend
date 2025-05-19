@@ -287,7 +287,7 @@ class TestLogSanitization:
         phi_logger.error("Patient with phone number (555) 123-4567 reported an issue")
 
         # Read the log file and check for PHI
-        with open(log_file, "r") as f:
+        with open(log_file) as f:
             log_content = f.read()
 
         # Verify no PHI is present

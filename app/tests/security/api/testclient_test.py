@@ -3,7 +3,7 @@ Test error masking using FastAPI's TestClient.
 """
 
 import logging
-import pytest
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -25,7 +25,7 @@ def create_testclient_app():
     @app.exception_handler(RuntimeError)
     def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
         """Specific handler for RuntimeError to mask details."""
-        logger.error(f"RuntimeError encountered: {str(exc)}")
+        logger.error(f"RuntimeError encountered: {exc!s}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},
@@ -34,7 +34,7 @@ def create_testclient_app():
     @app.exception_handler(Exception)
     def exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Generic exception handler that masks all errors."""
-        logger.error(f"Exception encountered: {type(exc).__name__}: {str(exc)}")
+        logger.error(f"Exception encountered: {type(exc).__name__}: {exc!s}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},

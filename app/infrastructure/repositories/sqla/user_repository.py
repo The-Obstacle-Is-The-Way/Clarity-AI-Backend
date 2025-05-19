@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.domain.entities.user import User
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.infrastructure.models.sqla.user import User as UserModel
 
 
 class SQLAlchemyUserRepository(IUserRepository):
