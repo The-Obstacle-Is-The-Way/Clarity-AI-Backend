@@ -773,12 +773,10 @@ class TestBiometricAlertsEndpoints:
         test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str]
     ) -> None:
-        # Mock alert service to return None for the not found case
+        # Mock alert service to return a tuple with False, error message and HTTP 404 status code
         alert_service_mock = MagicMock(spec=AlertServiceInterface)
-        alert_service_mock.update_alert_status = AsyncMock(side_effect=HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Alert not found"
-        ))
+        # Return (False, "Alert not found", 404) to ensure 404 status code
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(False, "Alert not found", 404))
         
         # Add missing abstract methods
         alert_service_mock.create_rule = AsyncMock(return_value=None)
@@ -820,21 +818,6 @@ class TestBiometricAlertsEndpoints:
             "end_date": "2023-02-01T00:00:00+00:00",
             "alert_count": 5,
             "by_status": {"open": 2, "acknowledged": 1, "resolved": 2},
-            "by_priority": {"low": 1, "medium": 2, "high": 2},
-            "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
-        }
-        
-        # Mock response for get_alert_summary - use AsyncMock for both methods
-        alert_service_mock = MagicMock(spec=AlertServiceInterface)
-        alert_service_mock.validate_access = AsyncMock(return_value=True)
-        alert_service_mock.get_alert_summary = AsyncMock(return_value=summary_data)
-        
-        # Add missing abstract methods
-        alert_service_mock.create_rule = AsyncMock(return_value=None)
-        alert_service_mock.evaluate_biometric_data = AsyncMock(return_value=[])
-        alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
-        alert_service_mock.list_rules = AsyncMock(return_value=[])
-        alert_service_mock.update_rule = AsyncMock(return_value=None)
         
         # Override dependency - use the app from test_app
         app, _ = test_app  
@@ -877,11 +860,8 @@ class TestBiometricAlertsEndpoints:
     ) -> None:
         # Mock the alert service to properly handle the 404 case
         alert_service_mock = MagicMock(spec=AlertServiceInterface)
-        # Configure the get_patient_alert_summary method to raise a 404 HTTP exception
-        alert_service_mock.get_patient_alert_summary = AsyncMock(side_effect=HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient not found"
-        ))
+        # Return a tuple (None, error_message, 404) to indicate a not found condition
+        alert_service_mock.get_patient_alert_summary = AsyncMock(return_value=(None, "Patient not found", 404))
         
         # Add missing abstract methods
         alert_service_mock.create_rule = AsyncMock(return_value=None)
@@ -951,8 +931,19 @@ class TestBiometricAlertsEndpoints:
         # First save the original dependencies
         original_dependencies = dict(app.dependency_overrides)
         
-        # Clear the dependency overrides completely
+        # Create a proper mock for the alert service with all required abstract methods
+        alert_service_mock = MagicMock(spec=AlertServiceInterface)
+        alert_service_mock.update_alert_status = AsyncMock(return_value=(True, None))
+        alert_service_mock.create_rule = AsyncMock(return_value=None)
+        alert_service_mock.evaluate_biometric_data = AsyncMock(return_value=[])
+        alert_service_mock.get_rule_by_id = AsyncMock(return_value=None)
+        alert_service_mock.list_rules = AsyncMock(return_value=[])
+        alert_service_mock.update_rule = AsyncMock(return_value=None)
+        
+        # Instead of completely clearing dependencies, just override the auth dependency
+        # while keeping the alert service mock in place
         app.dependency_overrides = {}
+        app.dependency_overrides[get_alert_service_dependency] = lambda: alert_service_mock
         
         # We'll use fastapi's real get_current_active_user dependency that will enforce auth
         # Create a custom client for this test only
