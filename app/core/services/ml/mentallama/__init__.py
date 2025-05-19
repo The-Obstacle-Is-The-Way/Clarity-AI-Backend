@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 MentalLLaMA Service Implementation.
 
@@ -10,15 +9,15 @@ import datetime
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Union
 from datetime import timezone
+from typing import Any, Dict, List, Optional, Union
 
-from app.core.services.ml.interface import MentaLLaMAInterface
 from app.core.exceptions import (
     InvalidRequestError,
     ModelNotFoundError,
     ServiceUnavailableError,
 )
+from app.core.services.ml.interface import MentaLLaMAInterface
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class MentaLLaMA(MentaLLaMAInterface):
     specialized for mental health applications.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the MentaLLaMA service.
 
@@ -45,7 +44,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         self._healthy = True
         self._digital_twin_sessions = {}
 
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the service with configuration.
 
@@ -152,9 +151,9 @@ class MentaLLaMA(MentaLLaMAInterface):
     def process(
         self,
         text: str,
-        model_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        model_type: str | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Process text using the MentaLLaMA model.
 
@@ -253,8 +252,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def detect_depression(
-        self, text: str, options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, text: str, options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Detect depression signals in text.
 
@@ -363,9 +362,9 @@ class MentaLLaMA(MentaLLaMAInterface):
     def assess_risk(
         self,
         text: str,
-        risk_type: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        risk_type: str | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Assess risk in text.
 
@@ -537,8 +536,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def analyze_sentiment(
-        self, text: str, options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, text: str, options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Analyze sentiment in text.
 
@@ -775,9 +774,9 @@ class MentaLLaMA(MentaLLaMAInterface):
     def analyze_wellness_dimensions(
         self,
         text: str,
-        dimensions: Optional[List[str]] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        dimensions: list[str] | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze wellness dimensions in text.
 
@@ -1068,9 +1067,9 @@ class MentaLLaMA(MentaLLaMAInterface):
     def generate_digital_twin(
         self,
         patient_id: str,
-        patient_data: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        patient_data: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Generate or update a digital twin model for a patient.
 
@@ -1175,10 +1174,10 @@ class MentaLLaMA(MentaLLaMAInterface):
     def create_digital_twin_session(
         self,
         therapist_id: str,
-        patient_id: Optional[str] = None,
-        session_type: Optional[str] = None,
-        session_params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        patient_id: str | None = None,
+        session_type: str | None = None,
+        session_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Create a new Digital Twin session.
 
@@ -1252,7 +1251,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             ],
         }
 
-    def get_digital_twin_session(self, session_id: str) -> Dict[str, Any]:
+    def get_digital_twin_session(self, session_id: str) -> dict[str, Any]:
         """
         Get information about a Digital Twin session.
 
@@ -1296,10 +1295,10 @@ class MentaLLaMA(MentaLLaMAInterface):
         self,
         session_id: str,
         message: str,
-        sender_type: Optional[str] = None,
-        sender_id: Optional[str] = None,
-        message_params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        sender_type: str | None = None,
+        sender_id: str | None = None,
+        message_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Send a message to a Digital Twin session.
 
@@ -1396,8 +1395,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def end_digital_twin_session(
-        self, session_id: str, end_reason: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, session_id: str, end_reason: str | None = None
+    ) -> dict[str, Any]:
         """
         End a Digital Twin session.
 
@@ -1460,8 +1459,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def get_session_insights(
-        self, session_id: str, insight_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, session_id: str, insight_type: str | None = None
+    ) -> dict[str, Any]:
         """
         Get insights from a Digital Twin session.
 
@@ -1520,7 +1519,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def _generate_digital_twin_response(
-        self, message: str, session: Dict[str, Any]
+        self, message: str, session: dict[str, Any]
     ) -> str:
         """
         Generate a response from the Digital Twin based on the message and session context.
@@ -1581,7 +1580,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         else:
             return "I see. Could you tell me more about that?"
 
-    def _analyze_message_sentiment(self, message: str) -> Dict[str, Any]:
+    def _analyze_message_sentiment(self, message: str) -> dict[str, Any]:
         """
         Analyze sentiment in a message.
 
@@ -1635,7 +1634,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "negative_count": negative_count,
         }
 
-    def _generate_session_summary(self, session: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_session_summary(self, session: dict[str, Any]) -> dict[str, Any]:
         """
         Generate a summary of a session.
 
@@ -1704,7 +1703,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "sentiment_progression": self._analyze_sentiment_progression(user_messages),
         }
 
-    def _detect_message_themes(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _detect_message_themes(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Detect themes in a list of messages.
 
@@ -1780,7 +1779,7 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
         # Count occurrences of theme keywords
-        theme_counts = {theme: 0 for theme in theme_keywords}
+        theme_counts = dict.fromkeys(theme_keywords, 0)
 
         for message in messages:
             content = message["content"].lower()
@@ -1805,8 +1804,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def _analyze_sentiment_progression(
-        self, messages: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, messages: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Analyze sentiment progression throughout a list of messages.
 
@@ -1862,7 +1861,7 @@ class MentaLLaMA(MentaLLaMAInterface):
             "sentiment_values": sentiments,
         }
 
-    def _generate_session_insights(self, session: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_session_insights(self, session: dict[str, Any]) -> dict[str, Any]:
         """
         Generate insights from a session.
 
@@ -1923,8 +1922,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         return insights
 
     def _analyze_interaction_patterns(
-        self, messages: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, messages: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Analyze interaction patterns in a list of messages.
 
@@ -1989,8 +1988,8 @@ class MentaLLaMA(MentaLLaMAInterface):
         }
 
     def _generate_clinical_recommendations(
-        self, insights: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, insights: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Generate clinical recommendations based on insights.
 

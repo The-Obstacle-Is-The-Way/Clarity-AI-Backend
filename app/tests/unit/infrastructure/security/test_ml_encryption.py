@@ -4,15 +4,12 @@ Unit tests for the ML encryption service.
 These tests verify HIPAA-compliant encryption for ML models, tensors, and embeddings.
 """
 
-import json
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-from cryptography.fernet import InvalidToken
 
 from app.infrastructure.security.encryption.ml_encryption_service import (
     MLEncryptionService,

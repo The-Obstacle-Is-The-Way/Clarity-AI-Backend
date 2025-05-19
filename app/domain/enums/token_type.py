@@ -4,7 +4,7 @@ Token Type Enum.
 Defines the types of tokens used in the authentication system.
 """
 
-from enum import Enum, auto
+from enum import Enum
 
 
 class TokenType(str, Enum):

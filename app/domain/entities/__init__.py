@@ -5,6 +5,6 @@ This package contains business domain entities representing core objects
 in the system with their properties and behaviors.
 """
 
-from app.domain.entities.assessment import AssessmentType, AssessmentResult
+from app.domain.entities.assessment import AssessmentResult, AssessmentType
 
-__all__ = ["AssessmentType", "AssessmentResult"]
+__all__ = ["AssessmentResult", "AssessmentType"]

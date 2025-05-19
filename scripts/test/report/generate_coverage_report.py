@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Generate Coverage Report
 
@@ -11,9 +10,8 @@ Usage:
     python -m backend.scripts.generate_coverage_report
 """
 
-import sys
-import os
 import subprocess
+import sys
 from pathlib import Path
 
 

@@ -265,7 +265,7 @@ def get_settings() -> Settings:
         db_url = current_settings.DATABASE_URL
 
         # Convert standard SQLite URL to async version if needed
-        if db_url.startswith("sqlite:///") and not "aiosqlite" in db_url:
+        if db_url.startswith("sqlite:///") and "aiosqlite" not in db_url:
             current_settings.ASYNC_DATABASE_URL = db_url.replace(
                 "sqlite:///", "sqlite+aiosqlite:///"
             )

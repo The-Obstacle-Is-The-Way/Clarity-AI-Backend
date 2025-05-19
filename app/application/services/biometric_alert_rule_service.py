@@ -6,7 +6,7 @@ orchestrating repository operations for rule creation, retrieval, and management
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.core.exceptions import ApplicationError, ErrorCode
@@ -27,7 +27,6 @@ from app.domain.repositories.biometric_alert_rule_repository import (
 from app.domain.repositories.biometric_alert_template_repository import (
     BiometricAlertTemplateRepository,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +55,8 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
         self.template_repository = template_repository
 
     async def create_rule_from_template(
-        self, template_id: UUID, patient_id: UUID, custom_overrides: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, template_id: UUID, patient_id: UUID, custom_overrides: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a new alert rule based on a template with custom overrides.
 
@@ -136,13 +135,13 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             return self._to_dict(created_rule)
 
         except Exception as e:
-            logger.error(f"Failed to create rule from template: {str(e)}")
+            logger.error(f"Failed to create rule from template: {e!s}")
             raise ApplicationError(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to create rule from template: {str(e)}",
+                message=f"Failed to create rule from template: {e!s}",
             )
 
-    async def create_rule(self, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_rule(self, rule_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new alert rule from raw data.
 
@@ -210,10 +209,10 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                     )
                     conditions.append(condition)
                 except (ValueError, TypeError) as e:
-                    logger.error(f"Invalid condition data: {str(e)}")
+                    logger.error(f"Invalid condition data: {e!s}")
                     raise ApplicationError(
                         code=ErrorCode.VALIDATION_ERROR,
-                        message=f"Invalid condition data: {str(e)}",
+                        message=f"Invalid condition data: {e!s}",
                     )
 
             # Map logical operator
@@ -252,13 +251,13 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             # Re-raise application errors
             raise
         except Exception as e:
-            logger.error(f"Failed to create rule: {str(e)}")
+            logger.error(f"Failed to create rule: {e!s}")
             raise ApplicationError(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to create rule: {str(e)}",
+                message=f"Failed to create rule: {e!s}",
             )
 
-    async def get_rule_by_id(self, rule_id: UUID) -> Optional[Dict[str, Any]]:
+    async def get_rule_by_id(self, rule_id: UUID) -> dict[str, Any] | None:
         """
         Get a rule by its ID.
 
@@ -279,18 +278,18 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                 return self._to_dict(rule)
             return None
         except Exception as e:
-            logger.error(f"Failed to get rule {rule_id}: {str(e)}")
+            logger.error(f"Failed to get rule {rule_id}: {e!s}")
             raise ApplicationError(
-                code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get rule: {str(e)}"
+                code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get rule: {e!s}"
             )
 
     async def get_rules(
         self,
-        patient_id: Optional[UUID] = None,
-        is_active: Optional[bool] = None,
+        patient_id: UUID | None = None,
+        is_active: bool | None = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get rules with optional filtering.
 
@@ -315,14 +314,14 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             )
             return [self._to_dict(rule) for rule in rules]
         except Exception as e:
-            logger.error(f"Failed to get rules: {str(e)}")
+            logger.error(f"Failed to get rules: {e!s}")
             raise ApplicationError(
-                code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get rules: {str(e)}"
+                code=ErrorCode.INTERNAL_ERROR, message=f"Failed to get rules: {e!s}"
             )
 
     async def update_rule(
-        self, rule_id: UUID, update_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, rule_id: UUID, update_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Update an existing rule.
 
@@ -422,15 +421,15 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
             return self._to_dict(updated_rule)
 
         except ValueError as e:
-            logger.error(f"Validation error updating rule: {str(e)}")
+            logger.error(f"Validation error updating rule: {e!s}")
             raise ApplicationError(
-                code=ErrorCode.VALIDATION_ERROR, message=f"Validation error: {str(e)}"
+                code=ErrorCode.VALIDATION_ERROR, message=f"Validation error: {e!s}"
             )
         except Exception as e:
-            logger.error(f"Failed to update rule {rule_id}: {str(e)}")
+            logger.error(f"Failed to update rule {rule_id}: {e!s}")
             raise ApplicationError(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to update rule: {str(e)}",
+                message=f"Failed to update rule: {e!s}",
             )
 
     async def delete_rule(self, rule_id: UUID) -> bool:
@@ -451,10 +450,10 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
         try:
             return await self.rule_repository.delete(rule_id)
         except Exception as e:
-            logger.error(f"Failed to delete rule {rule_id}: {str(e)}")
+            logger.error(f"Failed to delete rule {rule_id}: {e!s}")
             raise ApplicationError(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to delete rule: {str(e)}",
+                message=f"Failed to delete rule: {e!s}",
             )
 
     async def update_rule_active_status(self, rule_id: UUID, is_active: bool) -> bool:
@@ -476,14 +475,14 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
         try:
             return await self.rule_repository.update_active_status(rule_id, is_active)
         except Exception as e:
-            logger.error(f"Failed to update rule {rule_id} active status: {str(e)}")
+            logger.error(f"Failed to update rule {rule_id} active status: {e!s}")
             raise ApplicationError(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to update rule active status: {str(e)}",
+                message=f"Failed to update rule active status: {e!s}",
             )
 
     async def count_patient_rules(
-        self, patient_id: UUID, is_active: Optional[bool] = None
+        self, patient_id: UUID, is_active: bool | None = None
     ) -> int:
         """
         Count rules for a patient, optionally filtering by active status.
@@ -513,13 +512,13 @@ class BiometricAlertRuleService(AlertRuleServiceInterface):
                 rules = await self.rule_repository.get_by_patient_id(patient_id)
                 return len(rules)
         except Exception as e:
-            logger.error(f"Failed to count rules for patient {patient_id}: {str(e)}")
+            logger.error(f"Failed to count rules for patient {patient_id}: {e!s}")
             raise ApplicationError(
                 code=ErrorCode.INTERNAL_ERROR,
-                message=f"Failed to count rules: {str(e)}",
+                message=f"Failed to count rules: {e!s}",
             )
 
-    def _to_dict(self, entity: Any) -> Dict[str, Any]:
+    def _to_dict(self, entity: Any) -> dict[str, Any]:
         """
         Convert an entity to a dictionary.
 

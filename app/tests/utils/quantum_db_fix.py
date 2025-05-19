@@ -10,7 +10,7 @@ import asyncio
 import logging
 import sys
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Import SQLAlchemy components

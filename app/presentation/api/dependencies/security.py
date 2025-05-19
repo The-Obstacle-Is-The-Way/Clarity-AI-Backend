@@ -9,16 +9,10 @@ import logging
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-
-# Import the concrete implementation from the infrastructure layer
-from app.infrastructure.security.password.password_handler import PasswordHandler
 
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings  # Corrected import
-from app.domain.entities.user import User
-from app.domain.exceptions import AuthenticationError
+# Import the concrete implementation from the infrastructure layer
+from app.infrastructure.security.password.password_handler import PasswordHandler
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +33,6 @@ def get_password_handler() -> PasswordHandler:
 PasswordHandlerDep = Annotated[PasswordHandler, Depends(get_password_handler)]
 
 __all__ = [
-    "get_password_handler",
     "PasswordHandlerDep",
+    "get_password_handler",
 ]

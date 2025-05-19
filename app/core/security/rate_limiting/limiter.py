@@ -7,7 +7,6 @@ rate limiting with HIPAA-compliant protection against DDoS attacks.
 
 import logging
 import time
-from typing import Dict, Tuple, Optional, Any
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -74,7 +73,7 @@ class RateLimiter:
         # Check if within rate limit
         return client_data["count"] <= self.requests_per_minute
 
-    async def get_quota(self, client_id: str) -> Tuple[int, int]:
+    async def get_quota(self, client_id: str) -> tuple[int, int]:
         """
         Get the current request quota for a client.
 

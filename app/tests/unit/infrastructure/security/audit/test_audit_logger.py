@@ -8,8 +8,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 
 import pytest
 

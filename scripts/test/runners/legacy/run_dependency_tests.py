@@ -17,11 +17,9 @@ Options:
     --dry-run        Show which tests would be run without actually running them
 """
 
-import os
-import sys
 import argparse
-from typing import List, Optional
 import subprocess
+import sys
 
 
 def setup_parser() -> argparse.ArgumentParser:
@@ -57,7 +55,7 @@ def get_marker_for_level(level: str) -> str:
     return markers.get(level, "")
 
 
-def build_pytest_command(level: str, verbose: bool, dry_run: bool) -> List[str]:
+def build_pytest_command(level: str, verbose: bool, dry_run: bool) -> list[str]:
     """Build the pytest command based on arguments."""
     marker = get_marker_for_level(level)
 

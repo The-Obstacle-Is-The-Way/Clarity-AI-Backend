@@ -3,11 +3,12 @@ Simple, standalone test for error masking without middleware complexity.
 """
 
 import logging
+from contextlib import asynccontextmanager
+
 import pytest
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from httpx import AsyncClient, ASGITransport
-from contextlib import asynccontextmanager
+from httpx import ASGITransport, AsyncClient
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def create_test_app():
         request: Request, exc: RuntimeError
     ) -> JSONResponse:
         """Specific handler for RuntimeError to mask details."""
-        logger.error(f"RuntimeError encountered: {str(exc)}")
+        logger.error(f"RuntimeError encountered: {exc!s}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},
@@ -46,7 +47,7 @@ def create_test_app():
         request: Request, exc: Exception
     ) -> JSONResponse:
         """Generic exception handler that masks all errors."""
-        logger.error(f"Exception encountered: {type(exc).__name__}: {str(exc)}")
+        logger.error(f"Exception encountered: {type(exc).__name__}: {exc!s}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "An internal server error occurred."},

@@ -14,8 +14,8 @@ import pytest
 from app.core.exceptions import (
     InvalidConfigurationError,
     InvalidRequestError,
-    ServiceUnavailableError,
     ResourceNotFoundError,
+    ServiceUnavailableError,
 )
 from app.infrastructure.ml.digital_twin.mock import (
     MockDigitalTwinService,

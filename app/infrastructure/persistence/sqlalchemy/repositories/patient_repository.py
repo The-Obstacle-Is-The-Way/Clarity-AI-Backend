@@ -5,11 +5,8 @@ This module provides a concrete implementation of the patient repository
 interface using SQLAlchemy for database operations.
 """
 import dataclasses
-import inspect
 import json
-import traceback
 import uuid
-from dataclasses import fields
 from datetime import date, datetime, timezone
 from typing import Any
 from uuid import UUID
@@ -23,9 +20,7 @@ from app.core.exceptions import PersistenceError  # ADD THIS IMPORT
 
 # Import the custom logger function
 from app.core.utils.logging import get_logger
-from app.infrastructure.security.audit.audit import AuditLogger
 from app.domain.entities.patient import Patient as PatientEntity
-from app.domain.value_objects.address import Address
 
 # The ContactInfoDescriptor in the Patient domain entity now properly handles
 # both class-level access (PatientEntity.contact_info) and instance-level access (patient.contact_info)
@@ -425,7 +420,7 @@ class PatientRepository:
         # Try attribute iteration
         if not domain_dict:
             self.logger.warning(
-                f"Using fallback attribute extraction for patient update"
+                "Using fallback attribute extraction for patient update"
             )
             for attr in dir(patient_entity):
                 if not attr.startswith("_") and not callable(

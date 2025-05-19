@@ -376,7 +376,7 @@ def process_patient_data():
         auditor = PHIAuditor(app_dir=app_dir)
 
         # Directly scan the test file to ensure PHI is detected
-        with open(test_file_path, "r") as f:
+        with open(test_file_path) as f:
             content = f.read()
             # Verify PHI detection directly
             phi_matches = auditor.phi_detector.detect_phi(content)

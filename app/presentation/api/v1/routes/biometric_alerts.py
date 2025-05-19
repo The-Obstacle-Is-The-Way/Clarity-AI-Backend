@@ -7,16 +7,19 @@ and proper audit logging.
 """
 
 
+import uuid
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
     Path,
     Query,
+)
+from fastapi import (
     status as http_status,
 )
 from pydantic import UUID4
-import uuid
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User

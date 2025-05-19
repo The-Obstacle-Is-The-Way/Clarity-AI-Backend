@@ -9,9 +9,7 @@ import datetime
 import uuid
 from uuid import UUID
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.entities.digital_twin.temporal_neurotransmitter_sequence import (
     TemporalNeurotransmitterSequence,

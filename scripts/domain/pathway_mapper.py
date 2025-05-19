@@ -6,7 +6,6 @@ cascading effects of neurotransmitter interactions across brain regions,
 including the critical PITUITARY region for hypothalamus-pituitary connectivity.
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Union
 from . import BrainRegion, EffectMagnitude, Neurotransmitter
 
 
@@ -25,7 +24,7 @@ class NeuralPathwayMapper:
 
     def _initialize_region_connectivity(
         self,
-    ) -> Dict[BrainRegion, Dict[BrainRegion, EffectMagnitude]]:
+    ) -> dict[BrainRegion, dict[BrainRegion, EffectMagnitude]]:
         """
         Initialize the connectivity matrix between brain regions.
 
@@ -49,7 +48,7 @@ class NeuralPathwayMapper:
 
     def _initialize_neurotransmitter_interactions(
         self,
-    ) -> Dict[Neurotransmitter, Dict[Neurotransmitter, EffectMagnitude]]:
+    ) -> dict[Neurotransmitter, dict[Neurotransmitter, EffectMagnitude]]:
         """
         Initialize the interactions between neurotransmitters with proper effect magnitudes.
 
@@ -80,7 +79,7 @@ class NeuralPathwayMapper:
         source_region: BrainRegion,
         target_region: BrainRegion,
         primary_neurotransmitter: Neurotransmitter,
-    ) -> Dict[Neurotransmitter, float]:
+    ) -> dict[Neurotransmitter, float]:
         """
         Calculate the cascade effect of a neurotransmitter from one brain region to another.
 
@@ -115,7 +114,7 @@ class NeuralPathwayMapper:
 
     def _get_direct_effect(
         self, source: BrainRegion, target: BrainRegion
-    ) -> Optional[EffectMagnitude]:
+    ) -> EffectMagnitude | None:
         """Get the direct effect magnitude between two brain regions."""
         return self._region_connectivity.get(source, {}).get(target)
 
@@ -124,14 +123,14 @@ class NeuralPathwayMapper:
         magnitude_map = {"large": 0.8, "medium": 0.5, "small": 0.2}
         return magnitude_map.get(magnitude, 0.0)
 
-    def get_all_affected_regions(self, source_region: BrainRegion) -> Set[BrainRegion]:
+    def get_all_affected_regions(self, source_region: BrainRegion) -> set[BrainRegion]:
         """Get all regions affected by the source region through direct and indirect connections."""
         affected = set()
         self._trace_region_effects(source_region, affected, set())
         return affected
 
     def _trace_region_effects(
-        self, region: BrainRegion, affected: Set[BrainRegion], visited: Set[BrainRegion]
+        self, region: BrainRegion, affected: set[BrainRegion], visited: set[BrainRegion]
     ):
         """Recursively trace effects through the brain region network."""
         if region in visited:

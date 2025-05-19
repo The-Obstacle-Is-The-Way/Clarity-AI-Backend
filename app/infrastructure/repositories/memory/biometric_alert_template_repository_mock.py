@@ -5,7 +5,7 @@ This module provides a mock implementation of the template repository interface
 for biometric alert templates. It's useful for testing and development.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,7 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
         """Initialize the repository with predefined templates."""
         self._templates = self._get_predefined_templates()
 
-    def _get_predefined_templates(self) -> List[Dict[str, Any]]:
+    def _get_predefined_templates(self) -> list[dict[str, Any]]:
         """Return a list of predefined templates for testing."""
         return [
             {
@@ -76,7 +76,7 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
             },
         ]
 
-    async def get_all_templates(self) -> List[Dict[str, Any]]:
+    async def get_all_templates(self) -> list[dict[str, Any]]:
         """
         Retrieve all available biometric alert templates.
 
@@ -85,7 +85,7 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
         """
         return self._templates
 
-    async def get_template_by_id(self, template_id: UUID) -> Optional[Dict[str, Any]]:
+    async def get_template_by_id(self, template_id: UUID) -> dict[str, Any] | None:
         """
         Retrieve a template by its ID.
 
@@ -101,7 +101,7 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
                 return template
         return None
 
-    async def get_templates_by_category(self, category: str) -> List[Dict[str, Any]]:
+    async def get_templates_by_category(self, category: str) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by category.
 
@@ -119,7 +119,7 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
 
     async def get_templates_by_metric_type(
         self, metric_type: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve templates filtered by metric type.
 
@@ -137,7 +137,7 @@ class MockBiometricAlertTemplateRepository(BiometricAlertTemplateRepository):
                     break
         return result
 
-    async def save_template(self, template: Dict[str, Any]) -> Dict[str, Any]:
+    async def save_template(self, template: dict[str, Any]) -> dict[str, Any]:
         """
         Save a template definition.
 

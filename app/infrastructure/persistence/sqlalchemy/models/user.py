@@ -27,10 +27,9 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import declared_attr, relationship
 from sqlalchemy.types import TEXT, TypeDecorator
 
 from app.domain.utils.datetime_utils import now_utc
@@ -44,7 +43,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
 from app.infrastructure.persistence.sqlalchemy.registry import register_model
 
 # Correct import: Use absolute path to types.py file
-from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict, GUID
+from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
 
 logger = logging.getLogger(__name__)
 

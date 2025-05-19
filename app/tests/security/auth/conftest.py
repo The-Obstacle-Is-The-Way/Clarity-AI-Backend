@@ -4,39 +4,25 @@ Fixtures for authentication API tests.
 This module provides fixture functions for testing authentication endpoints.
 """
 import uuid
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from typing import (
-    Any,
-    AsyncGenerator,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Tuple,
-    cast,
-    AsyncIterable,
-)
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, MagicMock, patch
-from contextlib import asynccontextmanager
 from httpx._transports.asgi import ASGITransport
-from fastapi import status
 
 from app.core.config.settings import Settings, get_settings
 from app.core.domain.entities.user import User, UserRole, UserStatus
-from app.presentation.api.schemas.auth import (
-    TokenResponseSchema,
-    SessionInfoResponseSchema,
-    UserRegistrationResponseSchema,
-)
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.domain.exceptions.auth_exceptions import (
-    InvalidCredentialsException,
-    AccountDisabledException,
     InvalidTokenException,
+)
+from app.presentation.api.schemas.auth import (
+    SessionInfoResponseSchema,
+    TokenResponseSchema,
 )
 
 
@@ -172,10 +158,9 @@ def jwt_service_patch(test_settings) -> Generator:
 @pytest.fixture
 def middleware_patch(test_settings, authenticated_user):
     """Patch the authentication middleware to use test tokens."""
-    from starlette.middleware.base import BaseHTTPMiddleware
+
+
     from app.presentation.middleware.authentication import AuthenticationMiddleware
-    import jwt
-    from datetime import datetime, timezone
 
     # Store the original dispatch method
     original_dispatch = AuthenticationMiddleware.dispatch
@@ -251,7 +236,7 @@ def middleware_patch(test_settings, authenticated_user):
             }
 
             return await call_next(request)
-        except Exception as e:
+        except Exception:
             # Call the original dispatch for error cases
             return await original_dispatch(self, request, call_next)
 
@@ -289,12 +274,12 @@ async def app_instance(
         FastAPI application instance configured for testing
     """
     from app.app_factory import create_application
-    from app.presentation.api.dependencies.auth_service import get_auth_service
-    from app.presentation.api.dependencies.database import get_async_session_utility
     from app.presentation.api.dependencies.auth import (
         get_current_user,
         get_optional_user,
     )
+    from app.presentation.api.dependencies.auth_service import get_auth_service
+    from app.presentation.api.dependencies.database import get_async_session_utility
 
     app = create_application(settings_override=test_settings, include_test_routers=True)
 
@@ -339,9 +324,9 @@ async def app_instance(
     # This is a hacky workaround for the test environment that effectively replaces
     # the route handlers with simplified versions that skip validation
 
-    from fastapi import Response, Request
+    from fastapi import Request, Response
     from fastapi.routing import APIRoute
-    from app.presentation.api.v1.endpoints.auth import router as auth_router
+
 
     # Create a custom login route handler that bypasses validation
     async def patched_login_route(request: Request, response: Response):
@@ -411,7 +396,7 @@ async def app_instance(
             # Convert to FastAPI HTTPException
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Refresh token error: {str(e)}",
+                detail=f"Refresh token error: {e!s}",
             )
 
     # Create a custom logout route handler that bypasses validation
@@ -442,7 +427,7 @@ async def app_instance(
 @pytest.fixture
 async def client_app_tuple_func_scoped(
     app_instance,
-) -> AsyncGenerator[Tuple[AsyncClient, FastAPI], None]:
+) -> AsyncGenerator[tuple[AsyncClient, FastAPI], None]:
     """
     Creates an async client connected to the test FastAPI app.
 
@@ -459,7 +444,7 @@ async def client_app_tuple_func_scoped(
 
 
 @pytest.fixture
-def get_valid_auth_headers() -> Dict[str, str]:
+def get_valid_auth_headers() -> dict[str, str]:
     """
     Returns valid authentication headers with a mock JWT token.
 
@@ -470,7 +455,7 @@ def get_valid_auth_headers() -> Dict[str, str]:
 
 
 @pytest.fixture
-def get_valid_provider_auth_headers() -> Dict[str, str]:
+def get_valid_provider_auth_headers() -> dict[str, str]:
     """
     Returns valid authentication headers for a provider role.
 

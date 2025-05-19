@@ -12,7 +12,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.infrastructure.security.phi import PHIMiddleware, add_phi_middleware
+from app.infrastructure.security.phi import add_phi_middleware
 
 
 class TestPHIMiddleware:
@@ -137,7 +137,6 @@ class TestPHIMiddleware:
 
     def test_sanitize_request_with_phi(self, client):
         """Test that PHI is sanitized in request logging."""
-        from app.infrastructure.security.phi import PHISanitizer
 
         # Override the post method to allow direct sanitization for this test
         original_post = client.post
@@ -161,7 +160,6 @@ class TestPHIMiddleware:
                 response = original_post(*args, **kwargs)
 
                 # Create a modified response by updating content
-                from fastapi.testclient import TestClient
                 from fastapi import Response
 
                 # Create a new response with the sanitized content

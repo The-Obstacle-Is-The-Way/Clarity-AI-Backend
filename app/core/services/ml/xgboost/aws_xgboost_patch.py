@@ -6,16 +6,15 @@ modified in the AWSXGBoostService class to fix test failures.
 """
 
 import json
-from datetime import datetime
 from typing import Any
 
-from app.core.utils.date_utils import utcnow
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
     DataPrivacyError,
     ModelNotFoundError,
     ValidationError,
 )
+from app.core.utils.date_utils import utcnow
 
 
 def validate_aws_config(self, config: dict[str, Any]) -> None:

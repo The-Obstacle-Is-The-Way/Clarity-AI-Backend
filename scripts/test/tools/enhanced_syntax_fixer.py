@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Enhanced Test Suite Syntax Fixer Script
 
@@ -12,15 +11,11 @@ Usage:
     python scripts/test/tools/enhanced_syntax_fixer.py [--test-path PATH]
 """
 
+import ast
+import logging
 import os
 import re
 import sys
-import ast
-import tokenize
-import io
-import logging
-from pathlib import Path
-from typing import List, Dict, Tuple, Set, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -71,7 +66,7 @@ class PythonSyntaxFixer:
         # Fallback to current directory if backend not found
         return os.getcwd()
 
-    def find_test_files(self, test_path: str) -> List[str]:
+    def find_test_files(self, test_path: str) -> list[str]:
         """Find all Python test files in the given directory"""
         test_dir = os.path.join(self.project_root, test_path)
         test_files = []
@@ -83,10 +78,10 @@ class PythonSyntaxFixer:
 
         return test_files
 
-    def check_syntax(self, file_path: str) -> Tuple[bool, str]:
+    def check_syntax(self, file_path: str) -> tuple[bool, str]:
         """Check if a file has syntax errors"""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
             ast.parse(content)
             return True, ""
@@ -100,7 +95,7 @@ class PythonSyntaxFixer:
         result = SyntaxFixResult()
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             fixed_lines = []
@@ -171,7 +166,7 @@ class PythonSyntaxFixer:
                     )
 
         except Exception as e:
-            result.add_error(0, f"Error fixing file: {str(e)}")
+            result.add_error(0, f"Error fixing file: {e!s}")
 
         return result
 
@@ -190,7 +185,7 @@ class PythonSyntaxFixer:
 
         return (is_func_def or is_class_def) and not prev_fixture and line.strip() != ""
 
-    def repair_all_test_files(self, test_path: str) -> Dict[str, int]:
+    def repair_all_test_files(self, test_path: str) -> dict[str, int]:
         """Attempt to repair all test files in the given directory"""
         test_files = self.find_test_files(test_path)
         logger.info(f"Found {len(test_files)} test files")

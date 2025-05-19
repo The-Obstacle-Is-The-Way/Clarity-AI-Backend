@@ -6,9 +6,10 @@ which is required by other parts of the application but was previously missing.
 See Memory 83e40060.
 """
 
+import logging
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-import logging
 
 logger = logging.getLogger(__name__)
 

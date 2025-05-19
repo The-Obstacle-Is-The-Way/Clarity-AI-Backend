@@ -7,7 +7,7 @@ mapping domain entities to database tables.
 
 import uuid
 
-from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, ForeignKey
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
@@ -15,10 +15,9 @@ from app.domain.utils.datetime_utils import now_utc
 
 # from app.infrastructure.persistence.sqlalchemy.config.base import Base # Old Base
 # from app.infrastructure.database.base_class import TimestampMixin # Old TimestampMixin
-
 # Use the canonical Base and TimestampMixin from the models package
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
 from app.infrastructure.persistence.sqlalchemy.models.base import (
+    Base,
     TimestampMixin,
 )  # Canonical TimestampMixin
 

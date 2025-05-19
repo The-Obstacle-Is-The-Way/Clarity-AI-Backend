@@ -6,8 +6,7 @@ for processing and analyzing actigraphy data. This interface follows the Interfa
 Segregation Principle (ISP) from SOLID design principles.
 """
 
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
-from datetime import datetime
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -21,11 +20,11 @@ class ActigraphyServiceInterface(Protocol):
     async def analyze_actigraphy(
         self,
         patient_id: str,
-        readings: List[Dict[str, Any]],
-        device_info: Optional[Dict[str, Any]] = None,
-        analysis_types: Optional[List[str]] = None,
+        readings: list[dict[str, Any]],
+        device_info: dict[str, Any] | None = None,
+        analysis_types: list[str] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze actigraphy data to extract relevant features and patterns.
 
@@ -42,8 +41,8 @@ class ActigraphyServiceInterface(Protocol):
         ...
 
     async def get_embeddings(
-        self, patient_id: str, readings: Optional[List[Dict[str, Any]]] = None, **kwargs
-    ) -> Dict[str, Any]:
+        self, patient_id: str, readings: list[dict[str, Any]] | None = None, **kwargs
+    ) -> dict[str, Any]:
         """
         Generate embeddings from actigraphy data for use in machine learning models.
 
@@ -58,8 +57,8 @@ class ActigraphyServiceInterface(Protocol):
         ...
 
     async def get_analysis_by_id(
-        self, analysis_id: str, patient_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, analysis_id: str, patient_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Retrieve a previously performed analysis by its ID.
 
@@ -74,7 +73,7 @@ class ActigraphyServiceInterface(Protocol):
 
     async def get_patient_analyses(
         self, patient_id: str, limit: int = 10, offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Retrieve all analyses performed for a specific patient.
 
@@ -88,7 +87,7 @@ class ActigraphyServiceInterface(Protocol):
         """
         ...
 
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the current actigraphy analysis model.
 
@@ -97,7 +96,7 @@ class ActigraphyServiceInterface(Protocol):
         """
         ...
 
-    async def get_analysis_types(self) -> List[str]:
+    async def get_analysis_types(self) -> list[str]:
         """
         Get available analysis types supported by the service.
 
@@ -110,9 +109,9 @@ class ActigraphyServiceInterface(Protocol):
         self,
         patient_id: str,
         analysis_id: str,
-        profile_id: Optional[str] = None,
-        integration_options: Optional[Dict[str, bool]] = None,
-    ) -> Dict[str, Any]:
+        profile_id: str | None = None,
+        integration_options: dict[str, bool] | None = None,
+    ) -> dict[str, Any]:
         """
         Integrate actigraphy analysis results with a patient's digital twin.
 

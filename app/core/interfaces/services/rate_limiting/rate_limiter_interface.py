@@ -8,7 +8,7 @@ enabling proper dependency inversion following Clean Architecture principles.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional, Tuple, TypeVar
+from typing import TypeVar
 
 # Type definitions
 Request = TypeVar("Request")  # Generic request type
@@ -65,7 +65,7 @@ class IRateLimiter(ABC):
         pass
 
     @abstractmethod
-    async def track_request(self, key: str, config: RateLimitConfig) -> Tuple[int, int]:
+    async def track_request(self, key: str, config: RateLimitConfig) -> tuple[int, int]:
         """
         Track a request against the rate limit and return current status.
 

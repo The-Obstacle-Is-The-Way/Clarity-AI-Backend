@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions.ml_exceptions import PHISecurityError, PHIDetectionError
+from app.core.exceptions.ml_exceptions import PHIDetectionError
 from app.infrastructure.ml.phi_detection.service import PHIDetectionService, PHIPattern
 
 # Mock external dependencies

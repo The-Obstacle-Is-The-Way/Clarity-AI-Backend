@@ -9,9 +9,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.services.biometric_alert_audit_service import BiometricAlertAuditService

@@ -7,15 +7,17 @@ strict validation of all input and output data for HIPAA compliance.
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
-from pydantic import Field, field_validator, UUID4, BaseModel
+from pydantic import Field, field_validator
 
 from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.utils.date_utils import utcnow
 from app.domain.entities.biometric_rule import (
     AlertPriority as RuleAlertPriority,
+)
+from app.domain.entities.biometric_rule import (
     LogicalOperator,
     RuleOperator,
 )

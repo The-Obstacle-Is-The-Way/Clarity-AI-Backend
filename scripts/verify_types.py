@@ -5,10 +5,10 @@ This script verifies that custom SQLAlchemy types are correctly defined
 and properly exported from the types package, following clean architecture principles.
 """
 
-import sys
-import logging
-from typing import Dict, List, Tuple, Type, Any, Optional
 import importlib
+import logging
+import sys
+from typing import Any
 
 # Configure logging with no sensitive information
 logging.basicConfig(
@@ -24,7 +24,7 @@ class TypeVerifier:
 
     def __init__(self) -> None:
         """Initialize the type verifier."""
-        self.type_paths: Dict[str, str] = {
+        self.type_paths: dict[str, str] = {
             "GUID": "app.infrastructure.persistence.sqlalchemy.types",
             "JSONEncodedDict": "app.infrastructure.persistence.sqlalchemy.types",
             "StringListDecorator": "app.infrastructure.persistence.sqlalchemy.types",
@@ -40,7 +40,7 @@ class TypeVerifier:
         """
         logger.info("Verifying SQLAlchemy custom types...")
 
-        imported_types: Dict[str, Any] = {}
+        imported_types: dict[str, Any] = {}
         success = True
 
         # Try importing each type individually to isolate failures
@@ -55,7 +55,7 @@ class TypeVerifier:
                     f"❌ Import error for {type_name}: {str(e).replace('(', '[').replace(')', ']')}"
                 )
                 success = False
-            except AttributeError as e:
+            except AttributeError:
                 logger.error(f"❌ Type {type_name} not found in module {module_path}")
                 success = False
             except Exception as e:

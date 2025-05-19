@@ -5,11 +5,11 @@ This module provides factory functions for creating token blacklist repositories
 that can be used for testing and development purposes.
 """
 
-from app.infrastructure.security.token.in_memory_token_blacklist_repository import (
-    InMemoryTokenBlacklistRepository,
-)
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
+)
+from app.infrastructure.security.token.in_memory_token_blacklist_repository import (
+    InMemoryTokenBlacklistRepository,
 )
 
 

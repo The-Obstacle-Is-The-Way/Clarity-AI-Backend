@@ -6,22 +6,21 @@ following clean architecture principles with proper separation of concerns.
 """
 
 import logging
-from typing import List, Optional, Any, Dict
+from datetime import datetime, timedelta, timezone
+from typing import Any
 from uuid import UUID
-from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Body
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field
 
-from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
+from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
 from app.core.domain.entities.user import User
+from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.presentation.api.dependencies.auth import get_current_active_user
 from app.presentation.api.schemas.alert import (
-    AlertCreateRequest,
     AlertResponse,
-    AlertsFilterParams,
     AlertUpdateRequest,
 )
-from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.presentation.api.v1.dependencies.biometric import get_alert_service
 
 logger = logging.getLogger(__name__)
@@ -31,22 +30,22 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=List[AlertResponse])
+@router.get("", response_model=list[AlertResponse])
 async def get_alerts(
-    status_param: Optional[AlertStatus] = Query(
+    status_param: AlertStatus | None = Query(
         None, alias="status", description="Filter by alert status"
     ),
-    priority: Optional[AlertPriority] = Query(
+    priority: AlertPriority | None = Query(
         None, description="Filter by alert priority"
     ),
-    alert_type: Optional[AlertType] = Query(None, description="Filter by alert type"),
-    start_date: Optional[str] = Query(
+    alert_type: AlertType | None = Query(None, description="Filter by alert type"),
+    start_date: str | None = Query(
         None, description="Filter by start date (ISO format)"
     ),
-    end_date: Optional[str] = Query(
+    end_date: str | None = Query(
         None, description="Filter by end date (ISO format)"
     ),
-    patient_id: Optional[str] = Query(
+    patient_id: str | None = Query(
         None, description="Patient ID if accessing as provider"
     ),
     limit: int = Query(
@@ -55,7 +54,7 @@ async def get_alerts(
     offset: int = Query(0, ge=0, description="Number of records to skip"),
     alert_service: AlertServiceInterface = Depends(get_alert_service),
     current_user: User = Depends(get_current_active_user),
-) -> List[AlertResponse]:
+) -> list[AlertResponse]:
     """
     Get a list of biometric alerts with optional filtering.
 
@@ -92,7 +91,7 @@ async def get_alerts(
                 # This will raise an exception if not authorized
                 await alert_service.validate_access(str(current_user.id), patient_id)
             except Exception as e:
-                logger.warning(f"Access validation failed: {str(e)}")
+                logger.warning(f"Access validation failed: {e!s}")
                 # Return empty list for unauthorized access instead of error
                 return []
 
@@ -164,7 +163,7 @@ async def get_alerts(
                                 )
                                 result.append(alert_response)
                         except (AttributeError, TypeError) as e:
-                            logger.warning(f"Error converting alert item: {str(e)}")
+                            logger.warning(f"Error converting alert item: {e!s}")
                             # Skip this item but continue processing
                             continue
                 else:
@@ -172,7 +171,7 @@ async def get_alerts(
                         f"Alert service returned unexpected type: {type(alerts)}"
                     )
             except (AttributeError, TypeError) as e:
-                logger.warning(f"Error processing alerts: {str(e)}")
+                logger.warning(f"Error processing alerts: {e!s}")
                 # Return empty list on error
 
             return result
@@ -180,12 +179,12 @@ async def get_alerts(
         except TypeError as e:
             # Handle case where the mock returns a tuple or other incorrect type
             logger.warning(
-                f"Alert service returned unexpected data type: {str(e)}, returning empty list"
+                f"Alert service returned unexpected data type: {e!s}, returning empty list"
             )
             return []
 
     except Exception as e:
-        logger.error(f"Error getting alerts: {str(e)}")
+        logger.error(f"Error getting alerts: {e!s}")
         # For testing, we'll return an empty list instead of failing with 500
         # This is a more resilient approach for the API
         return []
@@ -218,7 +217,7 @@ async def get_alert(
                 alert_id=str(alert_id), user_id=str(current_user.id)
             )
         except Exception as e:
-            logger.error(f"Error retrieving alert {alert_id}: {str(e)}")
+            logger.error(f"Error retrieving alert {alert_id}: {e!s}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Alert not found or access denied",
@@ -247,7 +246,7 @@ async def get_alert(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error getting alert {alert_id}: {str(e)}")
+        logger.error(f"Error getting alert {alert_id}: {e!s}")
         # HIPAA-compliant error handling
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -315,13 +314,13 @@ async def update_alert_status(
 
     except ValueError as e:
         # Handle validation errors
-        logger.warning(f"Validation error updating alert {alert_id}: {str(e)}")
+        logger.warning(f"Validation error updating alert {alert_id}: {e!s}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error updating alert {alert_id} status: {str(e)}")
+        logger.error(f"Error updating alert {alert_id} status: {e!s}")
         # HIPAA-compliant error handling with no PHI in error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -370,7 +369,7 @@ async def get_patient_alert_summary(
                     str(current_user.id), str(patient_id)
                 )
             except Exception as e:
-                logger.warning(f"Access validation failed: {str(e)}")
+                logger.warning(f"Access validation failed: {e!s}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Not authorized to access this patient's data",
@@ -426,7 +425,7 @@ async def get_patient_alert_summary(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error getting patient alert summary: {str(e)}")
+        logger.error(f"Error getting patient alert summary: {e!s}")
         # HIPAA-compliant error handling
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -488,7 +487,7 @@ async def trigger_alert_manually(
                     str(current_user.id), str(patient_id)
                 )
             except Exception as e:
-                logger.warning(f"Access validation failed: {str(e)}")
+                logger.warning(f"Access validation failed: {e!s}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Not authorized to create alerts for this patient",
@@ -520,7 +519,7 @@ async def trigger_alert_manually(
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"Error creating manual alert: {str(e)}")
+        logger.error(f"Error creating manual alert: {e!s}")
         # HIPAA-compliant error handling
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

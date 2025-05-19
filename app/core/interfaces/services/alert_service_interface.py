@@ -9,10 +9,9 @@ Alerts are critical for clinical monitoring and intervention triggers.
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 from uuid import UUID
 
-from app.core.domain.entities.alert import Alert
 from app.domain.entities.biometric_alert_rule import BiometricAlertRule
 
 
@@ -155,7 +154,7 @@ class AlertServiceInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_rule_by_id(self, rule_id: str) -> Optional[BiometricAlertRule]:
+    async def get_rule_by_id(self, rule_id: str) -> BiometricAlertRule | None:
         """Get a rule by its ID."""
         pass
 
@@ -167,13 +166,13 @@ class AlertServiceInterface(ABC):
     @abstractmethod
     async def update_rule(
         self, rule_id: str, rule_data: BiometricAlertRule
-    ) -> Optional[BiometricAlertRule]:
+    ) -> BiometricAlertRule | None:
         """Update an existing alert rule."""
         pass
 
     @abstractmethod
     async def list_rules(
-        self, user_id: Optional[str] = None
-    ) -> List[BiometricAlertRule]:
+        self, user_id: str | None = None
+    ) -> list[BiometricAlertRule]:
         """List alert rules, optionally filtered by user."""
         pass

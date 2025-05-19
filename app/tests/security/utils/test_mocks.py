@@ -5,11 +5,10 @@ This module provides mock implementations for various security components
 to be used in unit tests, ensuring isolation from real security services.
 """
 
-import uuid
-from unittest.mock import MagicMock
 import os
 import re
-import base64
+import uuid
+from unittest.mock import MagicMock
 
 # Required for proper crypto mocking
 from cryptography.fernet import Fernet
@@ -50,7 +49,7 @@ class MockEncryptionService(BaseEncryptionService):
                 )
             else:
                 self._previous_cipher = None
-        except Exception as e:
+        except Exception:
             # For tests, fallback to something that works
             test_key = Fernet.generate_key()
             self._cipher = Fernet(test_key)

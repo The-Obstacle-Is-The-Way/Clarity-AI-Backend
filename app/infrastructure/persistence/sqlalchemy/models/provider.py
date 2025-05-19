@@ -7,16 +7,15 @@ mapping the domain entity to the database schema.
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional, Union, List, Dict, Any
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text, JSON
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.mutable import MutableDict
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
+    AuditMixin,
     Base,
     TimestampMixin,
-    AuditMixin,
 )
 from app.infrastructure.persistence.sqlalchemy.models.user import User
 from app.infrastructure.persistence.sqlalchemy.registry import register_model

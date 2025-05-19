@@ -17,7 +17,7 @@ import yaml
 
 # Core Imports
 from app.core.domain.entities.phi.phi_match import PHIMatch
-from app.core.exceptions.ml_exceptions import PHIDetectionError, PHISecurityError
+from app.core.exceptions.ml_exceptions import PHIDetectionError
 from app.core.utils.logging import get_logger
 
 
@@ -31,18 +31,18 @@ def phi_error_handler(func):
         except Exception as e:
             # Determine appropriate error type based on function name
             if func.__name__ == "contains_phi":
-                raise PHIDetectionError(f"Failed to detect PHI: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to detect PHI: {e!s}") from e
             elif func.__name__ == "detect_phi":
                 raise PHIDetectionError(
-                    f"Failed to detect PHI details: {str(e)}"
+                    f"Failed to detect PHI details: {e!s}"
                 ) from e
             elif func.__name__ == "redact_phi":
-                raise PHIDetectionError(f"Failed to redact PHI: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to redact PHI: {e!s}") from e
             elif func.__name__ == "anonymize_phi":
-                raise PHIDetectionError(f"Failed to anonymize PHI: {str(e)}") from e
+                raise PHIDetectionError(f"Failed to anonymize PHI: {e!s}") from e
             else:
                 # Default error message for other functions
-                raise PHIDetectionError(f"Failed in {func.__name__}: {str(e)}") from e
+                raise PHIDetectionError(f"Failed in {func.__name__}: {e!s}") from e
 
     return wrapper
 

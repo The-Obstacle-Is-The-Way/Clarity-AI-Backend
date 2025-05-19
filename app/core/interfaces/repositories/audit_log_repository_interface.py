@@ -7,7 +7,7 @@ HIPAA-compliant audit log persistence operations.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Dict, Optional, Any
+from typing import Any
 
 from app.domain.entities.audit_log import AuditLog
 
@@ -34,7 +34,7 @@ class IAuditLogRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, log_id: str) -> Optional[AuditLog]:
+    async def get_by_id(self, log_id: str) -> AuditLog | None:
         """
         Retrieve an audit log entry by its ID.
 
@@ -49,12 +49,12 @@ class IAuditLogRepository(ABC):
     @abstractmethod
     async def search(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """
         Search for audit log entries based on filters.
 
@@ -72,8 +72,8 @@ class IAuditLogRepository(ABC):
 
     @abstractmethod
     async def get_statistics(
-        self, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
-    ) -> Dict[str, Any]:
+        self, start_time: datetime | None = None, end_time: datetime | None = None
+    ) -> dict[str, Any]:
         """
         Get statistics about audit logs for the specified time period.
 

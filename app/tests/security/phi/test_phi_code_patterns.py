@@ -438,7 +438,7 @@ paths:
         print(f"File content length: {len(content)}")
 
         # Read the file back to ensure content was properly written
-        with open(api_spec_file, "r") as f:
+        with open(api_spec_file) as f:
             file_content = f.read()
             print(f"File content starts with: {file_content[:50]}")
 

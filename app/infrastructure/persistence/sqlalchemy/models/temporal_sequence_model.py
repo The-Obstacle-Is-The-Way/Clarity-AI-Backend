@@ -5,14 +5,12 @@ This module defines the ORM models for temporal sequences and events,
 supporting neural network modeling and temporal analysis.
 """
 
+
 import sqlalchemy as sa
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
-import json
 
 from app.domain.utils.datetime_utils import now_utc
 from app.infrastructure.persistence.sqlalchemy.models.base import Base
-from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict, GUID
+from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
 
 
 class TemporalSequenceModel(Base):

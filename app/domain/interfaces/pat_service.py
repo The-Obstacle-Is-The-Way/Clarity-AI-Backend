@@ -7,7 +7,7 @@ which handles psychological assessments and their scoring.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -23,7 +23,7 @@ class PATService(ABC):
     @abstractmethod
     def get_assessment_questions(
         self, patient_id: UUID, assessment_type: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get a list of assessment questions for a patient.
 
@@ -41,7 +41,7 @@ class PATService(ABC):
         self,
         patient_id: UUID,
         assessment_type: str,
-        responses: Dict[str, Union[int, float, str]],
+        responses: dict[str, int | float | str],
     ) -> Any:
         """
         Submit an assessment for a patient and get the result.
@@ -58,8 +58,8 @@ class PATService(ABC):
 
     @abstractmethod
     def get_assessment_history(
-        self, patient_id: UUID, assessment_type: Optional[str] = None, limit: int = 10
-    ) -> List[Any]:
+        self, patient_id: UUID, assessment_type: str | None = None, limit: int = 10
+    ) -> list[Any]:
         """
         Get assessment history for a patient.
 
@@ -78,9 +78,9 @@ class PATService(ABC):
         self,
         patient_id: UUID,
         assessment_type: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, Any]:
         """
         Get trend analysis for a patient's assessment results.
 

@@ -9,7 +9,6 @@ declarative Base from app.infrastructure.persistence.sqlalchemy.models.base.
 
 import logging
 import uuid
-from typing import Any
 
 from sqlalchemy import Column, DateTime, String, func  # Removed MetaData
 
@@ -18,6 +17,7 @@ from sqlalchemy.ext.declarative import declared_attr  # Keep for @declared_attr
 
 # Removed: from sqlalchemy.orm import registry
 from sqlalchemy.sql import func
+
 from app.domain.utils.datetime_utils import now_utc
 
 # Configure logging
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Removed validate_models function
 
 
-class TimestampMixin(object):  # Inherit from object (or nothing)
+class TimestampMixin:  # Inherit from object (or nothing)
     """
     Mixin to add created_at and updated_at timestamps to models.
 
@@ -62,7 +62,7 @@ class TimestampMixin(object):  # Inherit from object (or nothing)
         )
 
 
-class AuditMixin(object):  # Inherit from object (or nothing)
+class AuditMixin:  # Inherit from object (or nothing)
     """
     Mixin for HIPAA-compliant audit fields.
 

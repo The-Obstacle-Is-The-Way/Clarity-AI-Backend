@@ -16,11 +16,11 @@ with the HIPAA Security Rule.:
 import base64
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timedelta
 from unittest import mock
-from unittest.mock import patch, MagicMock
-import re
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException

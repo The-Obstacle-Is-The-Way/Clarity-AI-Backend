@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.config.settings import Settings
 from app.domain.exceptions.token_exceptions import (
@@ -210,7 +209,7 @@ class TestJWTService:
             exc_info.value
         ) or "Not enough segments" in str(
             exc_info.value
-        ), f"Expected error message not found in: {str(exc_info.value)}"
+        ), f"Expected error message not found in: {exc_info.value!s}"
 
     @pytest.mark.asyncio
     async def test_decode_token_missing_required_claims(

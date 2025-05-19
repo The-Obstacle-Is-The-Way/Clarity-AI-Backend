@@ -6,6 +6,7 @@ validation, and management to ensure secure authentication within the platform.
 """
 
 import asyncio
+import uuid
 from datetime import datetime, timedelta, timezone  # Corrected import
 
 # from app.domain.utils.datetime_utils import UTC # Use timezone.utc directly
@@ -13,22 +14,18 @@ from unittest.mock import MagicMock
 
 import jwt
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from freezegun import freeze_time
-import uuid
 
 # Use canonical config path
 from app.config.settings import Settings
-from app.infrastructure.security.jwt.jwt_service import (
-    JWTService,
-    TokenType,
-    TokenPayload,
-)
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
 )
-from app.domain.exceptions import AuthenticationError  # Corrected import path
+from app.infrastructure.security.jwt.jwt_service import (
+    JWTService,
+    TokenType,
+)
 
 # Define UTC if not imported elsewhere (Python 3.11+)
 try:

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, status, Query, Body, Request
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 
 # This import is based on what conftest.py was using for User in mocks, may need adjustment
 # depending on the actual User type expected by get_current_active_user dependency.
 # from app.core.domain.entities.user import User
 # For now, assume the modern Pydantic User from app.domain.entities is preferred for new code:
 from app.domain.entities.user import User
-from typing import Optional, Dict, List, Any
 
 # Schemas (actual paths might differ, these are placeholders based on common patterns)
 # from app.presentation.api.schemas.analytics_schemas import AnalyticsEventData, AnalyticsEventBatchData
@@ -58,8 +58,8 @@ async def record_analytics_event(
         get_process_analytics_event_use_case
     ),
     # Add query parameters to handle query args from tests
-    args: Optional[str] = Query(default=None),
-    kwargs: Optional[str] = Query(default=None),
+    args: str | None = Query(default=None),
+    kwargs: str | None = Query(default=None),
 ):
     """
     Process a single analytics event.
@@ -110,8 +110,8 @@ async def record_analytics_batch(
         get_batch_process_analytics_use_case
     ),
     # Add query parameters to handle query args from tests
-    args: Optional[str] = Query(default=None),
-    kwargs: Optional[str] = Query(default=None),
+    args: str | None = Query(default=None),
+    kwargs: str | None = Query(default=None),
 ):
     """
     Process a batch of analytics events.
@@ -152,7 +152,7 @@ async def record_analytics_batch(
         else:
             # Single event as dict
             events_data = [request_data]
-            print(f"DEBUG: Single dict event detected")
+            print("DEBUG: Single dict event detected")
 
     # Ensure background_tasks is not None (for testing)
     if background_tasks is None:

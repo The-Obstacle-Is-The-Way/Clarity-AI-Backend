@@ -3,14 +3,13 @@
 import asyncio
 import logging
 import sys
-import time
+import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
-import traceback
 
 # Configure debug logging
 logging.basicConfig(

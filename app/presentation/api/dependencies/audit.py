@@ -5,14 +5,16 @@ This module provides dependency functions for FastAPI to inject audit logging se
 """
 
 from fastapi import Depends
+
+from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.repositories.audit_log_repository_interface import (
     IAuditLogRepository,
 )
 from app.core.interfaces.services.audit_logger_interface import IAuditLogger
-from app.application.services.audit_log_service import AuditLogService
 from app.infrastructure.persistence.repositories.audit_log_repository import (
     SQLAlchemyAuditLogRepository,
 )
+
 from .repository import get_repository
 
 

@@ -9,7 +9,6 @@ This script:
 """
 import os
 import re
-import shutil
 from pathlib import Path
 
 # Base directories
@@ -56,7 +55,7 @@ def copy_file_with_updated_imports(src_file, dest_file):
     ensure_directory_exists(dest_file.parent)
 
     # Read content and update imports
-    with open(src_file, "r") as f:
+    with open(src_file) as f:
         content = f.read()
 
     # Apply all import replacements
@@ -87,7 +86,7 @@ def find_target_dir(src_path):
                 # Keep track of the longest/most specific match
                 if match_len > max_match_len:
                     max_match_len = match_len
-                    rel_path_str = str(rel_path) if rel_path != Path(".") else ""
+                    rel_path_str = str(rel_path) if rel_path != Path() else ""
                     best_match = (
                         target_dir / rel_path_str if rel_path_str else target_dir
                     )
@@ -149,7 +148,7 @@ def update_imports_in_backend(processed_files):
     # Update imports in all Python files
     for file_path in all_py_files:
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 content = f.read()
 
             original_content = content

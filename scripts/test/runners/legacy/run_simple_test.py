@@ -8,8 +8,9 @@ It's useful for debugging test issues without the complexity of the full test su
 
 import os
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 def main():

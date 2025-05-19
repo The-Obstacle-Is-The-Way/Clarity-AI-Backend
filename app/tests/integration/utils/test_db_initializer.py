@@ -20,23 +20,21 @@ import uuid
 from collections.abc import AsyncGenerator
 from datetime import date, datetime, timezone
 
-# Import models we need for test creation
-from app.infrastructure.persistence.sqlalchemy.models import UserRole
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
-
 # Import the base module which contains the model validation functions
 # from app.infrastructure.persistence.sqlalchemy.models.base import (
 #     Base,
 #     ensure_all_models_loaded,
 #     validate_models,
 # )
-
 # Ensure all models are loaded and registered
 # ensure_all_models_loaded()
 # validate_models()
-
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+# Import models we need for test creation
+from app.infrastructure.persistence.sqlalchemy.models import UserRole
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

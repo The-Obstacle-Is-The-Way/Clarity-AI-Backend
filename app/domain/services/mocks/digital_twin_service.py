@@ -7,11 +7,11 @@ of the DigitalTwinService for test purposes.
 
 from app.domain.entities.digital_twin import (
     DigitalTwin,
-    NeurotransmitterTwinModel,
     MedicationResponseModel,
+    NeurotransmitterTwinModel,
 )
-from app.domain.entities.patient import Patient
 from app.domain.entities.medication import Medication
+from app.domain.entities.patient import Patient
 
 
 class MockDigitalTwinService:

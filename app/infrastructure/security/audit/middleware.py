@@ -5,20 +5,20 @@ This middleware provides comprehensive audit logging for API calls, with special
 handling for PHI access to ensure HIPAA compliance.
 """
 
-import re
+import asyncio
 import ipaddress
 import logging
-import asyncio
-from typing import Callable, List, Pattern, Dict, Any, Tuple, Optional
+import re
+from collections.abc import Callable
+from typing import Any
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config.settings import get_settings
 from app.core.interfaces.services.audit_logger_interface import (
     IAuditLogger,
-    AuditEventType,
 )
 
 # Initialize logger
@@ -41,7 +41,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         audit_logger: IAuditLogger,
-        skip_paths: List[str] = None,
+        skip_paths: list[str] = None,
         disable_audit_middleware: bool = False,
     ):
         """
@@ -271,7 +271,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             # Re-raise the original exception
             raise
 
-    async def _extract_user_id(self, request: Request) -> Optional[str]:
+    async def _extract_user_id(self, request: Request) -> str | None:
         """
         Extract the user ID from the request.
 
@@ -296,7 +296,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             pass  # Fall through to return None
         return None
 
-    def _extract_resource_info(self, path: str) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_resource_info(self, path: str) -> tuple[str | None, str | None]:
         """
         Extract resource type and ID from the URL path.
         Handles paths like:
@@ -413,7 +413,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 
         return False
 
-    async def _create_request_context(self, request: Request) -> Dict[str, Any]:
+    async def _create_request_context(self, request: Request) -> dict[str, Any]:
         """
         Create rich context information from the request for security analysis.
 

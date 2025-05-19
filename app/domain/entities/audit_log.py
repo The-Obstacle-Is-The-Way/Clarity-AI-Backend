@@ -6,10 +6,10 @@ the core business concept of audit logging in a HIPAA-compliant system.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AuditLog(BaseModel):
@@ -21,17 +21,17 @@ class AuditLog(BaseModel):
     system events.
     """
 
-    id: Optional[str] = Field(default_factory=lambda: str(uuid4()))
+    id: str | None = Field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     event_type: str
-    actor_id: Optional[str] = None
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
+    actor_id: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
     action: str
-    status: Optional[str] = None
-    ip_address: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
-    success: Optional[bool] = None
+    status: str | None = None
+    ip_address: str | None = None
+    details: dict[str, Any] | None = None
+    success: bool | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -82,7 +82,7 @@ class AuditLogBatch(BaseModel):
     Used for bulk operations and export/import.
     """
 
-    logs: List[AuditLog]
+    logs: list[AuditLog]
     start_timestamp: datetime
     end_timestamp: datetime
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -91,7 +91,7 @@ class AuditLogBatch(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
-    def create_from_logs(cls, logs: List[AuditLog]) -> "AuditLogBatch":
+    def create_from_logs(cls, logs: list[AuditLog]) -> "AuditLogBatch":
         """
         Create a batch from a list of audit logs.
 

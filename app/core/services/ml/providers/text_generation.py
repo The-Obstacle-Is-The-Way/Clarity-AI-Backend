@@ -15,7 +15,7 @@ from app.core.exceptions import (
     ServiceUnavailableError,
 )
 from app.core.services.ml.interface import TextGenerationInterface
-from app.infrastructure.security.phi import PHISanitizer, get_sanitizer
+from app.infrastructure.security.phi import get_sanitizer
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ import logging
 import os
 import sys
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 # Configure logging
 logging.basicConfig(

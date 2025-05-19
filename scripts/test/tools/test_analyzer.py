@@ -9,15 +9,15 @@ Usage:
     python test_analyzer.py --output-file test_analysis_results.json
 """
 
-import os
-import re
+import argparse
 import ast
 import json
-import argparse
+import os
+import re
 import sys
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Any, Union
-from dataclasses import dataclass, field, asdict
+from typing import Any
 
 
 @dataclass
@@ -29,12 +29,12 @@ class TestFileInfo:
     module_name: str
     dependency_level: str = "unknown"
     has_syntax_error: bool = False
-    error_message: Optional[str] = None
-    markers: List[str] = field(default_factory=list)
-    imports: List[str] = field(default_factory=list)
-    fixtures: List[str] = field(default_factory=list)
+    error_message: str | None = None
+    markers: list[str] = field(default_factory=list)
+    imports: list[str] = field(default_factory=list)
+    fixtures: list[str] = field(default_factory=list)
     test_count: int = 0
-    destination_path: Optional[str] = None
+    destination_path: str | None = None
 
 
 class TestAnalyzer:
@@ -42,7 +42,7 @@ class TestAnalyzer:
     Analyzes test files to determine their dependency level and other characteristics.
     """
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """
         Initialize the test analyzer.
 
@@ -92,7 +92,7 @@ class TestAnalyzer:
             "cassandra",
         }
 
-    def analyze_all_tests(self) -> List[TestFileInfo]:
+    def analyze_all_tests(self) -> list[TestFileInfo]:
         """
         Analyze all test files in the project.
 
@@ -173,7 +173,7 @@ class TestAnalyzer:
 
         # Try to parse the file
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Extract markers from content using regex
@@ -224,14 +224,14 @@ class TestAnalyzer:
 
         except SyntaxError as e:
             test_info.has_syntax_error = True
-            test_info.error_message = f"Syntax error: {str(e)}"
+            test_info.error_message = f"Syntax error: {e!s}"
         except Exception as e:
             test_info.has_syntax_error = True
-            test_info.error_message = f"Error analyzing file: {str(e)}"
+            test_info.error_message = f"Error analyzing file: {e!s}"
 
         return test_info
 
-    def _extract_imports(self, tree: ast.AST) -> List[str]:
+    def _extract_imports(self, tree: ast.AST) -> list[str]:
         """
         Extract all imports from an AST.
 
@@ -278,7 +278,7 @@ class TestAnalyzer:
 
         return count
 
-    def _extract_fixtures(self, tree: ast.AST) -> List[str]:
+    def _extract_fixtures(self, tree: ast.AST) -> list[str]:
         """
         Extract fixture names defined in the file.
 
@@ -302,7 +302,7 @@ class TestAnalyzer:
 
         return fixtures
 
-    def _determine_dependency_from_imports(self, imports: List[str]) -> str:
+    def _determine_dependency_from_imports(self, imports: list[str]) -> str:
         """
         Determine dependency level based on imports.
 
@@ -356,7 +356,7 @@ class TestAnalyzer:
         # Default to venv as a safer middle ground
         return "venv"
 
-    def generate_report(self, tests: List[TestFileInfo]) -> Dict[str, Any]:
+    def generate_report(self, tests: list[TestFileInfo]) -> dict[str, Any]:
         """
         Generate a report of test analysis.
 

@@ -6,8 +6,7 @@ repository interface for testing and development purposes.
 """
 
 import hashlib
-from datetime import datetime, UTC
-from typing import Optional, Dict, Set
+from datetime import UTC, datetime
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -31,13 +30,13 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
     def __init__(self):
         """Initialize the in-memory token blacklist repository."""
         # Structure: {token_hash: {"jti": jti, "expires_at": datetime}}
-        self._token_blacklist: Dict[str, Dict] = {}
+        self._token_blacklist: dict[str, dict] = {}
 
         # Structure: {jti: {"expires_at": datetime, "reason": str}}
-        self._jti_blacklist: Dict[str, Dict] = {}
+        self._jti_blacklist: dict[str, dict] = {}
 
         # Structure: {session_id: Set[jti]}
-        self._session_tokens: Dict[str, Set[str]] = {}
+        self._session_tokens: dict[str, set[str]] = {}
 
         logger.info("InMemoryTokenBlacklistRepository initialized")
 
@@ -54,7 +53,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
         return hashlib.sha256(token.encode()).hexdigest()
 
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: Optional[str] = None
+        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
     ) -> None:
         """
         Add a token to the blacklist.
@@ -90,8 +89,8 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
                 f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}"
             )
         except Exception as e:
-            logger.error(f"Failed to blacklist token: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist token: {str(e)}")
+            logger.error(f"Failed to blacklist token: {e!s}")
+            raise RepositoryException(f"Failed to blacklist token: {e!s}")
 
     async def is_blacklisted(self, token: str) -> bool:
         """
@@ -122,7 +121,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
 
             return True
         except Exception as e:
-            logger.error(f"Failed to check token blacklist: {str(e)}")
+            logger.error(f"Failed to check token blacklist: {e!s}")
             # For security, assume token is blacklisted if check fails
             return True
 
@@ -153,7 +152,7 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
 
             return True
         except Exception as e:
-            logger.error(f"Failed to check JTI blacklist: {str(e)}")
+            logger.error(f"Failed to check JTI blacklist: {e!s}")
             # For security, assume JTI is blacklisted if check fails
             return True
 
@@ -188,8 +187,8 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
 
             logger.info(f"Blacklisted all tokens for session {session_id}")
         except Exception as e:
-            logger.error(f"Failed to blacklist session tokens: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist session tokens: {str(e)}")
+            logger.error(f"Failed to blacklist session tokens: {e!s}")
+            raise RepositoryException(f"Failed to blacklist session tokens: {e!s}")
 
     async def remove_expired_entries(self) -> int:
         """
@@ -228,5 +227,5 @@ class InMemoryTokenBlacklistRepository(ITokenBlacklistRepository):
             logger.info(f"Removed {removed_count} expired entries from token blacklist")
             return removed_count
         except Exception as e:
-            logger.error(f"Failed to remove expired entries: {str(e)}")
-            raise RepositoryException(f"Failed to remove expired entries: {str(e)}")
+            logger.error(f"Failed to remove expired entries: {e!s}")
+            raise RepositoryException(f"Failed to remove expired entries: {e!s}")

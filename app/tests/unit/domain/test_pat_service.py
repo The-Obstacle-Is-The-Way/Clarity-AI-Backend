@@ -4,13 +4,13 @@ Unit tests for the PAT service.
 These tests verify the functionality of the PAT service and its mock implementation.
 """
 
-import pytest
-from unittest.mock import MagicMock
 from datetime import datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import UUID
 
+import pytest
+
+from app.domain.entities.assessment import AssessmentType
 from app.domain.services.mocks.mock_pat_service import MockPATService
-from app.domain.entities.assessment import AssessmentType, AssessmentResult
 from app.domain.utils.datetime_utils import UTC
 
 

@@ -5,28 +5,22 @@ Provides API endpoints for interacting with the user's digital twin.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
 from uuid import UUID
-from datetime import datetime, timezone, timedelta
-import copy
 
-from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 
 from app.core.domain.entities.user import User
 from app.core.exceptions.base_exceptions import (
-    ResourceNotFoundError,
     ModelExecutionError,
+    ResourceNotFoundError,
 )
 from app.presentation.api.dependencies.auth import get_current_active_user
 
 # Assuming schemas exist here, adjust if necessary
 from app.presentation.api.schemas.digital_twin import (
-    DigitalTwinResponse,
-    DigitalTwinStatusResponse,
-    ComponentStatus,
-    PersonalizedInsightResponse,
     ClinicalTextAnalysisRequest,
-    ClinicalTextAnalysisResponse,
+    DigitalTwinResponse,
 )
 from app.presentation.api.v1.dependencies.digital_twin import DigitalTwinServiceDep
 
@@ -61,16 +55,16 @@ async def get_digital_twin(
             detail="Digital twin data not found for current user",
         )
     except Exception as e:
-        logger.error(f"Error retrieving digital twin: {str(e)}")
+        logger.error(f"Error retrieving digital twin: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve digital twin: {str(e)}",
+            detail=f"Failed to retrieve digital twin: {e!s}",
         )
 
 
 @router.get(
     "/{patient_id}/status",
-    response_model=Dict[
+    response_model=dict[
         str, Any
     ],  # Use Dict instead of DigitalTwinStatusResponse to avoid validation
     summary="Get the digital twin status for a patient",
@@ -79,7 +73,7 @@ async def get_twin_status(
     patient_id: UUID,
     dt_service: DigitalTwinServiceDep,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retrieve the status of a patient's digital twin, showing which components are available.
     """
@@ -90,26 +84,26 @@ async def get_twin_status(
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Digital twin status not found: {str(e)}",
+            detail=f"Digital twin status not found: {e!s}",
         )
     except Exception as e:
-        logger.error(f"Error retrieving digital twin status: {str(e)}")
+        logger.error(f"Error retrieving digital twin status: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve digital twin status: {str(e)}",
+            detail=f"Failed to retrieve digital twin status: {e!s}",
         )
 
 
 @router.get(
     "/{patient_id}/insights",
-    response_model=Dict[str, Any],  # Use Dict instead of PersonalizedInsightResponse
+    response_model=dict[str, Any],  # Use Dict instead of PersonalizedInsightResponse
     summary="Get comprehensive insights for a patient",
 )
 async def get_comprehensive_insights(
     patient_id: UUID,
     dt_service: DigitalTwinServiceDep,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate comprehensive personalized insights for a patient based on their digital twin.
     """
@@ -122,11 +116,11 @@ async def get_comprehensive_insights(
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient or digital twin not found: {str(e)}",
+            detail=f"Patient or digital twin not found: {e!s}",
         )
     except ModelExecutionError as e:
         # Convert ModelExecutionError to HTTP 500 with standardized error response
-        logger.error(f"Model execution error in insights generation: {str(e)}")
+        logger.error(f"Model execution error in insights generation: {e!s}")
         # Return a structured JSON response with both detail and error_code fields
         from fastapi.responses import JSONResponse
 
@@ -138,27 +132,27 @@ async def get_comprehensive_insights(
             },
         )
     except Exception as e:
-        logger.error(f"Error generating insights: {str(e)}")
+        logger.error(f"Error generating insights: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error generating insights: {str(e)}",
+            detail=f"Unexpected error generating insights: {e!s}",
         )
 
 
 @router.post(
     "/{patient_id}/analyze-text",
-    response_model=Dict[str, Any],  # Use Dict instead of ClinicalTextAnalysisResponse
+    response_model=dict[str, Any],  # Use Dict instead of ClinicalTextAnalysisResponse
     summary="Analyze clinical text using the digital twin",
 )
 async def analyze_clinical_text(
     patient_id: UUID,
     request: Request,  # Add the Request object
-    request_data: Optional[dict] = Body(
+    request_data: dict | None = Body(
         default=None
     ),  # Make Body optional with default None
     dt_service: DigitalTwinServiceDep = None,  # Keep it as None to avoid Depends issues
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Analyze clinical text using MentaLLaMA integration with the patient's digital twin.
     """
@@ -203,7 +197,7 @@ async def analyze_clinical_text(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": f"Invalid request: {str(e)}"},
+            detail={"error": f"Invalid request: {e!s}"},
         )
 
     try:
@@ -214,11 +208,11 @@ async def analyze_clinical_text(
     except ResourceNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient or digital twin not found: {str(e)}",
+            detail=f"Patient or digital twin not found: {e!s}",
         )
     except ModelExecutionError as e:
         # Convert ModelExecutionError to HTTP 500 with standardized error response
-        logger.error(f"Model execution error in text analysis: {str(e)}")
+        logger.error(f"Model execution error in text analysis: {e!s}")
         # Return a structured JSON response with both detail and error_code fields
         from fastapi.responses import JSONResponse
 
@@ -230,8 +224,8 @@ async def analyze_clinical_text(
             },
         )
     except Exception as e:
-        logger.error(f"Error analyzing clinical text: {str(e)}")
+        logger.error(f"Error analyzing clinical text: {e!s}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error analyzing text: {str(e)}",
+            detail=f"Unexpected error analyzing text: {e!s}",
         )

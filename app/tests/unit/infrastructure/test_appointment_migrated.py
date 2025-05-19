@@ -7,15 +7,12 @@ Migration date: Tue May 13 10:04:16 EDT 2025
 """
 
 # Import the actual implementations being tested
-from app.domain.entities.appointment import Appointment, AppointmentStatus
-from app.domain.exceptions import (
-    InvalidAppointmentStateError,
-    InvalidAppointmentTimeError,
-)
+from datetime import datetime, timedelta
+from uuid import UUID, uuid4
 
 import pytest
-from datetime import datetime, timedelta
-from uuid import uuid4, UUID
+
+from app.domain.entities.appointment import Appointment, AppointmentStatus
 from app.domain.utils.datetime_utils import UTC
 
 

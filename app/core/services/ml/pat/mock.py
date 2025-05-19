@@ -19,13 +19,12 @@ from typing import Any
 import numpy as np
 
 from app.core.exceptions.base_exceptions import (
+    AuthorizationError as BaseAuthorizationError,
+)
+from app.core.exceptions.base_exceptions import (
     InitializationError,
     ResourceNotFoundError,
     ValidationError,
-    AuthenticationException,
-    AuthorizationError as BaseAuthorizationError,
-    ConfigurationError,
-    DatabaseException,
 )
 from app.core.services.ml.pat.pat_interface import PATInterface
 

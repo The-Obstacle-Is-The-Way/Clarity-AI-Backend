@@ -8,9 +8,6 @@ UnitOfWork instances with their proper repository dependencies.
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.interfaces.unit_of_work import IUnitOfWork
-from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import (
-    AsyncSQLAlchemyUnitOfWork,
-)
 from app.infrastructure.persistence.sqlalchemy.repositories.biometric_alert_repository import (
     BiometricAlertRepositoryImpl,
 )
@@ -28,6 +25,9 @@ from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository i
 )
 from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
     UserRepositoryImpl,
+)
+from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import (
+    AsyncSQLAlchemyUnitOfWork,
 )
 
 

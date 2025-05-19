@@ -119,6 +119,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         """Test the is_phi_test_file detection logic."""
         import shutil
         import tempfile
+
         from app.tests.security.utils.test_mocks import MockPHIAuditor
 
         temp_dir = tempfile.mkdtemp()
@@ -179,6 +180,7 @@ class TestPHIAuditLogic(BaseSecurityTest):
         """Test that strict mode disables special handling for test files and clean_app directories."""
         import shutil
         import tempfile
+
         from app.tests.security.utils.test_mocks import MockPHIAuditor
 
         # Use monkeypatch to replace PHIAuditor with our MockPHIAuditor

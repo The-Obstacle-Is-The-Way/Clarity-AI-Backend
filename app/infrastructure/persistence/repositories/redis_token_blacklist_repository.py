@@ -6,9 +6,8 @@ interface using Redis as the storage backend. This implementation is designed
 for production use to properly manage token invalidation for HIPAA compliance.
 """
 
-from datetime import datetime, timedelta, UTC
-from typing import Optional
 import hashlib
+from datetime import UTC, datetime
 
 from app.core.interfaces.repositories.token_blacklist_repository_interface import (
     ITokenBlacklistRepository,
@@ -48,7 +47,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
         logger.info("RedisTokenBlacklistRepository initialized")
 
     async def add_to_blacklist(
-        self, token: str, jti: str, expires_at: datetime, reason: Optional[str] = None
+        self, token: str, jti: str, expires_at: datetime, reason: str | None = None
     ) -> None:
         """
         Add a token to the blacklist.
@@ -93,8 +92,8 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
                 f"Token {jti} blacklisted until {expires_at.isoformat()}, reason: {reason}"
             )
         except Exception as e:
-            logger.error(f"Failed to blacklist token: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist token: {str(e)}")
+            logger.error(f"Failed to blacklist token: {e!s}")
+            raise RepositoryException(f"Failed to blacklist token: {e!s}")
 
     async def is_blacklisted(self, token: str) -> bool:
         """
@@ -115,7 +114,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             result = await self._redis.get(token_key)
             return result is not None
         except Exception as e:
-            logger.error(f"Failed to check token blacklist: {str(e)}")
+            logger.error(f"Failed to check token blacklist: {e!s}")
             # For security, assume token is blacklisted if check fails
             return True
 
@@ -137,7 +136,7 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             result = await self._redis.get(jti_key)
             return result is not None
         except Exception as e:
-            logger.error(f"Failed to check JTI blacklist: {str(e)}")
+            logger.error(f"Failed to check JTI blacklist: {e!s}")
             # For security, assume JTI is blacklisted if check fails
             return True
 
@@ -166,8 +165,8 @@ class RedisTokenBlacklistRepository(ITokenBlacklistRepository):
             )
             logger.info(f"Session {session_id} blacklisted for 30 days")
         except Exception as e:
-            logger.error(f"Failed to blacklist session: {str(e)}")
-            raise RepositoryException(f"Failed to blacklist session: {str(e)}")
+            logger.error(f"Failed to blacklist session: {e!s}")
+            raise RepositoryException(f"Failed to blacklist session: {e!s}")
 
     async def remove_expired_entries(self) -> int:
         """

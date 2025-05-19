@@ -5,19 +5,16 @@ This module provides FastAPI dependency functions for database access,
 following clean architecture principles with proper dependency injection patterns.
 """
 
+import logging
 from collections.abc import AsyncGenerator, Callable
 from typing import Annotated, TypeVar
 
 from fastapi import Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.interfaces.repositories.base_repository import BaseRepositoryInterface
 from app.infrastructure.di.provider import get_repository_instance
-from app.core.config.settings import get_settings  # Corrected import
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -175,10 +172,10 @@ def get_repository(repo_type: type[T]) -> Callable[[AsyncSession], T]:
 
 
 # Specific dependency for Patient Repository
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
     PatientRepository,
 )
-from app.core.interfaces.repositories.patient_repository import IPatientRepository
 
 
 async def get_patient_repository_dependency(

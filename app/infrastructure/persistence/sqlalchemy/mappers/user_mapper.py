@@ -5,8 +5,8 @@ This module provides bidirectional mapping between the domain User entity and
 the SQLAlchemy User model, following clean architecture principles.
 """
 
-from uuid import UUID
 from datetime import datetime, timezone
+from uuid import UUID
 
 from app.core.domain.entities.user import User as DomainUser
 from app.core.domain.entities.user import UserRole as DomainUserRole

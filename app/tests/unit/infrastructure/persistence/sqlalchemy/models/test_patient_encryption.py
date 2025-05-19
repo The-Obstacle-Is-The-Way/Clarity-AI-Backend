@@ -3,32 +3,28 @@
 This module tests that the TypeDecorators (EncryptedString, EncryptedText, EncryptedJSON)
 used on the PatientModel correctly interact with the EncryptionService.
 """
-import base64
 import json
 import logging
 import uuid  # Added import for uuid
-from unittest.mock import patch, MagicMock, AsyncMock  # Added AsyncMock
 from datetime import date  # Added date
+from unittest.mock import MagicMock, patch  # Added AsyncMock
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
-from app.infrastructure.persistence.sqlalchemy.models.patient import (
-    Patient as PatientModel,
-)
-from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
-    EncryptedString,
-    EncryptedText,
-    EncryptedJSON,
-)
-from app.infrastructure.security.encryption.base_encryption_service import (
-    BaseEncryptionService,
-)
 from app.core.domain.entities.patient import (
     Patient as DomainPatient,
 )  # For from_domain/to_domain tests
 from app.core.domain.enums import Gender  # Corrected import for Gender
+from app.infrastructure.persistence.sqlalchemy.models.patient import (
+    Patient as PatientModel,
+)
+from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
+    EncryptedJSON,
+    EncryptedString,
+)
+from app.infrastructure.security.encryption.base_encryption_service import (
+    BaseEncryptionService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +40,7 @@ def mock_encryption_service_for_model_tests() -> MagicMock:
             return None
         if isinstance(data, str):
             data = data.encode("utf-8")
-        return f"encrypted_{data.decode('utf-8')}".encode("utf-8")
+        return f"encrypted_{data.decode('utf-8')}".encode()
 
     # Mock implementation of decrypt
     def mock_decrypt(encrypted_data: bytes) -> bytes:
@@ -354,7 +350,7 @@ class TestPatientModelEncryptionAndTypes:
         model_instance._contact_info = sample_domain_patient_data["contact_info"]
 
         # Call to_domain
-        logger.info(f"Calling model_instance.to_domain()...")
+        logger.info("Calling model_instance.to_domain()...")
         domain_entity = await model_instance.to_domain()
 
         # Verify the domain entity has the correct values

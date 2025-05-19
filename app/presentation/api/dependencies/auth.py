@@ -6,51 +6,27 @@ authentication and authorization within the API endpoints.
 """
 
 # Standard Library Imports
-import logging  # MODULE LEVEL
-from typing import Annotated, AsyncGenerator
 import inspect
+import logging  # MODULE LEVEL
 import uuid  # ADDED IMPORT
+from typing import Annotated
 
 # from unittest.mock import Mock # MODIFIED: Removed import for Mock
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import (
-    OAuth2PasswordBearer,
     HTTPAuthorizationCredentials,
     HTTPBearer,
+    OAuth2PasswordBearer,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # from app.config.settings import get_settings # Legacy import
-from app.core.config.settings import get_settings, Settings
-from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
-from app.core.errors.security_exceptions import InvalidCredentialsError
-from app.core.interfaces.repositories.user_repository_interface import (
-    IUserRepository,
-)
-from app.core.interfaces.repositories.token_blacklist_repository_interface import (
-    ITokenBlacklistRepository,
-)
+from app.core.config.settings import Settings, get_settings
+from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.services.auth_service_interface import (
     AuthServiceInterface,
-)
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-
-# REMOVED: from app.infrastructure.database.session import get_async_session
-# ADDED: Import get_db from the local database dependency module
-from .database import get_db
-
-# from app.infrastructure.repositories.user_repository import get_user_repository # DELETED OLD IMPORT
-from app.infrastructure.security.auth.auth_service import get_auth_service
-from app.infrastructure.security.jwt.jwt_service import get_jwt_service, JWTService
-from app.domain.exceptions import (
-    AuthenticationError,
-    AuthorizationError,
-)  # Corrected path
-from app.core.interfaces.services.jwt_service import IJwtService
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
-    SQLAlchemyUserRepository,
 )
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
@@ -59,7 +35,18 @@ from app.domain.exceptions.token_exceptions import (
 from app.infrastructure.persistence.repositories.redis_token_blacklist_repository import (
     RedisTokenBlacklistRepository,
 )
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+    SQLAlchemyUserRepository,
+)
+
+# from app.infrastructure.repositories.user_repository import get_user_repository # DELETED OLD IMPORT
+from app.infrastructure.security.auth.auth_service import get_auth_service
+from app.infrastructure.security.jwt.jwt_service import JWTService, get_jwt_service
 from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
+
+# REMOVED: from app.infrastructure.database.session import get_async_session
+# ADDED: Import get_db from the local database dependency module
+from .database import get_db
 
 # Initialize logger for this module - MODULE LEVEL
 logger = logging.getLogger(__name__)
@@ -281,7 +268,7 @@ async def get_current_user(
         logger.warning(f"get_current_user: Invalid token - {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}",
+            detail=f"Invalid token: {e!s}",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except TokenExpiredException as e:
@@ -295,7 +282,7 @@ async def get_current_user(
         logger.warning(f"get_current_user: JWTError - {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"JWT validation error: {str(e)}",
+            detail=f"JWT validation error: {e!s}",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as e:
@@ -602,8 +589,8 @@ __all__ = [
     "PatientUserDep",
     "TokenDep",
     "UserRepoDep",
-    "get_current_user",
     "get_current_active_user",
+    "get_current_user",
     "get_user_repository_dependency",
     "oauth2_scheme",
     "require_admin_role",

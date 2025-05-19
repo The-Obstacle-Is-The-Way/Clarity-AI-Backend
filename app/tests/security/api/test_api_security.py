@@ -6,36 +6,24 @@ according to HIPAA requirements. Tests focus on authentication, authorization,
 input validation, and secure communication.
 """
 
-import uuid
-from datetime import timedelta, datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 import logging
-import json
+import uuid
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import FastAPI, status
-from httpx import AsyncClient, ASGITransport
-from fastapi.responses import JSONResponse
+from httpx import AsyncClient
 
+from app.core.domain.entities.patient import Patient as CorePatient
+from app.core.domain.entities.user import User, UserRole, UserStatus
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.domain.entities.user import UserRole, UserStatus, User
-from app.core.domain.entities.patient import Patient as CorePatient
 
 # Ensure IJwtService is imported if JWTService spec needs it, but global_mock_jwt_service is MagicMock
-from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+# Imports for TestAuthentication specifically
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
-
-# Imports for TestAuthentication specifically
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
-    SQLAlchemyUserRepository,
-)
-from app.core.domain.entities.user import (
-    User as DomainUser,
-)  # Alias to avoid clash if User schema is also named User
 
 TEST_PATIENT_ID = str(uuid.uuid4())
 OTHER_PATIENT_ID = str(uuid.uuid4())
@@ -178,7 +166,7 @@ class TestAuthorization:
                 if hasattr(token_data, "sub")
                 else uuid.UUID(token_data["sub"])
             )
-        except Exception as e:
+        except Exception:
             # If decode fails through the mock service, try direct decoding
             import jwt as jwt_lib
             from jose import jwt as jose_jwt
@@ -907,7 +895,7 @@ async def test_authenticated_but_unknown_role(
     ] = lambda: mock_user_repo
 
     # Attempt to access a generic authenticated endpoint
-    response = await client.get(f"/api/v1/auth/me", headers=headers_unknown_role)
+    response = await client.get("/api/v1/auth/me", headers=headers_unknown_role)
 
     if get_user_repository_dependency in current_fastapi_app.dependency_overrides:
         del current_fastapi_app.dependency_overrides[get_user_repository_dependency]

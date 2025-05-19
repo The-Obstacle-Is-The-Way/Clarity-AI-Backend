@@ -1,11 +1,10 @@
 import json
 import re
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Use the consolidated PHISanitizer implementation
-from app.infrastructure.security.phi import PHISanitizer, sanitize_phi, contains_phi
+from app.infrastructure.security.phi import PHISanitizer
 
 
 # Create a test-specific mock sanitizer that returns expected values

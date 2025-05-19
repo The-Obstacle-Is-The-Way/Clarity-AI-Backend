@@ -5,7 +5,6 @@ that it correctly interacts with the database layer, properly handling
 patient data in accordance with HIPAA and other security requirements.
 """
 
-import asyncio
 import base64
 import json
 import logging
@@ -15,12 +14,11 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.domain.enums import Gender
 from app.domain.entities.patient import Patient as PatientEntity
+from app.domain.value_objects.address import Address
 from app.infrastructure.persistence.sqlalchemy.models.patient import (
     Patient as PatientModel,
 )
@@ -30,8 +28,6 @@ from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository i
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )
-from app.domain.value_objects.address import Address
-from app.core.domain.enums import Gender
 
 
 @pytest.fixture
@@ -538,7 +534,7 @@ class TestPatientRepository:
         retrieved_entities = await patient_repository.get_all(limit=10, offset=0)
         mock_db_session.execute.assert_awaited_once()
         assert len(retrieved_entities) == len(sample_patient_list_data)
-        for entity, model_mock in zip(retrieved_entities, mock_patient_models):
+        for entity, model_mock in zip(retrieved_entities, mock_patient_models, strict=False):
             assert entity.id == model_mock.id
             model_mock.to_domain.assert_awaited_once()
             assert entity.address.zip_code.startswith("9021")

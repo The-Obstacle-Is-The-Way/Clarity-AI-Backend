@@ -5,14 +5,14 @@ This module tests the Redis implementation of token blacklist functionality,
 a critical component for HIPAA-compliant authentication and session management.
 """
 
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
+
 import pytest
-from datetime import datetime, timedelta, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.infrastructure.persistence.repositories.redis_token_blacklist_repository import (
     RedisTokenBlacklistRepository,
 )
-from app.domain.exceptions.repository import RepositoryException
 
 
 @pytest.fixture

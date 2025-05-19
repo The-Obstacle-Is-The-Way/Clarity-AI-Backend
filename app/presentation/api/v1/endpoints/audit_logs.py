@@ -5,27 +5,21 @@ This module provides API endpoints for retrieving and managing audit logs
 in compliance with HIPAA requirements.
 """
 
-import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 
 from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
     AuditEventType,
     AuditSeverity,
+    IAuditLogger,
 )
-from app.core.interfaces.repositories.audit_log_repository_interface import (
-    IAuditLogRepository,
-)
-from app.domain.entities.audit_log import AuditLog
-from app.presentation.api.dependencies.repositories import get_audit_log_repository
-from app.presentation.api.dependencies.services import get_audit_logger
-from app.presentation.api.dependencies.auth import get_current_user_with_permission
 from app.domain.entities.user import User
+from app.presentation.api.dependencies.auth import get_current_user_with_permission
+from app.presentation.api.dependencies.services import get_audit_logger
 from app.presentation.api.models.audit_log import (
     AuditLogResponseModel,
     AuditSearchRequest,
@@ -37,24 +31,24 @@ router = APIRouter(tags=["audit"], prefix="/audit")
 
 @router.get(
     "/logs",
-    response_model=List[AuditLogResponseModel],
+    response_model=list[AuditLogResponseModel],
     summary="Get audit logs by filters",
     description="Retrieve audit logs with optional filtering. Requires admin or security officer role.",
 )
 async def get_audit_logs(
-    event_type: Optional[AuditEventType] = None,
-    actor_id: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    resource_id: Optional[str] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    event_type: AuditEventType | None = None,
+    actor_id: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     audit_service: IAuditLogger = Depends(get_audit_logger),
     current_user: User = Depends(
         get_current_user_with_permission(["admin", "security_officer"])
     ),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Get audit logs with optional filtering.
 
@@ -106,7 +100,7 @@ async def get_audit_logs(
 
 @router.post(
     "/search",
-    response_model=List[AuditLogResponseModel],
+    response_model=list[AuditLogResponseModel],
     summary="Search audit logs with advanced filters",
     description="Search audit logs with advanced filtering options. Requires admin or security officer role.",
 )
@@ -116,7 +110,7 @@ async def search_audit_logs(
     current_user: User = Depends(
         get_current_user_with_permission(["admin", "security_officer"])
     ),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Search audit logs with advanced filtering.
 
@@ -166,7 +160,7 @@ async def get_security_dashboard(
     current_user: User = Depends(
         get_current_user_with_permission(["admin", "security_officer"])
     ),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get data for the security dashboard.
 
@@ -193,8 +187,8 @@ async def get_security_dashboard(
     description="Export audit logs for compliance reporting. Requires admin role.",
 )
 async def export_audit_logs(
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     format: str = Query("json", regex="^(json|csv)$"),
     audit_service: AuditLogService = Depends(get_audit_logger),
     current_user: User = Depends(get_current_user_with_permission(["admin"])),

@@ -6,7 +6,6 @@ and strength validation, following clean architecture principles.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Optional
 
 
 class IPasswordHandler(ABC):
@@ -43,7 +42,7 @@ class IPasswordHandler(ABC):
         pass
 
     @abstractmethod
-    def validate_password_strength(self, password: str) -> Tuple[bool, str]:
+    def validate_password_strength(self, password: str) -> tuple[bool, str]:
         """Validate the strength of a password.
 
         Args:
@@ -57,7 +56,7 @@ class IPasswordHandler(ABC):
         pass
 
     @abstractmethod
-    def get_password_strength_feedback(self, password: str) -> Dict[str, any]:
+    def get_password_strength_feedback(self, password: str) -> dict[str, any]:
         """Get detailed feedback on password strength.
 
         Args:

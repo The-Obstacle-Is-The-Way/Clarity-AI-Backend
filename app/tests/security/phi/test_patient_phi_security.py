@@ -9,11 +9,11 @@ for Protected Health Information (PHI) in the patient model, including:
     - Secure error handling
     """
 
+import io
 import logging
 import uuid
 from datetime import date
-from unittest.mock import patch, MagicMock
-import io
+from unittest.mock import MagicMock, patch
 
 import pytest
 

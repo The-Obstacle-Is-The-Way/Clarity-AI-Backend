@@ -10,16 +10,11 @@ Usage:
     python repair_test_syntax.py [--dry-run] [--path PATH]
 """
 
+import argparse
+import ast
 import os
 import re
-import ast
-import sys
-import argparse
-import tokenize
-import io
-from typing import Dict, List, Tuple, Optional, Set
 from pathlib import Path
-import traceback
 
 
 class Colors:
@@ -40,7 +35,7 @@ class TestSyntaxRepair:
     Tool for repairing common syntax errors in test files.
     """
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """
         Initialize the test repair tool.
 
@@ -52,12 +47,12 @@ class TestSyntaxRepair:
         self.fixed_files = 0
         self.error_files = 0
         self.skipped_files = 0
-        self.error_types: Dict[str, int] = {}
+        self.error_types: dict[str, int] = {}
 
         print(f"Project root: {self.project_root}")
         print(f"Tests directory: {self.tests_dir}")
 
-    def find_test_files(self, start_dir: Path = None) -> List[Path]:
+    def find_test_files(self, start_dir: Path = None) -> list[Path]:
         """
         Find all Python test files in the given directory.
 
@@ -77,7 +72,7 @@ class TestSyntaxRepair:
 
         return test_files
 
-    def check_syntax(self, file_path: Path) -> Optional[SyntaxError]:
+    def check_syntax(self, file_path: Path) -> SyntaxError | None:
         """
         Check if a Python file has syntax errors.
 
@@ -88,7 +83,7 @@ class TestSyntaxRepair:
             SyntaxError if there's an error, None otherwise
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 ast.parse(f.read(), filename=str(file_path))
             return None
         except SyntaxError as e:
@@ -230,7 +225,7 @@ class TestSyntaxRepair:
             True if fixed successfully, False otherwise
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Apply fixes
@@ -269,7 +264,7 @@ class TestSyntaxRepair:
             return True
 
         except Exception as e:
-            print(f"{Colors.FAIL}Error processing {file_path}: {str(e)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}Error processing {file_path}: {e!s}{Colors.ENDC}")
             self.error_files += 1
             return False
 
@@ -307,7 +302,7 @@ class TestSyntaxRepair:
         print(f"Found {len(test_files)} test files")
 
         files_with_errors = []
-        categorized_errors: Dict[str, List[Path]] = {
+        categorized_errors: dict[str, list[Path]] = {
             "missing_colon": [],
             "indent_error": [],
             "missing_indent": [],

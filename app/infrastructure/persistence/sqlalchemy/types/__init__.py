@@ -7,6 +7,7 @@ This package contains custom type definitions for SQLAlchemy models.
 # Imports needed for GUID class
 import uuid
 from typing import Any
+
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.engine import Dialect
@@ -101,20 +102,19 @@ class GUID(TypeDecorator):
 
 
 # Other type imports (relative within this package)
+# Import encrypted types (relative)
+from .encrypted_types import EncryptedString
 from .json_encoded_dict import JSONEncodedDict
 from .list_decorators import (
     FloatListDecorator,
     StringListDecorator,
 )
 
-# Import encrypted types (relative)
-from .encrypted_types import EncryptedString
-
 # Ensure GUID is included in __all__ along with others
 __all__ = [
     "GUID",
+    "EncryptedString",
     "FloatListDecorator",
     "JSONEncodedDict",
     "StringListDecorator",
-    "EncryptedString",
 ]

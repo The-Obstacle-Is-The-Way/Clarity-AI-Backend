@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Union
+from typing import Any
 from uuid import UUID
 
 from app.domain.value_objects.emergency_contact import EmergencyContact
@@ -35,7 +35,7 @@ class ContactInfo:
     phone: str | None = None
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ContactInfo":
+    def from_dict(cls, data: dict[str, Any]) -> ContactInfo:
         """Create a ContactInfo instance from a dictionary."""
         if not data:
             return cls()
@@ -122,7 +122,7 @@ class Patient:
     )
 
     # Required fields
-    date_of_birth: Union[datetime, str]
+    date_of_birth: datetime | str
 
     # Optional fields with defaults
     id: UUID | None = None

@@ -1,36 +1,28 @@
 """Test fixtures for security API tests."""
 
-import asyncio
-import json
 import logging
-import re
-import traceback
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union, cast
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import jwt
 import pytest
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
 from httpx import ASGITransport, AsyncClient
 from jose import jwt as jose_jwt  # Use jose for JWT operations in tests
-from sqlalchemy.ext.asyncio import AsyncSession
-
-# Import User entity for type hinting
-from app.domain.entities.user import User
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config.settings import Settings
-from app.core.domain.entities.user import User as CoreDomainUser
-from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
+from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+
+# Import User entity for type hinting
+from app.domain.entities.user import User
 from app.domain.exceptions.token_exceptions import (
     InvalidTokenException,
     TokenExpiredException,
@@ -39,11 +31,9 @@ from app.factory import create_application
 
 # Custom token payload imports
 from app.infrastructure.security.jwt.jwt_service import (
-    TokenBlacklistDict,
     TokenPayload,
     TokenType,
 )
-from app.infrastructure.security.jwt.jwt_service import TokenBlacklistDict
 from app.presentation.api.dependencies.auth import get_user_repository_dependency
 from app.presentation.api.dependencies.database import get_patient_repository_dependency
 
@@ -258,8 +248,8 @@ def app_instance(
 
                         if (
                             "testing" in payload
-                            or "iss" in payload
-                            and payload.get("iss") == "test-issuer"
+                            or ("iss" in payload
+                            and payload.get("iss") == "test-issuer")
                         ):
                             # This is a test token, create a user from it
                             from app.presentation.schemas.auth import AuthenticatedUser
@@ -522,7 +512,7 @@ def app_instance(
                     # For test endpoints, convert exceptions to JSON responses
                     # This allows our error testing to work properly
                     logger.info(
-                        f"Converting test endpoint error to JSONResponse: {str(e)}"
+                        f"Converting test endpoint error to JSONResponse: {e!s}"
                     )
                     from fastapi.responses import JSONResponse
                     from starlette import status
@@ -533,7 +523,7 @@ def app_instance(
                     )
             except Exception as e:
                 logger.error(
-                    f"Exception in test endpoint (security headers): {type(e).__name__}: {str(e)}"
+                    f"Exception in test endpoint (security headers): {type(e).__name__}: {e!s}"
                 )
                 # Return a generic error response instead of re-raising
                 from fastapi.responses import JSONResponse
@@ -556,7 +546,7 @@ def app_instance(
             return response
         except Exception as e:
             logger.error(
-                f"Exception in add_security_headers: {type(e).__name__}: {str(e)}"
+                f"Exception in add_security_headers: {type(e).__name__}: {e!s}"
             )
             # Re-raise the exception to ensure it's properly handled
             raise
@@ -635,7 +625,7 @@ def app_instance(
         except Exception as e:
             logger.error(f"Error processing PHI access test request: {e}")
             return JSONResponse(
-                {"detail": f"Error processing request: {str(e)}"},
+                {"detail": f"Error processing request: {e!s}"},
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -1111,7 +1101,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
         except Exception as e:
             # If not a token we recognize, raise the appropriate exception
             raise InvalidTokenException(
-                f"Token not found in store and not a valid test token: {str(e)}"
+                f"Token not found in store and not a valid test token: {e!s}"
             )
 
     # Generate tokens for user implementation
@@ -1154,7 +1144,7 @@ def global_mock_jwt_service() -> JWTServiceInterface:
 
             return await mock_create_access_token(token_data_copy)
         except Exception as e:
-            raise InvalidTokenException(f"Invalid refresh token: {str(e)}") from e
+            raise InvalidTokenException(f"Invalid refresh token: {e!s}") from e
 
     # Verify token implementation - needs to be async to match interface
     async def mock_verify_token(token: str) -> dict[str, Any]:
@@ -1200,16 +1190,15 @@ def global_mock_jwt_service() -> JWTServiceInterface:
 @pytest.fixture(scope="module")
 def jwt_service_patch():
     """Patch the JWT service to accept test tokens without verification in test environment."""
+    import logging
+    import uuid
+    from datetime import datetime, timezone
+
+    from jose import jwt as jose_jwt
+
     from app.infrastructure.security.jwt.jwt_service import (
         JWTService,
-        TokenPayload,
-        TokenType,
     )
-    from jose import jwt as jose_jwt
-    import logging
-    from datetime import datetime, timezone
-    import uuid
-    import asyncio
 
     logger = logging.getLogger(__name__)
 
@@ -1352,19 +1341,15 @@ def jwt_service_patch():
 @pytest.fixture(scope="module")
 def middleware_patch(test_settings):
     """Patch the authentication middleware to use test tokens."""
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from app.presentation.middleware.authentication import AuthenticationMiddleware
-    import jwt as jose_jwt
-    from jose import jwt as jose_jwt_jose
-    from fastapi.security.utils import get_authorization_scheme_param
-    from datetime import datetime, timezone
     import logging
-    import traceback
     import uuid
+
+    from fastapi.security.utils import get_authorization_scheme_param
+    from jose import jwt as jose_jwt_jose
+
     from app.core.domain.entities.user import UserRole, UserStatus
-    from app.presentation.schemas.auth import AuthenticatedUser, AuthCredentials
-    from starlette.responses import JSONResponse
-    from starlette.status import HTTP_401_UNAUTHORIZED
+    from app.presentation.middleware.authentication import AuthenticationMiddleware
+    from app.presentation.schemas.auth import AuthenticatedUser
 
     # Define logger for the patched middleware
     logger = logging.getLogger("auth_middleware_patch")
@@ -1477,7 +1462,7 @@ def middleware_patch(test_settings):
                 return await call_next(request)
             except Exception as e:
                 logger.error(
-                    f"Exception in test endpoint (auth middleware): {type(e).__name__}: {str(e)}"
+                    f"Exception in test endpoint (auth middleware): {type(e).__name__}: {e!s}"
                 )
                 # Re-raise to allow proper exception handling by the global handler
                 raise
@@ -1505,11 +1490,11 @@ def middleware_patch(test_settings):
                     token_data = self.jwt_service.token_store[token]
 
                     # Create authenticated user from token data
-                    from app.presentation.schemas.auth import (
-                        AuthenticatedUser,
-                        AuthCredentials,
-                    )
                     from app.core.domain.entities.user import UserRole, UserStatus
+                    from app.presentation.schemas.auth import (
+                        AuthCredentials,
+                        AuthenticatedUser,
+                    )
 
                     # Get user ID from token
                     user_id = uuid.UUID(token_data.get("sub", str(uuid.uuid4())))
@@ -1548,7 +1533,7 @@ def middleware_patch(test_settings):
                     # Process the request with our authenticated user
                     return await call_next(request)
             except Exception as e:
-                logger.error(f"Error in X-Mock-Role processing: {str(e)}")
+                logger.error(f"Error in X-Mock-Role processing: {e!s}")
                 # Continue with normal auth in case this fails
 
         if token:
@@ -1592,8 +1577,8 @@ def middleware_patch(test_settings):
 
                     # Create authenticated user
                     from app.presentation.schemas.auth import (
-                        AuthenticatedUser,
                         AuthCredentials,
+                        AuthenticatedUser,
                     )
 
                     auth_user = AuthenticatedUser(
@@ -1614,7 +1599,7 @@ def middleware_patch(test_settings):
                     # Continue with authenticated request
                     return await call_next(request)
             except Exception as e:
-                logger.error(f"Error validating token: {str(e)}")
+                logger.error(f"Error validating token: {e!s}")
                 return self._create_unauthorized_response(str(e))
 
         # For requests without a token, return unauthorized
@@ -1656,7 +1641,7 @@ def middleware_patch(test_settings):
                     return await call_next(request)
                 except Exception as e:
                     logger.error(
-                        f"Exception in test endpoint (rate limiting): {type(e).__name__}: {str(e)}"
+                        f"Exception in test endpoint (rate limiting): {type(e).__name__}: {e!s}"
                     )
                     # Re-raise without handling to ensure proper error propagation
                     raise
@@ -1666,7 +1651,7 @@ def middleware_patch(test_settings):
                 return await original_rate_limit_dispatch(self, request, call_next)
             except Exception as e:
                 logger.error(
-                    f"Exception in rate limiting dispatch: {type(e).__name__}: {str(e)}"
+                    f"Exception in rate limiting dispatch: {type(e).__name__}: {e!s}"
                 )
                 # Re-raise to allow proper error handling
                 raise
@@ -1716,12 +1701,12 @@ class EnhancedAuthTestHelper:
     def create_test_user(
         self,
         role: UserRole,
-        user_id: Optional[uuid.UUID] = None,
-        username: Optional[str] = None,
-        email: Optional[str] = None,
-        full_name: Optional[str] = None,
-        first_name: Optional[str] = None,
-        last_name: Optional[str] = None,
+        user_id: uuid.UUID | None = None,
+        username: str | None = None,
+        email: str | None = None,
+        full_name: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
     ) -> DomainUser:
         """
         Create a test user with the specified role
@@ -1788,11 +1773,11 @@ class EnhancedAuthTestHelper:
 
     async def create_token(
         self,
-        user_or_id: Union[DomainUser, UUID, str],
-        roles: Optional[List[UserRole]] = None,
-        username: Optional[str] = None,
-        email: Optional[str] = None,
-        expires_delta: Optional[timedelta] = None,
+        user_or_id: DomainUser | UUID | str,
+        roles: list[UserRole] | None = None,
+        username: str | None = None,
+        email: str | None = None,
+        expires_delta: timedelta | None = None,
     ) -> str:
         """
         Create a test JWT token for a user

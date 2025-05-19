@@ -5,22 +5,18 @@ Tests the JWT token creation, validation and management functionality
 according to HIPAA security standards.
 """
 
-import pytest
 import uuid
-from datetime import datetime, timedelta, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 
-from app.domain.exceptions.token_exceptions import (
-    InvalidTokenException,
-    TokenExpiredException,
-)
-from app.domain.exceptions import AuthenticationError
+import pytest
+
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
+from app.domain.exceptions import AuthenticationError
 from app.infrastructure.security.jwt.jwt_service import (
     JWTService,
     TokenType,
-    TokenPayload,
 )
 
 
@@ -178,8 +174,8 @@ def test_decode_invalid_token():
     """Test decoding an invalid token format raises the correct exception."""
     # Setup
     from app.infrastructure.security.jwt.jwt_service import (
-        JWTService,
         InvalidTokenException,
+        JWTService,
     )
 
     # Using a fixture would be better, but for simplicity in this test
@@ -217,12 +213,12 @@ def test_verify_refresh_token(jwt_service):
 def test_verify_invalid_refresh_token_type():
     """Test verifying a non-refresh token as refresh token raises the correct exception."""
     # Setup
-    from app.infrastructure.security.jwt.jwt_service import (
-        JWTService,
-        InvalidTokenException,
-    )
     import uuid
-    from datetime import datetime, timedelta
+
+    from app.infrastructure.security.jwt.jwt_service import (
+        InvalidTokenException,
+        JWTService,
+    )
 
     # Using a fixture would be better, but for simplicity in this test
     jwt_service = JWTService(

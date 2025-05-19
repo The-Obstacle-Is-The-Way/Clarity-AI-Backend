@@ -15,12 +15,10 @@ Usage:
 """
 
 import argparse
-import os
 import subprocess
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
 
 
 class Colors:
@@ -52,7 +50,7 @@ class TestRunner:
     based on the specified dependency level and test markers.
     """
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """
         Initialize the test runner.
 
@@ -164,7 +162,7 @@ class TestRunner:
 
         # Add coverage options if requested
         if coverage:
-            pytest_args.extend(["--cov=app", f"--cov-report=term-missing"])
+            pytest_args.extend(["--cov=app", "--cov-report=term-missing"])
             if html_report:
                 pytest_args.append("--cov-report=html")
             if xml_report:
@@ -189,7 +187,7 @@ class TestRunner:
                 return False
         except Exception as e:
             print(
-                f"{Colors.RED}Error running {level.value} tests: {str(e)}{Colors.ENDC}"
+                f"{Colors.RED}Error running {level.value} tests: {e!s}{Colors.ENDC}"
             )
             return False
 

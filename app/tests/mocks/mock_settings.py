@@ -4,8 +4,9 @@ Mock settings for testing.
 This module provides a mock Settings class for testing.
 """
 
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class MockSettings(BaseModel):
@@ -47,9 +48,9 @@ class MockSettings(BaseModel):
     SESSION_TIMEOUT_MINUTES: int = 30
 
     # CORS settings
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    def get_jwt_settings(self) -> Dict[str, Any]:
+    def get_jwt_settings(self) -> dict[str, Any]:
         """
         Get JWT settings.
 

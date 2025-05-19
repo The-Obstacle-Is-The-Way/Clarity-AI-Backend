@@ -6,26 +6,26 @@ mapping the domain entity to the database schema.
 """
 
 import uuid
-from datetime import datetime
+
 from sqlalchemy import (
+    JSON,
     Column,
-    DateTime,
     ForeignKey,
     Integer,
     String,
     Text,
-    JSON,
+)
+from sqlalchemy import (
     UUID as SQLAlchemyUUID,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import relationship
 
 from app.infrastructure.persistence.sqlalchemy.models.base import (
+    AuditMixin,
     Base,
     TimestampMixin,
-    AuditMixin,
 )
-from app.domain.utils.datetime_utils import now_utc
 
 
 class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):

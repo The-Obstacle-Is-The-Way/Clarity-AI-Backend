@@ -19,7 +19,7 @@ import logging
 import os
 import uuid
 from datetime import timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.core.config.settings import get_settings
 
@@ -109,7 +109,7 @@ class AuditLogger:
         action: str,
         resource_type: str,
         resource_id: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """
         Log an access to Protected Health Information (PHI).
@@ -146,9 +146,9 @@ class AuditLogger:
     def log_auth_event(
         self,
         event_type: str,
-        user_id: Optional[str],
+        user_id: str | None,
         success: bool,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """
         Log an authentication-related event.
@@ -184,8 +184,8 @@ class AuditLogger:
         self,
         event_type: str,
         description: str,
-        details: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        user_id: str | None = None,
     ) -> None:
         """
         Log a system event.
@@ -217,7 +217,7 @@ class AuditLogger:
         if self.external_audit_enabled:
             self._send_to_external_audit_service(audit_entry)
 
-    def _send_to_external_audit_service(self, audit_entry: Dict[str, Any]) -> None:
+    def _send_to_external_audit_service(self, audit_entry: dict[str, Any]) -> None:
         """
         Send audit entry to an external HIPAA-compliant audit service.
 

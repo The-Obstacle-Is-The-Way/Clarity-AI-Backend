@@ -1,11 +1,12 @@
 import uuid  # Add import for uuid
 from datetime import date, datetime  # Add import for date and datetime
+
 from pydantic import (
     BaseModel,
-    Field,
-    EmailStr,
-    computed_field,
     ConfigDict,
+    EmailStr,
+    Field,
+    computed_field,
 )  # Add EmailStr and computed_field
 
 

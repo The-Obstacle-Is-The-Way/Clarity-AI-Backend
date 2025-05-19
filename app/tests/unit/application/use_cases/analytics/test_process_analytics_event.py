@@ -5,15 +5,13 @@ These tests verify that the ProcessAnalyticsEvent use case works correctly for p
 individual analytics events and validating them.
 """
 
-import asyncio
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 # Tests are now fixed - remove skip directive
 # pytest.skip("Skipping ProcessAnalyticsEvent tests while fixing SQLAlchemy relationship issues", allow_module_level=True)
-
 from app.application.use_cases.analytics.process_analytics_event import (
     ProcessAnalyticsEventUseCase,
 )

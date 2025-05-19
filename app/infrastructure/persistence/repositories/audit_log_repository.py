@@ -7,18 +7,14 @@ abstraction over the persistence layer for the audit logging system.
 
 import uuid
 from datetime import datetime, timezone
-from typing import List, Dict, Optional, Any, Union
+from typing import Any
 
-from sqlalchemy import select, and_, desc, func
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.interfaces.repositories.audit_log_repository_interface import (
     IAuditLogRepository,
-)
-from app.core.interfaces.services.audit_logger_interface import (
-    AuditEventType,
-    AuditSeverity,
 )
 from app.domain.entities.audit_log import AuditLog
 from app.infrastructure.persistence.sqlalchemy.models.audit_log import (
@@ -73,7 +69,7 @@ class AuditLogRepository(IAuditLogRepository):
 
         return str(model.id)
 
-    async def get_by_id(self, log_id: str) -> Optional[AuditLog]:
+    async def get_by_id(self, log_id: str) -> AuditLog | None:
         """
         Retrieve an audit log entry by its ID.
 
@@ -106,12 +102,12 @@ class AuditLogRepository(IAuditLogRepository):
 
     async def search(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[AuditLog]:
+    ) -> list[AuditLog]:
         """
         Search for audit log entries based on filters.
 
@@ -192,8 +188,8 @@ class AuditLogRepository(IAuditLogRepository):
         ]
 
     async def get_statistics(
-        self, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
-    ) -> Dict[str, Any]:
+        self, start_time: datetime | None = None, end_time: datetime | None = None
+    ) -> dict[str, Any]:
         """
         Get statistics about audit logs for the specified time period.
 

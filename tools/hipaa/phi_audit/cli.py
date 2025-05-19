@@ -7,10 +7,7 @@ This module provides a command-line interface for running PHI audits on the code
 
 import argparse
 import logging
-import os
 import sys
-from pathlib import Path
-from typing import List, Optional, Dict, Any
 
 # Configure logging with no PHI
 logging.basicConfig(
@@ -122,7 +119,7 @@ def run_audit(args: argparse.Namespace) -> int:
                 return 0
 
         except ImportError as e:
-            logger.error(f"Failed to import PHI audit modules: {str(e)}")
+            logger.error(f"Failed to import PHI audit modules: {e!s}")
             return 2
 
     except Exception as e:

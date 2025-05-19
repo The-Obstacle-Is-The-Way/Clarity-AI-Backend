@@ -6,8 +6,9 @@ detected and sanitized in various data formats to maintain HIPAA compliance.
 """
 
 import logging
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType

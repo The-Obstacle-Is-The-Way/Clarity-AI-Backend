@@ -12,7 +12,6 @@ from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import FallbackAsyncAdaptedQueuePool, NullPool
-from sqlalchemy.orm import sessionmaker
 
 # from app.config.settings import Settings, get_settings # Legacy import
 from app.core.config.settings import Settings, get_settings  # Corrected import

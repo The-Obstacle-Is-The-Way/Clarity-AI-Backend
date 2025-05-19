@@ -6,8 +6,8 @@ custom event loop fixtures. It also demonstrates proper test isolation.
 """
 
 import asyncio
+
 import pytest
-from uuid import uuid4
 
 from app.tests.utils.asyncio_helpers import run_with_timeout
 

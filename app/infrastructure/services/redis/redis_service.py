@@ -9,10 +9,10 @@ to the interface defined in the core layer.
 import json
 import logging
 from collections.abc import Set as AbcSet
-from typing import Any, cast, Optional
+from typing import Any
+
 import redis.asyncio as redis_asyncio
 from redis.asyncio.client import Redis
-from redis.asyncio.connection import ConnectionPool
 
 from app.core.interfaces.services.redis_service_interface import IRedisService
 
@@ -50,7 +50,7 @@ class RedisService(IRedisService):
             value = await self._redis.get(name)
             return value.decode("utf-8") if value else None
         except Exception as e:
-            logger.error(f"Redis get error for key '{name}': {str(e)}")
+            logger.error(f"Redis get error for key '{name}': {e!s}")
             return None
 
     async def set(
@@ -83,7 +83,7 @@ class RedisService(IRedisService):
                 result is not None
             )  # Redis returns None if NX/XX conditions aren't met
         except Exception as e:
-            logger.error(f"Redis set error for key '{name}': {str(e)}")
+            logger.error(f"Redis set error for key '{name}': {e!s}")
             return None
 
     async def delete(self, *names: str) -> int:
@@ -101,7 +101,7 @@ class RedisService(IRedisService):
                 return 0
             return await self._redis.delete(*names)
         except Exception as e:
-            logger.error(f"Redis delete error for keys {names}: {str(e)}")
+            logger.error(f"Redis delete error for keys {names}: {e!s}")
             return 0
 
     async def exists(self, *names: str) -> int:
@@ -119,7 +119,7 @@ class RedisService(IRedisService):
                 return 0
             return await self._redis.exists(*names)
         except Exception as e:
-            logger.error(f"Redis exists error for keys {names}: {str(e)}")
+            logger.error(f"Redis exists error for keys {names}: {e!s}")
             return 0
 
     async def ping(self) -> bool:
@@ -133,7 +133,7 @@ class RedisService(IRedisService):
             result = await self._redis.ping()
             return result
         except Exception as e:
-            logger.error(f"Redis ping error: {str(e)}")
+            logger.error(f"Redis ping error: {e!s}")
             return False
 
     async def close(self) -> None:
@@ -144,7 +144,7 @@ class RedisService(IRedisService):
             await self._redis.close()
             logger.debug("Redis connection closed")
         except Exception as e:
-            logger.error(f"Redis close error: {str(e)}")
+            logger.error(f"Redis close error: {e!s}")
 
     async def get_client(self) -> Redis:
         """
@@ -169,7 +169,7 @@ class RedisService(IRedisService):
         try:
             return await self._redis.expire(name, time)
         except Exception as e:
-            logger.error(f"Redis expire error for key '{name}': {str(e)}")
+            logger.error(f"Redis expire error for key '{name}': {e!s}")
             return False
 
     async def ttl(self, name: str) -> int:
@@ -185,7 +185,7 @@ class RedisService(IRedisService):
         try:
             return await self._redis.ttl(name)
         except Exception as e:
-            logger.error(f"Redis TTL error for key '{name}': {str(e)}")
+            logger.error(f"Redis TTL error for key '{name}': {e!s}")
             return -2
 
     async def setex(self, name: str, time: int, value: str) -> bool:
@@ -204,7 +204,7 @@ class RedisService(IRedisService):
             result = await self._redis.setex(name, time, value)
             return result is not None
         except Exception as e:
-            logger.error(f"Redis setex error for key '{name}': {str(e)}")
+            logger.error(f"Redis setex error for key '{name}': {e!s}")
             return False
 
     async def sadd(self, name: str, *values: str) -> int:
@@ -223,7 +223,7 @@ class RedisService(IRedisService):
                 return 0
             return await self._redis.sadd(name, *values)
         except Exception as e:
-            logger.error(f"Redis sadd error for set '{name}': {str(e)}")
+            logger.error(f"Redis sadd error for set '{name}': {e!s}")
             return 0
 
     async def smembers(self, name: str) -> AbcSet[str]:
@@ -240,7 +240,7 @@ class RedisService(IRedisService):
             result = await self._redis.smembers(name)
             return {v.decode("utf-8") for v in result} if result else set()
         except Exception as e:
-            logger.error(f"Redis smembers error for set '{name}': {str(e)}")
+            logger.error(f"Redis smembers error for set '{name}': {e!s}")
             return set()
 
     async def srem(self, name: str, *values: str) -> int:
@@ -259,7 +259,7 @@ class RedisService(IRedisService):
                 return 0
             return await self._redis.srem(name, *values)
         except Exception as e:
-            logger.error(f"Redis srem error for set '{name}': {str(e)}")
+            logger.error(f"Redis srem error for set '{name}': {e!s}")
             return 0
 
     async def hset(self, name: str, key: str, value: Any) -> int:
@@ -280,7 +280,7 @@ class RedisService(IRedisService):
                 value = json.dumps(value)
             return await self._redis.hset(name, key, value)
         except Exception as e:
-            logger.error(f"Redis hset error for hash '{name}', field '{key}': {str(e)}")
+            logger.error(f"Redis hset error for hash '{name}', field '{key}': {e!s}")
             return 0
 
     async def hget(self, name: str, key: str) -> str | None:
@@ -298,7 +298,7 @@ class RedisService(IRedisService):
             result = await self._redis.hget(name, key)
             return result.decode("utf-8") if result else None
         except Exception as e:
-            logger.error(f"Redis hget error for hash '{name}', field '{key}': {str(e)}")
+            logger.error(f"Redis hget error for hash '{name}', field '{key}': {e!s}")
             return None
 
 

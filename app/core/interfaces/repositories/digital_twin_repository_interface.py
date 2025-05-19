@@ -6,7 +6,7 @@ following the principles of clean architecture with hexagonal ports and adapters
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 
@@ -17,7 +17,7 @@ class IDigitalTwinRepository(ABC):
     """
 
     @abstractmethod
-    async def create_digital_twin(self, twin_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_digital_twin(self, twin_data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new digital twin.
 
@@ -31,8 +31,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def get_digital_twin(
-        self, twin_id: Union[str, UUID]
-    ) -> Optional[Dict[str, Any]]:
+        self, twin_id: str | UUID
+    ) -> dict[str, Any] | None:
         """
         Get a digital twin by ID.
 
@@ -46,8 +46,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def update_digital_twin(
-        self, twin_id: Union[str, UUID], twin_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, twin_id: str | UUID, twin_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Update a digital twin.
 
@@ -61,7 +61,7 @@ class IDigitalTwinRepository(ABC):
         pass
 
     @abstractmethod
-    async def delete_digital_twin(self, twin_id: Union[str, UUID]) -> bool:
+    async def delete_digital_twin(self, twin_id: str | UUID) -> bool:
         """
         Delete a digital twin.
 
@@ -75,8 +75,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def list_digital_twins(
-        self, user_id: Optional[Union[str, UUID]] = None
-    ) -> List[Dict[str, Any]]:
+        self, user_id: str | UUID | None = None
+    ) -> list[dict[str, Any]]:
         """
         List all digital twins, optionally filtered by user ID.
 
@@ -90,8 +90,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def create_session(
-        self, twin_id: Union[str, UUID], session_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, twin_id: str | UUID, session_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a new session for a digital twin.
 
@@ -106,8 +106,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def get_session(
-        self, session_id: Union[str, UUID]
-    ) -> Optional[Dict[str, Any]]:
+        self, session_id: str | UUID
+    ) -> dict[str, Any] | None:
         """
         Get a session by ID.
 
@@ -121,8 +121,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def update_session(
-        self, session_id: Union[str, UUID], session_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, session_id: str | UUID, session_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """
         Update a session.
 
@@ -137,8 +137,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def add_message_to_session(
-        self, session_id: Union[str, UUID], message: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, session_id: str | UUID, message: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Add a message to a session.
 
@@ -153,8 +153,8 @@ class IDigitalTwinRepository(ABC):
 
     @abstractmethod
     async def end_session(
-        self, session_id: Union[str, UUID]
-    ) -> Optional[Dict[str, Any]]:
+        self, session_id: str | UUID
+    ) -> dict[str, Any] | None:
         """
         End a session.
 

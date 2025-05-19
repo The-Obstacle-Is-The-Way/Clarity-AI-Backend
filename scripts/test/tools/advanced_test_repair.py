@@ -5,14 +5,12 @@ Advanced Test Repair Script
 This script scans for Python test files with syntax errors and attempts to 
 fix them using advanced parsing and repair techniques.
 """
-import os
-import sys
 import ast
+import os
 import re
-import tempfile
 import subprocess
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Tuple, Set, Optional, Any
 
 
 class TestRepairTool:
@@ -27,11 +25,11 @@ class TestRepairTool:
         """
         self.project_root = Path(project_root)
         self.tests_dir = Path(tests_dir)
-        self.fixed_files: List[str] = []
-        self.failed_files: List[str] = []
-        self.skipped_files: List[str] = []
+        self.fixed_files: list[str] = []
+        self.failed_files: list[str] = []
+        self.skipped_files: list[str] = []
 
-    def find_test_files(self) -> List[Path]:
+    def find_test_files(self) -> list[Path]:
         """Find all Python test files in the tests directory.
 
         Returns:
@@ -48,7 +46,7 @@ class TestRepairTool:
 
     def check_syntax(
         self, file_path: Path
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+    ) -> tuple[bool, str | None, str | None]:
         """Check if file has syntax errors.
 
         Args:
@@ -58,7 +56,7 @@ class TestRepairTool:
             Tuple of (has_error, error_message, error_type)
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 source = f.read()
 
             # Try to parse the file
@@ -293,7 +291,7 @@ class TestRepairTool:
         print(f"Attempting to fix {file_path}")
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Apply various fixes
@@ -334,7 +332,7 @@ class TestRepairTool:
             print(f"Error fixing {file_path}: {e}")
             return False
 
-    def fix_syntax_errors(self, test_files: List[Path]) -> Dict[str, int]:
+    def fix_syntax_errors(self, test_files: list[Path]) -> dict[str, int]:
         """Fix syntax errors in test files.
 
         Args:
@@ -385,7 +383,7 @@ class TestRepairTool:
             "skipped": len(self.skipped_files),
         }
 
-    def print_report(self, stats: Dict[str, int]) -> None:
+    def print_report(self, stats: dict[str, int]) -> None:
         """Print report of repair statistics.
 
         Args:

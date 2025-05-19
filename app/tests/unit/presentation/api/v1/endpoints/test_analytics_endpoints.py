@@ -7,23 +7,20 @@ and process in a HIPAA-compliant manner.
 """
 
 import json
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, ANY
-import inspect
-import asyncio
-import uuid
 import logging
+import uuid
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import BackgroundTasks, status
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
-from app.factory import create_application
 from app.core.config.settings import Settings
+from app.factory import create_application
 
 # Correctly import router and endpoint functions/models we need to test or mock
 # Avoid importing the dependency provider (get_analytics_service) itself if possible
@@ -63,18 +60,15 @@ from app.application.use_cases.analytics.process_analytics_event import (
     ProcessAnalyticsEventUseCase,
 )
 
+# Import the middleware class for patching
+# Import UserStatus enum
+from app.core.domain.entities.user import UserRole, UserStatus  # Added UserRole import
+
 # Import the provider functions from the endpoint module to be overridden
 from app.presentation.api.v1.endpoints.analytics_endpoints import (
-    get_process_analytics_event_use_case,
     get_batch_process_analytics_use_case,
+    get_process_analytics_event_use_case,
 )
-
-# Import the middleware class for patching
-import asyncio  # For MockableBackgroundTasks
-import inspect  # For MockableBackgroundTasks signature printing
-
-# Import UserStatus enum
-from app.core.domain.entities.user import UserStatus, UserRole  # Added UserRole import
 
 
 # Mock SQLAlchemy base and models to prevent mapper errors in tests

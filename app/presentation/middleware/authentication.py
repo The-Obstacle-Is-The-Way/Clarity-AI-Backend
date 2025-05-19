@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from fastapi import Request, Response
@@ -10,15 +10,9 @@ from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
-from app.core.domain.entities.user import UserStatus, UserRole
-
-# Import concrete implementation instead of interface for FastAPI compatibility
-from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
-    SQLAlchemyUserRepository,
-)
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
 from app.domain.entities.auth import UnauthenticatedUser
 from app.domain.exceptions.auth_exceptions import (
@@ -30,7 +24,12 @@ from app.domain.exceptions.token_exceptions import (
     TokenExpiredException,
 )
 from app.infrastructure.logging.logger import get_logger
-from app.presentation.schemas.auth import AuthenticatedUser, AuthCredentials
+
+# Import concrete implementation instead of interface for FastAPI compatibility
+from app.infrastructure.persistence.sqlalchemy.repositories.user_repository import (
+    SQLAlchemyUserRepository,
+)
+from app.presentation.schemas.auth import AuthCredentials, AuthenticatedUser
 
 logger = get_logger(__name__)
 
@@ -110,7 +109,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             raise
         except Exception as e:
             logger.error(f"Error decoding token: {e}", exc_info=True)
-            raise AuthenticationException(f"Error decoding token: {str(e)}") from e
+            raise AuthenticationException(f"Error decoding token: {e!s}") from e
 
         # Extract user ID from payload
         user_id_str = getattr(token_payload, "sub", None)
@@ -269,8 +268,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     # Check if it's a mock object string representation
                     if (
                         "@" not in raw_email
-                        or raw_email.startswith("<")
-                        and ">" in raw_email
+                        or (raw_email.startswith("<")
+                        and ">" in raw_email)
                     ):
                         # Default to a valid test email
                         email = f"{username}@example.com"
@@ -310,7 +309,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             logger.error(
                 f"Database error retrieving user {user_id}: {e}", exc_info=True
             )
-            raise AuthenticationException(f"Database access error: {str(e)}") from e
+            raise AuthenticationException(f"Database access error: {e!s}") from e
         finally:
             # Ensure session is properly closed
             if session is not None:
@@ -395,11 +394,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 # General authentication failure - use 401 Unauthorized
                 return JSONResponse(
                     status_code=HTTP_401_UNAUTHORIZED,
-                    content={"detail": f"Authentication failed: {str(e)}"},
+                    content={"detail": f"Authentication failed: {e!s}"},
                 )
         except Exception as e:
             logger.exception(f"Unexpected error in authentication middleware: {e}")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
-                content={"detail": f"Database access error: {str(e)}"},
+                content={"detail": f"Database access error: {e!s}"},
             )

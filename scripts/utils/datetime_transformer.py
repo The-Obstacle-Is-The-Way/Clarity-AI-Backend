@@ -10,17 +10,15 @@ Following single responsibility principle, this script does one thing extremely 
 it refactors datetime imports to follow our clean architecture patterns.
 """
 
-import os
 import re
 from pathlib import Path
-from typing import List, Tuple, Set
 
 # Define patterns for transformation with mathematical precision
 UTC_IMPORT_PATTERN = re.compile(
     r"from\s+datetime\s+import\s+(.*?)(UTC)(.*?)$", re.MULTILINE
 )
 DATETIME_UTILS_IMPORT = "from app.domain.utils.datetime_utils import UTC"
-REPLACEMENT_TEMPLATE = "from datetime import \\1\\3\n{}".format(DATETIME_UTILS_IMPORT)
+REPLACEMENT_TEMPLATE = f"from datetime import \\1\\3\n{DATETIME_UTILS_IMPORT}"
 
 # Define paths to search with architectural boundaries
 ROOT_DIR = Path(__file__).parent.parent
@@ -33,7 +31,7 @@ EXCLUSION_DIRS = [
 ]
 
 
-def find_python_files(dirs: List[Path], exclusions: List[Path]) -> List[Path]:
+def find_python_files(dirs: list[Path], exclusions: list[Path]) -> list[Path]:
     """
     Find all Python files in the specified directories, excluding certain paths.
 
@@ -59,7 +57,7 @@ def find_python_files(dirs: List[Path], exclusions: List[Path]) -> List[Path]:
     return python_files
 
 
-def transform_file(file_path: Path) -> Tuple[bool, int]:
+def transform_file(file_path: Path) -> tuple[bool, int]:
     """
     Transform datetime imports in a single file.
 
@@ -107,7 +105,7 @@ def main():
             total_replacements += replacements
 
     # Print summary
-    print(f"\nTransformation complete:")
+    print("\nTransformation complete:")
     print(f"  - Transformed {len(transformed_files)} files")
     print(f"  - Made {total_replacements} replacements")
 

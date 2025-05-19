@@ -10,27 +10,16 @@ This implementation creates tamper-resistant audit logs that track all PHI acces
 with features for searching, exporting, and verifying log integrity.
 """
 
-import json
-import os
-import uuid
-import time
+import base64
 import hashlib
 import hmac
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Union, Set
-
+import json
+import os
 import secrets
-import base64
-import aiofiles
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import uuid
+from datetime import datetime, timezone
+from typing import Any
 
-from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
-    AuditEventType,
-    AuditSeverity,
-)
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -57,7 +46,7 @@ class AuditLogger:
             store_path: Optional file path for storage. If None, uses in-memory storage.
         """
         # In production, this would use a secure database with encryption
-        self._logs: Dict[str, Dict[str, Any]] = {}
+        self._logs: dict[str, dict[str, Any]] = {}
         self._store_path = store_path
 
         # Secure key generation for HMAC signing
@@ -70,7 +59,7 @@ class AuditLogger:
         self._previous_hash = hashlib.sha256(b"AUDIT_LOG_INIT").hexdigest()
 
         # Cache of users allowed to access audit logs by role
-        self._allowed_roles: Set[str] = {
+        self._allowed_roles: set[str] = {
             "admin",
             "security_officer",
             "compliance_officer",
@@ -83,13 +72,13 @@ class AuditLogger:
 
     def log_access(
         self,
-        resource_id: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        field_name: Optional[str] = None,
+        resource_id: str | None = None,
+        resource_type: str | None = None,
+        field_name: str | None = None,
         action: str = "field_access",
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         ip_address: str = "127.0.0.1",
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> str:
         """
         Log PHI field access to the audit trail.
@@ -149,7 +138,7 @@ class AuditLogger:
         action: str,
         reason: str,
         ip_address: str = "127.0.0.1",
-        additional_context: Optional[Dict[str, Any]] = None,
+        additional_context: dict[str, Any] | None = None,
     ) -> str:
         """
         Log PHI access event to the audit trail.
@@ -209,8 +198,8 @@ class AuditLogger:
         entity_type: str,
         entity_id: str,
         status: str,
-        details: Optional[str] = None,
-        phi_fields: Optional[list[str]] = None,
+        details: str | None = None,
+        phi_fields: list[str] | None = None,
     ) -> str:
         """
         Log data modification events for HIPAA-compliant audit trails.
@@ -265,7 +254,7 @@ class AuditLogger:
         return log_id
 
     def log_security_event(
-        self, description: str, user_id: Optional[str] = None, severity: str = "high"
+        self, description: str, user_id: str | None = None, severity: str = "high"
     ) -> str:
         """
         Log a security-related event.
@@ -310,7 +299,7 @@ class AuditLogger:
 
         return log_id
 
-    def get_log_entry(self, log_id: str) -> Dict[str, Any]:
+    def get_log_entry(self, log_id: str) -> dict[str, Any]:
         """
         Retrieve a specific log entry by ID.
 
@@ -328,15 +317,15 @@ class AuditLogger:
 
     def search_logs(
         self,
-        user_id: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        action: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        reason: Optional[str] = None,
+        user_id: str | None = None,
+        resource_id: str | None = None,
+        resource_type: str | None = None,
+        action: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        reason: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search audit logs with various filters.
 
@@ -429,7 +418,7 @@ class AuditLogger:
         # Compare signatures
         return hmac.compare_digest(original_signature, expected_signature)
 
-    def check_log_access(self, user_id: str, role: str) -> Union[bool, str]:
+    def check_log_access(self, user_id: str, role: str) -> bool | str:
         """
         Check if a user has access to audit logs based on role.
 
@@ -474,8 +463,8 @@ class AuditLogger:
 
     def export_logs(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         format: str = "json",
         verify_integrity: bool = True,
     ) -> str:
@@ -593,7 +582,7 @@ class AuditLogger:
         return export_path
 
     def modify_log_entry_for_testing(
-        self, log_id: str, changes: Dict[str, Any]
+        self, log_id: str, changes: dict[str, Any]
     ) -> bool:
         """
         Test utility to attempt modifying a log entry for testing tamper resistance.
@@ -621,7 +610,7 @@ class AuditLogger:
 
         return True
 
-    def _sign_log_entry(self, log_entry: Dict[str, Any]) -> str:
+    def _sign_log_entry(self, log_entry: dict[str, Any]) -> str:
         """
         Create an HMAC signature for a log entry to ensure integrity.
 
@@ -645,7 +634,7 @@ class AuditLogger:
         return base64.b64encode(signature).decode("utf-8")
 
     def _calculate_chain_hash(
-        self, log_id: str, timestamp: str, user_id: Optional[str], action: str
+        self, log_id: str, timestamp: str, user_id: str | None, action: str
     ) -> str:
         """
         Calculate a hash chain value for tamper detection.
@@ -665,7 +654,7 @@ class AuditLogger:
         # Calculate hash using SHA-256
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def _save_log_entry(self, log_entry: Dict[str, Any]) -> None:
+    def _save_log_entry(self, log_entry: dict[str, Any]) -> None:
         """
         Save a log entry to persistent storage.
 

@@ -6,8 +6,7 @@ AI models in the system, including MentaLLaMA and other NLP components.
 """
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Optional
-from uuid import UUID
+from typing import Any
 
 
 class InsightCategory(Enum):
@@ -49,12 +48,12 @@ class ClinicalInsight:
         text: str,
         category: InsightCategory,
         severity: InsightSeverity,
-        patient_id: Optional[str] = None,
-        analysis_id: Optional[str] = None,
-        evidence: Optional[str] = None,
+        patient_id: str | None = None,
+        analysis_id: str | None = None,
+        evidence: str | None = None,
         confidence: float = 0.0,
-        timestamp: Optional[datetime] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        timestamp: datetime | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Initialize a clinical insight.

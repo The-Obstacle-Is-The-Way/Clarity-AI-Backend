@@ -5,8 +5,8 @@ This module provides utilities to help tests bypass issues with unexpected
 query parameters in FastAPI routes.
 """
 
-from typing import Any, Callable, Dict, Optional, TypeVar, Awaitable
-from fastapi import Depends
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -53,7 +53,7 @@ def with_query_params(
 
 
 def create_query_param_wrapper(
-    params: Dict[str, Any] = None
+    params: dict[str, Any] = None
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
     Creates a wrapper for route handlers that adds required query parameters.

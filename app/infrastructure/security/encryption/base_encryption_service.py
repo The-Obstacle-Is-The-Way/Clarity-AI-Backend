@@ -6,18 +6,15 @@ following HIPAA Security Rule requirements for data protection at rest and in tr
 """
 
 import base64
+import hmac
+import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Set, Union
-import hashlib
-import hmac
-import binascii
-import json
+from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from pydantic import SecretStr
 
 # from app.config.settings import get_settings # Legacy import
 from app.core.config.settings import get_settings  # Corrected import
@@ -116,10 +113,10 @@ class BaseEncryptionService:
 
     def __init__(
         self,
-        secret_key: Optional[Union[str, bytes]] = None,
-        salt: Optional[Union[str, bytes]] = None,
-        direct_key: Optional[str] = None,
-        previous_key: Optional[str] = None,
+        secret_key: str | bytes | None = None,
+        salt: str | bytes | None = None,
+        direct_key: str | None = None,
+        previous_key: str | None = None,
     ):
         """
         Initialize the encryption service with a secret key.
@@ -155,8 +152,8 @@ class BaseEncryptionService:
                     raise ValueError("Primary encryption key is unavailable")
                 except Exception as e:
                     # Other errors during key retrieval
-                    logger.error(f"Error retrieving encryption key: {str(e)}")
-                    raise ValueError(f"Error setting up encryption: {str(e)}")
+                    logger.error(f"Error retrieving encryption key: {e!s}")
+                    raise ValueError(f"Error setting up encryption: {e!s}")
 
             # Ensure we have bytes for the key
             if isinstance(secret_key, str):
@@ -208,17 +205,17 @@ class BaseEncryptionService:
                     # Create cipher for previous key
                     self._previous_cipher = Fernet(prev_derived_key)
                 except Exception as e:
-                    logger.error(f"Failed to initialize previous key: {str(e)}")
+                    logger.error(f"Failed to initialize previous key: {e!s}")
                     # Don't fail initialization if previous key setup fails
                     self._previous_cipher = None
 
             logger.debug("Encryption service initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize encryption service: {str(e)}")
-            raise ValueError(f"Invalid encryption key: {str(e)}")
+            logger.error(f"Failed to initialize encryption service: {e!s}")
+            raise ValueError(f"Invalid encryption key: {e!s}")
 
     @property
-    def previous_key(self) -> Optional[str]:
+    def previous_key(self) -> str | None:
         """Get the previous key used for rotation."""
         return self._previous_key
 
@@ -227,7 +224,7 @@ class BaseEncryptionService:
         """Check if this service has a previous key configured."""
         return self._previous_key is not None and self._previous_cipher is not None
 
-    def encrypt(self, value: Union[str, bytes, None]) -> Optional[str]:
+    def encrypt(self, value: str | bytes | None) -> str | None:
         """
         Encrypt a value and add version prefix.
 
@@ -263,10 +260,10 @@ class BaseEncryptionService:
             encrypted_str = base64.b64encode(encrypted_bytes).decode("utf-8")
             return f"{self.VERSION_PREFIX}{encrypted_str}"
         except Exception as e:
-            logger.error(f"Encryption failed: {str(e)}")
-            raise ValueError(f"Encryption failed: {str(e)}")
+            logger.error(f"Encryption failed: {e!s}")
+            raise ValueError(f"Encryption failed: {e!s}")
 
-    def decrypt(self, value: Union[str, bytes, None]) -> Optional[Union[str, bytes]]:
+    def decrypt(self, value: str | bytes | None) -> str | bytes | None:
         """
         Decrypt a version-prefixed encrypted value.
 
@@ -299,7 +296,7 @@ class BaseEncryptionService:
                 # Strip version prefix
                 value = value[len(self.VERSION_PREFIX) :]
             else:
-                logger.warning(f"No version prefix found, assuming current version")
+                logger.warning("No version prefix found, assuming current version")
 
             # Decode base64 and decrypt
             encrypted_bytes = base64.b64decode(value)
@@ -338,9 +335,9 @@ class BaseEncryptionService:
                 except Exception as prev_error:
                     # Both keys failed, raise error with both messages
                     logger.error(
-                        f"Decryption failed with both primary and previous keys: {str(primary_error)}, {str(prev_error)}"
+                        f"Decryption failed with both primary and previous keys: {primary_error!s}, {prev_error!s}"
                     )
-                    raise ValueError(f"Decryption failed with all available keys")
+                    raise ValueError("Decryption failed with all available keys")
 
             # No previous key or previous key also failed
             if isinstance(primary_error, InvalidToken):
@@ -350,12 +347,12 @@ class BaseEncryptionService:
                 logger.error("Invalid base64 encoding in encrypted value")
                 raise ValueError("Decryption failed: Invalid base64 encoding")
         except Exception as e:
-            logger.error(f"Decryption failed: {str(e)}")
-            raise ValueError(f"Decryption failed: {str(e)}")
+            logger.error(f"Decryption failed: {e!s}")
+            raise ValueError(f"Decryption failed: {e!s}")
 
     def encrypt_string(
-        self, value: Union[str, Any], is_phi: bool = True
-    ) -> Optional[str]:
+        self, value: str | Any, is_phi: bool = True
+    ) -> str | None:
         """
         Encrypt a string value with proper handling for all input types.
 
@@ -393,8 +390,8 @@ class BaseEncryptionService:
                         # Last resort, try direct JSON conversion
                         str_value = json.dumps(value)
                 except Exception as ex:
-                    logger.error(f"Failed to convert value to JSON: {str(ex)}")
-                    raise ValueError(f"Could not serialize value: {str(ex)}")
+                    logger.error(f"Failed to convert value to JSON: {ex!s}")
+                    raise ValueError(f"Could not serialize value: {ex!s}")
             else:
                 # Convert string or bytes to string
                 str_value = value if isinstance(value, str) else value.decode("utf-8")
@@ -406,10 +403,10 @@ class BaseEncryptionService:
             # Encrypt the string
             return self.encrypt(str_value)
         except Exception as e:
-            logger.error(f"String encryption failed: {str(e)}")
-            raise ValueError(f"String encryption failed: {str(e)}")
+            logger.error(f"String encryption failed: {e!s}")
+            raise ValueError(f"String encryption failed: {e!s}")
 
-    def decrypt_string(self, value: Union[str, bytes]) -> str:
+    def decrypt_string(self, value: str | bytes) -> str:
         """
         Decrypt a string that was encrypted with encrypt_string.
 
@@ -440,12 +437,12 @@ class BaseEncryptionService:
 
         except Exception as e:
             # Log the error (without the sensitive data)
-            logger.error(f"String decryption failed: {str(e)}")
-            raise ValueError(f"Decryption failed: {str(e)}")
+            logger.error(f"String decryption failed: {e!s}")
+            raise ValueError(f"Decryption failed: {e!s}")
 
     def encrypt_dict(
         self, data: dict, legacy_mode: bool = False
-    ) -> Optional[Union[Dict[str, Any], str]]:
+    ) -> dict[str, Any] | str | None:
         """
         Encrypt a dictionary by selectively encrypting each field or as a whole.
 
@@ -588,12 +585,12 @@ class BaseEncryptionService:
 
             return result
         except Exception as e:
-            logger.error(f"Dictionary encryption failed: {str(e)}")
-            raise ValueError(f"Dictionary encryption failed: {str(e)}")
+            logger.error(f"Dictionary encryption failed: {e!s}")
+            raise ValueError(f"Dictionary encryption failed: {e!s}")
 
     def decrypt_dict(
-        self, encrypted_data: Union[Dict[str, Any], str, None]
-    ) -> Optional[dict]:
+        self, encrypted_data: dict[str, Any] | str | None
+    ) -> dict | None:
         """
         Decrypt a dictionary from either an encrypted JSON string or a dictionary with encrypted fields.
 
@@ -658,11 +655,11 @@ class BaseEncryptionService:
                     f"decrypt_dict requires a dictionary or string, got {type(encrypted_data).__name__}"
                 )
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parsing failed: {str(e)}")
-            raise ValueError(f"Failed to parse decrypted JSON: {str(e)}")
+            logger.error(f"JSON parsing failed: {e!s}")
+            raise ValueError(f"Failed to parse decrypted JSON: {e!s}")
         except Exception as e:
-            logger.error(f"Dictionary decryption failed: {str(e)}")
-            raise ValueError(f"Dictionary decryption failed: {str(e)}")
+            logger.error(f"Dictionary decryption failed: {e!s}")
+            raise ValueError(f"Dictionary decryption failed: {e!s}")
 
     def encrypt_file(self, input_path: str, output_path: str) -> None:
         """Encrypt a file.
@@ -689,7 +686,7 @@ class BaseEncryptionService:
                 outfile.write(encrypted_data)
 
             logger.info(f"File encrypted successfully: {input_path} -> {output_path}")
-        except IOError as e:
+        except OSError as e:
             logger.error(f"IO error during file encryption: {e}")
             raise
         except Exception as e:

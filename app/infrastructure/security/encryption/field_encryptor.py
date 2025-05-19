@@ -127,7 +127,7 @@ class FieldEncryptor:
                         and "demographics.name" in field_path
                         and current_key == "demographics"
                         and remaining_path == "name"
-                        and not "." in remaining_path
+                        and "." not in remaining_path
                     ):
                         if "name" in data.get("demographics", {}):
                             if isinstance(data["demographics"]["name"], dict):
@@ -143,7 +143,7 @@ class FieldEncryptor:
                         and "demographics.contact" in field_path
                         and current_key == "demographics"
                         and remaining_path == "contact"
-                        and not "." in remaining_path
+                        and "." not in remaining_path
                     ):
                         if "contact" in data.get("demographics", {}):
                             if isinstance(data["demographics"]["contact"], dict):
@@ -294,7 +294,7 @@ class FieldEncryptor:
                             obj[field] = decrypted_value
                     except ValueError as e:
                         logger.error(f"Failed to decrypt field '{field}': {e}")
-                        obj[field] = f"[DECRYPTION ERROR]"
+                        obj[field] = "[DECRYPTION ERROR]"
                 # Special handling for address objects and other nested structures during decryption
                 elif isinstance(value, dict) and (
                     field in ["address", "contact", "name"]
@@ -323,7 +323,7 @@ class FieldEncryptor:
             # In case of encryption error, keep original
             # In case of decryption error, mark as error
             if not encrypt:
-                obj[field] = f"[DECRYPTION ERROR]"
+                obj[field] = "[DECRYPTION ERROR]"
 
     def encrypt_phi_fields(
         self, data: dict[str, Any], phi_fields: set[str]

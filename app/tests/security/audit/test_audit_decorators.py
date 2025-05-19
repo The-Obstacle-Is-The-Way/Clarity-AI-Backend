@@ -11,12 +11,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.infrastructure.logging.audit import (
-    audit_phi_access,
     audit_async_phi_access,
-    set_current_user,
-    get_current_user_id,
-    get_current_access_reason,
+    audit_phi_access,
     clear_current_user,
+    get_current_access_reason,
+    get_current_user_id,
+    set_current_user,
 )
 
 

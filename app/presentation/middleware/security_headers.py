@@ -7,7 +7,6 @@ to responses, helping to protect against common web vulnerabilities.
 
 import logging
 from collections.abc import Callable
-from typing import Dict, Optional
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -23,7 +22,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     security against XSS, clickjacking, and other web vulnerabilities.
     """
 
-    def __init__(self, app, security_headers: Optional[Dict[str, str]] = None):
+    def __init__(self, app, security_headers: dict[str, str] | None = None):
         """
         Initialize the security headers middleware.
 

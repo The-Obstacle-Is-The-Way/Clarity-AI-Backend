@@ -6,14 +6,14 @@ natural language processing for mental health applications.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class MentaLLaMAInterface(ABC):
     """Interface for the MentaLLaMA service."""
 
     @abstractmethod
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize the MentaLLaMA service with config parameters.
 
@@ -37,11 +37,11 @@ class MentaLLaMAInterface(ABC):
         self,
         prompt: str,
         user_id: str,
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 1024,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process a text prompt and generate a response.
 
@@ -61,7 +61,7 @@ class MentaLLaMAInterface(ABC):
     @abstractmethod
     async def detect_depression(
         self, text: str, user_id: str, **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect signs of depression in text.
 

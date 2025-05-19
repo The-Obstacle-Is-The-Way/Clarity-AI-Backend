@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Database Driver Fix Utility
 
@@ -13,7 +12,6 @@ Usage:
     python -m backend.scripts.fix_db_driver
 """
 
-import os
 import re
 from pathlib import Path
 
@@ -43,18 +41,18 @@ def fix_db_driver():
 
     print(f"Backing up {config_file} to {config_backup}")
     if config_file.exists():
-        with open(config_file, "r") as src:
+        with open(config_file) as src:
             with open(config_backup, "w") as dst:
                 dst.write(src.read())
 
     print(f"Backing up {db_file} to {db_backup}")
     if db_file.exists():
-        with open(db_file, "r") as src:
+        with open(db_file) as src:
             with open(db_backup, "w") as dst:
                 dst.write(src.read())
 
     # Read the config file
-    with open(config_file, "r") as f:
+    with open(config_file) as f:
         config_content = f.read()
 
     # Replace psycopg2 with asyncpg in the database URL if present
@@ -71,7 +69,7 @@ def fix_db_driver():
         print("No changes needed in config file.")
 
     # Read the db.py file
-    with open(db_file, "r") as f:
+    with open(db_file) as f:
         db_content = f.read()
 
     # Ensure correct SQLAlchemy imports and configuration for async
@@ -103,7 +101,7 @@ def fix_db_driver():
     # Check for requirements and add asyncpg if needed
     requirements_file = base_dir / "requirements.txt"
     if requirements_file.exists():
-        with open(requirements_file, "r") as f:
+        with open(requirements_file) as f:
             requirements_content = f.read()
 
         if "asyncpg" not in requirements_content:

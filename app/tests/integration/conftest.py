@@ -7,55 +7,50 @@ require network connections, databases, and other external services.
 
 import logging
 import uuid
-from collections.abc import AsyncGenerator, Callable
-from typing import Any, Dict, List, Optional, Set, Union
+from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone, timedelta
 
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Header
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 from asgi_lifespan import LifespanManager
-from sqlalchemy import text
+from fastapi import FastAPI, Header
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+from app.core.config import Settings
+from app.core.domain.entities.user import User, UserRole, UserStatus
+from app.core.interfaces.aws_service_interface import (
+    AWSServiceFactory,
+    S3ServiceInterface,
+)
+from app.core.interfaces.services.encryption_service_interface import IEncryptionService
 
 # Import JWT service interface
 from app.core.interfaces.services.jwt_service import IJwtService
-from app.core.interfaces.aws_service_interface import (
-    S3ServiceInterface,
-    AWSServiceFactory,
-)
-from app.core.interfaces.services.encryption_service_interface import IEncryptionService
-from app.presentation.api.dependencies.repository import get_encryption_service
-from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
-from app.core.config import Settings
 
 # Added imports for mock JWT service
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
+from app.core.models.token_models import TokenPayload
+from app.domain.exceptions.token_exceptions import InvalidTokenException
+from app.infrastructure.aws.service_factory_provider import get_aws_service_factory
+
+# End of added imports
+# Import SQLAlchemy models and utils
 from app.infrastructure.security.jwt.jwt_service import (
     get_jwt_service as get_jwt_service_provider,
 )
-from app.core.models.token_models import TokenPayload
-from app.core.domain.entities.user import UserRole, User, UserStatus
-from app.domain.exceptions.token_exceptions import InvalidTokenException
+from app.presentation.api.dependencies.repository import get_encryption_service
 
 # Import the predefined test user UUIDs
-from app.tests.integration.utils.test_db_initializer import (
-    TEST_USER_ID,
-    TEST_CLINICIAN_ID,
-)
-
-# End of added imports
-
-# Import SQLAlchemy models and utils
-from app.infrastructure.persistence.sqlalchemy.registry import metadata as main_metadata
-
 # Import the FastAPI application
 # Import test database initializer functions
 from app.tests.integration.utils.test_db_initializer import (
+    TEST_CLINICIAN_ID,
+    TEST_USER_ID,
     create_test_users,
     get_test_db_session,
 )
@@ -280,7 +275,6 @@ async def test_app(
 @pytest_asyncio.fixture
 async def test_client(test_app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """Provides an AsyncClient instance configured for the test_app, managing its lifespan."""
-    from httpx import ASGITransport  # Moved import here
     from asgi_lifespan import LifespanManager  # Moved import here
 
     logger.info(
@@ -574,7 +568,6 @@ async def test_db_engine(test_settings: Settings):
     Returns:
         AsyncEngine: SQLAlchemy AsyncEngine instance suitable for integration tests
     """
-    from sqlalchemy.ext.asyncio import create_async_engine
 
     # Get database URL from settings, with fallback
     database_url = (
@@ -615,12 +608,12 @@ async def test_db_engine(test_settings: Settings):
 
         await conn.run_sync(Base.metadata.create_all)
 
-    logger.info(f"All database tables created from metadata")
+    logger.info("All database tables created from metadata")
 
     yield engine
 
     # Cleanup: dispose of the engine to release connections
-    logger.info(f"Disposing test database engine")
+    logger.info("Disposing test database engine")
     await engine.dispose()
 
 
@@ -640,8 +633,9 @@ async def test_app_with_db_session(
         "Creating FastAPI app instance with DB session factory for integration tests"
     )
 
-    from app.app_factory import create_application
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    from app.app_factory import create_application
 
     # Create the app instance
     app = create_application(
@@ -760,13 +754,12 @@ async def authenticated_client(
         An authenticated AsyncClient for testing protected endpoints
     """
     # Override auth dependencies to bypass authentication in tests
-    from app.presentation.api.dependencies.auth import (
-        get_current_user,
-        get_current_active_user,
-        require_admin_role,
-        require_clinician_role,
-    )
     from httpx._transports.asgi import ASGITransport
+
+    from app.presentation.api.dependencies.auth import (
+        get_current_active_user,
+        get_current_user,
+    )
 
     # Set up the authentication overrides using the patient role by default
     test_app_with_db_session.dependency_overrides[
@@ -885,7 +878,7 @@ def create_auth_me_endpoint(app: FastAPI):
 def create_test_token(
     subject: str = "test.user@example.com",
     user_id: str = "00000000-0000-0000-0000-000000000002",
-    roles: List[str] = None,
+    roles: list[str] = None,
     expiration_minutes: int = 30,
 ) -> str:
     """Create a JWT token for testing."""
@@ -1204,14 +1197,14 @@ def app_with_mocked_repositories(
     Returns:
         FastAPI: App instance with mocked repositories
     """
+    from app.core.interfaces.repositories.patient_repository import IPatientRepository
+    from app.core.interfaces.repositories.user_repository_interface import (
+        IUserRepository,
+    )
     from app.presentation.api.dependencies.auth import get_user_repository_dependency
     from app.presentation.api.dependencies.database import (
         get_patient_repository_dependency,
     )
-    from app.core.interfaces.repositories.user_repository_interface import (
-        IUserRepository,
-    )
-    from app.core.interfaces.repositories.patient_repository import IPatientRepository
 
     # Create a test user for auth tests
     test_user = User(

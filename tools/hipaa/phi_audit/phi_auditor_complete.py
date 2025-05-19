@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Complete HIPAA PHI Auditor implementation.
 This script creates a proper PHIAuditor class with the required functionality.
 """
 
 import os
-import sys
 import re
 import shutil
-from typing import Dict, List, Any, Optional
+import sys
 
 
 class PHIAuditResult:
@@ -260,7 +258,7 @@ class PHIAuditor:
         result = PHIAuditResult(file_path)
 
         try:
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            with open(file_path, encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
                 # Check if this is a test file focused on PHI testing
@@ -287,7 +285,7 @@ class PHIAuditor:
 
         return result
 
-    def scan_directory(self, directory: str) -> List[PHIAuditResult]:
+    def scan_directory(self, directory: str) -> list[PHIAuditResult]:
         """
         Scan a directory for PHI.
 
@@ -337,7 +335,7 @@ class PHIAuditor:
         # Implementation details would go here
         pass
 
-    def generate_report(self, output_file: Optional[str] = None) -> str:
+    def generate_report(self, output_file: str | None = None) -> str:
         """Generate a report of the audit findings."""
         report_json = self.report.to_json()
 
@@ -504,7 +502,7 @@ def install_phi_auditor():
         print(f"Created backup at {backup_path}")
 
     # Read this file's content (excluding this function)
-    with open(__file__, "r") as f:
+    with open(__file__) as f:
         content = f.read()
 
     # Extract everything except the install_phi_auditor function

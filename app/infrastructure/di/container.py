@@ -265,6 +265,14 @@ class DIContainer:
         )
 
         # Import services and their interfaces
+        from app.application.services.biometric_alert_service import (
+            BiometricAlertService,
+        )
+
+        # Import AlertServiceInterface and its implementation
+        from app.core.interfaces.services.alert_service_interface import (
+            AlertServiceInterface,
+        )
         from app.core.interfaces.services.auth_service_interface import (
             AuthServiceInterface,
         )
@@ -273,14 +281,6 @@ class DIContainer:
         )
         from app.infrastructure.security.auth.auth_service import get_auth_service
         from app.infrastructure.security.jwt.jwt_service import get_jwt_service
-
-        # Import AlertServiceInterface and its implementation
-        from app.core.interfaces.services.alert_service_interface import (
-            AlertServiceInterface,
-        )
-        from app.application.services.biometric_alert_service import (
-            BiometricAlertService,
-        )
 
         # Register services directly or via factories
         self.register_factory(AuthServiceInterface, get_auth_service)

@@ -9,14 +9,11 @@ from datetime import timezone
 from typing import Any
 from unittest.mock import MagicMock
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from freezegun import freeze_time
 
 from app.config.settings import Settings  # Import actual Settings
 from app.domain.exceptions import InvalidTokenException, TokenExpiredException
-from app.domain.exceptions.base_exceptions import AuthenticationError
 
 # Corrected imports
 from app.infrastructure.security.jwt.jwt_service import JWTService, TokenPayload

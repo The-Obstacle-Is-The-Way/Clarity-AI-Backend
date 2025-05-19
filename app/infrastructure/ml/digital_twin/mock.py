@@ -6,9 +6,9 @@ for development and testing purposes.
 """
 
 import datetime
-import uuid
 import random
-from typing import Any, Optional, List, Dict, Union
+import uuid
+from typing import Any
 
 from app.core.exceptions import (
     InvalidConfigurationError,
@@ -384,7 +384,7 @@ class MockDigitalTwinService(DigitalTwinInterface):
                 term in msg_lower
                 for term in ["medication", "meds", "pills", "prescription"]
             ):
-                response_text = f"I understand you're asking about medication. What specific information about your medication do you need?"
+                response_text = "I understand you're asking about medication. What specific information about your medication do you need?"
                 topic = "medication"
             elif any(
                 term in msg_lower
@@ -417,14 +417,14 @@ class MockDigitalTwinService(DigitalTwinInterface):
                 or "sad" in msg_lower
                 or "depress" in msg_lower
             ):
-                response_text = f"I hear you're feeling hopeless, which can be a sign of depression. Let's discuss ways to address these feelings."
+                response_text = "I hear you're feeling hopeless, which can be a sign of depression. Let's discuss ways to address these feelings."
                 topic = "depression"
             elif (
                 "worried about everything" in msg_lower
                 or "anxiety" in msg_lower
                 or "anxious" in msg_lower
             ):
-                response_text = f"I understand you're experiencing anxiety. Let's explore what might be triggering these feelings."
+                response_text = "I understand you're experiencing anxiety. Let's explore what might be triggering these feelings."
                 topic = "anxiety"
             elif any(
                 term in msg_lower

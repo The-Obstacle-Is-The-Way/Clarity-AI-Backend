@@ -9,13 +9,12 @@ Usage:
     python scripts/improve_test_coverage.py [--analyze] [--identify-untested] [--generate-stubs]
 """
 
-import os
-import re
-import json
 import argparse
+import json
+import re
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Any
+from typing import Any
 
 
 class CoverageAnalyzer:
@@ -60,14 +59,14 @@ class CoverageAnalyzer:
             print(f"Error running coverage: {e}")
             return False
 
-    def analyze_coverage(self) -> Dict[str, Any]:
+    def analyze_coverage(self) -> dict[str, Any]:
         """Analyze coverage report and provide statistics."""
         if not self.coverage_json.exists():
             print("No coverage data found. Run tests with coverage first.")
             return {}
 
         try:
-            with open(self.coverage_json, "r") as f:
+            with open(self.coverage_json) as f:
                 coverage_data = json.load(f)
 
             # Extract overall statistics
@@ -144,7 +143,7 @@ class CoverageAnalyzer:
             return "app"
         return file_path
 
-    def identify_untested_code(self, min_statements: int = 5) -> List[Dict[str, Any]]:
+    def identify_untested_code(self, min_statements: int = 5) -> list[dict[str, Any]]:
         """Identify modules with low or no test coverage."""
         coverage_data = self.analyze_coverage()
         if not coverage_data:
@@ -166,7 +165,7 @@ class CoverageAnalyzer:
         # Sort by priority (higher is more important)
         return sorted(untested_modules, key=lambda x: x["priority"], reverse=True)
 
-    def _calculate_priority(self, module: str, data: Dict[str, Any]) -> float:
+    def _calculate_priority(self, module: str, data: dict[str, Any]) -> float:
         """Calculate priority for testing a module based on importance and current coverage."""
         # Base priority on number of statements (larger modules = higher priority)
         priority = data["statements"] * 0.1
@@ -199,7 +198,7 @@ class CoverageAnalyzer:
         return priority
 
     def generate_test_stubs(
-        self, untested_modules: List[Dict[str, Any]], max_stubs: int = 5
+        self, untested_modules: list[dict[str, Any]], max_stubs: int = 5
     ) -> None:
         """Generate stub test files for untested modules."""
         if not untested_modules:
@@ -315,13 +314,13 @@ class CoverageAnalyzer:
                     "    @pytest.fixture",
                     f"    def {class_name.lower()}_instance(self):",
                     f'        """Create a {class_name} instance for testing."""',
-                    f"        # TODO: Initialize with appropriate test data",
+                    "        # TODO: Initialize with appropriate test data",
                     f"        return {class_name}()",
                     "",
                     f"    def test_{class_name.lower()}_initialization(self, {class_name.lower()}_instance):",
                     f'        """Test {class_name} initialization."""',
                     f"        assert {class_name.lower()}_instance is not None",
-                    f"        # TODO: Add assertions for expected attributes",
+                    "        # TODO: Add assertions for expected attributes",
                     "",
                     "    # TODO: Add more test methods for each method in the class",
                     "",

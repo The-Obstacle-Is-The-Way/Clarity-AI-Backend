@@ -26,14 +26,14 @@ from app.core.interfaces.services.encryption_service_interface import (
     IEncryptionService,
 )
 from app.infrastructure.repositories.alert_repository import AlertRepository
+from app.infrastructure.repositories.memory.biometric_alert_template_repository import (
+    InMemoryBiometricAlertTemplateRepository,
+)
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_repository import (
     BiometricAlertRepository,
 )
 from app.infrastructure.repositories.sqlalchemy.biometric_alert_rule_repository import (
     SQLAlchemyBiometricAlertRuleRepository as BiometricRuleRepository,
-)
-from app.infrastructure.repositories.memory.biometric_alert_template_repository import (
-    InMemoryBiometricAlertTemplateRepository,
 )
 from app.presentation.api.dependencies.repository import get_encryption_service
 

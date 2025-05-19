@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.sql import func
 
-from app.infrastructure.persistence.sqlalchemy.types import JSONEncodedDict, GUID
+from app.infrastructure.persistence.sqlalchemy.types import GUID, JSONEncodedDict
 
 # Assuming Base is correctly defined and imported from a central location like database.py
 # If not, adjust the import path accordingly.

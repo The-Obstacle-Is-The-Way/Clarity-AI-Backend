@@ -8,7 +8,7 @@ while maintaining HIPAA compliance and clean architecture.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -28,7 +28,7 @@ class ITokenRepository(ABC):
         token_id: str,
         token_type: str,
         expires_at: datetime,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Store a token in the repository.
@@ -47,8 +47,8 @@ class ITokenRepository(ABC):
 
     @abstractmethod
     async def get_user_tokens(
-        self, user_id: UUID, token_type: Optional[str] = None, active_only: bool = True
-    ) -> List[Dict[str, Any]]:
+        self, user_id: UUID, token_type: str | None = None, active_only: bool = True
+    ) -> list[dict[str, Any]]:
         """
         Get all tokens for a specific user.
 
@@ -85,8 +85,8 @@ class ITokenRepository(ABC):
     async def invalidate_user_tokens(
         self,
         user_id: UUID,
-        token_type: Optional[str] = None,
-        exclude_token_ids: Optional[List[str]] = None,
+        token_type: str | None = None,
+        exclude_token_ids: list[str] | None = None,
     ) -> int:
         """
         Invalidate all tokens for a user.

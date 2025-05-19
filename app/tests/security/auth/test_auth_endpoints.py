@@ -4,29 +4,26 @@ Test suite for auth endpoints using async httpx client.
 These tests verify the functionality of the authentication endpoints
 using direct API calls to ensure proper behavior with async handling.
 """
+import logging
+import uuid
 from unittest.mock import AsyncMock
 
-import asyncio
 import pytest
-import logging
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from httpx import AsyncClient, ASGITransport
-from fastapi import FastAPI, Request, HTTPException, status, Response
-import uuid
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from httpx import ASGITransport, AsyncClient
 
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 # ADDED Imports for Pydantic models and exceptions for mocking
-from app.presentation.api.schemas.auth import (
-    TokenResponseSchema,
-    SessionInfoResponseSchema,
-)
 from app.domain.exceptions.auth_exceptions import (
-    InvalidCredentialsException,
     AccountDisabledException,
+    InvalidCredentialsException,
     InvalidTokenException,
-    TokenExpiredException,
+)
+from app.presentation.api.schemas.auth import (
+    SessionInfoResponseSchema,
+    TokenResponseSchema,
 )
 
 # --- Tests ---

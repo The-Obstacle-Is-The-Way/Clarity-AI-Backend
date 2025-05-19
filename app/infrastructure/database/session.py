@@ -64,7 +64,7 @@ async def get_async_session_utility(
     session_factory: Callable[[], AsyncSession] | None
 ) -> AsyncGenerator[AsyncSession, None]:
     """Utility to get an async database session using a provided factory."""
-    logger.debug(f"GET_ASYNC_SESSION_UTILITY: Entered.")
+    logger.debug("GET_ASYNC_SESSION_UTILITY: Entered.")
 
     if session_factory is None:
         logger.error(

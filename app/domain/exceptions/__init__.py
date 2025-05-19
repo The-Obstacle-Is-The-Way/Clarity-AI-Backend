@@ -4,70 +4,64 @@ Exception classes for the application domain.
 This module exports common exceptions used throughout the application.
 """
 
+from app.domain.exceptions.appointment_exceptions import (
+    AppointmentCancellationError,
+    AppointmentConflictError,
+    AppointmentNotFoundError,
+    AppointmentReschedulingError,
+    InvalidAppointmentStateError,
+    InvalidAppointmentTimeError,
+)
+from app.domain.exceptions.auth_exceptions import (
+    AccountDisabledException,
+    AccountLockedException,
+    AuthenticationException,
+    AuthorizationException,
+    InsufficientPermissionsException,
+    InvalidCredentialsException,
+    MaxSessionsExceededException,
+    RoleRequiredException,
+    SessionExpiredException,
+    UserAlreadyExistsException,
+    UserNotFoundException,
+)
 from app.domain.exceptions.base_exceptions import (
-    BaseApplicationError,
-    ValidationError,
     AuthenticationError,
     AuthorizationError,
+    BaseApplicationError,
+    BusinessRuleError,
     ConfigurationError,
     IntegrationError,
-    BusinessRuleError,
+    ValidationError,
 )
-
 from app.domain.exceptions.data_exceptions import DataIntegrityError, DataNotFoundError
-
 from app.domain.exceptions.persistence_exceptions import (
     EntityNotFoundError,
     PersistenceError,
     RepositoryError,
 )
-
+from app.domain.exceptions.security_exceptions import (
+    AccountDisabledError,
+    AccountLockedError,
+    InvalidCredentialsError,
+    InvalidSessionError,
+    PermissionDeniedError,
+    PHIAccessError,
+    SecurityError,
+    SessionExpiredError,
+    TooManyAttemptsError,
+)
 from app.domain.exceptions.token_exceptions import (
-    TokenException,
-    InvalidTokenException,
-    TokenExpiredException,
-    TokenBlacklistedException,
-    TokenGenerationException,
-    MissingTokenException,
     # Aliases
     InvalidTokenError,
-    TokenExpiredError,
+    InvalidTokenException,
     MissingTokenError,
-)
-
-from app.domain.exceptions.auth_exceptions import (
-    AuthenticationException,
-    AuthorizationException,
-    InvalidCredentialsException,
-    AccountLockedException,
-    AccountDisabledException,
-    SessionExpiredException,
-    InsufficientPermissionsException,
-    RoleRequiredException,
-    MaxSessionsExceededException,
-    UserNotFoundException,
-    UserAlreadyExistsException,
-)
-
-from app.domain.exceptions.appointment_exceptions import (
-    InvalidAppointmentStateError,
-    InvalidAppointmentTimeError,
-    AppointmentConflictError,
-    AppointmentNotFoundError,
-    AppointmentCancellationError,
-    AppointmentReschedulingError,
-)
-
-from app.domain.exceptions.security_exceptions import (
-    SecurityError,
-    PHIAccessError,
-    PermissionDeniedError,
-    InvalidCredentialsError,
-    AccountLockedError,
-    AccountDisabledError,
-    TooManyAttemptsError,
-    InvalidSessionError,
-    SessionExpiredError,
+    MissingTokenException,
+    TokenBlacklistedException,
+    TokenException,
+    TokenExpiredError,
+    TokenExpiredException,
+    TokenGenerationException,
 )
 
 # For backward compatibility

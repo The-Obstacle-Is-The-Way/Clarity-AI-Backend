@@ -31,8 +31,8 @@ Patch implemented here:
 from __future__ import annotations
 
 import importlib
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Make sure the *backend* package directory itself is import‑searchable.
@@ -80,8 +80,8 @@ try:
 
     # Import the AWS fixtures
     from app.tests.infrastructure.aws.conftest_aws import (
-        aws_test_environment,
         aws_service_factory,
+        aws_test_environment,
         dynamodb_service,
         s3_service,
         sagemaker_service,
@@ -96,7 +96,6 @@ except ImportError as e:
     )
 
 # For backward compatibility, still import boto3 but no verification needed
-import boto3  # noqa: WPS433 – runtime patch verification
 
 # assert getattr(boto3, "__shim__", False), "in‑memory boto3 shim not installed"
 
@@ -126,18 +125,16 @@ the test module itself exports, and we do so immediately after the module code
 has run but **before** the first fixture is evaluated.
 """
 
-from types import ModuleType
-import importlib
-import importlib.abc
-import importlib.util
-import sys
-from datetime import timedelta as _dt_timedelta, timezone as _dt_timezone
-
 # ---------------------------------------------------------------------------
 # Global *one‑liner* compatibility shim – apply at import time
 # ---------------------------------------------------------------------------
-
 import datetime as _dt
+import importlib.abc
+import importlib.util
+import sys
+from datetime import timedelta as _dt_timedelta
+from datetime import timezone as _dt_timezone
+from types import ModuleType
 
 if not getattr(_dt, "_nova_now_patched", False):
     _orig_datetime_cls = _dt.datetime
@@ -175,7 +172,7 @@ def _patch_test_module(mod: ModuleType) -> None:  # pragma: no cover – helper
         class _DateTimeCompat:  # pylint: disable=too-few-public-methods
             """Local proxy that loosens the ``now`` signature."""
 
-            @staticmethod  # noqa: D401 – parity with real API
+            @staticmethod
             def now(tz=None):  # type: ignore[override]
                 if isinstance(tz, _dt_timedelta):
                     tz = _dt_timezone(tz)
@@ -195,16 +192,15 @@ def _patch_test_module(mod: ModuleType) -> None:  # pragma: no cover – helper
     # schemas remain untouched.
     # -------------------------------------------------------------------
     try:
+
         from app.presentation.api.v1.schemas.digital_twin_schemas import (
             PersonalizedInsightResponse as _PIR,
         )
 
-        from types import SimpleNamespace as _SimpleNamespace
-
         class _AttrDict(dict):
             """Dict that allows *attribute* access recursively (for tests only)."""
 
-            def __getattr__(self, item):  # noqa: D401 – convenience helper
+            def __getattr__(self, item):
                 val = self.get(item)
                 if isinstance(val, dict):
                     return _AttrDict(val)
@@ -231,16 +227,14 @@ def _patch_test_module(mod: ModuleType) -> None:  # pragma: no cover – helper
 # The below fixtures are *pure‑Python* and do not rely on postponed evaluation,
 # so the standard import semantics are sufficient here.
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock
-from datetime import datetime
 import asyncio
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 import pytest_asyncio
-from typing import AsyncGenerator, Generator
 
 # Export these at module level for test modules to import directly
-from app.core.config.settings import get_settings, Settings
-from app.infrastructure.logging.logger import get_logger
 
 # ---------------------------------------------------------------------------
 # "event_loop" - global fixture for asyncio tests to prevent redefinition warnings
@@ -272,6 +266,7 @@ async def async_client_session() -> AsyncGenerator:
         AsyncGenerator yielding the test session
     """
     from httpx import AsyncClient
+
     from app.main import app
 
     async with AsyncClient(app=app, base_url="http://test") as client:
@@ -284,7 +279,7 @@ async def async_client_session() -> AsyncGenerator:
 
 
 @pytest.fixture(name="invalid_name")
-def _fixture_invalid_name() -> str:  # noqa: D401 – fixture helper
+def _fixture_invalid_name() -> str:
     """Return a syntactically invalid name string for negative tests."""
 
     return "!!invalid$$name%%"
@@ -296,7 +291,7 @@ def _fixture_invalid_name() -> str:  # noqa: D401 – fixture helper
 
 
 @pytest.fixture(name="patient_id")
-def _fixture_patient_id() -> str:  # noqa: D401 – fixture helper
+def _fixture_patient_id() -> str:
     """Provide a deterministic *patient* UUID for route tests."""
 
     return "00000000-0000-4000-A000-000000000001"
@@ -307,20 +302,20 @@ def _fixture_patient_id() -> str:  # noqa: D401 – fixture helper
 # ---------------------------------------------------------------------------
 
 
-class _MockPHIService:  # noqa: D101 – internal test helper
+class _MockPHIService:
     """Minimal PHI‑detection stub satisfying the interface contract."""
 
-    def contains_phi(self, text: str) -> bool:  # noqa: D401 – simple helper
+    def contains_phi(self, text: str) -> bool:
         # Naïve heuristic – treat bracketed identifiers as PHI just for tests.
         return "[PHI]" in text or "patient" in text.lower()
 
-    def redact_phi(self, text: str) -> str:  # noqa: D401 – simple helper
+    def redact_phi(self, text: str) -> str:
         # Replace any *very* rough PHI pattern with placeholder.
         return text.replace("[PHI]", "[REDACTED]")
 
 
 @pytest.fixture(name="mock_phi_service")
-def _fixture_mock_phi_service() -> _MockPHIService:  # noqa: D401
+def _fixture_mock_phi_service() -> _MockPHIService:
     """Provide a shared *in‑memory* mock PHI service instance."""
 
     return _MockPHIService()
@@ -332,7 +327,7 @@ def _fixture_mock_phi_service() -> _MockPHIService:  # noqa: D401
 
 
 @pytest.fixture(name="mock_db_session")
-def _fixture_mock_db_session():  # noqa: D401 – fixture helper
+def _fixture_mock_db_session():
     """Return a MagicMock that mimics an *SQLAlchemy* async session."""
 
     session = MagicMock()
@@ -345,12 +340,12 @@ def _fixture_mock_db_session():  # noqa: D401 – fixture helper
     session.get = MagicMock()
 
     # Simple query tracking helpers used by a handful of tests
-    session._query_results = None  # noqa: SLF001 – test helper attribute
-    session._last_executed_query = None  # noqa: SLF001 – ditto
+    session._query_results = None
+    session._last_executed_query = None
 
-    async def _execute(query, *args, **kwargs):  # noqa: D401 – async stub
-        session._last_executed_query = query  # noqa: SLF001
-        return session._query_results  # noqa: SLF001
+    async def _execute(query, *args, **kwargs):
+        session._last_executed_query = query
+        return session._query_results
 
     session.execute = AsyncMock(side_effect=_execute)
 
@@ -372,7 +367,7 @@ class _DigitalTwinsTestPatcher(importlib.abc.MetaPathFinder, importlib.abc.Loade
     _orig_loader: importlib.abc.Loader | None = None
 
     # -------------------- importlib.abc.MetaPathFinder -------------------- #
-    def find_spec(self, fullname, path, target=None):  # noqa: D401 (signature)
+    def find_spec(self, fullname, path, target=None):
         if fullname != self._TARGET:
             return None  # We only care about the single problematic module.
 
@@ -391,11 +386,11 @@ class _DigitalTwinsTestPatcher(importlib.abc.MetaPathFinder, importlib.abc.Loade
         return importlib.util.spec_from_loader(fullname, self)
 
     # -------------------------- importlib.abc.Loader ---------------------- #
-    def create_module(self, spec):  # noqa: D401 – Required by protocol
+    def create_module(self, spec):
         # Defer to the default machinery (returns None = use normal creation).
         return None
 
-    def exec_module(self, module):  # noqa: D401 – Required by protocol
+    def exec_module(self, module):
         """Execute the target module, then patch its namespace in‑place."""
 
         assert (

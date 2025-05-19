@@ -5,21 +5,17 @@ This module contains the SQLAlchemy models for the database.
 """
 
 import uuid
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
     ForeignKey,
-    Integer,
     String,
-    Table,
-    Text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import declarative_base
 
 from app.domain.entities.patient import Patient
 from app.domain.value_objects.address import Address
@@ -27,7 +23,6 @@ from app.domain.value_objects.emergency_contact import EmergencyContact
 from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
     EncryptedJSON,
     EncryptedString,
-    EncryptedText,
 )
 
 Base = declarative_base()

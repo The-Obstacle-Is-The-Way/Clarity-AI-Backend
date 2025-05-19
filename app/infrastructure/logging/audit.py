@@ -13,19 +13,14 @@ Key features:
 - Compliance with HIPAA audit requirements
 """
 
-import asyncio
 import datetime
 import functools
 import logging
 import threading
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union, cast
+from typing import Any, TypeVar, cast
 
-from app.core.interfaces.services.audit_logger_interface import (
-    AuditEventType,
-    AuditSeverity,
-    IAuditLogger,
-)
 from app.infrastructure.security.audit_logger import AuditLogger
 
 # Configure logger
@@ -57,7 +52,7 @@ def get_audit_logger() -> AuditLogger:
     return _audit_logger
 
 
-def get_current_user_id() -> Optional[str]:
+def get_current_user_id() -> str | None:
     """
     Get the current user ID from thread-local storage.
 
@@ -67,7 +62,7 @@ def get_current_user_id() -> Optional[str]:
     return getattr(_thread_local, "user_id", None)
 
 
-def get_current_access_reason() -> Optional[str]:
+def get_current_access_reason() -> str | None:
     """
     Get the current access reason from thread-local storage.
 
@@ -77,7 +72,7 @@ def get_current_access_reason() -> Optional[str]:
     return getattr(_thread_local, "access_reason", None)
 
 
-def set_current_user(user_id: str, access_reason: Optional[str] = None) -> None:
+def set_current_user(user_id: str, access_reason: str | None = None) -> None:
     """
     Set the current user ID and access reason in thread-local storage.
     This allows audit logging to be context-aware without passing user IDs everywhere.
@@ -112,8 +107,8 @@ class AuditedFunction(Enum):
 def audit_phi_access(
     resource_type: str,
     action: str,
-    phi_fields: Optional[List[str]] = None,
-    default_reason: Optional[str] = None,
+    phi_fields: list[str] | None = None,
+    default_reason: str | None = None,
 ) -> Callable[[F], F]:
     """
     Decorator for auditing PHI access in functions.
@@ -173,7 +168,7 @@ def audit_phi_access(
             if resource_id is None and len(args) > 0:
                 # Check if the first arg is an object with an id
                 if hasattr(args[0], "id"):
-                    resource_id = getattr(args[0], "id")
+                    resource_id = args[0].id
                 # Otherwise assume the first arg itself is the ID (most common case)
                 elif not isinstance(args[0], (dict, list, tuple, set)):
                     resource_id = args[0]
@@ -221,7 +216,7 @@ def audit_phi_access(
                     entity_type=resource_type,
                     entity_id=str(resource_id) if resource_id else "unknown",
                     status="failed",
-                    details=f"Error: {str(e)}",
+                    details=f"Error: {e!s}",
                     phi_fields=phi_fields,
                 )
                 raise  # Re-raise the exception
@@ -234,8 +229,8 @@ def audit_phi_access(
 def audit_async_phi_access(
     resource_type: str,
     action: str,
-    phi_fields: Optional[List[str]] = None,
-    default_reason: Optional[str] = None,
+    phi_fields: list[str] | None = None,
+    default_reason: str | None = None,
 ) -> Callable[[AsyncF], AsyncF]:
     """
     Decorator for auditing PHI access in async functions.
@@ -295,7 +290,7 @@ def audit_async_phi_access(
             if resource_id is None and len(args) > 0:
                 # Check if the first arg is an object with an id
                 if hasattr(args[0], "id"):
-                    resource_id = getattr(args[0], "id")
+                    resource_id = args[0].id
                 # Otherwise assume the first arg itself is the ID (most common case)
                 elif not isinstance(args[0], (dict, list, tuple, set)):
                     resource_id = args[0]
@@ -343,7 +338,7 @@ def audit_async_phi_access(
                     entity_type=resource_type,
                     entity_id=str(resource_id) if resource_id else "unknown",
                     status="failed",
-                    details=f"Error: {str(e)}",
+                    details=f"Error: {e!s}",
                     phi_fields=phi_fields,
                 )
                 raise  # Re-raise the exception
@@ -354,16 +349,16 @@ def audit_async_phi_access(
 
 
 async def search_audit_trail(
-    start_date: Optional[datetime.datetime] = None,
-    end_date: Optional[datetime.datetime] = None,
-    user_id: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    resource_id: Optional[str] = None,
-    action: Optional[str] = None,
-    status: Optional[str] = None,
+    start_date: datetime.datetime | None = None,
+    end_date: datetime.datetime | None = None,
+    user_id: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    action: str | None = None,
+    status: str | None = None,
     limit: int = 100,
     offset: int = 0,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Search the audit trail with various filters.
 
@@ -421,8 +416,8 @@ def verify_audit_integrity(log_id: str) -> bool:
 
 
 def export_audit_logs(
-    start_date: Optional[datetime.datetime] = None,
-    end_date: Optional[datetime.datetime] = None,
+    start_date: datetime.datetime | None = None,
+    end_date: datetime.datetime | None = None,
     format: str = "json",
 ) -> str:
     """

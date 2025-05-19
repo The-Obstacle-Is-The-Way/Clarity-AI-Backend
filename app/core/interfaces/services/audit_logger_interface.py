@@ -8,8 +8,8 @@ this interface decouples the audit logging contract from its implementations.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from enum import Enum, auto
-from typing import Any, Dict, Optional, Union, List
+from enum import Enum
+from typing import Any
 
 
 class AuditEventType(str, Enum):
@@ -84,16 +84,16 @@ class IAuditLogger(ABC):
     async def log_event(
         self,
         event_type: AuditEventType,
-        actor_id: Optional[str] = None,
-        target_resource: Optional[str] = None,
-        target_id: Optional[str] = None,
-        action: Optional[str] = None,
-        status: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        actor_id: str | None = None,
+        target_resource: str | None = None,
+        target_id: str | None = None,
+        action: str | None = None,
+        status: str | None = None,
+        details: dict[str, Any] | None = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None,
-        timestamp: Optional[datetime] = None,
-        request: Optional[Any] = None,
+        metadata: dict[str, Any] | None = None,
+        timestamp: datetime | None = None,
+        request: Any | None = None,
     ) -> str:
         """Log an audit event in the system.
 
@@ -119,11 +119,11 @@ class IAuditLogger(ABC):
     async def log_security_event(
         self,
         description: str,
-        actor_id: Optional[str] = None,
-        status: Optional[str] = None,
+        actor_id: str | None = None,
+        status: str | None = None,
         severity: AuditSeverity = AuditSeverity.HIGH,
-        details: Optional[Dict[str, Any]] = None,
-        request: Optional[Any] = None,
+        details: dict[str, Any] | None = None,
+        request: Any | None = None,
     ) -> str:
         """Log a security-related event.
 
@@ -150,10 +150,10 @@ class IAuditLogger(ABC):
         resource_type: str,
         action: str,
         status: str,
-        phi_fields: Optional[List[str]] = None,
-        reason: Optional[str] = None,
-        request: Optional[Any] = None,
-        request_context: Optional[Dict[str, Any]] = None,
+        phi_fields: list[str] | None = None,
+        reason: str | None = None,
+        request: Any | None = None,
+        request_context: dict[str, Any] | None = None,
     ) -> str:
         """Log PHI access event specifically.
 
@@ -178,12 +178,12 @@ class IAuditLogger(ABC):
     @abstractmethod
     async def get_audit_trail(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        filters: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Retrieve audit trail entries based on filters.
 
         Args:
@@ -201,11 +201,11 @@ class IAuditLogger(ABC):
     @abstractmethod
     async def export_audit_logs(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         format: str = "json",
-        file_path: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        file_path: str | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> str:
         """Export audit logs to a file in the specified format.
 
@@ -222,7 +222,7 @@ class IAuditLogger(ABC):
         pass
 
     @abstractmethod
-    async def get_security_dashboard_data(self, days: int = 7) -> Dict[str, Any]:
+    async def get_security_dashboard_data(self, days: int = 7) -> dict[str, Any]:
         """Get summary data for security dashboard.
 
         Args:

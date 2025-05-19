@@ -7,20 +7,20 @@ ensuring proper protection of PHI data according to HIPAA requirements.
 
 import json
 from typing import Any
-import os
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pytest
+
+from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
+    EncryptedJSON,
+    EncryptedString,
+    serialize_for_encryption,
+)
 from app.infrastructure.security.encryption.base_encryption_service import (
     BaseEncryptionService,
 )
 from app.infrastructure.security.encryption.field_encryptor import FieldEncryptor
-from app.infrastructure.persistence.sqlalchemy.types.encrypted_types import (
-    EncryptedString,
-    EncryptedJSON,
-    serialize_for_encryption,
-)
 
 
 @pytest.fixture
@@ -163,7 +163,6 @@ class TestEncryptionService:
         """Test ML-specific key rotation capabilities."""
         # Use a mock instead of trying to use real key rotation which is complicated
         # due to the way the encryption works with initialization vectors
-        from unittest.mock import patch, MagicMock
         from app.infrastructure.security.encryption.ml_encryption_service import (
             MLEncryptionService,
         )
@@ -367,7 +366,6 @@ class TestEncryptionService:
         """Test that key rotation works properly using mocks."""
         # Don't attempt to use real cryptography with actual key rotation
         # Instead, use a mock to verify the concept works
-        from unittest.mock import patch
 
         # Create test data
         data_json = json.dumps(sensitive_data)

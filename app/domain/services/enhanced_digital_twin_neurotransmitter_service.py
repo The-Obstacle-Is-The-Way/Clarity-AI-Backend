@@ -5,7 +5,7 @@ This defines the contract for neurotransmitter state prediction and modeling
 within the Enhanced Digital Twin system.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.domain.entities.neurotransmitter_mapping import NeurotransmitterMapping
@@ -36,7 +36,7 @@ class EnhancedDigitalTwinNeurotransmitterService(ABC):
 
     @abstractmethod
     async def update_neurotransmitter_mapping(
-        self, patient_id: UUID, mapping_updates: Dict[str, Any]
+        self, patient_id: UUID, mapping_updates: dict[str, Any]
     ) -> NeurotransmitterMapping:
         """
         Update the neurotransmitter mapping for a patient.
@@ -52,8 +52,8 @@ class EnhancedDigitalTwinNeurotransmitterService(ABC):
 
     @abstractmethod
     async def predict_medication_impacts(
-        self, patient_id: UUID, medications: List[Dict[str, Any]]
-    ) -> Dict[str, Dict[str, float]]:
+        self, patient_id: UUID, medications: list[dict[str, Any]]
+    ) -> dict[str, dict[str, float]]:
         """
         Predict how medications will impact neurotransmitter levels.
 
@@ -70,9 +70,9 @@ class EnhancedDigitalTwinNeurotransmitterService(ABC):
     async def predict_network_connectivity_changes(
         self,
         patient_id: UUID,
-        baseline_data: Optional[Dict[str, Any]] = None,
-        intervention_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        baseline_data: dict[str, Any] | None = None,
+        intervention_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Predict changes in neural network connectivity based on interventions.
 
@@ -88,8 +88,8 @@ class EnhancedDigitalTwinNeurotransmitterService(ABC):
 
     @abstractmethod
     async def simulate_emotional_regulation_circuit(
-        self, patient_id: UUID, emotional_stimulus: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, patient_id: UUID, emotional_stimulus: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Simulate the emotional regulation circuit's response to stimuli.
 
@@ -107,8 +107,8 @@ class EnhancedDigitalTwinNeurotransmitterService(ABC):
         self,
         patient_id: UUID,
         pathway_name: str,
-        stimulus_parameters: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        stimulus_parameters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Model the activation patterns of specific neural pathways.
 

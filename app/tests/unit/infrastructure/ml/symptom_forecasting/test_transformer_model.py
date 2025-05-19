@@ -5,9 +5,7 @@ These tests verify that the Transformer Model correctly processes
 time series data and generates accurate forecasts.
 """
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip(
     "Skipping transformer model tests (torch unsupported in this environment)",

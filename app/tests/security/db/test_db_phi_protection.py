@@ -5,53 +5,49 @@ This validates that database interactions properly protect PHI per HIPAA require
 """
 
 # import datetime # Ensure this line is removed
-from unittest.mock import MagicMock, patch, AsyncMock, call
 import uuid
 from datetime import (
+    date,
     datetime,
     timezone,
 )  # This line should correctly define 'datetime' as the class
-from datetime import date
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from pydantic import ValidationError
 from sqlalchemy import text
 
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from pydantic import ValidationError
-from app.core.exceptions import PersistenceError
-from app.core.domain.enums.gender import Gender  # Added import for Gender enum
-
 # from app.core.exceptions.phi_protection_exception import PHIProtectionError # Removed this unused import
-
 # Core SQLAlchemy async components
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-# Import the canonical Base for table creation
-from app.infrastructure.persistence.sqlalchemy.models.base import Base
+from app.core.exceptions import PersistenceError
+from app.core.interfaces.repositories.biometric_alert_repository import (
+    IBiometricAlertRepository,
+)
+from app.core.interfaces.repositories.biometric_rule_repository import (
+    IBiometricRuleRepository,
+)
+from app.core.interfaces.repositories.biometric_twin_repository import (
+    IBiometricTwinRepository,
+)
+from app.core.interfaces.repositories.digital_twin_repository import (
+    IDigitalTwinRepository,
+)
+from app.core.interfaces.repositories.patient_repository import IPatientRepository
+
+# Import repository interfaces
+from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.infrastructure.persistence.sqlalchemy.config.database import (
     Database,
 )  # For spec in MagicMock
 
+# Import the canonical Base for table creation
+from app.infrastructure.persistence.sqlalchemy.models.base import Base
+
 # Import Unit of Work directly
 from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import (
     AsyncSQLAlchemyUnitOfWork,
-)
-
-# Import repository interfaces
-from app.core.interfaces.repositories.user_repository_interface import IUserRepository
-from app.core.interfaces.repositories.patient_repository import IPatientRepository
-from app.core.interfaces.repositories.digital_twin_repository import (
-    IDigitalTwinRepository,
-)
-from app.core.interfaces.repositories.alert_repository_interface import IAlertRepository
-from app.core.interfaces.repositories.biometric_rule_repository import (
-    IBiometricRuleRepository,
-)
-from app.core.interfaces.repositories.biometric_alert_repository import (
-    IBiometricAlertRepository,
-)
-from app.core.interfaces.repositories.biometric_twin_repository import (
-    IBiometricTwinRepository,
 )
 
 # from app.core.interfaces.repositories.actigraphy_repository import IActigraphyRepository
@@ -68,6 +64,11 @@ from app.core.interfaces.repositories.biometric_twin_repository import (
 try:
     # from app.domain.entities.patient import Patient # <<< REMOVED THIS LINE
     # from app.infrastructure.persistence.sqlalchemy.config.database import Database # Moved up
+    from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
+    from app.domain.value_objects.address import Address as DomainAddress
+    from app.domain.value_objects.emergency_contact import (
+        EmergencyContact as DomainEmergencyContact,
+    )
     from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
         PatientRepository as ConcretePatientRepository,
     )
@@ -75,15 +76,10 @@ try:
     # AsyncSQLAlchemyUnitOfWork is now imported globally
     # from app.infrastructure.persistence.sqlalchemy.unit_of_work.async_unit_of_work import AsyncSQLAlchemyUnitOfWork as UnitOfWork # Keep alias for try block if needed
     from app.infrastructure.security.encryption import (
-        encrypt_phi,
-        decrypt_phi,
         BaseEncryptionService,
+        decrypt_phi,
+        encrypt_phi,
     )
-    from app.domain.value_objects.address import Address as DomainAddress
-    from app.domain.value_objects.emergency_contact import (
-        EmergencyContact as DomainEmergencyContact,
-    )
-    from app.core.domain.entities.patient import ContactInfo as DomainContactInfo
 
 except ImportError:
     # This block is for environments where full app components might not be available.
@@ -111,14 +107,11 @@ except ImportError:
     # UnitOfWork = AsyncSQLAlchemyUnitOfWork # Alias is not needed if global import is used directly
 
 # Import the domain entity for Patient
+# from sqlalchemy.exc import IntegrityError # Keep if used, or remove
+
 from app.core.domain.entities.patient import Patient as DomainPatient
-from app.infrastructure.persistence.sqlalchemy.models import Patient
 
 # from app.core.domain.exceptions.phi_exceptions import PHIExposureError # Removed unused import
-from app.domain.exceptions import RepositoryError
-
-# from sqlalchemy.exc import IntegrityError # Keep if used, or remove
-from sqlalchemy import text, select
 
 
 # Mock context for testing
@@ -311,13 +304,13 @@ class TestDBPHIProtection:
             f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient ID: {retrieved_patient_domain.id}"
         )
         print(
-            f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient date_of_birth type: {type(retrieved_patient_domain.date_of_birth)}, value: {repr(retrieved_patient_domain.date_of_birth)}"
+            f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient date_of_birth type: {type(retrieved_patient_domain.date_of_birth)}, value: {retrieved_patient_domain.date_of_birth!r}"
         )
         print(
-            f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient created_at type: {type(retrieved_patient_domain.created_at)}, value: {repr(retrieved_patient_domain.created_at)}"
+            f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient created_at type: {type(retrieved_patient_domain.created_at)}, value: {retrieved_patient_domain.created_at!r}"
         )
         print(
-            f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient updated_at type: {type(retrieved_patient_domain.updated_at)}, value: {repr(retrieved_patient_domain.updated_at)}"
+            f"DEBUG [test_data_encryption_at_rest]: Retrieved DomainPatient updated_at type: {type(retrieved_patient_domain.updated_at)}, value: {retrieved_patient_domain.updated_at!r}"
         )
 
         assert retrieved_patient_domain.id == original_patient.id

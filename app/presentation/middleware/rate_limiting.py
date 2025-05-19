@@ -6,13 +6,11 @@ using the Clean Architecture rate limiting components.
 """
 
 import logging
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.interfaces.services.rate_limiting import IRateLimiter, RateLimitConfig
-from app.infrastructure.security.rate_limiting.providers import get_rate_limiter
 from app.core.security.rate_limiting.limiter import RateLimiter
 
 # Configure logger
@@ -51,7 +49,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         self,
         app,
         limiter: RateLimiter,
-        exclude_paths: Optional[List[str]] = None,
+        exclude_paths: list[str] | None = None,
         *args,
         **kwargs,
     ):
@@ -94,7 +92,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 # Log and re-raise the exception to be handled by the exception handlers
                 logger.error(
-                    f"Exception in excluded path (rate limiting middleware): {type(e).__name__}: {str(e)}"
+                    f"Exception in excluded path (rate limiting middleware): {type(e).__name__}: {e!s}"
                 )
                 raise
 
@@ -122,6 +120,6 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             # Log and re-raise the exception to be handled by the exception handlers
             logger.error(
-                f"Exception in request (rate limiting middleware): {type(e).__name__}: {str(e)}"
+                f"Exception in request (rate limiting middleware): {type(e).__name__}: {e!s}"
             )
             raise

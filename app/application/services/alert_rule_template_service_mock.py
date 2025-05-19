@@ -5,17 +5,17 @@ This module provides a mock implementation of the alert rule template service
 for testing purposes.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from app.core.interfaces.services.alert_rule_template_service_interface import (
     AlertRuleTemplateServiceInterface,
 )
-from app.domain.repositories.biometric_alert_template_repository import (
-    BiometricAlertTemplateRepository,
-)
 from app.domain.repositories.biometric_alert_rule_repository import (
     BiometricAlertRuleRepository,
+)
+from app.domain.repositories.biometric_alert_template_repository import (
+    BiometricAlertTemplateRepository,
 )
 
 
@@ -29,8 +29,8 @@ class MockAlertRuleTemplateService(AlertRuleTemplateServiceInterface):
 
     def __init__(
         self,
-        template_repository: Optional[BiometricAlertTemplateRepository] = None,
-        rule_repository: Optional[BiometricAlertRuleRepository] = None,
+        template_repository: BiometricAlertTemplateRepository | None = None,
+        rule_repository: BiometricAlertRuleRepository | None = None,
     ):
         """
         Initialize the mock service.
@@ -42,7 +42,7 @@ class MockAlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         self.template_repository = template_repository
         self.rule_repository = rule_repository
 
-    async def get_all_templates(self) -> List[Dict[str, Any]]:
+    async def get_all_templates(self) -> list[dict[str, Any]]:
         """
         Get all available alert rule templates.
 
@@ -86,7 +86,7 @@ class MockAlertRuleTemplateService(AlertRuleTemplateServiceInterface):
             },
         ]
 
-    async def get_template_by_id(self, template_id: str) -> Dict[str, Any] | None:
+    async def get_template_by_id(self, template_id: str) -> dict[str, Any] | None:
         """
         Get a specific template by ID or code.
 
@@ -106,8 +106,8 @@ class MockAlertRuleTemplateService(AlertRuleTemplateServiceInterface):
         self,
         template_id: str,
         patient_id: UUID,
-        customization: Dict[str, Any] | None = None,
-    ) -> Dict[str, Any]:
+        customization: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Apply a template to create a rule for a specific patient.
 

@@ -12,6 +12,8 @@ from uuid import UUID
 
 from app.domain.entities.biometric_rule import (
     AlertPriority as BiometricAlertPriority,
+)
+from app.domain.entities.biometric_rule import (
     BiometricRule,
     LogicalOperator,
     RuleCondition,

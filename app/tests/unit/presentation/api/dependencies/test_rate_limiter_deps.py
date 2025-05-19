@@ -1,11 +1,8 @@
 """Unit tests for rate limiting dependencies."""
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 from fastapi import Depends, FastAPI, Request
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from httpx._transports.asgi import ASGITransport
 

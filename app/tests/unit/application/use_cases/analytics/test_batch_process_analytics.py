@@ -5,15 +5,12 @@ These tests verify that the BatchProcessAnalytics use case works correctly for p
 analytics events in batch, ensuring proper validation, processing, and handling of errors.
 """
 
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
-
 # Tests are now fixed - remove skip directive
 # pytest.skip("Skipping BatchProcessAnalytics tests while fixing SQLAlchemy relationship issues", allow_module_level=True)
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+import pytest
 
 from app.application.use_cases.analytics.batch_process_analytics import (
     BatchProcessAnalyticsUseCase,

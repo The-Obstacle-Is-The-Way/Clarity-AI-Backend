@@ -15,8 +15,6 @@ from app.infrastructure.persistence.sqlalchemy.unit_of_work.unit_of_work import 
     SQLAlchemyUnitOfWork,
 )
 
-import logging
-
 
 class TestSQLAlchemyUnitOfWork:
     """

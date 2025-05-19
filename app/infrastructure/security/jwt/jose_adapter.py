@@ -5,21 +5,21 @@ Adapts the python-jose library for JWT operations while providing a consistent
 interface to ensure security and HIPAA compliance.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 # Import JWT functionalities from python-jose
-from jose import jwt, JWTError, ExpiredSignatureError
-from jose.exceptions import JWTClaimsError, JWSError, JWSSignatureError
+from jose import ExpiredSignatureError, JWTError, jwt
+from jose.exceptions import JWTClaimsError
 
 # Re-export common exceptions to avoid direct dependency on jose
-__all__ = ["encode", "decode", "JWTError", "ExpiredSignatureError", "JWTClaimsError"]
+__all__ = ["ExpiredSignatureError", "JWTClaimsError", "JWTError", "decode", "encode"]
 
 
 def encode(
-    claims: Dict[str, Any],
+    claims: dict[str, Any],
     key: str,
     algorithm: str = "HS256",
-    headers: Optional[Dict[str, Any]] = None,
+    headers: dict[str, Any] | None = None,
     access_token: bool = False,
 ) -> str:
     """
@@ -49,12 +49,12 @@ def encode(
 def decode(
     token: str,
     key: str = "",
-    algorithms: Optional[List[str]] = None,
-    audience: Optional[str] = None,
-    issuer: Optional[str] = None,
-    subject: Optional[str] = None,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    algorithms: list[str] | None = None,
+    audience: str | None = None,
+    issuer: str | None = None,
+    subject: str | None = None,
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Decode a JWT token and return its claims.
 

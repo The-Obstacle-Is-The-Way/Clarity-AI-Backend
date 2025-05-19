@@ -28,8 +28,6 @@ import uvicorn
 #     httpx.AsyncClient = AsyncClient
 # except ImportError:
 #     pass
-
-
 # Use the new canonical config location
 # Import Middleware and Services
 # Import necessary types for middleware
@@ -39,7 +37,6 @@ import uvicorn
 # from unittest.mock import MagicMock
 # Import settings and the factory function
 from app.app_factory import create_application
-from app.core.config.settings import get_settings
 from app.core.logging_config import LOGGING_CONFIG
 
 # Setup logging

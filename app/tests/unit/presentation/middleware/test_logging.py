@@ -5,7 +5,6 @@ from typing import NoReturn
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request

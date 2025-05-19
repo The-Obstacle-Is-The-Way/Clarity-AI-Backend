@@ -5,12 +5,11 @@ This script will scan all test files in the backend directory,
 check them for syntax errors, and provide information about each error.
 """
 
+import logging
 import os
-import sys
 import py_compile
 import subprocess
 from pathlib import Path
-import logging
 
 # Configure logging
 logging.basicConfig(

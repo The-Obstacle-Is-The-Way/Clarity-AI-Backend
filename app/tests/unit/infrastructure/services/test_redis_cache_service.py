@@ -5,12 +5,11 @@ This module contains tests for the Redis cache service implementation,
 focusing on caching, rate limiting, and other Redis operations.
 """
 
-import json
 import asyncio
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.services.redis.redis_cache_service import RedisCacheService
 

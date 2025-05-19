@@ -5,13 +5,12 @@ This module defines the Pydantic models used for audit log API requests and resp
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Any
 
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 from app.core.interfaces.services.audit_logger_interface import (
     AuditEventType,
-    AuditSeverity,
 )
 
 
@@ -21,13 +20,13 @@ class AuditLogResponseModel(BaseModel):
     id: str
     timestamp: datetime
     event_type: str
-    actor_id: Optional[str] = None
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
+    actor_id: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
     action: str
-    status: Optional[str] = None
-    ip_address: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    status: str | None = None
+    ip_address: str | None = None
+    details: dict[str, Any] | None = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -54,9 +53,9 @@ class AuditLogResponseModel(BaseModel):
 class AuditSearchRequest(BaseModel):
     """API model for audit log search requests."""
 
-    filters: Dict[str, Any] = Field(default_factory=dict)
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    filters: dict[str, Any] = Field(default_factory=dict)
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     limit: int = Field(50, ge=1, le=100)
     offset: int = Field(0, ge=0)
 
@@ -77,7 +76,7 @@ class AuditSearchRequest(BaseModel):
     )
 
     @validator("filters")
-    def validate_filters(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_filters(cls, v: dict[str, Any]) -> dict[str, Any]:
         """Validate that filters contain valid keys and values."""
         valid_keys = {
             "event_type",
@@ -125,11 +124,11 @@ class AuditSearchRequest(BaseModel):
 class SecurityDashboardResponse(BaseModel):
     """API model for security dashboard response."""
 
-    statistics: Dict[str, Any]
-    recent_security_events: List[Dict[str, Any]]
-    recent_phi_access: List[Dict[str, Any]]
+    statistics: dict[str, Any]
+    recent_security_events: list[dict[str, Any]]
+    recent_phi_access: list[dict[str, Any]]
     anomalies_detected: int
-    time_range: Dict[str, Any]
+    time_range: dict[str, Any]
 
     model_config = ConfigDict(
         from_attributes=True,

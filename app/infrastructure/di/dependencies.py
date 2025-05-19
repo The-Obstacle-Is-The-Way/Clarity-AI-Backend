@@ -7,7 +7,6 @@ facilities for the application, following SOLID principles.
 
 import logging
 from functools import lru_cache
-from typing import Any
 
 from app.application.services.temporal_neurotransmitter_service import (
     TemporalNeurotransmitterService,
@@ -22,7 +21,6 @@ from app.domain.repositories.temporal_repository import (
 from app.domain.services.visualization_preprocessor import (
     NeurotransmitterVisualizationPreprocessor,
 )
-from app.infrastructure.di.provider import get_service_instance
 from app.infrastructure.persistence.sqlalchemy.repositories.event_repository import (
     SqlAlchemyEventRepository,
 )

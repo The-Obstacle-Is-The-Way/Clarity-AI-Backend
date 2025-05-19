@@ -5,16 +5,16 @@ This module contains fixtures and configurations that should be available
 to all tests in the application. It is automatically loaded by pytest.
 """
 
-import os
+import logging
 import sys
+from collections.abc import Generator
+from typing import Any
+
 import pytest
 import pytest_asyncio
-import logging
-from typing import Dict, Any, Generator, AsyncGenerator, List, Union
 from fastapi import FastAPI
 from httpx import AsyncClient
-from starlette.middleware.base import BaseHTTPMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Import the create_application function
 from app.factory import create_application
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="session")
-def base_test_config() -> Dict[str, Any]:
+def base_test_config() -> dict[str, Any]:
     """
     Returns a basic configuration dictionary for tests.
     This can be used as a base for other fixtures.
@@ -205,8 +205,9 @@ def test_jwt_secret_key():
 @pytest.fixture
 def test_jwt_settings(test_jwt_secret_key):
     """Fixture to provide JWT settings for tests."""
-    from app.core.config.settings import Settings
     from unittest.mock import MagicMock
+
+    from app.core.config.settings import Settings
 
     # Create a mock settings object with JWT configuration
     settings = MagicMock(spec=Settings)

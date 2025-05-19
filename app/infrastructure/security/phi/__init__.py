@@ -8,17 +8,17 @@ following clean architecture principles.
 
 from enum import Enum
 
-# Core PHI protection components
-from .sanitizer import (
-    PHISanitizer,
-    PHISafeLogger,
-    get_sanitizer,
-    get_sanitized_logger,
-    RedactionStrategy,
-)
-
 # Middleware for API protection
 from .middleware import PHIMiddleware, add_phi_middleware, get_phi_middleware
+
+# Core PHI protection components
+from .sanitizer import (
+    PHISafeLogger,
+    PHISanitizer,
+    RedactionStrategy,
+    get_sanitized_logger,
+    get_sanitizer,
+)
 
 
 # PHI types for categorization

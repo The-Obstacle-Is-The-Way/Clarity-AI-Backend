@@ -1,30 +1,26 @@
 # Fixed biometric alert routes integration
 import logging
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
+
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
-from typing import Optional, List
 
 from app.application.services.patient_service import PatientService
-from app.domain.repositories.patient_repository import PatientRepository
+from app.core.domain.entities.patient import Patient
 from app.infrastructure.persistence.sqlalchemy.repositories.patient_repository import (
     PatientRepository as SQLPatientRepoImpl,
 )
+from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser
 from app.presentation.api.dependencies.database import get_db
 from app.presentation.api.dependencies.patient import (
     get_patient_id as get_validated_patient_id_for_read,
 )
-from app.presentation.api.dependencies.auth import CurrentUserDep, DomainUser
 from app.presentation.api.schemas.patient import (
-    PatientRead,
     PatientCreateRequest,
     PatientCreateResponse,
     # PatientUpdateRequest, # COMMENTED OUT TEMPORARILY
+    PatientRead,
 )
-from app.core.domain.entities.patient import Patient
-from app.core.domain.entities.user import UserRole, UserStatus
-from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.presentation.api.v1.endpoints.biometric_alert_rules import (
     get_patient_alert_rules,
     get_rule_service,

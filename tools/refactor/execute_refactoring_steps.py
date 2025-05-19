@@ -13,11 +13,9 @@ Usage:
 """
 
 import os
-import sys
-import shutil
 import re
+import shutil
 import subprocess
-from pathlib import Path
 import time
 
 
@@ -129,7 +127,7 @@ def determine_destination(file_path, base_dir):
         )
 
     # Domain repositories
-    if "repository" in file_path.lower() and not "mongodb" in file_path.lower():
+    if "repository" in file_path.lower() and "mongodb" not in file_path.lower():
         return os.path.join(
             base_dir, "app", "domain", "repositories", os.path.basename(file_path)
         )
@@ -261,7 +259,7 @@ def update_imports(base_dir, import_mappings):
     # Process each file
     updated_files = 0
     for file_path in python_files:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             content = f.read()
 
         original_content = content
@@ -327,7 +325,7 @@ def run_tests_with_coverage(base_dir):
             print("Could not determine coverage percentage")
 
     except Exception as e:
-        print(f"Error running tests: {str(e)}")
+        print(f"Error running tests: {e!s}")
 
 
 def clean_up_empty_directories(base_dir):

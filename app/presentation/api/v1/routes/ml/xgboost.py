@@ -6,11 +6,10 @@ machine learning models for psychiatric predictions.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Path, status
+from pydantic import BaseModel
 
 from app.core.services.ml.xgboost.exceptions import (
     ConfigurationError,
@@ -21,7 +20,7 @@ from app.core.services.ml.xgboost.exceptions import (
 )
 from app.core.services.ml.xgboost.factory import get_xgboost_service
 from app.core.services.ml.xgboost.interface import XGBoostInterface
-from app.domain.entities.ml.enums import ModelType, ResponseLevel
+from app.domain.entities.ml.enums import ResponseLevel
 from app.presentation.api.dependencies.auth import get_current_user
 
 # Create logger
@@ -35,19 +34,19 @@ router = APIRouter(tags=["XGBoost ML"])
 class RiskPredictionRequest(BaseModel):
     patient_id: str
     risk_type: str
-    clinical_data: Dict[str, Any]
+    clinical_data: dict[str, Any]
 
 
 class RiskFactorResponse(BaseModel):
     name: str
     contribution: float
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class RiskPredictionResponse(BaseModel):
     prediction_id: str
     patient_id: str
-    prediction: Dict[str, Any]
+    prediction: dict[str, Any]
     timestamp: str
     model_version: str
 
@@ -55,8 +54,8 @@ class RiskPredictionResponse(BaseModel):
 class TreatmentResponseRequest(BaseModel):
     patient_id: str
     treatment_type: str
-    treatment_details: Dict[str, Any]
-    clinical_data: Dict[str, Any]
+    treatment_details: dict[str, Any]
+    clinical_data: dict[str, Any]
 
 
 class TreatmentResponsePrediction(BaseModel):
@@ -64,7 +63,7 @@ class TreatmentResponsePrediction(BaseModel):
     confidence: float
     expected_phq9_reduction: int
     expected_response_time_weeks: int
-    alternative_treatments: List[Dict[str, Any]]
+    alternative_treatments: list[dict[str, Any]]
 
 
 class TreatmentResponseResult(BaseModel):
@@ -77,30 +76,30 @@ class TreatmentResponseResult(BaseModel):
 
 class OutcomePredictionRequest(BaseModel):
     patient_id: str
-    outcome_timeframe: Dict[str, int]
-    clinical_data: Dict[str, Any]
-    treatment_plan: Dict[str, Any]
+    outcome_timeframe: dict[str, int]
+    clinical_data: dict[str, Any]
+    treatment_plan: dict[str, Any]
 
 
 class OutcomePredictionResponse(BaseModel):
     prediction_id: str
     patient_id: str
-    prediction: Dict[str, Any]
+    prediction: dict[str, Any]
     timestamp: str
     model_version: str
 
 
 class DigitalTwinSimulationRequest(BaseModel):
     patient_id: str
-    simulation_timeframe: Dict[str, int]
-    treatment_plan: Dict[str, Any]
-    baseline_metrics: Dict[str, Any]
+    simulation_timeframe: dict[str, int]
+    treatment_plan: dict[str, Any]
+    baseline_metrics: dict[str, Any]
 
 
 class DigitalTwinSimulationResponse(BaseModel):
     simulation_id: str
     patient_id: str
-    simulation_results: List[Dict[str, Any]]
+    simulation_results: list[dict[str, Any]]
     timestamp: str
     model_version: str
 
@@ -109,14 +108,14 @@ class ModelInfoResponse(BaseModel):
     model_type: str
     version: str
     training_date: str
-    features: List[str]
-    performance: Dict[str, float]
+    features: list[str]
+    performance: dict[str, float]
     last_updated: str
 
 
 class FeatureImportanceResponse(BaseModel):
     model_type: str
-    features: List[Dict[str, Any]]
+    features: list[dict[str, Any]]
     timestamp: str
 
 
@@ -146,7 +145,7 @@ async def predict_risk(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
-    except ServiceConnectionError as e:
+    except ServiceConnectionError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Failed to connect to prediction service",
@@ -182,7 +181,7 @@ async def predict_treatment_response(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
         )
-    except ServiceConnectionError as e:
+    except ServiceConnectionError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Failed to connect to prediction service",
@@ -218,7 +217,7 @@ async def predict_outcome(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
         )
-    except ServiceConnectionError as e:
+    except ServiceConnectionError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Failed to connect to prediction service",
@@ -280,7 +279,7 @@ async def simulate_digital_twin(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
         )
-    except ServiceConnectionError as e:
+    except ServiceConnectionError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Failed to connect to simulation service",

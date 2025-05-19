@@ -7,7 +7,6 @@ of the IRateLimiter interface.
 """
 
 import logging
-from typing import Optional
 
 from app.core.interfaces.services.rate_limiting.rate_limiter_interface import (
     IRateLimiter,
@@ -20,7 +19,7 @@ from app.infrastructure.security.rate_limiting.in_memory_limiter import (
 logger = logging.getLogger(__name__)
 
 # Singleton instance for in-memory rate limiter
-_in_memory_limiter_instance: Optional[InMemoryRateLimiter] = None
+_in_memory_limiter_instance: InMemoryRateLimiter | None = None
 
 
 def get_rate_limiter() -> IRateLimiter:

@@ -5,14 +5,15 @@ This module provides a repository for managing user data access operations.
 Follows SOLID principles with clean separation of concerns.
 """
 
+from uuid import UUID
+
 from app.core.interfaces.repositories.user_repository_interface import IUserRepository
 from app.domain.entities.user import User
 from app.domain.exceptions.repository import (
-    RepositoryException,
     EntityNotFoundException,
+    RepositoryException,
 )
 from app.infrastructure.logging.logger import get_logger
-from uuid import UUID
 
 logger = get_logger(__name__)
 

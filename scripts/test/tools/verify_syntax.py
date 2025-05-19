@@ -4,14 +4,13 @@ Syntax checker script to verify Python files' syntax before running tests.
 Checks for syntax errors in Python files using Python's built-in compiler.
 """
 
-import os
-import sys
-import py_compile
 import concurrent.futures
-from typing import List, Tuple
+import os
+import py_compile
+import sys
 
 
-def check_file_syntax(file_path: str) -> Tuple[str, bool, str]:
+def check_file_syntax(file_path: str) -> tuple[str, bool, str]:
     """
     Check a Python file for syntax errors.
 
@@ -31,7 +30,7 @@ def check_file_syntax(file_path: str) -> Tuple[str, bool, str]:
         return (file_path, False, str(e))
 
 
-def find_python_files(root_dir: str, pattern: str = "_test.py") -> List[str]:
+def find_python_files(root_dir: str, pattern: str = "_test.py") -> list[str]:
     """
     Find all Python test files in a directory tree.
 
@@ -74,7 +73,7 @@ def main():
     valid_files = [r[0] for r in results if r[1]]
     invalid_files = [(r[0], r[2]) for r in results if not r[1]]
 
-    print(f"\nResults:")
+    print("\nResults:")
     print(f"  Valid files: {len(valid_files)}")
     print(f"  Invalid files: {len(invalid_files)}")
 

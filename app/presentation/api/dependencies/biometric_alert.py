@@ -65,12 +65,12 @@ TemplateRepoDep = Annotated[any, Depends(get_template_repository)]
 EventProcessorDep = Annotated[any, Depends(get_event_processor)]
 
 __all__ = [
-    "get_alert_repository",
-    "get_rule_repository",
-    "get_template_repository",
-    "get_event_processor",
     "AlertRepoDep",
+    "EventProcessorDep",
     "RuleRepoDep",
     "TemplateRepoDep",
-    "EventProcessorDep",
+    "get_alert_repository",
+    "get_event_processor",
+    "get_rule_repository",
+    "get_template_repository",
 ]

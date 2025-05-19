@@ -5,29 +5,22 @@ HIPAA Audit Logging Security Tests
 Tests the audit logging system for HIPAA compliance (§164.312(b) - Audit controls).
 """
 
-import json
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, mock_open, patch
 
 import pytest
-from fastapi import FastAPI, Request, Response, Depends
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, AsyncMock, patch, mock_open
 
 from app.application.services.audit_log_service import AuditLogService
 from app.core.interfaces.services.audit_logger_interface import (
-    IAuditLogger,
     AuditEventType,
-    AuditSeverity,
+    IAuditLogger,
 )
 from app.domain.entities.audit_log import AuditLog
 from app.infrastructure.security.audit.middleware import AuditLogMiddleware
 from app.presentation.api.dependencies.services import get_audit_logger
-from app.infrastructure.persistence.repositories.audit_log_repository import (
-    AuditLogRepository,
-)
-
 
 # Test data
 TEST_USER_ID = str(uuid.uuid4())
@@ -134,7 +127,7 @@ class TestAuditLoggingIntegration:
         mock_repository._create.reset_mock()
 
         # Make request with auth
-        client.headers = {"Authorization": f"Bearer token"}
+        client.headers = {"Authorization": "Bearer token"}
         response = client.get(f"/patients/{TEST_PATIENT_ID}")
 
         # Check response

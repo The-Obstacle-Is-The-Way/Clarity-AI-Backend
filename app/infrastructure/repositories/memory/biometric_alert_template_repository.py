@@ -8,8 +8,8 @@ a persistent storage is not required.
 
 import copy
 import uuid
-from datetime import datetime, UTC
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from app.core.domain.entities.biometric import MetricType
@@ -35,7 +35,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
 
     def __init__(self):
         """Initialize the repository with predefined templates."""
-        self._templates: Dict[UUID, BiometricAlertRule] = {}
+        self._templates: dict[UUID, BiometricAlertRule] = {}
         self._initialize_predefined_templates()
 
     def _initialize_predefined_templates(self) -> None:
@@ -161,7 +161,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         )
         self._templates[glucose_low_id] = glucose_low
 
-    async def get_all_templates(self) -> List[BiometricAlertRule]:
+    async def get_all_templates(self) -> list[BiometricAlertRule]:
         """
         Get all available templates.
 
@@ -172,7 +172,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
 
     async def get_template_by_id(
         self, template_id: UUID
-    ) -> Optional[BiometricAlertRule]:
+    ) -> BiometricAlertRule | None:
         """
         Get a template by its ID.
 
@@ -185,7 +185,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         return self._templates.get(template_id)
 
     async def create_template(
-        self, template_data: Dict[str, Any]
+        self, template_data: dict[str, Any]
     ) -> BiometricAlertRule:
         """
         Create a new template.
@@ -215,15 +215,15 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         try:
             template = BiometricAlertRule(**template_data)
         except Exception as e:
-            raise ValueError(f"Invalid template data: {str(e)}")
+            raise ValueError(f"Invalid template data: {e!s}")
 
         # Store in memory
         self._templates[template.id] = template
         return template
 
     async def update_template(
-        self, template_id: UUID, template_data: Dict[str, Any]
-    ) -> Optional[BiometricAlertRule]:
+        self, template_id: UUID, template_data: dict[str, Any]
+    ) -> BiometricAlertRule | None:
         """
         Update an existing template.
 
@@ -259,7 +259,7 @@ class InMemoryBiometricAlertTemplateRepository(ITemplateRepository):
         try:
             updated_template = BiometricAlertRule(**updated_data)
         except Exception as e:
-            raise ValueError(f"Invalid template data: {str(e)}")
+            raise ValueError(f"Invalid template data: {e!s}")
 
         # Store updated template
         self._templates[template_id] = updated_template

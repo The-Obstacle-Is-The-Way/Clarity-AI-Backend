@@ -1,8 +1,8 @@
 # Standard Library Imports
+import re
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
-import re
 
 # Third-Party Imports
 import pytest

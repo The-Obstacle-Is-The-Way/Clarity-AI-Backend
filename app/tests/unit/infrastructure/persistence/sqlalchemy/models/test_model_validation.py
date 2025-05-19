@@ -93,8 +93,9 @@ class TestUserModelValidation:
     def test_legacy_model_aliasing(self):
         """Verify legacy model is properly aliased to canonical model."""
         # Test creating an instance of UserModel
-        from app.infrastructure.models.user_model import UserModel
         import uuid
+
+        from app.infrastructure.models.user_model import UserModel
 
         # Create a test user with the UserModel class
         test_id = uuid.uuid4()

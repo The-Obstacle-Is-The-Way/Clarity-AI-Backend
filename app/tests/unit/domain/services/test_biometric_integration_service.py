@@ -5,14 +5,11 @@ This module contains tests for the BiometricIntegrationService, ensuring it
 correctly integrates biometric data into patient digital twins.
 """
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.domain.entities.biometric_twin_enhanced import BiometricTwin
 from app.domain.exceptions import DomainError

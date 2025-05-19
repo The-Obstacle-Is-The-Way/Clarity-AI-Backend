@@ -5,43 +5,37 @@ This module contains tests for the biometric alerts API endpoints,
 ensuring HIPAA compliance and correct data handling.
 """
 
-import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone, UTC
-from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
-from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
-from unittest.mock import create_autospec, patch, ANY
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
+from typing import Any, TypeVar
+from unittest.mock import ANY, AsyncMock, MagicMock
+from unittest.mock import MagicMock as Mock
 
-import asyncio
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout
-from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from asgi_lifespan import LifespanManager
-from faker import Faker
-from fastapi import FastAPI, status, Request, Depends, HTTPException, Body
-from fastapi.routing import APIRoute
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from httpx import ASGITransport, AsyncClient
-from fastapi.testclient import TestClient
-from unittest.mock import MagicMock as Mock
-from app.presentation.api.schemas.alert import AlertUpdateRequest
 
-from app.factory import create_application
+from app.application.services.alert_rule_template_service_mock import (
+    MockAlertRuleTemplateService,
+)
 from app.core.config.settings import Settings as AppSettings
-from app.core.domain.entities.user import UserRole, User
+from app.core.domain.entities.alert import AlertPriority, AlertStatus, AlertType
+from app.core.domain.entities.user import User, UserRole
+from app.core.exceptions import ApplicationError, ErrorCode
 from app.core.interfaces.services.alert_rule_service_interface import (
     AlertRuleServiceInterface,
 )
-from app.core.exceptions import ApplicationError, ErrorCode
-
-from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
+from app.core.interfaces.services.alert_rule_template_service_interface import (
+    AlertRuleTemplateServiceInterface,
+)
+from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
 from app.core.interfaces.services.jwt_service_interface import JWTServiceInterface
-from app.core.interfaces.services.alert_service_interface import AlertServiceInterface
-
 from app.domain.repositories.biometric_alert_repository import BiometricAlertRepository
 from app.domain.repositories.biometric_alert_rule_repository import (
     BiometricAlertRuleRepository,
@@ -54,28 +48,29 @@ from app.domain.services.biometric_event_processor import (
     # ClinicalRuleEngine, # Already imported below
 )
 from app.domain.services.clinical_rule_engine import ClinicalRuleEngine  # type: ignore
+from app.factory import create_application
+from app.infrastructure.di.container import reset_container
+from app.presentation.api.dependencies.auth import (
+    get_auth_service as get_auth_service_dependency,
+)
+from app.presentation.api.dependencies.auth import (
+    get_current_active_user,
+    get_current_user,
+)
+from app.presentation.api.dependencies.auth import (
+    get_jwt_service as get_jwt_service_dependency,
+)
 from app.presentation.api.dependencies.biometric_alert import (
     get_alert_repository,
     get_event_processor,
     get_rule_repository,
     get_template_repository,
 )
-from app.presentation.api.dependencies.auth import (
-    get_current_user,
-    get_current_active_user,
-    get_jwt_service as get_jwt_service_dependency,
-    get_auth_service as get_auth_service_dependency,
-)
 from app.presentation.api.v1.dependencies.biometric import (
     get_alert_service as get_alert_service_dependency,
+)
+from app.presentation.api.v1.dependencies.biometric import (
     get_biometric_rule_repository,
-)
-from app.infrastructure.di.container import get_container, reset_container, DIContainer
-from app.core.interfaces.services.alert_rule_template_service_interface import (
-    AlertRuleTemplateServiceInterface,
-)
-from app.application.services.alert_rule_template_service_mock import (
-    MockAlertRuleTemplateService,
 )
 
 # Attempt to import infrastructure implementations for more realistic mocking specs
@@ -100,7 +95,6 @@ except ImportError:
     InfraEventProcessor = AsyncMock(spec=BiometricEventProcessor)
 
 # ADDED: Import enums for filter values
-from app.core.domain.entities.alert import AlertStatus, AlertPriority
 
 T = TypeVar("T")
 
@@ -344,7 +338,7 @@ def authenticated_provider_user() -> DomainUser:
 @pytest.fixture
 def get_valid_provider_auth_headers(global_mock_jwt_service) -> dict[str, str]:
     """Generate valid auth headers for a provider user."""
-    return {"Authorization": f"Bearer test.provider.token"}
+    return {"Authorization": "Bearer test.provider.token"}
 
 
 @pytest.fixture
@@ -376,7 +370,7 @@ async def test_app(
     mock_current_user: User,
     authenticated_provider_user: DomainUser,
     mock_redis_service: MagicMock,
-) -> AsyncGenerator[Tuple[FastAPI, AsyncClient], None]:
+) -> AsyncGenerator[tuple[FastAPI, AsyncClient], None]:
     """
     Creates a test application with specific dependency overrides:
 
@@ -412,7 +406,6 @@ async def test_app(
     app.state.actual_session_factory = mock_session_factory
 
     # Import necessary for test application
-    from app.infrastructure.di.container import reset_container
     from app.application.services.biometric_alert_rule_service import (
         BiometricAlertRuleService,
     )
@@ -421,15 +414,6 @@ async def test_app(
     reset_container()
 
     # Import repository types
-    from app.domain.repositories.biometric_alert_repository import (
-        BiometricAlertRepository,
-    )
-    from app.domain.repositories.biometric_alert_rule_repository import (
-        BiometricAlertRuleRepository,
-    )
-    from app.domain.repositories.biometric_alert_template_repository import (
-        BiometricAlertTemplateRepository,
-    )
 
     # Add custom test middleware that sets actual_session_factory on request.state
     @app.middleware("http")
@@ -481,8 +465,8 @@ async def test_app(
 
     # Override get_db_session to avoid database dependency
     from app.presentation.api.dependencies.database import (
-        get_db_session,
         get_async_session_utility,
+        get_db_session,
     )
 
     app.dependency_overrides[get_db_session] = lambda: mock_session
@@ -506,7 +490,7 @@ async def test_app(
 
 
 @pytest.fixture
-async def client(test_app: Tuple[FastAPI, AsyncClient]) -> AsyncClient:
+async def client(test_app: tuple[FastAPI, AsyncClient]) -> AsyncClient:
     app, client_instance = test_app  # Renamed to avoid conflict with client module
     return client_instance
 
@@ -534,12 +518,6 @@ class TestBiometricAlertsEndpoints:
         sample_patient_id: uuid.UUID,
     ) -> None:
         # Setup mock for AlertRuleTemplateService
-        from app.core.interfaces.services.alert_rule_template_service_interface import (
-            AlertRuleTemplateServiceInterface,
-        )
-        from app.application.services.alert_rule_template_service import (
-            AlertRuleTemplateService,
-        )
         from app.presentation.api.v1.dependencies.biometric import (
             get_alert_rule_template_service,
         )
@@ -1062,7 +1040,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_acknowledge(
         self,
         client: AsyncClient,
-        test_app: Tuple[FastAPI, AsyncClient],
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -1116,7 +1094,7 @@ class TestBiometricAlertsEndpoints:
     async def test_update_alert_status_resolve(
         self,
         client: AsyncClient,
-        test_app: Tuple[FastAPI, AsyncClient],
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -1335,7 +1313,7 @@ class TestBiometricAlertsEndpoints:
     async def test_get_patient_alert_summary_detail(
         self,
         client: AsyncClient,
-        test_app: Tuple[FastAPI, AsyncClient],
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -1354,7 +1332,7 @@ class TestBiometricAlertsEndpoints:
     async def test_get_patient_alert_summary_full(
         self,
         client: AsyncClient,
-        test_app: Tuple[FastAPI, AsyncClient],
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -1674,7 +1652,7 @@ class TestBiometricAlertsEndpoints:
     async def test_manual_alert_trigger(
         self,
         client: AsyncClient,
-        test_app: Tuple[FastAPI, AsyncClient],
+        test_app: tuple[FastAPI, AsyncClient],
         get_valid_provider_auth_headers: dict[str, str],
         sample_patient_id: uuid.UUID,
     ) -> None:
@@ -1734,7 +1712,7 @@ class TestBiometricAlertsEndpoints:
 
 @pytest_asyncio.fixture
 async def app_with_mock_template_service(
-    test_app: Tuple[FastAPI, AsyncClient]
+    test_app: tuple[FastAPI, AsyncClient]
 ) -> AsyncGenerator[None, None]:
     """Setup a mock template service for testing."""
 

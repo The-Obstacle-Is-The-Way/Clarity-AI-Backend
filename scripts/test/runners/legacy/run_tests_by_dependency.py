@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Multi-stage Test Runner for Novamind Backend.
 
@@ -34,9 +33,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 
 # Constants for dependency levels
@@ -81,7 +78,7 @@ def ensure_backend_directory():
             sys.exit(1)
 
 
-def run_test_stage(stage: str, junit: bool = False) -> Tuple[int, float]:
+def run_test_stage(stage: str, junit: bool = False) -> tuple[int, float]:
     """
     Run tests for a specific dependency stage.
 

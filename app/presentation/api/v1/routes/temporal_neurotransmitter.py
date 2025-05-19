@@ -4,7 +4,7 @@ Temporal Neurotransmitter Endpoints Module.
 Provides API endpoints related to temporal neurotransmitter analysis.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -14,11 +14,11 @@ from app.application.services.temporal_neurotransmitter_service import (
     TemporalNeurotransmitterService,
 )
 from app.domain.entities.digital_twin_enums import BrainRegion, Neurotransmitter
+from app.infrastructure.di.dependencies import get_service_factory
 from app.presentation.api.dependencies.auth import (
     get_current_user,
     verify_provider_access,
 )
-from app.infrastructure.di.dependencies import get_service_factory
 
 router = APIRouter(
     prefix="/temporal-neurotransmitter",
@@ -57,7 +57,7 @@ class TreatmentSimulationRequest(BaseModel):
 class TreatmentSimulationResponse(BaseModel):
     """Response model for treatment simulation."""
 
-    sequence_ids: Dict[str, str]
+    sequence_ids: dict[str, str]
 
 
 class VisualizationDataRequest(BaseModel):
@@ -69,10 +69,10 @@ class VisualizationDataRequest(BaseModel):
 class VisualizationDataResponse(BaseModel):
     """Response model for visualization data."""
 
-    time_points: List[str]
-    features: List[str]
-    values: List[List[float]]
-    metadata: Dict[str, Any] = {}
+    time_points: list[str]
+    features: list[str]
+    values: list[list[float]]
+    metadata: dict[str, Any] = {}
 
 
 class AnalyzeNeurotransmitterRequest(BaseModel):
@@ -85,12 +85,12 @@ class AnalysisResponse(BaseModel):
     neurotransmitter: str
     brain_region: str
     effect_size: float
-    confidence_interval: List[float] = None
+    confidence_interval: list[float] = None
     p_value: float = None
     is_statistically_significant: bool
     clinical_significance: str = None
-    time_series_data: List[List[Any]] = []
-    comparison_periods: Dict[str, List[str]] = {}
+    time_series_data: list[list[Any]] = []
+    comparison_periods: dict[str, list[str]] = {}
 
 
 class CascadeVisualizationRequest(BaseModel):
@@ -101,8 +101,8 @@ class CascadeVisualizationRequest(BaseModel):
 
 
 class CascadeVisualizationResponse(BaseModel):
-    regions: List[Dict[str, Any]]
-    connections: List[Dict[str, Any]]
+    regions: list[dict[str, Any]]
+    connections: list[dict[str, Any]]
     time_steps: int
     starting_region: str
     neurotransmitter: str
@@ -145,7 +145,7 @@ async def generate_time_series(
         # HIPAA-compliant error message with no PHI
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating time series: {str(e)}",
+            detail=f"Error generating time series: {e!s}",
         )
 
 
@@ -184,7 +184,7 @@ async def simulate_treatment(
         # HIPAA-compliant error message with no PHI
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error simulating treatment: {str(e)}",
+            detail=f"Error simulating treatment: {e!s}",
         )
 
 
@@ -244,7 +244,7 @@ async def get_visualization_data(
         # HIPAA-compliant error message with no PHI
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting visualization data: {str(e)}",
+            detail=f"Error getting visualization data: {e!s}",
         )
 
 
@@ -274,7 +274,7 @@ async def analyze_neurotransmitter(
         )
     # Format response
     time_series_data = [[ts.isoformat(), val] for ts, val in effect.time_series_data]
-    comparison_periods: Dict[str, List[str]] = {}
+    comparison_periods: dict[str, list[str]] = {}
     if effect.baseline_period:
         comparison_periods["baseline"] = [
             effect.baseline_period[0].isoformat(),

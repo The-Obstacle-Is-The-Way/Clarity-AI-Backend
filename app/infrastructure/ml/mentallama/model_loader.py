@@ -12,9 +12,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-import logging
-from huggingface_hub import snapshot_download
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # from app.config.settings import get_settings # Legacy import
 from app.core.config.settings import get_settings  # Corrected import

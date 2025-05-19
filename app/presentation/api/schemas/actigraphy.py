@@ -5,10 +5,10 @@ This module defines the Pydantic models used for actigraphy data endpoints,
 providing request/response schema validation for the API contract.
 """
 
+import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Optional
-import uuid
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -172,8 +172,8 @@ class ActigraphyDataResponse(BaseSchema):
     data_id: str
     raw_data: Any
     metadata: dict
-    timestamp: Optional[str] = None
-    message: Optional[str] = None
+    timestamp: str | None = None
+    message: str | None = None
 
 
 class ActigraphyModelInfoResponse(BaseSchema):

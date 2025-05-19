@@ -4,16 +4,11 @@ Script to automatically fix common syntax errors in Python test files.
 This script will scan test files, identify common syntax issues, and fix them when possible.
 """
 
-import os
-import sys
-import re
-import ast
-import py_compile
-import subprocess
-from pathlib import Path
 import logging
-import tempfile
-import traceback
+import os
+import py_compile
+import re
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -103,7 +98,7 @@ def fix_indentation_errors(content):
 
 def fix_common_syntax_errors(file_path):
     """Attempt to fix common syntax errors in a file."""
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
     original_content = content

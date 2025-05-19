@@ -5,8 +5,17 @@ This module provides API endpoints for user authentication, including
 login, token refresh, and registration functionality.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from typing import Any, Optional
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+
+from app.domain.exceptions.auth_exceptions import (
+    AccountDisabledException,
+    InvalidCredentialsException,
+    InvalidTokenException,
+    TokenExpiredException,
+    UserAlreadyExistsException,
+)
 
 # Import concrete implementations instead of interfaces for FastAPI compatibility
 from app.infrastructure.security.auth.authentication_service import (
@@ -15,19 +24,11 @@ from app.infrastructure.security.auth.authentication_service import (
 from app.presentation.api.dependencies.auth_service import get_auth_service
 from app.presentation.api.schemas.auth import (
     LoginRequestSchema,
-    TokenResponseSchema,
     RefreshTokenRequestSchema,
     SessionInfoResponseSchema,
+    TokenResponseSchema,
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
-    LogoutResponseSchema,
-)
-from app.domain.exceptions.auth_exceptions import (
-    InvalidCredentialsException,
-    AccountDisabledException,
-    InvalidTokenException,
-    UserAlreadyExistsException,
-    TokenExpiredException,
 )
 
 # Create router (prefix removed as it's handled by the including router)
@@ -114,7 +115,7 @@ async def refresh_token(
         )
     except (InvalidTokenException, TokenExpiredException) as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred during token refresh.",
@@ -149,7 +150,7 @@ async def register(
         )
     except UserAlreadyExistsException as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred during registration.",
@@ -169,7 +170,7 @@ async def logout(
         # For now, assuming it handles context or client-side will clear tokens
         await auth_service.logout(response=response)  # Pass response to clear cookies
         return None  # HTTP 204 returns no content
-    except Exception as e:
+    except Exception:
         # Log error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -194,7 +195,7 @@ async def get_session_info(
             if hasattr(session_data, "model_dump")
             else SessionInfoResponseSchema(**session_data)
         )
-    except Exception as e:
+    except Exception:
         # Log error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

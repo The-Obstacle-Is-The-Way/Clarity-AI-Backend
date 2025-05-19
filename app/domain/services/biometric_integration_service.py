@@ -6,20 +6,20 @@ into the patient's digital twin, enabling advanced analysis and personalized
 treatment recommendations based on physiological and neurological patterns.
 """
 
+import logging  # For actual logging
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID, uuid4  # Ensure uuid4 is imported if used for default IDs
+from uuid import UUID  # Ensure uuid4 is imported if used for default IDs
 
 from app.domain.entities.biometric_twin_enhanced import (
     BiometricDataPoint,
+    BiometricSource,
     BiometricTwin,
     BiometricType,
-    BiometricSource,
 )
 from app.domain.exceptions import DomainError
 from app.domain.repositories.biometric_twin_repository import BiometricTwinRepository
 from app.domain.utils.datetime_utils import UTC
-import logging  # For actual logging
 
 logger = logging.getLogger(__name__)
 
@@ -456,7 +456,7 @@ class BiometricIntegrationService:
             correlations[sec_type] = round(random.uniform(-0.8, 0.8), 2)
 
         if not correlations and secondary_data_types:
-            correlations = {sec_type: 0.0 for sec_type in secondary_data_types}
+            correlations = dict.fromkeys(secondary_data_types, 0.0)
 
         return correlations
 

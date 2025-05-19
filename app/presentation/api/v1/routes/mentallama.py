@@ -5,8 +5,9 @@ This module provides routes for the MentaLLaMA natural language processing API,
 which is specialized for mental health text analysis and therapeutic response generation.
 """
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.core.services.ml.interface import MentaLLaMAInterface
 from app.presentation.api.dependencies.auth import get_current_active_user
@@ -33,10 +34,10 @@ def _check_health(service: MentaLLaMAInterface) -> None:
         )
 
 
-@router.get("/health", response_model=Dict[str, Any])
+@router.get("/health", response_model=dict[str, Any])
 async def health_check(
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Check the health of the MentaLLaMA service.
 
@@ -47,7 +48,7 @@ async def health_check(
     return {"status": "healthy", "service_status": service_status}
 
 
-@router.post("/process", response_model=Dict[str, Any])
+@router.post("/process", response_model=dict[str, Any])
 async def process_text(
     prompt: str = Body(..., description="The text prompt to process"),
     user_id: str = Body(..., description="User ID for logging and personalization"),
@@ -56,7 +57,7 @@ async def process_text(
     max_tokens: int = Body(1024, description="Maximum number of tokens to generate"),
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
     current_user=Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Process a text prompt through the MentaLLaMA service.
 
@@ -79,14 +80,14 @@ async def process_text(
     return result
 
 
-@router.post("/analyze", response_model=Dict[str, Any])
+@router.post("/analyze", response_model=dict[str, Any])
 async def analyze_text(
     text: str = Body(..., description="Text to analyze"),
     user_id: str = Body(..., description="User ID for logging and personalization"),
     analysis_type: str = Body("general", description="Type of analysis to perform"),
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
     current_user=Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Analyze text for mental health insights.
 
@@ -106,13 +107,13 @@ async def analyze_text(
     return await service.process(text=text, model_type="analysis", options=options)
 
 
-@router.post("/detect-conditions", response_model=Dict[str, Any])
+@router.post("/detect-conditions", response_model=dict[str, Any])
 async def detect_conditions(
     text: str = Body(..., description="Text to analyze for mental health conditions"),
     user_id: str = Body(..., description="User ID for logging and personalization"),
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
     current_user=Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Detect potential mental health conditions in text.
 
@@ -131,15 +132,15 @@ async def detect_conditions(
     return await service.process(text=text, model_type="conditions", options=options)
 
 
-@router.post("/therapeutic-response", response_model=Dict[str, Any])
+@router.post("/therapeutic-response", response_model=dict[str, Any])
 async def generate_therapeutic_response(
-    conversation_history: List[Dict[str, str]] = Body(
+    conversation_history: list[dict[str, str]] = Body(
         ..., description="Conversation history with user and therapist messages"
     ),
     user_id: str = Body(..., description="User ID for logging and personalization"),
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
     current_user=Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Generate a therapeutic response based on conversation history.
 
@@ -166,13 +167,13 @@ async def generate_therapeutic_response(
     return await service.process(text=prompt, model_type="therapeutic", options=options)
 
 
-@router.post("/assess-suicide-risk", response_model=Dict[str, Any])
+@router.post("/assess-suicide-risk", response_model=dict[str, Any])
 async def assess_suicide_risk(
     text: str = Body(..., description="Text to analyze for suicide risk"),
     user_id: str = Body(..., description="User ID for logging and personalization"),
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
     current_user=Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Assess suicide risk in text.
 
@@ -195,16 +196,16 @@ async def assess_suicide_risk(
     return response
 
 
-@router.post("/assess-wellness", response_model=Dict[str, Any])
+@router.post("/assess-wellness", response_model=dict[str, Any])
 async def assess_wellness_dimensions(
     text: str = Body(..., description="Text to analyze for wellness dimensions"),
     user_id: str = Body(..., description="User ID for logging and personalization"),
-    dimensions: List[str] = Body(
+    dimensions: list[str] = Body(
         default=None, description="Specific wellness dimensions to analyze"
     ),
     service: MentaLLaMAInterface = Depends(get_mentallama_service),
     current_user=Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Assess wellness dimensions in text.
 

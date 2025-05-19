@@ -1,24 +1,19 @@
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-import asyncio
 import pytest
 import pytest_asyncio
-from app.tests.utils.asyncio_helpers import run_with_timeout
-import asyncio
-import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from dataclasses import dataclass
-from types import SimpleNamespace
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.domain.entities.user import User as DomainUser
+from app.core.domain.entities.user import UserRole, UserStatus
 from app.core.services.ml.xgboost.mock import MockXGBoostService
 from app.presentation.api.v1.routes.xgboost import router as xgboost_router
-from app.core.domain.entities.user import User as DomainUser, UserRole, UserStatus
 
 # Mark all tests in this module as asyncio tests
 pytestmark = pytest.mark.asyncio
@@ -133,8 +128,8 @@ async def client(
 
     # Override the dependencies
     from app.presentation.api.dependencies.auth import (
-        verify_provider_access,
         get_current_user,
+        verify_provider_access,
     )
 
     app.dependency_overrides[verify_provider_access] = mock_verify_provider_access

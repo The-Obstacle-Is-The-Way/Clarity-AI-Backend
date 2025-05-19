@@ -14,7 +14,6 @@ from fastapi import HTTPException, Request, status
 # AuthenticationMiddleware has been moved to app.presentation.middleware.authentication
 # Do not import it here from app.core.security.middleware anymore.
 # from app.core.security.middleware import AuthenticationMiddleware
-
 from app.core.security.rate_limiting import (
     RateLimitConfig,
     RateLimitStrategy,

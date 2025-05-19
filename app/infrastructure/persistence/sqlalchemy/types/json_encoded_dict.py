@@ -5,7 +5,6 @@ This module provides a TypeDecorator that handles encoding and decoding of
 dictionaries as JSON data, with cross-database compatibility.
 """
 
-import json
 
 from sqlalchemy import types
 

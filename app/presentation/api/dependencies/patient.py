@@ -2,28 +2,25 @@
 Patient-related Dependencies for the Presentation Layer.
 """
 
-from uuid import UUID
-from typing import Annotated
-from fastapi import Depends, HTTPException, status
-from fastapi.params import Path
 import logging
 import uuid
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, status
+from fastapi.params import Path
 
 from app.core.domain.entities.patient import Patient
-from app.core.domain.entities.user import User, UserRole
-from app.core.utils.logging import get_logger
-
-# Import from sibling auth module
-from .auth import get_current_user
-
-# Import from database module
-from app.presentation.api.dependencies.database import get_patient_repository_dependency
+from app.core.domain.entities.user import UserRole
 
 # Import from patient repository module
 from app.core.interfaces.repositories.patient_repository import IPatientRepository
 
 # Import from auth module
 from app.presentation.api.dependencies.auth import CurrentUserDep
+
+# Import from sibling auth module
+# Import from database module
+from app.presentation.api.dependencies.database import get_patient_repository_dependency
 
 logger = logging.getLogger(__name__)
 

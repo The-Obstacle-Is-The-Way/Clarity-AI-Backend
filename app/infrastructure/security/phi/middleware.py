@@ -6,13 +6,12 @@ requests and responses, ensuring HIPAA compliance at the API layer.
 """
 
 import json
-import time
 import re
+import time
 from collections.abc import Callable
-from typing import Any, Dict, List, Set, Union
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
@@ -205,7 +204,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             elif isinstance(self.whitelist_patterns, list):
                 print(f"*DEBUG* List whitelist patterns: {self.whitelist_patterns}")
             else:
-                print(f"*DEBUG* No whitelist patterns")
+                print("*DEBUG* No whitelist patterns")
 
         # Skip excluded paths
         if self.is_excluded_path(current_path):
@@ -826,7 +825,7 @@ class PHIMiddleware(BaseHTTPMiddleware):
             response.body = response_body
 
         except Exception as e:
-            logger.error(f"Error reading response body: {str(e)}")
+            logger.error(f"Error reading response body: {e!s}")
             response.body = b""
             return b""
 

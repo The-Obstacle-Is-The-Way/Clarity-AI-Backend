@@ -3,21 +3,20 @@ Service responsible for user authentication logic.
 """
 
 import uuid
-from typing import List, Union
 
 from app.domain.entities.user import User
 from app.domain.enums.role import Role
 
 # CORRECTED import: Use EntityNotFoundError
 from app.domain.exceptions import (
+    AccountDisabledException,
     AuthenticationError,
     EntityNotFoundError,
-    InvalidTokenError,
-    TokenExpiredError,
     InvalidCredentialsException,
-    AccountDisabledException,
-    TokenExpiredException,
+    InvalidTokenError,
     InvalidTokenException,
+    TokenExpiredError,
+    TokenExpiredException,
 )
 
 # Import password service and user repository interface (adjust path as needed)
@@ -498,7 +497,7 @@ class AuthenticationService:
             logger.error(f"Error revoking token: {e!s}", exc_info=True)
             return False
 
-    async def logout(self, tokens: Union[str, List[str]]) -> bool:
+    async def logout(self, tokens: str | list[str]) -> bool:
         """
         Logout user by revoking their tokens.
 

@@ -5,13 +5,13 @@ These tests verify that all middleware components work together properly in sequ
 focusing on the request ID middleware which doesn't require database setup.
 """
 
-import pytest
-from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.testclient import TestClient
 import uuid
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from app.core.config.settings import get_settings
+import pytest
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.testclient import TestClient
+
 from app.presentation.middleware.request_id import RequestIdMiddleware
 
 

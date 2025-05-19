@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 HIPAA Compliance Summary Generator
 =================================
@@ -12,19 +11,18 @@ Usage:
     python generate_compliance_summary.py --reports-dir reports
 """
 
-import os
-import sys
-import json
 import argparse
 import datetime
+import json
+import os
+import sys
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Any, Optional, Tuple
 
 # Rich library provides beautiful formatting for terminal output
 try:
     from rich.console import Console
-    from rich.table import Table
     from rich.markdown import Markdown
+    from rich.table import Table
 
     RICH_AVAILABLE = True
 except ImportError:
@@ -65,7 +63,7 @@ class ComplianceSummaryGenerator:
         try:
             score_path = os.path.join(self.reports_dir, "compliance_score.json")
             if os.path.exists(score_path):
-                with open(score_path, "r") as f:
+                with open(score_path) as f:
                     score_data = json.load(f)
 
                 self.report_data["security_score"] = score_data.get(
@@ -76,7 +74,7 @@ class ComplianceSummaryGenerator:
                 )
                 self.report_data["category_scores"] = score_data.get("tool_scores", {})
         except Exception as e:
-            print(f"Error reading compliance score: {str(e)}")
+            print(f"Error reading compliance score: {e!s}")
 
     def _read_pytest_results(self) -> None:
         """Read pytest test results from XML reports."""
@@ -135,14 +133,14 @@ class ComplianceSummaryGenerator:
                     self.report_data["coverage"] = 0.0
 
         except Exception as e:
-            print(f"Error reading pytest results: {str(e)}")
+            print(f"Error reading pytest results: {e!s}")
 
     def _read_bandit_results(self) -> None:
         """Read bandit security analysis results."""
         try:
             bandit_path = os.path.join(self.reports_dir, "bandit_results.json")
             if os.path.exists(bandit_path):
-                with open(bandit_path, "r") as f:
+                with open(bandit_path) as f:
                     bandit_data = json.load(f)
 
                 results = bandit_data.get("results", [])
@@ -164,14 +162,14 @@ class ComplianceSummaryGenerator:
                             }
                         )
         except Exception as e:
-            print(f"Error reading bandit results: {str(e)}")
+            print(f"Error reading bandit results: {e!s}")
 
     def _read_safety_results(self) -> None:
         """Read safety dependency check results."""
         try:
             safety_path = os.path.join(self.reports_dir, "vulnerabilities.json")
             if os.path.exists(safety_path):
-                with open(safety_path, "r") as f:
+                with open(safety_path) as f:
                     vulnerabilities = json.load(f)
 
                 for vuln in vulnerabilities:
@@ -196,7 +194,7 @@ class ComplianceSummaryGenerator:
                             }
                         )
         except Exception as e:
-            print(f"Error reading safety results: {str(e)}")
+            print(f"Error reading safety results: {e!s}")
 
     def _calculate_category_scores(self) -> None:
         """Calculate scores for different compliance categories."""

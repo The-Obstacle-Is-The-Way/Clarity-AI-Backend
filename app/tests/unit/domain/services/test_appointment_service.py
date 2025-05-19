@@ -5,7 +5,7 @@ Tests for the Appointment Service.
 # Defer service import if necessary, though typically fine in tests
 # from app.domain.services.appointment_service import AppointmentService
 import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +18,6 @@ from app.domain.entities.appointment import (
     AppointmentType,
     # AppointmentPriority # Still assuming this doesn't exist
 )
-from app.domain.exceptions import ValidationError  # Moved from below
 from app.domain.exceptions.appointment_exceptions import AppointmentConflictError
 
 # Removed duplicate import of InvalidAppointmentTimeError

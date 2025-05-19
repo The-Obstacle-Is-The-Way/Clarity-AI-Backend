@@ -9,7 +9,7 @@ Direct implementation using the consolidated PHISanitizer.
 
 import logging
 import re
-from typing import Any, Type
+from typing import Any
 
 # Application imports (Corrected)
 from app.core.domain.enums.phi_enums import PHIType

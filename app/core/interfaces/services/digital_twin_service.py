@@ -1,5 +1,4 @@
 import abc
-from typing import Optional
 from uuid import UUID
 
 from app.presentation.api.schemas.digital_twin_schemas import (

@@ -6,9 +6,9 @@ and other security-related operations.
 """
 
 from app.domain.exceptions.base_exceptions import (
-    BaseApplicationError,
     AuthenticationError,
     AuthorizationError,
+    BaseApplicationError,
 )
 
 

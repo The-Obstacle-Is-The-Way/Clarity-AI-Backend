@@ -5,9 +5,9 @@ This module provides test endpoints that are only registered in test mode.
 They are used to trigger specific error conditions for testing.
 """
 
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import Dict, Any
-from fastapi.responses import JSONResponse
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, status
 
 # Create a router for test endpoints
 router = APIRouter(
@@ -32,7 +32,7 @@ async def force_500_error():
 
 
 @router.get("/404-error")
-async def force_404_error() -> Dict[str, Any]:
+async def force_404_error() -> dict[str, Any]:
     """
     Endpoint that deliberately raises a 404 not found error.
     Used to test 404 error responses.
@@ -43,7 +43,7 @@ async def force_404_error() -> Dict[str, Any]:
 
 
 @router.get("/403-error")
-async def force_403_error() -> Dict[str, Any]:
+async def force_403_error() -> dict[str, Any]:
     """
     Endpoint that deliberately raises a 403 forbidden error.
     Used to test 403 error responses.
@@ -54,7 +54,7 @@ async def force_403_error() -> Dict[str, Any]:
 
 
 @router.get("/401-error")
-async def force_401_error() -> Dict[str, Any]:
+async def force_401_error() -> dict[str, Any]:
     """
     Endpoint that deliberately raises a 401 unauthorized error.
     Used to test 401 error responses.
@@ -65,7 +65,7 @@ async def force_401_error() -> Dict[str, Any]:
 
 
 @router.get("/validation-error")
-async def force_validation_error() -> Dict[str, Any]:
+async def force_validation_error() -> dict[str, Any]:
     """
     Endpoint that deliberately raises a 422 validation error.
     Used to test validation error responses.

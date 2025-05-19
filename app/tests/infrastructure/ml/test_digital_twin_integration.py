@@ -8,9 +8,7 @@ domain layer, following Clean Architecture principles and ensuring HIPAA complia
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 from app.infrastructure.ml.digital_twin_integration_service import (
     DigitalTwinIntegrationService,

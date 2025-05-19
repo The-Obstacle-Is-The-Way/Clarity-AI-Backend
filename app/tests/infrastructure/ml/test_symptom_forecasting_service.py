@@ -5,9 +5,7 @@ This module contains tests for the Symptom Forecasting Service, which
 implements psychiatric symptom forecasting using an ensemble of models,
 following Clean Architecture principles and ensuring HIPAA compliance.
 """
-import asyncio
 import pytest
-from app.tests.utils.asyncio_helpers import run_with_timeout
 
 pytest.skip(
     "Skipping symptom forecasting tests (torch unsupported in this environment)",
