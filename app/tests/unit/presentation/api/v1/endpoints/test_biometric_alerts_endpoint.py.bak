@@ -798,9 +798,9 @@ class TestBiometricAlertsEndpoints:
         headers = get_valid_provider_auth_headers
         non_existent_alert_id = str(uuid.uuid4())
         
-        # Use the actual enum object for status, not its string value
+        # Make sure we provide a valid status value according to the AlertStatus enum
         update_payload = {
-            "status": AlertStatus.ACKNOWLEDGED,  # Send the enum object itself
+            "status": AlertStatus.ACKNOWLEDGED.value,  # Use enum value to ensure correctness
             "resolution_notes": None  
         }
         
@@ -815,7 +815,7 @@ class TestBiometricAlertsEndpoints:
         # Verify the mock was called with the correct parameters
         alert_service_mock.update_alert_status.assert_called_once_with(
             alert_id=non_existent_alert_id,
-            status=AlertStatus.ACKNOWLEDGED.value,  # Service receives the enum value
+            status=AlertStatus.ACKNOWLEDGED.value,
             resolution_notes=None,
             resolved_by=ANY  # Use ANY matcher for the user ID as it's not important for this test
         )
@@ -838,16 +838,7 @@ class TestBiometricAlertsEndpoints:
             "by_priority": {"low": 1, "medium": 2, "high": 2},
             "by_type": {"biometric_anomaly": 3, "medication_reminder": 2}
         }
-
-    @pytest.mark.asyncio
-    async def test_get_patient_alert_summary(
-        self,
-        client: AsyncClient,
-        test_app: Tuple[FastAPI, AsyncClient],
-        get_valid_provider_auth_headers: dict[str, str],
-        sample_patient_id: uuid.UUID,
     ) -> None:
-        """Test retrieving alert summary for a patient."""
         # Create summary response data
         summary_data = {
             "patient_id": str(sample_patient_id),
