@@ -231,6 +231,14 @@ def mock_alert_service() -> MagicMock:
     service.get_patient_alert_summary = AsyncMock(return_value=None)
     service.trigger_alert_manually = AsyncMock()
     service.trigger_manual_alert = AsyncMock()
+    
+    # Add missing abstract methods from AlertServiceInterface
+    service.create_rule = AsyncMock(return_value=None)
+    service.evaluate_biometric_data = AsyncMock(return_value=[])
+    service.get_rule_by_id = AsyncMock(return_value=None)
+    service.list_rules = AsyncMock(return_value=[])
+    service.update_rule = AsyncMock(return_value=None)
+    
     return service
 
 @pytest.fixture
