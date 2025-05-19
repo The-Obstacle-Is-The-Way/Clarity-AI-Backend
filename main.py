@@ -313,18 +313,10 @@ async def health_check():
     return health_status
 
 
-# Run application when executed directly
+# Create and export the FastAPI application instance
+# This is the instance that uvicorn will import when run with app.main:app
+app = create_application()
+
+# Export app at the module level for uvicorn to find
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host=settings.api.HOST,
-        port=settings.api.PORT,
-        reload=settings.DEBUG,
-        log_level=settings.logging.LOG_LEVEL.lower(),
-        ssl_keyfile=settings.security.SSL_KEY_PATH
-        if settings.security.ENFORCE_HTTPS
-        else None,
-        ssl_certfile=settings.security.SSL_CERT_PATH
-        if settings.security.ENFORCE_HTTPS
-        else None,
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000)
