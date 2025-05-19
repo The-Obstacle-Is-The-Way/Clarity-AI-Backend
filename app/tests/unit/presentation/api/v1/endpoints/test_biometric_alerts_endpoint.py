@@ -32,25 +32,8 @@ from app.presentation.api.schemas.alert import AlertUpdateRequest
 from app.factory import create_application
 from app.core.config.settings import Settings as AppSettings
 from app.core.domain.entities.user import UserRole, User
-
-# Define UserStatus locally for testing
-class UserStatus(str, Enum):
-    """User status enum for tests."""
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
-
-# Create a DomainUser class for testing
-class DomainUser:
-    """Domain user model for tests."""
-    def __init__(self, id, email, username, full_name, hashed_password, roles, status):
-        self.id = id
-        self.email = email
-        self.username = username
-        self.full_name = full_name
-        self.hashed_password = hashed_password
-        self.roles = roles
-        self.status = status
+from app.core.interfaces.services.alert_rule_service_interface import AlertRuleServiceInterface
+from app.core.exceptions import ApplicationError, ErrorCode
 
 from app.core.domain.entities.alert import Alert, AlertPriority, AlertStatus, AlertType
 from app.core.interfaces.services.auth_service_interface import AuthServiceInterface
@@ -105,6 +88,25 @@ T = TypeVar("T")
 
 # ADDED logger definition
 logger = logging.getLogger(__name__)
+
+# Define UserStatus locally for testing
+class UserStatus(str, Enum):
+    """User status enum for tests."""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+
+# Create a DomainUser class for testing
+class DomainUser:
+    """Domain user model for tests."""
+    def __init__(self, id, email, username, full_name, hashed_password, roles, status):
+        self.id = id
+        self.email = email
+        self.username = username
+        self.full_name = full_name
+        self.hashed_password = hashed_password
+        self.roles = roles
+        self.status = status
 
 @pytest.fixture
 def mock_biometric_event_processor() -> AsyncMock:
@@ -610,7 +612,8 @@ class TestBiometricAlertsEndpoints:
         response = await client.post(
             "/api/v1/biometric-alert-rules",
             headers=headers,
-            json=payload
+            # Wrap with rule_data key as expected by the endpoint
+            json={"rule_data": payload}
         )
         
         # Debug info if needed
