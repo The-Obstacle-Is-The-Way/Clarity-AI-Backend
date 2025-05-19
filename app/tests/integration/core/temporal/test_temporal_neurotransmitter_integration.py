@@ -140,7 +140,6 @@ def patient_id():
     return uuid4()
 
 
-@pytest.mark.skip("Skipping temporal neurotransmitter integration: pending mapping signature update")
 @pytest.mark.asyncio()
 @pytest.mark.db_required()
 @pytest.mark.asyncio
@@ -152,10 +151,13 @@ async def test_temporal_service_with_xgboost_integration(
     event_repository: EventRepository
 ):
     """
-    Test the integration between TemporalNeurotransmitterService and EnhancedXGBoostService.
+    Test integrated functionality of TemporalNeurotransmitterService with XGBoost.
     
-    This test verifies that the temporal service correctly leverages XGBoost predictions
-    to enhance treatment simulations.
+    This test validates that the service can:
+    1. Generate time series data
+    2. Simulate treatment responses
+    3. Access repositories correctly
+    4. Interact with the XGBoost service (if XGBoost interaction is enabled)
     """
     # Set up - create a baseline sequence
     baseline_sequence_id = await temporal_service.generate_neurotransmitter_time_series(
