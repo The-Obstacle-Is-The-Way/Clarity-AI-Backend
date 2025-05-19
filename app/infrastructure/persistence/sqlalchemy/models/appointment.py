@@ -9,16 +9,16 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum as SQLAlchemyEnum,
     ForeignKey,
     String,
     Text,
+    UUID as SQLAlchemyUUID,
 )
-from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 
 from app.domain.entities.appointment import AppointmentStatus
@@ -58,7 +58,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     appointment_type = Column(String(50), nullable=False)
-    status: Column = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
+    status = Column(SQLAlchemyEnum(AppointmentStatus), nullable=False)
     notes = Column(Text, nullable=True)
     virtual = Column(Boolean, default=False, nullable=False)
     location = Column(String(255), nullable=True)

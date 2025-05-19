@@ -15,8 +15,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UUID as SQLAlchemyUUID,
 )
-from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
@@ -27,7 +27,7 @@ from app.infrastructure.persistence.sqlalchemy.models.base import (
 )
 
 if TYPE_CHECKING:
-    from app.domain.entities.clinical_note import ClinicalNote, NoteType
+    from app.domain.entities.clinical_note import ClinicalNote
 
 
 class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
@@ -60,7 +60,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
     content = Column(Text, nullable=False)
     redacted_content = Column(Text, nullable=True)
     note_type = Column(String(50), nullable=True)
-    tags: Column = Column(MutableDict.as_mutable(JSON), nullable=True)
+    tags = Column(MutableDict.as_mutable(JSON), nullable=True)
     version = Column(Integer, default=1, nullable=False)
     parent_note_id = Column(
         SQLAlchemyUUID(as_uuid=True), ForeignKey("clinical_notes.id"), nullable=True

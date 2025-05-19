@@ -18,14 +18,12 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     String,
+    UUID as SQLAlchemyUUID,
 )
-from sqlalchemy import UUID as SQLAlchemyUUID
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 
 from app.domain.utils.datetime_utils import now_utc
-
-# Import the shared base class to ensure consistent registry
 from app.infrastructure.persistence.sqlalchemy.models.base import Base, TimestampMixin
 
 
@@ -50,7 +48,7 @@ class BiometricTwinModel(Base, TimestampMixin):
     updated_at = Column(DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     baseline_established = Column(Boolean, nullable=False, default=False)
     connected_devices = Column(JSON, nullable=True)
-    config: Column = Column(MutableDict.as_mutable(JSON), nullable=True)
+    config = Column(MutableDict.as_mutable(JSON), nullable=True)
     status = Column(String(50), default="active", nullable=False)
 
     patient = relationship("Patient", back_populates="biometric_twin")
@@ -123,9 +121,9 @@ class BiometricTimeseriesDataModel(Base, TimestampMixin):
     timestamp = Column(DateTime, default=now_utc, nullable=False, index=True)
     value_numeric = Column(Float, nullable=True)
     value_string = Column(String, nullable=True)
-    value_json: Column = Column(MutableDict.as_mutable(JSON), nullable=True)
+    value_json = Column(MutableDict.as_mutable(JSON), nullable=True)
     unit = Column(String(50), nullable=True)
-    metadata_: Column = Column("metadata", MutableDict.as_mutable(JSON), nullable=True)
+    metadata_ = Column("metadata", MutableDict.as_mutable(JSON), nullable=True)
 
     biometric_twin = relationship("BiometricTwinModel", back_populates="timeseries_data")
 
