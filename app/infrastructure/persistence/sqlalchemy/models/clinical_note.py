@@ -79,7 +79,7 @@ class ClinicalNoteModel(Base, TimestampMixin, AuditMixin):
         return f"<ClinicalNote(id={self.id}, patient_id={self.patient_id}, note_type={self.note_type})>"
 
     @classmethod
-    def from_domain(cls, clinical_note) -> "ClinicalNoteModel":
+    def from_domain(cls, clinical_note: "ClinicalNote") -> "ClinicalNoteModel":
         """
         Create a SQLAlchemy model instance from a domain entity.
 

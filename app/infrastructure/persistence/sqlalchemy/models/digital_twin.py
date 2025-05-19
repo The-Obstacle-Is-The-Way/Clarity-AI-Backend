@@ -8,7 +8,7 @@ providing mapping between domain entities and the database schema.
 import json
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import (
     JSON,
@@ -38,7 +38,7 @@ class DigitalTwinDataPoint(Base):
     """
 
     __tablename__ = "digital_twin_data_points"
-    __table_args__ = {"extend_existing": True}
+    __table_args__: ClassVar[dict] = {"extend_existing": True}
 
     id = Column(SQLAlchemyUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     timeseries_id = Column(

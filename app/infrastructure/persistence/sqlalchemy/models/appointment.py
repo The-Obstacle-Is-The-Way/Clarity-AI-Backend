@@ -82,7 +82,7 @@ class AppointmentModel(Base, TimestampMixin, AuditMixin):
         return f"<Appointment(id={self.id}, patient_id={self.patient_id}, start_time={self.start_time})>"
 
     @classmethod
-    def from_domain(cls, appointment) -> "AppointmentModel":
+    def from_domain(cls, appointment: "Appointment") -> "AppointmentModel":
         """
         Create a SQLAlchemy model instance from a domain entity.
 
