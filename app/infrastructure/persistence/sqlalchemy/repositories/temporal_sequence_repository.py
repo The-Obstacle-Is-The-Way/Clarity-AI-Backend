@@ -46,7 +46,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         sequence_model = TemporalSequenceModel(
             sequence_id=sequence.sequence_id,
             patient_id=sequence.patient_id,
-            feature_names=sequence.feature_names,
+            feature_names_json=sequence.feature_names,  # Store as JSON-compatible list
             sequence_metadata=sequence.metadata
         )
         
@@ -106,7 +106,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         return TemporalSequence(
             sequence_id=sequence_model.sequence_id,
             patient_id=sequence_model.patient_id,
-            feature_names=sequence_model.feature_names,
+            feature_names=sequence_model.feature_names,  # Use property accessor
             time_points=time_points,
             metadata=sequence_model.sequence_metadata
         )
@@ -149,7 +149,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
             sequence = TemporalSequence(
                 sequence_id=seq_model.sequence_id,
                 patient_id=seq_model.patient_id,
-                feature_names=seq_model.feature_names,
+                feature_names=seq_model.feature_names,  # Use property accessor
                 time_points=time_points,
                 metadata=seq_model.sequence_metadata
             )
@@ -200,23 +200,27 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         Returns:
             The most recent temporal sequence containing the feature
         """
-        # Find sequences containing the feature
+        # For SQLite compatibility, we can't use the ARRAY contains operator
+        # Instead, we'll fetch recent sequences and filter in Python
         result = await self.session.execute(
             sa.select(TemporalSequenceModel)
-            .where(
-                TemporalSequenceModel.patient_id == patient_id,
-                TemporalSequenceModel.feature_names.contains([feature_name])
-            )
+            .where(TemporalSequenceModel.patient_id == patient_id)
             .order_by(sa.desc(TemporalSequenceModel.created_at))
-            .limit(limit)
+            .limit(limit * 2)  # Fetch more to increase chances of finding matches
         )
         sequence_models = result.scalars().all()
         
-        if not sequence_models:
+        # Filter sequences that contain the feature
+        matching_models = [
+            model for model in sequence_models
+            if feature_name in model.feature_names
+        ]
+        
+        if not matching_models:
             return None
         
-        # Get the most recent sequence
-        latest_model = sequence_models[0]
+        # Get the most recent matching sequence
+        latest_model = matching_models[0]
         
         # Get data points
         result = await self.session.execute(
@@ -235,7 +239,7 @@ class SqlAlchemyTemporalSequenceRepository(TemporalSequenceRepository):
         return TemporalSequence(
             sequence_id=latest_model.sequence_id,
             patient_id=latest_model.patient_id,
-            feature_names=latest_model.feature_names,
+            feature_names=latest_model.feature_names,  # Use property accessor
             time_points=time_points,
             metadata=latest_model.sequence_metadata
         ) 
