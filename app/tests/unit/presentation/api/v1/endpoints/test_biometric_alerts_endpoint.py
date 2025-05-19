@@ -455,7 +455,7 @@ class TestBiometricAlertsEndpoints:
         # Test is now enabled since we've implemented the endpoint
         # pytest.skip("Skipping test until authentication issues are fixed")
         headers = get_valid_provider_auth_headers
-        response = await client.get("/api/v1/biometric-alert-rules/biometric-alert-rules", headers=headers)
+        response = await client.get("/api/v1/biometric-alert-rules", headers=headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
