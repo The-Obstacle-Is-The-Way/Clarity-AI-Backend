@@ -11,15 +11,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Tuple, TypeVar, Union
 from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone, create_autospec, patch, ANY
+from datetime import datetime, timezone
+from unittest.mock import create_autospec, patch, ANY
 from enum import Enum
 
 import asyncio
 import pytest
 import pytest_asyncio
 from app.tests.utils.asyncio_helpers import run_with_timeout
-import asyncio
-import pytest
 from app.tests.utils.asyncio_helpers import run_with_timeout_asyncio
 from asgi_lifespan import LifespanManager
 from faker import Faker
@@ -977,21 +976,13 @@ class TestBiometricAlertsEndpoints:
         get_valid_provider_auth_headers: dict[str, str],
         mock_alert_service: MagicMock
     ) -> None:
-        # Set up the mock to return a created alert
-        mock_alert = Alert(
-            id=uuid.uuid4(),
-            patient_id=sample_patient_id,
-            rule_id=uuid.uuid4(),
-            source_type="manual",
-            status="new",
-            severity="high",
-            message="Manual alert created by test",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-            data={},
-            metadata={}
-        )
-        mock_alert_service.trigger_manual_alert.return_value = mock_alert
+        # Create mock alert return values for create_alert
+        success = True
+        alert_id = str(uuid.uuid4())
+        error_msg = None
+        
+        # Set up the alert service's create_alert return value
+        mock_alert_service.create_alert.return_value = (success, alert_id, error_msg)
         
         # Create alert trigger payload
         trigger_payload = {
@@ -1004,14 +995,18 @@ class TestBiometricAlertsEndpoints:
         response = await client.post(
             f"/api/v1/biometric-alerts/patients/{sample_patient_id}/trigger",
             json={
-                "alert_type": "biometric_anomaly",
-                "priority": trigger_payload["severity"],
                 "message": trigger_payload["message"],
+                "priority": trigger_payload["severity"],
+                "alert_type": AlertType.BIOMETRIC_ANOMALY.value,
                 "data": trigger_payload["data"]
             },
             headers=get_valid_provider_auth_headers
         )
         
+        # Print response details if validation error occurs
+        if response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+            print(f"Validation error response: {response.json()}")
+            
         # Should be created successfully
         assert response.status_code == status.HTTP_201_CREATED
         
@@ -1022,12 +1017,13 @@ class TestBiometricAlertsEndpoints:
         assert response_data["message"] == "Alert created successfully"
         
         # Verify the service was called with correct args
-        mock_alert_service.trigger_manual_alert.assert_called_once_with(
-            patient_id=sample_patient_id,
+        mock_alert_service.create_alert.assert_called_once_with(
+            patient_id=str(sample_patient_id),
+            alert_type="biometric_anomaly",
             severity=trigger_payload["severity"],
-            message=trigger_payload["message"],
-            data=trigger_payload["data"],
-            created_by=mock_alert_service.trigger_manual_alert.call_args[1]["created_by"]
+            description=trigger_payload["message"],
+            source_data=trigger_payload["data"],
+            metadata=mock_alert_service.create_alert.call_args[1]["metadata"]
         )
 
     # Removed duplicate test_trigger_alert_manually_success
