@@ -1000,10 +1000,15 @@ class TestBiometricAlertsEndpoints:
             "data": {"key": "value"}
         }
         
-        # Make the request
+        # Make the request with the correct URL format
         response = await client.post(
-            f"/api/v1/patients/{sample_patient_id}/trigger",
-            json=trigger_payload,
+            f"/api/v1/biometric-alerts/patients/{sample_patient_id}/trigger",
+            json={
+                "alert_type": "biometric_anomaly",
+                "priority": trigger_payload["severity"],
+                "message": trigger_payload["message"],
+                "data": trigger_payload["data"]
+            },
             headers=get_valid_provider_auth_headers
         )
         
