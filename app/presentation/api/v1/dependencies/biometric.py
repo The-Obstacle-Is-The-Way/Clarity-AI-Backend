@@ -17,6 +17,7 @@ from app.core.interfaces.services.biometric_service_interface import BiometricSe
 from app.core.interfaces.services.alert_rule_template_service_interface import AlertRuleTemplateServiceInterface
 from app.domain.repositories.biometric_rule_repository import BiometricRuleRepository
 from app.domain.repositories.biometric_alert_template_repository import BiometricAlertTemplateRepository
+from app.domain.repositories.biometric_alert_rule_repository import BiometricAlertRuleRepository
 from app.infrastructure.di.provider import get_repository_instance, get_service_instance
 
 
@@ -37,8 +38,18 @@ def get_alert_service() -> AlertServiceInterface:
     return get_container().get(AlertServiceInterface)
 
 
-def get_alert_rule_template_service() -> AlertRuleTemplateServiceInterface:
-    """Dependency injector for AlertRuleTemplateServiceInterface."""
+def get_alert_rule_template_service(
+    session: AsyncSession = Depends(get_db_session)
+) -> AlertRuleTemplateServiceInterface:
+    """
+    Dependency injector for AlertRuleTemplateServiceInterface.
+    
+    Args:
+        session: Database session for repository instances
+        
+    Returns:
+        AlertRuleTemplateServiceInterface: Configured service with repositories
+    """
     from app.application.services.alert_rule_template_service import AlertRuleTemplateService
     from app.infrastructure.di.container import get_container
     
@@ -49,9 +60,12 @@ def get_alert_rule_template_service() -> AlertRuleTemplateServiceInterface:
     try:
         return container.get(AlertRuleTemplateServiceInterface)
     except KeyError:
-        # If not registered, manually create it with repositories that will be injected later
-        # We'll pass None for repositories as they'll be injected on method calls
-        return AlertRuleTemplateService(None, None)
+        # Get repositories using the provided session
+        template_repo = get_repository_instance(BiometricAlertTemplateRepository, session)
+        rule_repo = get_repository_instance(BiometricAlertRuleRepository, session)
+        
+        # Create and return the service with proper repositories
+        return AlertRuleTemplateService(template_repo, rule_repo)
 
 
 def get_biometric_rule_repository(

@@ -330,24 +330,7 @@ class Patient(Base, TimestampMixin, AuditMixin):
             model._emergency_contact_relationship = getattr(emergency_contact_vo, 'relationship', None)
             
             # Serialize EmergencyContact VO to dict
-            if hasattr(emergency_contact_vo, 'model_dump'):
-                model._emergency_contact_details = emergency_contact_vo.model_dump()
-            elif hasattr(emergency_contact_vo, 'to_dict'):
-                model._emergency_contact_details = emergency_contact_vo.to_dict()
-            elif hasattr(emergency_contact_vo, 'dict'):
-                model._emergency_contact_details = emergency_contact_vo.dict()
-            else:
-                # Try to convert to dict using __dict__
-                try:
-                    model._emergency_contact_details = dict(emergency_contact_vo.__dict__)
-                except (AttributeError, TypeError):
-                    try:
-                        model._emergency_contact_details = json.loads(
-                            json.dumps(emergency_contact_vo, default=str)
-                        )
-                    except Exception as e:
-                        logger.error(f"Could not serialize emergency_contact_details to JSON: {e}")
-                        model._emergency_contact_details = {"serialization_error": str(emergency_contact_vo)}
+            model._emergency_contact_details = emergency_contact_vo.model_dump() if hasattr(emergency_contact_vo, "model_dump") else emergency_contact_vo.dict()
         else:
             model._emergency_contact_name = None
             model._emergency_contact_phone = None
@@ -361,45 +344,14 @@ class Patient(Base, TimestampMixin, AuditMixin):
         contact_info_vo = getattr(patient, 'contact_info', None)
         # Don't assign the Pydantic model directly - serialize it to dict first
         if contact_info_vo is not None:
-            if hasattr(contact_info_vo, 'model_dump'):
-                model._contact_info = contact_info_vo.model_dump()
-            elif hasattr(contact_info_vo, 'to_dict'):
-                model._contact_info = contact_info_vo.to_dict()
-            elif hasattr(contact_info_vo, 'dict'):
-                model._contact_info = contact_info_vo.dict()
-            else:
-                # Try to convert to dict using __dict__
-                try:
-                    model._contact_info = dict(contact_info_vo.__dict__)
-                except (AttributeError, TypeError):
-                    # Last resort - serialize to JSON and parse back to dict
-                    try:
-                        model._contact_info = json.loads(json.dumps(contact_info_vo, default=str))
-                    except Exception as e:
-                        logger.error(f"Could not serialize contact_info to JSON: {e}")
-                        model._contact_info = {"serialization_error": str(contact_info_vo)}
+            model._contact_info = contact_info_vo.model_dump() if hasattr(contact_info_vo, "model_dump") else contact_info_vo.dict()
         else:
             model._contact_info = None
 
         address_vo_from_domain = getattr(patient, 'address', None)
         # Serialize Address VO to dict for database storage
         if address_vo_from_domain is not None:
-            if hasattr(address_vo_from_domain, 'model_dump'):
-                model._address_details = address_vo_from_domain.model_dump()
-            elif hasattr(address_vo_from_domain, 'to_dict'):
-                model._address_details = address_vo_from_domain.to_dict()
-            elif hasattr(address_vo_from_domain, 'dict'):
-                model._address_details = address_vo_from_domain.dict()
-            else:
-                # Try to convert to dict using __dict__
-                try:
-                    model._address_details = dict(address_vo_from_domain.__dict__)
-                except (AttributeError, TypeError):
-                    try:
-                        model._address_details = json.loads(json.dumps(address_vo_from_domain, default=str))
-                    except Exception as e:
-                        logger.error(f"Could not serialize address_details to JSON: {e}")
-                        model._address_details = {"serialization_error": str(address_vo_from_domain)}
+            model._address_details = address_vo_from_domain.model_dump() if hasattr(address_vo_from_domain, "model_dump") else address_vo_from_domain.dict()
         else:
             model._address_details = None
 

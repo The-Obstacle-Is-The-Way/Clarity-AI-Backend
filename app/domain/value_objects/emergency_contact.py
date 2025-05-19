@@ -63,3 +63,21 @@ class EmergencyContact:
             "email": self.email,
             "address": address_dict
         }
+        
+    def dict(self) -> dict:
+        """
+        Alias for to_dict() - for Pydantic v1 compatibility.
+        
+        Returns:
+            Dictionary representation of the emergency contact
+        """
+        return self.to_dict()
+        
+    def model_dump(self) -> dict:
+        """
+        Alias for to_dict() - for Pydantic v2 compatibility.
+        
+        Returns:
+            Dictionary representation of the emergency contact
+        """
+        return self.to_dict()

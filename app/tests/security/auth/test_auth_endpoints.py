@@ -10,7 +10,7 @@ import asyncio
 import pytest
 import logging
 from app.tests.utils.asyncio_helpers import run_with_timeout
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI, Request, HTTPException, status, Response
 import uuid
 
@@ -58,7 +58,7 @@ async def test_login_success(mock_auth_service: AsyncMock) -> None:
         )
     
     # Create an HTTPX AsyncClient for our app
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Arrange login data
         login_data = {
             "username": "testuser@example.com",  # Valid email format required for EmailStr validation
@@ -126,7 +126,7 @@ async def test_login_invalid_credentials(mock_auth_service: AsyncMock) -> None:
             )
     
     # Create an HTTPX AsyncClient for our app
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Arrange
         login_data = {
             "username": "wrong_user@example.com",
@@ -190,7 +190,7 @@ async def test_login_inactive_account(mock_auth_service: AsyncMock) -> None:
             )
     
     # Create an HTTPX AsyncClient for our app
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Arrange
         login_data = {
             "username": "inactive@example.com",
@@ -251,7 +251,7 @@ async def test_refresh_token_success(mock_auth_service: AsyncMock) -> None:
         )
     
     # Create an HTTPX AsyncClient for our app
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Arrange refresh data
         refresh_data = {
             "refresh_token": "mock_refresh_token_for_user123"
@@ -401,7 +401,7 @@ async def test_logout(mock_auth_service: AsyncMock) -> None:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     
     # Create an HTTPX AsyncClient for our app
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Step 1: Login to get authenticated
         login_data = {
             "username": "testuser@example.com",
@@ -513,7 +513,7 @@ async def test_session_info_authenticated(mock_auth_service: AsyncMock) -> None:
         return session_info
     
     # Create an HTTPX AsyncClient for our app
-    async with AsyncClient(app=app, base_url="http://testserver") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
         # Step 1: Login to get authenticated
         login_data = {
             "username": "testuser@example.com",
