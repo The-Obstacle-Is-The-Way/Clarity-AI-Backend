@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TokenPayload(BaseModel):
@@ -46,6 +46,8 @@ class TokenPayload(BaseModel):
     parent_jti: str | None = None  # Parent token JTI for refresh token tracking
     type: str | None = None  # Token type
     
-    class Config:
-        """Pydantic configuration for TokenPayload."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="allow",  # Allow extra fields for forward compatibility
+        populate_by_name=True  # Allow populating by field name
+    )

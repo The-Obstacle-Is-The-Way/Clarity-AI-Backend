@@ -76,7 +76,7 @@ class User(BaseModel):
         populate_by_name=True,  # Allow populating fields by alias
     )
     
-    def __init__(self, **data: dict[str, Any]):
+    def __init__(self, **data: Any):
         # Handle account_status if provided in constructor
         if "account_status" in data and "status" not in data:
             data["status"] = data.pop("account_status")
