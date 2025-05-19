@@ -132,7 +132,13 @@ async def create_tables() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
         # Print the tables that were created
-        table_names = await conn.run_sync(lambda sync_conn: sync_conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).scalars().all())
+        table_names = await conn.run_sync(
+            lambda sync_conn: sync_conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            )
+            .scalars()
+            .all()
+        )
         logger.info(f"Tables in database: {', '.join(table_names)}")
 
         # Check if specific tables are missing
