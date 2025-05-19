@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Union, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, validator
+from pydantic import ConfigDict
 
 from app.domain.entities.biometric_alert_rule import (
     AlertPriority,
@@ -113,6 +114,15 @@ class AlertRuleUpdate(BaseModel):
     logical_operator: Optional[ApiLogicalOperator] = Field(None, description="Logical operator for conditions")
     is_active: Optional[bool] = Field(None, description="Whether rule is active")
     conditions: Optional[List[RuleConditionBase]] = Field(None, description="Rule conditions")
+
+
+class AlertRuleWrapperRequest(BaseModel):
+    """Wrapper model for rule data that matches the test payload format."""
+    rule_data: AlertRuleCreate
+
+    model_config = ConfigDict(
+        extra="allow"
+    )
 
 
 # ======== Response Models ========

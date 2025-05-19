@@ -6,10 +6,10 @@ following clean architecture principles with proper separation of concerns.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Body, Request
 from pydantic import BaseModel, Field, validator
 
 from app.application.services.biometric_alert_rule_service import BiometricAlertRuleService
@@ -38,6 +38,7 @@ from app.presentation.api.v1.schemas.biometric_alert_rules import (
     RuleFromTemplateCreate,
     AlertRuleList,
     AlertRuleTemplateResponse,
+    AlertRuleWrapperRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -150,7 +151,7 @@ async def get_alert_rule(
 
 @router.post("", response_model=AlertRuleResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert_rule(
-    rule_data: AlertRuleCreate,
+    request: Request,
     current_user: CurrentUserDep = None,
     rule_service: BiometricAlertRuleService = Depends(get_rule_service),
 ) -> AlertRuleResponse:
@@ -158,21 +159,29 @@ async def create_alert_rule(
     Create a new alert rule.
     
     Args:
-        rule_data: Alert rule data
+        request: FastAPI Request object
         current_user: Authenticated user
         rule_service: Alert rule service
         
     Returns:
         Created alert rule
     """
-    logger.info(f"Creating alert rule for patient {rule_data.patient_id}")
+    # Get the raw JSON data from the request
+    json_data = await request.json()
+    
+    # Extract the actual rule data from the wrapper if present
+    rule_data = json_data.get("rule_data", json_data)
+    
+    # Get patient ID for logging
+    patient_id = rule_data.get("patient_id", "unknown")
+    logger.info(f"Creating alert rule for patient {patient_id}")
     
     try:
-        # Convert schema to domain input
-        rule_dict = rule_data.model_dump(exclude_unset=True)
-        rule_dict["provider_id"] = current_user.id
-        
         # Create rule using service
+        rule_dict = rule_data
+        if current_user and current_user.id:
+            rule_dict["provider_id"] = current_user.id
+        
         rule = await rule_service.create_rule(rule_dict)
         
         # Convert domain entity to response schema
