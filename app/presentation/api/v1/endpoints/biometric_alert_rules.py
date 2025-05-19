@@ -182,10 +182,15 @@ async def create_alert_rule(
         if current_user and current_user.id:
             rule_dict["provider_id"] = current_user.id
         
-        rule = await rule_service.create_rule(rule_dict)
+        created_rule = await rule_service.create_rule(rule_dict)
         
-        # Convert domain entity to response schema
-        return AlertRuleResponse.from_entity(rule)
+        # Check if the result is already a dictionary or an entity
+        if isinstance(created_rule, dict):
+            # If it's already a dictionary, just use it directly with the AlertRuleResponse model
+            return AlertRuleResponse(**created_rule)
+        else:
+            # If it's an entity, convert it using the from_entity method
+            return AlertRuleResponse.from_entity(created_rule)
         
     except Exception as e:
         logger.error(f"Error creating alert rule: {str(e)}")
